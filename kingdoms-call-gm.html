@@ -2512,8 +2512,8 @@ renderSetup();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── CONFIG ────────────────────────────────────────────
-const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co/rest/v1/';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 let _sb = null;
 let _gmUser = null;
 let _onlineGameId = null;
@@ -2525,60 +2525,155 @@ function getSB(){
 }
 
 // ── GM DASHBOARD MODAL ────────────────────────────────
+let _gmAuthMode = 'signin'; // 'signin' | 'signup'
+
 function showGMDashboard(){
   document.getElementById('gm-modal').classList.add('show');
-  renderGMDashboard();
+  // Try to restore an existing session first
+  const sb = getSB();
+  if(sb && !_gmUser){
+    sb.auth.getSession().then(({data:{session}})=>{
+      if(session){ _gmUser = session.user; }
+      renderGMDashboard();
+    });
+  } else {
+    renderGMDashboard();
+  }
 }
 function closeGMDashboard(){ document.getElementById('gm-modal').classList.remove('show'); }
 
+function gmSetAuthMode(mode){
+  _gmAuthMode = mode;
+  renderGMAuthForm();
+}
+
+function renderGMAuthForm(){
+  const isSignUp = _gmAuthMode === 'signup';
+  document.getElementById('gm-body').innerHTML = `
+    <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid #444;border-radius:3px;overflow:hidden">
+      <button onclick="gmSetAuthMode('signin')" style="flex:1;padding:8px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;
+        background:${!isSignUp?'var(--crimson)':'#222'};color:${!isSignUp?'#fff':'#aaa'}">Sign In</button>
+      <button onclick="gmSetAuthMode('signup')" style="flex:1;padding:8px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;
+        background:${isSignUp?'var(--crimson)':'#222'};color:${isSignUp?'#fff':'#aaa'}">Create GM Account</button>
+    </div>
+    <div id="gm-auth-msg"></div>
+    <label style="color:#ccc;font-size:.78rem">Email</label>
+    <input type="email" id="gm-email" placeholder="your@email.com"
+      style="width:100%;background:#1a1208;color:#f2e8d0;border:1px solid #555;padding:8px;margin:4px 0 10px;border-radius:2px;font-family:'Crimson Text',serif;font-size:.95rem">
+    <label style="color:#ccc;font-size:.78rem">Password</label>
+    <input type="password" id="gm-password" placeholder="${isSignUp?'Choose a password (min 6 chars)':'Password'}"
+      style="width:100%;background:#1a1208;color:#f2e8d0;border:1px solid #555;padding:8px;margin:4px 0 ${isSignUp?'10px':'16px'};border-radius:2px;font-family:'Crimson Text',serif;font-size:.95rem"
+      onkeydown="if(event.key==='Enter')gmDoAuth()">
+    ${isSignUp?`
+    <label style="color:#ccc;font-size:.78rem">Confirm Password</label>
+    <input type="password" id="gm-password2" placeholder="Repeat password"
+      style="width:100%;background:#1a1208;color:#f2e8d0;border:1px solid #555;padding:8px;margin:4px 0 16px;border-radius:2px;font-family:'Crimson Text',serif;font-size:.95rem"
+      onkeydown="if(event.key==='Enter')gmDoAuth()">
+    `:''}
+    <button class="btn btn-crimson btn-full" onclick="gmDoAuth()" style="width:100%;padding:10px">
+      ${isSignUp?'Create GM Account':'Sign In as GM'}
+    </button>
+    ${isSignUp?'<p style="color:#888;font-size:.75rem;margin-top:10px;text-align:center">After creating your account, sign in with the same credentials.</p>':''}`;
+}
+
 async function renderGMDashboard(){
   const sb = getSB();
-  if(!sb){ document.getElementById('gm-body').innerHTML='<div class="gm-error">⚠ Supabase not configured. Add your keys to the HTML file.</div>'; return; }
-  if(!_gmUser){
-    document.getElementById('gm-body').innerHTML = `
-      <h3>GM Sign In</h3>
-      <label>Email</label><input type="email" id="gm-email" placeholder="gm@example.com" style="width:100%;margin:4px 0 8px">
-      <label>Password</label><input type="password" id="gm-password" style="width:100%;margin:4px 0 10px">
-      <button class="btn btn-crimson btn-full" onclick="gmSignIn()">Sign In as GM</button>
-      <div id="gm-auth-msg" style="margin-top:8px"></div>`;
+  if(!sb){
+    document.getElementById('gm-body').innerHTML=`
+      <div class="gm-error">⚠ Supabase not configured.<br><br>
+      Open this HTML file in a text editor and replace:<br>
+      <code style="font-size:.75rem;background:#111;padding:2px 6px;color:#f8e03a">YOUR_SUPABASE_URL</code> and
+      <code style="font-size:.75rem;background:#111;padding:2px 6px;color:#f8e03a">YOUR_SUPABASE_ANON_KEY</code><br><br>
+      with the values from your Supabase project → Settings → API.</div>`;
     return;
   }
-  // Load GM's games
-  const {data:games} = await sb.from('games').select('*, game_players(*)').eq('gm_user_id', _gmUser.id);
+  if(!_gmUser){
+    renderGMAuthForm();
+    return;
+  }
+  // Signed in — show games list
+  const {data:games, error:gErr} = await sb.from('games').select('*, game_players(*)').eq('gm_user_id', _gmUser.id);
+  if(gErr){ document.getElementById('gm-body').innerHTML=`<div class="gm-error">${gErr.message}</div>`; return; }
+
   const gameHtml = (games||[]).map(g=>{
     const total = (g.game_players||[]).length;
     const submitted = (g.game_players||[]).filter(p=>p.orders_submitted).length;
     const allIn = submitted===total && total>0;
     return`<div class="gm-game-card" onclick="selectOnlineGame('${g.id}')">
       <div class="gm-game-name">${g.name}</div>
-      <div class="gm-game-meta">Turn ${g.turn||1} · ${submitted}/${total} orders in
-        ${allIn?'<span class="status-pill status-active">✓ Ready to run</span>':''}
+      <div class="gm-game-meta">Turn ${g.turn||1} · ${submitted}/${total} orders submitted
+        ${allIn?'<span class="status-pill status-active" style="margin-left:6px">✓ Ready to run</span>':''}
       </div>
     </div>`;
   }).join('');
 
   document.getElementById('gm-body').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3 style="margin:0">Your Games</h3>
-      <button class="btn btn-forest" onclick="createOnlineGame()">+ New Game</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:.75rem;color:#aaa">Signed in as GM</div>
+        <div style="font-size:.8rem;color:var(--gold-light)">${_gmUser.email}</div>
+      </div>
+      <button class="btn btn-forest" onclick="createOnlineGame()">+ Publish Game Online</button>
     </div>
-    ${gameHtml||'<div class="gm-info">No games yet. Start a game in the main interface, then use "Publish to Online" to create an online game.</div>'}
-    <div id="gm-game-detail" style="margin-top:16px"></div>
-    <hr style="border-color:#333;margin:14px 0">
+    <hr style="border-color:#333;margin-bottom:12px">
+    <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#aaa;margin-bottom:8px;text-transform:uppercase;letter-spacing:.1em">Your Online Games</div>
+    ${gameHtml||'<div class="gm-info">No online games yet.<br><br>Start a game in the main interface first (set up players using the setup screen), then click "+ Publish Game Online" to host it.</div>'}
+    <div id="gm-game-detail" style="margin-top:14px"></div>
+    <hr style="border-color:#333;margin:14px 0 8px">
     <button class="btn" style="background:#333;color:#aaa;font-size:.7rem" onclick="gmSignOut()">Sign Out</button>`;
 }
 
-async function gmSignIn(){
+async function gmDoAuth(){
   const sb = getSB();
-  const email = document.getElementById('gm-email').value.trim();
-  const pwd = document.getElementById('gm-password').value;
+  const email = document.getElementById('gm-email')?.value.trim();
+  const pwd = document.getElementById('gm-password')?.value;
+  const pwd2 = document.getElementById('gm-password2')?.value;
   const msg = document.getElementById('gm-auth-msg');
-  const res = await sb.auth.signInWithPassword({email, password:pwd});
-  if(res.error){ msg.innerHTML=`<div class="gm-error">${res.error.message}</div>`; return; }
-  _gmUser = res.data.user;
+  if(!email||!pwd){
+    msg.innerHTML='<div class="gm-error">Please enter your email and password.</div>'; return;
+  }
+  if(_gmAuthMode==='signup'){
+    if(pwd!==pwd2){
+      msg.innerHTML='<div class="gm-error">Passwords do not match.</div>'; return;
+    }
+    if(pwd.length<6){
+      msg.innerHTML='<div class="gm-error">Password must be at least 6 characters.</div>'; return;
+    }
+    msg.innerHTML='<div style="color:#aaa;font-size:.82rem">Creating account…</div>';
+    const {error} = await sb.auth.signUp({email, password:pwd,
+      options:{data:{display_name:'Game Master'}}});
+    if(error){ msg.innerHTML=`<div class="gm-error">${error.message}</div>`; return; }
+    msg.innerHTML=`<div class="gm-info" style="background:#1a2a10;border-color:#3a6a20;color:#8fbc5a">
+      ✓ Account created! ${error?'':'Check your email for a confirmation link, then '}sign in below.</div>`;
+    // Switch to sign-in mode automatically
+    setTimeout(()=>{ _gmAuthMode='signin'; renderGMAuthForm();
+      document.getElementById('gm-email').value=email; }, 2000);
+    return;
+  }
+  // Sign in
+  msg.innerHTML='<div style="color:#aaa;font-size:.82rem">Signing in…</div>';
+  const {data, error} = await sb.auth.signInWithPassword({email, password:pwd});
+  if(error){
+    let errMsg = error.message;
+    if(errMsg.includes('Email not confirmed')){
+      errMsg = `Email not confirmed yet. <strong>To fix this for local testing:</strong> go to your Supabase dashboard → Authentication → Providers → Email → turn OFF "Confirm email". Then try again.`;
+    } else if(errMsg.includes('Invalid login credentials')){
+      errMsg = 'Email or password incorrect. If you just created an account, check your email for a confirmation link first (or turn off email confirmation in Supabase → Authentication → Email).';
+    }
+    msg.innerHTML=`<div class="gm-error">${errMsg}</div>`; return;
+  }
+  _gmUser = data.user;
   renderGMDashboard();
 }
-async function gmSignOut(){ const sb=getSB(); await sb.auth.signOut(); _gmUser=null; renderGMDashboard(); }
+
+async function gmSignIn(){ await gmDoAuth(); }
+async function gmSignOut(){
+  const sb=getSB();
+  await sb.auth.signOut();
+  _gmUser=null;
+  _gmAuthMode='signin';
+  renderGMAuthForm();
+}
 
 async function createOnlineGame(){
   if(!G){ alert('Load or start a game first, then publish it online.'); return; }
