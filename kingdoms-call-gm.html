@@ -2519,7 +2519,7 @@ let _gmUser = null;
 let _onlineGameId = null;
 
 function getSB(){
-  if(!_sb && SUPABASE_URL !== 'YOUR_SUPABASE_URL')
+  if(!_sb)
     _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return _sb;
 }
