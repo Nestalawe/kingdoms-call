@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call — Player Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+  :root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#1a1208;--ink-light:#3d2b0f;--crimson:#7a1c1c;--gold:#c8922a;--gold-light:#e8b84b;--forest:#2d4a1e;--stone:#6b5a42;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0e0a04;font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;}
+  #app{max-width:900px;margin:0 auto;padding:20px;}
+  h1{font-family:'Cinzel',serif;font-size:1.8rem;color:var(--gold-light);text-align:center;margin-bottom:6px;}
+  h2{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--crimson);margin-bottom:12px;}
+  h3{font-family:'Cinzel',serif;font-size:.9rem;color:var(--ink-light);margin-bottom:8px;border-bottom:1px solid var(--parchment-dark);padding-bottom:4px;}
+  .subtitle{text-align:center;color:var(--stone);font-family:'Cinzel',serif;font-size:.8rem;margin-bottom:24px;}
+  .card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:20px;margin-bottom:16px;}
+  .card-dark{background:#1a1208;border:1px solid var(--gold);border-radius:3px;padding:20px;margin-bottom:16px;}
+  label{font-size:.8rem;color:var(--stone);display:block;margin-bottom:3px;}
+  input,select,textarea{font-family:'Crimson Text',serif;font-size:.95rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:7px 10px;border-radius:2px;width:100%;margin-bottom:10px;}
+  textarea{min-height:120px;resize:vertical;}
+  .btn{font-family:'Cinzel',serif;font-size:.8rem;font-weight:600;padding:9px 18px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.04em;display:inline-block;}
+  .btn-crimson{background:var(--crimson);color:#fff;}.btn-crimson:hover{background:#9a2c2c;}
+  .btn-gold{background:var(--gold);color:var(--ink);}.btn-gold:hover{background:var(--gold-light);}
+  .btn-forest{background:var(--forest);color:#fff;}.btn-forest:hover{background:#3d6a28;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-full{width:100%;margin-top:8px;}
+  .error{background:#fde;border:1px solid #c00;padding:8px 12px;border-radius:2px;font-size:.85rem;color:#900;margin-bottom:10px;}
+  .success{background:#dfd;border:1px solid #090;padding:8px 12px;border-radius:2px;font-size:.85rem;color:#060;margin-bottom:10px;}
+  .info{background:#e8f4ff;border:1px solid #68a;padding:8px 12px;border-radius:2px;font-size:.85rem;color:#246;margin-bottom:10px;}
+  .game-card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all .15s;}
+  .game-card:hover{border-color:var(--gold);background:#fdf5e0;}
+  .game-card h4{font-family:'Cinzel',serif;font-size:.85rem;color:var(--crimson);margin-bottom:4px;}
+  .game-card .meta{font-size:.78rem;color:var(--stone);}
+  .status-pill{display:inline-block;font-size:.65rem;padding:2px 7px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;}
+  .status-active{background:#d4edda;color:#155724;}
+  .status-waiting{background:#fff3cd;color:#856404;}
+  .status-submitted{background:#cce5ff;color:#004085;}
+  section{display:none;}
+  section.active{display:block;}
+  #loading{text-align:center;color:var(--gold);padding:40px;font-family:'Cinzel',serif;}
+
+  /* Turn report styling */
+  .report-section{margin-bottom:20px;}
+  .report-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .stat-box{background:#fdf8ee;border:1px solid var(--parchment-dark);padding:10px;border-radius:2px;}
+  .stat-box .label{font-size:.7rem;color:var(--stone);margin-bottom:2px;}
+  .stat-box .value{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--crimson);font-weight:600;}
+  .char-report{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:10px;margin-bottom:8px;}
+  .char-report h4{font-family:'Cinzel',serif;font-size:.82rem;color:var(--ink-light);margin-bottom:5px;}
+  .char-report .detail{font-size:.8rem;color:var(--stone);line-height:1.6;}
+  .prov-report{background:#f0f8e8;border:1px solid #8ab070;border-radius:2px;padding:8px;margin-bottom:5px;}
+  .prov-report .pname{font-family:'Cinzel',serif;font-size:.78rem;color:var(--forest);font-weight:600;}
+  .prov-report .pdetail{font-size:.75rem;color:var(--stone);}
+  .intel-entry{font-size:.8rem;padding:4px 0;border-bottom:1px solid var(--parchment-dark);color:var(--ink-light);}
+  .phase-order-input{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:8px;margin-bottom:6px;}
+  .phase-order-input .phase-label{font-family:'Cinzel',serif;font-size:.7rem;color:var(--stone);margin-bottom:4px;}
+  .order-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .order-fields select,input{margin-bottom:0;}
+  .hero-orders-block{border:1px solid var(--stone);border-radius:3px;margin-bottom:14px;overflow:hidden;}
+  .hero-orders-header{background:var(--ink-light);color:var(--parchment);padding:8px 12px;font-family:'Cinzel',serif;font-size:.8rem;}
+  .hero-orders-body{padding:10px;}
+  .log-line{font-size:.82rem;padding:5px 8px;border-left:3px solid var(--stone);margin-bottom:4px;background:var(--parchment);}
+  .log-line.combat{border-left-color:var(--crimson);}
+  .log-line.explore{border-left-color:var(--forest);}
+  .log-line.hire{border-left-color:var(--gold);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="card-dark" style="margin-bottom:20px">
+    <h1>⚔ Kingdoms Call</h1>
+    <p class="subtitle">Player Portal</p>
+  </div>
+
+  <div id="loading">Loading…</div>
+
+  <!-- AUTH -->
+  <section id="section-auth">
+    <div class="card">
+      <h2 id="auth-title">Sign In</h2>
+      <div id="auth-msg"></div>
+      <div>
+        <label>Email</label>
+        <input type="email" id="auth-email" placeholder="your@email.com">
+        <label>Password</label>
+        <input type="password" id="auth-password" placeholder="Password">
+        <div style="display:none" id="auth-name-wrap">
+          <label>Display Name (for new accounts)</label>
+          <input type="text" id="auth-name" placeholder="Your name">
+        </div>
+        <button class="btn btn-crimson btn-full" onclick="doAuth()">Sign In</button>
+        <button class="btn btn-full" style="background:#eee;color:#333;margin-top:6px" onclick="toggleAuthMode()">Create Account Instead</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME LIST -->
+  <section id="section-games">
+    <div class="card">
+      <h2>Your Games</h2>
+      <div id="game-list"><div class="info">Loading your games…</div></div>
+    </div>
+    <div style="text-align:right">
+      <button class="btn btn-forest" onclick="signOut()">Sign Out</button>
+    </div>
+  </section>
+
+  <!-- TURN REPORT + ORDERS -->
+  <section id="section-turn">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+      <button class="btn btn-forest btn-sm" onclick="showSection('section-games')">← Back to Games</button>
+      <h2 style="margin:0" id="turn-title">Turn Report</h2>
+      <span id="turn-status-pill"></span>
+    </div>
+
+    <div class="card">
+      <h3>📜 Chronicle — What Happened Last Turn</h3>
+      <div id="turn-log"><em style="color:#999">No events yet (this is the first turn).</em></div>
+    </div>
+
+    <div class="card">
+      <h3>👑 Your Kingdom</h3>
+      <div id="kingdom-summary"></div>
+    </div>
+
+    <div class="card">
+      <h3>🗺 Your Provinces</h3>
+      <div id="provinces-report"></div>
+    </div>
+
+    <div class="card">
+      <h3>🕵 Intelligence — What You Know</h3>
+      <div id="intel-report"><em style="color:#999">No intelligence gathered yet.</em></div>
+    </div>
+
+    <div class="card" id="orders-card">
+      <h3>⚜ Submit Orders for This Turn</h3>
+      <div id="orders-msg"></div>
+      <div id="orders-form"></div>
+      <button class="btn btn-crimson btn-full" id="submit-orders-btn" onclick="submitOrders()">Submit Orders to GM</button>
+    </div>
+  </section>
+</div>
+
+<script>
+// ══════════════════════════════════
+// CONFIG — paste your Supabase keys here
+// ══════════════════════════════════
+const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
+
+const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let currentGamePlayer = null;
+let currentReport = null;
+let isSignUp = false;
+
+// ── INIT ──────────────────────────
+async function init(){
+  document.getElementById('loading').style.display='none';
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    showSection('section-games');
+    loadGames();
+  } else {
+    showSection('section-auth');
+  }
+}
+
+function showSection(id){
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+}
+
+// ── AUTH ──────────────────────────
+function toggleAuthMode(){
+  isSignUp = !isSignUp;
+  document.getElementById('auth-title').textContent = isSignUp ? 'Create Account' : 'Sign In';
+  document.getElementById('auth-name-wrap').style.display = isSignUp ? 'block' : 'none';
+  document.querySelector('#section-auth .btn-crimson').textContent = isSignUp ? 'Create Account' : 'Sign In';
+  document.querySelector('#section-auth .btn:not(.btn-crimson)').textContent = isSignUp ? 'Sign In Instead' : 'Create Account Instead';
+}
+
+async function doAuth(){
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const name = document.getElementById('auth-name').value.trim();
+  const msgEl = document.getElementById('auth-msg');
+  msgEl.innerHTML='';
+  if(!email||!password){msgEl.innerHTML='<div class="error">Please enter email and password.</div>';return;}
+  
+  let res;
+  if(isSignUp){
+    res = await sb.auth.signUp({email, password, options:{data:{display_name:name||email.split('@')[0]}}});
+    if(!res.error) msgEl.innerHTML='<div class="success">Account created! Check your email to confirm, then sign in.</div>';
+  } else {
+    res = await sb.auth.signInWithPassword({email, password});
+    if(!res.error){currentUser=res.data.user;showSection('section-games');loadGames();}
+  }
+  if(res.error) msgEl.innerHTML=`<div class="error">${res.error.message}</div>`;
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  currentUser=null;
+  showSection('section-auth');
+}
+
+// ── GAME LIST ──────────────────────
+async function loadGames(){
+  const el = document.getElementById('game-list');
+  const {data, error} = await sb.from('game_players').select('*, games(*)').eq('user_id', currentUser.id);
+  if(error){el.innerHTML=`<div class="error">${error.message}</div>`;return;}
+  if(!data||data.length===0){el.innerHTML='<div class="info">You are not enrolled in any games yet. Ask your GM to add you.</div>';return;}
+  el.innerHTML = data.map(gp=>{
+    const g = gp.games;
+    const statusLabel = gp.orders_submitted ? 'Orders submitted' : g.status==='active' ? 'Awaiting your orders' : g.status;
+    const pillClass = gp.orders_submitted ? 'status-submitted' : g.status==='active'?'status-waiting':'status-active';
+    return`<div class="game-card" onclick="openGame('${gp.id}')">
+      <h4>${g.name}</h4>
+      <div class="meta">Turn ${g.turn||1} · Your kingdom: <strong>${gp.display_name||'Player'}</strong>
+        <span class="status-pill ${pillClass}">${statusLabel}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openGame(gamePlayerId){
+  const {data:gp, error} = await sb.from('game_players').select('*, games(*)').eq('id', gamePlayerId).single();
+  if(error||!gp){alert('Could not load game. '+error?.message);return;}
+  currentGamePlayer = gp;
+  currentReport = gp.turn_report || {};
+  renderTurnReport(gp, currentReport);
+  showSection('section-turn');
+}
+
+// ── TURN REPORT ───────────────────
+function renderTurnReport(gp, report){
+  const g = gp.games;
+  document.getElementById('turn-title').textContent = `${g.name} — Turn ${g.turn||1}`;
+  const pillHtml = gp.orders_submitted
+    ? '<span class="status-pill status-submitted">✓ Orders submitted</span>'
+    : '<span class="status-pill status-waiting">⏳ Orders needed</span>';
+  document.getElementById('turn-status-pill').innerHTML = pillHtml;
+
+  // Chronicle
+  const log = report.lastTurnLog||[];
+  document.getElementById('turn-log').innerHTML = log.length
+    ? log.map(e=>`<div class="log-line ${e.type||''}">${e.text}</div>`).join('')
+    : '<em style="color:#999">No events yet.</em>';
+
+  // Kingdom summary
+  const kingdom = report.kingdom||{};
+  document.getElementById('kingdom-summary').innerHTML = `
+    <div class="report-grid">
+      <div class="stat-box"><div class="label">Treasury</div><div class="value">${kingdom.gold||0}g</div></div>
+      <div class="stat-box"><div class="label">Merits</div><div class="value">${kingdom.merits||0}</div></div>
+      <div class="stat-box"><div class="label">Provinces</div><div class="value">${(report.ownedProvinces||[]).length}</div></div>
+      <div class="stat-box"><div class="label">Tax Income</div><div class="value">${kingdom.taxIncome||0}g/turn</div></div>
+    </div>`;
+
+  // Characters
+  const chars = report.characters||[];
+  const charHtml = chars.map(c=>`
+    <div class="char-report">
+      <h4>${c.isKing?'👑':''} ${c.name} ${c.isKing?'(King)':'(Hero)'}</h4>
+      <div class="detail">
+        ${c.race} · ${c.alignment} · HP: ${c.hp}/${c.maxHp} · Location: ${c.locationName||'Unknown'}<br>
+        Skills: ${Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`${k} ${v}`).join(', ')||'none'}<br>
+        ${(c.armies||[]).length>0?`Armies: ${c.armies.map(a=>`${a.type} (${a.quality}, Spd${a.speed||3})`).join(', ')}<br>`:'No armies · Move: 5 hexes/order<br>'}
+        ${!c.isKing?`Pay: ${c.pay||1}g/turn`:''} 
+        ${(c.items||[]).length>0?`Items: ${c.items.map(i=>i.name).join(', ')}`:''}
+      </div>
+    </div>`).join('');
+  document.getElementById('kingdom-summary').innerHTML += charHtml;
+
+  // Provinces
+  const provs = report.ownedProvinces||[];
+  document.getElementById('provinces-report').innerHTML = provs.length
+    ? provs.map(p=>`<div class="prov-report">
+        <div class="pname">${p.name} <span style="font-size:.7rem;color:#888">(${p.terrain})</span></div>
+        <div class="pdetail">Tax: ${p.tax} · ${p.race||'Unknown race'} · Features: ${p.features?.filter(f=>!f.cleared).length||0} remaining</div>
+      </div>`).join('')
+    : '<em style="color:#999">No provinces owned.</em>';
+
+  // Intel
+  const intel = report.intel||[];
+  document.getElementById('intel-report').innerHTML = intel.length
+    ? intel.map(i=>`<div class="intel-entry">${i}</div>`).join('')
+    : '<em style="color:#999">No intelligence gathered yet.</em>';
+
+  // Orders form
+  buildOrdersForm(chars, gp.orders_submitted);
+}
+
+// ── ORDERS FORM ───────────────────
+function buildOrdersForm(chars, alreadySubmitted){
+  const el = document.getElementById('orders-form');
+  const btn = document.getElementById('submit-orders-btn');
+  const msgEl = document.getElementById('orders-msg');
+  
+  if(alreadySubmitted){
+    msgEl.innerHTML='<div class="success">✓ Your orders have been submitted and are awaiting the GM.</div>';
+    el.innerHTML='';
+    btn.disabled=true;
+    return;
+  }
+
+  const actions = [
+    'Move','Explore','Search Feature','Recruit Armies','Hire Hero',
+    'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell',
+    'Spy','Practice Skill','Defend','Rest','Other'
+  ];
+  const directions = Object.entries(DIRECTIONS).map(([v,l])=>`<option value="dir:${v}">${l}</option>`).join('');
+
+  el.innerHTML = chars.map((c,ci)=>`
+    <div class="hero-orders-block">
+      <div class="hero-orders-header">${c.isKing?'👑':'⚔'} ${c.name} — ${c.locationName||'Unknown location'} (Move: ${c.effectiveSpeed||3} hex/order)</div>
+      <div class="hero-orders-body">
+        ${SEASONS.map((season,ph)=>`
+          <div class="phase-order-input">
+            <div class="phase-label">${season}</div>
+            <div class="order-fields">
+              <div>
+                <select id="order-action-${ci}-${ph}" onchange="onOrderActionChange(${ci},${ph})">
+                  <option value="">— Choose action —</option>
+                  ${actions.map(a=>`<option value="${a}">${a}</option>`).join('')}
+                </select>
+              </div>
+              <div id="order-detail-${ci}-${ph}">
+                <select id="order-dir-${ci}-${ph}" style="display:none">
+                  ${directions}
+                </select>
+                <input type="text" id="order-note-${ci}-${ph}" placeholder="Details (optional)" style="display:block">
+              </div>
+              <div>
+                <input type="text" id="order-extra-${ci}-${ph}" placeholder="Notes">
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function onOrderActionChange(ci, ph){
+  const action = document.getElementById(`order-action-${ci}-${ph}`)?.value||'';
+  const dirSel = document.getElementById(`order-dir-${ci}-${ph}`);
+  const noteSel = document.getElementById(`order-note-${ci}-${ph}`);
+  if(action==='Move'){
+    dirSel.style.display='block';
+    noteSel.style.display='none';
+  } else {
+    dirSel.style.display='none';
+    noteSel.style.display='block';
+  }
+}
+
+function collectOrders(){
+  const chars = currentReport.characters||[];
+  const orders = {};
+  chars.forEach((c,ci)=>{
+    orders[c.id] = SEASONS.map((_,ph)=>{
+      const action = document.getElementById(`order-action-${ci}-${ph}`)?.value||'';
+      const dir = document.getElementById(`order-dir-${ci}-${ph}`)?.value||'';
+      const note = document.getElementById(`order-note-${ci}-${ph}`)?.value||'';
+      const extra = document.getElementById(`order-extra-${ci}-${ph}`)?.value||'';
+      return {action, target: action==='Move'?dir:note, extra, desc:`${action}${note?' — '+note:''}`};
+    });
+  });
+  return orders;
+}
+
+async function submitOrders(){
+  const btn = document.getElementById('submit-orders-btn');
+  const msgEl = document.getElementById('orders-msg');
+  btn.disabled=true;
+  btn.textContent='Saving…';
+  const orders = collectOrders();
+  const {error} = await sb.from('game_players').update({
+    orders: orders,
+    orders_submitted: true
+  }).eq('id', currentGamePlayer.id);
+  if(error){
+    msgEl.innerHTML=`<div class="error">Error saving orders: ${error.message}</div>`;
+    btn.disabled=false;
+    btn.textContent='Submit Orders to GM';
+  } else {
+    msgEl.innerHTML='<div class="success">✓ Orders submitted successfully!</div>';
+    document.getElementById('turn-status-pill').innerHTML='<span class="status-pill status-submitted">✓ Orders submitted</span>';
+    btn.textContent='Orders Submitted';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
