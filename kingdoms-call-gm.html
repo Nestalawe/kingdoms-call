@@ -1176,7 +1176,7 @@ function resolveTurn(){
 // ── PROCESS ONE ORDER ─────────────────────────────────────
 function processOrder(char, order, phase){
   switch(order.action){
-    case 'move':        doMove(char, parseInt(order.target)); break;
+    case 'move':        doMove(char, order.target); break;
     case 'explore':     doExplore(char); break;
     case 'search':      doSearch(char, parseInt(order.target)); break;
     case 'recruit':     doRecruit(char, order.extra); break;

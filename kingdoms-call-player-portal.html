@@ -351,16 +351,21 @@ async function loadAllGames(){
 
 async function loadMyGames(){
   const el=document.getElementById('my-games-list');
-  // Games I have a slot in
-  const {data:mySlots,error}=await sb.from('game_players').select('*, games(*)').eq('user_id',currentUser.id);
+  // Step 1: get player's own slots
+  const {data:mySlots,error}=await sb.from('game_players').select('*').eq('user_id',currentUser.id);
   if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
   if(!mySlots||mySlots.length===0){
     el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">You are not enrolled in any games yet. Join an open game below.</div>';
     return;
   }
+  // Step 2: fetch each game separately (avoids RLS join issue)
+  const gameIds=mySlots.map(s=>s.game_id);
+  const {data:games,error:gErr}=await sb.from('games').select('*').in('id',gameIds);
+  if(gErr){el.innerHTML=`<div class="msg-error">${gErr.message}</div>`;return;}
+  const gamesById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
   el.innerHTML=mySlots.map(slot=>{
-    const g=slot.games;
-    if(!g) return '';
+    const g=gamesById[slot.game_id];
+    if(!g) return `<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
     const statusLabel=slot.orders_submitted?'Orders submitted':g.status==='active'?'Orders needed':g.status==='setup'?'Waiting to start':'Complete';
     const pillClass=slot.orders_submitted?'pill-blue':g.status==='active'?'pill-amber':g.status==='setup'?'pill-green':'';
     return`<div class="game-card clickable" onclick="openReport('${slot.id}')">
@@ -375,19 +380,30 @@ async function loadMyGames(){
 
 async function loadOpenGames(){
   const el=document.getElementById('open-games-list');
-  // Games in 'setup' status with open slots
-  const {data:games,error}=await sb.from('games').select('*, game_players(id,user_id)').eq('status','setup');
-  if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
-  // Filter: has open slots and I'm not already in it
-  const myGameIds=new Set();
+  // Get my game IDs to exclude them
   const {data:mySlots}=await sb.from('game_players').select('game_id').eq('user_id',currentUser.id);
-  (mySlots||[]).forEach(s=>myGameIds.add(s.game_id));
+  const myGameIds=new Set((mySlots||[]).map(s=>s.game_id));
 
-  const openGames=(games||[]).filter(g=>{
+  // Fetch setup-status games separately (no join — avoids RLS blocking)
+  const {data:games,error}=await sb.from('games').select('*').eq('status','setup');
+  if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(!games||games.length===0){
+    el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
+    return;
+  }
+  // Fetch player counts for these games
+  const gameIds=games.map(g=>g.id);
+  const {data:allSlots}=await sb.from('game_players').select('game_id,user_id').in('game_id',gameIds);
+  const slotsByGame={};
+  (allSlots||[]).forEach(s=>{
+    if(!slotsByGame[s.game_id]) slotsByGame[s.game_id]=[];
+    slotsByGame[s.game_id].push(s);
+  });
+
+  const openGames=games.filter(g=>{
     if(myGameIds.has(g.id)) return false;
-    const joined=(g.game_players||[]).filter(p=>p.user_id).length;
-    const maxP=g.max_players||4;
-    return joined<maxP;
+    const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
+    return joined<(g.max_players||4);
   });
 
   if(openGames.length===0){
@@ -395,7 +411,7 @@ async function loadOpenGames(){
     return;
   }
   el.innerHTML=openGames.map(g=>{
-    const joined=(g.game_players||[]).filter(p=>p.user_id).length;
+    const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
     const maxP=g.max_players||4;
     return`<div class="game-card clickable" onclick="showJoinGame('${g.id}','${g.name.replace(/'/g,"\\'")}',${maxP},${joined})">
       <div class="gc-name">${g.name} <span class="pill pill-green">Open</span></div>
@@ -490,12 +506,16 @@ async function openReport(gamePlayerId){
   show('sec-report');
   document.getElementById('report-title').textContent='Loading…';
 
-  const {data:gp,error}=await sb.from('game_players').select('*, games(*)').eq('id',gamePlayerId).single();
-  if(error){document.getElementById('report-title').textContent='Error';return;}
+  // Fetch game_player row first
+  const {data:gp,error}=await sb.from('game_players').select('*').eq('id',gamePlayerId).single();
+  if(error){document.getElementById('report-title').textContent='Error: '+error.message;return;}
+  // Fetch game separately to avoid RLS join issue
+  const {data:g,error:gErr}=await sb.from('games').select('*').eq('id',gp.game_id).single();
+  if(gErr){document.getElementById('report-title').textContent='Error loading game: '+gErr.message;return;}
+  gp.games=g; // attach for compatibility
   currentGamePlayer=gp;
   const report=typeof gp.turn_report==='string'?JSON.parse(gp.turn_report):gp.turn_report||{};
   currentReport=report;
-  const g=gp.games;
 
   document.getElementById('report-title').textContent=`${g.name} — Turn ${g.turn||0}`;
   document.getElementById('orders-turn-num').textContent=g.turn||1;
