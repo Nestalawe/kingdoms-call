@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call — GM Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#1a1208;--ink-light:#3d2b0f;--crimson:#7a1c1c;--gold:#c8922a;--gold-light:#e8b84b;--forest:#2d4a1e;--stone:#6b5a42;--bg:#0e0a04;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;}
+#page{max-width:860px;margin:0 auto;padding:20px;}
+.masthead{text-align:center;padding:28px 0 20px;border-bottom:1px solid var(--gold);margin-bottom:24px;}
+.masthead h1{font-family:'Cinzel',serif;font-size:2rem;font-weight:800;color:var(--gold-light);letter-spacing:.06em;}
+.masthead .sub{font-family:'Cinzel',serif;font-size:.8rem;color:var(--stone);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;}
+.card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:22px;margin-bottom:16px;}
+h2{font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson);margin-bottom:14px;padding-bottom:6px;border-bottom:1px solid var(--parchment-dark);}
+h3{font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink-light);margin-bottom:10px;}
+label{font-size:.78rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
+input,select,textarea{font-family:'Crimson Text',serif;font-size:.95rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:8px 10px;border-radius:2px;width:100%;margin-bottom:12px;}
+input:focus,select:focus{outline:1px solid var(--gold);}
+.btn{font-family:'Cinzel',serif;font-size:.75rem;font-weight:600;padding:9px 18px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;transition:all .15s;display:inline-block;text-align:center;}
+.btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}.btn-crimson:hover{background:#9a2c2c;}
+.btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}.btn-gold:hover{background:var(--gold-light);}
+.btn-forest{background:var(--forest);color:#fff;border:1px solid #1a2e10;}.btn-forest:hover{background:#3d6a28;}
+.btn-ghost{background:transparent;color:var(--stone);border:1px solid var(--stone);}.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.btn-full{width:100%;margin-top:4px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.tab-bar{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--stone);border-radius:3px;overflow:hidden;}
+.tab-bar button{flex:1;padding:10px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.05em;background:var(--parchment-dark);color:var(--stone);transition:all .15s;}
+.tab-bar button.active{background:var(--crimson);color:#fff;}
+.msg-error{background:#fde8e8;border:1px solid #c00;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#900;margin-bottom:12px;}
+.msg-success{background:#e8f5e9;border:1px solid #2d7a2d;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a4a10;margin-bottom:12px;}
+.msg-info{background:#e8f4ff;border:1px solid #5a8ab0;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a3a5a;margin-bottom:12px;}
+section{display:none;}.section-active{display:block;}
+#spinner{text-align:center;padding:48px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.1em;}
+
+/* Game cards */
+.game-card{background:#fdf8ee;border:1px solid var(--stone);border-radius:3px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s;}
+.game-card:hover{border-color:var(--gold);background:#fdf3d8;}
+.game-card .gc-name{font-family:'Cinzel',serif;font-size:.9rem;color:var(--crimson);flex:1;}
+.game-card .gc-meta{font-size:.78rem;color:var(--stone);}
+.game-card .gc-action{flex-shrink:0;}
+.pill{display:inline-block;font-size:.65rem;padding:2px 8px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;margin-left:6px;}
+.pill-green{background:#d4edda;color:#155724;}
+.pill-amber{background:#fff3cd;color:#856404;}
+.pill-blue{background:#cce5ff;color:#004085;}
+.pill-red{background:#f8d7da;color:#721c24;}
+
+/* Game detail */
+.detail-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+.detail-header h2{margin:0;border:none;padding:0;flex:1;}
+.player-slot{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.player-slot .slot-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--ink-light);flex:1;}
+.player-slot .slot-status{font-size:.75rem;color:var(--stone);}
+.player-slot .slot-code{font-family:monospace;font-size:.8rem;background:var(--parchment-dark);padding:2px 8px;border-radius:2px;color:var(--stone);}
+
+/* Orders input for GM */
+.orders-hero-block{border:1px solid var(--stone);border-radius:3px;margin-bottom:14px;overflow:hidden;}
+.orders-hero-header{background:var(--ink-light);color:var(--parchment);padding:9px 14px;font-family:'Cinzel',serif;font-size:.8rem;display:flex;align-items:center;gap:8px;}
+.orders-hero-body{padding:12px;}
+.phase-row{display:grid;grid-template-columns:90px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:center;}
+.phase-row .phase-name{font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.06em;}
+.phase-row select,.phase-row input{margin-bottom:0;font-size:.82rem;padding:5px 7px;}
+
+/* Turn report preview */
+.report-section{margin-bottom:16px;}
+.report-section h4{font-family:'Cinzel',serif;font-size:.78rem;color:var(--ink-light);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;}
+.report-prov{background:#f0f8e8;border:1px solid #8ab070;border-radius:2px;padding:7px 10px;margin-bottom:5px;font-size:.82rem;}
+.report-prov strong{font-family:'Cinzel',serif;color:var(--forest);}
+.log-entry{padding:5px 8px;border-left:3px solid var(--stone);margin-bottom:4px;background:var(--parchment);font-size:.82rem;}
+.log-entry.combat{border-left-color:var(--crimson);}
+.log-entry.explore{border-left-color:var(--forest);}
+.log-entry.hire{border-left-color:var(--gold);}
+.log-entry.system{border-left-color:#888;font-style:italic;color:#666;}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="masthead">
+    <h1>⚔ Kingdoms Call</h1>
+    <div class="sub">Game Master Portal</div>
+  </div>
+
+  <div id="spinner">Loading…</div>
+
+  <!-- AUTH -->
+  <section id="sec-auth">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div class="tab-bar" style="margin-bottom:18px">
+        <button id="tab-signin" class="active" onclick="setAuthTab('signin')">Sign In</button>
+        <button id="tab-signup" onclick="setAuthTab('signup')">Create GM Account</button>
+      </div>
+      <div id="auth-msg"></div>
+      <div id="auth-signin">
+        <label>Email</label>
+        <input type="email" id="si-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doSignIn()">
+        <label>Password</label>
+        <input type="password" id="si-password" placeholder="Password" onkeydown="if(event.key==='Enter')doSignIn()">
+        <button class="btn btn-crimson btn-full" onclick="doSignIn()">Sign In as GM</button>
+      </div>
+      <div id="auth-signup" style="display:none">
+        <label>Email</label>
+        <input type="email" id="su-email" placeholder="your@email.com">
+        <label>Password</label>
+        <input type="password" id="su-password" placeholder="At least 6 characters">
+        <label>Confirm Password</label>
+        <input type="password" id="su-password2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doSignUp()">
+        <button class="btn btn-crimson btn-full" onclick="doSignUp()">Create GM Account</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME LIST -->
+  <section id="sec-games">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Game Master</div>
+        <div id="gm-email-display" style="font-size:.95rem;color:var(--parchment)"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gold" onclick="showNewGame()">+ New Game</button>
+        <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
+      </div>
+    </div>
+    <div id="msg-games"></div>
+    <div id="games-list"></div>
+  </section>
+
+  <!-- NEW GAME FORM -->
+  <section id="sec-new-game">
+    <div class="card">
+      <div class="detail-header">
+        <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← Back</button>
+        <h2>Start a New Game</h2>
+      </div>
+      <div id="new-game-msg"></div>
+      <label>Game Name</label>
+      <input type="text" id="new-game-name" placeholder="e.g. The War of Five Kings">
+      <label>Maximum Players</label>
+      <select id="new-game-maxplayers">
+        <option value="2">2 players</option>
+        <option value="3">3 players</option>
+        <option value="4" selected>4 players</option>
+        <option value="5">5 players</option>
+        <option value="6">6 players</option>
+        <option value="8">8 players</option>
+      </select>
+      <label>Map Size</label>
+      <select id="new-game-mapsize">
+        <option value="small">Small (8×6) — up to 4 players</option>
+        <option value="medium" selected>Medium (12×8) — up to 6 players</option>
+        <option value="large">Large (16×10) — up to 8 players</option>
+      </select>
+      <label>Game Length</label>
+      <select id="new-game-turns">
+        <option value="8">Short — 8 turns</option>
+        <option value="12" selected>Standard — 12 turns</option>
+        <option value="16">Long — 16 turns</option>
+      </select>
+      <div class="msg-info" style="margin-top:4px">Once you create the game, players can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports.</div>
+      <button class="btn btn-crimson btn-full" style="margin-top:8px" onclick="createGame()">Create Game</button>
+    </div>
+  </section>
+
+  <!-- GAME DETAIL -->
+  <section id="sec-game-detail">
+    <div class="detail-header">
+      <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
+      <h2 id="detail-game-name">Game</h2>
+      <span id="detail-status-pill"></span>
+    </div>
+    <div id="detail-msg"></div>
+
+    <!-- Players / slots -->
+    <div class="card">
+      <h3>Players <span id="detail-player-count" style="font-size:.75rem;color:var(--stone)"></span></h3>
+      <div id="detail-players-list"></div>
+      <div id="detail-run-turn0-wrap" style="margin-top:12px;display:none">
+        <div class="msg-info">All players have joined. You can now run Turn 0 to generate the map and starting turn reports.</div>
+        <button class="btn btn-crimson btn-full" onclick="runTurn0()">⚡ Run Turn 0 — Generate Starting Reports</button>
+      </div>
+    </div>
+
+    <!-- Orders (turn 1+) -->
+    <div class="card" id="detail-orders-card" style="display:none">
+      <h3>Orders Status</h3>
+      <div id="detail-orders-status"></div>
+      <div id="detail-gm-orders-wrap" style="margin-top:12px"></div>
+      <div id="detail-run-turn-wrap" style="margin-top:12px;display:none">
+        <button class="btn btn-crimson btn-full" onclick="runTurn()">⚡ Resolve Turn &amp; Generate New Reports</button>
+      </div>
+    </div>
+
+    <!-- Turn log -->
+    <div class="card" id="detail-log-card" style="display:none">
+      <h3>Last Turn Chronicle</h3>
+      <div id="detail-log"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────
+const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
+const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Spy','Practice Skill','Defend','Rest','Other'];
+
+let currentUser = null;
+let currentGame = null;
+let currentGamePlayers = [];
+
+// ── INIT ─────────────────────────────────────────────
+async function init(){
+  document.getElementById('spinner').style.display='none';
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){ currentUser=session.user; onSignedIn(); }
+  else show('sec-auth');
+}
+
+function show(id){
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
+  document.getElementById(id)?.classList.add('section-active');
+}
+
+// ── AUTH ─────────────────────────────────────────────
+function setAuthTab(tab){
+  document.getElementById('tab-signin').classList.toggle('active',tab==='signin');
+  document.getElementById('tab-signup').classList.toggle('active',tab==='signup');
+  document.getElementById('auth-signin').style.display=tab==='signin'?'block':'none';
+  document.getElementById('auth-signup').style.display=tab==='signup'?'block':'none';
+  document.getElementById('auth-msg').innerHTML='';
+}
+
+async function doSignIn(){
+  const email=document.getElementById('si-email').value.trim();
+  const pwd=document.getElementById('si-password').value;
+  const msg=document.getElementById('auth-msg');
+  if(!email||!pwd){msg.innerHTML='<div class="msg-error">Please enter your email and password.</div>';return;}
+  msg.innerHTML='<div class="msg-info">Signing in…</div>';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pwd});
+  if(error){
+    let m=error.message;
+    if(m.includes('Email not confirmed')) m='Email not confirmed. In Supabase → Authentication → Providers → Email, turn off "Confirm email", then try again. Or confirm your account in Supabase → Authentication → Users.';
+    if(m.includes('Invalid login')) m='Email or password incorrect.';
+    msg.innerHTML=`<div class="msg-error">${m}</div>`;return;
+  }
+  currentUser=data.user;
+  onSignedIn();
+}
+
+async function doSignUp(){
+  const email=document.getElementById('su-email').value.trim();
+  const pwd=document.getElementById('su-password').value;
+  const pwd2=document.getElementById('su-password2').value;
+  const msg=document.getElementById('auth-msg');
+  if(!email||!pwd){msg.innerHTML='<div class="msg-error">Please enter email and password.</div>';return;}
+  if(pwd!==pwd2){msg.innerHTML='<div class="msg-error">Passwords do not match.</div>';return;}
+  if(pwd.length<6){msg.innerHTML='<div class="msg-error">Password must be at least 6 characters.</div>';return;}
+  msg.innerHTML='<div class="msg-info">Creating account…</div>';
+  const {error}=await sb.auth.signUp({email,password:pwd,options:{data:{display_name:'Game Master'}}});
+  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  msg.innerHTML='<div class="msg-success">Account created! If email confirmation is on, check your inbox. Otherwise sign in now.</div>';
+  setTimeout(()=>setAuthTab('signin'),2500);
+}
+
+async function doSignOut(){
+  await sb.auth.signOut();
+  currentUser=null;
+  show('sec-auth');
+}
+
+function onSignedIn(){
+  document.getElementById('gm-email-display').textContent=currentUser.email;
+  show('sec-games');
+  loadGames();
+}
+
+// ── GAME LIST ─────────────────────────────────────────
+async function loadGames(){
+  const el=document.getElementById('games-list');
+  el.innerHTML='<div class="msg-info">Loading…</div>';
+  const {data,error}=await sb.from('games').select('*, game_players(*)').eq('gm_user_id',currentUser.id).order('created_at',{ascending:false});
+  if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(!data||data.length===0){
+    el.innerHTML='<div class="msg-info">No games yet. Click "+ New Game" to create your first game.</div>';return;
+  }
+  el.innerHTML=data.map(g=>{
+    const total=g.game_players?.length||0;
+    const joined=g.game_players?.filter(p=>p.user_id).length||0;
+    const submitted=g.game_players?.filter(p=>p.orders_submitted).length||0;
+    const maxP=g.max_players||4;
+    let pill='';
+    if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${maxP} joined</span>`;
+    else if(g.status==='active') pill=`<span class="pill pill-blue">Turn ${g.turn} — ${submitted}/${joined} orders in</span>`;
+    else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
+    return`<div class="game-card" onclick="openGame('${g.id}')">
+      <div>
+        <div class="gc-name">${g.name}${pill}</div>
+        <div class="gc-meta">${maxP} player slots · ${g.max_turns||12} turns · Created ${new Date(g.created_at).toLocaleDateString()}</div>
+      </div>
+      <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── NEW GAME ──────────────────────────────────────────
+function showNewGame(){
+  document.getElementById('new-game-msg').innerHTML='';
+  show('sec-new-game');
+}
+
+async function createGame(){
+  const name=document.getElementById('new-game-name').value.trim();
+  const maxP=parseInt(document.getElementById('new-game-maxplayers').value);
+  const mapSize=document.getElementById('new-game-mapsize').value;
+  const maxTurns=parseInt(document.getElementById('new-game-turns').value);
+  const msg=document.getElementById('new-game-msg');
+  if(!name){msg.innerHTML='<div class="msg-error">Please enter a game name.</div>';return;}
+  msg.innerHTML='<div class="msg-info">Creating game…</div>';
+  const {data:game,error}=await sb.from('games').insert({
+    name, gm_user_id:currentUser.id,
+    status:'setup', turn:0,
+    max_players:maxP, max_turns:maxTurns,
+    game_state:JSON.stringify({mapSize,maxTurns,maxPlayers:maxP})
+  }).select().single();
+  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  msg.innerHTML='<div class="msg-success">Game created! Players can now see and join it.</div>';
+  setTimeout(()=>{show('sec-games');loadGames();},1500);
+}
+
+// ── GAME DETAIL ───────────────────────────────────────
+async function openGame(gameId){
+  show('sec-game-detail');
+  document.getElementById('detail-game-name').textContent='Loading…';
+  document.getElementById('detail-msg').innerHTML='';
+  document.getElementById('detail-players-list').innerHTML='';
+  document.getElementById('detail-orders-card').style.display='none';
+  document.getElementById('detail-log-card').style.display='none';
+  document.getElementById('detail-run-turn0-wrap').style.display='none';
+
+  const {data:game,error}=await sb.from('games').select('*, game_players(*)').eq('id',gameId).single();
+  if(error){document.getElementById('detail-msg').innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  currentGame=game;
+  currentGamePlayers=game.game_players||[];
+
+  document.getElementById('detail-game-name').textContent=game.name;
+  const maxP=game.max_players||4;
+  const joined=currentGamePlayers.filter(p=>p.user_id).length;
+  const statusLabel=game.status==='setup'?'Setup':game.status==='active'?`Turn ${game.turn}`:'Complete';
+  document.getElementById('detail-status-pill').innerHTML=`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>`;
+  document.getElementById('detail-player-count').textContent=`${joined}/${maxP} joined`;
+
+  // Player slots
+  const slotsHtml=currentGamePlayers.map(p=>`
+    <div class="player-slot">
+      <div class="slot-name">${p.display_name||'(slot open)'}</div>
+      <div class="slot-status">${p.user_id?'<span class="pill pill-green">Joined</span>':'<span class="pill pill-amber">Waiting</span>'}</div>
+      ${p.orders_submitted?'<span class="pill pill-blue">Orders in</span>':''}
+      ${!p.user_id&&p.invite_code?`<div class="slot-code">Invite: ${p.invite_code}</div>`:''}
+    </div>`).join('');
+
+  // Empty slots up to maxP
+  const emptySlots=maxP-currentGamePlayers.length;
+  const emptySlotsHtml=Array(emptySlots).fill(0).map(()=>`
+    <div class="player-slot" style="opacity:.5">
+      <div class="slot-name">(open slot)</div>
+      <div class="slot-status">Waiting for player</div>
+    </div>`).join('');
+
+  document.getElementById('detail-players-list').innerHTML=slotsHtml+emptySlotsHtml;
+
+  // Turn 0: show run button when enough players joined
+  if(game.status==='setup' && joined>=2){
+    document.getElementById('detail-run-turn0-wrap').style.display='block';
+  }
+
+  // Active game: show orders + GM order entry
+  if(game.status==='active'){
+    document.getElementById('detail-orders-card').style.display='block';
+    renderOrdersStatus(game);
+  }
+
+  // Log
+  if(game.turn>0){
+    document.getElementById('detail-log-card').style.display='block';
+    loadTurnLog(game.id, game.turn-1);
+  }
+}
+
+function renderOrdersStatus(game){
+  const players=currentGamePlayers.filter(p=>p.user_id);
+  const submitted=players.filter(p=>p.orders_submitted).length;
+  const allIn=submitted===players.length&&players.length>0;
+
+  document.getElementById('detail-orders-status').innerHTML=`
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+      ${players.map(p=>`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
+        background:${p.orders_submitted?'#d4edda':'#fff3cd'};
+        border:1px solid ${p.orders_submitted?'#28a745':'#ffc107'}">
+        ${p.display_name}: ${p.orders_submitted?'✓ Orders submitted':'⏳ Awaiting orders'}
+      </div>`).join('')}
+    </div>`;
+
+  // GM order entry for each player
+  const gmOrdersHtml=players.map(p=>{
+    const chars=[];
+    try{
+      const gs=typeof game.game_state==='string'?JSON.parse(game.game_state):game.game_state;
+      if(gs&&gs.characters) chars.push(...gs.characters.filter(c=>c.player===p.player_index&&c.alive));
+    }catch(e){}
+    if(!chars.length) return`<div style="font-size:.82rem;color:var(--stone);margin-bottom:8px">${p.display_name}: no characters loaded (run Turn 0 first)</div>`;
+    return`<div class="orders-hero-block">
+      <div class="orders-hero-header">
+        ${p.orders_submitted?'✓':''} ${p.display_name}'s Orders
+        <span style="margin-left:auto;font-size:.7rem;opacity:.7">${p.orders_submitted?'Already submitted — GM can override':'Enter orders on behalf of player'}</span>
+      </div>
+      <div class="orders-hero-body">
+        ${chars.map(c=>renderGMCharOrders(p,c,p.orders)).join('')}
+        <button class="btn btn-gold" style="margin-top:6px" onclick="saveGMOrders('${p.id}','${p.player_index}')">Save Orders for ${p.display_name}</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('detail-gm-orders-wrap').innerHTML=gmOrdersHtml||'<div class="msg-info">No active players yet.</div>';
+
+  if(allIn){
+    document.getElementById('detail-run-turn-wrap').style.display='block';
+  }
+}
+
+function renderGMCharOrders(player, char, existingOrders){
+  const orders=(typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders)||{};
+  const charOrders=orders[char.id]||[null,null,null,null,null];
+  return`<div style="margin-bottom:12px">
+    <div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--crimson);margin-bottom:6px">
+      ${char.isKing?'👑':'⚔'} ${char.name} — at ${char.locationName||'unknown'}
+    </div>
+    ${SEASONS.map((season,ph)=>{
+      const o=charOrders[ph]||{};
+      return`<div class="phase-row">
+        <div class="phase-name">${season}</div>
+        <select id="gmo-action-${player.id}-${char.id}-${ph}" onchange="onGMActionChange('${player.id}','${char.id}',${ph})">
+          <option value="">— Action —</option>
+          ${ACTIONS.map(a=>`<option value="${a}" ${o.action===a?'selected':''}>${a}</option>`).join('')}
+        </select>
+        <select id="gmo-dir-${player.id}-${char.id}-${ph}" ${o.action!=='Move'?'style="display:none"':''}>
+          ${Object.entries(DIRS).map(([v,l])=>`<option value="dir:${v}" ${o.target==='dir:'+v?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <input type="text" id="gmo-detail-${player.id}-${char.id}-${ph}"
+          placeholder="Details" value="${o.action!=='Move'?o.target||'':''}"
+          ${o.action==='Move'?'style="display:none"':''}>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function onGMActionChange(playerId, charId, ph){
+  const action=document.getElementById(`gmo-action-${playerId}-${charId}-${ph}`)?.value;
+  const dirSel=document.getElementById(`gmo-dir-${playerId}-${charId}-${ph}`);
+  const detailIn=document.getElementById(`gmo-detail-${playerId}-${charId}-${ph}`);
+  if(dirSel) dirSel.style.display=action==='Move'?'block':'none';
+  if(detailIn) detailIn.style.display=action==='Move'?'none':'block';
+}
+
+async function saveGMOrders(gpId, playerIndex){
+  const player=currentGamePlayers.find(p=>p.id===gpId);
+  if(!player){alert('Player not found.');return;}
+  const gs=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):currentGame.game_state;
+  const chars=(gs?.characters||[]).filter(c=>c.player===parseInt(playerIndex)&&c.alive);
+  const orders={};
+  chars.forEach(c=>{
+    orders[c.id]=SEASONS.map((_,ph)=>{
+      const action=document.getElementById(`gmo-action-${gpId}-${c.id}-${ph}`)?.value||'';
+      const dir=document.getElementById(`gmo-dir-${gpId}-${c.id}-${ph}`)?.value||'';
+      const detail=document.getElementById(`gmo-detail-${gpId}-${c.id}-${ph}`)?.value||'';
+      return{action,target:action==='Move'?dir:detail,extra:'',desc:action+(detail?' — '+detail:'')};
+    });
+  });
+  const {error}=await sb.from('game_players').update({orders:JSON.stringify(orders),orders_submitted:true}).eq('id',gpId);
+  if(error){alert('Error saving: '+error.message);return;}
+  player.orders_submitted=true;
+  player.orders=JSON.stringify(orders);
+  document.getElementById('detail-msg').innerHTML=`<div class="msg-success">Orders saved for ${player.display_name}.</div>`;
+  renderOrdersStatus(currentGame);
+}
+
+async function loadTurnLog(gameId, turn){
+  const {data}=await sb.from('turn_logs').select('*').eq('game_id',gameId).eq('turn',turn);
+  if(!data||data.length===0){document.getElementById('detail-log').innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
+  const allEntries=data.flatMap(d=>d.entries||[]);
+  document.getElementById('detail-log').innerHTML=allEntries.map(e=>`<div class="log-entry ${e.type||''}">${e.text}</div>`).join('')||'<div style="color:#999;font-size:.85rem">No entries.</div>';
+}
+
+// ── TURN 0 ────────────────────────────────────────────
+async function runTurn0(){
+  const msg=document.getElementById('detail-msg');
+  msg.innerHTML='<div class="msg-info">Generating map and starting turn reports…</div>';
+  // Signal to the GM game tool that this game needs initialising
+  // The actual map generation happens in kingdoms-call-gm.html
+  // Here we just mark it as active and let the GM tool handle it
+  const {error}=await sb.from('games').update({status:'active',turn:1}).eq('id',currentGame.id);
+  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  msg.innerHTML='<div class="msg-success">Game is now active (Turn 1)! Open the GM Game Tool to generate the map and push starting turn reports to players.</div>';
+  currentGame.status='active';
+  currentGame.turn=1;
+  document.getElementById('detail-run-turn0-wrap').style.display='none';
+  document.getElementById('detail-orders-card').style.display='block';
+  renderOrdersStatus(currentGame);
+}
+
+// ── RESOLVE TURN ─────────────────────────────────────
+async function runTurn(){
+  const msg=document.getElementById('detail-msg');
+  msg.innerHTML='<div class="msg-info">Resolving turn… Open the GM Game Tool to run the full resolution.</div>';
+  // The actual resolution happens in kingdoms-call-gm.html which has the full game engine
+  alert('To resolve the turn:\n1. Open kingdoms-call-gm.html\n2. Click "📡 Online Game" in the header\n3. Select this game and click "Pull Orders & Run Turn"\n\nThis portal handles player management; the GM tool handles game resolution.');
+}
+
+init();
+</script>
+</body>
+</html>
