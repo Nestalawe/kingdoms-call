@@ -808,11 +808,31 @@ function buildTurnReport(gameState, playerIndex){
   const ownedProvIds=new Set(player.provinces||[]);
   const visitedProvIds=new Set(gameState.world.provinces.filter(p=>(p.visitedBy||[]).includes(playerIndex)).map(p=>p.id));
 
+  // Build neighbour sets for visibility — adjacent to visited/owned
+  const{cols,rows,provinces}=gameState.world;
+  const adjacentProvIds=new Set();
+  const offsets_even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+  const offsets_odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+  provinces.forEach(p=>{
+    if(!visitedProvIds.has(p.id)&&!ownedProvIds.has(p.id)) return;
+    const offsets=p.row%2===0?offsets_even:offsets_odd;
+    offsets.forEach(([dr,dc])=>{
+      const nr=p.row+dr; if(nr<0||nr>=rows) return;
+      const nc=((p.col+dc)%cols+cols)%cols;
+      const nid=nr*cols+nc;
+      if(!visitedProvIds.has(nid)&&!ownedProvIds.has(nid)) adjacentProvIds.add(nid);
+    });
+  });
+
   const ownedProvinces=gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)).map(p=>({
     id:p.id,name:p.name,terrain:p.terrain,tax:p.tax,race:p.race,population:p.population,
     features:p.features.map(f=>({name:f.name,discovered:f.discovered,cleared:f.cleared,treasure:f.discovered?f.treasure:null})),
     neutralDefenders:(p.neutralDefenders||[]).map(d=>({type:d.type,quality:d.quality})),
     armyTypes:p.armyTypes,
+    characters:(p.characters||[]).map(cid=>{
+      const c=gameState.characters[cid];
+      return c?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
+    }).filter(Boolean),
   }));
 
   const ARMY_SPEED_P={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Riders':5,'Skeletal Legion':3,'Garrison':1};
@@ -836,13 +856,62 @@ function buildTurnReport(gameState, playerIndex){
     wanderers.forEach(c=>intel.push(`Wandering hero ${c.name} (${c.race}/${c.alignment}) last seen in ${p.name}.`));
   });
 
+  // World meta — full hex grid with visibility-appropriate data for map rendering
+  const worldMeta={
+    cols,rows,
+    provinces:provinces.map(p=>{
+      // Compute neighbour IDs for the map renderer
+      const offsets=p.row%2===0?offsets_even:offsets_odd;
+      const neighbors=offsets.map(([dr,dc])=>{
+        const nr=p.row+dr; if(nr<0||nr>=rows) return null;
+        const nc=((p.col+dc)%cols+cols)%cols;
+        return nr*cols+nc;
+      }).filter(n=>n!==null);
+
+      const isOwned=ownedProvIds.has(p.id);
+      const isVisited=visitedProvIds.has(p.id);
+      const isAdjacent=adjacentProvIds.has(p.id);
+
+      if(isOwned){
+        // Full info
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
+          tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
+          armyTypes:p.armyTypes,neighbors,
+          characters:(p.characters||[]).map(cid=>{
+            const c=gameState.characters[cid];
+            return c?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
+          }).filter(Boolean),
+        };
+      } else if(isVisited){
+        // Terrain, name, owner, army types
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
+          wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
+          armyTypes:p.armyTypes,neighbors,
+        };
+      } else if(isAdjacent){
+        // Terrain type, wealth indicator, owner name, army types only
+        return{id:p.id,row:p.row,col:p.col,terrain:p.terrain,
+          wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
+          armyTypes:p.armyTypes,neighbors,
+        };
+      } else {
+        // Unknown — just the grid position so we can draw an empty hex
+        return{id:p.id,row:p.row,col:p.col,terrain:null,neighbors};
+      }
+    }),
+  };
+
   const taxIncome=(player.provinces||[]).reduce((s,pid)=>s+(gameState.world.provinces[pid]?.tax||0),0);
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
     kingdom:{gold:player.gold,merits:player.merits,taxIncome,alignment:player.alignment,race:player.race,color:player.color},
     characters:charReports,ownedProvinces,intel,
     visitedProvinceIds:[...visitedProvIds],
-    lastTurnLog:[{type:'system',text:`Turn 1 begins. Your kingdom of ${player.name} stands ready.`}],
+    worldMeta,
+    lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. Your kingdom of ${player.name} stands ready.`}],
   };
 }
 
@@ -943,7 +1012,30 @@ async function runTurn(){
   // Process one order
   function processOrder(c,o){
     if(!c||!c.alive||!o) return;
-    const action=o.action||'defend';
+    // Normalise action string: lowercase, trim, map display names to internal keys
+    const rawAction=(o.action||'defend').toLowerCase().trim();
+    const ACTION_MAP={
+      'move':'move','explore':'explore','explore province':'explore',
+      'search':'search','search feature':'search',
+      'recruit':'recruit','recruit armies':'recruit',
+      'hire':'hire','hire hero':'hire',
+      'disband':'disband','disband army':'disband',
+      'fire':'fire','fire hero':'fire',
+      'leave_army':'leave_army','leave/transfer army':'leave_army','leave army':'leave_army','transfer army':'leave_army',
+      'pickup_army':'pickup_army','pick up army':'pickup_army','pick_up_army':'pickup_army',
+      'give_item':'give_item','give item':'give_item','give magic item':'give_item',
+      'give_gold':'give_gold','give gold':'give_gold',
+      'cast_spell':'cast_spell','cast spell':'cast_spell',
+      'encounter':'encounter','encounter character':'encounter',
+      'spy':'spy',
+      'trail':'trail',
+      'pursue':'pursue',
+      'practice':'practice','practice skill':'practice','practice ability':'practice',
+      'defend':'defend',
+      'rest':'rest','rest & heal':'rest','rest and heal':'rest',
+      'other':'defend', // default unknown to defend
+    };
+    const action=ACTION_MAP[rawAction]||'defend';
     const target=o.target||'';
     const extra=o.extra||'';
     const prov=provOf(c);

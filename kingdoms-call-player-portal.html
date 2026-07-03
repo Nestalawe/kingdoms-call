@@ -226,6 +226,22 @@ section{display:none;}.section-active{display:block;}
     </div>
 
     <div class="card">
+      <h2>🗺 Known World</h2>
+      <div id="report-map-container" style="overflow:auto;background:#1e2d0e;border-radius:2px;padding:6px">
+        <svg id="report-map-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%"></svg>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:.72rem">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#2980b9;display:inline-block;border-radius:2px"></span>Sea</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#6ab04c;display:inline-block;border-radius:2px"></span>Plain</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#2d7a2d;display:inline-block;border-radius:2px"></span>Forest</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#8a7a6a;display:inline-block;border-radius:2px"></span>Mountain</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#c8a44a;display:inline-block;border-radius:2px"></span>Desert</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#1a5e1a;display:inline-block;border-radius:2px"></span>Jungle</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#333;display:inline-block;border-radius:2px;opacity:.5"></span>Unknown</span>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>🗺 Your Provinces</h2>
       <div id="report-provinces"></div>
     </div>
@@ -602,9 +618,21 @@ async function openReport(gamePlayerId){
 
   // Orders form
   buildOrdersForm(chars, gp.orders_submitted, gp.orders, g.turn);
+  renderPlayerMap(report);
 }
 
 // ── ORDERS FORM ───────────────────────────────────────
+// ── SPELLS LIST ───────────────────────────────────────
+const SPELLS_BY_SCHOOL={
+  white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack'],
+  psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm'],
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Feature','Invisibility','Mirror Image'],
+  elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon'],
+  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy'],
+};
+const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
+
 function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   const el=document.getElementById('orders-form');
   const btn=document.getElementById('submit-btn');
@@ -619,7 +647,6 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   }
 
   const savedOrders=typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders||{};
-  const dirOptions=Object.entries(DIRECTIONS).map(([v,l])=>`<option value="dir:${v}">${l}</option>`).join('');
 
   el.innerHTML=chars.map(c=>`
     <div class="orders-char-block">
@@ -632,20 +659,14 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
           const saved=(savedOrders[c.id]||[])[ph]||{};
-          const isMove=saved.action==='Move';
           return`<div class="phase-order">
             <div class="phase-label">${season}</div>
-            <select id="po-action-${c.id}-${ph}" onchange="onActionChange('${c.id}',${ph})">
+            <select id="po-action-${c.id}-${ph}" onchange="onActionChange('${c.id}',${ph},${chars.indexOf(c)})">
               <option value="">— Choose —</option>
               ${ACTIONS.map(a=>`<option value="${a}" ${saved.action===a?'selected':''}>${a}</option>`).join('')}
             </select>
-            <div style="position:relative">
-              <select id="po-dir-${c.id}-${ph}" style="display:${isMove?'block':'none'}">
-                ${dirOptions.replace(`value="${saved.target}"`,`value="${saved.target}" selected`)}
-              </select>
-              <input type="text" id="po-detail-${c.id}-${ph}"
-                placeholder="Details / target" value="${isMove?'':saved.target||''}"
-                style="display:${isMove?'none':'block'}">
+            <div id="po-target-wrap-${c.id}-${ph}" style="position:relative">
+              ${buildTargetField(c, ph, saved)}
             </div>
           </div>`;
         }).join('')}
@@ -656,13 +677,92 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   btn.textContent=`Submit Orders for Turn ${turnNum}`;
 }
 
-function onActionChange(charId, ph){
-  const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
-  const dirSel=document.getElementById(`po-dir-${charId}-${ph}`);
-  const detailIn=document.getElementById(`po-detail-${charId}-${ph}`);
-  if(dirSel) dirSel.style.display=action==='Move'?'block':'none';
-  if(detailIn) detailIn.style.display=action==='Move'?'none':'block';
+function buildTargetField(c, ph, saved){
+  const action=saved.action||'';
+  const target=saved.target||'';
+  const extra=saved.extra||'';
+
+  const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>`<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}</option>`).join('');
+
+  switch(action){
+    case 'Move':
+      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
+
+    case 'Search Feature':{
+      const feats=(currentReport?.ownedProvinces||[]).flatMap(p=>
+        (p.features||[]).filter(f=>f.discovered&&!f.cleared).map((f,fi)=>`<option value="${fi}" ${target==fi?'selected':''}>${f.name} [${p.name}]</option>`)
+      ).join('');
+      return`<select id="po-target-${c.id}-${ph}">
+        <option value="0">Feature 0 (known to GM)</option>
+        ${feats||'<option value="0">Unknown — GM will assign</option>'}
+      </select>`;}
+
+    case 'Cast Spell':{
+      const skills=c.skills||{};
+      const spells=Object.entries(SPELLS_BY_SCHOOL)
+        .filter(([school])=>(skills[school]||0)>=1)
+        .flatMap(([school,list])=>list.map(s=>`<option value="${s}" ${target===s?'selected':''}>${s} (${SKILL_LABELS[school]} Lv${skills[school]})</option>`))
+        .join('');
+      return spells
+        ?`<select id="po-target-${c.id}-${ph}">${spells}</select>`
+        :`<input type="text" id="po-target-${c.id}-${ph}" value="" placeholder="No spells known (need magic skill ≥ 1)" disabled>`;}
+
+    case 'Practice Skill':{
+      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${target===sk?'selected':''}>${SKILL_LABELS[sk]} (currently ${(c.skills||{})[sk]||0})</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select>`;}
+
+    case 'Recruit Armies':{
+      // Show terrain-appropriate army types for their current province
+      const ARMY_BY_TERRAIN={plain:'Infantry, Cavalry, Longbowmen',forest:'Longbowmen, Infantry',mountain:'Dwarven Guard, Crossbowmen',desert:'Infantry, Cavalry',jungle:'Infantry',sea:'Fleet'};
+      const prov=currentReport?.ownedProvinces?.find(p=>p.name===c.locationName);
+      const types=prov?prov.armyTypes?.join(', ')||'Infantry':'Infantry';
+      return`<input type="text" id="po-target-${c.id}-${ph}" value="${target||''}" placeholder="e.g. Infantry|1 (type|quantity)">`;}
+
+    case 'Hire Hero':
+      return`<input type="text" id="po-target-${c.id}-${ph}" value="${target||''}" placeholder="Hero ID or name (GM will match)">`; 
+
+    case 'Give Item':{
+      const itemOpts=(c.items||[]).map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>🔮 ${it.name}</option>`).join('');
+      return itemOpts
+        ?`<select id="po-target-${c.id}-${ph}">${itemOpts}</select><input type="text" id="po-extra-${c.id}-${ph}" value="${extra||''}" placeholder="Recipient character name" style="margin-top:4px">`
+        :`<input type="text" id="po-target-${c.id}-${ph}" value="" placeholder="No items to give" disabled>`;}
+
+    case 'Leave/Transfer Army':{
+      const armyOpts=[{v:'all',l:'All armies'},...(c.armies||[]).map((a,i)=>({v:a.type,l:`${a.type} (${a.quality})`}))];
+      return`<select id="po-target-${c.id}-${ph}">${armyOpts.map(o=>`<option value="${o.v}" ${target===o.v?'selected':''}>${o.l}</option>`).join('')}</select>
+      <input type="text" id="po-extra-${c.id}-${ph}" value="${extra||''}" placeholder="Recipient name (blank = garrison)" style="margin-top:4px">`;}
+
+    case 'Explore':
+    case 'Spy':
+    case 'Defend':
+    case 'Rest':
+      return`<input type="text" id="po-target-${c.id}-${ph}" value="" placeholder="(current province)" disabled>`;
+
+    default:
+      return`<input type="text" id="po-target-${c.id}-${ph}" value="${target||''}" placeholder="Details / notes">`;
+  }
 }
+
+function onActionChange(charId, ph, charIdx){
+  const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
+  const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
+  if(!wrap)return;
+  const char=(currentReport?.characters||[])[charIdx]||{};
+  const saved={action};
+  wrap.innerHTML=buildTargetField(char, ph, saved);
+}
+
+// Get target value for a given char/phase
+function getOrderTarget(charId, ph){
+  const el=document.getElementById(`po-target-${charId}-${ph}`);
+  return el?.value||'';
+}
+function getOrderExtra(charId, ph){
+  const el=document.getElementById(`po-extra-${charId}-${ph}`);
+  return el?.value||'';
+}
+
+
 
 async function submitOrders(){
   const chars=currentReport?.characters||[];
@@ -701,10 +801,10 @@ async function doSubmitOrders(){
   chars.forEach(c=>{
     orders[c.id]=SEASONS.map((_,ph)=>{
       const action=document.getElementById(`po-action-${c.id}-${ph}`)?.value||'Defend';
-      const dir=document.getElementById(`po-dir-${c.id}-${ph}`)?.value||'';
-      const detail=document.getElementById(`po-detail-${c.id}-${ph}`)?.value||'';
-      const target=action==='Move'?dir:detail;
-      return{action,target,extra:'',desc:action+(target&&action!=='Move'?' — '+target:'')};
+      const target=getOrderTarget(c.id,ph);
+      const extra=getOrderExtra(c.id,ph);
+      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'');
+      return{action,target,extra,desc};
     });
   });
   const {error}=await sb.from('game_players').update({
@@ -723,7 +823,165 @@ async function doSubmitOrders(){
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 
-init();
+// ── PLAYER MAP RENDERING ──────────────────────────────
+// Renders a hex map showing only what this player knows:
+//  - Owned provinces: full colour + name + details on click
+//  - Visited provinces: terrain colour + name (dimmed)
+//  - Adjacent to visited: terrain colour, dim, no name
+//  - Everything else: dark/unknown
+function renderPlayerMap(report){
+  const svg=document.getElementById('report-map-svg');
+  if(!svg||!report)return;
+
+  // We need the world grid dimensions from the report
+  // These are embedded in the turn report by the portal
+  const worldMeta=report.worldMeta;
+  if(!worldMeta){svg.innerHTML='<text x="10" y="20" fill="#aaa" font-size="12">Map not available — awaiting Turn 0</text>';return;}
+
+  const{cols,rows,provinces:knownProvs}=worldMeta;
+  const HS=22; // hex size
+
+  function hexCenter(col,row){
+    const x=col*HS*1.75+(row%2)*HS*0.875+HS;
+    const y=row*HS*1.52+HS;
+    return{x,y};
+  }
+  function hexPoints(cx,cy,r=HS-1){
+    return Array.from({length:6},(_,i)=>{const a=Math.PI/180*(60*i-30);return`${cx+r*Math.cos(a)},${cy+r*Math.sin(a)}`;}).join(' ');
+  }
+
+  const{x:maxX}=hexCenter(cols-1,rows-1);
+  const{y:maxY}=hexCenter(cols-1,rows-1);
+  svg.setAttribute('viewBox',`0 0 ${maxX+HS*1.5} ${maxY+HS*1.5}`);
+  svg.innerHTML='';
+
+  const TERRAIN_COLORS={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+  const playerColor=report.kingdom?.color||'#c0392b';
+
+  // Build sets of known province IDs
+  const ownedIds=new Set((report.ownedProvinces||[]).map(p=>p.id));
+  const visitedIds=new Set(report.visitedProvinceIds||[]);
+  // Adjacent to visited = neighbours of visited that aren't visited themselves
+  const adjacentIds=new Set();
+  knownProvs.forEach(p=>{
+    if(visitedIds.has(p.id)||ownedIds.has(p.id)){
+      (p.neighbors||[]).forEach(nid=>{
+        if(!visitedIds.has(nid)&&!ownedIds.has(nid)) adjacentIds.add(nid);
+      });
+    }
+  });
+
+  // Build lookup for province data
+  const provById={};
+  knownProvs.forEach(p=>provById[p.id]=p);
+  (report.ownedProvinces||[]).forEach(p=>provById[p.id]={...provById[p.id],...p});
+
+  // Tooltip div
+  let tooltip=document.getElementById('map-tooltip');
+  if(!tooltip){
+    tooltip=document.createElement('div');
+    tooltip.id='map-tooltip';
+    tooltip.style.cssText='position:fixed;background:#1a1208;color:#f2e8d0;border:1px solid #c8922a;padding:8px 12px;font-size:.78rem;line-height:1.5;pointer-events:none;z-index:200;max-width:200px;display:none;border-radius:2px;font-family:"Crimson Text",serif';
+    document.body.appendChild(tooltip);
+  }
+
+  knownProvs.forEach(p=>{
+    const{x,y}=hexCenter(p.col,p.row);
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor='default';
+
+    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points',hexPoints(x,y));
+
+    let fill='#111'; let opacity='1'; let showName=false;
+    const isOwned=ownedIds.has(p.id);
+    const isVisited=visitedIds.has(p.id);
+    const isAdjacent=adjacentIds.has(p.id);
+    const pd=provById[p.id];
+
+    if(isOwned){
+      fill=playerColor;showName=true;opacity='1';
+    } else if(isVisited){
+      fill=TERRAIN_COLORS[p.terrain]||'#555';showName=true;opacity='0.85';
+    } else if(isAdjacent&&p.terrain){
+      fill=TERRAIN_COLORS[p.terrain]||'#555';showName=false;opacity='0.55';
+    } else {
+      fill='#1a1208';opacity='0.4';
+    }
+
+    poly.setAttribute('fill',fill);
+    poly.setAttribute('opacity',opacity);
+    poly.setAttribute('stroke','rgba(0,0,0,0.25)');
+    poly.setAttribute('stroke-width','0.7');
+    g.appendChild(poly);
+
+    // Province name label for known provinces
+    if(showName&&p.name){
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',x);lbl.setAttribute('y',y+1.5);lbl.setAttribute('text-anchor','middle');
+      lbl.setAttribute('font-size','4');lbl.setAttribute('fill',isOwned?'#fff':'rgba(255,255,255,0.7)');
+      lbl.setAttribute('pointer-events','none');
+      lbl.textContent=p.name.substring(0,9);
+      g.appendChild(lbl);
+    }
+
+    // Wealth indicator dot for adjacent provinces
+    if(isAdjacent&&p.wealth){
+      const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx',x);dot.setAttribute('cy',y+6);dot.setAttribute('r','2.5');
+      const wCol=p.wealth==='Rich'?'#f8e03a':p.wealth==='Prosperous'?'#c8c8c8':'#888';
+      dot.setAttribute('fill',wCol);dot.setAttribute('pointer-events','none');
+      g.appendChild(dot);
+    }
+
+    // Characters present (own)
+    if(isOwned||isVisited){
+      const charsHere=(pd?.characters||[]).filter(c=>c.isOwn);
+      if(charsHere.length>0){
+        const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        dot.setAttribute('cx',x+7);dot.setAttribute('cy',y+5);dot.setAttribute('r','3.5');
+        dot.setAttribute('fill',playerColor);dot.setAttribute('stroke','#fff');dot.setAttribute('stroke-width','0.8');
+        dot.setAttribute('pointer-events','none');
+        g.appendChild(dot);
+      }
+    }
+
+    // Tooltip on hover
+    if(isOwned||isVisited||isAdjacent){
+      g.style.cursor='pointer';
+      g.addEventListener('mousemove',e=>{
+        let html=`<strong style="font-family:'Cinzel',serif">${p.name||'Unknown'}</strong><br>`;
+        if(isOwned){
+          html+=`${capitalise(p.terrain)} · Tax: ${pd?.tax||'?'}g/turn<br>`;
+          html+=`<span style="color:#8fbc5a">Your province</span><br>`;
+          if((pd?.armyTypes||[]).length>0) html+=`Recruits: ${pd.armyTypes.join(', ')}`;
+          if((pd?.features||[]).length>0){
+            const known=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
+            if(known.length>0) html+=`<br>⭐ ${known.map(f=>f.name).join(', ')}`;
+          }
+        } else if(isVisited){
+          html+=`${capitalise(p.terrain||'?')} · ${p.wealth||'?'}<br>`;
+          html+=p.owner?`Owned by ${p.ownerName||'?'}`:'Unclaimed';
+          if((p.armyTypes||[]).length>0) html+=`<br>Recruits: ${p.armyTypes.join(', ')}`;
+        } else if(isAdjacent){
+          html+=`${capitalise(p.terrain||'Unknown terrain')}<br>`;
+          html+=`${p.wealth||'Wealth unknown'}<br>`;
+          html+=p.ownerName?`Owned by ${p.ownerName}`:'Ownership unknown';
+          if((p.armyTypes||[]).length>0) html+=`<br>Recruits: ${p.armyTypes.join(', ')}`;
+        }
+        tooltip.innerHTML=html;
+        tooltip.style.display='block';
+        tooltip.style.left=(e.clientX+14)+'px';
+        tooltip.style.top=(e.clientY+14)+'px';
+      });
+      g.addEventListener('mouseleave',()=>{tooltip.style.display='none';});
+    }
+
+    svg.appendChild(g);
+  });
+}
+
+
 </script>
 </body>
 </html>
