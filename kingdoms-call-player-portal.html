@@ -1095,246 +1095,261 @@ function updateRecruitTarget(charId, ph){
 }
 
 
-const TERRAIN_COLORS_MAP={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+// ── TERRAIN COLORS ────────────────────────────────────
+const TERRAIN_COLORS_MAP={
+  plain:'#7ab84e',desert:'#c8a44a',forest:'#2d7a2d',
+  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'
+};
 
-// Terrain SVG icons drawn inside each hex
-function terrainIcon(x,y,terrain){
+// ── TERRAIN ICONS (proper SVG element creation) ────────
+function makeTerrainIcon(svgNS, cx, cy, terrain){
+  const els=[];
+  const mk=(tag,attrs)=>{
+    const el=document.createElementNS(svgNS,tag);
+    Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+    el.setAttribute('pointer-events','none');
+    return el;
+  };
   switch(terrain){
     case 'sea':
-      // Three wave arcs
-      return`<path d="M${x-6},${y+2} q4,-4 8,0 q4,4 8,0" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" fill="none" pointer-events="none"/>
-             <path d="M${x-6},${y+6} q4,-4 8,0 q4,4 8,0" stroke="rgba(255,255,255,0.3)" stroke-width="1" fill="none" pointer-events="none"/>`;
+      els.push(mk('path',{d:`M${cx-7},${cy-1} q4,-4 8,0 q4,4 8,0`,stroke:'rgba(255,255,255,0.55)','stroke-width':'1.5',fill:'none'}));
+      els.push(mk('path',{d:`M${cx-6},${cy+3} q3,-3 6,0 q3,3 6,0`,stroke:'rgba(255,255,255,0.35)','stroke-width':'1',fill:'none'}));
+      break;
     case 'forest':
-      // Two little trees
-      return`<polygon points="${x-5},${y+6} ${x-2},${y-1} ${x+1},${y+6}" fill="rgba(255,255,255,0.35)" pointer-events="none"/>
-             <polygon points="${x+2},${y+6} ${x+5},${y-1} ${x+8},${y+6}" fill="rgba(255,255,255,0.35)" pointer-events="none"/>`;
+      [[cx-5,cy],[cx+4,cy]].forEach(([tx,ty])=>{
+        els.push(mk('polygon',{points:`${tx},${ty+6} ${tx+4},${ty-2} ${tx+8},${ty+6}`,fill:'rgba(255,255,255,0.35)'}));
+        els.push(mk('rect',{x:tx+3.5,y:ty+5,width:1,height:3,fill:'rgba(255,255,255,0.3)'}));
+      });
+      break;
     case 'jungle':
-      // Wider denser trees
-      return`<polygon points="${x-6},${y+6} ${x-2},${y-2} ${x+2},${y+6}" fill="rgba(255,255,255,0.3)" pointer-events="none"/>
-             <polygon points="${x+0},${y+6} ${x+4},${y-2} ${x+8},${y+6}" fill="rgba(255,255,255,0.3)" pointer-events="none"/>
-             <rect x="${x-1}" y="${y-3}" width="1.5" height="4" fill="rgba(255,255,255,0.25)" pointer-events="none"/>`;
+      [cx-7,cx-1,cx+5].forEach((tx,i)=>{
+        const ty=cy+(i===1?-2:0);
+        els.push(mk('polygon',{points:`${tx},${ty+6} ${tx+3},${ty-2} ${tx+6},${ty+6}`,fill:'rgba(255,255,255,0.3)'}));
+      });
+      break;
     case 'mountain':
-      // Two peaks
-      return`<polyline points="${x-7},${y+6} ${x-2},${y-3} ${x+3},${y+6}" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" pointer-events="none"/>
-             <polyline points="${x+0},${y+6} ${x+5},${y-2} ${x+10},${y+6}" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" pointer-events="none"/>`;
+      els.push(mk('polygon',{points:`${cx-9},${cy+6} ${cx-3},${cy-4} ${cx+3},${cy+6}`,fill:'rgba(255,255,255,0.2)',stroke:'rgba(255,255,255,0.45)','stroke-width':'0.8'}));
+      els.push(mk('polygon',{points:`${cx-1},${cy+6} ${cx+5},${cy-3} ${cx+11},${cy+6}`,fill:'rgba(255,255,255,0.12)',stroke:'rgba(255,255,255,0.35)','stroke-width':'0.8'}));
+      break;
     case 'desert':
-      // Dune curves
-      return`<path d="M${x-7},${y+4} q5,-6 10,0 q5,6 10,0" stroke="rgba(255,255,255,0.35)" stroke-width="1.2" fill="none" pointer-events="none"/>`;
+      els.push(mk('path',{d:`M${cx-8},${cy+4} q6,-8 12,0 q6,8 12,0`,stroke:'rgba(255,255,255,0.4)','stroke-width':'1.5',fill:'none'}));
+      break;
     case 'plain':
-      // Small sun
-      return`<circle cx="${x+2}" cy="${y}" r="3" fill="rgba(255,255,255,0.3)" pointer-events="none"/>
-             <line x1="${x+2}" y1="${y-5}" x2="${x+2}" y2="${y-3.5}" stroke="rgba(255,255,255,0.3)" stroke-width="1" pointer-events="none"/>
-             <line x1="${x+2}" y1="${y+3.5}" x2="${x+2}" y2="${y+5}" stroke="rgba(255,255,255,0.3)" stroke-width="1" pointer-events="none"/>
-             <line x1="${x-3}" y1="${y}" x2="${x-1.5}" y2="${y}" stroke="rgba(255,255,255,0.3)" stroke-width="1" pointer-events="none"/>
-             <line x1="${x+5.5}" y1="${y}" x2="${x+7}" y2="${y}" stroke="rgba(255,255,255,0.3)" stroke-width="1" pointer-events="none"/>`;
-    default: return '';
+      els.push(mk('circle',{cx,cy,r:'3',fill:'rgba(255,255,255,0.35)'}));
+      [[0,-6],[0,6],[-5,-3],[5,-3],[-5,3],[5,3]].forEach(([dx,dy])=>{
+        els.push(mk('line',{x1:cx+dx*.55,y1:cy+dy*.55,x2:cx+dx,y2:cy+dy,stroke:'rgba(255,255,255,0.3)','stroke-width':'1'}));
+      });
+      break;
   }
+  return els;
 }
 
-function renderPlayerMap(report){
-  const svg=document.getElementById('report-map-svg');
-  if(!svg||!report)return;
-  const worldMeta=report.worldMeta;
-  if(!worldMeta){svg.innerHTML='<text x="10" y="20" fill="#aaa" font-size="12">Map not available — awaiting Turn 0</text>';return;}
-  const{cols,rows,provinces:knownProvs}=worldMeta;
-  const HS=24;
-  function hexCenter(col,row){return{x:col*HS*1.75+(row%2)*HS*0.875+HS,y:row*HS*1.52+HS};}
-  function hexPoints(cx,cy,r=HS-1){
-    return Array.from({length:6},(_,i)=>{const a=Math.PI/180*(60*i-30);return`${cx+r*Math.cos(a)},${cy+r*Math.sin(a)}`;}).join(' ');
-  }
-  const{x:maxX,y:maxY}=hexCenter(cols-1,rows-1);
-  svg.setAttribute('viewBox',`0 0 ${maxX+HS*2} ${maxY+HS*2}`);
-  svg.innerHTML='';
+// ── CORE MAP RENDERER ─────────────────────────────────
+// Single function renders into any SVG element (inline or fullscreen)
+function renderMapIntoSvg(svgEl, report){
+  const svgNS='http://www.w3.org/2000/svg';
+  svgEl.innerHTML='';
 
+  const worldMeta=report.worldMeta;
+  if(!worldMeta){
+    const t=document.createElementNS(svgNS,'text');
+    t.setAttribute('x','10');t.setAttribute('y','30');
+    t.setAttribute('fill','#aaa');t.setAttribute('font-size','14');
+    t.textContent='Map not available — awaiting Turn 0';
+    svgEl.appendChild(t);return;
+  }
+
+  const{cols,rows,provinces:provs}=worldMeta;
+  if(!provs||provs.length===0) return;
+
+  const HS=22;
+  function hexCentre(col,row){
+    return{x:col*HS*1.75+(row%2)*HS*0.875+HS, y:row*HS*1.52+HS};
+  }
+  function hexPts(cx,cy,r){
+    r=r||HS-1.5;
+    return Array.from({length:6},(_,i)=>{
+      const a=Math.PI/180*(60*i-30);
+      return`${(cx+r*Math.cos(a)).toFixed(2)},${(cy+r*Math.sin(a)).toFixed(2)}`;
+    }).join(' ');
+  }
+
+  // viewBox
+  const c0=hexCentre(0,0), c1=hexCentre(cols-1,rows-1);
+  const pad=HS*1.5;
+  svgEl.setAttribute('viewBox',`${c0.x-pad} ${c0.y-pad} ${c1.x-c0.x+pad*2+HS} ${c1.y-c0.y+pad*2+HS}`);
+
+  // Visibility sets
   const playerColor=report.kingdom?.color||'#c0392b';
   const ownedIds=new Set((report.ownedProvinces||[]).map(p=>p.id));
-  const visitedIds=new Set(report.visitedProvinceIds||[]);
+  const visitedIds=new Set([...(report.visitedProvinceIds||[]),...ownedIds]);
   const adjacentIds=new Set();
-  knownProvs.forEach(p=>{
-    if(visitedIds.has(p.id)||ownedIds.has(p.id)){
-      (p.neighbors||[]).forEach(nid=>{if(!visitedIds.has(nid)&&!ownedIds.has(nid))adjacentIds.add(nid);});
+  provs.forEach(p=>{
+    if(visitedIds.has(p.id)){
+      (p.neighbors||[]).forEach(nid=>{if(!visitedIds.has(nid))adjacentIds.add(nid);});
     }
   });
-  const provById={};
-  knownProvs.forEach(p=>provById[p.id]=p);
-  (report.ownedProvinces||[]).forEach(p=>provById[p.id]={...provById[p.id],...p});
 
-  let tooltip=document.getElementById('map-tooltip');
-  if(!tooltip){
-    tooltip=document.createElement('div');
-    tooltip.id='map-tooltip';
-    tooltip.style.cssText='position:fixed;background:#1a1208;color:#f2e8d0;border:1px solid #c8922a;padding:8px 12px;font-size:.78rem;line-height:1.6;pointer-events:none;z-index:9999;max-width:210px;display:none;border-radius:2px;font-family:"Crimson Text",serif;box-shadow:0 4px 16px rgba(0,0,0,.5)';
-    document.body.appendChild(tooltip);
+  // Province data lookup
+  const provById={};
+  provs.forEach(p=>provById[p.id]=p);
+  (report.ownedProvinces||[]).forEach(op=>{provById[op.id]={...provById[op.id],...op};});
+
+  // Shared tooltip
+  let tt=document.getElementById('map-tooltip');
+  if(!tt){
+    tt=document.createElement('div');
+    tt.id='map-tooltip';
+    tt.style.cssText='position:fixed;background:#1a1208;color:#f2e8d0;border:1px solid #c8922a;padding:8px 12px;font-size:.78rem;line-height:1.6;pointer-events:none;z-index:99999;max-width:220px;display:none;border-radius:2px;font-family:"Crimson Text",serif;box-shadow:0 4px 16px rgba(0,0,0,.6)';
+    document.body.appendChild(tt);
   }
 
-  knownProvs.forEach(p=>{
-    const{x,y}=hexCenter(p.col,p.row);
-    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  provs.forEach(p=>{
+    if(p.row===undefined||p.col===undefined) return;
+    const{x,y}=hexCentre(p.col,p.row);
     const isOwned=ownedIds.has(p.id);
-    const isVisited=visitedIds.has(p.id);
-    const isAdjacent=adjacentIds.has(p.id);
-    const pd=provById[p.id];
+    const isVisited=visitedIds.has(p.id)&&!isOwned;
+    const isAdj=adjacentIds.has(p.id);
+    const known=isOwned||isVisited||isAdj;
+    const pd=provById[p.id]||p;
+    const g=document.createElementNS(svgNS,'g');
 
-    // Hex fill — always terrain colour for known, dark for unknown
-    const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    poly.setAttribute('points',hexPoints(x,y));
-    let fillColor,fillOpacity;
-    if(p.terrain&&(isOwned||isVisited||isAdjacent)){
-      fillColor=TERRAIN_COLORS_MAP[p.terrain]||'#555';
-      fillOpacity=isOwned?'1':isVisited?'0.8':'0.5';
+    // Hex fill
+    const fill=document.createElementNS(svgNS,'polygon');
+    fill.setAttribute('points',hexPts(x,y));
+    if(known&&pd.terrain){
+      fill.setAttribute('fill',TERRAIN_COLORS_MAP[pd.terrain]||'#555');
+      fill.setAttribute('opacity',isOwned?'1':isVisited?'0.85':'0.5');
     } else {
-      fillColor='#0a0806';fillOpacity='1';
+      fill.setAttribute('fill','#0c0905');fill.setAttribute('opacity','1');
     }
-    poly.setAttribute('fill',fillColor);
-    poly.setAttribute('opacity',fillOpacity);
-    poly.setAttribute('stroke','rgba(0,0,0,0.3)');
-    poly.setAttribute('stroke-width','0.5');
-    g.appendChild(poly);
+    fill.setAttribute('stroke','rgba(0,0,0,0.4)');fill.setAttribute('stroke-width','0.5');
+    g.appendChild(fill);
 
-    // Terrain icon (only for known hexes)
-    if(p.terrain&&(isOwned||isVisited||isAdjacent)){
-      const iconHtml=terrainIcon(x-4,y-3,p.terrain);
-      if(iconHtml){
-        const tmp=document.createElement('div');
-        tmp.innerHTML=`<svg>${iconHtml}</svg>`;
-        Array.from(tmp.querySelector('svg').childNodes).forEach(n=>{
-          const el=document.createElementNS('http://www.w3.org/2000/svg',n.tagName);
-          Array.from(n.attributes).forEach(a=>el.setAttribute(a.name,a.value));
-          g.appendChild(el);
-        });
-      }
+    // Terrain icon
+    if(known&&pd.terrain){
+      makeTerrainIcon(svgNS,x,y-2,pd.terrain).forEach(el=>g.appendChild(el));
     }
 
-    // Ownership outline — coloured hex border instead of fill
+    // Ownership outline
     if(isOwned){
-      const outline=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      outline.setAttribute('points',hexPoints(x,y,HS-0.5));
-      outline.setAttribute('fill','none');
-      outline.setAttribute('stroke',playerColor);
-      outline.setAttribute('stroke-width','3');
-      outline.setAttribute('opacity','0.9');
-      outline.setAttribute('pointer-events','none');
-      g.appendChild(outline);
-    } else if(p.ownerName&&(isVisited||isAdjacent)){
-      // Other players' provinces get a white outline (we don't know their colour)
-      const outline=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      outline.setAttribute('points',hexPoints(x,y,HS-0.5));
-      outline.setAttribute('fill','none');
-      outline.setAttribute('stroke','rgba(255,255,255,0.5)');
-      outline.setAttribute('stroke-width','1.5');
-      outline.setAttribute('pointer-events','none');
-      g.appendChild(outline);
+      const ol=document.createElementNS(svgNS,'polygon');
+      ol.setAttribute('points',hexPts(x,y,HS-0.5));
+      ol.setAttribute('fill','none');ol.setAttribute('stroke',playerColor);
+      ol.setAttribute('stroke-width','2.5');ol.setAttribute('pointer-events','none');
+      g.appendChild(ol);
+    } else if(pd.ownerName&&(isVisited||isAdj)){
+      const ol=document.createElementNS(svgNS,'polygon');
+      ol.setAttribute('points',hexPts(x,y,HS-0.5));
+      ol.setAttribute('fill','none');ol.setAttribute('stroke','rgba(255,255,255,0.45)');
+      ol.setAttribute('stroke-width','1.2');ol.setAttribute('pointer-events','none');
+      g.appendChild(ol);
     }
 
-    // Province name label (owned and visited only)
-    if(p.name&&(isOwned||isVisited)){
-      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-      lbl.setAttribute('x',x);lbl.setAttribute('y',y+HS-6);
-      lbl.setAttribute('text-anchor','middle');
-      lbl.setAttribute('font-size','4.5');
+    // Name label (centred in hex)
+    if(pd.name&&(isOwned||isVisited)){
+      const lbl=document.createElementNS(svgNS,'text');
+      lbl.setAttribute('x',x);lbl.setAttribute('y',y+HS-7);
+      lbl.setAttribute('text-anchor','middle');lbl.setAttribute('dominant-baseline','middle');
+      lbl.setAttribute('font-size','4.2');
       lbl.setAttribute('fill',isOwned?'#fff':'rgba(255,255,255,0.8)');
       lbl.setAttribute('pointer-events','none');
-      lbl.setAttribute('font-family','Cinzel, serif');
-      lbl.textContent=p.name.length>9?p.name.substring(0,8)+'…':p.name;
+      lbl.setAttribute('font-family','Cinzel,serif');
+      lbl.textContent=pd.name.length>10?pd.name.substring(0,9)+'\u2026':pd.name;
       g.appendChild(lbl);
     }
 
-    // Wealth dot for adjacent (unknown name) provinces
-    if(isAdjacent&&p.wealth){
-      const wCol=p.wealth==='Rich'?'#f8e03a':p.wealth==='Prosperous'?'#c8c8c8':'#888';
-      const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      dot.setAttribute('cx',x);dot.setAttribute('cy',y+HS-6);dot.setAttribute('r','3');
+    // Wealth dot for adjacent-only
+    if(isAdj&&!isVisited&&!isOwned&&pd.wealth){
+      const wCol=pd.wealth==='Rich'?'#f8e03a':pd.wealth==='Prosperous'?'#b0b0b0':'#666';
+      const dot=document.createElementNS(svgNS,'circle');
+      dot.setAttribute('cx',x);dot.setAttribute('cy',y+2);dot.setAttribute('r','2.5');
       dot.setAttribute('fill',wCol);dot.setAttribute('pointer-events','none');
       g.appendChild(dot);
     }
 
-    // Character presence markers (own characters)
-    if(pd?.characters?.length>0){
+    // Character markers
+    if((isOwned||isVisited)&&pd.characters?.length>0){
       const ownChars=pd.characters.filter(c=>c.isOwn);
       if(ownChars.length>0){
-        const marker=document.createElementNS('http://www.w3.org/2000/svg','circle');
-        marker.setAttribute('cx',x+HS-5);marker.setAttribute('cy',y-HS+7);
-        marker.setAttribute('r','4.5');
-        marker.setAttribute('fill',playerColor);
-        marker.setAttribute('stroke','#fff');marker.setAttribute('stroke-width','1');
-        marker.setAttribute('pointer-events','none');
-        const kingHere=ownChars.some(c=>c.isKing);
-        const markerLbl=document.createElementNS('http://www.w3.org/2000/svg','text');
-        markerLbl.setAttribute('x',x+HS-5);markerLbl.setAttribute('y',y-HS+9.5);
-        markerLbl.setAttribute('text-anchor','middle');markerLbl.setAttribute('font-size','5');
-        markerLbl.setAttribute('fill','#fff');markerLbl.setAttribute('pointer-events','none');
-        markerLbl.textContent=kingHere?'♛':ownChars.length>1?ownChars.length:'⚔';
-        g.appendChild(marker);g.appendChild(markerLbl);
+        const mx=x+HS-6,my=y-HS+8;
+        const circ=document.createElementNS(svgNS,'circle');
+        circ.setAttribute('cx',mx);circ.setAttribute('cy',my);circ.setAttribute('r','5');
+        circ.setAttribute('fill',playerColor);circ.setAttribute('stroke','#fff');circ.setAttribute('stroke-width','1');
+        circ.setAttribute('pointer-events','none');
+        const clbl=document.createElementNS(svgNS,'text');
+        clbl.setAttribute('x',mx);clbl.setAttribute('y',my+2);
+        clbl.setAttribute('text-anchor','middle');clbl.setAttribute('font-size','5.5');
+        clbl.setAttribute('fill','#fff');clbl.setAttribute('pointer-events','none');
+        clbl.textContent=ownChars.some(c=>c.isKing)?'\u265B':ownChars.length>1?String(ownChars.length):'\u2694';
+        g.appendChild(circ);g.appendChild(clbl);
       }
     }
 
-    // Tooltip on hover for known provinces
-    if(isOwned||isVisited||isAdjacent){
+    // Tooltip
+    if(known){
       g.style.cursor='pointer';
-      g.addEventListener('mousemove',e=>{
-        let html=`<strong style="font-family:'Cinzel',serif;font-size:.82rem">${p.name||capitalise(p.terrain)||'Unknown'}</strong><br>`;
+      g.addEventListener('mousemove',ev=>{
+        let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
         if(isOwned){
-          html+=`${capitalise(p.terrain)} · <span style="color:#e8b84b">${pd?.tax??'?'}g tax/turn</span><br>`;
-          html+=`<span style="color:#8fbc5a">✓ Your province</span>`;
-          if(pd?.explored) html+=`<br>🔭 Explored: ${pd.explored}%`;
-          const knownFeats=(pd?.features||[]).filter(f=>f.discovered&&!f.cleared);
-          if(knownFeats.length>0) html+=`<br>⭐ ${knownFeats.map(f=>f.name).join(', ')}`;
-          if((pd?.armyTypes||[]).length>0) html+=`<br>⚔ Recruits: ${pd.armyTypes.join(', ')}`;
-          const charsHere=(pd?.characters||[]).filter(c=>c.isOwn);
-          if(charsHere.length>0) html+=`<br>👤 ${charsHere.map(c=>`${c.isKing?'♛ ':''}${c.name}`).join(', ')}`;
-          const defenders=(pd?.neutralDefenders||[]);
-          if(defenders.length>0) html+=`<br>🛡 Defenders: ${defenders.map(d=>`${d.quality} ${d.type}`).join(', ')}`;
+          h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
+          if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
+          const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
+          if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
+          if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          const here=(pd.characters||[]).filter(c=>c.isOwn);
+          if(here.length) h+=`<br>\u{1F464} ${here.map(c=>(c.isKing?'\u265B ':'')+c.name).join(', ')}`;
+          if(pd.neutralDefenders?.length) h+=`<br>\u{1F6E1} ${pd.neutralDefenders.map(d=>d.quality+' '+d.type).join(', ')}`;
         } else if(isVisited){
-          html+=`${capitalise(p.terrain||'?')} · ${p.wealth||'?'}<br>`;
-          html+=p.ownerName?`Owned by <strong>${p.ownerName}</strong>`:'Unclaimed';
-          if((p.armyTypes||[]).length>0) html+=`<br>⚔ Recruits: ${p.armyTypes.join(', ')}`;
-        } else if(isAdjacent){
-          html+=`${capitalise(p.terrain||'?')} terrain<br>`;
-          html+=`Wealth: ${p.wealth||'unknown'}<br>`;
-          html+=p.ownerName?`Owned by <strong>${p.ownerName}</strong>`:'Ownership unknown';
-          if((p.armyTypes||[]).length>0) html+=`<br>⚔ Recruits: ${p.armyTypes.join(', ')}`;
+          h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
+          h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
+          if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+        } else {
+          h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
+          h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unknown ownership'}`;
+          if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
         }
-        tooltip.innerHTML=html;
-        tooltip.style.display='block';
-        tooltip.style.left=(e.clientX+16)+'px';
-        tooltip.style.top=(e.clientY+16)+'px';
+        tt.innerHTML=h;
+        tt.style.display='block';
+        tt.style.left=(ev.clientX+16)+'px';
+        tt.style.top=(ev.clientY+16)+'px';
       });
-      g.addEventListener('mouseleave',()=>{tooltip.style.display='none';});
+      g.addEventListener('mouseleave',()=>{tt.style.display='none';});
     }
 
-    svg.appendChild(g);
+    svgEl.appendChild(g);
   });
+}
+
+// ── INLINE MAP ─────────────────────────────────────────
+function renderPlayerMap(report){
+  const svg=document.getElementById('report-map-svg');
+  if(!svg||!report) return;
+  renderMapIntoSvg(svg, report);
 }
 
 // ── FULLSCREEN MAP ─────────────────────────────────────
 function showFullscreenMap(){
-  let modal=document.getElementById('map-fullscreen-modal');
-  if(!modal){
-    modal=document.createElement('div');
-    modal.id='map-fullscreen-modal';
-    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:10000;display:flex;flex-direction:column;';
-    modal.innerHTML=`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#1a1208;border-bottom:1px solid #c8922a">
-        <span style="font-family:Cinzel,serif;color:#e8b84b;font-size:.85rem">Known World — Full Map</span>
-        <button onclick="document.getElementById('map-fullscreen-modal').style.display='none'"
-          style="background:#7a1c1c;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;border-radius:2px">✕ Close</button>
-      </div>
-      <div style="flex:1;overflow:auto;padding:10px;background:#0e0a04">
-        <svg id="map-fs-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;min-height:400px"></svg>
-      </div>`;
-    document.body.appendChild(modal);
-  }
-  modal.style.display='flex';
-  // Re-render the map into the fullscreen SVG
-  const origSvg=document.getElementById('report-map-svg');
-  const fsSvg=document.getElementById('map-fs-svg');
-  if(origSvg&&fsSvg){
-    fsSvg.setAttribute('viewBox',origSvg.getAttribute('viewBox'));
-    fsSvg.innerHTML=origSvg.innerHTML;
-  }
+  const old=document.getElementById('map-fullscreen-modal');
+  if(old) old.remove();
+  const modal=document.createElement('div');
+  modal.id='map-fullscreen-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:10000;display:flex;flex-direction:column';
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#1a1208;border-bottom:1px solid #c8922a;flex-shrink:0';
+  hdr.innerHTML='<span style="font-family:Cinzel,serif;color:#e8b84b;font-size:.85rem">Known World</span>'
+    +'<button onclick="document.getElementById(\'map-fullscreen-modal\').remove()" '
+    +'style="background:#7a1c1c;color:#fff;border:none;padding:7px 16px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;border-radius:2px">\u2715 Close</button>';
+  const body=document.createElement('div');
+  body.style.cssText='flex:1;overflow:auto;padding:12px;background:#0e0a04;display:flex;align-items:flex-start;justify-content:center';
+  const fsSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  fsSvg.style.cssText='display:block;width:min(100vw,1800px);height:auto';
+  body.appendChild(fsSvg);
+  modal.appendChild(hdr);modal.appendChild(body);
+  document.body.appendChild(modal);
+  if(currentReport) renderMapIntoSvg(fsSvg, currentReport);
+  modal.addEventListener('click',ev=>{if(ev.target===modal)modal.remove();});
 }
-
-
 
 // ── BOOT ─────────────────────────────────────────────
 init().catch(err=>{
