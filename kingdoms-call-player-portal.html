@@ -565,7 +565,14 @@ async function openReport(gamePlayerId){
   // Chronicle
   const log=report.lastTurnLog||[];
   document.getElementById('report-log').innerHTML=log.length
-    ?log.map(e=>`<div class="log-entry ${e.type||''}">${e.text}</div>`).join('')
+    ?log.map(e=>{
+      const isIntel=e.text&&e.text.startsWith('[Intelligence]');
+      const css=isIntel?'log-entry system':`log-entry ${e.type||''}`;
+      const text=isIntel
+        ?e.text.replace('[Intelligence]','<span style="color:#c8922a;font-family:Cinzel,serif;font-size:.7rem">[Intelligence]</span>')
+        :(e.text||'');
+      return`<div class="${css}">${text}</div>`;
+    }).join('')
     :'<em style="color:#999;font-size:.85rem">No events yet.</em>';
 
   // Kingdom summary

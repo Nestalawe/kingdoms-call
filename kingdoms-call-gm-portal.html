@@ -963,8 +963,54 @@ async function runTurn(){
   msg.innerHTML='<div class="msg-info">⏳ Resolving 5 phases…</div>';
 
   // 4. Run all 5 phases
+  // Structured log system
+  // Each entry carries metadata so we can build accurate per-player chronicles:
+  //  actor    — player index of the character taking the action (null = NPC/system)
+  //  targets  — array of player indices who should ALWAYS see this entry
+  //  province — province id where the event occurred (used for territory visibility)
+  //  public   — if true, all players who own or have characters in this province see it
+  //  redact   — if true, enemy army strength is shown as a rough estimate only
   const turnLog=[];
-  const log=(type,text)=>{ turnLog.push({type,text}); console.log(`[${type}] ${text}`); };
+  const log=(type,text,meta={})=>{
+    turnLog.push({type,text,
+      actor: meta.actor??null,          // player index of acting character
+      targets: meta.targets||[],         // player indices always shown to
+      provinceId: meta.provinceId??null, // where it happened
+      public: meta.public??false,        // visible to anyone with territory interest
+      spy: meta.spy??false,              // only visible to players with spy orders there
+      system: meta.system??false,        // pure system messages (everyone or no-one)
+      armyEstimate: meta.armyEstimate??null, // if set, a rough strength description
+    });
+    console.log(`[${type}] ${text}`);
+  };
+
+  // Build a rough army strength description for use in enemy intel
+  // Spy skill determines accuracy: 0-1 = vague, 2-3 = moderate, 4-5 = precise
+  function describeEnemyForce(armies, observerSpySkill){
+    if(!armies||armies.length===0) return 'no armies visible';
+    const totalStr=armies.reduce((s,a)=>s+(armStr(a)||4),0);
+    if(observerSpySkill>=4){
+      // Precise: exact count and types
+      const groups=armies.reduce((acc,a)=>{acc[a.type]=(acc[a.type]||0)+1;return acc;},{});
+      return Object.entries(groups).map(([t,n])=>`${n}× ${t}`).join(', ');
+    } else if(observerSpySkill>=2){
+      // Moderate: count and rough category
+      const cav=armies.filter(a=>['Cavalry','Knights','Warg Riders','Eagle Riders'].includes(a.type)).length;
+      const inf=armies.filter(a=>!['Cavalry','Knights','Warg Riders','Eagle Riders','Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders'].includes(a.type)).length;
+      const naval=armies.filter(a=>['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders'].includes(a.type)).length;
+      const parts=[];
+      if(cav>0) parts.push(`${cav} cavalry-type`);
+      if(inf>0) parts.push(`${inf} infantry-type`);
+      if(naval>0) parts.push(`${naval} naval`);
+      return parts.join(', ')+` (${armies.length} total)`;
+    } else {
+      // Vague: just strength impression
+      if(totalStr>40) return 'a very powerful force (many armies)';
+      if(totalStr>20) return 'a moderate force';
+      if(totalStr>8)  return 'a small force';
+      return 'a weak force (few armies)';
+    }
+  }
 
   function totalInit(c){
     const s=c.skills||{};
@@ -1042,20 +1088,20 @@ async function runTurn(){
     switch(action){
       case 'move':{
         const mp=movePoints[c.id]??0;
-        if(mp<=0){log('move',`${c.name} has no movement points left this turn.`);break;}
+        if(mp<=0){log('move',`${c.name} has no movement points left this turn.`,{actor:c.player,targets:[c.player]});break;}
         let toProv=null;
         if(target.startsWith('dir:')){
           const dir=target.slice(4);
           toProv=neighborInDir(prov,dir);
-          if(!toProv){log('move',`${c.name} tries to move ${dir} but hits the map edge.`);break;}
+          if(!toProv){log('move',`${c.name} tries to move ${dir} but hits the map edge.`,{actor:c.player,targets:[c.player]});break;}
         } else {
           const id=parseInt(target);
           if(!isNaN(id)) toProv=G.world.provinces[id];
         }
-        if(!toProv){log('move',`${c.name}: invalid move target.`);break;}
+        if(!toProv){log('move',`${c.name}: invalid move target.`,{actor:c.player,targets:[c.player]});break;}
         const sc=seaCap[c.id]||'land';
         if(!canEnterTerrain(c,toProv.terrain,sc)){
-          log('move',`${c.name} cannot enter ${toProv.name} (${toProv.terrain}) — army type restriction.`);break;
+          log('move',`${c.name} cannot enter ${toProv.name} (${toProv.terrain}) — army type restriction.`,{actor:c.player,targets:[c.player]});break;
         }
         movePoints[c.id]=mp-1;
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
@@ -1070,9 +1116,9 @@ async function runTurn(){
             toProv.owner=c.player;
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
-            log('combat',`${c.name} storms ${toProv.name}! (+${toProv.tax} merit) MP left: ${movePoints[c.id]}`);
+            log('combat',`${c.name} storms ${toProv.name}, routing the defenders and claiming it for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:G.players.map((_,i)=>i),provinceId:toProv.id,public:true});
           } else {
-            log('combat',`${c.name} attacks ${toProv.name} but is repulsed!`);
+            log('combat',`${c.name} attacks ${toProv.name} but is repulsed! The defenders held their ground.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
             toProv.characters=toProv.characters.filter(id=>id!==c.id);
             prov.characters.push(c.id);c.location=prov.id;movePoints[c.id]=0;
           }
@@ -1083,9 +1129,9 @@ async function runTurn(){
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
               toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-              log('combat',`${c.name} defeats ${defChar.name} and seizes ${toProv.name}! MP left: ${movePoints[c.id]}`);
+              log('combat',`${c.name} defeats ${defChar.name} in battle and seizes ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[c.player,defChar.player],provinceId:toProv.id,public:true,redact:false});
             } else {
-              log('combat',`${c.name} is repulsed by ${defChar.name} in ${toProv.name}!`);
+              log('combat',`${c.name} is repulsed by ${defChar.name} in ${toProv.name}!`,{actor:c.player,targets:[c.player,defChar.player],provinceId:toProv.id,public:true});
               toProv.characters=toProv.characters.filter(id=>id!==c.id);
               prov.characters.push(c.id);c.location=prov.id;movePoints[c.id]=0;
             }
@@ -1093,13 +1139,13 @@ async function runTurn(){
             G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
             toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-            log('move',`${c.name} seizes undefended ${toProv.name}! MP left: ${movePoints[c.id]}`);
+            log('move',`${c.name} seizes the undefended province of ${toProv.name} for ${player.name}!`,{actor:c.player,targets:G.players.map((_,i)=>i),provinceId:toProv.id,public:true});
           }
         } else {
           if(toProv.owner===null&&(toProv.neutralDefenders||[]).length===0&&toProv.terrain!=='sea'){
             toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
           }
-          log('move',`${c.name} moves to ${toProv.name}. MP left: ${movePoints[c.id]}`);
+          log('move',`${c.name} moves to ${toProv.name}. (${movePoints[c.id]} move point${movePoints[c.id]!==1?'s':''} remaining this turn)`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
         }
         break;
       }
@@ -1109,9 +1155,9 @@ async function runTurn(){
         const hidden=(prov.features||[]).filter(f=>!f.discovered);
         if(hidden.length>0&&prov.explored>=rng(20,80)){
           const f=hidden[0];f.discovered=true;c.merits=(c.merits||0)+1;
-          log('explore',`${c.name} discovers the ${f.name} in ${prov.name}!`);
+          log('explore',`${c.name} discovers the ${f.name} in ${prov.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
-          log('explore',`${c.name} surveys ${prov.name} (${prov.explored}% explored).`);
+          log('explore',`${c.name} explores ${prov.name} — now ${prov.explored}% mapped. ${prov.explored<30?'Much of the province remains uncharted.':prov.explored<70?'The province is becoming well-known.':'The province is thoroughly explored.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
@@ -1132,31 +1178,31 @@ async function runTurn(){
           const item={...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:itemId};
           c.items=(c.items||[]);c.items.push(item);
           if(item.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+item.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+item.effect.bonus);}
-          log('explore',`${c.name} defeats ${m.name} in ${f.name}! Treasure: ${gold}g. Found: ${item.name}!`);
+          log('explore',`${c.name} defeats the ${m.name} guarding ${f.name} in ${prov.name}! Treasure recovered: ${gold}g. A ${item.name} was found among the spoils.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
           const dmg=rng(2,7);c.hp=Math.max(1,c.hp-dmg);
-          log('combat',`${c.name} is repulsed from ${f.name}! ${dmg} dmg. HP:${c.hp}/${c.maxHp}`);
+          log('combat',`${c.name} attacks ${f.name} but is driven back! Takes ${dmg} damage. HP: ${c.hp}/${c.maxHp}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
       case 'recruit':{
-        if(prov.owner!==c.player){log('system',`${c.name}: cannot recruit in unowned ${prov.name}.`);break;}
+        if(prov.owner!==c.player){log('system',`${c.name} attempts to recruit in ${prov.name} but the province is not under your control.`,{actor:c.player,targets:[c.player]});break;}
         const[armyType,qtyStr]=(extra||'Infantry|1').split('|');
         const qty=parseInt(qtyStr)||1;const cost=qty*2;
-        if((player.gold||0)<cost){log('system',`${c.name}: insufficient gold for recruit.`);break;}
+        if((player.gold||0)<cost){log('system',`${c.name} tries to recruit in ${prov.name} but the treasury has insufficient gold (need ${cost}g, have ${player.gold}g).`,{actor:c.player,targets:[c.player]});break;}
         player.gold-=cost;c.armies=c.armies||[];
         for(let q=0;q<qty;q++)c.armies.push({type:armyType||'Infantry',quality:'Average',race:prov.race||'Human'});
-        log('hire',`${c.name} recruits ${qty}× ${armyType} in ${prov.name}.`);
+        log('hire',`${c.name} recruits ${qty}× ${armyType} in ${prov.name} at a cost of ${cost}g. Treasury: ${player.gold}g.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         break;
       }
       case 'hire':{
         const heroId=parseInt(target);const h=G.characters[heroId];
-        if(!h||h.player!==null||h.location!==c.location){log('hire',`${c.name}: hero not available.`);break;}
-        if((player.gold||0)<(h.pay||1)){log('hire',`${c.name}: cannot afford ${h.name}.`);break;}
+        if(!h||h.player!==null||h.location!==c.location){log('hire',`${c.name} tries to hire a hero but none matching that description are available in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
+        if((player.gold||0)<(h.pay||1)){log('hire',`${c.name} cannot afford to hire ${h.name} — needs ${h.pay||1}g/turn, treasury has only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
         player.gold-=(h.pay||1);h.player=c.player;h.name=h.name.replace(' (wandering)','');
         player.heroes=(player.heroes||[]);player.heroes.push(h.id);
         if(!G.turnOrders[h.id])G.turnOrders[h.id]=[null,null,null,null,null];
-        log('hire',`${h.name} joins ${player.name}!`);
+        log('hire',`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay||1}g/turn. Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         break;
       }
       case 'spy':{
@@ -1164,10 +1210,10 @@ async function runTurn(){
         const success=hasCrystalOrb||Math.random()<0.2+effStat(c,'spy')*0.2;
         if(success){
           const defs=(prov.neutralDefenders||[]).map(d=>`${d.quality} ${d.type}`).join(', ')||'none';
-          log('explore',`${c.name} spies ${prov.name}: owner=${prov.owner!==null?G.players[prov.owner]?.name:'none'}, defenders=${defs}, tax=${prov.tax}.`);
+          log('explore',`${c.name} spies on ${prov.name}: controlled by ${prov.owner!==null?G.players[prov.owner].name:'no-one'}, tax ${prov.tax}g, defenders: ${defs}.`,{actor:c.player,targets:[c.player],spy:true,provinceId:prov.id});
           c.merits=(c.merits||0)+1;
           (prov.features||[]).filter(f=>!f.discovered).forEach(f=>{if(Math.random()<0.5)f.discovered=true;});
-        } else log('system',`${c.name}'s espionage in ${prov.name} yields little.`);
+        } else log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]});
         break;
       }
       case 'practice':{
@@ -1176,13 +1222,13 @@ async function runTurn(){
         if(current<5&&Math.random()<0.35){
           c.skills[skill]=(c.skills[skill]||0)+1;
           c.pay=Math.max(1,Math.ceil(Object.values(c.skills).reduce((s,v)=>s+v,0)/4));
-          log('hire',`${c.name} trains ${skill} → level ${c.skills[skill]}!`);
-        } else log('system',`${c.name} practises ${skill} with no gain.`);
+          log('hire',`${c.name} practises ${skill} diligently and improves to level ${c.skills[skill]}!`,{actor:c.player,targets:[c.player]});
+        } else log('system',`${c.name} practises ${skill} but makes no measurable progress this season.`,{actor:c.player,targets:[c.player]});
         break;
       }
       case 'rest':{
         const heal=rng(2,5);c.hp=Math.min(c.maxHp||20,c.hp+heal);
-        log('system',`${c.name} rests. +${heal} HP (${c.hp}/${c.maxHp}).`);
+        log('system',`${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}).`,{actor:c.player,targets:[c.player]});
         break;
       }
       case 'give_item':{
@@ -1192,7 +1238,7 @@ async function runTurn(){
         const item=c.items.splice(itemIdx,1)[0];
         recip.items=(recip.items||[]);recip.items.push(item);
         if(item.effect?.stat==='maxHp'){recip.maxHp=(recip.maxHp||20)+item.effect.bonus;}
-        log('item',`${c.name} gives ${item.name} to ${recip.name}.`);
+        log('hire',`${c.name} hands ${item.name} to ${recip.name}.`,{actor:c.player,targets:[c.player]});
         break;
       }
       case 'leave_army':{
@@ -1206,16 +1252,16 @@ async function runTurn(){
           const recip=G.characters[recipId];
           if(recip&&recip.location===c.location&&recip.player===c.player){
             recip.armies=(recip.armies||[]).concat(removed);
-            log('hire',`${c.name} gives ${removed.map(a=>a.type).join(',')} to ${recip.name}.`);break;
+            log('hire',`${c.name} transfers ${removed.map(a=>a.type).join(', ')} to ${recip.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
           }
         }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(removed);
-        log('hire',`${c.name} garrisons ${removed.map(a=>a.type).join(',')} in ${prov.name}.`);
+        log('hire',`${c.name} garrisons ${removed.map(a=>a.type).join(', ')} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         // If hero now has no armies, restore full move points (5)
         if((c.armies||[]).length===0){
           movePoints[c.id]=5;
           seaCap[c.id]='all';
-          log('move',`${c.name} left all armies behind — move points reset to 5.`);
+          log('move',`${c.name} left all armies behind in ${prov.name} — now travelling alone with full movement (5 points).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
@@ -1225,12 +1271,12 @@ async function runTurn(){
           const src=G.characters[srcId];
           if(!src||src.location!==c.location||src.player!==c.player||(src.armies||[]).length===0){log('system',`${c.name}: cannot pick up army.`);break;}
           const army=src.armies.pop();c.armies=(c.armies||[]);c.armies.push(army);
-          log('hire',`${c.name} takes ${army.type} from ${src.name}.`);
+          log('hire',`${c.name} takes command of ${army.quality} ${army.type} from ${src.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
           const army=(prov.garrisonArmies||[]).pop();
-          if(!army){log('system',`No garrison in ${prov.name}.`);break;}
+          if(!army){log('system',`${c.name} finds no garrison armies in ${prov.name} to pick up.`,{actor:c.player,targets:[c.player]});break;}
           c.armies=(c.armies||[]);c.armies.push(army);
-          log('hire',`${c.name} picks up ${army.type} garrison in ${prov.name}.`);
+          log('hire',`${c.name} picks up the ${army.quality} ${army.type} garrisoned in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         // Recalculate move points — picking up a slow army may reduce them
         const newSpd=Math.min(...(c.armies||[]).map(a=>ARMY_SPEED_R[a.type]||3));
@@ -1238,14 +1284,14 @@ async function runTurn(){
         // Can only reduce, never increase (armies picked up mid-turn don't grant extra MP)
         if(movePoints[c.id]>newSpd) movePoints[c.id]=newSpd;
         seaCap[c.id]=newSC;
-        log('move',`${c.name} now leads ${(c.armies||[]).length} armies. Move points remaining this turn: ${movePoints[c.id]}`);
+        log('move',`${c.name} now leads ${(c.armies||[]).length} arm${(c.armies||[]).length!==1?'ies':'y'}. Move points remaining this turn: ${movePoints[c.id]}.`,{actor:c.player,targets:[c.player]});
         break;
       }
       case 'defend':
-        log('move',`${c.name} defends ${prov.name}.`);
+        log('move',`${c.name} holds position in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         break;
       default:
-        log('system',`${c.name}: ${action} in ${prov.name}.`);
+        log('system',`${c.name} performs ${action} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
     }
   }
 
@@ -1289,7 +1335,65 @@ async function runTurn(){
     seaCap[c.id]=getSeaCapability(armies);
   });
 
-  // 5. Run phases
+  // ── INTRUSION NOTIFICATIONS ────────────────────────────
+  // After each phase resolves, scan for situations where players
+  // need to be notified about things happening in their territory
+  // or in provinces where their heroes are present.
+  function generateIntrusionNotifications(ph){
+    const phaseLabel=SEASONS[ph];
+    G.players.forEach((targetPlayer,targetPi)=>{
+      const targetOwnedProvs=new Set(targetPlayer.provinces||[]);
+      const targetCharProvs=new Set(
+        (G.characters||[]).filter(c=>c.player===targetPi&&c.alive).map(c=>c.location)
+      );
+      const targetKnownProvs=new Set([...targetOwnedProvs,...targetCharProvs]);
+
+      // Check every other player's characters
+      G.players.forEach((actingPlayer,actingPi)=>{
+        if(actingPi===targetPi) return;
+        const actingChars=(G.characters||[]).filter(c=>c.player===actingPi&&c.alive);
+        actingChars.forEach(ac=>{
+          const acProv=G.world.provinces[ac.location];
+          if(!acProv) return;
+          const inOwnedProv=targetOwnedProvs.has(ac.location);
+          const inKnownProv=targetKnownProvs.has(ac.location);
+          if(!inKnownProv) return; // target doesn't know about this province
+
+          // Determine what the target player's best spy skill is (for army intel quality)
+          const targetBestSpy=Math.max(0,...(G.characters||[])
+            .filter(c=>c.player===targetPi&&c.alive)
+            .map(c=>effStat(c,'spy')));
+          const forceDesc=describeEnemyForce(ac.armies||[], targetBestSpy);
+
+          if(inOwnedProv){
+            // Direct territorial incursion — always notify
+            const isHostile=acProv.owner!==actingPi;
+            log('combat',
+              `[Intelligence] ${phaseLabel}: ${ac.name} of ${actingPlayer.name} was spotted in your province of ${acProv.name}. `+
+              `They appear to be leading ${forceDesc}.`,
+              {actor:actingPi,targets:[targetPi],provinceId:ac.location,public:false}
+            );
+          } else if(inKnownProv){
+            // In a province where target has characters — notify more subtly
+            log('system',
+              `[Intelligence] ${phaseLabel}: A hero of ${actingPlayer.name} (${ac.name}) is in ${acProv.name} — the same province as one of your characters. They appear to be leading ${forceDesc}.`,
+              {actor:actingPi,targets:[targetPi],provinceId:ac.location,public:false}
+            );
+          }
+        });
+      });
+
+      // Check wandering heroes entering owned provinces
+      const wanderers=(G.characters||[]).filter(c=>c.player===null&&c.alive&&targetOwnedProvs.has(c.location));
+      wanderers.forEach(w=>{
+        const wProv=G.world.provinces[w.location];
+        if(wProv) log('system',
+          `[Intelligence] ${phaseLabel}: The wandering hero ${w.name} (${w.race}, ${w.alignment}) has been sighted in your province of ${wProv.name}. They appear to be unaffiliated and may be available for hire.`,
+          {actor:null,targets:[targetPi],provinceId:w.location}
+        );
+      });
+    });
+  }
   const SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
   for(let ph=0;ph<5;ph++){
     log('system',`— ${SEASONS[ph]} —`);
@@ -1306,6 +1410,9 @@ async function runTurn(){
       if(o)processOrder(c,o,ph);
     });
 
+    // Generate intrusion notifications for this phase
+    generateIntrusionNotifications(ph);
+
     // Tax collection at Fall
     if(ph===3){
       log('system','═ Tax collection ═');
@@ -1313,7 +1420,7 @@ async function runTurn(){
         const income=(p.provinces||[]).reduce((s,id)=>s+(G.world.provinces[id]?.tax||0),0);
         const taxBonus=(G.characters||[]).filter(c=>c.player===p.id&&c.alive).reduce((s,c)=>s+(c.taxBonus||0),0);
         p.gold=(p.gold||0)+income+taxBonus;
-        if(income>0)log('system',`${p.name} collects ${income+taxBonus}g.`);
+        if(income>0)log('system',`${p.name} collects ${income+taxBonus}g in taxes.`,{actor:p.id,targets:[p.id],system:false});
       });
     }
 
@@ -1340,14 +1447,14 @@ async function runTurn(){
 
         if(totalWages===0){log('system',`${p.name}: no wages to pay.`);return;}
 
-        log('system',`${p.name} owes ${totalWages}g wages (armies: ${armyWages}g for ${allKingdomArmies.length} unit${allKingdomArmies.length!==1?'s':''}, heroes: ${heroWages}g for ${heroes.length} hero${heroes.length!==1?'es':''}).`);
+        log('system',`${p.name} owes ${totalWages}g wages (armies: ${armyWages}g, heroes: ${heroWages}g).`,{actor:p.id,targets:[p.id]});
 
         if((p.gold||0)>=totalWages){
           p.gold-=totalWages;
-          log('system',`${p.name} pays ${totalWages}g wages. Treasury: ${p.gold}g remaining.`);
+          log('system',`${p.name} pays ${totalWages}g in wages. Treasury: ${p.gold}g remaining.`,{actor:p.id,targets:[p.id]});
         } else {
           // Can't pay in full — armies disband first (cheapest first), then heroes desert
-          log('system',`⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold||0}g available.`);
+          log('system',`⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold||0}g available. Armies will disband, heroes may desert.`,{actor:p.id,targets:[p.id]});
           let deficit=totalWages-(p.gold||0);
           p.gold=0;
 
@@ -1374,7 +1481,7 @@ async function runTurn(){
             }
             if(removed){
               deficit-=cost;
-              log('hire',`${army.type} disbands from ${p.name} — unpaid! (saved ${cost}g)`);
+              log('hire',`A ${army.type} unit disbands — ${p.name} could not pay their wages.`,{actor:p.id,targets:[p.id]});
             }
           });
 
@@ -1386,7 +1493,7 @@ async function runTurn(){
                 h.player=null;h.name=h.name.replace(' (wandering)','')+' (wandering)';
                 deficit-=(h.pay||0);
                 p.heroes=(p.heroes||[]).filter(id=>id!==h.id);
-                log('hire',`${h.name} abandons ${p.name} — unpaid!`);
+                log('hire',`${h.name} abandons ${p.name}'s service, unpaid and disillusioned.`,{actor:p.id,targets:[p.id]});
               }
             });
           }
@@ -1438,13 +1545,27 @@ async function runTurn(){
   let reportErrors=[];
   for(const gp of activePlayers){
     const report=buildTurnReport(G, gp.player_index);
-    // Attach this turn's filtered log entries
-    const playerCharIds=new Set((G.characters||[]).filter(c=>c.player===gp.player_index).map(c=>c.id));
-    report.lastTurnLog=turnLog.filter(e=>
-      e.type==='system'||
-      e.text.includes(G.players[gp.player_index]?.name)||
-      (G.characters||[]).filter(c=>c.player===gp.player_index).some(c=>e.text.includes(c.name))
+    // Build a per-player chronicle using the structured log metadata
+    const pi=gp.player_index;
+    const playerOwnedProvs=new Set(G.players[pi]?.provinces||[]);
+    const playerCharProvs=new Set(
+      (G.characters||[]).filter(c=>c.player===pi&&c.alive).map(c=>c.location)
     );
+    report.lastTurnLog=turnLog.filter(e=>{
+      // Always show entries explicitly targeted at this player
+      if((e.targets||[]).includes(pi)) return true;
+      // Show entries from this player's own characters
+      if(e.actor===pi) return true;
+      // Show public entries (battles, conquests) in provinces this player knows about
+      if(e.public && e.provinceId!==null){
+        if(playerOwnedProvs.has(e.provinceId)||playerCharProvs.has(e.provinceId)) return true;
+      }
+      // Never show other players' private actions
+      return false;
+    }).map(e=>{
+      // Redact or return as-is (redaction happens via describeEnemyForce at log time)
+      return{type:e.type,text:e.text};
+    });
     const {error:rErr}=await sb.from('game_players').update({
       turn_report:JSON.stringify(report),
       orders:null,
