@@ -142,7 +142,8 @@ section{display:none;}.section-active{display:block;}
         <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Signed in as</div>
         <div id="player-name-display" style="font-size:.95rem;color:var(--parchment)"></div>
       </div>
-      <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
+      <a href="https://epistoludisme.com/en/ak/rules/AK.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Original Rules</a>
+        <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
     </div>
 
     <div id="msg-games"></div>
@@ -658,6 +659,17 @@ const SPELLS_BY_SCHOOL={
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
 
+// Encounter plan tactics (AK 5.0-5.8)
+const ENCOUNTER_TACTICS=[
+  {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
+  {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
+  {code:'CA',label:'Cast Spell — use a combat spell (requires magic skill)'},
+  {code:'TA',label:'Talk — attempt to negotiate or parley'},
+  {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
+  {code:'FL',label:'Flee — attempt to escape from the encounter'},
+  {code:'SC',label:'Scout — scout the feature for secrets and special functions'},
+];
+
 function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   const el=document.getElementById('orders-form');
   const btn=document.getElementById('submit-btn');
@@ -673,17 +685,33 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
 
   const savedOrders=typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders||{};
 
-  el.innerHTML=chars.map(c=>`
+  el.innerHTML=chars.map(c=>{
+    const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
+    const savedEP=c.encounterPlan||{tactics:['ME'],notes:''};
+    const currentTactics=savedEP.tactics||['ME'];
+
+    return`
     <div class="orders-char-block">
       <div class="orders-char-head">
         ${c.isKing?'👑':'⚔'} ${c.name}
+        ${hiredPh>=0?`<span style="background:#c8922a;color:#1a1208;font-size:.65rem;padding:1px 6px;border-radius:2px;margin-left:6px">Hired ${SEASONS[hiredPh]} — acts from ${SEASONS[hiredPh+1]||'next turn'}</span>`:''}
         <span style="margin-left:auto;font-size:.7rem;opacity:.75">
-          📍 ${c.locationName||'?'} · Move: ${c.effectiveSpeed||3} hex/order
+          📍 ${c.locationName||'?'} · Move: ${c.effectiveSpeed||3} hex/turn
         </span>
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
+          // Lock phases where hero wasn't yet hired
+          const locked=hiredPh>=0&&ph<=hiredPh;
           const saved=(savedOrders[c.id]||[])[ph]||{};
+          if(locked){
+            return`<div class="phase-order" style="opacity:.45;pointer-events:none">
+              <div class="phase-label">${season}</div>
+              <div style="font-size:.78rem;color:var(--stone);font-style:italic;grid-column:2/-1;padding:5px 0">
+                (Not yet hired this phase)
+              </div>
+            </div>`;
+          }
           return`<div class="phase-order">
             <div class="phase-label">${season}</div>
             <select id="po-action-${c.id}-${ph}" onchange="onActionChange('${c.id}',${ph},${chars.indexOf(c)})">
@@ -695,12 +723,81 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             </div>
           </div>`;
         }).join('')}
+
+        <!-- Encounter Plan -->
+        <div style="margin-top:10px;padding:8px;background:#fdf5e0;border:1px solid #c8922a;border-radius:2px">
+          <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a5a10;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">
+            ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#999">— used when searching features or in random encounters</span>
+          </div>
+          <div style="font-size:.78rem;color:var(--stone);margin-bottom:6px">
+            Drag to reorder tactics. The plan is executed in order until the encounter ends. If you run out of tactics, Melee is used.
+          </div>
+          <div id="ep-list-${c.id}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
+            ${currentTactics.map((t,i)=>{
+              const tac=ENCOUNTER_TACTICS.find(et=>et.code===t)||{code:t,label:t};
+              return`<div class="ep-tac" data-char="${c.id}" data-idx="${i}" style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px">
+                <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i+1}.</span>
+                <span style="font-size:.8rem;flex:1">${tac.label}</span>
+                <button onclick="removeEncounterTactic('${c.id}',${i})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${ENCOUNTER_TACTICS.map(t=>`<button onclick="addEncounterTactic('${c.id}','${t.code}')"
+              style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
+              title="${t.label}">+ ${t.code}</button>`).join('')}
+          </div>
+          <input type="hidden" id="ep-tactics-${c.id}" value="${currentTactics.join(',')}">
+          <div style="margin-top:6px">
+            <label style="font-size:.72rem">Notes for GM (optional):</label>
+            <input type="text" id="ep-notes-${c.id}" value="${savedEP.notes||''}"
+              placeholder="e.g. Only fight if outnumbered; try to talk first"
+              style="font-size:.8rem;margin-top:2px">
+          </div>
+        </div>
+
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   btn.disabled=false;
   btn.textContent=`Submit Orders for Turn ${turnNum}`;
 }
+
+function addEncounterTactic(charId, code){
+  const hidden=document.getElementById(`ep-tactics-${charId}`);
+  if(!hidden)return;
+  const current=hidden.value?hidden.value.split(',').filter(Boolean):[];
+  if(current.length>=6){alert('Maximum 6 tactics per encounter plan.');return;}
+  current.push(code);
+  hidden.value=current.join(',');
+  // Rebuild just the ep-list
+  refreshEncounterPlan(charId, current);
+}
+
+function removeEncounterTactic(charId, idx){
+  const hidden=document.getElementById(`ep-tactics-${charId}`);
+  if(!hidden)return;
+  const current=hidden.value?hidden.value.split(',').filter(Boolean):[];
+  current.splice(idx,1);
+  hidden.value=current.join(',');
+  refreshEncounterPlan(charId, current);
+}
+
+function refreshEncounterPlan(charId, tactics){
+  const list=document.getElementById(`ep-list-${charId}`);
+  if(!list)return;
+  list.innerHTML=tactics.map((t,i)=>{
+    const tac=ENCOUNTER_TACTICS.find(et=>et.code===t)||{code:t,label:t};
+    return`<div class="ep-tac" data-char="${charId}" data-idx="${i}" style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px">
+      <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i+1}.</span>
+      <span style="font-size:.8rem;flex:1">${tac.label}</span>
+      <button onclick="removeEncounterTactic('${charId}',${i})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
+    </div>`;
+  }).join('');
+}
+
+
 
 function onActionChange(charId, ph, charIdx){
   const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
@@ -759,6 +856,7 @@ async function doSubmitOrders(){
   const btn=document.getElementById('submit-btn');
   btn.disabled=true;btn.textContent='Saving…';
   const orders={};
+  const encounterPlans={};
   chars.forEach(c=>{
     orders[c.id]=SEASONS.map((_,ph)=>{
       const action=document.getElementById(`po-action-${c.id}-${ph}`)?.value||'Defend';
@@ -767,9 +865,18 @@ async function doSubmitOrders(){
       const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'');
       return{action,target,extra,desc};
     });
+    // Collect encounter plan
+    const tacHidden=document.getElementById(`ep-tactics-${c.id}`);
+    const notesEl=document.getElementById(`ep-notes-${c.id}`);
+    if(tacHidden){
+      encounterPlans[c.id]={
+        tactics:(tacHidden.value||'ME').split(',').filter(Boolean),
+        notes:notesEl?.value||'',
+      };
+    }
   });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify(orders),
+    orders:JSON.stringify({orders,encounterPlans}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);

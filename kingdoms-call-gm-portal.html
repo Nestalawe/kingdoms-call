@@ -121,6 +121,7 @@ section{display:none;}.section-active{display:block;}
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-gold" onclick="showNewGame()">+ New Game</button>
+        <a href="https://epistoludisme.com/en/ak/rules/AK.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Original Rules</a>
         <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
       </div>
     </div>
@@ -846,6 +847,8 @@ function buildTurnReport(gameState, playerIndex){
       id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,
       hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},armies,items:c.items||[],pay:c.pay||0,
       locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,effectiveSpeed:effSpd,
+      hiredInPhase:c.hiredInPhase??-1,  // -1 = was hired before this turn
+      encounterPlan:c.encounterPlan||{tactics:['ME'],notes:''},
     };
   });
 
@@ -981,12 +984,24 @@ async function runTurn(){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
 
-  // 2. Merge all player orders into G.turnOrders
+  // 2. Merge all player orders into G.turnOrders + apply encounter plans
   if(!G.turnOrders) G.turnOrders={};
   freshPlayers.filter(p=>p.user_id&&p.orders).forEach(gp=>{
-    const orders=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
-    Object.entries(orders).forEach(([charId,phaseOrders])=>{
+    let raw=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
+    // Handle both old format {charId:[phases]} and new format {orders:{...},encounterPlans:{...}}
+    let ordersObj=raw;
+    let epObj={};
+    if(raw.orders&&typeof raw.orders==='object'&&!Array.isArray(Object.values(raw.orders||{})[0])){
+      ordersObj=raw.orders||{};
+      epObj=raw.encounterPlans||{};
+    }
+    Object.entries(ordersObj).forEach(([charId,phaseOrders])=>{
       G.turnOrders[charId]=phaseOrders;
+    });
+    // Apply encounter plans to characters
+    Object.entries(epObj).forEach(([charId,plan])=>{
+      const ch=G.characters.find(c=>c.id===parseInt(charId));
+      if(ch&&plan) ch.encounterPlan=plan;
     });
   });
 
@@ -1099,6 +1114,201 @@ async function runTurn(){
   }
 
   // Process one order
+  // ── ENCOUNTER ENGINE (AK 5.0–5.8) ─────────────────────
+  // Resolves a full encounter between a character and a feature monster.
+  // Returns {won, fled, damageToHero, narrative:[...strings]}
+  function resolveEncounter(c, feature, prov, tactics, effStat, rng, player){
+    const m=feature.monster||{name:'creature',hp:10,power:'',minG:1,maxG:3};
+    const narrative=[];
+    let won=false, fled=false;
+    let heroHp=c.hp||10;
+    let monsterHp=m.hp||10;
+    let damageToHero=0;
+
+    // Opening description
+    const featureDescs={
+      'Ancient Battlefield':'crosses the bones of a long-forgotten battle and stumbles upon',
+      'Ruined Watchtower':'climbs the crumbling stones of',
+      'Goblin Camp':'sneaks into the firelit clearing of',
+      'Dragon Eyrie':'ascends a treacherous cliff to the mouth of',
+      'Buried Pyramid':'descends into the dust-choked chambers of',
+      'Haunted Grove':'pushes through thorned branches into',
+      'Lost City':'wanders the weed-cracked streets of',
+      'default':'approaches',
+    };
+    const entryVerb=featureDescs[feature.name]||featureDescs.default;
+    narrative.push(`${c.name} ${entryVerb} the ${feature.name} in ${prov.name}.`);
+
+    // Monster description
+    const monsterPower=m.power||'';
+    const powerDesc=monsterPower?` (${monsterPower})`:'';
+    const monHpDesc=monsterHp<=12?'a weary-looking':monsterHp<=25?'a formidable':monsterHp<=40?'a powerful':'an enormous';
+    narrative.push(`Within lurks ${monHpDesc} ${m.name}${powerDesc}, blocking the path to the treasure.`);
+
+    // Process tactics in order
+    let range='spell'; // spell → bow → melee
+    let tacIdx=0;
+
+    for(let round=0;round<8&&heroHp>0&&monsterHp>0&&!fled&&!won;round++){
+      const tactic=tactics[tacIdx]||'ME';
+      tacIdx=Math.min(tacIdx+1,tactics.length-1);
+
+      // Monster temper / behaviour (simplified)
+      const monsterMelee=m.melee||1;
+      const monsterArch=m.archery||0;
+
+      switch(tactic.toUpperCase()){
+        case 'ME':
+        case 'MELEE':{
+          // Close to melee
+          if(range!=='melee'){narrative.push(`${c.name} closes to melee range.`);range='melee';}
+          const heroMelee=effStat(c,'melee');
+          const meleeDiff=heroMelee-monsterMelee;
+          const heroHit=Math.max(10,Math.min(90,50+meleeDiff*10));
+          const monHit=Math.max(10,Math.min(90,50-meleeDiff*10));
+          // Temper effects
+          const temper=c.temper||'Brave';
+          const hitMod=temper==='Berserk'?10:temper==='Brave'?10:temper==='Cautious'?0:-5;
+          if(Math.random()*100<heroHit+hitMod){
+            const dmg=Math.max(1,rng(1,6)+Math.max(0,meleeDiff));
+            monsterHp-=dmg;
+            narrative.push(`${c.name} ${rng(0,1)?'strikes':'slashes'} the ${m.name} for ${dmg} damage! (Monster HP: ${Math.max(0,monsterHp)})`);
+          } else {
+            narrative.push(`${c.name}'s ${rng(0,1)?'blow glances off':'attack misses'} the ${m.name}.`);
+          }
+          // Monster strikes back
+          if(monsterHp>0&&Math.random()*100<monHit){
+            const mDmg=Math.max(1,rng(1,6));
+            heroHp-=mDmg;damageToHero+=mDmg;
+            narrative.push(`The ${m.name} ${rng(0,1)?'retaliates':'counter-attacks'}, dealing ${mDmg} damage to ${c.name}! (Hero HP: ${Math.max(0,heroHp)})`);
+          } else if(monsterHp>0){
+            narrative.push(`The ${m.name} lunges but ${c.name} ${rng(0,1)?'evades':'parries'} the blow.`);
+          }
+          break;}
+
+        case 'FI':
+        case 'FIRE':
+        case 'ARROW':{
+          const archLevel=effStat(c,'archery');
+          if(archLevel===0){narrative.push(`${c.name} has no archery skill and cannot fire.`);break;}
+          if(range==='melee'){narrative.push(`${c.name} is at melee range — cannot fire arrows.`);break;}
+          const shots=Math.max(1,archLevel);
+          const hitChance=30+archLevel*10;
+          for(let s=0;s<shots&&monsterHp>0;s++){
+            if(Math.random()*100<hitChance){
+              const dmg=rng(1,6);
+              monsterHp-=dmg;
+              narrative.push(`${c.name}'s arrow finds its mark! ${dmg} damage to the ${m.name}. (Monster HP: ${Math.max(0,monsterHp)})`);
+            } else {
+              narrative.push(`${c.name} looses an arrow but it flies wide.`);
+            }
+          }
+          // Monster may counter at range
+          if(monsterHp>0&&monsterArch>0){
+            const mHitChance=30+monsterArch*10;
+            for(let s=0;s<monsterArch&&heroHp>0;s++){
+              if(Math.random()*100<mHitChance){
+                const mDmg=rng(1,6);heroHp-=mDmg;damageToHero+=mDmg;
+                narrative.push(`The ${m.name} retaliates with its own missiles! ${mDmg} damage. (Hero HP: ${Math.max(0,heroHp)})`);
+              }
+            }
+          }
+          break;}
+
+        case 'CA':
+        case 'SPELL':{
+          // Cast a combat spell — simplified: does 4-16 damage
+          const spellSkills=['white','psychic','illusory','elemental','necromancy'];
+          const bestSpell=spellSkills.reduce((best,sk)=>effStat(c,sk)>effStat(c,best)?sk:best,'white');
+          const spellLevel=effStat(c,bestSpell);
+          if(spellLevel===0){narrative.push(`${c.name} knows no combat spells.`);break;}
+          const castChance=30+spellLevel*15;
+          if(Math.random()*100<castChance){
+            const dmg=rng(4,16);
+            monsterHp-=dmg;
+            const spellNames={white:'Holy Light',psychic:'Psychic Blast',illusory:'Mirror Illusion',elemental:'Fireball',necromancy:'Hand of Death'};
+            narrative.push(`${c.name} unleashes ${spellNames[bestSpell]||'a spell'}, dealing ${dmg} damage to the ${m.name}! (Monster HP: ${Math.max(0,monsterHp)})`);
+          } else {
+            narrative.push(`${c.name}'s spell fizzles and dissipates harmlessly.`);
+          }
+          break;}
+
+        case 'TA':
+        case 'TALK':{
+          // Talk/negotiate — chance based on Druid skill and alignment
+          const druidSkill=effStat(c,'druid');
+          const talkChance=20+druidSkill*15;
+          if(Math.random()*100<talkChance){
+            narrative.push(`${c.name} attempts to parley with the ${m.name}. To their surprise, the creature seems to listen...`);
+            narrative.push(`After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`);
+            won=true;
+          } else {
+            narrative.push(`${c.name} calls out words of parley, but the ${m.name} roars and attacks regardless!`);
+          }
+          break;}
+
+        case 'ST':
+        case 'STEAL':{
+          const thiefLevel=effStat(c,'thief');
+          const stealChance=15+thiefLevel*15;
+          if(Math.random()*100<stealChance){
+            narrative.push(`${c.name} uses superior stealth to slip past the ${m.name} and seize the treasure before the creature realises what has happened!`);
+            won=true;
+          } else {
+            narrative.push(`${c.name}'s attempt at stealth fails — the ${m.name} spots the intrusion and attacks!`);
+            // Continue with melee
+          }
+          break;}
+
+        case 'FL':
+        case 'FLEE':{
+          // Flee attempt (AK 5.6)
+          const monsterSpeed=m.speed||'medium';
+          const fleeChance=monsterSpeed==='slow'?80:monsterSpeed==='fast'?20:50;
+          const temper=c.temper||'Brave';
+          const tempBonus=temper==='Cautious'?10:0;
+          if(Math.random()*100<fleeChance+tempBonus){
+            narrative.push(`${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
+            fled=true;
+          } else {
+            narrative.push(`${c.name} tries to flee but the ${m.name} is too fast! Caught!`);
+            const catchDmg=rng(1,4);heroHp-=catchDmg;damageToHero+=catchDmg;
+            narrative.push(`The ${m.name} strikes ${c.name} from behind for ${catchDmg} damage! (Hero HP: ${Math.max(0,heroHp)})`);
+          }
+          break;}
+
+        case 'SC':
+        case 'SCOUT':{
+          narrative.push(`${c.name} carefully scouts the ${feature.name}, mapping its layout and noting the guardian's habits.`);
+          if(!feature.scouted){
+            feature.scouted=true;
+            narrative.push(`The scouting reveals a potential weakness in the ${m.name}'s patrol pattern.`);
+          }
+          break;}
+
+        default:
+          // Unknown tactic — default to melee
+          tacIdx--; // retry with melee
+          tactics[tacIdx]='ME';
+      }
+
+      if(monsterHp<=0) won=true;
+      if(heroHp<=0){
+        narrative.push(`${c.name} falls to their knees, overwhelmed by the ${m.name}!`);
+        break;
+      }
+    }
+
+    if(won&&!fled){
+      narrative.push(`With a final ${rng(0,1)?'decisive blow':'burst of effort'}, the ${m.name} is defeated!`);
+    } else if(!fled&&heroHp>0&&monsterHp>0){
+      narrative.push(`Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
+    }
+
+    c.hp=Math.max(1,heroHp);
+    return{won,fled,damageToHero,narrative};
+  }
+
   function processOrder(c,o,ph){
     if(!c||!c.alive||!o) return;
     const rawAction=(o.action||'defend').toLowerCase().trim();
@@ -1186,38 +1396,48 @@ async function runTurn(){
         break;
       }
       case 'explore':{
-        const gain=Math.floor((({plain:50,desert:25,forest:15,jungle:10,mountain:15,sea:25}[prov.terrain]||25))*(effStat(c,'explorer')+1)/2);
-        prov.explored=Math.min(100,(prov.explored||0)+gain);
+        // AK 3.2: exploration = Basic Exploration Number × (Explorer skill + 1)%
+        // Our version: 10% per Explorer level, minimum 10%
+        const explorerSkill=effStat(c,'explorer');
+        const gain=Math.max(10, explorerSkill*10);
+        const before=prov.explored||0;
+        prov.explored=Math.min(100,before+gain);
         const hidden=(prov.features||[]).filter(f=>!f.discovered);
+        // Chance to discover a feature proportional to explored %
         if(hidden.length>0&&prov.explored>=rng(20,80)){
           const f=hidden[0];f.discovered=true;c.merits=(c.merits||0)+1;
-          log('explore',`${c.name} discovers the ${f.name} in ${prov.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('explore',`${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped) and discovers the ${f.name}! Legend says it is guarded by a ${f.monster?.name||'creature'}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
-          log('explore',`${c.name} explores ${prov.name} — now ${prov.explored}% mapped. ${prov.explored<30?'Much of the province remains uncharted.':prov.explored<70?'The province is becoming well-known.':'The province is thoroughly explored.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('explore',`${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped). ${prov.explored<30?'Much of the province remains uncharted.':prov.explored<70?'The province is becoming well-known.':'The province is thoroughly explored.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
       case 'search':{
-        const fi=parseInt(target);
-        if(isNaN(fi)||!prov.features||fi>=prov.features.length){log('explore',`${c.name}: no feature to search.`);break;}
-        const f=prov.features[fi];
-        if(f.cleared){log('explore',`${c.name}: ${f.name} already cleared.`);break;}
-        if(!f.discovered){f.discovered=true;log('explore',`${c.name} stumbles into ${f.name}!`);}
-        const m=f.monster||{};
-        const atkPow=effStat(c,'melee')*4+effStat(c,'archery')*3+(c.armies||[]).length*2+rng(1,12);
-        const defPow=(m.hp||10)/2+rng(1,10);
-        if(atkPow>defPow){
-          const gold=rng(m.minG||1,m.maxG||5);
-          player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;f.cleared=true;
-          const ITEMS=[{name:'Blade of Fury',desc:'Melee +2',effect:{stat:'melee',bonus:2}},{name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2}},{name:'Boots of the Wind',desc:'March +2',effect:{stat:'march',bonus:2}},{name:'Sage\'s Crown',desc:'Sage +2',effect:{stat:'sage',bonus:2}},{name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8}},{name:'Battle Standard',desc:'Armies +3 strength',effect:{stat:'armyBonus',bonus:3}},{name:'Crystal Orb',desc:'Spy always succeeds',effect:{stat:'oracle',bonus:1}}];
+        // Find the feature
+        let fi=0;
+        if(target&&!isNaN(parseInt(target))) fi=parseInt(target);
+        if(!prov.features||prov.features.length===0){log('explore',`${c.name} searches ${prov.name} but finds nothing of note.`,{actor:c.player,targets:[c.player]});break;}
+        let f=prov.features[fi]||prov.features.find(fe=>!fe.cleared)||prov.features[0];
+        if(!f){break;}
+        if(f.cleared){log('explore',`${c.name} revisits the cleared ${f.name} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        if(!f.discovered){f.discovered=true;}
+        const plan=c.encounterPlan||{tactics:['ME']};
+        const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],effStat,rng,player);
+        encounter.narrative.forEach(line=>{log('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
+        if(encounter.won){
+          f.cleared=true;
+          const gold=rng(f.monster?.minG||1,f.monster?.maxG||5);
+          player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
+          const ITEMS=[{name:'Blade of Fury',desc:'Melee +2',effect:{stat:'melee',bonus:2}},{name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2}},{name:'Boots of the Wind',desc:'March +2',effect:{stat:'march',bonus:2}},{name:"Sage's Crown",desc:'Sage +2',effect:{stat:'sage',bonus:2}},{name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8}},{name:'Battle Standard',desc:'Armies +3 strength',effect:{stat:'armyBonus',bonus:3}},{name:'Crystal Orb',desc:'Spy always succeeds',effect:{stat:'oracle',bonus:1}},{name:'Ring of the Explorer',desc:'Explorer +2',effect:{stat:'explorer',bonus:2}},{name:'Tome of Tactics',desc:'Tactical +2',effect:{stat:'tactical',bonus:2}}];
           const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;
           const item={...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:itemId};
           c.items=(c.items||[]);c.items.push(item);
           if(item.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+item.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+item.effect.bonus);}
-          log('explore',`${c.name} defeats the ${m.name} guarding ${f.name} in ${prov.name}! Treasure recovered: ${gold}g. A ${item.name} was found among the spoils.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        } else {
-          const dmg=rng(2,7);c.hp=Math.max(1,c.hp-dmg);
-          log('combat',`${c.name} attacks ${f.name} but is driven back! Takes ${dmg} damage. HP: ${c.hp}/${c.maxHp}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and finds a ${item.name} (${item.desc}).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        } else if(!encounter.fled){
+          const dmg=encounter.damageToHero||rng(2,7);
+          c.hp=Math.max(1,c.hp-dmg);
+          log('combat',`${c.name} is forced to retreat from the ${f.name}, wounded. HP: ${c.hp}/${c.maxHp}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
@@ -1269,8 +1489,13 @@ async function runTurn(){
         if((player.gold||0)<(h.pay||1)){log('hire',`${c.name} cannot afford to hire ${h.name} — needs ${h.pay||1}g/turn, treasury has only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
         player.gold-=(h.pay||1);h.player=c.player;h.name=h.name.replace(' (wandering)','');
         player.heroes=(player.heroes||[]);player.heroes.push(h.id);
+        // Hero can receive orders starting the phase AFTER they were hired (AK 3.5)
+        // We mark the hire phase so the turn report knows which phases they can act in
+        h.hiredInPhase=ph;
         if(!G.turnOrders[h.id])G.turnOrders[h.id]=[null,null,null,null,null];
-        log('hire',`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay||1}g/turn. Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        // Default unfilled phases (before hire) to a "not yet hired" placeholder
+        for(let p2=0;p2<=ph;p2++) G.turnOrders[h.id][p2]=G.turnOrders[h.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
+        log('hire',`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay||1}g/turn. Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. They may act from ${SEASONS[ph+1]||'next turn'} onwards.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         break;
       }
       case 'spy':{
