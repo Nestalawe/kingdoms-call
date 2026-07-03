@@ -170,6 +170,7 @@ section{display:none;}.section-active{display:block;}
       <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
       <h2 id="detail-game-name">Game</h2>
       <span id="detail-status-pill"></span>
+      <button class="btn btn-ghost" style="color:#c00;border-color:#c00;font-size:.68rem" onclick="deleteGame(currentGame?.id)">🗑 Delete Game</button>
     </div>
     <div id="detail-msg"></div>
 
@@ -496,29 +497,393 @@ async function loadTurnLog(gameId, turn){
   document.getElementById('detail-log').innerHTML=allEntries.map(e=>`<div class="log-entry ${e.type||''}">${e.text}</div>`).join('')||'<div style="color:#999;font-size:.85rem">No entries.</div>';
 }
 
-// ── TURN 0 ────────────────────────────────────────────
+// ── DELETE GAME ───────────────────────────────────────
+async function deleteGame(gameId){
+  if(!confirm('Delete this game permanently? This cannot be undone.')) return;
+  const msg=document.getElementById('detail-msg');
+  msg.innerHTML='<div class="msg-info">Deleting…</div>';
+  // Delete players first (cascade should handle it, but be explicit)
+  await sb.from('turn_logs').delete().eq('game_id',gameId);
+  await sb.from('game_players').delete().eq('game_id',gameId);
+  const {error}=await sb.from('games').delete().eq('id',gameId);
+  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  show('sec-games');
+  loadGames();
+}
+
+// ── TURN 0 — FULL INLINE MAP GENERATION ──────────────
+// Embeds the core map/character generation from kingdoms-call-gm.html
+// so the GM portal is fully self-contained.
 async function runTurn0(){
   const msg=document.getElementById('detail-msg');
-  msg.innerHTML='<div class="msg-info">Generating map and starting turn reports…</div>';
-  // Signal to the GM game tool that this game needs initialising
-  // The actual map generation happens in kingdoms-call-gm.html
-  // Here we just mark it as active and let the GM tool handle it
-  const {error}=await sb.from('games').update({status:'active',turn:1}).eq('id',currentGame.id);
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
-  msg.innerHTML='<div class="msg-success">Game is now active (Turn 1)! Open the GM Game Tool to generate the map and push starting turn reports to players.</div>';
-  currentGame.status='active';
-  currentGame.turn=1;
-  document.getElementById('detail-run-turn0-wrap').style.display='none';
-  document.getElementById('detail-orders-card').style.display='block';
-  renderOrdersStatus(currentGame);
+  msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
+
+  // Reload player list fresh
+  const {data:players,error:pErr}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
+  if(pErr||!players||players.length===0){
+    msg.innerHTML=`<div class="msg-error">Could not load players: ${pErr?.message||'No players found'}</div>`;return;
+  }
+
+  // Read game config from game_state
+  let cfg={};
+  try{ cfg=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):currentGame.game_state||{}; }catch(e){}
+  const mapSize=cfg.mapSize||'medium';
+  const maxTurns=cfg.maxTurns||12;
+  const sizemap={small:{cols:8,rows:6},medium:{cols:12,rows:8},large:{cols:16,rows:10}};
+  const sz=sizemap[mapSize]||sizemap.medium;
+
+  // Build player setup from their turn_reports (which store playerSetup from join)
+  const setupPlayers=players.map(p=>{
+    let setup={};
+    try{const r=typeof p.turn_report==='string'?JSON.parse(p.turn_report):p.turn_report||{};setup=r.playerSetup||{};}catch(e){}
+    return{
+      id:p.player_index,
+      gamePlayerId:p.id,
+      name:p.display_name||`Player ${p.player_index+1}`,
+      race:setup.race||'Human',
+      alignment:setup.alignment||'Neutral',
+      temper:setup.temper||'Brave',
+      skills:setup.skills||{},
+    };
+  }).sort((a,b)=>a.id-b.id);
+
+  // Generate the game — calls back to the main game engine via postMessage
+  // We load a hidden iframe with kingdoms-call-gm.html and ask it to generate
+  // Actually — we'll do the generation inline using the same algorithms
+  // (replicated here to keep the portal self-contained)
+  try{
+    const gameState=await generateNewGame(setupPlayers,sz,maxTurns);
+    // Save to Supabase
+    const {error:saveErr}=await sb.from('games').update({
+      status:'active',turn:1,
+      game_state:JSON.stringify(gameState)
+    }).eq('id',currentGame.id);
+    if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving game: ${saveErr.message}</div>`;return;}
+
+    // Push turn reports to each player
+    let reportErrors=[];
+    for(const sp of setupPlayers){
+      const report=buildTurnReport(gameState,sp.id);
+      const {error:rErr}=await sb.from('game_players').update({
+        turn_report:JSON.stringify(report),
+        orders:null,
+        orders_submitted:false
+      }).eq('id',sp.gamePlayerId);
+      if(rErr) reportErrors.push(rErr.message);
+    }
+
+    if(reportErrors.length>0){
+      msg.innerHTML=`<div class="msg-error">Game created but some reports failed: ${reportErrors.join(', ')}</div>`;
+    } else {
+      msg.innerHTML=`<div class="msg-success">✅ Turn 0 complete! Map generated, ${setupPlayers.length} starting turn reports pushed to players. Players can now log in and see their kingdoms.</div>`;
+    }
+    currentGame.status='active';currentGame.turn=1;
+    document.getElementById('detail-run-turn0-wrap').style.display='none';
+    document.getElementById('detail-orders-card').style.display='block';
+    document.getElementById('detail-log-card').style.display='none';
+    // Refresh game object
+    const {data:refreshed}=await sb.from('games').select('*, game_players(*)').eq('id',currentGame.id).single();
+    if(refreshed){currentGame=refreshed;currentGamePlayers=refreshed.game_players||[];}
+    renderOrdersStatus(currentGame);
+  }catch(e){
+    msg.innerHTML=`<div class="msg-error">Generation error: ${e.message}</div>`;
+    console.error(e);
+  }
+}
+
+// ── INLINE GAME GENERATION ENGINE ────────────────────
+// Self-contained mini game engine for the portal
+// (mirrors the logic in kingdoms-call-gm.html / game.js)
+
+const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+const PROVINCE_ARMIES_P={
+  plain:  {Human:['Infantry','Cavalry','Longbowmen','Human Garrison'],Elven:['Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison']},
+  desert: {Human:['Infantry','Cavalry','Human Garrison'],Elven:['Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
+  forest: {Human:['Longbowmen','Infantry','Human Garrison'],Elven:['Forest Wardens','Elven Bowmen','Shadow Archers','Elven Garrison'],Dwarven:['Crossbowmen','Dwarf Garrison'],Orcish:['Warg Riders','Goblin Horde','Orc Garrison']},
+  jungle: {Human:['Infantry','Human Garrison'],Elven:['Forest Wardens','Shadow Archers','Elven Garrison'],Dwarven:['Crossbowmen','Dwarf Garrison'],Orcish:['Goblin Horde','Orc Berserkers','Orc Garrison']},
+  mountain:{Human:['Human Garrison','Infantry'],Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Crossbowmen','Mountain Guns','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
+  sea:    {Human:['Fleet','Corsair Fleet'],Elven:['Elven Galleys','Whale Riders'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']},
+};
+const RACES_P=['Human','Elven','Dwarven','Orcish'];
+const ALIGNMENTS_P=['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead'];
+const TEMPERS_P=['Berserk','Brave','Cautious','Cowardly'];
+const ABILITIES_P=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+const HERO_NAMES_P=['Aldric the Bold','Serafina Moonwhisper','Grak the Mighty','Lady Isolde','Brother Corvus','Thorn Blackwood','Princess Reva','Dagan Stonefist','Mira the Swift','Eldran Stormcaller','Borin Ironbeard','Sylara of the Vale','Kell the Wanderer','Nyx Shadowstep','Orin Greymane','Lira Flameheart','Durgas Khan','Celeste Starborn','Yurga Bonecrusher','Finn the Fox','Ragna Iceheart','Caspian Dawnblood'];
+const MONSTERS_P=[
+  {name:'Stone Troll',hp:15,power:'Large/Strong',minG:2,maxG:5},
+  {name:'Dragon',hp:55,power:'Legendary',minG:7,maxG:10},
+  {name:'Goblin Warband',hp:8,power:'Weak',minG:1,maxG:2},
+  {name:'Lich',hp:40,power:'Legendary',minG:6,maxG:10},
+  {name:'Giant Spider',hp:12,power:'Moderate',minG:1,maxG:3},
+  {name:'Wyvern',hp:30,power:'Powerful',minG:4,maxG:7},
+  {name:'Vampire Lord',hp:25,power:'Powerful',minG:4,maxG:8},
+  {name:'Fire Drake',hp:45,power:'Legendary',minG:6,maxG:10},
+  {name:'Bandit King',hp:10,power:'',minG:2,maxG:4},
+  {name:'Ice Giant',hp:38,power:'Legendary',minG:5,maxG:9},
+];
+const FEATURE_POOLS_P={
+  plain:['Ancient Battlefield','Ruined Watchtower','Goblin Camp','Roadside Shrine','Bandit Stronghold','Old Graveyard'],
+  desert:['Buried Pyramid','Sand Drake Lair','Oasis Temple','Forgotten Tomb','Sphinx Lair'],
+  forest:['Haunted Grove','Elven Ruins','Spider Warren','Druid Circle','Dark Elf Camp'],
+  jungle:['Lost City','Serpent Temple','Giant Insect Nest','Overgrown Fortress','Sunken Palace'],
+  mountain:['Dragon Eyrie','Dwarven Mine','Troll Bridge','Giant\'s Hall','Frozen Crypt'],
+  sea:['Sea Cave','Pirate Cove','Sunken Ship','Kraken Lair'],
+};
+
+function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+function generateNewGame(setupPlayers, sz, maxTurns){
+  const {cols,rows}=sz;
+  const provinces=[];
+  const prefixes=['Iron','Stone','Green','Silver','Dark','High','Old','East','West','North','South','Golden','Swift','Storm','Ash','Red','Vale','Frost','Dawn','Ember'];
+  const suffixes=['hold','mere','fell','haven','ford','moor','watch','reach','dale','wood','keep','gate','field','shire','mark','holm','burg','cross','worth'];
+  const nameSet=new Set();
+
+  for(let row=0;row<rows;row++){
+    for(let col=0;col<cols;col++){
+      const id=row*cols+col;
+      let pname;
+      do{pname=prefixes[Math.floor(Math.random()*prefixes.length)]+suffixes[Math.floor(Math.random()*suffixes.length)];}while(nameSet.has(pname));
+      nameSet.add(pname);
+      const edginess=Math.min(col,cols-1-col,row,rows-1-row);
+      let terrain;
+      if(edginess===0||Math.random()<Math.max(0,0.6-edginess*0.1)) terrain='sea';
+      else{const t=['plain','plain','plain','forest','mountain','desert','jungle'];terrain=t[Math.floor(Math.random()*t.length)];}
+      const baseTax={plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
+      const race=terrain==='sea'?null:RACES_P[Math.floor(Math.random()*4)];
+      const population=terrain==='sea'?0:rP(1,6);
+      const armyPool=(PROVINCE_ARMIES_P[terrain]||{})[race||'Human']||['Infantry'];
+      // Features
+      const features=[];
+      if(terrain!=='sea'){
+        const pool=FEATURE_POOLS_P[terrain]||FEATURE_POOLS_P.plain;
+        const ftable=[1,2,2,3,3,3,3,4,4,5];
+        const fcount=ftable[Math.floor(Math.random()*ftable.length)];
+        const used=new Set();
+        for(let fi=0;fi<fcount;fi++){
+          let fname,tries=0;
+          do{fname=pool[Math.floor(Math.random()*pool.length)];tries++;}while(used.has(fname)&&tries<20);
+          used.add(fname);
+          const m={...MONSTERS_P[Math.floor(Math.random()*MONSTERS_P.length)]};
+          features.push({name:fname,monster:{...m},discovered:false,cleared:false,treasure:Math.max(1,Math.round(rP(1,10)*(0.4+Math.random()*0.6)))});
+        }
+      }
+      // Neutral defenders
+      let neutralDefenders=[];
+      if(terrain!=='sea'){
+        const dc=rP(1,3);
+        for(let d=0;d<dc;d++){
+          const dt=armyPool[Math.floor(Math.random()*armyPool.length)];
+          neutralDefenders.push({type:dt,quality:'Average',race:race||'Human'});
+        }
+      }
+      provinces.push({id,row,col,name:pname,terrain,tax:baseTax,race,population,owner:null,features,npcArmies:neutralDefenders.length,neutralDefenders,explored:0,characters:[],armyTypes:armyPool,garrisonArmies:[],visitedBy:[]});
+    }
+  }
+
+  // Place player starts
+  const landProvinces=provinces.filter(p=>p.terrain!=='sea');
+  function isValidStart(p){
+    if(p.owner!==null||p.terrain==='sea') return false;
+    const neighbors=getNeighborsP(p,cols,rows,provinces);
+    return neighbors.filter(n=>n.terrain!=='sea').length>=2;
+  }
+  const validStarts=landProvinces.filter(isValidStart);
+  const playerStarts=[];
+  const allChars=[];
+  let nextItemId=0;
+
+  const players=setupPlayers.map((sp,pi)=>{
+    let best=null,bestScore=-1;
+    const candidates=(validStarts.length>=setupPlayers.length?validStarts:landProvinces).filter(p=>p.owner===null);
+    for(let attempt=0;attempt<80;attempt++){
+      const cand=candidates[Math.floor(Math.random()*candidates.length)];
+      if(!cand||cand.owner!==null) continue;
+      let minDist=999;
+      playerStarts.forEach(s=>{const d=hexDistP(cand,s,cols);if(d<minDist)minDist=d;});
+      if(minDist>bestScore){bestScore=minDist;best=cand;}
+    }
+    if(!best) best=candidates[0]||landProvinces[pi];
+    best.owner=pi;best.npcArmies=0;best.neutralDefenders=[];best.explored=100;best.visitedBy=[pi];best.tax=10;
+    playerStarts.push(best);
+
+    // Build king skills
+    const kingSkills={melee:2,archery:1,sage:1};
+    if(sp.alignment==='Divine') kingSkills.white=(kingSkills.white||0)+1;
+    if(sp.alignment==='Undead') kingSkills.necromancy=(kingSkills.necromancy||0)+1;
+    if(sp.skills) Object.entries(sp.skills).forEach(([k,v])=>{kingSkills[k]=(kingSkills[k]||0)+v;});
+
+    const kingId=allChars.length;
+    const startArmyPool=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Infantry'];
+    const king={
+      id:kingId,name:sp.name,isKing:true,player:pi,
+      race:sp.race,alignment:sp.alignment,temper:sp.temper,
+      hp:22,maxHp:22,skills:kingSkills,aptitude:{},
+      armies:[{type:startArmyPool[0]||'Infantry',quality:'Average',race:sp.race}],
+      items:[],location:best.id,alive:true,merits:0,taxBonus:0,pay:0,
+      spellsUsedThisTurn:[],locationName:best.name,
+    };
+    ABILITIES_P.forEach(ab=>{king.aptitude[ab]=rP(1,4);});
+    allChars.push(king);
+    best.characters.push(kingId);
+
+    // Starting heroes
+    const heroIds=[];
+    for(let h=0;h<2;h++){
+      const hid=allChars.length;
+      const hrace=RACES_P[Math.floor(Math.random()*4)];
+      const hSkills={};
+      const skillKeys=ABILITIES_P;
+      for(let s=0;s<3;s++){const sk=skillKeys[Math.floor(Math.random()*skillKeys.length)];hSkills[sk]=(hSkills[sk]||0)+1;}
+      const hero={
+        id:hid,name:HERO_NAMES_P[hid%HERO_NAMES_P.length],isKing:false,player:pi,
+        race:hrace,alignment:ALIGNMENTS_P[Math.max(0,Math.min(6,ALIGNMENTS_P.indexOf(sp.alignment)+rP(-1,1)))],
+        temper:TEMPERS_P[Math.floor(Math.random()*4)],
+        hp:rP(12,18),maxHp:0,skills:hSkills,aptitude:{},
+        armies:[],items:[],location:best.id,alive:true,merits:0,taxBonus:0,
+        spellsUsedThisTurn:[],locationName:best.name,
+      };
+      hero.maxHp=hero.hp;
+      ABILITIES_P.forEach(ab=>{hero.aptitude[ab]=rP(1,4);});
+      hero.pay=Math.max(1,Math.ceil(Object.values(hSkills).reduce((s,v)=>s+v,0)/4));
+      allChars.push(hero);
+      best.characters.push(hid);
+      heroIds.push(hid);
+    }
+
+    return{id:pi,name:sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50'][pi],race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:10,king:kingId,heroes:[...heroIds],provinces:[best.id],merits:0};
+  });
+
+  // Wandering heroes — one per non-home land province
+  let wanderCounter=0;
+  landProvinces.filter(p=>p.owner===null).forEach(lp=>{
+    const hid=allChars.length;
+    const hrace=RACES_P[Math.floor(Math.random()*4)];
+    const hSkills={};
+    for(let s=0;s<3;s++){const sk=ABILITIES_P[Math.floor(Math.random()*ABILITIES_P.length)];hSkills[sk]=(hSkills[sk]||0)+1;}
+    const baseName=HERO_NAMES_P[wanderCounter%HERO_NAMES_P.length];
+    const h={
+      id:hid,name:`${baseName} (wandering)`,isKing:false,player:null,
+      race:hrace,alignment:ALIGNMENTS_P[Math.floor(Math.random()*7)],
+      temper:TEMPERS_P[Math.floor(Math.random()*4)],
+      hp:rP(10,18),maxHp:0,skills:hSkills,aptitude:{},
+      armies:[],items:[],location:lp.id,alive:true,merits:0,taxBonus:0,
+      spellsUsedThisTurn:[],locationName:lp.name,
+    };
+    h.maxHp=h.hp;
+    ABILITIES_P.forEach(ab=>{h.aptitude[ab]=rP(1,4);});
+    h.pay=Math.max(1,Math.ceil(Object.values(hSkills).reduce((s,v)=>s+v,0)/4));
+    allChars.push(h);
+    lp.characters.push(hid);
+    wanderCounter++;
+  });
+
+  // Build turnOrders
+  const turnOrders={};
+  allChars.filter(c=>c.player!==null&&c.alive).forEach(c=>{turnOrders[c.id]=[null,null,null,null,null];});
+
+  return{world:{provinces,cols,rows},players,characters:allChars,turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0};
+}
+
+function getNeighborsP(prov,cols,rows,provinces){
+  const{row,col}=prov;
+  const offsets=row%2===0?[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]]:[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+  return offsets.map(([dr,dc])=>{
+    const nr=row+dr;if(nr<0||nr>=rows)return null;
+    const nc=((col+dc)%cols+cols)%cols;
+    return provinces[nr*cols+nc];
+  }).filter(Boolean);
+}
+
+function hexDistP(a,b,cols){
+  let dc=Math.abs(a.col-b.col);if(cols>0)dc=Math.min(dc,cols-dc);
+  const dr=Math.abs(a.row-b.row);
+  return Math.max(dc,dr,(dc+dr)>>1);
+}
+
+// ── BUILD PLAYER TURN REPORT ──────────────────────────
+function buildTurnReport(gameState, playerIndex){
+  const player=gameState.players[playerIndex];
+  const chars=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
+  const ownedProvIds=new Set(player.provinces||[]);
+  const visitedProvIds=new Set(gameState.world.provinces.filter(p=>(p.visitedBy||[]).includes(playerIndex)).map(p=>p.id));
+
+  const ownedProvinces=gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)).map(p=>({
+    id:p.id,name:p.name,terrain:p.terrain,tax:p.tax,race:p.race,population:p.population,
+    features:p.features.map(f=>({name:f.name,discovered:f.discovered,cleared:f.cleared,treasure:f.discovered?f.treasure:null})),
+    neutralDefenders:(p.neutralDefenders||[]).map(d=>({type:d.type,quality:d.quality})),
+    armyTypes:p.armyTypes,
+  }));
+
+  const ARMY_SPEED_P={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Riders':5,'Skeletal Legion':3,'Garrison':1};
+
+  const charReports=chars.map(c=>{
+    const prov=gameState.world.provinces[c.location];
+    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3}));
+    const effSpd=armies.length===0?5:Math.min(...armies.map(a=>a.speed||3));
+    return{
+      id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,
+      hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},armies,items:c.items||[],pay:c.pay||0,
+      locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,effectiveSpeed:effSpd,
+    };
+  });
+
+  const intel=[];
+  gameState.world.provinces.filter(p=>visitedProvIds.has(p.id)&&!ownedProvIds.has(p.id)).forEach(p=>{
+    if(p.owner!==null&&p.owner!==playerIndex) intel.push(`${p.name} (${p.terrain}): controlled by ${gameState.players[p.owner]?.name||'unknown kingdom'}.`);
+    if((p.neutralDefenders||[]).length>0) intel.push(`${p.name}: ${p.neutralDefenders.length} neutral defender${p.neutralDefenders.length>1?'s':''} — ${p.neutralDefenders.map(d=>`${d.quality} ${d.type}`).join(', ')}.`);
+    const wanderers=gameState.characters.filter(c=>c.player===null&&c.alive&&c.location===p.id);
+    wanderers.forEach(c=>intel.push(`Wandering hero ${c.name} (${c.race}/${c.alignment}) last seen in ${p.name}.`));
+  });
+
+  const taxIncome=(player.provinces||[]).reduce((s,pid)=>s+(gameState.world.provinces[pid]?.tax||0),0);
+  return{
+    playerIndex,playerName:player.name,turnNumber:gameState.turn,
+    kingdom:{gold:player.gold,merits:player.merits,taxIncome,alignment:player.alignment,race:player.race,color:player.color},
+    characters:charReports,ownedProvinces,intel,
+    visitedProvinceIds:[...visitedProvIds],
+    lastTurnLog:[{type:'system',text:`Turn 1 begins. Your kingdom of ${player.name} stands ready.`}],
+  };
 }
 
 // ── RESOLVE TURN ─────────────────────────────────────
 async function runTurn(){
   const msg=document.getElementById('detail-msg');
-  msg.innerHTML='<div class="msg-info">Resolving turn… Open the GM Game Tool to run the full resolution.</div>';
-  // The actual resolution happens in kingdoms-call-gm.html which has the full game engine
-  alert('To resolve the turn:\n1. Open kingdoms-call-gm.html\n2. Click "📡 Online Game" in the header\n3. Select this game and click "Pull Orders & Run Turn"\n\nThis portal handles player management; the GM tool handles game resolution.');
+  msg.innerHTML='<div class="msg-info">⏳ Pulling orders and resolving turn…</div>';
+  // Reload fresh game state and player orders
+  const {data:freshGame}=await sb.from('games').select('*').eq('id',currentGame.id).single();
+  const {data:freshPlayers}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
+  if(!freshGame||!freshPlayers){msg.innerHTML='<div class="msg-error">Could not load game data.</div>';return;}
+
+  let G;
+  try{G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;}
+  catch(e){msg.innerHTML='<div class="msg-error">Could not parse game state.</div>';return;}
+
+  // Merge player orders into G.turnOrders
+  freshPlayers.filter(p=>p.user_id).forEach(gp=>{
+    const orders=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
+    Object.entries(orders).forEach(([charId,phaseOrders])=>{
+      if(!G.turnOrders) G.turnOrders={};
+      G.turnOrders[charId]=phaseOrders;
+    });
+  });
+
+  // Mark any missing orders as Defend
+  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
+    if(!G.turnOrders) G.turnOrders={};
+    if(!G.turnOrders[c.id]) G.turnOrders[c.id]=[null,null,null,null,null];
+    G.turnOrders[c.id]=G.turnOrders[c.id].map(o=>o||{action:'defend',target:'',extra:'',desc:'Defend'});
+  });
+
+  // Run the turn via the main GM tool — can't embed full engine here
+  // Save the merged game state and orders so GM tool can pick it up
+  await sb.from('games').update({game_state:JSON.stringify(G)}).eq('id',currentGame.id);
+  msg.innerHTML=`<div class="msg-success">
+    Orders pulled from all players and merged into the game state.<br><br>
+    <strong>Next step:</strong> Open <a href="kingdoms-call-gm.html" target="_blank" style="color:var(--gold)">kingdoms-call-gm.html</a>, 
+    click "📡 Online Game", select this game, and click "Pull Orders &amp; Resolve Turn".<br>
+    When done, click "Push Turn Reports" to send the new reports to players.
+  </div>`;
 }
 
 init();
