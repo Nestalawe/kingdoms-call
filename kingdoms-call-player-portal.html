@@ -702,72 +702,6 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   btn.textContent=`Submit Orders for Turn ${turnNum}`;
 }
 
-function buildTargetField(c, ph, saved){
-  const action=saved.action||'';
-  const target=saved.target||'';
-  const extra=saved.extra||'';
-
-  const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>`<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}</option>`).join('');
-
-  switch(action){
-    case 'Move':
-      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
-
-    case 'Search Feature':{
-      const feats=(currentReport?.ownedProvinces||[]).flatMap(p=>
-        (p.features||[]).filter(f=>f.discovered&&!f.cleared).map((f,fi)=>`<option value="${fi}" ${target==fi?'selected':''}>${f.name} [${p.name}]</option>`)
-      ).join('');
-      return`<select id="po-target-${c.id}-${ph}">
-        <option value="0">Feature 0 (known to GM)</option>
-        ${feats||'<option value="0">Unknown — GM will assign</option>'}
-      </select>`;}
-
-    case 'Cast Spell':{
-      const skills=c.skills||{};
-      const spells=Object.entries(SPELLS_BY_SCHOOL)
-        .filter(([school])=>(skills[school]||0)>=1)
-        .flatMap(([school,list])=>list.map(s=>`<option value="${s}" ${target===s?'selected':''}>${s} (${SKILL_LABELS[school]} Lv${skills[school]})</option>`))
-        .join('');
-      return spells
-        ?`<select id="po-target-${c.id}-${ph}">${spells}</select>`
-        :`<input type="text" id="po-target-${c.id}-${ph}" value="" placeholder="No spells known (need magic skill ≥ 1)" disabled>`;}
-
-    case 'Practice Skill':{
-      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${target===sk?'selected':''}>${SKILL_LABELS[sk]} (currently ${(c.skills||{})[sk]||0})</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select>`;}
-
-    case 'Recruit Armies':{
-      // Show terrain-appropriate army types for their current province
-      const ARMY_BY_TERRAIN={plain:'Infantry, Cavalry, Longbowmen',forest:'Longbowmen, Infantry',mountain:'Dwarven Guard, Crossbowmen',desert:'Infantry, Cavalry',jungle:'Infantry',sea:'Fleet'};
-      const prov=currentReport?.ownedProvinces?.find(p=>p.name===c.locationName);
-      const types=prov?prov.armyTypes?.join(', ')||'Infantry':'Infantry';
-      return`<input type="text" id="po-target-${c.id}-${ph}" value="${target||''}" placeholder="e.g. Infantry|1 (type|quantity)">`;}
-
-    case 'Hire Hero':
-      return`<input type="text" id="po-target-${c.id}-${ph}" value="${target||''}" placeholder="Hero ID or name (GM will match)">`; 
-
-    case 'Give Item':{
-      const itemOpts=(c.items||[]).map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>🔮 ${it.name}</option>`).join('');
-      return itemOpts
-        ?`<select id="po-target-${c.id}-${ph}">${itemOpts}</select><input type="text" id="po-extra-${c.id}-${ph}" value="${extra||''}" placeholder="Recipient character name" style="margin-top:4px">`
-        :`<input type="text" id="po-target-${c.id}-${ph}" value="" placeholder="No items to give" disabled>`;}
-
-    case 'Leave/Transfer Army':{
-      const armyOpts=[{v:'all',l:'All armies'},...(c.armies||[]).map((a,i)=>({v:a.type,l:`${a.type} (${a.quality})`}))];
-      return`<select id="po-target-${c.id}-${ph}">${armyOpts.map(o=>`<option value="${o.v}" ${target===o.v?'selected':''}>${o.l}</option>`).join('')}</select>
-      <input type="text" id="po-extra-${c.id}-${ph}" value="${extra||''}" placeholder="Recipient name (blank = garrison)" style="margin-top:4px">`;}
-
-    case 'Explore':
-    case 'Spy':
-    case 'Defend':
-    case 'Rest':
-      return`<input type="text" id="po-target-${c.id}-${ph}" value="" placeholder="(current province)" disabled>`;
-
-    default:
-      return`<input type="text" id="po-target-${c.id}-${ph}" value="${target||''}" placeholder="Details / notes">`;
-  }
-}
-
 function onActionChange(charId, ph, charIdx){
   const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
   const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
@@ -777,10 +711,12 @@ function onActionChange(charId, ph, charIdx){
   wrap.innerHTML=buildTargetField(char, ph, saved);
 }
 
-// Get target value for a given char/phase
+// Get target value — handles both regular selects/inputs and recruit checkbox lists
 function getOrderTarget(charId, ph){
-  const el=document.getElementById(`po-target-${charId}-${ph}`);
-  return el?.value||'';
+  // For recruit, the hidden input holds the comma-joined checkbox values
+  const hidden=document.getElementById(`po-target-${charId}-${ph}`);
+  if(hidden) return hidden.value||'';
+  return '';
 }
 function getOrderExtra(charId, ph){
   const el=document.getElementById(`po-extra-${charId}-${ph}`);
@@ -848,7 +784,210 @@ async function doSubmitOrders(){
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 
-// ── PLAYER MAP RENDERING ──────────────────────────────
+// ── PREDICTED LOCATION ────────────────────────────────
+// Simulates where a character will be at a given phase based on earlier move orders
+function predictedLocation(charId, upToPhaseExclusive){
+  const report=currentReport;
+  if(!report) return null;
+  const char=(report.characters||[]).find(c=>c.id===charId);
+  if(!char) return null;
+  let locId=char.locationId;
+  const worldMeta=report.worldMeta;
+  if(!worldMeta) return {id:locId,name:char.locationName};
+  for(let ph=0;ph<upToPhaseExclusive;ph++){
+    const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
+    if(action!=='Move') continue;
+    const tgt=getOrderTarget(charId,ph);
+    if(!tgt||!tgt.startsWith('dir:')) continue;
+    const dir=tgt.slice(4);
+    const curProv=worldMeta.provinces.find(p=>p.id===locId);
+    if(!curProv) continue;
+    const HEX_DIRS=['NW','NE','W','E','SW','SE'];
+    const even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+    const odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+    const idx=HEX_DIRS.indexOf(dir);if(idx<0) continue;
+    const[dr,dc]=(curProv.row%2===0?even:odd)[idx];
+    const nr=curProv.row+dr;
+    const cols=worldMeta.cols,rows=worldMeta.rows;
+    if(nr<0||nr>=rows) continue;
+    const nc=((curProv.col+dc)%cols+cols)%cols;
+    const nid=nr*cols+nc;
+    const nbProv=worldMeta.provinces.find(p=>p.id===nid);
+    if(nbProv) locId=nid;
+  }
+  const prov=worldMeta.provinces.find(p=>p.id===locId);
+  return prov?{id:locId,name:prov.name||'Unknown'}:{id:locId,name:'Unknown'};
+}
+
+// Track recruit orders already placed in earlier phases (client-side)
+function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive){
+  // Returns {provId:locId, recruited:{armyType:count}}
+  const recruited={};
+  for(let ph=0;ph<upToPhaseExclusive;ph++){
+    const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
+    if(action!=='Recruit Armies') continue;
+    const tgt=getOrderTarget(charId,ph);
+    if(!tgt) continue;
+    tgt.split(',').forEach(sel=>{
+      const[at]=sel.split('|');
+      if(at) recruited[at.trim()]=(recruited[at.trim()]||0)+1;
+    });
+  }
+  return recruited;
+}
+
+function buildTargetField(c, ph, saved){
+  const action=saved.action||'';
+  const target=saved.target||'';
+  const extra=saved.extra||'';
+  const report=currentReport||{};
+  const provOrderData=report.provinceOrderData||{};
+
+  const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>`<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}</option>`).join('');
+
+  switch(action){
+    // ── MOVE ──
+    case 'Move':
+      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
+
+    // ── EXPLORE / SPY / DEFEND / REST ──
+    case 'Explore':
+    case 'Spy':
+    case 'Defend':
+    case 'Rest':
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
+
+    // ── SEARCH FEATURE ──
+    case 'Search Feature':{
+      const loc=predictedLocation(c.id,ph);
+      const pd=loc?provOrderData[loc.id]:null;
+      const feats=(pd?.features||[]).map((f,fi)=>`<option value="${fi}" ${target==fi?'selected':''}>${f.name}</option>`).join('');
+      return feats
+        ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features in this province" disabled>`;}
+
+    // ── CAST SPELL ──
+    case 'Cast Spell':{
+      const skills=c.skills||{};
+      const spells=Object.entries(SPELLS_BY_SCHOOL)
+        .filter(([school])=>(skills[school]||0)>=1)
+        .flatMap(([school,list])=>list.map(s=>`<option value="${s}" ${target===s?'selected':''}>${s} (${SKILL_LABELS[school]} Lv${skills[school]})</option>`))
+        .join('');
+      return spells
+        ?`<select id="po-target-${c.id}-${ph}">${spells}</select>`
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1" disabled>`;}
+
+    // ── PRACTICE SKILL ──
+    case 'Practice Skill':{
+      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${target===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select>`;}
+
+    // ── RECRUIT ARMIES ──
+    case 'Recruit Armies':{
+      const loc=predictedLocation(c.id,ph);
+      const pd=loc?provOrderData[loc.id]:null;
+      const gold=report.kingdom?.gold||0;
+      if(!pd||!pd.isOwned){
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`${loc.name} is not your territory — cannot recruit here`:'Province unknown'}" disabled>`;
+      }
+      const alreadyRecruited=getAlreadyRecruitedThisTurn(c.id,ph);
+      const opts=(pd.armyTypes||[]).map(at=>{
+        const done=alreadyRecruited[at.type]||0;
+        const remaining=at.maxPerTurn-done;
+        if(remaining<=0) return null;
+        const costEach=at.cost||2;
+        const canAfford=Math.floor(gold/costEach);
+        const maxQty=Math.min(remaining,canAfford);
+        if(maxQty<=0) return null;
+        return Array.from({length:maxQty},(_,i)=>`<option value="${at.type}|${i+1}" ${target===`${at.type}|${i+1}`?'selected':''}>${i+1}× ${at.type} (${(i+1)*costEach}g)</option>`).join('');
+      }).filter(Boolean).join('');
+      if(!opts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies available to recruit this turn in ${pd.name}" disabled>`;
+      // Multi-select: use checkboxes rendered as a scrollable list
+      const checkId=`po-recruit-${c.id}-${ph}`;
+      const savedSels=(target||'').split(',').filter(Boolean);
+      return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:120px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        ${(pd.armyTypes||[]).flatMap(at=>{
+          const done=alreadyRecruited[at.type]||0;
+          const remaining=at.maxPerTurn-done;
+          if(remaining<=0) return[];
+          const costEach=at.cost||2;
+          return Array.from({length:remaining},(_,i)=>{
+            const val=`${at.type}|${i+1}`;
+            const chk=savedSels.includes(val)?'checked':'';
+            return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+              <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
+              ${i+1}× ${at.type} (${(i+1)*costEach}g each)
+            </label>`;
+          });
+        }).join('')}
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+      </div>`;}
+
+    // ── HIRE HERO ──
+    case 'Hire Hero':{
+      const loc=predictedLocation(c.id,ph);
+      const pd=loc?provOrderData[loc.id]:null;
+      const heroes=(pd?.availableHeroes||[]);
+      if(heroes.length===0){
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No wandering heroes in ${loc.name}`:'No heroes available'}" disabled>`;
+      }
+      const opts=heroes.map(h=>{
+        const skillStr=Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'untrained';
+        return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — ${skillStr} — ${h.pay}g/turn</option>`;
+      }).join('');
+      return`<select id="po-target-${c.id}-${ph}">${opts}</select>`;}
+
+    // ── GIVE ITEM ──
+    case 'Give Item':{
+      const items=c.items||[];
+      if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to give" disabled>`;
+      const itemOpts=items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>🔮 ${it.name}</option>`).join('');
+      const chars=(report.characters||[]).filter(x=>x.id!==c.id);
+      const recipOpts=chars.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}">${itemOpts}</select>
+        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
+
+    // ── LEAVE / TRANSFER ARMY ──
+    case 'Leave/Transfer Army':{
+      const armies=c.armies||[];
+      if(armies.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to leave" disabled>`;
+      const armyOpts=[`<option value="all" ${target==='all'?'selected':''}>All armies</option>`,
+        ...armies.map((a,i)=>`<option value="${a.type}" ${target===a.type?'selected':''}>${a.type} (${a.quality})</option>`)
+      ].join('');
+      const othersHere=(report.characters||[]).filter(x=>x.id!==c.id);
+      const recipOpts=[`<option value="-1" ${extra==='-1'||!extra?'selected':''}>Garrison in province</option>`,
+        ...othersHere.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`)
+      ].join('');
+      return`<select id="po-target-${c.id}-${ph}">${armyOpts}</select>
+        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
+
+    // ── PICK UP ARMY ──
+    case 'Pick Up Army':{
+      const loc2=predictedLocation(c.id,ph);
+      const pd2=loc2?provOrderData[loc2.id]:null;
+      const garrisons=(pd2?.garrisonArmies||[]).map((a,i)=>`<option value="-1:${i}">${a.type} (${a.quality}) — garrison</option>`).join('');
+      const othersHere=(report.characters||[]).filter(x=>x.id!==c.id&&(x.armies||[]).length>0);
+      const heroArmyOpts=othersHere.flatMap(x=>(x.armies||[]).map((a,i)=>`<option value="${x.id}:${i}">${a.type} (${a.quality}) from ${x.name}</option>`)).join('');
+      const all=garrisons+heroArmyOpts;
+      return all
+        ?`<select id="po-target-${c.id}-${ph}">${all}</select>`
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies available to pick up" disabled>`;}
+
+    default:
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="${target||''}" placeholder="Details / notes">`;
+  }
+}
+
+// Helper: update hidden recruit target from checkboxes
+function updateRecruitTarget(charId, ph){
+  const wrap=document.getElementById(`po-target-wrap-inner-${charId}-${ph}`);
+  if(!wrap) return;
+  const checked=[...wrap.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+  const hidden=document.getElementById(`po-target-${charId}-${ph}`);
+  if(hidden) hidden.value=checked.join(',');
+}
+
+
 const TERRAIN_COLORS_MAP={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 
 // Terrain SVG icons drawn inside each hex

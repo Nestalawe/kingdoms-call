@@ -910,6 +910,42 @@ function buildTurnReport(gameState, playerIndex){
   const playerCharsForWages=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
   const allArmiesForWages=playerCharsForWages.flatMap(c=>c.armies||[]);
   const garrisonArmiesForWages=gameState.world.provinces.filter(p=>p.owner===playerIndex).flatMap(p=>p.garrisonArmies||[]);
+  // Build structured data for order dropdowns
+  // availableHeroes: per province, wandering heroes visible to this player
+  const availableHeroesByProv={};
+  gameState.world.provinces.forEach(p=>{
+    const provHeroes=gameState.characters.filter(c=>
+      c.player===null && c.alive && c.location===p.id &&
+      (ownedProvIds.has(p.id)||visitedProvIds.has(p.id))
+    );
+    if(provHeroes.length>0){
+      availableHeroesByProv[p.id]=provHeroes.map(h=>({
+        id:h.id, name:h.name, race:h.race, alignment:h.alignment, temper:h.temper,
+        skills:h.skills||{}, pay:h.pay||1,
+        locationName:p.name,
+      }));
+    }
+  });
+
+  // provinceOrderData: per-province data needed for order dropdowns
+  const provinceOrderData={};
+  gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)||visitedProvIds.has(p.id)).forEach(p=>{
+    const ARMY_COST_OD={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+    const isOwned=ownedProvIds.has(p.id);
+    const isHome=p.tax>=10&&isOwned;
+    provinceOrderData[p.id]={
+      name:p.name, terrain:p.terrain, race:p.race, tax:p.tax,
+      isOwned, isHome,
+      armyTypes:(p.armyTypes||[]).map(at=>({
+        type:at, cost:ARMY_COST_OD[at]||2,
+        maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1,
+      })),
+      features:(p.features||[]).filter(f=>f.discovered&&!f.cleared).map(f=>({name:f.name})),
+      availableHeroes:availableHeroesByProv[p.id]||[],
+      garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality})),
+    };
+  });
+
   const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>s+(ARMY_COST_TR[a.type]||2),0);
   const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>s+(h.pay||0),0);
   return{
@@ -917,7 +953,7 @@ function buildTurnReport(gameState, playerIndex){
     kingdom:{gold:player.gold,merits:player.merits,taxIncome,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
     characters:charReports,ownedProvinces,intel,
     visitedProvinceIds:[...visitedProvIds],
-    worldMeta,
+    worldMeta, availableHeroesByProv, provinceOrderData,
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. Your kingdom of ${player.name} stands ready.`}],
   };
 }
@@ -1186,13 +1222,45 @@ async function runTurn(){
         break;
       }
       case 'recruit':{
-        if(prov.owner!==c.player){log('system',`${c.name} attempts to recruit in ${prov.name} but the province is not under your control.`,{actor:c.player,targets:[c.player]});break;}
-        const[armyType,qtyStr]=(extra||'Infantry|1').split('|');
-        const qty=parseInt(qtyStr)||1;const cost=qty*2;
-        if((player.gold||0)<cost){log('system',`${c.name} tries to recruit in ${prov.name} but the treasury has insufficient gold (need ${cost}g, have ${player.gold}g).`,{actor:c.player,targets:[c.player]});break;}
-        player.gold-=cost;c.armies=c.armies||[];
-        for(let q=0;q<qty;q++)c.armies.push({type:armyType||'Infantry',quality:'Average',race:prov.race||'Human'});
-        log('hire',`${c.name} recruits ${qty}× ${armyType} in ${prov.name} at a cost of ${cost}g. Treasury: ${player.gold}g.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        if(prov.owner!==c.player){
+          log('system',`${c.name} attempts to recruit in ${prov.name} but the province is not under ${player.name}'s control.`,{actor:c.player,targets:[c.player]});break;
+        }
+        // Target format: "Infantry|1,Cavalry|1" (comma-separated type|qty pairs)
+        const selections=(extra||target||'Infantry|1').split(',').map(s=>s.trim()).filter(Boolean);
+        let totalCost=0;let recruited=[];let blocked=[];
+        const ARMY_COST_P={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+
+        for(const sel of selections){
+          const[armyType,qtyStr]=sel.split('|');
+          const qty=parseInt(qtyStr)||1;
+          // Check turn-wide recruit limit
+          if(!canRecruit(armyType,prov.id,prov,c.player)){
+            blocked.push(`${armyType} (already recruited this turn)`);continue;
+          }
+          const limit=getRecruitLimit(armyType,prov,c.player);
+          const alreadyDone=recruitedThisTurn[`${prov.id}:${armyType}`]||0;
+          const actualQty=Math.min(qty, limit-alreadyDone);
+          const unitCost=ARMY_COST_P[armyType]||2;
+          const cost=actualQty*unitCost;
+          if((player.gold||0)<totalCost+cost){
+            blocked.push(`${armyType} (insufficient gold: need ${cost}g more)`);continue;
+          }
+          totalCost+=cost;
+          for(let q=0;q<actualQty;q++){
+            c.armies=c.armies||[];
+            c.armies.push({type:armyType,quality:'Average',race:prov.race||'Human'});
+          }
+          recordRecruit(armyType,prov.id);
+          recruited.push(`${actualQty}× ${armyType}`);
+        }
+        if(recruited.length>0){
+          player.gold-=totalCost;
+          log('hire',`${c.name} recruits ${recruited.join(', ')} in ${prov.name}. Cost: ${totalCost}g. Treasury: ${player.gold}g remaining.`+
+            (blocked.length>0?` (Blocked: ${blocked.join('; ')}.)`:''),
+            {actor:c.player,targets:[c.player],provinceId:prov.id});
+        } else {
+          log('system',`${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,{actor:c.player,targets:[c.player]});
+        }
         break;
       }
       case 'hire':{
@@ -1219,11 +1287,44 @@ async function runTurn(){
       case 'practice':{
         const skill=target;if(!skill)break;
         const current=(c.skills||{})[skill]||0;
-        if(current<5&&Math.random()<0.35){
+        if(current>=5){log('system',`${c.name} has already mastered ${skill} (level 5 — maximum).`,{actor:c.player,targets:[c.player]});break;}
+
+        // Group training bonus: find all other characters in the same province
+        // who are also practising the same skill in this same phase
+        const coTrainers=(G.characters||[]).filter(other=>
+          other.id!==c.id &&
+          other.alive &&
+          other.location===c.location &&
+          (G.turnOrders[other.id]||[])[ph]?.action?.toLowerCase()==='practice' &&
+          ((G.turnOrders[other.id]||[])[ph]?.target||'').toLowerCase()===skill.toLowerCase()
+        );
+
+        let successChance=0.35; // base 35% chance
+        let bonusReason='';
+
+        if(coTrainers.length>0){
+          // Find those with lower skill — they auto-succeed when training with a better practitioner
+          const betterTrainers=coTrainers.filter(t=>(t.skills||{})[skill]||0 > current);
+          const sameLevel=coTrainers.filter(t=>((t.skills||{})[skill]||0)===current);
+
+          if(betterTrainers.length>0){
+            // Training under a superior — guaranteed success
+            successChance=1.0;
+            bonusReason=` (training with ${betterTrainers[0].name} who has higher ${skill})`;
+          } else if(sameLevel.length>0){
+            // Training with equals — chance doubled
+            successChance=Math.min(1.0, 0.35*2);
+            bonusReason=` (training alongside ${sameLevel.map(t=>t.name).join(', ')} at the same level — doubled chance)`;
+          }
+        }
+
+        if(Math.random()<successChance){
           c.skills[skill]=(c.skills[skill]||0)+1;
-          c.pay=Math.max(1,Math.ceil(Object.values(c.skills).reduce((s,v)=>s+v,0)/4));
-          log('hire',`${c.name} practises ${skill} diligently and improves to level ${c.skills[skill]}!`,{actor:c.player,targets:[c.player]});
-        } else log('system',`${c.name} practises ${skill} but makes no measurable progress this season.`,{actor:c.player,targets:[c.player]});
+          if(!c.isKing)c.pay=Math.max(1,Math.ceil(Object.values(c.skills).reduce((s,v)=>s+v,0)/4));
+          log('hire',`${c.name} practises ${skill} and improves to level ${c.skills[skill]}!${bonusReason}`,{actor:c.player,targets:[c.player]});
+        } else {
+          log('system',`${c.name} practises ${skill} but makes no measurable progress this season.${bonusReason?` ${bonusReason}.`:''}`,{actor:c.player,targets:[c.player]});
+        }
         break;
       }
       case 'rest':{
@@ -1395,6 +1496,21 @@ async function runTurn(){
     });
   }
   const SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  // Turn-wide recruit tracking: provId → armyType → count recruited this turn
+  // Limits: Garrisons = 2 per turn; home province (tax≥10) = 2 per type; elsewhere = 1 per type
+  const recruitedThisTurn={};
+  function getRecruitLimit(armyType, prov, playerIndex){
+    if(armyType.toLowerCase().includes('garrison')) return 2;
+    return (prov.tax>=10&&prov.owner===playerIndex)?2:1;
+  }
+  function canRecruit(armyType, provId, prov, playerIndex){
+    return (recruitedThisTurn[`${provId}:${armyType}`]||0) < getRecruitLimit(armyType,prov,playerIndex);
+  }
+  function recordRecruit(armyType, provId){
+    const key=`${provId}:${armyType}`;
+    recruitedThisTurn[key]=(recruitedThisTurn[key]||0)+1;
+  }
+
   for(let ph=0;ph<5;ph++){
     log('system',`— ${SEASONS[ph]} —`);
     const active=(G.characters||[]).filter(c=>c.player!==null&&c.alive);
