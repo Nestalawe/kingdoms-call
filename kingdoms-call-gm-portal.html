@@ -846,44 +846,434 @@ function buildTurnReport(gameState, playerIndex){
   };
 }
 
-// ── RESOLVE TURN ─────────────────────────────────────
+// ── RESOLVE TURN — FULL INLINE ENGINE ────────────────
+// This is a self-contained turn resolver embedded directly in the portal.
+// It processes all 5 phases for all characters, resolves actions, updates
+// the game state, generates new turn reports, and pushes everything to Supabase.
+
 async function runTurn(){
   const msg=document.getElementById('detail-msg');
-  msg.innerHTML='<div class="msg-info">⏳ Pulling orders and resolving turn…</div>';
-  // Reload fresh game state and player orders
-  const {data:freshGame}=await sb.from('games').select('*').eq('id',currentGame.id).single();
-  const {data:freshPlayers}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
-  if(!freshGame||!freshPlayers){msg.innerHTML='<div class="msg-error">Could not load game data.</div>';return;}
+  msg.innerHTML='<div class="msg-info">⏳ Loading game state and player orders…</div>';
+
+  // 1. Load fresh data
+  const {data:freshGame,error:gErr}=await sb.from('games').select('*').eq('id',currentGame.id).single();
+  const {data:freshPlayers,error:pErr}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
+  if(gErr||pErr||!freshGame){
+    msg.innerHTML=`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;return;
+  }
 
   let G;
-  try{G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;}
-  catch(e){msg.innerHTML='<div class="msg-error">Could not parse game state.</div>';return;}
+  try{
+    G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;
+  }catch(e){
+    msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
+  }
 
-  // Merge player orders into G.turnOrders
-  freshPlayers.filter(p=>p.user_id).forEach(gp=>{
+  // 2. Merge all player orders into G.turnOrders
+  if(!G.turnOrders) G.turnOrders={};
+  freshPlayers.filter(p=>p.user_id&&p.orders).forEach(gp=>{
     const orders=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
     Object.entries(orders).forEach(([charId,phaseOrders])=>{
-      if(!G.turnOrders) G.turnOrders={};
       G.turnOrders[charId]=phaseOrders;
     });
   });
 
-  // Mark any missing orders as Defend
+  // 3. Default any missing orders to Defend
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
-    if(!G.turnOrders) G.turnOrders={};
     if(!G.turnOrders[c.id]) G.turnOrders[c.id]=[null,null,null,null,null];
     G.turnOrders[c.id]=G.turnOrders[c.id].map(o=>o||{action:'defend',target:'',extra:'',desc:'Defend'});
   });
 
-  // Run the turn via the main GM tool — can't embed full engine here
-  // Save the merged game state and orders so GM tool can pick it up
-  await sb.from('games').update({game_state:JSON.stringify(G)}).eq('id',currentGame.id);
-  msg.innerHTML=`<div class="msg-success">
-    Orders pulled from all players and merged into the game state.<br><br>
-    <strong>Next step:</strong> Open <a href="kingdoms-call-gm.html" target="_blank" style="color:var(--gold)">kingdoms-call-gm.html</a>, 
-    click "📡 Online Game", select this game, and click "Pull Orders &amp; Resolve Turn".<br>
-    When done, click "Push Turn Reports" to send the new reports to players.
-  </div>`;
+  msg.innerHTML='<div class="msg-info">⏳ Resolving 5 phases…</div>';
+
+  // 4. Run all 5 phases
+  const turnLog=[];
+  const log=(type,text)=>{ turnLog.push({type,text}); console.log(`[${type}] ${text}`); };
+
+  function totalInit(c){
+    const s=c.skills||{};
+    return (s.melee||0)+(s.archery||0)+(s.tactical||0)+((s.march||0)*3)+(s.naval||0)+(s.sage||0)+(s.spy||0)+(s.thief||0)+(s.druid||0)+(s.explorer||0)+(s.white||0)+(s.psychic||0)+(s.illusory||0)+(s.elemental||0)+(s.necromancy||0);
+  }
+  function effStat(c,stat){
+    let base=(c.skills||{})[stat]||0;
+    (c.items||[]).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;});
+    return Math.max(0,Math.min(5,base));
+  }
+  function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+  function armStr(army){
+    const ARMY_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Dwarven Guard':6,Crossbowmen:5,'Mountain Guns':7,'Dwarf Garrison':4,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Orc Garrison':3,Fleet:5,'Corsair Fleet':4,'Elven Galleys':5,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Riders':4,'Skeletal Legion':5,Garrison:3};
+    const Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
+    return (ARMY_STR[army.type]||4)*(Q_MULT[army.quality||'Average']||2);
+  }
+  function provName(id){return G.world.provinces[id]?.name||'unknown';}
+  function provOf(c){return G.world.provinces[c.location];}
+
+  // Direction → neighbor lookup
+  const HEX_DIRS=['NW','NE','W','E','SW','SE'];
+  function neighborInDir(prov,dir){
+    const{row,col}=prov;
+    const cols=G.world.cols,rows=G.world.rows;
+    const even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+    const odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+    const idx=HEX_DIRS.indexOf(dir);
+    if(idx<0)return null;
+    const[dr,dc]=(row%2===0?even:odd)[idx];
+    const nr=row+dr;if(nr<0||nr>=rows)return null;
+    const nc=((col+dc)%cols+cols)%cols;
+    return G.world.provinces[nr*cols+nc];
+  }
+
+  // Simple combat resolve
+  function combatVsNPC(char,prov){
+    const tactBonus=1+effStat(char,'tactical')*0.2;
+    const armies=char.armies||[];
+    const defenders=prov.neutralDefenders||[];
+    const atkStr=armies.reduce((s,a)=>s+armStr(a),0)*tactBonus+effStat(char,'melee')*3+rng(1,10);
+    const defStr=defenders.reduce((s,a)=>s+armStr(a),0)*1.25+rng(1,10);
+    const won=atkStr>=defStr;
+    if(won){prov.neutralDefenders=[];prov.npcArmies=0;}
+    return won;
+  }
+  function combatVsChar(atk,def,prov){
+    const aStr=(atk.armies||[]).reduce((s,a)=>s+armStr(a),0)*(1+effStat(atk,'tactical')*0.2)+rng(1,10);
+    const dStr=(def.armies||[]).reduce((s,a)=>s+armStr(a),0)*(1+effStat(def,'tactical')*0.2)*1.25+rng(1,10);
+    return aStr>=dStr;
+  }
+
+  // Process one order
+  function processOrder(c,o){
+    if(!c||!c.alive||!o) return;
+    const action=o.action||'defend';
+    const target=o.target||'';
+    const extra=o.extra||'';
+    const prov=provOf(c);
+    const player=G.players[c.player];
+
+    switch(action){
+      case 'move':{
+        let toProv=null;
+        if(target.startsWith('dir:')){
+          const dir=target.slice(4);
+          toProv=neighborInDir(prov,dir);
+          if(!toProv){log('move',`${c.name} tries to move ${dir} but hits the map edge.`);return;}
+        } else {
+          const id=parseInt(target);
+          if(!isNaN(id)) toProv=G.world.provinces[id];
+        }
+        if(!toProv){log('move',`${c.name}: invalid move target.`);return;}
+        // Move the character
+        prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
+        c.location=toProv.id;
+        if(!toProv.characters)toProv.characters=[];
+        toProv.characters.push(c.id);
+        if(!toProv.visitedBy)toProv.visitedBy=[];
+        if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
+        // Combat?
+        if((toProv.neutralDefenders||[]).length>0&&toProv.owner===null&&(c.armies||[]).length>0){
+          if(combatVsNPC(c,toProv)){
+            toProv.owner=c.player;
+            if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+            player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
+            log('combat',`${c.name} storms ${toProv.name}! Province claimed (+${toProv.tax} merit).`);
+          } else {
+            log('combat',`${c.name} attacks ${toProv.name} but is repulsed!`);
+            toProv.characters=toProv.characters.filter(id=>id!==c.id);
+            prov.characters.push(c.id);c.location=prov.id;
+          }
+        } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0){
+          const defChar=G.characters.find(d=>d.alive&&d.player===toProv.owner&&d.location===toProv.id&&(d.armies||[]).length>0);
+          if(defChar){
+            if(combatVsChar(c,defChar,toProv)){
+              G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
+              toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+              log('combat',`${c.name} defeats ${defChar.name} and seizes ${toProv.name}!`);
+            } else {
+              log('combat',`${c.name} is repulsed by ${defChar.name} in ${toProv.name}!`);
+              toProv.characters=toProv.characters.filter(id=>id!==c.id);
+              prov.characters.push(c.id);c.location=prov.id;
+            }
+          } else {
+            G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
+            toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+            log('move',`${c.name} seizes undefended ${toProv.name}!`);
+          }
+        } else {
+          if(toProv.owner===null&&(toProv.neutralDefenders||[]).length===0&&toProv.terrain!=='sea'){
+            toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+            log('move',`${c.name} claims ${toProv.name}.`);
+          } else {
+            log('move',`${c.name} moves to ${toProv.name}.`);
+          }
+        }
+        break;
+      }
+      case 'explore':{
+        const gain=Math.floor((({plain:50,desert:25,forest:15,jungle:10,mountain:15,sea:25}[prov.terrain]||25))*(effStat(c,'explorer')+1)/2);
+        prov.explored=Math.min(100,(prov.explored||0)+gain);
+        const hidden=(prov.features||[]).filter(f=>!f.discovered);
+        if(hidden.length>0&&prov.explored>=rng(20,80)){
+          const f=hidden[0];f.discovered=true;c.merits=(c.merits||0)+1;
+          log('explore',`${c.name} discovers the ${f.name} in ${prov.name}!`);
+        } else {
+          log('explore',`${c.name} surveys ${prov.name} (${prov.explored}% explored).`);
+        }
+        break;
+      }
+      case 'search':{
+        const fi=parseInt(target);
+        if(isNaN(fi)||!prov.features||fi>=prov.features.length){log('explore',`${c.name}: no feature to search.`);break;}
+        const f=prov.features[fi];
+        if(f.cleared){log('explore',`${c.name}: ${f.name} already cleared.`);break;}
+        if(!f.discovered){f.discovered=true;log('explore',`${c.name} stumbles into ${f.name}!`);}
+        const m=f.monster||{};
+        const atkPow=effStat(c,'melee')*4+effStat(c,'archery')*3+(c.armies||[]).length*2+rng(1,12);
+        const defPow=(m.hp||10)/2+rng(1,10);
+        if(atkPow>defPow){
+          const gold=rng(m.minG||1,m.maxG||5);
+          player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;f.cleared=true;
+          const ITEMS=[{name:'Blade of Fury',desc:'Melee +2',effect:{stat:'melee',bonus:2}},{name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2}},{name:'Boots of the Wind',desc:'March +2',effect:{stat:'march',bonus:2}},{name:'Sage\'s Crown',desc:'Sage +2',effect:{stat:'sage',bonus:2}},{name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8}},{name:'Battle Standard',desc:'Armies +3 strength',effect:{stat:'armyBonus',bonus:3}},{name:'Crystal Orb',desc:'Spy always succeeds',effect:{stat:'oracle',bonus:1}}];
+          const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;
+          const item={...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:itemId};
+          c.items=(c.items||[]);c.items.push(item);
+          if(item.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+item.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+item.effect.bonus);}
+          log('explore',`${c.name} defeats ${m.name} in ${f.name}! Treasure: ${gold}g. Found: ${item.name}!`);
+        } else {
+          const dmg=rng(2,7);c.hp=Math.max(1,c.hp-dmg);
+          log('combat',`${c.name} is repulsed from ${f.name}! ${dmg} dmg. HP:${c.hp}/${c.maxHp}`);
+        }
+        break;
+      }
+      case 'recruit':{
+        if(prov.owner!==c.player){log('system',`${c.name}: cannot recruit in unowned ${prov.name}.`);break;}
+        const[armyType,qtyStr]=(extra||'Infantry|1').split('|');
+        const qty=parseInt(qtyStr)||1;const cost=qty*2;
+        if((player.gold||0)<cost){log('system',`${c.name}: insufficient gold for recruit.`);break;}
+        player.gold-=cost;c.armies=c.armies||[];
+        for(let q=0;q<qty;q++)c.armies.push({type:armyType||'Infantry',quality:'Average',race:prov.race||'Human'});
+        log('hire',`${c.name} recruits ${qty}× ${armyType} in ${prov.name}.`);
+        break;
+      }
+      case 'hire':{
+        const heroId=parseInt(target);const h=G.characters[heroId];
+        if(!h||h.player!==null||h.location!==c.location){log('hire',`${c.name}: hero not available.`);break;}
+        if((player.gold||0)<(h.pay||1)){log('hire',`${c.name}: cannot afford ${h.name}.`);break;}
+        player.gold-=(h.pay||1);h.player=c.player;h.name=h.name.replace(' (wandering)','');
+        player.heroes=(player.heroes||[]);player.heroes.push(h.id);
+        if(!G.turnOrders[h.id])G.turnOrders[h.id]=[null,null,null,null,null];
+        log('hire',`${h.name} joins ${player.name}!`);
+        break;
+      }
+      case 'spy':{
+        const hasCrystalOrb=(c.items||[]).some(it=>it.effect?.stat==='oracle');
+        const success=hasCrystalOrb||Math.random()<0.2+effStat(c,'spy')*0.2;
+        if(success){
+          const defs=(prov.neutralDefenders||[]).map(d=>`${d.quality} ${d.type}`).join(', ')||'none';
+          log('explore',`${c.name} spies ${prov.name}: owner=${prov.owner!==null?G.players[prov.owner]?.name:'none'}, defenders=${defs}, tax=${prov.tax}.`);
+          c.merits=(c.merits||0)+1;
+          (prov.features||[]).filter(f=>!f.discovered).forEach(f=>{if(Math.random()<0.5)f.discovered=true;});
+        } else log('system',`${c.name}'s espionage in ${prov.name} yields little.`);
+        break;
+      }
+      case 'practice':{
+        const skill=target;if(!skill)break;
+        const current=(c.skills||{})[skill]||0;
+        if(current<5&&Math.random()<0.35){
+          c.skills[skill]=(c.skills[skill]||0)+1;
+          c.pay=Math.max(1,Math.ceil(Object.values(c.skills).reduce((s,v)=>s+v,0)/4));
+          log('hire',`${c.name} trains ${skill} → level ${c.skills[skill]}!`);
+        } else log('system',`${c.name} practises ${skill} with no gain.`);
+        break;
+      }
+      case 'rest':{
+        const heal=rng(2,5);c.hp=Math.min(c.maxHp||20,c.hp+heal);
+        log('system',`${c.name} rests. +${heal} HP (${c.hp}/${c.maxHp}).`);
+        break;
+      }
+      case 'give_item':{
+        const itemIdx=parseInt(target);const recipId=parseInt(extra);
+        const recip=G.characters[recipId];
+        if(!recip||recip.location!==c.location||(c.items||[]).length<=itemIdx){log('item',`${c.name}: cannot give item.`);break;}
+        const item=c.items.splice(itemIdx,1)[0];
+        recip.items=(recip.items||[]);recip.items.push(item);
+        if(item.effect?.stat==='maxHp'){recip.maxHp=(recip.maxHp||20)+item.effect.bonus;}
+        log('item',`${c.name} gives ${item.name} to ${recip.name}.`);
+        break;
+      }
+      case 'leave_army':{
+        const recipId=parseInt(extra);
+        if((c.armies||[]).length===0){log('system',`${c.name}: no armies to transfer.`);break;}
+        let removed;
+        if(target==='all'){removed=[...c.armies];c.armies=[];}
+        else{const idx=c.armies.findIndex(a=>a.type===target);if(idx<0)break;removed=c.armies.splice(idx,1);}
+        if(recipId>=0){
+          const recip=G.characters[recipId];
+          if(recip&&recip.location===c.location&&recip.player===c.player){
+            recip.armies=(recip.armies||[]).concat(removed);
+            log('hire',`${c.name} gives ${removed.map(a=>a.type).join(',')} to ${recip.name}.`);break;
+          }
+        }
+        prov.garrisonArmies=(prov.garrisonArmies||[]).concat(removed);
+        log('hire',`${c.name} garrisons ${removed.map(a=>a.type).join(',')} in ${prov.name}.`);
+        break;
+      }
+      case 'pickup_army':{
+        const srcId=parseInt(target);
+        if(srcId>=0){
+          const src=G.characters[srcId];
+          if(!src||src.location!==c.location||src.player!==c.player||(src.armies||[]).length===0){log('system',`${c.name}: cannot pick up army.`);break;}
+          const army=src.armies.pop();c.armies=(c.armies||[]);c.armies.push(army);
+          log('hire',`${c.name} takes ${army.type} from ${src.name}.`);
+        } else {
+          const army=(prov.garrisonArmies||[]).pop();
+          if(!army){log('system',`No garrison in ${prov.name}.`);break;}
+          c.armies=(c.armies||[]);c.armies.push(army);
+          log('hire',`${c.name} picks up garrison ${army.type} in ${prov.name}.`);
+        }
+        break;
+      }
+      case 'defend':
+        log('move',`${c.name} defends ${prov.name}.`);
+        break;
+      default:
+        log('system',`${c.name}: ${action} in ${prov.name}.`);
+    }
+  }
+
+  // 5. Run phases
+  const SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  for(let ph=0;ph<5;ph++){
+    log('system',`— ${SEASONS[ph]} —`);
+    const active=(G.characters||[]).filter(c=>c.player!==null&&c.alive);
+    const sorted=[...active].sort((a,b)=>{
+      const aD=(G.turnOrders[a.id]||[])[ph];
+      const bD=(G.turnOrders[b.id]||[])[ph];
+      if(aD?.action==='defend'&&bD?.action!=='defend')return 1;
+      if(bD?.action==='defend'&&aD?.action!=='defend')return -1;
+      return totalInit(b)-totalInit(a);
+    });
+    sorted.forEach(c=>{
+      const o=(G.turnOrders[c.id]||[])[ph];
+      if(o)processOrder(c,o);
+    });
+
+    // Tax collection at Fall
+    if(ph===3){
+      log('system','═ Tax collection ═');
+      G.players.forEach(p=>{
+        const income=(p.provinces||[]).reduce((s,id)=>s+(G.world.provinces[id]?.tax||0),0);
+        const taxBonus=(G.characters||[]).filter(c=>c.player===p.id&&c.alive).reduce((s,c)=>s+(c.taxBonus||0),0);
+        p.gold=(p.gold||0)+income+taxBonus;
+        if(income>0)log('system',`${p.name} collects ${income+taxBonus}g.`);
+      });
+    }
+
+    // Hero pay at Early Winter
+    if(ph===4){
+      log('system','═ Hero wages ═');
+      G.players.forEach(p=>{
+        const heroes=(G.characters||[]).filter(c=>c.player===p.id&&!c.isKing&&c.alive);
+        const wages=heroes.reduce((s,h)=>s+(h.pay||0),0);
+        if(wages>0){
+          if((p.gold||0)>=wages){p.gold-=wages;log('system',`${p.name} pays ${wages}g wages.`);}
+          else{
+            log('system',`⚠ ${p.name} cannot pay ${wages}g wages! Some heroes may leave.`);
+            let deficit=wages-(p.gold||0);p.gold=0;
+            heroes.forEach(h=>{
+              if(deficit>=h.pay&&Math.random()>0.4){
+                h.player=null;h.name+=' (wandering)';deficit-=h.pay;
+                p.heroes=(p.heroes||[]).filter(id=>id!==h.id);
+                log('hire',`${h.name} leaves ${p.name} — unpaid!`);
+              }
+            });
+          }
+        }
+      });
+    }
+  }
+
+  // 6. Update location names for all characters
+  (G.characters||[]).forEach(c=>{
+    const p=G.world.provinces[c.location];
+    if(p)c.locationName=p.name;
+  });
+
+  // 7. Advance turn counter
+  G.turn=(G.turn||1)+1;
+
+  // 8. Wandering heroes drift (35% chance each)
+  (G.characters||[]).filter(c=>c.player===null&&c.alive).forEach(c=>{
+    if(Math.random()>0.35)return;
+    const p=G.world.provinces[c.location];
+    if(!p)return;
+    const{cols,rows,provinces}=G.world;
+    const offsets=p.row%2===0?[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]]:[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+    const neighbors=offsets.map(([dr,dc])=>{
+      const nr=p.row+dr;if(nr<0||nr>=rows)return null;
+      const nc=((p.col+dc)%cols+cols)%cols;
+      return provinces[nr*cols+nc];
+    }).filter(n=>n&&n.terrain!=='sea');
+    if(!neighbors.length)return;
+    const dest=neighbors[Math.floor(Math.random()*neighbors.length)];
+    p.characters=(p.characters||[]).filter(id=>id!==c.id);
+    c.location=dest.id;c.locationName=dest.name;
+    dest.characters=(dest.characters||[]);dest.characters.push(c.id);
+  });
+
+  // 9. Save updated game state
+  msg.innerHTML='<div class="msg-info">⏳ Saving game state…</div>';
+  const {error:saveErr}=await sb.from('games').update({
+    game_state:JSON.stringify(G),
+    turn:G.turn,
+    status:G.turn>(G.maxTurns||12)?'complete':'active'
+  }).eq('id',currentGame.id);
+  if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
+
+  // 10. Generate and push new turn reports to each player
+  msg.innerHTML='<div class="msg-info">⏳ Generating turn reports…</div>';
+  const activePlayers=freshPlayers.filter(p=>p.user_id);
+  let reportErrors=[];
+  for(const gp of activePlayers){
+    const report=buildTurnReport(G, gp.player_index);
+    // Attach this turn's filtered log entries
+    const playerCharIds=new Set((G.characters||[]).filter(c=>c.player===gp.player_index).map(c=>c.id));
+    report.lastTurnLog=turnLog.filter(e=>
+      e.type==='system'||
+      e.text.includes(G.players[gp.player_index]?.name)||
+      (G.characters||[]).filter(c=>c.player===gp.player_index).some(c=>e.text.includes(c.name))
+    );
+    const {error:rErr}=await sb.from('game_players').update({
+      turn_report:JSON.stringify(report),
+      orders:null,
+      orders_submitted:false
+    }).eq('id',gp.id);
+    if(rErr)reportErrors.push(gp.player_index+': '+rErr.message);
+  }
+
+  // 11. Save full log to turn_logs table
+  await sb.from('turn_logs').insert({
+    game_id:currentGame.id,
+    player_index:-1, // -1 = full GM log
+    turn:G.turn-1,
+    entries:turnLog
+  });
+
+  // 12. Reset all player submitted flags
+  await sb.from('game_players').update({orders_submitted:false}).eq('game_id',currentGame.id);
+
+  if(reportErrors.length>0){
+    msg.innerHTML=`<div class="msg-error">Turn resolved but some reports failed: ${reportErrors.join('; ')}</div>`;
+  } else {
+    msg.innerHTML=`<div class="msg-success">
+      ✅ Turn ${G.turn-1} resolved! New turn reports pushed to ${activePlayers.length} players.<br>
+      <strong>Turn ${G.turn} is now open for orders.</strong> 
+      ${G.turn>(G.maxTurns||12)?'<strong>Game is complete!</strong>':''}
+    </div>`;
+  }
+
+  // Refresh UI
+  currentGame.turn=G.turn;
+  currentGame.status=G.turn>(G.maxTurns||12)?'complete':'active';
+  setTimeout(()=>openGame(currentGame.id),2000);
 }
 
 init();
