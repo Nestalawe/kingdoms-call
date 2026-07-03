@@ -571,12 +571,17 @@ async function openReport(gamePlayerId){
   const kingdom=report.kingdom||{};
   const chars=report.characters||[];
   const taxIncome=kingdom.taxIncome||0;
+  const armyWages=kingdom.armyWages||0;
+  const heroWages=kingdom.heroWages||0;
+  const netIncome=taxIncome-armyWages-heroWages;
   document.getElementById('report-kingdom').innerHTML=`
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
       <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div></div>
+      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div></div>
+      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div></div>
+      <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
-      <div class="stat-box"><div class="stat-label">Merit Points</div><div class="stat-value">${kingdom.merits||0}</div></div>
     </div>
     ${chars.map(c=>{
       const hpPct=Math.round((c.hp/c.maxHp)*100)||0;

@@ -324,7 +324,7 @@
       <li>...continues through Phase 5 (Early Winter).</li>
       <li><strong>Within each phase</strong>: characters act in order of total ability (skills summed, March ×3). Characters ordered to <strong>Defend always act last</strong>. Move/Combat/Explore/etc. all resolve via this same initiative order — there's no separate "movement phase" vs "combat phase": each character's single action for that phase (which might be a Move that triggers combat) resolves in turn.</li>
       <li>At the end of Phase 4 (Fall): <strong>Taxes are collected</strong> from all owned provinces.</li>
-      <li>At the end of Phase 5 (Early Winter): <strong>Hero wages are paid</strong>. Unpaid heroes may desert.</li>
+      <li>At the end of Phase 5 (Early Winter): <strong>Army wages and hero wages are paid</strong>. Each army unit costs its recruitment price per turn to maintain (e.g. Infantry 2g, Cavalry 3g, Knights 4g). Heroes also cost wages based on their skill total. If a kingdom cannot pay, armies disband first (cheapest first — Skeletal Legions are free and never disband), then heroes desert.</li>
     </ol>
 
     <h4>The 15 Abilities — What Each One Actually Does</h4>
@@ -2061,21 +2061,74 @@ function collectTaxes(){
 
 function payHeroes(){
   G.players.forEach(player=>{
-    const heroes=G.characters.filter(c=>c.player===player.id&&!c.isKing&&c.alive);
-    const total=heroes.reduce((s,h)=>s+(h.pay||0),0);
+    const playerChars=G.characters.filter(c=>c.player===player.id&&c.alive);
+    const heroes=playerChars.filter(c=>!c.isKing);
+
+    // Army wages — every carried or garrisoned army costs its recruitment cost per turn
+    const allArmies=playerChars.flatMap(c=>c.armies||[]);
+    const garrisonArmies=G.world.provinces.filter(p=>p.owner===player.id).flatMap(p=>p.garrisonArmies||[]);
+    const allKingdomArmies=[...allArmies,...garrisonArmies];
+    const armyWages=allKingdomArmies.reduce((s,a)=>s+(ARMY_TYPES[a.type]?.cost||2),0);
+
+    // Hero wages
+    const heroWages=heroes.reduce((s,h)=>s+(h.pay||0),0);
+    const total=armyWages+heroWages;
+
     if(total===0) return;
-    if(player.gold>=total){player.gold-=total;addLog('system',`${player.name} pays ${total}g in hero wages.`);}
-    else{
-      let deficit=total-player.gold;player.gold=0;
-      addLog('system',`⚠ ${player.name} cannot meet ${total}g payroll! Treasury: ${player.gold}g.`);
-      heroes.forEach(h=>{
-        if(deficit>0&&h.pay<=deficit&&Math.random()>0.4){
-          h.player=null;h.name+=' (wandering)';deficit-=h.pay;
-          player.heroes=player.heroes.filter(id=>id!==h.id);
-          delete G.turnOrders[h.id];
-          addLog('hire',`${h.name} abandons ${player.name} — unpaid!`);
+
+    addLog('system',`${player.name} owes ${total}g wages (${armyWages}g for ${allKingdomArmies.length} arm${allKingdomArmies.length!==1?'ies':'y'}, ${heroWages}g for ${heroes.length} hero${heroes.length!==1?'es':''}). Treasury: ${player.gold}g.`);
+
+    if(player.gold>=total){
+      player.gold-=total;
+      addLog('system',`${player.name} pays ${total}g wages. Treasury: ${player.gold}g remaining.`);
+    } else {
+      let deficit=total-player.gold;
+      player.gold=0;
+      addLog('system',`⚠ ${player.name} cannot pay full wages! ${deficit}g short. Armies and heroes may be lost.`);
+
+      // Disband armies first — cheapest first, Skeletal Legions never disband (cost 0)
+      const sortedArmies=[...allKingdomArmies]
+        .filter(a=>(ARMY_TYPES[a.type]?.cost||2)>0)
+        .sort((a,b)=>(ARMY_TYPES[a.type]?.cost||2)-(ARMY_TYPES[b.type]?.cost||2));
+
+      sortedArmies.forEach(army=>{
+        if(deficit<=0) return;
+        const cost=ARMY_TYPES[army.type]?.cost||2;
+        // Remove from carrying character
+        let removed=false;
+        playerChars.forEach(c=>{
+          if(removed) return;
+          const idx=(c.armies||[]).indexOf(army);
+          if(idx>=0){c.armies.splice(idx,1);removed=true;}
+        });
+        // Or from province garrison
+        if(!removed){
+          G.world.provinces.filter(p=>p.owner===player.id).forEach(pv=>{
+            if(removed) return;
+            const idx=(pv.garrisonArmies||[]).indexOf(army);
+            if(idx>=0){pv.garrisonArmies.splice(idx,1);removed=true;}
+          });
+        }
+        if(removed){
+          deficit-=cost;
+          addLog('hire',`${army.type} disbands — ${player.name} cannot pay wages! (saved ${cost}g)`);
         }
       });
+
+      // If still short, heroes desert
+      if(deficit>0){
+        heroes.sort((a,b)=>(b.pay||0)-(a.pay||0)).forEach(h=>{
+          if(deficit<=0) return;
+          if(Math.random()>0.4){
+            h.player=null;
+            h.name=h.name.replace(' (wandering)','')+' (wandering)';
+            deficit-=(h.pay||0);
+            player.heroes=player.heroes.filter(id=>id!==h.id);
+            delete G.turnOrders[h.id];
+            addLog('hire',`${h.name} abandons ${player.name} — unpaid!`);
+          }
+        });
+      }
     }
   });
 }

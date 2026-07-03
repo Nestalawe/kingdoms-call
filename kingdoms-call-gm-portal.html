@@ -905,9 +905,15 @@ function buildTurnReport(gameState, playerIndex){
   };
 
   const taxIncome=(player.provinces||[]).reduce((s,pid)=>s+(gameState.world.provinces[pid]?.tax||0),0);
+  const ARMY_COST_TR={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+  const playerCharsForWages=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
+  const allArmiesForWages=playerCharsForWages.flatMap(c=>c.armies||[]);
+  const garrisonArmiesForWages=gameState.world.provinces.filter(p=>p.owner===playerIndex).flatMap(p=>p.garrisonArmies||[]);
+  const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>s+(ARMY_COST_TR[a.type]||2),0);
+  const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>s+(h.pay||0),0);
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{gold:player.gold,merits:player.merits,taxIncome,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{gold:player.gold,merits:player.merits,taxIncome,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
     characters:charReports,ownedProvinces,intel,
     visitedProvinceIds:[...visitedProvIds],
     worldMeta,
@@ -1259,22 +1265,76 @@ async function runTurn(){
       });
     }
 
-    // Hero pay at Early Winter
+    // Hero pay and army wages at Early Winter
     if(ph===4){
-      log('system','═ Hero wages ═');
+      // Army cost lookup (matches ARMY_TYPES cost values in game.js)
+      const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+
+      log('system','═ Army wages & hero wages ═');
       G.players.forEach(p=>{
-        const heroes=(G.characters||[]).filter(c=>c.player===p.id&&!c.isKing&&c.alive);
-        const wages=heroes.reduce((s,h)=>s+(h.pay||0),0);
-        if(wages>0){
-          if((p.gold||0)>=wages){p.gold-=wages;log('system',`${p.name} pays ${wages}g wages.`);}
-          else{
-            log('system',`⚠ ${p.name} cannot pay ${wages}g wages! Some heroes may leave.`);
-            let deficit=wages-(p.gold||0);p.gold=0;
-            heroes.forEach(h=>{
-              if(deficit>=h.pay&&Math.random()>0.4){
-                h.player=null;h.name+=' (wandering)';deficit-=h.pay;
+        const playerChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
+        // Army wages — every carried army costs its recruitment cost per turn
+        const allArmies=playerChars.flatMap(c=>c.armies||[]);
+        // Also count garrison armies left in provinces
+        const garrisonArmies=(G.world.provinces||[]).filter(pv=>pv.owner===p.id).flatMap(pv=>pv.garrisonArmies||[]);
+        const allKingdomArmies=[...allArmies,...garrisonArmies];
+        const armyWages=allKingdomArmies.reduce((s,a)=>s+(ARMY_COST[a.type]||2),0);
+
+        // Hero wages
+        const heroes=playerChars.filter(c=>!c.isKing);
+        const heroWages=heroes.reduce((s,h)=>s+(h.pay||0),0);
+
+        const totalWages=armyWages+heroWages;
+
+        if(totalWages===0){log('system',`${p.name}: no wages to pay.`);return;}
+
+        log('system',`${p.name} owes ${totalWages}g wages (armies: ${armyWages}g for ${allKingdomArmies.length} unit${allKingdomArmies.length!==1?'s':''}, heroes: ${heroWages}g for ${heroes.length} hero${heroes.length!==1?'es':''}).`);
+
+        if((p.gold||0)>=totalWages){
+          p.gold-=totalWages;
+          log('system',`${p.name} pays ${totalWages}g wages. Treasury: ${p.gold}g remaining.`);
+        } else {
+          // Can't pay in full — armies disband first (cheapest first), then heroes desert
+          log('system',`⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold||0}g available.`);
+          let deficit=totalWages-(p.gold||0);
+          p.gold=0;
+
+          // Disband armies — cheapest first, then by character
+          // Garrison armies disband first (they're the easiest to lose)
+          const sortedArmies=[...allKingdomArmies].sort((a,b)=>(ARMY_COST[a.type]||2)-(ARMY_COST[b.type]||2));
+          sortedArmies.forEach(army=>{
+            if(deficit<=0)return;
+            const cost=ARMY_COST[army.type]||2;
+            if(cost===0)return; // Skeletal Legions are free, never disband for non-payment
+            // Find and remove this army from its owner character or garrison
+            let removed=false;
+            playerChars.forEach(c=>{
+              if(removed)return;
+              const idx=(c.armies||[]).findIndex(a=>a===army||a.type===army.type);
+              if(idx>=0){c.armies.splice(idx,1);removed=true;}
+            });
+            if(!removed){
+              (G.world.provinces||[]).filter(pv=>pv.owner===p.id).forEach(pv=>{
+                if(removed)return;
+                const idx=(pv.garrisonArmies||[]).findIndex(a=>a===army||a.type===army.type);
+                if(idx>=0){pv.garrisonArmies.splice(idx,1);removed=true;}
+              });
+            }
+            if(removed){
+              deficit-=cost;
+              log('hire',`${army.type} disbands from ${p.name} — unpaid! (saved ${cost}g)`);
+            }
+          });
+
+          // If still in deficit, heroes desert
+          if(deficit>0){
+            heroes.sort((a,b)=>(b.pay||0)-(a.pay||0)).forEach(h=>{
+              if(deficit<=0)return;
+              if(Math.random()>0.4){
+                h.player=null;h.name=h.name.replace(' (wandering)','')+' (wandering)';
+                deficit-=(h.pay||0);
                 p.heroes=(p.heroes||[]).filter(id=>id!==h.id);
-                log('hire',`${h.name} leaves ${p.name} — unpaid!`);
+                log('hire',`${h.name} abandons ${p.name} — unpaid!`);
               }
             });
           }
