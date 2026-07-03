@@ -286,10 +286,17 @@ let currentReport = null;
 
 // ── INIT ─────────────────────────────────────────────
 async function init(){
-  document.getElementById('spinner').style.display='none';
-  const {data:{session}} = await sb.auth.getSession();
-  if(session){ currentUser=session.user; await onSignedIn(); }
-  else show('sec-auth');
+  try{
+    document.getElementById('spinner').style.display='none';
+    const {data:{session},error} = await sb.auth.getSession();
+    if(error) throw error;
+    if(session){ currentUser=session.user; await onSignedIn(); }
+    else show('sec-auth');
+  } catch(e){
+    document.getElementById('spinner').style.display='block';
+    document.getElementById('spinner').textContent='Connection error: '+e.message+'. Check your internet connection and refresh.';
+    console.error('Init failed:',e);
+  }
 }
 
 function show(id){
@@ -981,7 +988,11 @@ function renderPlayerMap(report){
   });
 }
 
-
+// ── BOOT ─────────────────────────────────────────────
+init().catch(err=>{
+  console.error('Init error:', err);
+  document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
+});
 </script>
 </body>
 </html>
