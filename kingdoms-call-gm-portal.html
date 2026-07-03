@@ -829,6 +829,7 @@ function buildTurnReport(gameState, playerIndex){
     features:p.features.map(f=>({name:f.name,discovered:f.discovered,cleared:f.cleared,treasure:f.discovered?f.treasure:null})),
     neutralDefenders:(p.neutralDefenders||[]).map(d=>({type:d.type,quality:d.quality})),
     armyTypes:p.armyTypes,
+    explored:p.explored||0,
     characters:(p.characters||[]).map(cid=>{
       const c=gameState.characters[cid];
       return c?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
@@ -1016,30 +1017,21 @@ async function runTurn(){
   }
 
   // Process one order
-  function processOrder(c,o){
+  function processOrder(c,o,ph){
     if(!c||!c.alive||!o) return;
-    // Normalise action string: lowercase, trim, map display names to internal keys
     const rawAction=(o.action||'defend').toLowerCase().trim();
     const ACTION_MAP={
       'move':'move','explore':'explore','explore province':'explore',
       'search':'search','search feature':'search',
       'recruit':'recruit','recruit armies':'recruit',
       'hire':'hire','hire hero':'hire',
-      'disband':'disband','disband army':'disband',
-      'fire':'fire','fire hero':'fire',
       'leave_army':'leave_army','leave/transfer army':'leave_army','leave army':'leave_army','transfer army':'leave_army',
       'pickup_army':'pickup_army','pick up army':'pickup_army','pick_up_army':'pickup_army',
       'give_item':'give_item','give item':'give_item','give magic item':'give_item',
-      'give_gold':'give_gold','give gold':'give_gold',
       'cast_spell':'cast_spell','cast spell':'cast_spell',
-      'encounter':'encounter','encounter character':'encounter',
-      'spy':'spy',
-      'trail':'trail',
-      'pursue':'pursue',
-      'practice':'practice','practice skill':'practice','practice ability':'practice',
-      'defend':'defend',
-      'rest':'rest','rest & heal':'rest','rest and heal':'rest',
-      'other':'defend', // default unknown to defend
+      'spy':'spy','practice':'practice','practice skill':'practice','practice ability':'practice',
+      'defend':'defend','rest':'rest','rest & heal':'rest','rest and heal':'rest',
+      'other':'defend',
     };
     const action=ACTION_MAP[rawAction]||'defend';
     const target=o.target||'';
@@ -1049,34 +1041,40 @@ async function runTurn(){
 
     switch(action){
       case 'move':{
+        const mp=movePoints[c.id]??0;
+        if(mp<=0){log('move',`${c.name} has no movement points left this turn.`);break;}
         let toProv=null;
         if(target.startsWith('dir:')){
           const dir=target.slice(4);
           toProv=neighborInDir(prov,dir);
-          if(!toProv){log('move',`${c.name} tries to move ${dir} but hits the map edge.`);return;}
+          if(!toProv){log('move',`${c.name} tries to move ${dir} but hits the map edge.`);break;}
         } else {
           const id=parseInt(target);
           if(!isNaN(id)) toProv=G.world.provinces[id];
         }
-        if(!toProv){log('move',`${c.name}: invalid move target.`);return;}
-        // Move the character
+        if(!toProv){log('move',`${c.name}: invalid move target.`);break;}
+        const sc=seaCap[c.id]||'land';
+        if(!canEnterTerrain(c,toProv.terrain,sc)){
+          log('move',`${c.name} cannot enter ${toProv.name} (${toProv.terrain}) — army type restriction.`);break;
+        }
+        movePoints[c.id]=mp-1;
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         c.location=toProv.id;
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
         if(!toProv.visitedBy)toProv.visitedBy=[];
         if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
-        // Combat?
         if((toProv.neutralDefenders||[]).length>0&&toProv.owner===null&&(c.armies||[]).length>0){
           if(combatVsNPC(c,toProv)){
+            movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
             toProv.owner=c.player;
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
-            log('combat',`${c.name} storms ${toProv.name}! Province claimed (+${toProv.tax} merit).`);
+            log('combat',`${c.name} storms ${toProv.name}! (+${toProv.tax} merit) MP left: ${movePoints[c.id]}`);
           } else {
             log('combat',`${c.name} attacks ${toProv.name} but is repulsed!`);
             toProv.characters=toProv.characters.filter(id=>id!==c.id);
-            prov.characters.push(c.id);c.location=prov.id;
+            prov.characters.push(c.id);c.location=prov.id;movePoints[c.id]=0;
           }
         } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0){
           const defChar=G.characters.find(d=>d.alive&&d.player===toProv.owner&&d.location===toProv.id&&(d.armies||[]).length>0);
@@ -1084,24 +1082,24 @@ async function runTurn(){
             if(combatVsChar(c,defChar,toProv)){
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
               toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-              log('combat',`${c.name} defeats ${defChar.name} and seizes ${toProv.name}!`);
+              movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+              log('combat',`${c.name} defeats ${defChar.name} and seizes ${toProv.name}! MP left: ${movePoints[c.id]}`);
             } else {
               log('combat',`${c.name} is repulsed by ${defChar.name} in ${toProv.name}!`);
               toProv.characters=toProv.characters.filter(id=>id!==c.id);
-              prov.characters.push(c.id);c.location=prov.id;
+              prov.characters.push(c.id);c.location=prov.id;movePoints[c.id]=0;
             }
           } else {
             G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
             toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-            log('move',`${c.name} seizes undefended ${toProv.name}!`);
+            movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+            log('move',`${c.name} seizes undefended ${toProv.name}! MP left: ${movePoints[c.id]}`);
           }
         } else {
           if(toProv.owner===null&&(toProv.neutralDefenders||[]).length===0&&toProv.terrain!=='sea'){
             toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-            log('move',`${c.name} claims ${toProv.name}.`);
-          } else {
-            log('move',`${c.name} moves to ${toProv.name}.`);
           }
+          log('move',`${c.name} moves to ${toProv.name}. MP left: ${movePoints[c.id]}`);
         }
         break;
       }
@@ -1201,6 +1199,7 @@ async function runTurn(){
         const recipId=parseInt(extra);
         if((c.armies||[]).length===0){log('system',`${c.name}: no armies to transfer.`);break;}
         let removed;
+        const leavingAll=target==='all'||(c.armies||[]).length===1;
         if(target==='all'){removed=[...c.armies];c.armies=[];}
         else{const idx=c.armies.findIndex(a=>a.type===target);if(idx<0)break;removed=c.armies.splice(idx,1);}
         if(recipId>=0){
@@ -1212,6 +1211,12 @@ async function runTurn(){
         }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(removed);
         log('hire',`${c.name} garrisons ${removed.map(a=>a.type).join(',')} in ${prov.name}.`);
+        // If hero now has no armies, restore full move points (5)
+        if((c.armies||[]).length===0){
+          movePoints[c.id]=5;
+          seaCap[c.id]='all';
+          log('move',`${c.name} left all armies behind — move points reset to 5.`);
+        }
         break;
       }
       case 'pickup_army':{
@@ -1225,8 +1230,15 @@ async function runTurn(){
           const army=(prov.garrisonArmies||[]).pop();
           if(!army){log('system',`No garrison in ${prov.name}.`);break;}
           c.armies=(c.armies||[]);c.armies.push(army);
-          log('hire',`${c.name} picks up garrison ${army.type} in ${prov.name}.`);
+          log('hire',`${c.name} picks up ${army.type} garrison in ${prov.name}.`);
         }
+        // Recalculate move points — picking up a slow army may reduce them
+        const newSpd=Math.min(...(c.armies||[]).map(a=>ARMY_SPEED_R[a.type]||3));
+        const newSC=getSeaCapability(c.armies||[]);
+        // Can only reduce, never increase (armies picked up mid-turn don't grant extra MP)
+        if(movePoints[c.id]>newSpd) movePoints[c.id]=newSpd;
+        seaCap[c.id]=newSC;
+        log('move',`${c.name} now leads ${(c.armies||[]).length} armies. Move points remaining this turn: ${movePoints[c.id]}`);
         break;
       }
       case 'defend':
@@ -1236,6 +1248,46 @@ async function runTurn(){
         log('system',`${c.name}: ${action} in ${prov.name}.`);
     }
   }
+
+  // Army type lookups for movement and sea rules
+  const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Riders':5,'Skeletal Legion':3,'Garrison':1};
+  // Flying armies can cross sea provinces without a fleet
+  const FLYING_TYPES=new Set(['Eagle Riders']);
+  // Sea-capable armies (fleets etc)
+  const SEA_TYPES=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders']);
+
+  // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
+  // stored per character for the whole turn
+  function getSeaCapability(armies){
+    if(armies.length===0) return 'all'; // no armies = hero alone, can go anywhere
+    const landCount=armies.filter(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type)).length;
+    const seaCount=armies.filter(a=>SEA_TYPES.has(a.type)).length;
+    const flyCount=armies.filter(a=>FLYING_TYPES.has(a.type)).length;
+    if(landCount===0) return 'all'; // only flying/sea = unrestricted
+    if(seaCount>=landCount) return 'sea'; // enough fleets to carry all land armies
+    return 'land'; // land-locked
+  }
+
+  function canEnterTerrain(c, terrain, seaCap){
+    if(terrain==='sea'){
+      if(seaCap==='all'||seaCap==='sea') return true;
+      return false;
+    }
+    // Land province: sea-only armies can't move land→land unless adjacent to same sea
+    // For simplicity we allow land movement unless they have ONLY sea armies (no land/flying)
+    const armies=c.armies||[];
+    if(armies.length>0&&armies.every(a=>SEA_TYPES.has(a.type))) return false;
+    return true;
+  }
+
+  // Turn-wide move points: initialised before phase loop, decremented by move+conquest
+  const movePoints={};
+  const seaCap={};
+  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
+    const armies=c.armies||[];
+    movePoints[c.id]=armies.length===0?5:Math.min(...armies.map(a=>ARMY_SPEED_R[a.type]||3));
+    seaCap[c.id]=getSeaCapability(armies);
+  });
 
   // 5. Run phases
   const SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
@@ -1251,7 +1303,7 @@ async function runTurn(){
     });
     sorted.forEach(c=>{
       const o=(G.turnOrders[c.id]||[])[ph];
-      if(o)processOrder(c,o);
+      if(o)processOrder(c,o,ph);
     });
 
     // Tax collection at Fall
