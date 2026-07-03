@@ -705,7 +705,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       if(minDist>bestScore){bestScore=minDist;best=cand;}
     }
     if(!best) best=candidates[0]||landProvinces[pi];
+    // Home province race always matches the king's race, and army pool updates accordingly
     best.owner=pi;best.npcArmies=0;best.neutralDefenders=[];best.explored=100;best.visitedBy=[pi];best.tax=10;
+    best.race=sp.race;
+    best.armyTypes=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Infantry'];
     playerStarts.push(best);
 
     // Build king skills
