@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0e0a04;font-family:'Crimson Text',Georgia,serif;color:#f2e8d0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+.crown{font-size:4rem;margin-bottom:8px;display:block;text-align:center;}
+h1{font-family:'Cinzel',serif;font-size:2.4rem;font-weight:800;color:#e8b84b;text-align:center;letter-spacing:.06em;text-shadow:0 0 30px rgba(200,146,42,.4);}
+.tagline{font-family:'Cinzel',serif;font-size:.8rem;color:#6b5a42;text-align:center;letter-spacing:.18em;text-transform:uppercase;margin:8px 0 48px;}
+.portal-row{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-bottom:48px;}
+.portal-card{background:#1a1208;border:1px solid #6b5a42;border-radius:4px;padding:32px 36px;text-align:center;text-decoration:none;color:inherit;transition:all .2s;max-width:260px;width:100%;}
+.portal-card:hover{border-color:#c8922a;background:#1e1608;transform:translateY(-2px);box-shadow:0 8px 32px rgba(200,146,42,.15);}
+.portal-card .icon{font-size:2.4rem;display:block;margin-bottom:12px;}
+.portal-card h2{font-family:'Cinzel',serif;font-size:1rem;color:#e8b84b;font-weight:600;margin-bottom:8px;letter-spacing:.04em;}
+.portal-card p{font-size:.85rem;color:#8a7a62;line-height:1.6;}
+.portal-card .cta{display:inline-block;margin-top:16px;font-family:'Cinzel',serif;font-size:.72rem;background:#7a1c1c;color:#f2e8d0;padding:8px 20px;border-radius:2px;letter-spacing:.06em;transition:background .15s;}
+.portal-card:hover .cta{background:#9a2c2c;}
+.portal-card.gm-card{border-color:#3d2b0f;}
+.portal-card.gm-card .cta{background:#2d4a1e;}
+.portal-card.gm-card:hover .cta{background:#3d6a28;}
+.game-tool-link{margin-top:8px;text-align:center;}
+.game-tool-link a{font-family:'Cinzel',serif;font-size:.7rem;color:#6b5a42;text-decoration:none;letter-spacing:.06em;border-bottom:1px solid #3d2b0f;padding-bottom:1px;}
+.game-tool-link a:hover{color:#c8922a;border-color:#c8922a;}
+.divider{width:60px;height:1px;background:linear-gradient(to right,transparent,#c8922a,transparent);margin:0 auto 20px;}
+footer{font-size:.72rem;color:#3d2b0f;text-align:center;font-family:'Cinzel',serif;letter-spacing:.08em;}
+</style>
+</head>
+<body>
+  <span class="crown">⚔</span>
+  <h1>Kingdoms Call</h1>
+  <p class="tagline">Epic Adventures &amp; Imperial Conquest</p>
+
+  <div class="portal-row">
+    <a href="kingdoms-call-player-portal.html" class="portal-card">
+      <span class="icon">👑</span>
+      <h2>Player Portal</h2>
+      <p>View your turn reports, manage your kingdom, and submit your orders each turn.</p>
+      <span class="cta">Enter as Player →</span>
+    </a>
+
+    <a href="kingdoms-call-gm-portal.html" class="portal-card gm-card">
+      <span class="icon">🗺</span>
+      <h2>GM Portal</h2>
+      <p>Create and manage games, monitor player orders, and control the flow of each turn.</p>
+      <span class="cta">Enter as GM →</span>
+    </a>
+  </div>
+
+  <div class="divider"></div>
+  <div class="game-tool-link">
+    <a href="kingdoms-call-gm.html">GM Game Engine (full map &amp; turn resolution tool) →</a>
+  </div>
+
+  <br><br>
+  <footer>Kingdoms Call · A Play-by-Email Strategy Game</footer>
+</body>
+</html>
