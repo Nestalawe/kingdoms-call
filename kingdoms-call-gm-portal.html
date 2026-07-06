@@ -1634,7 +1634,12 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   function isValidStart(p){
     if(p.owner!==null||p.terrain==='sea') return false;
     const neighbors=getNeighborsP(p,cols,rows,provinces);
-    return neighbors.filter(n=>n.terrain!=='sea').length>=2;
+    const landNeighbors=neighbors.filter(n=>n.terrain!=='sea'&&n.owner===null);
+    if(landNeighbors.length<2) return false;
+    // Must have at least one poor (tax 1-3) and one prosperous (tax 4-7) neighbour
+    const hasPoor=landNeighbors.some(n=>n.tax>=1&&n.tax<=3);
+    const hasProsperous=landNeighbors.some(n=>n.tax>=4&&n.tax<=7);
+    return hasPoor&&hasProsperous;
   }
   const validStarts=landProvinces.filter(isValidStart);
   const playerStarts=[];
@@ -2993,6 +2998,8 @@ const BATTLE_ARMY_SPELLS={
       recordBattleGraves(prov, armies.filter(a=>a._died));
       c.armies=c.armies.filter(a=>!a._died);
     }
+
+    return{won,narrative};
   }
 
   // Returns {won, narrative:[strings]}
@@ -4299,6 +4306,19 @@ const BATTLE_ARMY_SPELLS={
           f.cleared=true;
           const gold=rng(f.monster?.minG||1,f.monster?.maxG||5);
           player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
+          // Hero HP gain from combat experience — scales with monster danger
+          const mHp=f.monster?.hp||10;
+          const hpGain=mHp>=36?rng(4,8):mHp>=21?rng(3,6):mHp>=13?rng(2,4):rng(1,3);
+          const oldMaxHp=c.maxHp||20;
+          // 40% chance to gain max HP, always gain current HP a bit
+          if(Math.random()<0.40){
+            c.maxHp=oldMaxHp+hpGain;
+            c.hp=Math.min(c.maxHp,c.hp+hpGain);
+            log('explore',`⚔ ${c.name} grows hardened from the fight — maximum HP increases by ${hpGain} (now ${c.maxHp} max HP).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          } else {
+            c.hp=Math.min(c.maxHp,c.hp+Math.ceil(hpGain/2));
+            log('explore',`⚔ ${c.name} recovers ${Math.ceil(hpGain/2)} HP from the exhilaration of victory (${c.hp}/${c.maxHp} HP).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          }
           const ITEMS=ALL_MAGIC_ITEMS_P;
           const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;
           const item={...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:itemId};
@@ -5813,6 +5833,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0037</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0053</div>
 </body>
 </html>
