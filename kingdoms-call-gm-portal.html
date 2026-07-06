@@ -1923,13 +1923,25 @@ function buildTurnReport(gameState, playerIndex){
   });
 
   // Dead heroes visible to this player — in provinces they own or have a character in
+  // Dead heroes visible this turn:
+  // - Own dead heroes always visible
+  // - Others only if: this player saw them die this turn (seenDeadHeroIds) 
+  //   OR had a spy/explore in that province this turn
+  const seenThisTurn=new Set(gameState.players[playerIndex]?.seenDeadHeroIds||[]);
+  const knownEver=new Set(gameState.players[playerIndex]?.knownDeadHeroIds||[]);
   const visibleDeadHeroes=(gameState.heroGraveyard||[]).filter(g=>{
-    if(g.player===playerIndex) return true;
-    return visibleProvIds.has(g.location);
+    if(g.player===playerIndex) return true; // always see own dead heroes
+    return seenThisTurn.has(g.id); // only others if witnessed this turn
   }).map(g=>({id:g.id,name:g.name,player:g.player,killedOnTurn:g.killedOnTurn,
     locationName:gameState.world.provinces[g.location]?.name||'unknown',
     isOwn:g.player===playerIndex,
     inVisibleProv:visibleProvIds.has(g.location)}));
+  // Dead heroes this player has EVER seen (for Resurrect targeting)
+  const knownDeadHeroes=(gameState.heroGraveyard||[])
+    .filter(g=>g.player===playerIndex||knownEver.has(g.id))
+    .map(g=>({id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,
+      locationName:gameState.world.provinces[g.location]?.name||'unknown',
+      wasOwnHero:g.player===playerIndex}));
 
   // Mercenary sightings — visible if in owned province or where player has a character
   const mercIntel=[];
@@ -2093,6 +2105,7 @@ function buildTurnReport(gameState, playerIndex){
     visibleChars,
     mercIntel,
     visibleDeadHeroes,
+    knownDeadHeroes,
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. Your kingdom of ${player.name} stands ready.`}],
   };
 }
@@ -4026,6 +4039,18 @@ const BATTLE_ARMY_SPELLS={
     return{won,fled,damageToHero,heroHpAfter:Math.max(0,heroHp),heroKilled,narrative};
   }
 
+  // When a player's character visits/spies a province, record any dead heroes there as seen
+  function recordDeadHeroSighting(playerIdx, provId){
+    if(!G.heroGraveyard) return;
+    G.heroGraveyard.filter(g=>g.location===provId).forEach(g=>{
+      const p=G.players[playerIdx];if(!p) return;
+      if(!p.seenDeadHeroIds) p.seenDeadHeroIds=[];
+      if(!p.seenDeadHeroIds.includes(g.id)) p.seenDeadHeroIds.push(g.id);
+      if(!p.knownDeadHeroIds) p.knownDeadHeroIds=[];
+      if(!p.knownDeadHeroIds.includes(g.id)) p.knownDeadHeroIds.push(g.id);
+    });
+  }
+
   // Handle all consequences when a character dies
   // killerChar: the character who caused the death (or null)
   function handleHeroDeath(deadChar, killerChar){
@@ -4088,11 +4113,18 @@ const BATTLE_ARMY_SPELLS={
     // 3. Record to graveyard (non-kings only — kings use heir system)
     if(!deadChar.isKing){
       recordHeroGrave(deadChar);
-      // Mark the province so visible players can see a dead hero here
-      if(prov){
-        if(!prov.deadHeroes) prov.deadHeroes=[];
-        prov.deadHeroes.push({id:deadChar.id,name:deadChar.name,turn:G.turn});
-      }
+      // Record which players can currently see this death (have a character in same province)
+      // These players will see the dead hero in their turn report
+      G.players.forEach((p,pi)=>{
+        const canSee=G.characters.some(ch=>ch.alive&&ch.player===pi&&ch.location===deadChar.location);
+        if(canSee){
+          if(!p.seenDeadHeroIds) p.seenDeadHeroIds=new Set();
+          p.seenDeadHeroIds.add(deadChar.id);
+          // Also add to persistent known set so they can target with Resurrect in future turns
+          if(!p.knownDeadHeroIds) p.knownDeadHeroIds=[];
+          if(!p.knownDeadHeroIds.includes(deadChar.id)) p.knownDeadHeroIds.push(deadChar.id);
+        }
+      });
     }
     deadChar.alive=false;deadChar.killedThisTurn=true;
   }
@@ -4483,6 +4515,7 @@ const BATTLE_ARMY_SPELLS={
           if(Math.random()<0.08&&effStat(c,'explorer')<5){c.skills.explorer=(c.skills.explorer||0)+1;log('explore',`${c.name}\'s Explorer skill grows to ${c.skills.explorer} through field experience!`,{actor:c.player,targets:[c.player]});}
           log('explore',`${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped). ${prov.explored<30?'Much of the province remains uncharted.':prov.explored<70?'The province is becoming well-known.':'The province is thoroughly explored.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
+        recordDeadHeroSighting(c.player,prov.id);
         break;
       }
       case 'search':{
@@ -4652,6 +4685,7 @@ const BATTLE_ARMY_SPELLS={
           c.merits=(c.merits||0)+1;
           (prov.features||[]).filter(f=>!f.discovered).forEach(f=>{if(Math.random()<0.5)f.discovered=true;});
         } else log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]});
+        if(success) recordDeadHeroSighting(c.player,prov.id);
         break;
       }
       case 'practice':{
@@ -5043,10 +5077,19 @@ const BATTLE_ARMY_SPELLS={
           // Resurrect: find a dead hero from graveyard (this turn OR previous turns)
           if(!G.heroGraveyard) G.heroGraveyard=[];
           // Any dead hero can be resurrected — own or enemy — but caster must be in same province
+          // Player must have previously witnessed this dead hero (in knownDeadHeroIds)
+          const knownIds=new Set(G.players[c.player]?.knownDeadHeroIds||[]);
           const grave=(targetChar&&!targetChar.alive&&!targetChar.isKing)
-            ? G.heroGraveyard.find(g=>g.id===targetChar.id&&g.location===c.location)
-            : G.heroGraveyard.filter(g=>g.location===c.location).sort((a,b)=>b.killedOnTurn-a.killedOnTurn)[0];
-          if(!grave){log('system',`${c.name} casts Resurrect — no fallen hero lies in ${prov.name} to be called back.`,{actor:c.player,targets:[c.player]});break;}
+            ? G.heroGraveyard.find(g=>g.id===targetChar.id&&g.location===c.location&&knownIds.has(g.id))
+            : G.heroGraveyard.filter(g=>g.location===c.location&&knownIds.has(g.id)).sort((a,b)=>b.killedOnTurn-a.killedOnTurn)[0];
+          if(!grave){
+            // Check if body was known but already resurrected by someone else
+            const wasSeen=targetChar&&knownIds.has(targetChar.id);
+            const msg=wasSeen
+              ?`${c.name} casts Resurrect — the body of ${targetChar?.name||'the fallen hero'} is no longer in ${prov.name}. Someone else may have raised them already.`
+              :`${c.name} casts Resurrect — no known fallen hero lies in ${prov.name}.`;
+            log('system',msg,{actor:c.player,targets:[c.player]});break;
+          }
           const deadHero=G.characters.find(ch=>ch.id===grave.id);
           if(!deadHero){log('system',`${c.name}: the spirit of ${grave.name} cannot be found.`,{actor:c.player,targets:[c.player]});break;}
           if((player.gold||0)<5){log('system',`Resurrect requires 5g. ${c.name} cannot afford it.`,{actor:c.player,targets:[c.player]});break;}
@@ -5939,6 +5982,8 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
   // 8. Wandering heroes drift — formerly-neutral guards AND original wanderers
   // Clear _justDefeated flag now that the turn is over
   (G.characters||[]).filter(c=>c._justDefeated).forEach(c=>{delete c._justDefeated;});
+  // Clear per-turn seen-dead-heroes tracking (knownDeadHeroIds persists across turns)
+  G.players.forEach(p=>{p.seenDeadHeroIds=[];});
   (G.characters||[]).filter(c=>c.player===null&&c.alive&&!c._isNeutralGuard).forEach(c=>{
     if(Math.random()>0.35)return;
     const p=G.world.provinces[c.location];
@@ -6072,6 +6117,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0838</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0920</div>
 </body>
 </html>
