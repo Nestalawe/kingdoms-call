@@ -601,7 +601,7 @@ async function doJoinGame(gameId){
     turn_report:JSON.stringify({playerSetup, status:'joined', waitingForTurn0:true})
   }).select().single();
 
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){msg.innerHTML=`<div class="msg-error">${error.message}<br><small>If this keeps happening, try refreshing the page and joining again.</small></div>`;return;}
   msg.innerHTML='<div class="msg-success">You have joined the game! Waiting for the GM to start Turn 0.</div>';
   setTimeout(()=>{show('sec-games');loadAllGames();},2000);
 }
@@ -1658,6 +1658,25 @@ async function submitOrders(){
   await doSubmitOrders();
 }
 
+async function resubmitOrders(){
+  // Re-enable all order form inputs so the player can update before resubmitting
+  const gp=currentGamePlayer;
+  if(!gp) return;
+  // Restore the submit wrap with the normal buttons
+  document.getElementById('orders-submit-wrap').innerHTML=`
+    <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
+    <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
+      Resubmit Orders for Turn ${currentReport?.turn||1}
+    </button>`;
+  document.getElementById('orders-submit-wrap').style.display='flex';
+  document.getElementById('orders-submit-wrap').style.gap='8px';
+  document.getElementById('orders-msg').innerHTML='<div class="msg-info">✏ Update your orders below and hit Resubmit — your new orders will replace the previous submission.</div>';
+  // Make sure all form inputs are enabled
+  document.querySelectorAll('#orders-form select, #orders-form input, #orders-form button').forEach(el=>{
+    if(!el.id?.includes('po-leave-all')) el.disabled=false;
+  });
+}
+
 function cancelSubmit(){
   document.getElementById('orders-msg').innerHTML='';
   document.getElementById('submit-btn').disabled=false;
@@ -1744,8 +1763,12 @@ async function doSubmitOrders(){
     document.getElementById('orders-msg').innerHTML=`<div class="msg-error">Error: ${error.message}</div>`;
     btn.disabled=false;btn.textContent='Submit Orders';return;
   }
-  document.getElementById('orders-msg').innerHTML='<div class="msg-success">✓ Orders submitted successfully! The GM will be notified.</div>';
-  document.getElementById('orders-submit-wrap').innerHTML='';
+  document.getElementById('orders-msg').innerHTML='';
+  document.getElementById('orders-submit-wrap').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
+      <span style="color:var(--forest);font-size:.85rem;flex:1">✓ Orders submitted successfully! The GM will be notified.</span>
+      <button class="btn btn-ghost" style="padding:8px 16px;font-size:.8rem" onclick="resubmitOrders()">↺ Resubmit Orders</button>
+    </div>`;
   document.getElementById('report-status-pill').innerHTML='<span class="pill pill-blue">✓ Orders submitted</span>';
 }
 
@@ -2539,5 +2562,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.06-0037</div>
 </body>
 </html>
