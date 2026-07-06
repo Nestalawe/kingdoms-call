@@ -909,7 +909,19 @@ async function openReport(gamePlayerId){
       <br><span style="color:#2d7a2d;font-weight:600">[C] Creatures:</span> Griffon Riders, Giant Eagles, Forest Ents, Stone Giants, Roc Riders, Whale Riders, Eagle Riders
       ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods, Bone Dragon':''}
     </div>`:'';
-  document.getElementById('report-kingdom').innerHTML=alignBanner+cmGuide+`
+  // Show heir skill allocation banner if applicable
+  const heirChar=chars.find(c=>c._isHeir&&(c._pendingSkillAllocation||0)>0);
+  const heirBanner=heirChar?`<div style="background:#fff8e8;border:2px solid var(--gold);border-radius:3px;padding:8px 12px;margin-bottom:10px">
+    <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Allocate Heir's Skills</div>
+    <div style="font-size:.78rem;color:#444;margin-bottom:6px">${heirChar.name} has risen as your new king with ${heirChar._pendingSkillAllocation} unallocated skill point${heirChar._pendingSkillAllocation!==1?'s':''}. Assign them before submitting orders.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      ${['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'].map(sk=>
+        `<button onclick="allocateHeirSkill(${heirChar.id},'${sk}')" style="font-size:.7rem;padding:2px 6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;cursor:pointer">${sk} (${heirChar.skills?.[sk]||0})</button>`
+      ).join('')}
+    </div>
+    <div style="font-size:.72rem;color:#888;margin-top:4px">Points remaining: <strong>${heirChar._pendingSkillAllocation}</strong></div>
+  </div>`:'';
+  document.getElementById('report-kingdom').innerHTML=alignBanner+heirBanner+cmGuide+`
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
       <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div></div>
@@ -979,8 +991,10 @@ async function openReport(gamePlayerId){
   if(visDeadHeroes.length>0){
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">💀 Fallen Heroes</div>`;
     intelHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
-      <strong>${h.name}</strong>${h.isOwn?' (your hero)':''} — fell in ${h.locationName} (turn ${h.killedOnTurn})<br>
-      ${h.isOwn?'<span style="font-size:.72rem;color:#5a3a7a">Can be targeted by the Resurrect spell.</span>':'<span style="font-size:.72rem;color:#888">A fallen hero — they may be resurrected by an enemy caster.</span>'}
+      <strong>${h.name}</strong>${h.isOwn?' (your hero)':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
+      ${h.inVisibleProv
+        ?'<span style="font-size:.72rem;color:#5a3a7a">💀 A hero with the Resurrect spell can raise them from this province.</span>'
+        :'<span style="font-size:.72rem;color:#888">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
     </div>`).join('');
   }
 
@@ -1723,6 +1737,19 @@ async function submitOrders(){
     return;
   }
   await doSubmitOrders();
+}
+
+function allocateHeirSkill(charId, skill){
+  if(!currentReport) return;
+  const c=currentReport.characters.find(x=>x.id===charId);
+  if(!c||!c._pendingSkillAllocation||c._pendingSkillAllocation<=0) return;
+  c.skills=c.skills||{};
+  c.skills[skill]=(c.skills[skill]||0)+1;
+  c._pendingSkillAllocation--;
+  // Save to draft orders so it persists
+  doSaveOrders();
+  // Re-render the kingdom section
+  renderKingdom();
 }
 
 async function resubmitOrders(){
@@ -2659,6 +2686,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.06-0319</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.06-0838</div>
 </body>
 </html>

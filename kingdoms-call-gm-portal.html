@@ -1924,10 +1924,12 @@ function buildTurnReport(gameState, playerIndex){
 
   // Dead heroes visible to this player — in provinces they own or have a character in
   const visibleDeadHeroes=(gameState.heroGraveyard||[]).filter(g=>{
-    if(g.player===playerIndex) return true; // always see own dead heroes
-    return visibleProvIds.has(g.location); // see enemy dead heroes if province is visible
+    if(g.player===playerIndex) return true;
+    return visibleProvIds.has(g.location);
   }).map(g=>({id:g.id,name:g.name,player:g.player,killedOnTurn:g.killedOnTurn,
-    locationName:gameState.world.provinces[g.location]?.name||'unknown',isOwn:g.player===playerIndex}));
+    locationName:gameState.world.provinces[g.location]?.name||'unknown',
+    isOwn:g.player===playerIndex,
+    inVisibleProv:visibleProvIds.has(g.location)}));
 
   // Mercenary sightings — visible if in owned province or where player has a character
   const mercIntel=[];
@@ -2318,13 +2320,12 @@ async function runTurn(){
     });
   });
 
-  // 2b. Clear all player orders from DB immediately after loading them
-  //     This ensures orders can never persist if resolution fails mid-way
+  // 2b. Snapshot orders to memory before clearing — we restore them if resolution fails
+  const ordersSnapshot=freshPlayers.filter(p=>p.user_id&&p.orders).map(p=>({id:p.id,orders:p.orders}));
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
   msg.innerHTML=`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
-  await sb.from('game_players')
-    .update({orders:null, orders_submitted:false})
-    .eq('game_id', currentGame.id);
+  // Clear orders from DB now — restored below if resolution fails
+  await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',currentGame.id);
 
   // 3. Default any missing orders to Defend
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
@@ -4019,8 +4020,81 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
     }
 
-    c.hp=Math.max(1,heroHp);
-    return{won,fled,damageToHero,heroHpAfter:Math.max(1,heroHp),narrative};
+    c.hp=Math.max(0,heroHp);
+    // Hero (or king) can die from monster combat if HP reaches 0
+    const heroKilled=heroHp<=0;
+    return{won,fled,damageToHero,heroHpAfter:Math.max(0,heroHp),heroKilled,narrative};
+  }
+
+  // Handle all consequences when a character dies
+  // killerChar: the character who caused the death (or null)
+  function handleHeroDeath(deadChar, killerChar){
+    if(!deadChar) return;
+    const prov=G.world.provinces[deadChar.location];
+
+    // 1. Armies: go to province garrison if friendly-owned, else become mercenaries
+    const deadArmies=(deadChar.armies||[]).filter(a=>!a._isSkeletal);
+    const skelArmies=(deadChar.armies||[]).filter(a=>a._isSkeletal);
+    // Skeletal armies crumble — record to graves
+    if(skelArmies.length>0&&prov) recordBattleGraves(prov,skelArmies);
+    if(deadArmies.length>0&&prov){
+      if(prov.owner===deadChar.player&&deadChar.player!==null){
+        // Friendly province — armies garrison
+        prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
+        log('system',`${deadChar.name}'s armies garrison in ${prov.name} after their fall.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
+      } else {
+        // Enemy/neutral province — armies flee to adjacent friendly province or become mercenaries
+        const neighbors=(prov?getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces):[]).filter(n=>n.terrain!=='sea');
+        const safeProv=neighbors.find(n=>n.owner===deadChar.player)||null;
+        if(safeProv){
+          safeProv.garrisonArmies=(safeProv.garrisonArmies||[]).concat(deadArmies);
+          log('system',`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:safeProv.id});
+        } else {
+          // No friendly province — become wandering mercenaries
+          if(!G.mercenaries) G.mercenaries=[];
+          const SEA_SET=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+          deadArmies.forEach(army=>{
+            G.mercenaries.push({type:army.type,quality:army.quality,race:army.race||'Unknown',
+              unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
+              id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
+          });
+          log('system',`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:[deadChar.player]});
+        }
+      }
+    }
+    deadChar.armies=[];
+
+    // 2. Items: go to killer if there is one, else to the player's king
+    const deadItems=(deadChar.items||[]);
+    if(deadItems.length>0){
+      let recipient=killerChar;
+      if(!recipient&&deadChar.player!==null){
+        recipient=G.characters.find(c=>c.isKing&&c.player===deadChar.player&&c.alive&&c.id!==deadChar.id);
+      }
+      if(!recipient&&deadChar.player!==null){
+        // King died or no king — give to random alive hero of the player
+        const aliveHeroes=G.characters.filter(c=>c.alive&&c.player===deadChar.player&&c.id!==deadChar.id);
+        if(aliveHeroes.length>0) recipient=aliveHeroes[Math.floor(Math.random()*aliveHeroes.length)];
+      }
+      if(recipient){
+        recipient.items=(recipient.items||[]).concat(deadItems);
+        log('system',`${deadChar.name}'s possessions — ${deadItems.map(i=>i.name).join(', ')} — pass to ${recipient.name}.`,{actor:deadChar.player,targets:[deadChar.player]});
+      } else {
+        log('system',`${deadChar.name}'s possessions are lost — no heir to receive them.`,{actor:deadChar.player,targets:[deadChar.player]});
+      }
+    }
+    deadChar.items=[];
+
+    // 3. Record to graveyard (non-kings only — kings use heir system)
+    if(!deadChar.isKing){
+      recordHeroGrave(deadChar);
+      // Mark the province so visible players can see a dead hero here
+      if(prov){
+        if(!prov.deadHeroes) prov.deadHeroes=[];
+        prov.deadHeroes.push({id:deadChar.id,name:deadChar.name,turn:G.turn});
+      }
+    }
+    deadChar.alive=false;deadChar.killedThisTurn=true;
   }
 
   function processOrder(c,o,ph){
@@ -4206,19 +4280,18 @@ const BATTLE_ARMY_SPELLS={
           if(battle.won){
             if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
             // Neutral guard defeated — becomes wandering (cannot be hired this turn — they're furious)
-            narrative.push(`🛡 **Enemy forces** (${neutralGuard.name.replace(' (wandering)','')}):`);
-            // Neutral guard armies: killed or reduced in quality; survivors rally
+            log('combat',`🛡 **Enemy forces** (${neutralGuard.name.replace(' (wandering)','')}):`,{actor:c.player,targets:[],provinceId:toProv.id});            // Neutral guard armies: killed or reduced in quality; survivors rally
             const tiers2=['Green','Average','Veteran','Crack','Elite'];
             const defSurvivors=[];
             (neutralGuard.armies||[]).forEach(a=>{
               const qi=tiers2.indexOf(a.quality);
               const roll=Math.random();
               if(roll<loseDeathChance||qi<=0){
-                narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} ${qi<=0&&roll>=loseDeathChance?'broken and destroyed — no further to fall':'cut down in the rout'}!`);
+                log('combat',`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} ${qi<=0&&roll>=loseDeathChance?'broken and destroyed — no further to fall':'cut down in the rout'}!`,{actor:c.player,targets:[],provinceId:toProv.id});
                 recordBattleGraves(toProv,[a]);
               } else {
                 a.quality=tiers2[qi-1];
-                narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} bloodied, reduced to ${a.quality} — they rally around ${neutralGuard.name.replace(' (wandering)','')}.`);
+                log('combat',`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} bloodied, reduced to ${a.quality} — they rally around ${neutralGuard.name.replace(' (wandering)','')}.`,{actor:c.player,targets:[],provinceId:toProv.id});
                 defSurvivors.push(a);
               }
             });
@@ -4226,7 +4299,7 @@ const BATTLE_ARMY_SPELLS={
             // If survivors remain, guard rallies — they will fight again next phase (they stay in province)
             if(defSurvivors.length>0){
               neutralGuard._isNeutralGuard=true; // stays as guard — will trigger another battle next phase
-              narrative.push(`💢 ${neutralGuard.name.replace(' (wandering)','')} rallies ${defSurvivors.length} surviving unit${defSurvivors.length!==1?'s':''} — they will contest ${toProv.name} again in the next action phase!`);
+              log('combat',`💢 ${neutralGuard.name.replace(' (wandering)','')} rallies ${defSurvivors.length} surviving unit${defSurvivors.length!==1?'s':''} — they will contest ${toProv.name} again in the next action phase!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
               log('combat',`⚔ The battle for ${toProv.name} is not over — ${neutralGuard.name.replace(' (wandering)','')} rallies and will fight again!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             } else {
               neutralGuard._isNeutralGuard=false;
@@ -4335,9 +4408,9 @@ const BATTLE_ARMY_SPELLS={
               garBattle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:toProv.id,public:true}));
               if(garBattle.won){
                 // Garrison wiped out — province falls
-                narrative.push(`🛡 **Garrison of ${toProv.name}** (no commander — garrison fights to the last):`);
+                log('combat',`🛡 **Garrison of ${toProv.name}** (no commander — garrison fights to the last):`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
                 garrisonArmies.forEach(a=>{
-                  narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} cut down defending ${toProv.name}.`);
+                  log('combat',`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} cut down defending ${toProv.name}.`,{actor:c.player,targets:[],provinceId:toProv.id});
                   recordBattleGraves(toProv,[a]);
                 });
                 toProv.garrisonArmies=[];
@@ -4424,6 +4497,13 @@ const BATTLE_ARMY_SPELLS={
         const plan=c.encounterPlan||{tactics:['ME']};
         const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],effStat,rng,player);
         encounter.narrative.forEach(line=>{log('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
+
+        // Hero killed by monster?
+        if(encounter.heroKilled){
+          log('combat',`💀 ${c.name} has been slain by the ${f.monster?.name||'creature'}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          handleHeroDeath(c,null);
+          break; // no further order processing for this hero
+        }
         const stolenByThief=encounter.fled&&f.monster?._treasureStolen;
         if(stolenByThief){
           // Steal tactic: hero escapes with partial gold, monster stays
@@ -4453,7 +4533,7 @@ const BATTLE_ARMY_SPELLS={
             {...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:(G.nextItemId||0)+1}:null;
           if(alchBonusItem) G.nextItemId=(G.nextItemId||0)+1;
           c.items=(c.items||[]);c.items.push(item);
-          if(alchBonusItem){c.items.push(alchBonusItem);narrative.push(`Alchemical Theory yields a second find: the ${alchBonusItem.name}!`);}
+          if(alchBonusItem){c.items.push(alchBonusItem);log('explore',`Alchemical Theory yields a second find: the ${alchBonusItem.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id});}
           if(item.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+item.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+item.effect.bonus);}
           log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and finds a ${item.name} (${item.desc}).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(!encounter.fled){
@@ -4853,8 +4933,8 @@ const BATTLE_ARMY_SPELLS={
         // Apply results
         c.hp=Math.max(1,encounter.atkHp);
         if(targetChar.player!==null) targetChar.hp=Math.max(1,encounter.defHp);
-        if(encounter.atkKilled){log('combat',`${c.name} has been slain in the encounter!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});c.alive=false;c.killedThisTurn=true;recordHeroGrave(c);}
-        if(encounter.defKilled){log('combat',`${targetChar.name} has been slain in the encounter!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});targetChar.alive=false;targetChar.killedThisTurn=true;recordHeroGrave(targetChar);}
+        if(encounter.atkKilled){log('combat',`${c.name} has been slain in the encounter!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});handleHeroDeath(c,targetChar);}
+        if(encounter.defKilled){log('combat',`${targetChar.name} has been slain in the encounter!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});handleHeroDeath(targetChar,c);}
         break;
       }
 
@@ -4962,11 +5042,11 @@ const BATTLE_ARMY_SPELLS={
         if(fn==='white_resurrect'){
           // Resurrect: find a dead hero from graveyard (this turn OR previous turns)
           if(!G.heroGraveyard) G.heroGraveyard=[];
-          // Any dead hero can be resurrected — own or enemy
+          // Any dead hero can be resurrected — own or enemy — but caster must be in same province
           const grave=(targetChar&&!targetChar.alive&&!targetChar.isKing)
-            ? G.heroGraveyard.find(g=>g.id===targetChar.id)
-            : G.heroGraveyard.sort((a,b)=>b.killedOnTurn-a.killedOnTurn)[0];
-          if(!grave){log('system',`${c.name} casts Resurrect but finds no fallen ally in the spirit realm to call back.`,{actor:c.player,targets:[c.player]});break;}
+            ? G.heroGraveyard.find(g=>g.id===targetChar.id&&g.location===c.location)
+            : G.heroGraveyard.filter(g=>g.location===c.location).sort((a,b)=>b.killedOnTurn-a.killedOnTurn)[0];
+          if(!grave){log('system',`${c.name} casts Resurrect — no fallen hero lies in ${prov.name} to be called back.`,{actor:c.player,targets:[c.player]});break;}
           const deadHero=G.characters.find(ch=>ch.id===grave.id);
           if(!deadHero){log('system',`${c.name}: the spirit of ${grave.name} cannot be found.`,{actor:c.player,targets:[c.player]});break;}
           if((player.gold||0)<5){log('system',`Resurrect requires 5g. ${c.name} cannot afford it.`,{actor:c.player,targets:[c.player]});break;}
@@ -5026,7 +5106,7 @@ const BATTLE_ARMY_SPELLS={
             const dmg=rng(8,16);
             undeadChar.hp=Math.max(0,undeadChar.hp-dmg);
             log('combat',`✨ Spiritwrack strikes ${undeadChar.name} for ${dmg} spiritual damage! (HP: ${undeadChar.hp})`,{actor:c.player,targets:[c.player,undeadChar.player].filter(x=>x!==null),provinceId:prov.id});
-            if(undeadChar.hp<=0&&!undeadChar.isKing){undeadChar.alive=false;undeadChar.killedThisTurn=true;recordHeroGrave(undeadChar);log('combat',`${undeadChar.name} is destroyed by the Spiritwrack!`,{actor:c.player,targets:[c.player,undeadChar.player].filter(x=>x!==null)});}
+            if(undeadChar.hp<=0){log('combat',`${undeadChar.name} is destroyed by the Spiritwrack!`,{actor:c.player,targets:[c.player,undeadChar.player].filter(x=>x!==null)});}
           } else {
             log('system',`Spiritwrack finds no undead to harm in ${prov.name}.`,{actor:c.player,targets:[c.player]});
           }
@@ -5074,7 +5154,7 @@ const BATTLE_ARMY_SPELLS={
           const dmg=rng(5,15);
           targetChar.hp=Math.max(0,targetChar.hp-dmg);
           log('combat',`✨ ${c.name} unleashes Psychic Blast — ${dmg} psychic damage tears directly into ${targetChar.name}'s mind! (HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
-          if(targetChar.hp<=0&&!targetChar.isKing){targetChar.alive=false;targetChar.killedThisTurn=true;log('combat',`${targetChar.name} is destroyed by the Psychic Blast!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
+          if(targetChar.hp<=0){log('combat',`${targetChar.name} is destroyed by the Psychic Blast!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});handleHeroDeath(targetChar,c);}
         }
         else if(fn==='psychic_storm'){
           const stormProv=targetProv;
@@ -5113,7 +5193,7 @@ const BATTLE_ARMY_SPELLS={
           const dmg=rng(8,20);
           targetChar.hp=Math.max(0,targetChar.hp-dmg);
           log('combat',`✨ ${c.name} calls down Lightning Bolt — ${dmg} damage sears ${targetChar.name}! (HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});
-          if(targetChar.hp<=0&&!targetChar.isKing){targetChar.alive=false;targetChar.killedThisTurn=true;recordHeroGrave(targetChar);log('combat',`${targetChar.name} is slain by the Lightning Bolt!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
+          if(targetChar.hp<=0){log('combat',`${targetChar.name} is slain by the Lightning Bolt!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
         }
         else if(fn==='elemental_fireball'){
           const fbProv=targetProv;
@@ -5215,7 +5295,7 @@ const BATTLE_ARMY_SPELLS={
           targetChar.hp=Math.max(0,targetChar.hp-dmg);
           c.hp=Math.min(c.maxHp||20,c.hp+heal);
           log('combat',`✨ ${c.name} reaches with the Hand of Death — ${dmg} damage drains ${targetChar.name}, restoring ${heal} HP to ${c.name}! (${targetChar.name} HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
-          if(targetChar.hp<=0&&!targetChar.isKing){targetChar.alive=false;targetChar.killedThisTurn=true;recordHeroGrave(targetChar);log('combat',`${targetChar.name} is slain by the Hand of Death!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
+          if(targetChar.hp<=0){log('combat',`${targetChar.name} is slain by the Hand of Death!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
         }
         else if(fn==='necromancy_kill'){
           if(!targetChar){log('system',`Kill Enemy: no valid target.`,{actor:c.player,targets:[c.player]});break;}
@@ -5225,8 +5305,8 @@ const BATTLE_ARMY_SPELLS={
           const killRoll=Math.random()*100;
           log('system',`📊 Kill Enemy — ${killChance}% (roll ${killRoll.toFixed(0)})`,{actor:c.player,targets:[c.player]});
           if(killRoll<killChance){
-            targetChar.alive=false;targetChar.killedThisTurn=true;recordHeroGrave(targetChar);
             log('combat',`✨ Kill Enemy strikes true! ${targetChar.name} collapses, life extinguished.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});
+            handleHeroDeath(targetChar,c);
           } else {
             const warnDmg=rng(4,10);
             targetChar.hp=Math.max(1,targetChar.hp-warnDmg);
@@ -5531,7 +5611,7 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   }
 
   for(let ph=0;ph<5;ph++){
-    log('system',`— ${SEASONS[ph]} —`);
+    log('system',`— ${SEASONS[ph]} —`);handleHeroDeath(targetChar,c);handleHeroDeath(undeadChar,c);
     const active=(G.characters||[]).filter(c=>c.player!==null&&c.alive);
     const sorted=[...active].sort((a,b)=>{
       const aD=(G.turnOrders[a.id]||[])[ph];
@@ -5686,20 +5766,47 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
   // 7. Advance turn counter
   G.turn=(G.turn||1)+1;
 
-  // 7b. King succession check — if any king died, queue an heir
+  // 7b. King succession — spawn heirs for any player whose king died
   G.players.forEach((p,pi)=>{
     const king=G.characters.find(c=>c.isKing&&c.player===pi);
     if(!king||!king.alive){
-      // Only create heir if not already queued
       if(!p.heirPending){
         p.heirPending=true;
-        // Find wealthiest province to be heir's starting point
         const wealthiest=(p.provinces||[]).reduce((best,pid)=>{
           const pv=G.world.provinces[pid];
           return(!best||pv?.tax>best.tax)?{id:pid,tax:pv?.tax||0}:best;
         },null);
         p.heirProvinceId=wealthiest?.id??null;
         log('system',`⚠ ${p.name}'s king has fallen! An heir will be crowned at the start of next turn.`,{actor:pi,targets:[pi]});
+      }
+    } else if(p.heirPending){
+      // Spawn the heir now (king was dead last turn, heir spawns this turn)
+      p.heirPending=false;
+      const heirProvId=p.heirProvinceId??null;
+      const heirProv=heirProvId!=null?G.world.provinces[heirProvId]:null;
+      if(heirProv){
+        const deadKing=G.characters.find(c=>c.isKing&&c.player===pi&&!c.alive);
+        const heirSkills={melee:2,archery:1,sage:1};
+        if(p.alignment==='Divine') heirSkills.white=(heirSkills.white||0)+1;
+        if(p.alignment==='Druidic') heirSkills.druid=(heirSkills.druid||0)+1;
+        if(p.alignment==='Undead') heirSkills.necromancy=(heirSkills.necromancy||0)+1;
+        const heirName=nextHeroName?nextHeroName():(deadKing?'Heir of '+deadKing.name:'The New King');
+        const heir={
+          id:G.characters.length,name:heirName,isKing:true,player:pi,
+          race:p.race||'Human',alignment:p.alignment||'Neutral',
+          temper:['Bold','Cautious','Cunning','Honourable'][Math.floor(Math.random()*4)],
+          hp:22,maxHp:22,skills:heirSkills,aptitude:{},
+          armies:[],items:[],location:heirProv.id,alive:true,merits:0,taxBonus:0,
+          pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
+          _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills
+        };
+        const ABILITIES_P2=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+        ABILITIES_P2.forEach(ab=>{heir.aptitude[ab]=Math.ceil(Math.random()*4);});
+        G.characters.push(heir);
+        heirProv.characters=(heirProv.characters||[]);
+        if(!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
+        p.heirProvinceId=null;
+        log('system',`👑 ${heir.name} rises as heir to ${p.name}'s throne, appearing in ${heirProv.name}. The player must allocate 4 additional skills before submitting orders.`,{actor:pi,targets:[pi],provinceId:heirProv.id,public:true});
       }
     } else {
       p.heirPending=false;
@@ -5942,9 +6049,15 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
   }
 
   } catch(e){
-    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>Check browser console (F12) for full details.</small></div>`;
+    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>Check browser console (F12) for full details. Your orders have been restored.</small></div>`;
     console.error('runTurn error:', e);
-    return; // don't try to refresh UI with potentially broken state
+    // Restore orders to DB so players don't lose their submissions
+    if(ordersSnapshot&&ordersSnapshot.length>0){
+      await Promise.all(ordersSnapshot.map(snap=>
+        sb.from('game_players').update({orders:snap.orders,orders_submitted:true}).eq('id',snap.id)
+      ));
+    }
+    return;
   }
 
   // Refresh UI
@@ -5959,6 +6072,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0319</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0838</div>
 </body>
 </html>
