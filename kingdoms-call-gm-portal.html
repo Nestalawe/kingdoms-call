@@ -2252,6 +2252,13 @@ const ENCOUNTER_SPELLS_P=new Set([
 
 async function runTurn(){
   const msg=document.getElementById('detail-msg');
+
+  // Confirm before running — prevent accidental double-runs
+  const expectedTurnToRun=currentGame.turn;
+  if(!confirm(`Run Turn ${expectedTurnToRun}? This will resolve all submitted orders and advance the game. This cannot be undone.`)){
+    msg.innerHTML='';return;
+  }
+
   msg.innerHTML='<div class="msg-info">⏳ Loading game state and player orders…</div>';
 
   // 1. Load fresh data
@@ -2261,10 +2268,15 @@ async function runTurn(){
     msg.innerHTML=`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;return;
   }
 
+  // Verify the turn hasn't already advanced (double-run protection)
+  if(freshGame.turn!==expectedTurnToRun){
+    msg.innerHTML=`<div class="msg-error">⚠ Turn mismatch: expected Turn ${expectedTurnToRun} but game is now on Turn ${freshGame.turn}. The turn may have already been run. Reload the page.</div>`;return;
+  }
+
   let G;
   try{
     G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;
-    seedUsedArmyNames(G); // ensure new army names this turn don't duplicate existing ones
+    seedUsedArmyNames(G);
   }catch(e){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
@@ -2308,6 +2320,8 @@ async function runTurn(){
 
   // 2b. Clear all player orders from DB immediately after loading them
   //     This ensures orders can never persist if resolution fails mid-way
+  const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
+  msg.innerHTML=`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   await sb.from('game_players')
     .update({orders:null, orders_submitted:false})
     .eq('game_id', currentGame.id);
@@ -2550,10 +2564,17 @@ function seaPenalty(armyType, terrain){
 
   function describeArmy(armies){
     if(!armies||armies.length===0) return 'no armies';
-    const groups=armies.reduce((acc,a)=>{
-      const key=`${a.quality} ${a.type}`;acc[key]=(acc[key]||0)+1;return acc;
-    },{});
-    return Object.entries(groups).map(([k,n])=>n>1?`${n}× ${k}`:k).join(', ');
+    const named=[];const unnamed={};
+    armies.forEach(a=>{
+      const hasName=a.unitName&&a.unitName!==a.type&&!a.unitName.startsWith('undefined');
+      if(hasName){
+        named.push(`${a.unitName} (${a.type}, ${a.quality})`);
+      } else {
+        const key=`${a.quality} ${a.type}`;unnamed[key]=(unnamed[key]||0)+1;
+      }
+    });
+    const unnamedStrs=Object.entries(unnamed).map(([k,n])=>n>1?`${n}× ${k}`:k);
+    return[...named,...unnamedStrs].join(', ')||'no armies';
   }
 
   function qualityAdj(quality){
@@ -2618,8 +2639,10 @@ const BATTLE_ARMY_SPELLS={
 
     // Setup
     narrative.push(`⚔ **Battle for ${prov.name}**`);
-    narrative.push(`${c.name} ${pick(ATK_VERBS)} ${prov.name} leading ${describeArmy(armies)}${tactNote}. `
-      +`The province ${DEF_VERBS[1]} with ${defenders.length} defending unit${defenders.length!==1?'s':''}: ${describeArmy(defenders)}.`);
+    const defenderDesc=defHero
+      ?`${defHero.name} ${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}: ${describeArmy(defenders)}.`
+      :`The province ${DEF_VERBS[1]} with ${defenders.length} defending unit${defenders.length!==1?'s':''}: ${describeArmy(defenders)}.`;
+    narrative.push(`${c.name} ${pick(ATK_VERBS)} ${prov.name} leading ${describeArmy(armies)}${tactNote}. ${defenderDesc}`);
 
     // Terrain and defender bonus
     // sd03 Siege Engines: attacker with this discovery reduces defender bonus
@@ -2882,7 +2905,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // ── STAT BLOCK (visible to GM; included in player chronicle) ──
-    narrative.push(`📊 **Battle stats:** Attacker raw strength ${rawAtkStr} × tactical ×${tactBonus.toFixed(2)}${fanatic?` × fanaticism ×1.30`:''} + roll ${atkRoll} = **${finalAtk.toFixed(1)}** | Defender raw ${rawDefStr} × defender bonus ×${defBonus.toFixed(2)}${homeBonus>1?` × home ×${homeBonus.toFixed(2)}`:''} + roll ${defRoll} = **${finalDef.toFixed(1)}** | Margin: ${(finalAtk-finalDef).toFixed(1)} (attacker ${finalAtk>=finalDef?'wins':'loses'})`);
+    narrative.push(`📊 **Battle stats:** Attacker raw strength ${rawAtkStr} × tactical ×${tactBonus.toFixed(1)}${fanatic?` × fanaticism ×1.30`:''} + roll ${atkRoll} = **${finalAtk.toFixed(1)}** | Defender raw ${rawDefStr} × defender bonus ×${defBonus.toFixed(1)}${homeBonus>1?` × home ×${homeBonus.toFixed(1)}`:''} + roll ${defRoll} = **${finalDef.toFixed(1)}** | Margin: ${(finalAtk-finalDef).toFixed(1)} (attacker ${finalAtk>=finalDef?'wins':'loses'})`);
 
     // Combat result narrative
     const margin=finalAtk-finalDef;
@@ -2929,17 +2952,19 @@ const BATTLE_ARMY_SPELLS={
     if(won){
       const guardName=defHero?defHero.name+' and their forces':('the defenders of '+prov.name);
       narrative.push(`After a ${severity} engagement (margin ${(margRatio*100).toFixed(0)}% of total strength), ${c.name}'s forces ${pick(WIN_VERBS)} ${guardName}!`);
+      narrative.push(`⚔ **Your forces** (${c.name}):`);
       armies.forEach(a=>{
-        if(a._isSkeletal) return; // skeletal armies don't gain XP or die from normal attrition here
+        if(a._isSkeletal) return;
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathChance*steelMult){
-          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.quality+' '+a.type} suffered heavily and were destroyed in the fighting.`);
+          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} suffered heavily and were destroyed in the fighting.`);
           a._died=true;
         } else if(roll<winDeathChance*steelMult+xpChance(winXPChance*milMult,a.quality)){
-          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName||a.type} distinguished themselves and are promoted to ${a.quality}!`);}
+          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.unitName||a.type} distinguished themselves and are promoted to ${a.quality}!`);}
+        } else {
+          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} survived the engagement.`);
         }
-        // Winner never demotes
       });
       c.armies=c.armies.filter(a=>!a._died);
       // Evil: Terror effect on decisive win — defenders demoralised in next battle
@@ -2954,19 +2979,40 @@ const BATTLE_ARMY_SPELLS={
     } else {
       const defName2=defHero?defHero.name:('the defenders of '+prov.name);
       narrative.push(`${c.name}'s forces are repelled! After a ${severity} engagement (margin ${(margRatio*100).toFixed(0)}%), ${defName2} hold their ground — neutral defenders never retreat!`);
+      narrative.push(`🛡 **Enemy forces** (${defName2}):`);
+      // Log fate of each defender (some may have died in the fighting even in a win)
+      defenders.forEach(a=>{
+        if(Math.random()<winDeathChance*0.5){ // defenders take lighter casualties when they win
+          a._defDied=true;
+          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} fell defending ${prov.name}.`);
+        }
+      });
+      defenders.filter(a=>!a._defDied).forEach(a=>{
+        narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} held the line and survived.`);
+      });
+      const defSurv=defenders.filter(a=>!a._defDied);
+      const defLost=defenders.filter(a=>a._defDied);
+      if(defLost.length>0) recordBattleGraves(prov,defLost);
+      // Update guard armies if applicable
+      if(defHero) defHero.armies=defSurv;
+      // Clean up flag
+      defenders.forEach(a=>delete a._defDied);
 
+      narrative.push(`⚔ **Your forces** (${c.name}):`);
       armies.forEach(a=>{
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<loseDeathChance*steelMult){
-          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.quality+' '+a.type} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
+          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
           a._died=true;
         } else if(!a._isSkeletal){
           const roll2=Math.random();
           if(roll2<loseDemoteChance){
-            if(idx>0){a.quality=tiers[idx-1];narrative.push(`— ${a.unitName||a.type} lost heart in defeat, reduced to ${a.quality}.`);}
+            if(idx>0){a.quality=tiers[idx-1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} lost heart in defeat, reduced to ${a.quality}.`);}
           } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)){
-            if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— Though beaten, ${a.unitName||a.type} learned from the engagement and improved to ${a.quality}!`);}
+            if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— Though beaten, ${a.unitName?a.unitName+' ('+a.type+')':a.type} learned from the engagement and improved to ${a.quality}!`);}
+          } else {
+            narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} retreat in good order.`);
           }
         }
       });
@@ -3307,13 +3353,13 @@ const BATTLE_ARMY_SPELLS={
     // ── STAT BLOCK ──
     narrative.push(`📊 **Battle stats:**`);
     narrative.push(`  Attacker (${atk.name}): ${atkArmies.length} units, raw str ${atkRaw}`
-      +(atkTact>0?` × tactical ×${atkTactBonus.toFixed(2)}`:'')
+      +(atkTact>0?` × tactical ×${atkTactBonus.toFixed(1)}`:'')
       +(atkFanatic?` × fanaticism ×1.30`:'')
       +` + dice ${atkDice} = **${atkStr.toFixed(1)}**`);
     narrative.push(`  Defender (${def.name}): ${defArmies.length} units, raw str ${defRaw}`
-      +(defTact>0?` × tactical ×${defTactBonus.toFixed(2)}`:'')
+      +(defTact>0?` × tactical ×${defTactBonus.toFixed(1)}`:'')
       +(defFanatic?` × fanaticism ×1.30`:'')
-      +` × defender ×${defBonus.toFixed(2)}`
+      +` × defender ×${defBonus.toFixed(1)}`
       +(defFlees?` (commander fled: ×0.75)`:'')
       +` + dice ${defDice} = **${defStr.toFixed(1)}**`);
     narrative.push(`  Win chance (before dice): attacker needs >${(defStr-atkDice).toFixed(0)} raw adjusted (attacker had ${(atkStr-atkDice).toFixed(0)})`);
@@ -3345,7 +3391,7 @@ const BATTLE_ARMY_SPELLS={
 
     if(won){
       narrative.push(`After a ${severity} battle, ${atk.name}'s forces ${pick(WIN_VERBS)} ${def.name}'s army and seize ${prov.name}!`);
-      // Winning attacker
+      narrative.push(`⚔ **${atk.name}'s forces** (attacker):`);      // Winning attacker
       atkArmies.forEach(a=>{
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
@@ -3355,6 +3401,7 @@ const BATTLE_ARMY_SPELLS={
           if(i<4){a.quality=tiers[i+1];narrative.push(`— ${atk.name}'s ${a.unitName||a.type} earn promotion to ${a.quality}!`);}
         }
       });
+      narrative.push(`🛡 **${def.name}'s forces** (defender):`);
       // Losing defender
       defArmies.forEach(a=>{
         if(a._isSkeletal) return;
@@ -3382,6 +3429,9 @@ const BATTLE_ARMY_SPELLS={
         const defFromProv=G.world.provinces[def._attackedFrom];
         const defRetreatTo=defFromProv&&defFromProv.owner===def.player?defFromProv:defFriendlyAdj[0];
         narrative.push(`${def.name} retreats to ${defRetreatTo.name}.`);
+        const defSurvivors2=def.armies||[];
+        if(defSurvivors2.length>0) narrative.push(`📊 ${def.name}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
+        else narrative.push(`📊 ${def.name}'s forces are completely destroyed — they retreat alone.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==def.id);
         defRetreatTo.characters=(defRetreatTo.characters||[]);
         if(!defRetreatTo.characters.includes(def.id)) defRetreatTo.characters.push(def.id);
@@ -3389,7 +3439,7 @@ const BATTLE_ARMY_SPELLS={
       }
     } else {
       narrative.push(`${atk.name}'s assault is repelled! After a ${severity} engagement, ${def.name} drives the attackers from ${prov.name}.`);
-      // Losing attacker
+      narrative.push(`⚔ **${atk.name}'s forces** (attacker):`);      // Losing attacker
       atkArmies.forEach(a=>{
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
@@ -3401,6 +3451,7 @@ const BATTLE_ARMY_SPELLS={
           else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Through adversity, ${atk.name}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
         }
       });
+      narrative.push(`🛡 **${def.name}'s forces** (defender):`);
       // Winning defender — small death chance, good XP chance
       defArmies.forEach(a=>{
         if(a._isSkeletal) return;
@@ -3417,13 +3468,17 @@ const BATTLE_ARMY_SPELLS={
       const atkAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
       const atkFriendlyAdj=atkAdjProvs.filter(p2=>p2.owner===atk.player);
       if(atkFriendlyAdj.length===0){
-        narrative.push(`${atk.name} has nowhere to retreat — their forces take additional casualties!`);
+        narrative.push(`${atk.name} has nowhere to retreat — their forces take additional casualties, cut down against the walls with no escape!`);
         atk.armies.forEach(a=>{if(Math.random()<0.15){a._died=true;narrative.push(`— ${atk.name}'s ${a.unitName||a.type} are cut down with no escape!`);}});
         atk.armies=atk.armies.filter(a=>!a._died);
       } else {
         const fromProv=G.world.provinces[atk._attackedFrom];
         const retreatTo=fromProv&&fromProv.owner===atk.player?fromProv:atkFriendlyAdj[0];
         narrative.push(`${atk.name} retreats to ${retreatTo.name}.`);
+        // Summarise surviving attacker armies
+        const atkSurvivors=atk.armies||[];
+        if(atkSurvivors.length>0) narrative.push(`📊 ${atk.name}'s surviving forces: ${describeArmy(atkSurvivors)}.`);
+        else narrative.push(`📊 ${atk.name}'s forces are completely destroyed — they retreat alone.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==atk.id);
         retreatTo.characters=(retreatTo.characters||[]);
         if(!retreatTo.characters.includes(atk.id)) retreatTo.characters.push(atk.id);
@@ -3965,7 +4020,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     c.hp=Math.max(1,heroHp);
-    return{won,fled,damageToHero,narrative};
+    return{won,fled,damageToHero,heroHpAfter:Math.max(1,heroHp),narrative};
   }
 
   function processOrder(c,o,ph){
@@ -4088,14 +4143,7 @@ const BATTLE_ARMY_SPELLS={
         }
         // Check for neutral guard hero defending this province
         const neutralGuard=G.characters.find(ng=>ng.alive&&ng.player===null&&ng._isNeutralGuard&&ng.location===toProv.id&&(ng.armies||[]).length>0);
-        // Diagnostic: log what we find (visible in GM chronicle as 📊 system entries)
-        if(!neutralGuard){
-          const anyGuard=G.characters.find(ng=>ng._isNeutralGuard&&ng.location===toProv.id);
-          const reason=anyGuard
-            ?`guard found but: alive=${anyGuard.alive}, player=${anyGuard.player}, armies=${anyGuard.armies?.length}`
-            :`no guard found in ${toProv.name} (id=${toProv.id})`;
-          log('system',`📊 Battle check: ${c.name} → ${toProv.name}: no neutralGuard (${reason}). owner=${toProv.owner}, charArmies=${(c.armies||[]).length}`,{actor:c.player,targets:[c.player]});
-        }
+
         if(neutralGuard&&toProv.owner===null&&(c.armies||[]).length>0){
           c._attackedFrom=prov.id; // track for retreat
           // ── CONTINGENT UNIFY (AK 4.1.2) ──
@@ -4158,14 +4206,55 @@ const BATTLE_ARMY_SPELLS={
           if(battle.won){
             if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
             // Neutral guard defeated — becomes wandering (cannot be hired this turn — they're furious)
-            neutralGuard._isNeutralGuard=false;
-            neutralGuard._justDefeated=true; // blocks hiring until next turn
-            neutralGuard.armies=[];          // all armies were killed
-            neutralGuard.name=neutralGuard.name.replace(' (wandering)','');
-            neutralGuard.name+=' (wandering)';
-            log('combat',`💀 ${neutralGuard.name.replace(' (wandering)','')} has been defeated — they retreat bitterly into the wilderness and may wander in future turns.`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+            narrative.push(`🛡 **Enemy forces** (${neutralGuard.name.replace(' (wandering)','')}):`);
+            // Neutral guard armies: killed or reduced in quality; survivors rally
+            const tiers2=['Green','Average','Veteran','Crack','Elite'];
+            const defSurvivors=[];
+            (neutralGuard.armies||[]).forEach(a=>{
+              const qi=tiers2.indexOf(a.quality);
+              const roll=Math.random();
+              if(roll<loseDeathChance||qi<=0){
+                narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} ${qi<=0&&roll>=loseDeathChance?'broken and destroyed — no further to fall':'cut down in the rout'}!`);
+                recordBattleGraves(toProv,[a]);
+              } else {
+                a.quality=tiers2[qi-1];
+                narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} bloodied, reduced to ${a.quality} — they rally around ${neutralGuard.name.replace(' (wandering)','')}.`);
+                defSurvivors.push(a);
+              }
+            });
+            neutralGuard.armies=defSurvivors;
+            // If survivors remain, guard rallies — they will fight again next phase (they stay in province)
+            if(defSurvivors.length>0){
+              neutralGuard._isNeutralGuard=true; // stays as guard — will trigger another battle next phase
+              narrative.push(`💢 ${neutralGuard.name.replace(' (wandering)','')} rallies ${defSurvivors.length} surviving unit${defSurvivors.length!==1?'s':''} — they will contest ${toProv.name} again in the next action phase!`);
+              log('combat',`⚔ The battle for ${toProv.name} is not over — ${neutralGuard.name.replace(' (wandering)','')} rallies and will fight again!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+            } else {
+              neutralGuard._isNeutralGuard=false;
+              neutralGuard._justDefeated=true;
+              neutralGuard.name=neutralGuard.name.replace(' (wandering)','')+' (wandering)';
+              // Immediately flee to an adjacent province — prefer non-enemy provinces
+              const ngProv=G.world.provinces[neutralGuard.location];
+              if(ngProv){
+                const ngNeighbors=getNeighborsP(ngProv,G.world.cols,G.world.rows,G.world.provinces)
+                  .filter(n=>n.terrain!=='sea');
+                // Prefer province not owned by the attacker
+                const safeNeighbors=ngNeighbors.filter(n=>n.owner!==c.player);
+                const fleeDest=(safeNeighbors.length>0?safeNeighbors:ngNeighbors)[Math.floor(Math.random()*(safeNeighbors.length||ngNeighbors.length))];
+                if(fleeDest){
+                  ngProv.characters=(ngProv.characters||[]).filter(id=>id!==neutralGuard.id);
+                  fleeDest.characters=(fleeDest.characters||[]);
+                  if(!fleeDest.characters.includes(neutralGuard.id)) fleeDest.characters.push(neutralGuard.id);
+                  neutralGuard.location=fleeDest.id;
+                  neutralGuard.locationName=fleeDest.name;
+                  log('combat',`💀 ${neutralGuard.name.replace(' (wandering)','')} has been defeated — all forces destroyed, they flee bitterly to ${fleeDest.name}.`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+                } else {
+                  log('combat',`💀 ${neutralGuard.name.replace(' (wandering)','')} has been defeated — all forces destroyed, they retreat into the wilderness.`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+                }
+              }
+            }
+            // Province is claimed when all defenders are eliminated (no survivors to rally)
+            if(defSurvivors.length===0){
             toProv.owner=c.player;toProv.neutralDefenders=[];
-            if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
             // Evil alignment: instant looting — gain 50% of province tax immediately
             if(G.players[c.player]?.alignment==='Evil'){
@@ -4173,8 +4262,10 @@ const BATTLE_ARMY_SPELLS={
               if(loot>0){player.gold=(player.gold||0)+loot;log('combat',`⚔ Evil looting: ${c.name}'s forces plunder ${toProv.name} — ${loot}g seized immediately!`,{actor:c.player,targets:[c.player],provinceId:toProv.id});}
             }
             log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit. Move points left: ${movePoints[c.id]})`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+            if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+            } // end if(defSurvivors.length===0)
           } else {
-            // Neutral armies never retreat — check if we need to update province neutralDefenders for display
+            // Attacker lost — neutral guard holds (survivors already rallied above)
             toProv.neutralDefenders=[...(neutralGuard.armies||[])];
             toProv.characters=toProv.characters.filter(id=>id!==c.id);
             prov.characters.push(c.id);c.location=prov.id;if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
@@ -4229,18 +4320,56 @@ const BATTLE_ARMY_SPELLS={
               prov.characters.push(c.id);c.location=prov.id;if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
             }
           } else {
-            G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-            toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-            movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-            log('move',`${c.name} seizes the undefended province of ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+            // Check for garrison armies defending without a hero — they fight to the last
+            const garrisonArmies=(toProv.garrisonArmies||[]);
+            if(garrisonArmies.length>0&&(c.armies||[]).length>0){
+              // Build a dummy garrison defender for battle purposes
+              const garrisonDef={id:-1,name:'the Garrison of '+toProv.name,isKing:false,player:toProv.owner,
+                armies:garrisonArmies,items:[],skills:{},location:toProv.id,alive:true};
+              // Garrison uses province as temporary defenders
+              const _savedDefs=toProv.neutralDefenders;
+              toProv.neutralDefenders=[...garrisonArmies];
+              // Garrison has no Druid/tactical skill — null hero
+              const garBattle=combatVsNPC(c,toProv,null);
+              toProv.neutralDefenders=_savedDefs;
+              garBattle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:toProv.id,public:true}));
+              if(garBattle.won){
+                // Garrison wiped out — province falls
+                narrative.push(`🛡 **Garrison of ${toProv.name}** (no commander — garrison fights to the last):`);
+                garrisonArmies.forEach(a=>{
+                  narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} cut down defending ${toProv.name}.`);
+                  recordBattleGraves(toProv,[a]);
+                });
+                toProv.garrisonArmies=[];
+                G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
+                toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+                log('combat',`${c.name} breaks through the garrison and seizes ${toProv.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+              } else {
+                // Garrison holds — attacker retreats
+                log('combat',`The garrison of ${toProv.name} repels ${c.name}'s attack — leaderless troops can hold walls!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+                toProv.characters=toProv.characters.filter(id=>id!==c.id);
+                prov.characters.push(c.id);c.location=prov.id;movePoints[c.id]=0;
+              }
+            } else {
+              G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
+              toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+              movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+              log('move',`${c.name} seizes the undefended province of ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+            }
           }
         } else {
           if(toProv.owner===null&&(toProv.neutralDefenders||[]).length===0){
-            toProv.owner=c.player;
-            if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-            if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
-            toProv.explored=Math.min(100,(toProv.explored||0)+10);
-            log('move',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
+            // Only armies can claim a province — a hero without troops cannot conquer
+            if((c.armies||[]).length>0){
+              toProv.owner=c.player;
+              if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+              if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
+              toProv.explored=Math.min(100,(toProv.explored||0)+10);
+              log('move',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
+            } else {
+              log('move',`${c.name} ventures into ${toProv.name} to explore — without armies at their back, they can only observe, not conquer.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+            }
           }
           const usesSea=enteringSea||coastalLanding;
           log('move',`${c.name} moves to ${toProv.name}. (${usesSea?seaMovePoints[c.id]:movePoints[c.id]} ${usesSea?'sea ':''}move point${(usesSea?seaMovePoints[c.id]:movePoints[c.id])!==1?'s':''} remaining this turn)`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
@@ -4306,19 +4435,16 @@ const BATTLE_ARMY_SPELLS={
           f.cleared=true;
           const gold=rng(f.monster?.minG||1,f.monster?.maxG||5);
           player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
-          // Hero HP gain from combat experience — scales with monster danger
+          // Hero HP gain from combat experience — always a permanent max HP increase
           const mHp=f.monster?.hp||10;
           const hpGain=mHp>=36?rng(4,8):mHp>=21?rng(3,6):mHp>=13?rng(2,4):rng(1,3);
-          const oldMaxHp=c.maxHp||20;
-          // 40% chance to gain max HP, always gain current HP a bit
-          if(Math.random()<0.40){
-            c.maxHp=oldMaxHp+hpGain;
-            c.hp=Math.min(c.maxHp,c.hp+hpGain);
-            log('explore',`⚔ ${c.name} grows hardened from the fight — maximum HP increases by ${hpGain} (now ${c.maxHp} max HP).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          } else {
-            c.hp=Math.min(c.maxHp,c.hp+Math.ceil(hpGain/2));
-            log('explore',`⚔ ${c.name} recovers ${Math.ceil(hpGain/2)} HP from the exhilaration of victory (${c.hp}/${c.maxHp} HP).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          }
+          c.maxHp=(c.maxHp||20)+hpGain;
+          log('explore',`⚔ ${c.name} grows hardened from the fight — maximum HP permanently increases by ${hpGain} (now ${c.maxHp} max HP).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Also heal 50% of HP lost during the battle
+          const hpLost=Math.max(0,(c.maxHp-hpGain)-(encounter.heroHpAfter??c.hp));
+          const healAmt=Math.ceil(hpLost*0.5)+hpGain;
+          c.hp=Math.min(c.maxHp, c.hp+healAmt);
+          log('explore',`${c.name} catches their breath — restored to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           const ITEMS=ALL_MAGIC_ITEMS_P;
           const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;
           const item={...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:itemId};
@@ -5833,6 +5959,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0053</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0319</div>
 </body>
 </html>
