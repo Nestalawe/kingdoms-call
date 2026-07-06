@@ -4081,6 +4081,14 @@ const BATTLE_ARMY_SPELLS={
         }
         // Check for neutral guard hero defending this province
         const neutralGuard=G.characters.find(ng=>ng.alive&&ng.player===null&&ng._isNeutralGuard&&ng.location===toProv.id&&(ng.armies||[]).length>0);
+        // Diagnostic: log what we find (visible in GM chronicle as 📊 system entries)
+        if(!neutralGuard){
+          const anyGuard=G.characters.find(ng=>ng._isNeutralGuard&&ng.location===toProv.id);
+          const reason=anyGuard
+            ?`guard found but: alive=${anyGuard.alive}, player=${anyGuard.player}, armies=${anyGuard.armies?.length}`
+            :`no guard found in ${toProv.name} (id=${toProv.id})`;
+          log('system',`📊 Battle check: ${c.name} → ${toProv.name}: no neutralGuard (${reason}). owner=${toProv.owner}, charArmies=${(c.armies||[]).length}`,{actor:c.player,targets:[c.player]});
+        }
         if(neutralGuard&&toProv.owner===null&&(c.armies||[]).length>0){
           c._attackedFrom=prov.id; // track for retreat
           // ── CONTINGENT UNIFY (AK 4.1.2) ──
