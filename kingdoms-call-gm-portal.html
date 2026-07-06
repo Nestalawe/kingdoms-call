@@ -724,15 +724,15 @@ function renderGMCharOrders(player, char, existingOrders){
   return html;
 }
 
-const ARMY_SPEED_GM={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Griffon Riders':5,'Gyrocopters':4,'Wyvern Riders':5,'Bone Dragon':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Riders':5,'Skeletal Legion':3,'Garrison':1,
+const ARMY_SPEED_GM={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Noble Griffons':5,'Gyrocopters':4,'Wyvern Riders':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Cohort':5,
   // Primal armies
   'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,
   'Manticore Pride':4,'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,
-  'Elder Dragons':4,'Roc Riders':5,'Titan Warbeasts':2,'Leviathan Pods':3};
+  'Elder Dragons':4,'Crimson Rocs':5,'Titan Warbeasts':2,'Leviathan Pods':3};
 
 function buildGMProvinceOrderData(gs, playerIndex){
   const data={};
-  const ARMY_COST_GM={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Griffon Riders':4,'Gyrocopters':4,'Wyvern Riders':4,'Bone Dragon':0,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+  const ARMY_COST_GM={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3};
   (gs.world?.provinces||[]).forEach(p=>{
     const isOwned=p.owner===playerIndex;
     const isVisited=(p.visitedBy||[]).includes(playerIndex);
@@ -1053,12 +1053,12 @@ async function runTurn0(){
 
 const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const PROVINCE_ARMIES_P={
-  plain:  {Human:['Infantry','Cavalry','Longbowmen','Griffon Riders','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison'],Undead:['Skeletal Legion','Bone Dragon']},
-  desert: {Human:['Infantry','Cavalry','Griffon Riders','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison'],Undead:['Skeletal Legion','Bone Dragon']},
-  forest: {Human:['Longbowmen','Infantry','Human Garrison'],Elven:['Forest Wardens','Elven Bowmen','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Crossbowmen','Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Goblin Horde','Wyvern Riders','Orc Garrison'],Undead:['Skeletal Legion']},
-  jungle: {Human:['Infantry','Human Garrison'],Elven:['Forest Wardens','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Crossbowmen','Dwarf Garrison'],Orcish:['Goblin Horde','Orc Berserkers','Wyvern Riders','Orc Garrison'],Undead:['Skeletal Legion']},
-  mountain:{Human:['Human Garrison','Infantry','Griffon Riders'],Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Crossbowmen','Mountain Guns','Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Wyvern Riders','Orc Garrison'],Undead:['Skeletal Legion','Bone Dragon']},
-  sea:    {Human:['Fleet','Corsair Fleet'],Elven:['Elven Galleys','Whale Riders'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']},
+  plain:  {Human:['Infantry','Cavalry','Longbowmen','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison']},
+  desert: {Human:['Infantry','Cavalry','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
+  forest: {Human:['Longbowmen','Infantry','Human Garrison'],Elven:['Forest Wardens','Elven Bowmen','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Crossbowmen','Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Goblin Horde','Wyvern Riders','Orc Garrison']},
+  jungle: {Human:['Infantry','Human Garrison'],Elven:['Forest Wardens','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Crossbowmen','Dwarf Garrison'],Orcish:['Goblin Horde','Orc Berserkers','Wyvern Riders','Orc Garrison']},
+  mountain:{Human:['Human Garrison','Infantry','Noble Griffons'],Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Crossbowmen','Mountain Guns','Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Wyvern Riders','Orc Garrison']},
+  sea:    {Human:[],Elven:['Elven Galleys','Whale Cohort'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']},
 };
 const RACES_P=['Human','Elven','Dwarven','Orcish'];
 // Primal races: not humanoid, require high Druid to lead effectively
@@ -1077,16 +1077,16 @@ const DRUID_ARMY_LEVELS_P={
     'Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison',
     'Dwarven Guard','Crossbowmen','Mountain Guns','Dwarf Ironclads','Dwarf Garrison',
     'Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison',
-    'Griffon Riders','Garrison']),
+    'Noble Griffons']),
   // Level 2 — Druid 2+: semi-intelligent natural/machine creatures
-  2:new Set(['Skeletal Legion','Gyrocopters']),
+  2:new Set(['Gyrocopters']),
   // Level 3 — Druid 3+: powerful wild creatures; Undead armies level 0 for Undead-aligned
-  3:new Set(['Eagle Riders','Wyvern Riders','Whale Riders','Bone Dragon']),
+  3:new Set(['Eagle Riders','Wyvern Riders','Whale Cohort']),
   // Level 4 — Druid 4+: primal non-humanoid beings
   4:new Set(['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride',
     'Basilisk Brood','Sea Giants','Kraken Tentacles']),
   // Level 5 — Druid 5: legendary/divine creatures
-  5:new Set(['Elder Dragons','Roc Riders','Titan Warbeasts','Leviathan Pods']),
+  5:new Set(['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods']),
 };
 
 // Returns the Druid level required to lead a given army type
@@ -1111,10 +1111,8 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   if(armyRace&&RACES_P.includes(armyRace)&&armyRace===heroRace) return 1.0;
 
   // Undead armies (Druid 3 normally): free for Undead-aligned heroes
-  const UNDEAD_ARMIES=new Set(['Skeletal Legion','Bone Dragon']);
-  if(UNDEAD_ARMIES.has(armyType)&&heroAlignment==='Undead') return 1.0;
   // Druidic alignment: no Druid penalty for Creature armies (they follow willingly)
-  const CREATURE_ARMIES_D=new Set(['Griffon Riders','Giant Eagles','Forest Ents','Stone Giants','Roc Riders','Whale Riders','Eagle Riders']);
+  const CREATURE_ARMIES_D=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
   if(CREATURE_ARMIES_D.has(armyType)&&heroAlignment==='Druidic') return 1.0;
 
   const required=getDruidLevel(armyType);
@@ -1374,7 +1372,7 @@ const PRIMAL_UNIT_NAMES={
   'Sea Giants':['the Tide-Striders','the Deep-Waders','the Brine-Born Giants','the Abyssal Walkers','the Storm-Wave Clan'],
   'Kraken Tentacles':['the Elder-Coil','the Abyss-Reach','the Crushing Depths','the Writhing Dark','the Void-Grasp'],
   'Elder Dragons':['the Ageless Flame','the Ancient Wrath','the Worldburner Wing','the Elder-Brood','the Eternal Scales'],
-  'Roc Riders':['the Thunder-Wing Riders','the Sky-Mountain Cavalry','the Stormborn Flock','the Roc-Lord Squadron','the Cloud-Shatter Wing'],
+  'Crimson Rocs':['the Thunder-Wing Riders','the Sky-Mountain Cavalry','the Stormborn Flock','the Roc-Lord Squadron','the Cloud-Shatter Wing'],
   'Titan Warbeasts':['the World-Trembler Pack','the Ancient-Blood Herd','the Primordial Stampede','the Myth-Bone Herd','the Epoch-Beast Pack'],
   'Leviathan Pods':['the Endless-Deep Pod','the World-Serpent Cohort','the Abyss-Song Pod','the Ancient-Current Group','the Tide-Ender Pod'],
 };
@@ -1403,10 +1401,8 @@ const ARMY_UNIT_NAMES={
   'Elven Galleys':['the Moonwave Galleys','the Silver-Oar Fleet','the Tidecaller Ships','the Starborn Mariners','the Whisperwind Fleet'],
   'Dwarf Ironclads':['the Iron-Hull Squadron','the Steam-and-Rivet Fleet','the Deep-Keel Ironclads','the Forge-at-Sea Ships','the Boilerplate Armada'],
   'Orcish Longships':['the Bone-Prow Raiders','the Skull-Sail Fleet','the Storm-Oar Warships','the Sea-Ravager Longships','the Tide-Crusher Fleet'],
-  'Whale Riders':['the Leviathan Riders','the Deep-Song Cavalry','the Crestmane Wave-Guard','the Bluewater Brotherhood','the Ancient-Tide Riders'],
-  'Skeletal Legion':['the Risen of Ashford','the Bone-March Cohort','the Deadwatch Legion','the Grave-Word Regiment','the Unending Warband'],
-  'Garrison':['the Town Levy','the Mud-and-Mortar Watch','the Common Wall Guard','the Hastily-Raised Levy','the Local Defenders'],
-};
+  'Whale Cohort':['the Leviathan Riders','the Deep-Song Cavalry','the Crestmane Wave-Guard','the Bluewater Brotherhood','the Ancient-Tide Riders'],
+    };
 
 // Track all army unit names in use across the game to ensure uniqueness
 const _usedArmyUnitNames=new Set();
@@ -1500,9 +1496,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           'Manticore':['Manticore Pride','Giant Eagles'],
           'Basilisk':['Basilisk Brood','Cave Trolls'],
           'Forest Ent':['Forest Ents','Cave Trolls'],
-          'Giant Eagle':['Giant Eagles','Roc Riders'],
-          'Roc':['Roc Riders','Giant Eagles','Elder Dragons'],
-          'Elder Dragon':['Elder Dragons','Roc Riders'],
+          'Giant Eagle':['Giant Eagles','Crimson Rocs'],
+          'Roc':['Crimson Rocs','Giant Eagles','Elder Dragons'],
+          'Elder Dragon':['Elder Dragons','Crimson Rocs'],
           'Titan Warbeast':['Titan Warbeasts','Stone Giants'],
         };
         fullPool=PRIMAL_POOL[subRace]||['Stone Giants'];
@@ -1512,8 +1508,8 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           // Empty — no recruitables in this sea province
           fullPool=[];
         } else {
-          // Non-humanoid sea army pool: Whale Riders (creature), Sea Giants, Kraken Tentacles, Leviathan Pods
-          const SEA_CREATURE_POOL=['Whale Riders','Sea Giants','Kraken Tentacles','Leviathan Pods'];
+          // Non-humanoid sea army pool: Whale Cohort (creature), Sea Giants, Kraken Tentacles, Leviathan Pods
+          const SEA_CREATURE_POOL=['Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'];
           const count=Math.floor(Math.random()*2)+1; // 1-2 types available
           fullPool=[...SEA_CREATURE_POOL].sort(()=>Math.random()-0.5).slice(0,count);
         }
@@ -1568,7 +1564,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
 
   // Post-generation: add fleet types to coastal provinces (land adjacent to sea)
   // and to some sea provinces
-  const FLEET_BY_RACE={Human:['Fleet','Corsair Fleet'],Elven:['Elven Galleys','Whale Riders'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']};
+  const FLEET_BY_RACE={Human:['Fleet','Corsair Fleet'],Elven:['Elven Galleys','Whale Cohort'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']};
   const offEven=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
   const offOdd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
   provinces.forEach(p=>{
@@ -1588,7 +1584,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     }
   });
   // Sea provinces: only non-humanoid sea armies — no Fleet/Corsair/Galleys/Longships
-  // 40% get primal sea armies (defended + recruitable), 30% get Whale Riders only,
+  // 40% get primal sea armies (defended + recruitable), 30% get Whale Cohort only,
   // 30% are empty open water
   const PRIMAL_SEA_TYPES=['Sea Giants','Kraken Tentacles','Leviathan Pods'];
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
@@ -1619,10 +1615,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         p.features=[{name:sfName,discovered:false,cleared:false,treasure:{gold:rP(sfMonster.minG,sfMonster.maxG)},monster:{...sfMonster}}];
       }
     } else if(r<0.70){
-      p.armyTypes=['Whale Riders'];
+      p.armyTypes=['Whale Cohort'];
       p.race='Primal:Whale';
       const defCount=rP(1,2);
-      p.neutralDefenders=Array.from({length:defCount},()=>({type:'Whale Riders',quality:'Average',race:'Primal',unitName:armyUnitName('Whale Riders')}));
+      p.neutralDefenders=Array.from({length:defCount},()=>({type:'Whale Cohort',quality:'Average',race:'Primal',unitName:armyUnitName('Whale Cohort')}));
       p.npcArmies=defCount;
       p.tax=rP(1,3); // whale waters have some value
     }
@@ -1850,7 +1846,7 @@ function buildTurnReport(gameState, playerIndex){
     }).filter(Boolean),
   }));
 
-  const ARMY_SPEED_P={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Griffon Riders':5,'Gyrocopters':4,'Wyvern Riders':5,'Bone Dragon':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Riders':5,'Skeletal Legion':3,'Garrison':1};
+  const ARMY_SPEED_P={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Noble Griffons':5,'Gyrocopters':4,'Wyvern Riders':5,'Elven Garrison':1,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Cohort':5};
 
   const charReports=chars.map(c=>{
     const prov=gameState.world.provinces[c.location];
@@ -1860,14 +1856,14 @@ function buildTurnReport(gameState, playerIndex){
     const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
     function repSpd(a){
       const base=a.speed||3;
-      const SEA_T=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders']);
-      const FLY_T=new Set(['Eagle Riders','Griffon Riders','Gyrocopters','Wyvern Riders','Bone Dragon']);
+      const SEA_T=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+      const FLY_T=new Set(['Eagle Riders','Noble Griffons','Gyrocopters','Wyvern Riders']);
       if(SEA_T.has(a.type)) return base+navalLvl;
       if(FLY_T.has(a.type)) return base;
       return base+(base<=2?MB_SLOW[Math.min(marchLvl,5)]:MB_FAST[Math.min(marchLvl,5)]);
     }
-    const landArmiesRep=armies.filter(a=>!['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders','Sea Giants','Kraken Tentacles','Leviathan Pods'].includes(a.type));
-    const seaArmiesRep=armies.filter(a=>['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders','Sea Giants','Kraken Tentacles','Leviathan Pods'].includes(a.type));
+    const landArmiesRep=armies.filter(a=>!['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'].includes(a.type));
+    const seaArmiesRep=armies.filter(a=>['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'].includes(a.type));
     const effSpd=armies.length===0?5:landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):0;
     const effSeaSpd=seaArmiesRep.length>0?Math.max(...seaArmiesRep.map(a=>repSpd(a))):armies.length===0?5+navalLvl:0;
     return{
@@ -2047,7 +2043,7 @@ function buildTurnReport(gameState, playerIndex){
   };
 
   const taxIncome=(player.provinces||[]).reduce((s,pid)=>s+(gameState.world.provinces[pid]?.tax||0),0);
-  const ARMY_COST_TR={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Griffon Riders':4,'Gyrocopters':4,'Wyvern Riders':4,'Bone Dragon':0,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+  const ARMY_COST_TR={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3};
   const playerCharsForWages=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
   const allArmiesForWages=playerCharsForWages.flatMap(c=>c.armies||[]);
   const garrisonArmiesForWages=gameState.world.provinces.filter(p=>p.owner===playerIndex).flatMap(p=>p.garrisonArmies||[]);
@@ -2071,7 +2067,7 @@ function buildTurnReport(gameState, playerIndex){
   // provinceOrderData: per-province data needed for order dropdowns
   const provinceOrderData={};
   gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)||visitedProvIds.has(p.id)).forEach(p=>{
-    const ARMY_COST_OD={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Griffon Riders':4,'Gyrocopters':4,'Wyvern Riders':4,'Bone Dragon':0,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+    const ARMY_COST_OD={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3};
     const isOwned=ownedProvIds.has(p.id);
     const isVisited=visitedProvIds.has(p.id);
     const isHome=p.tax>=10&&isOwned;
@@ -2387,9 +2383,9 @@ async function runTurn(){
       return Object.entries(groups).map(([t,n])=>`${n}× ${t}`).join(', ');
     } else if(observerSpySkill>=2){
       // Moderate: count and rough category
-      const cav=armies.filter(a=>['Cavalry','Knights','Warg Riders','Eagle Riders','Griffon Riders','Wyvern Riders','Bone Dragon','Gyrocopters'].includes(a.type)).length;
-      const inf=armies.filter(a=>!['Cavalry','Knights','Warg Riders','Eagle Riders','Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders'].includes(a.type)).length;
-      const naval=armies.filter(a=>['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders'].includes(a.type)).length;
+      const cav=armies.filter(a=>['Cavalry','Knights','Warg Riders','Eagle Riders','Noble Griffons','Wyvern Riders','Gyrocopters'].includes(a.type)).length;
+      const inf=armies.filter(a=>!['Cavalry','Knights','Warg Riders','Eagle Riders','Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'].includes(a.type)).length;
+      const naval=armies.filter(a=>['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'].includes(a.type)).length;
       const parts=[];
       if(cav>0) parts.push(`${cav} cavalry-type`);
       if(inf>0) parts.push(`${inf} infantry-type`);
@@ -2429,10 +2425,10 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.0,'Fleet':0.60,'Corsair Fleet':0.60,
     'Elven Galleys':0.60,'Dwarf Ironclads':0.60,'Orcish Longships':0.60,
-    'Whale Riders':0.60,'Griffon Riders':1.0,
+    'Whale Cohort':0.60,'Noble Griffons':1.0,
     'Stone Giants':0.90,'Forest Ents':0.85,'Cave Trolls':1.0,
     'Manticore Pride':1.15,'Basilisk Brood':0.90,'Titan Warbeasts':1.15,
-    'Roc Riders':1.0,'Elder Dragons':1.0,
+    'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   desert:{
@@ -2443,10 +2439,10 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.05,'Goblin Horde':0.90,'Orc Garrison':0.90,
     'Elven Garrison':0.85,'Fleet':0.60,'Corsair Fleet':0.60,
     'Elven Galleys':0.60,'Dwarf Ironclads':0.60,'Orcish Longships':0.60,
-    'Whale Riders':0.60,'Griffon Riders':1.0,
+    'Whale Cohort':0.60,'Noble Griffons':1.0,
     'Stone Giants':0.90,'Forest Ents':0.60,'Cave Trolls':0.85,
     'Manticore Pride':1.15,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
-    'Roc Riders':1.0,'Elder Dragons':1.0,
+    'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   forest:{
@@ -2457,10 +2453,10 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Fleet':0.60,'Corsair Fleet':0.60,
     'Elven Galleys':0.60,'Dwarf Ironclads':0.60,'Orcish Longships':0.60,
-    'Whale Riders':0.60,'Griffon Riders':1.0,
+    'Whale Cohort':0.60,'Noble Griffons':1.0,
     'Stone Giants':0.90,'Forest Ents':1.20,'Cave Trolls':1.10,
     'Manticore Pride':0.80,'Basilisk Brood':1.0,'Titan Warbeasts':0.75,
-    'Roc Riders':0.90,'Elder Dragons':1.0,
+    'Crimson Rocs':0.90,'Elder Dragons':1.0,
     'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   jungle:{
@@ -2471,10 +2467,10 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Fleet':0.60,'Corsair Fleet':0.60,
     'Elven Galleys':0.60,'Dwarf Ironclads':0.60,'Orcish Longships':0.60,
-    'Whale Riders':0.60,'Griffon Riders':1.0,
+    'Whale Cohort':0.60,'Noble Griffons':1.0,
     'Stone Giants':0.80,'Forest Ents':1.20,'Cave Trolls':1.05,
     'Manticore Pride':0.80,'Basilisk Brood':1.10,'Titan Warbeasts':0.70,
-    'Roc Riders':0.85,'Elder Dragons':1.0,
+    'Crimson Rocs':0.85,'Elder Dragons':1.0,
     'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   mountain:{
@@ -2485,10 +2481,10 @@ const TERRAIN_MODS={
     'Orc Berserkers':0.90,'Goblin Horde':0.90,'Orc Garrison':0.90,
     'Elven Garrison':0.90,'Fleet':0.60,'Corsair Fleet':0.60,
     'Elven Galleys':0.60,'Dwarf Ironclads':0.60,'Orcish Longships':0.60,
-    'Whale Riders':0.60,'Griffon Riders':1.0,
+    'Whale Cohort':0.60,'Noble Griffons':1.0,
     'Stone Giants':1.15,'Forest Ents':0.85,'Cave Trolls':1.15,
     'Manticore Pride':0.80,'Basilisk Brood':0.90,'Titan Warbeasts':0.75,
-    'Roc Riders':1.10,'Elder Dragons':1.10,
+    'Crimson Rocs':1.10,'Elder Dragons':1.10,
     'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   sea:{
@@ -2496,11 +2492,11 @@ const TERRAIN_MODS={
     // Naval units are full strength. Flying at full strength.
     // Individual modifiers here are mostly 1.0 since the sea penalty is applied globally.
     'Fleet':1.0,'Corsair Fleet':1.0,'Elven Galleys':1.0,
-    'Dwarf Ironclads':1.0,'Orcish Longships':1.0,'Whale Riders':1.0,
+    'Dwarf Ironclads':1.0,'Orcish Longships':1.0,'Whale Cohort':1.0,
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
     // Flying fight fine at sea
-    'Eagle Riders':1.0,'Wyvern Riders':1.0,'Bone Dragon':1.0,'Gyrocopters':1.0,
-    'Elder Dragons':1.0,'Roc Riders':1.0,'Giant Eagles':1.0,
+    'Eagle Riders':1.0,'Wyvern Riders':1.0,'Gyrocopters':1.0,
+    'Elder Dragons':1.0,'Crimson Rocs':1.0,'Giant Eagles':1.0,
   },
 };
 
@@ -2522,8 +2518,8 @@ function seaPenalty(armyType, terrain){
 }
 
   function armStr(army, heroChar, playerAlignment, terrain){
-    const ARMY_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Griffon Riders':6,'Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Crossbowmen':5,'Mountain Guns':7,'Dwarf Garrison':4,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':7,'Orc Garrison':3,'Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Riders':4,'Skeletal Legion':5,'Bone Dragon':8,'Garrison':3,
-      'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Roc Riders':10,'Titan Warbeasts':11,'Leviathan Pods':13};
+    const ARMY_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Crossbowmen':5,'Mountain Guns':7,'Dwarf Garrison':4,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':7,'Orc Garrison':3,'Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
+      'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13};
     const Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
     const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[army.quality||'Average']||2);
     // Apply Druid penalty
@@ -2538,7 +2534,7 @@ function seaPenalty(armyType, terrain){
       // Druidic alignment: Creature armies fight as one quality tier higher in forest/jungle
       if(heroChar&&(heroChar.alignment||'Neutral')==='Druidic'&&
          (terrain==='forest'||terrain==='jungle')&&
-         new Set(['Griffon Riders','Giant Eagles','Forest Ents','Stone Giants','Roc Riders','Whale Riders','Eagle Riders']).has(army.type)){
+         new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']).has(army.type)){
         terrainMultFinal*=1.5; // roughly one quality tier improvement
       }
       str=Math.floor(str*terrainMultFinal);
@@ -2599,10 +2595,8 @@ function seaPenalty(armyType, terrain){
 // Battle spells for special standard army units (used in pre-battle magic phase)
 // castChance is base % before druid bonus; dmg reduces a target army's effective strength
 const BATTLE_ARMY_SPELLS={
-  'Bone Dragon':    [{name:'Necrotic Breath',dmg:[4,8],target:'single',flavour:'A gust of soul-killing cold blasts the enemy line!'}],
   'Wyvern Riders':  [{name:'Acid Spit Volley',dmg:[2,5],target:'single',flavour:'A wave of caustic venom spatters across the foe!'}],
-  'Skeletal Legion':[{name:'Death Wail',dmg:[2,4],target:'all',flavour:'A chorus of the damned saps the enemy will to fight!'}],
-  'Griffon Riders': [{name:'Screech Dive',dmg:[2,4],target:'single',flavour:'A diving screech scatters the target formation!'}],
+  'Noble Griffons': [{name:'Screech Dive',dmg:[2,4],target:'single',flavour:'A diving screech scatters the target formation!'}],
 };
 
   // Record a dead hero into the persistent graveyard for Resurrect spell
@@ -4077,7 +4071,7 @@ const BATTLE_ARMY_SPELLS={
         } else {
           // No friendly province — become wandering mercenaries
           if(!G.mercenaries) G.mercenaries=[];
-          const SEA_SET=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+          const SEA_SET=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
           deadArmies.forEach(army=>{
             G.mercenaries.push({type:army.type,quality:army.quality,race:army.race||'Unknown',
               unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
@@ -4604,7 +4598,7 @@ const BATTLE_ARMY_SPELLS={
         const isOwned=prov.owner===c.player;
         const selections=(extra||target||'Infantry|1').split(',').map(s=>s.trim()).filter(Boolean);
         let totalCost=0;let recruited=[];let blocked=[];
-        const ARMY_COST_P={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Griffon Riders':4,'Gyrocopters':4,'Wyvern Riders':4,'Bone Dragon':0,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Garrison':1};
+        const ARMY_COST_P={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3};
 
         for(const sel of selections){
           const[armyType,qtyStr]=sel.split('|');
@@ -4616,7 +4610,7 @@ const BATTLE_ARMY_SPELLS={
           const limit=getRecruitLimit(armyType,prov,c.player);
           const alreadyDone=recruitedThisTurn[`${prov.id}:${armyType}`]||0;
           const actualQty=Math.min(qty, limit-alreadyDone);
-          const FLEET_TYPES_DISC=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders']);
+          const FLEET_TYPES_DISC=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
           const unitCost=Math.ceil((ARMY_COST_P[armyType]||2)*(FLEET_TYPES_DISC.has(armyType)&&hasDisc(c.player,'sd16')?0.5:1));
           const cost=actualQty*unitCost;
           if((player.gold||0)<totalCost+cost){
@@ -4732,34 +4726,15 @@ const BATTLE_ARMY_SPELLS={
           return otherSkill===skill.toLowerCase();
         });
 
-        // Base practice chance: 35% when practising alone
-        let successChance=0.35;
-        // sd26 Astronomical Tables: +5% to all practice rolls
+        // Base practice chance: 20% alone, 40% with 2+ characters in same province/phase
         const astroBonus=hasDisc(c.player,'sd26')?0.05:0;
+        let successChance=coTrainers.length>0?0.40:0.20;
         successChance+=astroBonus;
-        let bonusReason=astroBonus>0?' +5% (Astronomical Tables)':'';
-
-        if(coTrainers.length>0){
-          const betterTrainers=coTrainers.filter(t=>((t.skills||{})[skill]||0) > current);
-          const equalTrainers=coTrainers.filter(t=>((t.skills||{})[skill]||0)===current);
-          const worseTrainers=coTrainers.filter(t=>((t.skills||{})[skill]||0) < current);
-
-          if(betterTrainers.length>0){
-            // Training under a superior — guaranteed success (AK group training rule)
-            successChance=1.0;
-            bonusReason=` — **training under ${betterTrainers[0].name}** (higher ${skill}): guaranteed advance!`;
-          } else if(equalTrainers.length>0){
-            // Training with equals — 70% (doubled base)
-            successChance=0.70;
-            bonusReason=` — training alongside ${equalTrainers.map(t=>t.name).join(' & ')} (same level): +35% bonus chance`;
-          } else if(worseTrainers.length>0){
-            // Teaching lesser practitioners — small chance to improve while teaching
-            successChance=0.20;
-            bonusReason=` — teaching ${worseTrainers.map(t=>t.name).join(' & ')} (lower level): small chance to refine own technique`;
-          }
-        }
-
-        if(Math.random()<successChance){
+        let bonusReason=coTrainers.length>0
+          ?` — practising alongside ${coTrainers.map(t=>t.name).join(' & ')} (+20% group bonus)`
+          :'';
+        if(astroBonus>0) bonusReason+=' +5% (Astronomical Tables)';
+            if(Math.random()<successChance){
           c.skills[skill]=(c.skills[skill]||0)+1;
           if(!c.isKing)c.pay=Math.max(1,Math.ceil(Object.values(c.skills).reduce((s,v)=>s+v,0)/4));
           log('hire',`${c.name} practises ${skill} and improves to level ${c.skills[skill]}!${bonusReason}`,{actor:c.player,targets:[c.player]});
@@ -4880,7 +4855,7 @@ const BATTLE_ARMY_SPELLS={
 
         // Create mercenary army objects in the province
         if(!G.mercenaries) G.mercenaries=[];
-        const SEA_TYPES_D=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+        const SEA_TYPES_D=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
         disbanding.forEach(army=>{
           const merc={
             id:`merc_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
@@ -5134,17 +5109,12 @@ const BATTLE_ARMY_SPELLS={
           log('explore',`✨ ${c.name} raises the Holy Symbol — your armies in ${prov.name} fight with holy fervour against darkness! (+20% strength vs Evil/Undead this turn)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         else if(fn==='white_spiritwrack'){
-          // Destroy or damage undead in same province
-          const undeadUnit=(prov.neutralDefenders||[]).find(a=>a.type==='Skeletal Legion'||a.type==='Bone Dragon');
+          // Destroy or damage undead (_isSkeletal) armies and Undead-aligned characters
+          const undeadUnit=(prov.neutralDefenders||[]).find(a=>a._isSkeletal);
           const undeadChar=targetChar&&(targetChar.alignment==='Undead')?targetChar:null;
           if(undeadUnit){
-            if(undeadUnit.type==='Skeletal Legion'){
-              prov.neutralDefenders=prov.neutralDefenders.filter(a=>a!==undeadUnit);
-              log('combat',`✨ Spiritwrack tears through the ${undeadUnit.unitName||undeadUnit.type}, reducing them to dust!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-            } else {
-              const dmg=rng(8,16);
-              log('combat',`✨ Spiritwrack sears the ${undeadUnit.type} for ${dmg} spiritual damage!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-            }
+            prov.neutralDefenders=prov.neutralDefenders.filter(a=>a!==undeadUnit);
+            log('combat',`✨ Spiritwrack tears through the ${undeadUnit.unitName||undeadUnit.type}, reducing them to dust!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           } else if(undeadChar){
             const dmg=rng(8,16);
             undeadChar.hp=Math.max(0,undeadChar.hp-dmg);
@@ -5272,22 +5242,22 @@ const BATTLE_ARMY_SPELLS={
           const controlChance=40+spellLevel*10;
           const controlRoll=Math.random()*100;
           log('system',`📊 Control Undead — ${controlChance}% (roll ${controlRoll.toFixed(0)})`,{actor:c.player,targets:[c.player]});
-          // Find a Skeletal Legion in the target province (neutral or enemy)
-          const skelIdx=(targetProv.neutralDefenders||[]).findIndex(a=>a.type==='Skeletal Legion');
-          const enemyCharWithSkel=G.characters.find(ch=>ch.alive&&ch.player!==c.player&&ch.location===targetProv.id&&(ch.armies||[]).some(a=>a.type==='Skeletal Legion'));
+          // Find a skeletal army in the target province (neutral or enemy)
+          const skelIdx=(targetProv.neutralDefenders||[]).findIndex(a=>a._isSkeletal);
+          const enemyCharWithSkel=G.characters.find(ch=>ch.alive&&ch.player!==c.player&&ch.location===targetProv.id&&(ch.armies||[]).some(a=>a._isSkeletal));
           if(skelIdx>=0&&controlRoll<controlChance){
             const skel=targetProv.neutralDefenders.splice(skelIdx,1)[0];
             c.armies=(c.armies||[]);c.armies.push(skel);
-            log('hire',`✨ ${c.name}'s Control Undead reaches into the grave — the ${skel.unitName||'Skeletal Legion'} tears free from its old allegiance and marches under your banner!`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
+            log('hire',`✨ ${c.name}'s Control Undead reaches into the grave — the ${skel.unitName||skel.type} tears free from its old allegiance and marches under your banner!`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
           } else if(enemyCharWithSkel&&controlRoll<controlChance){
-            const skelArmyIdx=(enemyCharWithSkel.armies||[]).findIndex(a=>a.type==='Skeletal Legion');
+            const skelArmyIdx=(enemyCharWithSkel.armies||[]).findIndex(a=>a._isSkeletal);
             if(skelArmyIdx>=0){
               const skel=enemyCharWithSkel.armies.splice(skelArmyIdx,1)[0];
               c.armies=(c.armies||[]);c.armies.push(skel);
-              log('hire',`✨ Control Undead wrests a Skeletal Legion from ${enemyCharWithSkel.name}!`,{actor:c.player,targets:[c.player,enemyCharWithSkel.player].filter(x=>x!==null),provinceId:targetProv.id,public:true});
+              log('hire',`✨ Control Undead wrests ${skel.unitName||skel.type} from ${enemyCharWithSkel.name}!`,{actor:c.player,targets:[c.player,enemyCharWithSkel.player].filter(x=>x!==null),provinceId:targetProv.id,public:true});
             }
           } else {
-            log('system',`${c.name}'s Control Undead${controlRoll>=controlChance?' fails to take hold':'finds no Skeletal Legion to control'} in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});
+            log('system',`${c.name}'s Control Undead${controlRoll>=controlChance?' fails to take hold':'finds no skeletal armies to control'} in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});
           }
         }
         else if(fn==='necromancy_skeletal'){
@@ -5424,7 +5394,7 @@ const PRIMAL_ARMY_DEFS_P={
     spells:[{name:'Elder Flame',school:'elemental',dmg:[10,18],effect:'',castChance:55,flavour:'Ancient fire older than kingdoms scorches everything!'},
             {name:'Dragons Will',school:'psychic',dmg:[0,0],effect:'hero must pass courage test (50%) or flee',castChance:40,flavour:'The dragon ancient mind crushes lesser wills!'},
             {name:'Wing Gale',school:'elemental',dmg:[5,9],effect:'hero -20% to hit for 2 rounds',castChance:35,flavour:'Wings wider than a barn roof beat a hurricane blast!'}]},
-  'Roc Riders'      :{str:10,speed:5,cost:6,race:'Roc',cat:'Cavalry',
+  'Crimson Rocs'      :{str:10,speed:5,cost:6,race:'Roc',cat:'Cavalry',
     terrain_bonus:['mountain','plain'],terrain_penalty:[],strong:['Cavalry','Archer'],weak:['Heavy'],
     desc:'Riders atop massive thunder-birds. Air superiority — enemy archers -30% vs them.',
     spells:[{name:'Thunder Call',school:'elemental',dmg:[6,12],effect:'',castChance:45,flavour:'A thunderclap from the Roc wings stuns the senses!'},
@@ -5445,16 +5415,16 @@ const PRIMAL_ARMY_DEFS_P={
 
 // Add primal armies to ARMY_UNIT_NAMES
 
-const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Griffon Riders':5,'Elven Garrison':1,'Gyrocopters':4,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Wyvern Riders':5,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Riders':5,'Skeletal Legion':3,'Bone Dragon':5,'Garrison':1};
+const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':5,'Noble Griffons':5,'Elven Garrison':1,'Gyrocopters':4,'Dwarven Guard':2,'Crossbowmen':2,'Mountain Guns':1,'Dwarf Garrison':1,'Warg Riders':4,'Orc Berserkers':3,'Wyvern Riders':5,'Goblin Horde':3,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':4,'Elven Galleys':4,'Dwarf Ironclads':2,'Orcish Longships':3,'Whale Cohort':5};
   // Flying armies can cross sea provinces without a fleet
-  const FLYING_TYPES=new Set(['Eagle Riders','Griffon Riders','Gyrocopters','Wyvern Riders','Bone Dragon']);
+  const FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gyrocopters','Wyvern Riders']);
   // Non-humanoid army classification for Druidic/Evil alignment bonuses
-  const CREATURE_ARMIES=new Set(['Griffon Riders','Giant Eagles','Forest Ents','Stone Giants','Roc Riders','Whale Riders','Eagle Riders']);
-  const MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']);
+  const CREATURE_ARMIES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+  const MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
 
 
   // Sea-capable armies (fleets etc)
-  const SEA_TYPES=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Riders']);
+  const SEA_TYPES=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
 
   // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
   // stored per character for the whole turn
@@ -5466,8 +5436,8 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
     if(landArmies.length===0) return 'all'; // only flying/sea
     // Fleet capacity: infantry/archers = 0.5 capacity (2 per fleet), cavalry+ = 1 capacity (1 per fleet)
     const LIGHT_ARMIES=new Set(['Infantry','Longbowmen','Crossbowmen','Elven Bowmen','Shadow Archers',
-      'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Garrison',
-      'Goblin Horde','Skeletal Legion']);
+      'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison',
+      'Goblin Horde']);
     let landCapNeeded=0;
     landArmies.forEach(a=>{
       landCapNeeded+=LIGHT_ARMIES.has(a.type)?0.5:1; // light=0.5 cap, heavy/cavalry=1
@@ -5654,7 +5624,7 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   }
 
   for(let ph=0;ph<5;ph++){
-    log('system',`— ${SEASONS[ph]} —`);handleHeroDeath(targetChar,c);handleHeroDeath(undeadChar,c);
+    log('system',`— ${SEASONS[ph]} —`);
     const active=(G.characters||[]).filter(c=>c.player!==null&&c.alive);
     const sorted=[...active].sort((a,b)=>{
       const aD=(G.turnOrders[a.id]||[])[ph];
@@ -5683,10 +5653,10 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
 
     // Hero pay and army wages at Early Winter
     if(ph===4){
-const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garrison':1,'Elven Bowmen':2,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Griffon Riders':4,'Gyrocopters':4,'Wyvern Riders':4,'Bone Dragon':5,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Wyvern Riders':4,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Riders':3,'Skeletal Legion':0,'Bone Dragon':0,'Garrison':1,
+const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garrison':1,'Elven Bowmen':2,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Wyvern Riders':4,'Goblin Horde':1,'Orc Garrison':1,'Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3,
   'Stone Giants':5,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,
   'Manticore Pride':5,'Basilisk Brood':4,'Sea Giants':5,'Kraken Tentacles':6,
-  'Elder Dragons':8,'Roc Riders':6,'Titan Warbeasts':7,'Leviathan Pods':8};
+  'Elder Dragons':8,'Crimson Rocs':6,'Titan Warbeasts':7,'Leviathan Pods':8};
       // Army cost lookup (matches ARMY_TYPES cost values in game.js)
       
 // ── SAGE DISCOVERIES ─────────────────────────────────────
@@ -6117,6 +6087,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-0920</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-1010</div>
 </body>
 </html>
