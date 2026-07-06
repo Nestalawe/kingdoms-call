@@ -809,7 +809,7 @@ function returnToCurrentReport(){
     submitWrap.innerHTML=`
       <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
       <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-        Submit Orders for Turn ${currentReport?.turn||1}
+        Submit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}
       </button>`;
     submitWrap.style.display='flex';
     submitWrap.style.gap='8px';
@@ -831,8 +831,10 @@ async function openReport(gamePlayerId){
   if(gErr){document.getElementById('report-title').textContent='Error loading game: '+gErr.message;return;}
   gp.games=g; // attach for compatibility
   currentGamePlayer=gp;
+  currentGamePlayer._liveTurn=g.turn||1; // actual current turn for orders
   const report=typeof gp.turn_report==='string'?JSON.parse(gp.turn_report):gp.turn_report||{};
   currentReport=report;
+  currentReport._liveTurn=g.turn||1; // ensure submit uses live turn not report turn
 
   document.getElementById('report-title').textContent=`${g.name} — Turn ${g.turn||0}`;
   document.getElementById('orders-turn-num').textContent=g.turn||1;
@@ -886,7 +888,7 @@ async function openReport(gamePlayerId){
   const ALIGNMENT_SUMMARIES={
     Divine:`Your kingdom walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment.`,
     Good:`Your kingdom is known for honour and fellowship. Heroes of any alignment are willing to march under your banner — wandering heroes cost you the same-race rate regardless of their alignment. Your armies fight with a solid 40% chance of fanaticism, and your reputation makes it easier to unite allied forces in battle (Contingent Unify chance is enhanced).`,
-    Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Griffon Riders, Giant Eagles, Forest Ents, Stone Giants, Roc Riders, Whale Riders and Eagle Riders — follow your heroes without any Druid skill requirement. In forest and jungle terrain, these armies fight as though they were a full quality tier higher (×1.5 strength). Creature armies also fight with 25% fanaticism bonus under your banner. Your armies fight with a 20% chance of fanaticism.`,
+    Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. In forest and jungle terrain, these armies fight as though they were a full quality tier higher (×1.5 strength). Creature armies also fight with 25% fanaticism bonus under your banner. Your armies fight with a 20% chance of fanaticism.`,
     Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 12% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Heroes of any race join your service at the standard 2g rate, regardless of their origins. Mercenary bands cost 1g less to hire than the going rate. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
     Pagan:`Your kingdom draws on ancient and forgotten powers. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods and Bone Dragon — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
@@ -906,7 +908,7 @@ async function openReport(gamePlayerId){
     <div style="font-size:.72rem;color:var(--stone);background:#f5f0e8;border:1px solid var(--stone);border-radius:2px;padding:5px 8px;margin-bottom:8px">
       ${playerAlignment==='Druidic'?'🌿 <strong>Druidic bonuses</strong> — <span style="color:#2d7a2d"><strong>[C] Creature</strong></span> armies get no Druid penalty, +25% fanaticism, ×1.5 strength in forest/jungle. Your king starts with Druid +1.':''}
       ${playerAlignment==='Evil'?'💀 <strong>Evil bonuses</strong> — <span style="color:#8a1c1c"><strong>[M] Monster</strong></span> armies get +25% fanaticism. On decisive wins: Terror effect. On province conquest: instant 50% loot.':''}
-      <br><span style="color:#2d7a2d;font-weight:600">[C] Creatures:</span> Griffon Riders, Giant Eagles, Forest Ents, Stone Giants, Roc Riders, Whale Riders, Eagle Riders
+      <br><span style="color:#2d7a2d;font-weight:600">[C] Creatures:</span> Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort, Eagle Riders
       ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods, Bone Dragon':''}
     </div>`:'';
   // Show heir skill allocation banner if applicable
@@ -935,7 +937,7 @@ async function openReport(gamePlayerId){
       const skillTags=Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="skill-tag">${k} ${v}</span>`).join('');
       const armies=(c.armies||[]).length>0
         ?c.armies.map(a=>{
-  const CREATURES=new Set(['Griffon Riders','Giant Eagles','Forest Ents','Stone Giants','Roc Riders','Whale Riders','Eagle Riders']);
+  const CREATURES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
   const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']);
   const tag=CREATURES.has(a.type)?' [C]':MONSTERS.has(a.type)?' [M]':'';
   return armyLabel(a)+tag;
@@ -1265,7 +1267,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           if(armies.length===0) return '<span style="color:#aaa">No armies</span>';
           const druLevel=(c.skills||{}).druid||0;
           // Druid requirement thresholds (matches server table)
-          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Roc Riders':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Riders':3,'Bone Dragon':3,'Skeletal Legion':2,'Gyrocopters':2};
+          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Bone Dragon':3,'Skeletal Legion':2,'Gyrocopters':2};
           return armies.map(a=>{
             const req=DRUID_REQ[a.type]||0;
             const shortfall=Math.max(0,req-druLevel);
@@ -1760,7 +1762,7 @@ async function resubmitOrders(){
   document.getElementById('orders-submit-wrap').innerHTML=`
     <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
     <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-      Resubmit Orders for Turn ${currentReport?.turn||1}
+      Resubmit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}
     </button>`;
   const sw2=document.getElementById('orders-submit-wrap');
   sw2.style.display='flex';sw2.style.gap='8px';
@@ -1774,7 +1776,7 @@ async function resubmitOrders(){
 function cancelSubmit(){
   document.getElementById('orders-msg').innerHTML='';
   const btn=document.getElementById('submit-btn');
-  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${currentReport?.turn||1}`;}
+  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}`;}
 }
 
 async function doSaveOrders(){
@@ -1819,7 +1821,7 @@ async function reviseOrders(){
   buildOrdersForm(chars, false, gp.orders, currentReport?.turn||1);
   document.getElementById('orders-msg').innerHTML='<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
   document.getElementById('submit-btn').disabled=false;
-  document.getElementById('submit-btn').textContent=`Resubmit Orders for Turn ${currentReport?.turn||1}`;
+  document.getElementById('submit-btn').textContent=`Resubmit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}`;
 }
 
 async function doSubmitOrders(){
@@ -1829,9 +1831,9 @@ async function doSubmitOrders(){
 
   // Safety: verify the turn hasn't advanced since the player loaded the form
   const {data:freshGame}=await sb.from('games').select('turn').eq('id',currentGamePlayer?.game_id).single();
-  const expectedTurn=currentReport?.turn||1;
+  const expectedTurn=currentReport?._liveTurn||currentReport?.turn||1;
   if(freshGame&&freshGame.turn!==expectedTurn){
-    document.getElementById('orders-msg').innerHTML=`<div class="msg-error">⚠ The GM has already advanced the game to Turn ${freshGame.turn}. Your Turn ${expectedTurn} orders were not saved — please reload the page to see your Turn ${freshGame.turn} report.</div>`;
+    document.getElementById('orders-msg').innerHTML=`<div class="msg-error">⚠ The GM has already advanced the game to Turn ${freshGame.turn}. Your Turn ${expectedTurn} orders were not saved — please reload the page to see your new turn report.</div>`;
     btn.disabled=false;btn.textContent='Submit Orders';return;
   }
   if(!currentGamePlayer?.id){
@@ -1890,7 +1892,7 @@ async function doSubmitOrders(){
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 
 // Primal army speeds (for UI calculations)
-const PRIMAL_ARMY_SPEEDS={'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,'Manticore Pride':4,'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,'Elder Dragons':4,'Roc Riders':5,'Titan Warbeasts':2,'Leviathan Pods':3};
+const PRIMAL_ARMY_SPEEDS={'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,'Manticore Pride':4,'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,'Elder Dragons':4,'Crimson Rocs':5,'Titan Warbeasts':2,'Leviathan Pods':3};
 
 // ── PREDICTED LOCATION ────────────────────────────────
 // Simulates where a character will be at a given phase based on earlier move orders
@@ -2139,7 +2141,7 @@ function buildTargetField(c, ph, saved){
         const selfOpt=includesSelf?`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`:'';
         // Resurrect shows dead heroes; all others show living characters
         const charOpts=selSpell==='Resurrect'
-          ?(report.deadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — died turn ${x.killedOnTurn||'?'}</option>`).join('')
+          ?(report.knownDeadHeroes||report.deadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}</option>`).join('')
           :(report.characters||[]).filter(x=>x.id!==c.id)
             .map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${selfOpt}${charOpts}</select>
@@ -2191,7 +2193,7 @@ function buildTargetField(c, ph, saved){
             return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
               <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
               1× ${at.type} (${costEach}g)${
-                new Set(['Griffon Riders','Giant Eagles','Forest Ents','Stone Giants','Roc Riders','Whale Riders','Eagle Riders']).has(at.type)
+                new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']).has(at.type)
                   ? ' <span style="color:#2d7a2d;font-size:.72rem">[Creature]</span>'
                 : new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']).has(at.type)
                   ? ' <span style="color:#8a1c1c;font-size:.72rem">[Monster]</span>'
@@ -2521,14 +2523,14 @@ function renderMapIntoSvg(svgEl, report){
       g.appendChild(ol);
     }
 
-    // Name label (centred in hex)
-    if(pd.name&&(isOwned||isVisited)){
+    // Name label and explored % — show on all known provinces
+    if(pd.name&&known){
       const lbl=document.createElementNS(svgNS,'text');
-      const lblY=pd.explored!==undefined?y+HS-10:y+HS-7;
+      const lblY=pd.explored!==undefined&&pd.explored>0?y+HS-10:y+HS-7;
       lbl.setAttribute('x',x);lbl.setAttribute('y',lblY);
       lbl.setAttribute('text-anchor','middle');lbl.setAttribute('dominant-baseline','middle');
       lbl.setAttribute('font-size','4.2');
-      lbl.setAttribute('fill',isOwned?'#fff':'rgba(255,255,255,0.8)');
+      lbl.setAttribute('fill',isOwned?'#fff':isVisited?'rgba(255,255,255,0.8)':'rgba(255,255,255,0.5)');
       lbl.setAttribute('pointer-events','none');
       lbl.setAttribute('font-family','Cinzel,serif');
       lbl.textContent=pd.name.length>10?pd.name.substring(0,9)+'\u2026':pd.name;
@@ -2537,7 +2539,8 @@ function renderMapIntoSvg(svgEl, report){
         const el=document.createElementNS(svgNS,'text');
         el.setAttribute('x',x);el.setAttribute('y',y+HS-3);
         el.setAttribute('text-anchor','middle');el.setAttribute('font-size','3.5');
-        el.setAttribute('fill','rgba(255,255,255,0.65)');el.setAttribute('pointer-events','none');
+        el.setAttribute('fill',isOwned?'rgba(255,255,255,0.65)':'rgba(255,255,255,0.4)');
+        el.setAttribute('pointer-events','none');
         el.textContent=pd.explored+'%';
         g.appendChild(el);
       };
@@ -2686,6 +2689,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.06-0838</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.06-1034</div>
 </body>
 </html>
