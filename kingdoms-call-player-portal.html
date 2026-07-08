@@ -219,11 +219,11 @@ section{display:none;}.section-active{display:block;}
       <span id="report-status-pill"></span>
     </div>
 
-    <!-- Two-column layout: map (75%) + content (25%) -->
+    <!-- Three-column layout: map + report content + orders (each independently scrollable) -->
     <div style="display:flex;gap:0;align-items:flex-start;min-height:calc(100vh - 120px);width:100vw;overflow-x:hidden;box-sizing:border-box">
 
       <!-- LEFT: Map column (sticky, fills viewport height) -->
-      <div style="width:75%;min-width:0;position:sticky;top:0;height:calc(100vh - 120px);display:flex;flex-direction:column;background:#0e0a04;border-right:2px solid #333">
+      <div style="width:52%;min-width:0;position:sticky;top:0;height:calc(100vh - 120px);display:flex;flex-direction:column;background:#0e0a04;border-right:2px solid #333">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#1a1208;border-bottom:1px solid #333">
           <span style="font-family:'Cinzel',serif;font-size:.75rem;color:#c8922a;letter-spacing:.06em">🗺 Known World</span>
           <button onclick="showFullscreenMap()" class="btn btn-ghost" style="font-size:.65rem;padding:3px 9px">⛶ Fullscreen</button>
@@ -244,8 +244,8 @@ section{display:none;}.section-active{display:block;}
         </div>
       </div>
 
-      <!-- RIGHT: Content column (scrollable) + 5% spacer -->
-      <div style="width:20%;min-width:280px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment)">
+      <!-- MIDDLE: Report content column (scrollable) -->
+      <div style="width:24%;min-width:240px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);border-right:2px solid var(--stone)">
 
         <!-- Previous turns navigator -->
         <div style="padding:8px 10px;background:var(--parchment-dark);border-bottom:1px solid var(--stone);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -282,23 +282,25 @@ section{display:none;}.section-active{display:block;}
           <div id="report-discoveries"><em style="color:#999;font-size:.85rem">No discoveries yet.</em></div>
         </div>
 
-        <div class="card" id="orders-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
-          <h2>⚜ Orders — Turn <span id="orders-turn-num"></span></h2>
-          <div id="orders-msg"></div>
-          <div id="orders-form"></div>
-      <div id="orders-submit-wrap" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
-        <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-          Submit Orders to GM
-        </button>
-      </div>
-      <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none;margin-top:4px">✓ Draft saved — you can return and update your orders before submitting.</div>
-        </div><!-- end orders-card -->
+      </div><!-- end middle report column -->
 
-      </div><!-- end right column -->
-    </div><!-- end two-column layout -->
-      <div style="width:5%;min-width:20px;background:var(--parchment);flex-shrink:0"></div>
-    </div><!-- end outer row -->
+      <!-- RIGHT: Orders column (independently scrollable) -->
+      <div id="orders-column" style="width:24%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
+        <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
+          <h2 style="position:sticky;top:0;background:var(--parchment);z-index:2;margin:0;padding:8px 0">⚜ Orders — Turn <span id="orders-turn-num"></span></h2>
+          <div id="orders-msg"></div>
+          <div id="orders-form" style="flex:1"></div>
+          <div id="orders-submit-wrap" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--parchment);padding:8px 0">
+            <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
+            <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
+              Submit Orders to GM
+            </button>
+          </div>
+          <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
+        </div><!-- end orders-card -->
+      </div><!-- end orders column -->
+
+    </div><!-- end three-column layout -->
   </section>
 </div>
 
@@ -798,6 +800,7 @@ async function loadPastReport(gameId, playerIndex, turn){
   buildChronicle(entries, allChars.filter(c=>c.player===pi));
   // Strictly hide orders and submit sections — past turn views must never affect orders
   document.getElementById('orders-card').style.display='none';
+  const oc=document.getElementById('orders-column'); if(oc) oc.style.display='none';
   const sw=document.getElementById('orders-submit-wrap');
   if(sw) sw.style.display='none';
   document.getElementById('orders-msg').innerHTML='';
@@ -807,6 +810,7 @@ async function loadPastReport(gameId, playerIndex, turn){
 function returnToCurrentReport(){
   document.getElementById('prev-report-banner').style.display='none';
   document.getElementById('orders-card').style.display='block';
+  const oc2=document.getElementById('orders-column'); if(oc2) oc2.style.display='flex';
   // Restore the correct submit wrap (may have been replaced by success message)
   const submitWrap=document.getElementById('orders-submit-wrap');
   if(submitWrap&&!submitWrap.querySelector('#submit-btn')&&!submitWrap.querySelector('button[onclick*="resubmitOrders"]')){
@@ -872,10 +876,12 @@ async function openReport(gamePlayerId){
     document.getElementById('report-provinces').innerHTML='';
     document.getElementById('report-intel').innerHTML='';
     document.getElementById('orders-card').style.display='none';
+    const oc3=document.getElementById('orders-column'); if(oc3) oc3.style.display='none';
     return;
   }
 
   document.getElementById('orders-card').style.display='block';
+  const oc4=document.getElementById('orders-column'); if(oc4) oc4.style.display='flex';
 
   // Render chronicle
   buildChronicle(report.lastTurnLog||[], report.characters||[]);
@@ -2739,6 +2745,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.08-2138</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.08-2152</div>
 </body>
 </html>
