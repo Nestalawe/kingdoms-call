@@ -212,7 +212,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Spy','Practice Skill','Defend','Rest','Other'];
+const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Spy','Practice Skill','Defend','Rest'];
 
 // ── SHARED ORDER ENTRY HELPERS (mirrored from player portal) ──
 const SPELLS_BY_SCHOOL={
@@ -556,7 +556,11 @@ async function createGame(){
     max_players:maxP, max_turns:maxTurns,
     game_state:JSON.stringify({mapSize,maxTurns,maxPlayers:maxP})
   }).select().single();
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  if(error){
+    const isRLS=error.message?.includes('row-level security')||error.code==='42501';
+    msg.innerHTML=`<div class="msg-error">${error.message}${isRLS?'<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>':''}</div>`;
+    return;
+  }
   msg.innerHTML='<div class="msg-success">Game created! Players can now see and join it.</div>';
   setTimeout(()=>{show('sec-games');loadGames();},1500);
 }
@@ -1100,6 +1104,8 @@ function getDruidLevel(armyType){
 // Returns the effective quality after druid shortfall penalty
 // shortfall of N = -N quality tiers (each missing level = 20% str penalty)
 function druIdPenaltyMult(heroChar, army, playerAlignment){
+  // Skeletal armies never suffer Druid penalties — they are already dead
+  if(army._isSkeletal) return 1.0;
   const armyType=army.type;
   const heroRace=heroChar.race;
   const heroAlignment=heroChar.alignment||playerAlignment||'Neutral';
@@ -2011,6 +2017,7 @@ function buildTurnReport(gameState, playerIndex){
         // Full info
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
           tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          hadBattle:!!p._hadBattleThisTurn,
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,
           characters:(p.characters||[]).map(cid=>{
@@ -2022,18 +2029,18 @@ function buildTurnReport(gameState, playerIndex){
           }).filter(Boolean),
         };
       } else if(isVisited){
-        // Terrain, name, owner, army types
+        // Visited: full terrain info including explored %
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,
+          armyTypes:p.armyTypes,neighbors,explored:p.explored||0,hadBattle:!!p._hadBattleThisTurn,
         };
       } else if(isAdjacent){
-        // Terrain type, wealth indicator, owner name, army types only
-        return{id:p.id,row:p.row,col:p.col,terrain:p.terrain,
+        // Adjacent: show name, terrain, wealth, owner, army types, explored %
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
-          ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
-          armyTypes:p.armyTypes,neighbors,
+          ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
+          armyTypes:p.armyTypes,neighbors,explored:p.explored||0,hadBattle:!!p._hadBattleThisTurn,
         };
       } else {
         // Unknown — just the grid position so we can draw an empty hex
@@ -3028,6 +3035,7 @@ const BATTLE_ARMY_SPELLS={
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
       const friendlyAdj=adjProvs.filter(p2=>p2.owner===c.player);
+      toProv._hadBattleThisTurn=true;
       if(friendlyAdj.length===0){
         // Routed in place — no retreat available, extra casualties
         narrative.push(`${c.name}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`);
@@ -3157,7 +3165,7 @@ const BATTLE_ARMY_SPELLS={
     const isHome=prov.tax>=10;
     const defBonus=1.25*(isHome?1.2:1);
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
-    if(defTactLvl>0) narrative.push(`📊 ${defHero.name} leads the defense: Tactical ${defTactLvl} (×${defTactBonus.toFixed(1)} for land armies).`);
+    if(defTact>0) narrative.push(`📊 ${def.name} leads the defense: Tactical ${defTact} (×${defTactBonus.toFixed(1)} for land armies).`);
 
     // Fanaticism
     const atkFanChance={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
@@ -3397,6 +3405,7 @@ const BATTLE_ARMY_SPELLS={
     const atkMilMult=hasDisc(atk.player,'sd06')?1.10:1;
     const defMilMult=hasDisc(def.player,'sd06')?1.10:1;
 
+    prov._hadBattleThisTurn=true;
     if(won){
       narrative.push(`After a ${severity} battle, ${atk.name}'s forces ${pick(WIN_VERBS)} ${def.name}'s army and seize ${prov.name}!`);
       narrative.push(`⚔ **${atk.name}'s forces** (attacker):`);      // Winning attacker
@@ -4146,7 +4155,7 @@ const BATTLE_ARMY_SPELLS={
       'defend':'defend','rest':'rest','rest & heal':'rest','rest and heal':'rest',
       'encounter':'encounter','encounter character':'encounter',
       'steal':'steal','steal item':'steal','steal from character':'steal',
-      'other':'defend',
+      
     };
     const action=ACTION_MAP[rawAction]||'defend';
     const target=o.target||'';
@@ -4360,7 +4369,8 @@ const BATTLE_ARMY_SPELLS={
               const loot=Math.floor((toProv.tax||0)*0.5);
               if(loot>0){player.gold=(player.gold||0)+loot;log('combat',`⚔ Evil looting: ${c.name}'s forces plunder ${toProv.name} — ${loot}g seized immediately!`,{actor:c.player,targets:[c.player],provinceId:toProv.id});}
             }
-            log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit. Move points left: ${movePoints[c.id]})`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+            toProv._hadBattleThisTurn=true;
+          log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit. Move points left: ${movePoints[c.id]})`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             } // end if(defSurvivors.length===0)
           } else {
@@ -4953,6 +4963,8 @@ const BATTLE_ARMY_SPELLS={
         const victim=G.characters.find(ch=>ch.alive&&ch.id===targetId&&ch.location===c.location);
         if(!victim){log('system',`${c.name} finds no suitable target to steal from in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
         const thiefLevel=effStat(c,'thief');
+        // Steal only works if victim has magic items to steal
+        if((victim.items||[]).length===0){log('system',`${c.name} attempts to steal from ${victim.name} but they carry no magic items.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         // Base 15% + 15% per Thief level; halved if victim leads armies
         const leadsArmies=(victim.armies||[]).length>0;
         let stealChance=15+thiefLevel*15;
@@ -5952,6 +5964,8 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
   // 8. Wandering heroes drift — formerly-neutral guards AND original wanderers
   // Clear _justDefeated flag now that the turn is over
   (G.characters||[]).filter(c=>c._justDefeated).forEach(c=>{delete c._justDefeated;});
+  // Clear per-turn battle flags on provinces
+  G.world.provinces.forEach(p=>{delete p._hadBattleThisTurn;});
   // Clear per-turn seen-dead-heroes tracking (knownDeadHeroIds persists across turns)
   G.players.forEach(p=>{p.seenDeadHeroIds=[];});
   (G.characters||[]).filter(c=>c.player===null&&c.alive&&!c._isNeutralGuard).forEach(c=>{
@@ -6087,6 +6101,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.06-1010</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.08-0916</div>
 </body>
 </html>
