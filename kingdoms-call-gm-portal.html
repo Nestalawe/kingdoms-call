@@ -1106,6 +1106,8 @@ function getDruidLevel(armyType){
 function druIdPenaltyMult(heroChar, army, playerAlignment){
   // Skeletal armies never suffer Druid penalties — they are already dead
   if(army._isSkeletal) return 1.0;
+  // Neutral guard heroes natively command their province's armies — no Druid penalty
+  if(heroChar&&heroChar._isNeutralGuard) return 1.0;
   const armyType=army.type;
   const heroRace=heroChar.race;
   const heroAlignment=heroChar.alignment||playerAlignment||'Neutral';
@@ -1508,7 +1510,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           'Titan Warbeast':['Titan Warbeasts','Stone Giants'],
         };
         fullPool=PRIMAL_POOL[subRace]||['Stone Giants'];
-      } else {
+      } else if(terrain==='sea'){
         // Sea provinces: only non-humanoid naval creatures, and only 50% have any recruitables
         if(Math.random()<0.5){
           // Empty — no recruitables in this sea province
@@ -1519,6 +1521,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           const count=Math.floor(Math.random()*2)+1; // 1-2 types available
           fullPool=[...SEA_CREATURE_POOL].sort(()=>Math.random()-0.5).slice(0,count);
         }
+      } else {
+        // Regular land province: pull army types for this terrain + race
+        fullPool=(PROVINCE_ARMIES_P[terrain]||{})[race]||['Infantry'];
       }
       // Randomise the available army pool: take 2-4 types from the full pool
       // (home province will get its full pool restored separately)
@@ -2626,7 +2631,7 @@ const BATTLE_ARMY_SPELLS={
     killedArmies.forEach(a=>{
       // Don't record skeletal armies — they don't leave useful remains
       if(a._isSkeletal) return;
-      prov.battleGraves.push({type:a.type,quality:a.quality,race:a.race||'Human'});
+      prov.battleGraves.push({type:a.type,quality:a.quality,race:a.race||'Human',unitName:a.unitName});
     });
   }
 
@@ -2654,10 +2659,11 @@ const BATTLE_ARMY_SPELLS={
 
     // Setup
     narrative.push(`⚔ **Battle for ${prov.name}**`);
+    narrative.push(`${c.name} ${pick(ATK_VERBS)} ${prov.name} leading ${describeArmy(armies)}${tactNote}.`);
     const defenderDesc=defHero
       ?`${defHero.name} ${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}: ${describeArmy(defenders)}.`
       :`The province ${DEF_VERBS[1]} with ${defenders.length} defending unit${defenders.length!==1?'s':''}: ${describeArmy(defenders)}.`;
-    narrative.push(`${c.name} ${pick(ATK_VERBS)} ${prov.name} leading ${describeArmy(armies)}${tactNote}. ${defenderDesc}`);
+    narrative.push(defenderDesc);
 
     // Terrain and defender bonus
     // sd03 Siege Engines: attacker with this discovery reduces defender bonus
@@ -3077,8 +3083,8 @@ const BATTLE_ARMY_SPELLS={
     const defTactBonus=isPvPSea?1:1+defTact*0.2;
 
     narrative.push(`⚔ **Battle for ${prov.name}**`);
-    narrative.push(`${atk.name} (${G.players[atk.player]?.name}) attacks ${prov.name} with ${describeArmy(atkArmies)}${atkTact>0?` under Tactical ${atkTact} command`:''}. `
-      +`${def.name} (${G.players[def.player]?.name}) ${DEF_VERBS[0]} ${prov.name} with ${describeArmy(defArmies)}${defTact>0?` under Tactical ${defTact} command`:''}. `);
+    narrative.push(`${atk.name} (${G.players[atk.player]?.name}) attacks ${prov.name} with ${describeArmy(atkArmies)}${atkTact>0?` under Tactical ${atkTact} command`:''}.`);
+    narrative.push(`${def.name} (${G.players[def.player]?.name}) ${DEF_VERBS[0]} ${prov.name} with ${describeArmy(defArmies)}${defTact>0?` under Tactical ${defTact} command`:''}.`);
 
     // Duel before battle
     const atkTemper=atk.temper||'Brave';
@@ -4324,6 +4330,13 @@ const BATTLE_ARMY_SPELLS={
               if(roll<loseDeathChance||qi<=0){
                 log('combat',`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} ${qi<=0&&roll>=loseDeathChance?'broken and destroyed — no further to fall':'cut down in the rout'}!`,{actor:c.player,targets:[],provinceId:toProv.id});
                 recordBattleGraves(toProv,[a]);
+              } else if(Math.random()<0.35){
+                // 35% chance to flee and become a wandering mercenary rather than rally
+                if(!G.mercenaries) G.mercenaries=[];
+                const SEA_MERC=new Set(['Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+                G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
+                  location:toProv.id,isSea:SEA_MERC.has(a.type),id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
+                log('combat',`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} break ranks and flee — they now roam as mercenaries near ${toProv.name}.`,{actor:c.player,targets:[],provinceId:toProv.id});
               } else {
                 a.quality=tiers2[qi-1];
                 log('combat',`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} bloodied, reduced to ${a.quality} — they rally around ${neutralGuard.name.replace(' (wandering)','')}.`,{actor:c.player,targets:[],provinceId:toProv.id});
@@ -4481,7 +4494,10 @@ const BATTLE_ARMY_SPELLS={
             }
           }
           const usesSea=enteringSea||coastalLanding;
-          log('move',`${c.name} moves to ${toProv.name}. (${usesSea?seaMovePoints[c.id]:movePoints[c.id]} ${usesSea?'sea ':''}move point${(usesSea?seaMovePoints[c.id]:movePoints[c.id])!==1?'s':''} remaining this turn)`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
+          // Coastal landings already logged their own message — don't double-log
+          if(!coastalLanding){
+            log('move',`${c.name} moves to ${toProv.name}. (${usesSea?seaMovePoints[c.id]:movePoints[c.id]} ${usesSea?'sea ':''}move point${(usesSea?seaMovePoints[c.id]:movePoints[c.id])!==1?'s':''} remaining this turn)`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
+          }
         }
         break;
       }
@@ -5286,10 +5302,10 @@ const BATTLE_ARMY_SPELLS={
             const grave=prov.battleGraves.splice(gIdx,1)[0];
             const skel={
               type:grave.type,quality:grave.quality,race:'Undead',_isSkeletal:true,
-              unitName:`${armyUnitName(grave.type)} (Skeletal)`,
+              unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)`,
             };
             c.armies=(c.armies||[]);c.armies.push(skel);raised.push(skel);
-            log('explore',`💀 ${c.name} calls forth the ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+            log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           }
           if(raised.length>0){
             const remaining=prov.battleGraves.length;
@@ -6101,6 +6117,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.08-0916</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.08-1639</div>
 </body>
 </html>
