@@ -1656,16 +1656,31 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   const players=setupPlayers.map((sp,pi)=>{
     let best=null,bestScore=-1;
     const candidates=(validStarts.length>=setupPlayers.length?validStarts:landProvinces).filter(p=>p.owner===null);
-    for(let attempt=0;attempt<80;attempt++){
+    // Require a minimum separation between home provinces (scaled to map size)
+    // At least 4 hexes apart, or fewer only if the map is too small to allow it
+    const minSeparation=Math.max(3,Math.min(5,Math.floor(cols/2)));
+    // First pass: only accept candidates that respect minSeparation
+    for(let attempt=0;attempt<200;attempt++){
       const cand=candidates[Math.floor(Math.random()*candidates.length)];
       if(!cand||cand.owner!==null) continue;
       let minDist=999;
       playerStarts.forEach(s=>{const d=hexDistP(cand,s,cols);if(d<minDist)minDist=d;});
-      if(minDist>bestScore){bestScore=minDist;best=cand;}
+      // Accept immediately if it meets the separation requirement and beats current best
+      if(minDist>=minSeparation&&minDist>bestScore){bestScore=minDist;best=cand;}
+    }
+    // Fallback: if no candidate met minSeparation (tiny/crowded map), take the most-distant available
+    if(!best){
+      for(let attempt=0;attempt<200;attempt++){
+        const cand=candidates[Math.floor(Math.random()*candidates.length)];
+        if(!cand||cand.owner!==null) continue;
+        let minDist=999;
+        playerStarts.forEach(s=>{const d=hexDistP(cand,s,cols);if(d<minDist)minDist=d;});
+        if(minDist>bestScore){bestScore=minDist;best=cand;}
+      }
     }
     if(!best) best=candidates[0]||landProvinces[pi];
     // Home province race always matches the king's race, and army pool updates accordingly
-    best.owner=pi;best.npcArmies=0;best.neutralDefenders=[];best.explored=100;best.visitedBy=[pi];best.tax=10;
+    best.owner=pi;best.npcArmies=0;best.neutralDefenders=[];best.exploredBy={[pi]:100};best.explored=100;best.visitedBy=[pi];best.tax=10;
     best.race=sp.race;
     best.armyTypes=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Infantry'];
     // 100% explored = all features discovered at start
@@ -1850,7 +1865,7 @@ function buildTurnReport(gameState, playerIndex){
       return ng?{id:ng.id,name:ng.name,race:ng.race,skills:ng.skills}:null;
     })(),
     armyTypes:p.armyTypes,
-    explored:p.explored||0,
+    explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,
     characters:(p.characters||[]).map(cid=>{
       const c=gameState.characters[cid];
       return c?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
@@ -2038,14 +2053,14 @@ function buildTurnReport(gameState, playerIndex){
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored:p.explored||0,hadBattle:!!p._hadBattleThisTurn,
+          armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
         };
       } else if(isAdjacent){
         // Adjacent: show name, terrain, wealth, owner, army types, explored %
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored:p.explored||0,hadBattle:!!p._hadBattleThisTurn,
+          armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
         };
       } else {
         // Unknown — just the grid position so we can draw an empty hex
@@ -2305,16 +2320,32 @@ async function runTurn(){
   }
 
   // 2. Merge all player orders into G.turnOrders + apply encounter plans
-  if(!G.turnOrders) G.turnOrders={};
+  // CRITICAL: reset turnOrders completely first — stale orders from a previous turn
+  // must NEVER carry over. Every character starts this turn with a clean slate (Defend).
+  G.turnOrders={};
+  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
+    G.turnOrders[c.id]=[null,null,null,null,null];
+  });
+  // Also clear any stale per-character encounter plans from last turn
+  (G.characters||[]).forEach(c=>{ if(c.encounterPlan) delete c.encounterPlan; });
+  // Collect warnings about rejected stale orders (logged once log() is ready)
+  const staleOrderWarnings=[];
   freshPlayers.filter(p=>p.user_id&&p.orders).forEach(gp=>{
     let raw=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
-    // Detect new format: {orders:{charId:[phases]}, encounterPlans:{}}
+    // Detect new format: {orders:{charId:[phases]}, encounterPlans:{}, forTurn:N}
     // vs old format: {charId:[phases]}
     let ordersObj=raw;
     let epObj={};
+    let forTurn=null;
     if(raw.orders!==undefined&&raw.encounterPlans!==undefined){
       ordersObj=raw.orders||{};
       epObj=raw.encounterPlans||{};
+      forTurn=raw.forTurn??null;
+    }
+    // CRITICAL: reject orders that were stamped for a different turn (stale submissions)
+    if(forTurn!==null&&forTurn!==expectedTurnToRun){
+      staleOrderWarnings.push(`⚠ Ignoring stale orders from ${G.players[gp.player_index]?.name||'a player'} — submitted for Turn ${forTurn}, not Turn ${expectedTurnToRun}.`);
+      return; // skip this player's stale orders entirely
     }    Object.entries(ordersObj).forEach(([charId,phaseOrders])=>{
       if(!Array.isArray(phaseOrders)) return;
       // Handle synthetic hired hero IDs: 'hired_HEROID_via_CHARID_phPH'
@@ -2383,6 +2414,11 @@ async function runTurn(){
     });
     console.log(`[${type}] ${text}`);
   };
+
+  // Flush any stale-order warnings collected during the merge phase
+  if(staleOrderWarnings.length>0){
+    staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true}));
+  }
 
   // Build a rough army strength description for use in enemy intel
   // Spy skill determines accuracy: 0-1 = vague, 2-3 = moderate, 4-5 = precise
@@ -3041,7 +3077,7 @@ const BATTLE_ARMY_SPELLS={
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
       const friendlyAdj=adjProvs.filter(p2=>p2.owner===c.player);
-      toProv._hadBattleThisTurn=true;
+      prov._hadBattleThisTurn=true;
       if(friendlyAdj.length===0){
         // Routed in place — no retreat available, extra casualties
         narrative.push(`${c.name}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`);
@@ -4242,8 +4278,10 @@ const BATTLE_ARMY_SPELLS={
         if(!toProv.visitedBy.includes(c.player)){
           toProv.visitedBy.push(c.player);
           // Moving into a province gives 10% exploration (AK 3.1: half of Explore order)
-          const prevExp=toProv.explored||0;
-          toProv.explored=Math.min(100,prevExp+10);
+          if(!toProv.exploredBy) toProv.exploredBy={};
+          const prevExp=toProv.exploredBy[c.player]||0;
+          toProv.exploredBy[c.player]=Math.min(100,prevExp+10);
+          toProv.explored=toProv.exploredBy[c.player];
           // Check if any features are now discoverable
           const totalF=(toProv.features||[]).length;
           if(totalF>0){
@@ -4487,7 +4525,9 @@ const BATTLE_ARMY_SPELLS={
               toProv.owner=c.player;
               if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
-              toProv.explored=Math.min(100,(toProv.explored||0)+10);
+              if(!toProv.exploredBy) toProv.exploredBy={};
+              toProv.exploredBy[c.player]=Math.min(100,(toProv.exploredBy[c.player]||0)+10);
+              toProv.explored=toProv.exploredBy[c.player];
               log('move',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
             } else {
               log('move',`${c.name} ventures into ${toProv.name} to explore — without armies at their back, they can only observe, not conquer.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
@@ -4511,8 +4551,10 @@ const BATTLE_ARMY_SPELLS={
         // sd10 Scouts & Rangers: +20% explore bonus
         const scoutBonus=hasDisc(c.player,'sd10')?1.20:1;
         const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus));
-        const before=prov.explored||0;
-        prov.explored=Math.min(100,before+gain);
+        if(!prov.exploredBy) prov.exploredBy={};
+        const before=prov.exploredBy[c.player]||0;
+        prov.exploredBy[c.player]=Math.min(100,before+gain);
+        prov.explored=prov.exploredBy[c.player]; // keep legacy field for compatibility
         // Feature discovery: proportional thresholds based on how many features exist
         // At 100% explored, all features visible. 1 feature=100%, 2=50%/100%, 4=25%/50%/75%/100% etc.
         const totalFeatures=(prov.features||[]).length;
@@ -6004,6 +6046,10 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
 
   // 9. Save updated game state
   msg.innerHTML='<div class="msg-info">⏳ Saving game state…</div>';
+  // Clear resolved orders and encounter plans from the saved state so they can never
+  // be re-applied next turn. Next turn's runTurn rebuilds turnOrders from fresh submissions.
+  G.turnOrders={};
+  (G.characters||[]).forEach(c=>{ if(c.encounterPlan) delete c.encounterPlan; });
   const {error:saveErr}=await sb.from('games').update({
     game_state:JSON.stringify(G),
     turn:G.turn,
@@ -6117,6 +6163,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.08-1639</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.08-2138</div>
 </body>
 </html>

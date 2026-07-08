@@ -813,7 +813,7 @@ function returnToCurrentReport(){
     submitWrap.innerHTML=`
       <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
       <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-        Submit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}
+        Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}
       </button>`;
     submitWrap.style.display='flex';
     submitWrap.style.gap='8px';
@@ -1351,7 +1351,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   }).join('');
 
   btn.disabled=false;
-  btn.textContent=`Submit Orders for Turn ${turnNum}`;
+  btn.textContent=`Submit Orders for Turn ${(turnNum||1)+1}`;
 }
 
 function addEncounterTactic(charId, code){
@@ -1766,7 +1766,7 @@ async function resubmitOrders(){
   document.getElementById('orders-submit-wrap').innerHTML=`
     <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
     <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-      Resubmit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}
+      Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}
     </button>`;
   const sw2=document.getElementById('orders-submit-wrap');
   sw2.style.display='flex';sw2.style.gap='8px';
@@ -1796,7 +1796,7 @@ function updateAlignmentDesc(){
 function cancelSubmit(){
   document.getElementById('orders-msg').innerHTML='';
   const btn=document.getElementById('submit-btn');
-  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}`;}
+  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}`;}
 }
 
 async function doSaveOrders(){
@@ -1841,7 +1841,7 @@ async function reviseOrders(){
   buildOrdersForm(chars, false, gp.orders, currentReport?.turn||1);
   document.getElementById('orders-msg').innerHTML='<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
   document.getElementById('submit-btn').disabled=false;
-  document.getElementById('submit-btn').textContent=`Resubmit Orders for Turn ${currentReport?._liveTurn||currentReport?.turn||1}`;
+  document.getElementById('submit-btn').textContent=`Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}`;
 }
 
 async function doSubmitOrders(){
@@ -1853,7 +1853,7 @@ async function doSubmitOrders(){
   const {data:freshGame}=await sb.from('games').select('turn').eq('id',currentGamePlayer?.game_id).single();
   const expectedTurn=currentReport?._liveTurn||currentReport?.turn||1;
   if(freshGame&&freshGame.turn!==expectedTurn){
-    document.getElementById('orders-msg').innerHTML=`<div class="msg-error">⚠ The GM has already advanced the game to Turn ${freshGame.turn}. Your Turn ${expectedTurn} orders were not saved — please reload the page to see your new turn report.</div>`;
+    document.getElementById('orders-msg').innerHTML=`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`;
     btn.disabled=false;btn.textContent='Submit Orders';return;
   }
   if(!currentGamePlayer?.id){
@@ -1892,7 +1892,7 @@ async function doSubmitOrders(){
     }));
   });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans}),
+    orders:JSON.stringify({orders,encounterPlans,forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -2739,6 +2739,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.08-0914</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.08-2138</div>
 </body>
 </html>
