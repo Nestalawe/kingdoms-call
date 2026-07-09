@@ -2679,12 +2679,12 @@ function renderMapIntoSvg(svgEl, report){
         const mx=markerX,my=y-HS+9;
         const wc=document.createElementNS(svgNS,'circle');
         wc.setAttribute('cx',mx);wc.setAttribute('cy',my);wc.setAttribute('r','4.5');
-        wc.setAttribute('fill','#8b6914');wc.setAttribute('stroke','#e8b84b');wc.setAttribute('stroke-width','1');
+        wc.setAttribute('fill','#888');wc.setAttribute('stroke','#fff');wc.setAttribute('stroke-width','1');
         wc.setAttribute('pointer-events','none');
         const wlbl=document.createElementNS(svgNS,'text');
         wlbl.setAttribute('x',mx);wlbl.setAttribute('y',my+2);
         wlbl.setAttribute('text-anchor','middle');wlbl.setAttribute('font-size','5');
-        wlbl.setAttribute('fill','#e8b84b');wlbl.setAttribute('pointer-events','none');
+        wlbl.setAttribute('fill','#fff');wlbl.setAttribute('pointer-events','none');
         wlbl.textContent='?';
         g.appendChild(wc);g.appendChild(wlbl);
       }
@@ -2773,6 +2773,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0258</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0805</div>
 </body>
 </html>
