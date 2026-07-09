@@ -1758,10 +1758,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     return{id:pi,name:sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50'][pi],race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:10,king:kingId,heroes:[...heroIds],provinces:[best.id],merits:0};
   });
 
-  // Neutral heroes — one per non-home land province, leading the province's neutral armies
-  landProvinces.filter(p=>p.owner===null).forEach(lp=>{
+  // Neutral heroes — one per non-home land province, and per sea province that has defenders,
+  // leading the province's neutral armies (so sea provinces actually fight when entered)
+  provinces.filter(p=>p.owner===null && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
     const hid=allChars.length;
-    const hrace=RACES_P[Math.floor(Math.random()*4)];
+    const hrace=lp.terrain==='sea'?'Primal':RACES_P[Math.floor(Math.random()*4)];
     const hSkills={};
     // Give neutral heroes a spread of combat/leadership skills
     const neutralSkillPool=['melee','archery','tactical','march','explorer'];
@@ -4902,6 +4903,12 @@ const BATTLE_ARMY_SPELLS={
         if(!G.turnOrders[h.id])G.turnOrders[h.id]=[null,null,null,null,null];
         // Default unfilled phases (before hire) to a "not yet hired" placeholder
         for(let p2=0;p2<=ph;p2++) G.turnOrders[h.id][p2]=G.turnOrders[h.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
+        setMovePool(h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
+        // Mounted Couriers (sd34): newly hired hero may act from the phase they were hired, not the next
+        if(hasDisc(c.player,'sd34')){
+          const ho=(G.turnOrders[h.id]||[])[ph];
+          if(ho&&ho.desc!=='(not yet hired)') processOrder(h,ho,ph);
+        }
         log('hire',`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn${h.race===(kingChar?.race||'')?` (same race — standard rate)`:` (different race — higher rate)`}. Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. They may act from ${SEASONS[ph+1]||'next turn'} onwards.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         break;
       }
@@ -5749,7 +5756,7 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   const seaMovePoints={};    // separate sea move point pool
   const seaMoveActive={};    // whether this character has sea move capability this turn
   const seaCap={};
-  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
+  function setMovePool(c){
     const armies=c.armies||[];
     const marchLevel=effStat(c,'march');
     const navalLevel=effStat(c,'naval');
@@ -5791,7 +5798,8 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
       }
     }
     seaCap[c.id]=getSeaCapability(armies);
-  });
+  }
+  (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(setMovePool);
 
   // Contingent unify helper — used when two friendly forces attack same province same phase
   function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval){
@@ -6350,6 +6358,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.09-0840</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.09-0850</div>
 </body>
 </html>

@@ -410,7 +410,7 @@ async function doSignUp(){
 async function doSignOut(){
   await sb.auth.signOut();
   currentUser=null;currentProfile=null;currentGamePlayer=null;currentReport=null;
-  show('sec-auth');
+  location.reload(); // full reset so no stale state carries over when another player signs in on the same browser
 }
 
 async function onSignedIn(){
@@ -1623,6 +1623,8 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   if(!heroId) return;
 
   const report=currentReport||{};
+  const immH=(report.discoveries||[]).some(d=>d.id==='sd34'); // Mounted Couriers: act from hire phase
+  const firstActable=immH?ph:ph+1;
   let heroData=null;
   Object.values(report.provinceOrderData||{}).forEach(pd=>{
     (pd.availableHeroes||[]).forEach(h=>{if(String(h.id)===String(heroId))heroData=h;});
@@ -1667,7 +1669,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   card.innerHTML=`
     <div class="orders-char-head" style="background:#fdf5e0">
       ⚔ ${heroData.name}
-      <span style="color:#c8922a;font-size:.7rem;margin-left:6px">(newly hired — can act from ${SEASONS_H[ph+1]||'next turn'})</span>
+      <span style="color:#c8922a;font-size:.7rem;margin-left:6px">(newly hired — can act from ${SEASONS_H[firstActable]||'next turn'})</span>
     </div>
     <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px">
       <span><strong>Race:</strong> ${heroData.race}</span>
@@ -1683,7 +1685,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   SEASONS_H.forEach((season,phIdx)=>{
     const row=document.createElement('div');
     row.className='phase-order';
-    if(phIdx<=ph){
+    if(phIdx<firstActable){
       row.style.cssText='opacity:.35;pointer-events:none';
       row.innerHTML=`<div class="phase-label">${season}</div>
         <div style="font-size:.76rem;color:var(--stone);font-style:italic;grid-column:2/-1">(not yet hired)</div>`;
@@ -2778,6 +2780,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0840</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0850</div>
 </body>
 </html>
