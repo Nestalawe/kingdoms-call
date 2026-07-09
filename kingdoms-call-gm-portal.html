@@ -4800,6 +4800,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'recruit':{
+        const ARMY_COST_P={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Galleon Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3};
         // First: check for mercenaries in province
         const mercsHere=(G.mercenaries||[]).filter(m=>m.location===c.location);
         if(mercsHere.length>0&&target){
@@ -4807,7 +4808,7 @@ const BATTLE_ARMY_SPELLS={
           let mHired=false;
           mercsHere.forEach(merc=>{
             if(!rList.some(t=>t===merc.id||t===merc.type||t===merc.unitName))return;
-            const baseMercCost=ARMY_COST[merc.type]||2;
+            const baseMercCost=ARMY_COST_P[merc.type]||2;
             // Neutral alignment: mercenaries cost 1g less (min 1g)
             const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?1:0));
             if((player.gold||0)<mCost){log('hire',`${c.name}: cannot afford ${merc.unitName||merc.type} mercenaries (${mCost}g).`,{actor:c.player,targets:[c.player]});return;}
@@ -4827,7 +4828,6 @@ const BATTLE_ARMY_SPELLS={
         const isOwned=prov.owner===c.player;
         const selections=(extra||target||'Infantry|1').split(',').map(s=>s.trim()).filter(Boolean);
         let totalCost=0;let recruited=[];let blocked=[];
-        const ARMY_COST_P={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':4,'Human Garrison':1,'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Eagle Riders':4,'Noble Griffons':4,'Gyrocopters':4,'Wyvern Riders':4,'Elven Garrison':1,'Dwarven Guard':3,'Crossbowmen':2,'Mountain Guns':4,'Dwarf Garrison':1,'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':1,'Orc Garrison':1,'Galleon Fleet':3,'Corsair Fleet':3,'Elven Galleys':3,'Dwarf Ironclads':4,'Orcish Longships':3,'Whale Cohort':3};
 
         for(const sel of selections){
           const[armyType,qtyStr]=sel.split('|');
@@ -6333,6 +6333,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.09-0311</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.09-0810</div>
 </body>
 </html>

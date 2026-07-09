@@ -2349,6 +2349,20 @@ function drawMap(){
       }
     }
 
+    // Wandering (neutral) heroes — grey dot, bottom-left
+    const wanderHere=G.characters.filter(c=>c.location===p.id&&c.alive&&c.player===null);
+    if(wanderHere.length>0){
+      const wdot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      wdot.setAttribute('cx',x-7);wdot.setAttribute('cy',y+5);wdot.setAttribute('r','3.5');
+      wdot.setAttribute('fill','#888');wdot.setAttribute('stroke','#fff');wdot.setAttribute('stroke-width','0.8');
+      g.appendChild(wdot);
+      const wtxt=document.createElementNS('http://www.w3.org/2000/svg','text');
+      wtxt.setAttribute('x',x-7);wtxt.setAttribute('y',y+7.5);wtxt.setAttribute('text-anchor','middle');
+      wtxt.setAttribute('font-size','4');wtxt.setAttribute('fill','#fff');wtxt.setAttribute('pointer-events','none');
+      wtxt.textContent=wanderHere.length>1?wanderHere.length:'?';
+      g.appendChild(wtxt);
+    }
+
     // Province name
     const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
     lbl.setAttribute('x',x);lbl.setAttribute('y',y+1.5);lbl.setAttribute('text-anchor','middle');
@@ -2892,7 +2906,7 @@ initColumnResizers();
 // Initialise setup
 renderSetup();
 
-</script>
+</script>  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Map v2026.07.09-0820</div>
 </body>
 </html>
 <!-- ═══════════════════════════════════════════════════
