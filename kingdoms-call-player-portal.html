@@ -216,7 +216,6 @@ section{display:none;}.section-active{display:block;}
     <div class="detail-header" style="max-width:none;padding:10px 16px">
       <button class="btn btn-ghost" onclick="show('sec-games');loadAllGames()">← My Games</button>
       <h2 id="report-title">Turn Report</h2>
-      <span id="report-status-pill"></span>
     </div>
 
     <!-- Three-column layout: map + report content + orders (each independently scrollable) -->
@@ -232,15 +231,23 @@ section{display:none;}.section-active{display:block;}
           <svg id="report-map-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%"></svg>
         </div>
         <!-- Map legend -->
-        <div style="padding:6px 10px;background:#1a1208;border-top:1px solid #333;display:flex;flex-wrap:wrap;gap:6px;font-size:.62rem;color:#888">
-          <span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:12px;height:8px;background:#4a7a3a;border-radius:1px"></span> Terrain colour</span>
-          <span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:12px;height:8px;background:transparent;border:2px solid #c8922a;border-radius:1px"></span> Your province</span>
-          <span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:12px;height:8px;background:transparent;border:2px solid #eee;border-radius:1px"></span> Enemy province</span>
-          <span>👑 = King · ⚔ = Hero · ⭐ = Feature · 🛡 = Defenders</span>
-          <span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FFD700;border:1.5px solid #FFA500;box-shadow:0 0 2px #FFD700"></span> Rich</span>
-          <span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#C0C0C0;border:1.5px solid #A8A8A8"></span> Prosperous</span>
-          <span style="display:flex;align-items:center;gap:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#CD7F32;border:1.5px solid #A0522D"></span> Poor</span>
-          <span>% = explored</span>
+        <div style="padding:10px 14px;background:#1a1208;border-top:1px solid #333;display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;color:#bbb;align-items:center">
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:#4a7a3a;border-radius:2px"></span> Terrain colour</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:transparent;border:2px solid #c8922a;border-radius:2px"></span> Your province</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:transparent;border:2px solid #eee;border-radius:2px"></span> Enemy province</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#c8922a" stroke="#fff" stroke-width="1"/><text x="8" y="11" text-anchor="middle" font-size="9" fill="#fff">♛</text></svg> Your King</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#c8922a" stroke="#fff" stroke-width="1"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4.2,11 Q8,7.5 11.8,11" fill="#fff"/></svg> Hero</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8a2020" stroke="#fff" stroke-width="1"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4.2,11 Q8,7.5 11.8,11" fill="#fff"/></svg> Enemy hero</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Feature</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🛡</span> Defenders</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#FFD700;border:2px solid #FFA500;box-shadow:0 0 3px #FFD700"></span> Rich</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#CD7F32;border:2px solid #A0522D"></span> Poor</span>
+          <span style="display:flex;align-items:center;gap:5px"><strong style="color:#ddd">%</strong> = explored</span>
         </div>
       </div>
 
@@ -285,9 +292,10 @@ section{display:none;}.section-active{display:block;}
       </div><!-- end middle report column -->
 
       <!-- RIGHT: Orders column (independently scrollable) -->
-      <div id="orders-column" style="width:24%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
+      <div id="orders-column" style="width:22%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
         <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
           <h2 style="position:sticky;top:0;background:var(--parchment);z-index:2;margin:0;padding:8px 0">⚜ Orders — Turn <span id="orders-turn-num"></span></h2>
+          <div id="report-status-pill" style="padding:2px 0 6px"></div>
           <div id="orders-msg"></div>
           <div id="orders-form" style="flex:1"></div>
           <div id="orders-submit-wrap" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--parchment);padding:8px 0">
@@ -299,6 +307,9 @@ section{display:none;}.section-active{display:block;}
           <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
         </div><!-- end orders-card -->
       </div><!-- end orders column -->
+
+      <!-- Right-edge spacer -->
+      <div style="width:5%;min-width:20px;background:var(--parchment);flex-shrink:0;height:calc(100vh - 120px)"></div>
 
     </div><!-- end three-column layout -->
   </section>
@@ -2157,14 +2168,31 @@ function buildTargetField(c, ph, saved){
         secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else if(NEEDS_CHAR.has(selSpell)){
-        const includesSelf=selSpell==='Oratory';
-        const selfOpt=includesSelf?`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`:'';
-        // Resurrect shows dead heroes; all others show living characters
-        const charOpts=selSpell==='Resurrect'
-          ?(report.knownDeadHeroes||report.deadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}</option>`).join('')
-          :(report.characters||[]).filter(x=>x.id!==c.id)
-            .map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${selfOpt}${charOpts}</select>
+        const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
+        let charOpts='';
+        if(selSpell==='Resurrect'){
+          // Resurrect shows dead heroes the player has seen
+          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}</option>`).join('');
+        } else if(selSpell==='Charm'){
+          // Charm: only wandering or enemy heroes in the SAME province
+          const targets=(report.visibleChars||[]).filter(x=>
+            x.player!==c.player && (x.locationId===casterLoc));
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔ (enemy)'} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No wandering/enemy heroes in this province</option>';
+        } else if(selSpell==='Oratory'){
+          // Oratory: self, or own characters in the same province
+          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&x.locationId===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+        } else {
+          // Other character-target spells (Spiritwrack, Psychic Blast, Lightning, Curse, Hand of Death, Kill Enemy)
+          // Target visible enemy characters in the same province
+          const targets=(report.visibleChars||[]).filter(x=>
+            x.player!==c.player && x.player!==null && x.locationId===casterLoc);
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} ⚔ — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No enemy heroes in this province</option>';
+        }
+        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${charOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else {
         secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
@@ -2745,6 +2773,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.08-2152</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0243</div>
 </body>
 </html>
