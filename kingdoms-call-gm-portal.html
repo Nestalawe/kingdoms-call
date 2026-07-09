@@ -1944,6 +1944,11 @@ function buildTurnReport(gameState, playerIndex){
     });
   });
 
+  // Provinces visible to this player: owned OR containing one of their characters
+  // (declared here — used by dead-hero, mercenary, and hero-sighting intel below)
+  const playerCharLocations=new Set(gameState.characters.filter(c=>c.player===playerIndex&&c.alive).map(c=>c.location));
+  const visibleProvIds=new Set([...ownedProvIds,...playerCharLocations]);
+
   // Dead heroes visible to this player — in provinces they own or have a character in
   // Dead heroes visible this turn:
   // - Own dead heroes always visible
@@ -1978,8 +1983,6 @@ function buildTurnReport(gameState, playerIndex){
 
   // Hero sightings — all wandering and enemy heroes visible to this player
   // Visible if in an owned province OR in a province where one of this player's characters is present
-  const playerCharLocations=new Set(gameState.characters.filter(c=>c.player===playerIndex&&c.alive).map(c=>c.location));
-  const visibleProvIds=new Set([...ownedProvIds,...playerCharLocations]);
 
   const heroSightings=[];
   gameState.characters.filter(c=>c.alive&&c.player!==playerIndex).forEach(c=>{
@@ -2833,6 +2836,97 @@ const BATTLE_ARMY_SPELLS={
         }
       });
       narrative.push(`📊 Archery phase total: −${totalArrowDmg} strength spread across defenders.`);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // DEFENDER PRE-BATTLE PHASES — neutral guard heroes and their armies
+    // fight back with magic, army spells, and missile fire (reduces ATTACKER strength)
+    // ══════════════════════════════════════════════════════
+    if(defHero){
+      // DEFENDER MAGIC: guard casts a battle spell from their encounter plan (or picks one they know)
+      const defTactics=(defHero.encounterPlan?.tactics)||[];
+      let defSpellName=null;
+      // First: explicit CA: tactic
+      const defSpellTactic=defTactics.find(t=>t.toUpperCase().startsWith('CA:')&&BATTLE_MAGIC_SPELLS.has(t.slice(3)));
+      if(defSpellTactic) defSpellName=defSpellTactic.slice(3);
+      // Otherwise: auto-pick a battle spell the guard has the school skill for
+      if(!defSpellName){
+        for(const sname of BATTLE_MAGIC_SPELLS){
+          const sdef=SPELL_DEFS_P[sname];
+          if(sdef&&effStat(defHero,sdef.school)>0){defSpellName=sname;break;}
+        }
+      }
+      if(defSpellName&&armies.length>0){
+        const sdef=SPELL_DEFS_P[defSpellName];
+        const school=sdef?.school||'elemental';
+        const defSpellLvl=effStat(defHero,school);
+        if(defSpellLvl>0){
+          const castChance=Math.min(90,30+defSpellLvl*15);
+          const castRoll=Math.random()*100;
+          narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll.toFixed(0)} ${castRoll<castChance?'✓':'✗'}]`);
+          if(castRoll<castChance){
+            if(defSpellName==='Fireball'||defSpellName==='Lightning Bolt'||defSpellName==='Psychic Blast'){
+              const tgt=armies[Math.floor(Math.random()*armies.length)];
+              const dmg=rng(3,8)*(defSpellLvl>=3?2:1);
+              tgt._tempStrReduction=(tgt._tempStrReduction||0)+dmg;
+              narrative.push(`  ${defSpellName} strikes ${tgt.unitName||tgt.type}: −${dmg} strength this battle.`);
+            } else if(defSpellName==='Telekinetic Storm'){
+              armies.forEach(a=>{const dmg=rng(2,5);a._tempStrReduction=(a._tempStrReduction||0)+dmg;});
+              narrative.push(`  Telekinetic Storm batters all attacking units: −2–5 strength each.`);
+            } else if(defSpellName==='Curse'){
+              armies.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(armStr(a,c,playerAlign,prov.terrain)*0.15);});
+              narrative.push(`  Curse withers the attackers: all units −15% strength this battle.`);
+            }
+          } else {
+            narrative.push(`  The spell fizzles — no defensive magical effect.`);
+          }
+        }
+      }
+
+      // DEFENDER ARMY SPELLS: primal/special defending units cast their innate battle spells
+      const defDruIdLvl=effStat(defHero,'druid');
+      defenders.forEach(def=>{
+        let armySpells=BATTLE_ARMY_SPELLS[def.type]||[];
+        if(armySpells.length===0&&PRIMAL_ARMY_DEFS_P[def.type]?.spells){
+          armySpells=PRIMAL_ARMY_DEFS_P[def.type].spells.filter(s=>s.dmg&&(s.dmg[1]>0));
+        }
+        if(armySpells.length===0||armies.length===0) return;
+        const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
+        const armySpellChance=Math.min(90,20+defDruIdLvl*10);
+        if(Math.random()*100<armySpellChance){
+          narrative.push(`✨ ${def.unitName||def.type} (defending) — **${sp.name}**: "${sp.flavour}"`);
+          if(sp.target==='all'){
+            const dmg=rng(sp.dmg[0],sp.dmg[1]);
+            armies.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+dmg;});
+            narrative.push(`  ${sp.name} hits all ${armies.length} attacking units: −${dmg} strength each.`);
+          } else {
+            const a=armies[Math.floor(Math.random()*armies.length)];
+            const dmg=rng(sp.dmg[0],sp.dmg[1]);
+            a._tempStrReduction=(a._tempStrReduction||0)+dmg;
+            narrative.push(`  ${sp.name} hits ${a.unitName||a.type}: −${dmg} strength this battle.`);
+          }
+        }
+      });
+
+      // DEFENDER ARCHERY: defending missile units fire at the attackers
+      const missileDef=defenders.filter(a=>MISSILE_ARMIES.has(a.type));
+      if(missileDef.length>0&&armies.length>0){
+        const defArchSkill=effStat(defHero,'archery');
+        narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} missile unit${missileDef.length!==1?'s':''}`);
+        let totalDefArrow=0;
+        missileDef.forEach(def=>{
+          // Fire at front-row attackers
+          const frontAtk=armies.slice(0,Math.min(armies.length,Math.max(1,defCount)));
+          const target=frontAtk[Math.floor(Math.random()*frontAtk.length)];
+          const isFly=FLYING_TYPES.has(target.type);
+          const baseDmg=rng(1,3)*(defArchSkill+1);
+          const dmg=isFly?Math.ceil(baseDmg/2):baseDmg;
+          target._tempStrReduction=(target._tempStrReduction||0)+dmg;
+          totalDefArrow+=dmg;
+          narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${dmg} strength${isFly?' (½ vs flying)':''}.`);
+        });
+        narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers.`);
+      }
     }
 
     // ── TERRAIN MODIFIER NOTES ──
@@ -4089,9 +4183,9 @@ const BATTLE_ARMY_SPELLS={
     if(!G.heroGraveyard) return;
     G.heroGraveyard.filter(g=>g.location===provId).forEach(g=>{
       const p=G.players[playerIdx];if(!p) return;
-      if(!p.seenDeadHeroIds) p.seenDeadHeroIds=[];
+      if(!Array.isArray(p.seenDeadHeroIds)) p.seenDeadHeroIds=[];
       if(!p.seenDeadHeroIds.includes(g.id)) p.seenDeadHeroIds.push(g.id);
-      if(!p.knownDeadHeroIds) p.knownDeadHeroIds=[];
+      if(!Array.isArray(p.knownDeadHeroIds)) p.knownDeadHeroIds=[];
       if(!p.knownDeadHeroIds.includes(g.id)) p.knownDeadHeroIds.push(g.id);
     });
   }
@@ -4163,10 +4257,10 @@ const BATTLE_ARMY_SPELLS={
       G.players.forEach((p,pi)=>{
         const canSee=G.characters.some(ch=>ch.alive&&ch.player===pi&&ch.location===deadChar.location);
         if(canSee){
-          if(!p.seenDeadHeroIds) p.seenDeadHeroIds=new Set();
-          p.seenDeadHeroIds.add(deadChar.id);
+          if(!Array.isArray(p.seenDeadHeroIds)) p.seenDeadHeroIds=[];
+          if(!p.seenDeadHeroIds.includes(deadChar.id)) p.seenDeadHeroIds.push(deadChar.id);
           // Also add to persistent known set so they can target with Resurrect in future turns
-          if(!p.knownDeadHeroIds) p.knownDeadHeroIds=[];
+          if(!Array.isArray(p.knownDeadHeroIds)) p.knownDeadHeroIds=[];
           if(!p.knownDeadHeroIds.includes(deadChar.id)) p.knownDeadHeroIds.push(deadChar.id);
         }
       });
@@ -5666,15 +5760,8 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
         });
       });
 
-      // Check wandering heroes entering owned provinces
-      const wanderers=(G.characters||[]).filter(c=>c.player===null&&c.alive&&targetOwnedProvs.has(c.location));
-      wanderers.forEach(w=>{
-        const wProv=G.world.provinces[w.location];
-        if(wProv) log('system',
-          `[Intelligence] ${phaseLabel}: The wandering hero ${w.name} (${w.race}, ${w.alignment}) has been sighted in your province of ${wProv.name}. They appear to be unaffiliated and may be available for hire.`,
-          {actor:null,targets:[targetPi],provinceId:w.location}
-        );
-      });
+      // (Wandering hero sightings are reported once at end of turn in the Intelligence
+      //  section's "Wandering Heroes" list — no need to log each phase's movement here.)
     });
   }
   const SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
@@ -6163,6 +6250,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.08-2138</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.09-0240</div>
 </body>
 </html>
