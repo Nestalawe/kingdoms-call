@@ -293,6 +293,9 @@ section{display:none;}.section-active{display:block;}
 
       </div><!-- end middle report column -->
 
+      <!-- Spacer between turn info and orders -->
+      <div style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
+
       <!-- RIGHT: Orders column (independently scrollable) -->
       <div id="orders-column" style="width:22%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
         <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
@@ -311,7 +314,7 @@ section{display:none;}.section-active{display:block;}
       </div><!-- end orders column -->
 
       <!-- Right-edge spacer -->
-      <div style="width:5%;min-width:20px;background:var(--parchment);flex-shrink:0;height:calc(100vh - 120px)"></div>
+      <div style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
 
     </div><!-- end three-column layout -->
   </section>
@@ -964,7 +967,7 @@ async function openReport(gamePlayerId){
   const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']);
   const tag=CREATURES.has(a.type)?' [C]':MONSTERS.has(a.type)?' [M]':'';
   return armyLabel(a)+tag;
-}).join(' · ')
+}).join('<br>')
         :'No armies — Move: 5 hexes/order';
       const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
       return`<div class="char-card">
@@ -1290,7 +1293,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           if(armies.length===0) return '<span style="color:#aaa">No armies</span>';
           const druLevel=(c.skills||{}).druid||0;
           // Druid requirement thresholds (matches server table)
-          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Bone Dragon':3,'Skeletal Legion':2,'Gyrocopters':2};
+          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Bone Dragon':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
           return armies.map(a=>{
             const req=DRUID_REQ[a.type]||0;
             const shortfall=Math.max(0,req-druLevel);
@@ -2418,7 +2421,7 @@ function updateRecruitTarget(charId, ph){
 
 // ── TERRAIN COLORS ────────────────────────────────────
 const TERRAIN_COLORS_MAP={
-  plain:'#b8d4a0',desert:'#e8e4a0',forest:'#2d7a2d',
+  plain:'#9eb68a',desert:'#c8c48a',forest:'#2d7a2d',
   jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'
 };
 
@@ -2596,10 +2599,10 @@ function renderMapIntoSvg(svgEl, report){
       };
     }
 
-    // Prosperity dots: top-left corner of hex (not isOwned — owned provinces show tax directly)
-    if(!isOwned&&pd.wealth){
+    // Prosperity dots: top-left corner of hex — shown in every visible province
+    if(pd.wealth){
       const wStyles={
-        Rich:    {fill:'#FFD700',stroke:'#FFA500',glow:'drop-shadow(0 0 3px #FFD700)'},
+        Rich:    {fill:'#FFD700',stroke:'#FFA500',glow:'drop-shadow(0 0 1.5px #FFD700)'},
         Prosperous:{fill:'#C0C0C0',stroke:'#A8A8A8',glow:null},
         Poor:    {fill:'#CD7F32',stroke:'#A0522D',glow:null},
       };
@@ -2608,9 +2611,9 @@ function renderMapIntoSvg(svgEl, report){
       const dotX=x-HS*0.55;
       const dotY=y-HS*0.45;
       const dot=document.createElementNS(svgNS,'circle');
-      dot.setAttribute('cx',dotX);dot.setAttribute('cy',dotY);dot.setAttribute('r','3.5');
+      dot.setAttribute('cx',dotX);dot.setAttribute('cy',dotY);dot.setAttribute('r','1.75');
       dot.setAttribute('fill',ws.fill);
-      dot.setAttribute('stroke',ws.stroke);dot.setAttribute('stroke-width','0.8');
+      dot.setAttribute('stroke',ws.stroke);dot.setAttribute('stroke-width','0.5');
       if(ws.glow) dot.setAttribute('filter',ws.glow);
       dot.setAttribute('pointer-events','none');
       g.appendChild(dot);
@@ -2775,6 +2778,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0815</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0840</div>
 </body>
 </html>

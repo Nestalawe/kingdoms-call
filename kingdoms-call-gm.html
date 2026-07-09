@@ -602,7 +602,7 @@ const ARMY_TYPES = {
   'Dwarven Guard':  {race:'Dwarven', terrains:['mountain','plain'],                            speed:2, strength:6, cost:3, transport:0, category:'heavy',     strongVs:['infantry','cavalry'],weakVs:[],                  terrainBonus:['mountain'],  terrainPenalty:['jungle'],            desc:'Heavily armoured dwarven infantry. Slow but nearly unbreakable in mountains.'},
   'Crossbowmen':    {race:'Dwarven', terrains:['mountain','plain'],                            speed:2, strength:5, cost:2, transport:0, category:'archer',    strongVs:['infantry'],          weakVs:['cavalry'],         terrainBonus:['mountain'],  terrainPenalty:[],                    desc:'Dwarven crossbow troops. Slow but powerful; excel in mountain positions.'},
   'Mountain Guns':  {race:'Dwarven', terrains:['mountain'],                                    speed:1, strength:7, cost:4, transport:0, category:'heavy',     strongVs:['infantry','heavy'],  weakVs:['skirmisher'],      terrainBonus:['mountain'],  terrainPenalty:['plain','desert','forest','jungle'], desc:'Dwarven siege weapons. Slowest unit but devastating firepower in mountain terrain; nearly immobile elsewhere.'},
-  'Gyrocopters':    {race:'Dwarven', terrains:['mountain','plain','forest','desert','jungle','sea'], speed:4, strength:5, cost:4, transport:0, category:'flying', strongVs:['infantry','heavy'],  weakVs:['archer'],          terrainBonus:['mountain'],  terrainPenalty:[],                    desc:'Steam-powered flying machines. Dwarven engineering at its finest; can fly over any terrain; fire-spewing rotary guns devastate foot troops; vulnerable to massed archers.'},
+  'Gnomish Gyrocopters':    {race:'Dwarven', terrains:['mountain','plain','forest','desert','jungle','sea'], speed:4, strength:5, cost:4, transport:0, category:'flying', strongVs:['infantry','heavy'],  weakVs:['archer'],          terrainBonus:['mountain'],  terrainPenalty:[],                    desc:'Steam-powered flying machines. Dwarven engineering at its finest; can fly over any terrain; fire-spewing rotary guns devastate foot troops; vulnerable to massed archers.'},
   'Dwarf Garrison': {race:'Dwarven', terrains:['mountain','plain'],                            speed:1, strength:4, cost:1, transport:0, category:'infantry',  strongVs:[],                    weakVs:['skirmisher'],      terrainBonus:['mountain'],  terrainPenalty:[],                    desc:'Dwarven fortress guard. Slow but hardier than other garrisons thanks to dwarven armour.'},
   // ── Orcish ──
   'Warg Riders':    {race:'Orcish',  terrains:['plain','forest'],                              speed:4, strength:5, cost:3, transport:0, category:'cavalry',   strongVs:['archer'],            weakVs:['heavy'],           terrainBonus:['forest'],    terrainPenalty:['desert'],            desc:'Orcish wolf-riders. Fast; cut through archers; outmatched by heavy armour.'},
@@ -625,11 +625,11 @@ const ARMY_TYPES = {
 
 // Province army availability by terrain+race
 const PROVINCE_ARMIES = {
-  plain:   {Human:['Infantry','Cavalry','Longbowmen','Griffon Riders','Human Garrison'],  Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],          Dwarven:['Dwarven Guard','Gyrocopters','Dwarf Garrison'],               Orcish:['Warg Riders','Orc Berserkers','Orc Garrison'],  Undead:['Skeletal Legion','Bone Dragon']},
-  desert:  {Human:['Infantry','Cavalry','Griffon Riders','Human Garrison'],               Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],          Dwarven:['Dwarven Guard','Gyrocopters','Dwarf Garrison'],               Orcish:['Orc Berserkers','Orc Garrison'],                Undead:['Skeletal Legion','Bone Dragon']},
-  forest:  {Human:['Longbowmen','Infantry','Human Garrison'],                             Elven:['Forest Wardens','Elven Bowmen','Shadow Archers','Eagle Riders','Elven Garrison'], Dwarven:['Crossbowmen','Gyrocopters','Dwarf Garrison'], Orcish:['Warg Riders','Goblin Horde','Wyvern Riders','Orc Garrison'], Undead:['Skeletal Legion']},
+  plain:   {Human:['Infantry','Cavalry','Longbowmen','Griffon Riders','Human Garrison'],  Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],          Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],               Orcish:['Warg Riders','Orc Berserkers','Orc Garrison'],  Undead:['Skeletal Legion','Bone Dragon']},
+  desert:  {Human:['Infantry','Cavalry','Griffon Riders','Human Garrison'],               Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],          Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],               Orcish:['Orc Berserkers','Orc Garrison'],                Undead:['Skeletal Legion','Bone Dragon']},
+  forest:  {Human:['Longbowmen','Infantry','Human Garrison'],                             Elven:['Forest Wardens','Elven Bowmen','Shadow Archers','Eagle Riders','Elven Garrison'], Dwarven:['Crossbowmen','Gnomish Gyrocopters','Dwarf Garrison'], Orcish:['Warg Riders','Goblin Horde','Wyvern Riders','Orc Garrison'], Undead:['Skeletal Legion']},
   jungle:  {Human:['Infantry','Human Garrison'],                                          Elven:['Forest Wardens','Shadow Archers','Eagle Riders','Elven Garrison'],               Dwarven:['Crossbowmen','Dwarf Garrison'],               Orcish:['Goblin Horde','Orc Berserkers','Wyvern Riders','Orc Garrison'], Undead:['Skeletal Legion']},
-  mountain:{Human:['Human Garrison','Infantry','Griffon Riders'],                         Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],                                  Dwarven:['Dwarven Guard','Crossbowmen','Mountain Guns','Gyrocopters','Dwarf Garrison'], Orcish:['Orc Berserkers','Wyvern Riders','Orc Garrison'], Undead:['Skeletal Legion','Bone Dragon']},
+  mountain:{Human:['Human Garrison','Infantry','Griffon Riders'],                         Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],                                  Dwarven:['Dwarven Guard','Crossbowmen','Mountain Guns','Gnomish Gyrocopters','Dwarf Garrison'], Orcish:['Orc Berserkers','Wyvern Riders','Orc Garrison'], Undead:['Skeletal Legion','Bone Dragon']},
   sea:     {Human:['Fleet','Corsair Fleet'],                                              Elven:['Elven Galleys','Whale Riders'],                           Dwarven:['Dwarf Ironclads'],                                           Orcish:['Orcish Longships']},
 };
 
@@ -2308,7 +2308,7 @@ function drawMap(){
   const{y:maxY}=E.hexCenter(cols-1,rows-1);
   svg.setAttribute('viewBox',`0 0 ${maxX+E.HEX_SIZE*1.5} ${maxY+E.HEX_SIZE*1.5}`);
   svg.innerHTML='';
-  const TERRAIN_COLORS={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+  const TERRAIN_COLORS={plain:'#5b9741',desert:'#ac8d40',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 
   provinces.forEach(p=>{
     const{x,y}=E.hexCenter(p.col,p.row);
@@ -2906,7 +2906,7 @@ initColumnResizers();
 // Initialise setup
 renderSetup();
 
-</script>  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Map v2026.07.09-0820</div>
+</script>  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Map v2026.07.09-0840</div>
 </body>
 </html>
 <!-- ═══════════════════════════════════════════════════
