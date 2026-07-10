@@ -54,8 +54,13 @@ section{display:none;}.section-active{display:block;}
 .join-form{border:1px solid var(--gold);border-radius:3px;padding:16px;background:#fdf5e0;margin-top:10px;}
 .join-form h3{color:var(--gold);margin-bottom:12px;}
 .skills-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.skill-cols{display:flex;gap:8px;margin-bottom:12px;}
+.skill-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.skill-col-head{font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:var(--stone);text-align:center;padding-bottom:3px;border-bottom:1px solid var(--parchment-dark);}
 .skill-pip{display:flex;align-items:center;gap:4px;background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:4px 6px;font-size:.75rem;}
-.skill-pip .sk-name{flex:1;color:var(--ink-light);}
+.skill-pip .sk-name{flex:1;color:var(--ink-light);cursor:help;border-bottom:1px dotted var(--stone);}
+#skill-info-tip{position:fixed;z-index:10001;max-width:250px;background:#1a1208;color:#f0e0c0;border:1px solid #c8922a;border-radius:3px;padding:7px 9px;font-size:.72rem;line-height:1.45;pointer-events:none;display:none;box-shadow:0 3px 12px rgba(0,0,0,.45);}
+#skill-info-tip strong{color:#e8b84b;font-family:'Cinzel',serif;}
 .skill-pip .sk-val{font-family:'Cinzel',serif;font-weight:600;color:var(--crimson);min-width:14px;text-align:center;}
 .skill-pip button{background:var(--stone);color:#fff;border:none;width:18px;height:18px;border-radius:2px;cursor:pointer;font-size:.8rem;line-height:1;padding:0;}
 .skill-pip button:disabled{opacity:.3;cursor:not-allowed;}
@@ -201,9 +206,9 @@ section{display:none;}.section-active{display:block;}
         </div>
       </div>
 
-      <label>Starting Skills — distribute 4 points (max 2 per skill)</label>
+      <label>Starting Skills — distribute 4 points (max 2 per skill) <span style="font-weight:normal;color:var(--stone);font-size:.72rem">· hover a skill name for details</span></label>
       <div class="pts-remaining" id="join-pts-remaining">4 points remaining</div>
-      <div class="skills-grid" id="join-skills-grid"></div>
+      <div id="join-skills-grid"></div>
 
       <div class="msg-info" style="margin-top:4px">
         Your King also starts with Melee 2, Archery 1, Sage 1 automatically.
@@ -551,20 +556,67 @@ async function showJoinGame(gameId, gameName, maxP, joined){
   updateTemperDesc();
 }
 
+// Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
+const SKILL_INFO={
+  melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
+  archery:'Missile combat. Adds +5% strength per level to your bow/crossbow units (Longbowmen, Elven Bowmen, Crossbowmen, etc.) and helps in ranged encounter rounds. The King starts with Archery 1.',
+  tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
+  march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
+  naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles and improves movement across sea provinces. Essential for a maritime power.',
+  sage:'Scholarship. Each level gives a 5% chance per turn, when practising Sage, to make a permanent Sage Discovery (kingdom-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
+  spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
+  thief:'Larceny. Improves success when stealing gold or magic items — both via the Steal order and by pickpocketing during encounters.',
+  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. Higher Druid unlocks the most powerful primal beasts.',
+  explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden features and terrain sooner so you can search and settle faster.',
+  white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine kingdoms start with White 1).',
+  psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
+  illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Feature. Confuse enemy intelligence and battles.',
+  elemental:'Elemental Magic — destruction spells: Lightning Bolt, Fireball, Earthquake, Flood and Elemental Summon. Raw offensive power against armies and provinces.',
+  necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Kill Enemy (Undead kingdoms start with Necromancy 1).',
+};
+// Column grouping for the join screen: martial | special | magic
+const SKILL_COLUMNS=[
+  {head:'⚔ Martial', skills:['melee','archery','tactical','march','naval']},
+  {head:'✦ Special', skills:['sage','spy','thief','druid','explorer']},
+  {head:'✨ Magic',  skills:['white','psychic','illusory','elemental','necromancy']},
+];
+
 function renderSkillGrid(){
   const spent=Object.values(joinSkills).reduce((s,v)=>s+v,0);
   const remaining=4-spent;
   document.getElementById('join-pts-remaining').textContent=`${remaining} point${remaining!==1?'s':''} remaining`;
-  document.getElementById('join-skills-grid').innerHTML=ALL_ABILITIES.map(skill=>{
+  const pip=skill=>{
     const lvl=joinSkills[skill]||0;
     const displayName=SKILL_LABELS[skill]||skill;
     return`<div class="skill-pip">
       <button onclick="adjustSkill('${skill}',-1)" ${lvl<=0?'disabled':''}>−</button>
-      <span class="sk-name">${displayName}</span>
+      <span class="sk-name" onmousemove="showSkillTip(event,'${skill}')" onmouseleave="hideSkillTip()">${displayName}</span>
       <span class="sk-val">${lvl}</span>
       <button onclick="adjustSkill('${skill}',1)" ${remaining<=0||lvl>=2?'disabled':''}>+</button>
     </div>`;
-  }).join('');
+  };
+  document.getElementById('join-skills-grid').innerHTML=
+    `<div class="skill-cols">`+SKILL_COLUMNS.map(col=>
+      `<div class="skill-col"><div class="skill-col-head">${col.head}</div>${col.skills.map(pip).join('')}</div>`
+    ).join('')+`</div>`;
+}
+
+function showSkillTip(ev, skill){
+  let tip=document.getElementById('skill-info-tip');
+  if(!tip){ tip=document.createElement('div'); tip.id='skill-info-tip'; document.body.appendChild(tip); }
+  tip.innerHTML=`<strong>${SKILL_LABELS[skill]||skill}</strong><br>${SKILL_INFO[skill]||''}`;
+  tip.style.display='block';
+  // Keep the tooltip on-screen near the cursor
+  const pad=14, w=tip.offsetWidth||250, h=tip.offsetHeight||80;
+  let x=ev.clientX+pad, y=ev.clientY+pad;
+  if(x+w>window.innerWidth-8) x=ev.clientX-w-pad;
+  if(y+h>window.innerHeight-8) y=ev.clientY-h-pad;
+  tip.style.left=Math.max(8,x)+'px';
+  tip.style.top=Math.max(8,y)+'px';
+}
+function hideSkillTip(){
+  const tip=document.getElementById('skill-info-tip');
+  if(tip) tip.style.display='none';
 }
 
 function adjustSkill(skill,delta){
@@ -2177,7 +2229,7 @@ function buildTargetField(c, ph, saved){
       // Use character's start-of-turn province only — features must be known at turn start
       // (can't search a feature in a province you're only moving to this turn)
       const startPd=provOrderData[c.locationId]||null;
-      const feats=(startPd?.features||[]).map((f,fi)=>`<option value="${fi}" ${target==fi?'selected':''}>${f.name}</option>`).join('');
+      const feats=(startPd?.features||[]).map(f=>`<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}</option>`).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features in current province" disabled>`;}
@@ -2313,17 +2365,17 @@ function buildTargetField(c, ph, saved){
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`${loc.name} is not your territory — cannot recruit here`:'Province unknown'}" disabled>`;
       }
       const alreadyRecruited=getAlreadyRecruitedThisTurn(c.id,ph);
-      const opts=(pd.armyTypes||[]).map(at=>{
-        const done=alreadyRecruited[at.type]||0;
-        const remaining=at.maxPerTurn-done;
-        if(remaining<=0) return null;
-        const costEach=at.cost||2;
-        const canAfford=Math.floor(gold/costEach);
-        const maxQty=Math.min(remaining,canAfford);
-        if(maxQty<=0) return null;
-        return Array.from({length:maxQty},(_,i)=>`<option value="${at.type}|${i+1}" ${target===`${at.type}|${i+1}`?'selected':''}>${i+1}× ${at.type} (${(i+1)*costEach}g)</option>`).join('');
-      }).filter(Boolean).join('');
-      if(!opts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies available to recruit this turn in ${pd.name}" disabled>`;
+      // Show the recruit list whenever the province has army types with capacity left this turn.
+      // (Don't hard-block on current gold — gold can change across phases and affordability is
+      // enforced when the turn resolves. Previously an unaffordable-right-now province wrongly
+      // showed "No armies available to recruit".)
+      const anyRecruitable=(pd.armyTypes||[]).some(at=>(at.maxPerTurn-(alreadyRecruited[at.type]||0))>0);
+      if(!anyRecruitable){
+        const why=(pd.armyTypes||[]).length===0
+          ? `No native recruitable armies in ${pd.name}`
+          : `Already recruited the maximum in ${pd.name} this turn`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
+      }
       // Multi-select: use checkboxes rendered as a scrollable list
       const checkId=`po-recruit-${c.id}-${ph}`;
       const savedSels=(target||'').split(',').filter(Boolean);
@@ -2515,7 +2567,7 @@ function updateRecruitTarget(charId, ph){
 // ── TERRAIN COLORS ────────────────────────────────────
 const TERRAIN_COLORS_MAP={
   plain:'#9eb68a',desert:'#c8c48a',forest:'#2d7a2d',
-  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'
+  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf',frozen:'#dbe7ef'
 };
 
 // ── TERRAIN ICONS (proper SVG element creation) ────────
@@ -2558,6 +2610,13 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
       [[0,-6],[0,6],[-5,-3],[5,-3],[-5,3],[5,3]].forEach(([dx,dy])=>{
         els.push(mk('line',{x1:cx+dx*.55,y1:cy+dy*.55,x2:cx+dx,y2:cy+dy,stroke:'rgba(255,255,255,0.3)','stroke-width':'1'}));
       });
+      break;
+    case 'frozen':
+      // Snowflake — impassable frozen wasteland (icy tint, dark strokes for contrast on pale fill)
+      [[0,-7,0,7],[-6,-3.5,6,3.5],[6,-3.5,-6,3.5]].forEach(([x1,y1,x2,y2])=>{
+        els.push(mk('line',{x1:cx+x1,y1:cy+y1,x2:cx+x2,y2:cy+y2,stroke:'rgba(90,120,150,0.75)','stroke-width':'1.2'}));
+      });
+      els.push(mk('circle',{cx,cy,r:'1.6',fill:'rgba(90,120,150,0.7)'}));
       break;
   }
   return els;
@@ -2805,7 +2864,9 @@ function renderMapIntoSvg(svgEl, report){
       g.style.cursor='pointer';
       g.addEventListener('mousemove',ev=>{
         let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
-        if(isOwned){
+        if(pd.terrain==='frozen'){
+          h+=`<span style="color:#9fb8cc">Frozen wasteland</span><br><span style="opacity:.85;font-style:italic">Impassable — the icy edge of the world. No army can cross to the far north or south.</span>`;
+        } else if(isOwned){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
@@ -2875,6 +2936,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.10-1015</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.10-1230</div>
 </body>
 </html>

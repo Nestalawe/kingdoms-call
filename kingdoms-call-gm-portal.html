@@ -356,7 +356,7 @@ function buildTargetField(c,ph,saved){
     case 'Search Feature':{
       const loc=predictedLocation(c.id,ph);
       const pd=loc?provOrderData[loc.id]:null;
-      const feats=(pd?.features||[]).map((f,fi)=>`<option value="${fi}" ${target==fi?'selected':''}>${f.name}</option>`).join('');
+      const feats=(pd?.features||[]).map(f=>`<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}</option>`).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features here" disabled>`;}
@@ -745,10 +745,21 @@ function buildGMProvinceOrderData(gs, playerIndex){
     data[p.id]={
       name:p.name,terrain:p.terrain,race:p.race,tax:p.tax,
       isOwned, isVisited, isHome,
-      // Allow recruit from visited provinces (not just owned)
-      canRecruit:isOwned||isVisited,
+      // Recruit native armies only in provinces you control (mercenaries are handled separately)
+      canRecruit:isOwned,
       armyTypes:(p.armyTypes||[]).map(at=>({type:at,cost:ARMY_COST_GM[at]||2,maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1})),
-      features:(p.features||[]).filter(f=>f.discovered&&!f.cleared).map(f=>({name:f.name})),
+      features:(()=>{
+        // Match the province panel's visibility (discovered OR explored past its threshold) and
+        // carry the ORIGINAL index into p.features so the engine's search handler resolves the
+        // right feature (the dropdown lists a filtered subset, so a plain map index would be wrong).
+        const total=(p.features||[]).length;
+        const exploredHere=(p.exploredBy&&p.exploredBy[playerIndex])||0;
+        return (p.features||[]).map((f,idx)=>({f,idx})).filter(({f,idx})=>{
+          if(f.cleared) return false;
+          const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
+          return f.discovered||(exploredHere>=threshold);
+        }).map(({f,idx})=>({name:f.name,idx}));
+      })(),
       availableHeroes:(gs.characters||[]).filter(c=>c.player===null&&c.alive&&c.location===p.id&&!c._justDefeated&&!c._isNeutralGuard).map(h=>({
         id:h.id,name:h.name,race:h.race,alignment:h.alignment,temper:h.temper,skills:h.skills||{},pay:h.pay||1,locationName:p.name,
       })),
@@ -1064,7 +1075,7 @@ async function runTurn0(){
 // Self-contained mini game engine for the portal
 // (mirrors the logic in kingdoms-call-gm.html / game.js)
 
-const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf',frozen:'#dbe7ef'};
 const PROVINCE_ARMIES_P={
   plain:  {Human:['Infantry','Cavalry','Longbowmen','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison']},
   desert: {Human:['Infantry','Cavalry','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
@@ -1074,6 +1085,9 @@ const PROVINCE_ARMIES_P={
   sea:    {Human:[],Elven:['Elven Galleys','Whale Cohort'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']},
 };
 const RACES_P=['Human','Elven','Dwarven','Orcish'];
+// Recruitable naval/fleet unit types (used during map generation, e.g. to keep them out of a
+// king's starting land armies). Mirrors SEA_TYPES used in the resolution engine.
+const SEA_TYPES_GEN=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
 // Primal races: not humanoid, require high Druid to lead effectively
 const PRIMAL_RACES_P=['Stone Giant','Forest Ent','Giant Eagle','Cave Troll','Manticore Pride',
   'Basilisk Brood','Sea Giant','Kraken Tentacle','Elder Dragon','Roc Rider','Titan Warbeast','Leviathan Pod'];
@@ -1467,26 +1481,43 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   const seaPrefixes=['Storm','Grey','Bitter','Salt','Iron','Deep','Dark','Pale','Foam','Murk','Jade','Leaden','Dread','Frozen','Black','Azure','Sunken','Wild','Ancient','Howling'];
   const seaSuffixes=[' Sea',' Straits',' Sound',' Channel',' Gulf',' Bay',' Waters',' Deep',' Reach',' Passage',' Ocean',' Expanse',' Abyss',' Bight'];
 
+  // Names for the impassable frozen wastelands that wall off the far north and far south.
+  const frozenPrefixes=['Frost','Rime','Glacier','Ice','Winter','Hoar','Frozen','Bleak','Pale','White','Ever','Bitter','Shivering','Silent','Endless'];
+  const frozenSuffixes=[' Waste',' Wastes',' Barrens',' Reach',' Expanse',' Tundra',' Wall',' Fields',' Desolation',' Silence',' Frost',' Marches'];
+
   for(let row=0;row<rows;row++){
     for(let col=0;col<cols;col++){
       const id=row*cols+col;
       let pname;
-      const edginess=Math.min(col,cols-1-col,row,rows-1-row);
       let terrain;
-      if(edginess===0||Math.random()<Math.max(0,0.6-edginess*0.1)){
-        terrain='sea';
-        do{pname=seaPrefixes[Math.floor(Math.random()*seaPrefixes.length)]+seaSuffixes[Math.floor(Math.random()*seaSuffixes.length)];}while(nameSet.has(pname));
+      // FAR NORTH / FAR SOUTH: the top and bottom rows of the world are impassable frozen
+      // wastelands — a wall of ice no army can cross. This is the narrative reason the map does
+      // not wrap north-to-south (it DOES wrap east-to-west). They are terrain only: no owner,
+      // armies, features or value; characters can never enter them.
+      if(row===0||row===rows-1){
+        terrain='frozen';
+        do{pname=frozenPrefixes[Math.floor(Math.random()*frozenPrefixes.length)]+frozenSuffixes[Math.floor(Math.random()*frozenSuffixes.length)];}while(nameSet.has(pname));
       } else {
-        const t=['plain','plain','plain','forest','mountain','desert','jungle'];terrain=t[Math.floor(Math.random()*t.length)];
-        do{pname=prefixes[Math.floor(Math.random()*prefixes.length)]+suffixes[Math.floor(Math.random()*suffixes.length)];}while(nameSet.has(pname));
+        // Interior rows are mostly land with occasional water. Sea now forms lakes, inland seas and
+        // coastlines instead of ringing the whole map, so there is far less open water than before.
+        // Base ~14% sea, rising to 45% next to water already placed so seas cluster into real bodies.
+        const leftProv = col>0 ? provinces[row*cols+(col-1)] : null;
+        const upProv   = provinces[(row-1)*cols+col];
+        const seaChance = ((leftProv&&leftProv.terrain==='sea')||(upProv&&upProv.terrain==='sea')) ? 0.45 : 0.14;
+        if(Math.random()<seaChance){
+          terrain='sea';
+          do{pname=seaPrefixes[Math.floor(Math.random()*seaPrefixes.length)]+seaSuffixes[Math.floor(Math.random()*seaSuffixes.length)];}while(nameSet.has(pname));
+        } else {
+          const t=['plain','plain','plain','forest','mountain','desert','jungle'];terrain=t[Math.floor(Math.random()*t.length)];
+          do{pname=prefixes[Math.floor(Math.random()*prefixes.length)]+suffixes[Math.floor(Math.random()*suffixes.length)];}while(nameSet.has(pname));
+        }
       }
       nameSet.add(pname);
-      const baseTax={plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
-      // ~20% of land provinces are Primal (non-humanoid)
-      // Primal provinces don't use standard race pool
-      const isPrimal=terrain!=='sea'&&Math.random()<0.10;
+      const baseTax={plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2),frozen:0}[terrain];
+      // Primal (non-humanoid) provinces are land-only — never sea, never frozen.
+      const isPrimal=terrain!=='sea'&&terrain!=='frozen'&&Math.random()<0.10;
       let race;
-      if(terrain==='sea'){
+      if(terrain==='sea'||terrain==='frozen'){
         race=null;
       } else if(isPrimal){
         // Pick a primal sub-race based on terrain
@@ -1502,7 +1533,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       } else {
         race=RACES_P[Math.floor(Math.random()*4)];
       }
-      const population=terrain==='sea'?0:rP(1,6);
+      const population=(terrain==='sea'||terrain==='frozen')?0:rP(1,6);
       // Build army pool — primal provinces get special powerful armies
       let fullPool;
       if(race&&race.startsWith('Primal:')){
@@ -1519,6 +1550,8 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           'Titan Warbeast':['Titan Warbeasts','Stone Giants'],
         };
         fullPool=PRIMAL_POOL[subRace]||['Stone Giants'];
+      } else if(terrain==='frozen'){
+        fullPool=[]; // impassable frozen wasteland — nothing recruitable
       } else if(terrain==='sea'){
         // Sea provinces: only non-humanoid naval creatures, and only 50% have any recruitables
         if(Math.random()<0.5){
@@ -1543,7 +1576,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       const armyPool=[...shuffled,...garrison];
       // Features
       const features=[];
-      if(terrain!=='sea'){
+      if(terrain!=='sea'&&terrain!=='frozen'){
         const pool=FEATURE_POOLS_P[terrain]||FEATURE_POOLS_P.plain;
         const ftable=[1,2,2,3,3,3,3,4,4,5];
         const fcount=ftable[Math.floor(Math.random()*ftable.length)];
@@ -1561,7 +1594,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       }
       // Neutral defenders
       let neutralDefenders=[];
-      if(terrain!=='sea'){
+      if(terrain!=='sea'&&terrain!=='frozen'){
         const isPrimalProv=race&&race.startsWith('Primal:');
         // Primal provinces: 2-4 defenders at higher quality; normal: 1-3 Average
         // Neutral army count based on province wealth — richer provinces are better defended
@@ -1588,7 +1621,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   const offEven=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
   const offOdd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
   provinces.forEach(p=>{
-    if(p.terrain==='sea') return; // pure sea handled separately
+    if(p.terrain==='sea'||p.terrain==='frozen') return; // pure sea + frozen handled/skipped
     // Check if any neighbour is sea
     const offsets=p.row%2===0?offEven:offOdd;
     const adjSea=offsets.some(([dr,dc])=>{
@@ -1645,12 +1678,12 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // else: open water — no armies, no defenders
   });
 
-  // Place player starts
-  const landProvinces=provinces.filter(p=>p.terrain!=='sea');
+  // Place player starts (land only — never sea, never frozen)
+  const landProvinces=provinces.filter(p=>p.terrain!=='sea'&&p.terrain!=='frozen');
   function isValidStart(p){
-    if(p.owner!==null||p.terrain==='sea') return false;
+    if(p.owner!==null||p.terrain==='sea'||p.terrain==='frozen') return false;
     const neighbors=getNeighborsP(p,cols,rows,provinces);
-    const landNeighbors=neighbors.filter(n=>n.terrain!=='sea'&&n.owner===null);
+    const landNeighbors=neighbors.filter(n=>n.terrain!=='sea'&&n.terrain!=='frozen'&&n.owner===null);
     if(landNeighbors.length<2) return false;
     // Must have at least one poor (tax 1-3) and one prosperous (tax 4-7) neighbour
     const hasPoor=landNeighbors.some(n=>n.tax>=1&&n.tax<=3);
@@ -1714,8 +1747,20 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       kingSkills[normKey]=(kingSkills[normKey]||0)+v;
     });
 
+    // A king who begins with any Naval skill must be able to put that skill to use: guarantee at
+    // least one of their race's naval units is recruitable in their home province. The king still
+    // starts with land armies only — this just adds the option to build a fleet from turn one.
+    if((kingSkills.naval||0) >= 1){
+      const NAVAL_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'};
+      const navalUnit=NAVAL_BY_RACE[sp.race]||'Galleon Fleet';
+      best.armyTypes=best.armyTypes||[];
+      if(!best.armyTypes.includes(navalUnit)) best.armyTypes.push(navalUnit);
+    }
+
     const kingId=allChars.length;
-    const startArmyPool=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Infantry'];
+    // King's starting armies are drawn from the province's LAND army pool only (no fleets),
+    // so a Naval-skilled king still opens with land units and must recruit ships themselves.
+    const startArmyPool=((PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Infantry']).filter(t=>!SEA_TYPES_GEN.has(t));
     const king={
       id:kingId,name:sp.name,isKing:true,player:pi,
       race:sp.race,alignment:sp.alignment,temper:sp.temper,
@@ -1769,7 +1814,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
 
   // Neutral heroes — one per non-home land province, and per sea province that has defenders,
   // leading the province's neutral armies (so sea provinces actually fight when entered)
-  provinces.filter(p=>p.owner===null && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
+  provinces.filter(p=>p.owner===null && p.terrain!=='frozen' && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
     const hid=allChars.length;
     const hrace=lp.terrain==='sea'?'Primal':RACES_P[Math.floor(Math.random()*4)];
     const hSkills={};
@@ -2114,12 +2159,20 @@ function buildTurnReport(gameState, playerIndex){
     provinceOrderData[p.id]={
       name:p.name, terrain:p.terrain, race:p.race, tax:p.tax,
       isOwned, isVisited, isHome,
-      canRecruit:isOwned||isVisited,
+      canRecruit:isOwned,
       armyTypes:(p.armyTypes||[]).map(at=>({
         type:at, cost:ARMY_COST_OD[at]||2,
         maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1,
       })),
-      features:(p.features||[]).filter(f=>f.discovered&&!f.cleared).map(f=>({name:f.name})),
+      features:(()=>{
+        const total=(p.features||[]).length;
+        const exploredHere=(p.exploredBy&&p.exploredBy[playerIndex])||0;
+        return (p.features||[]).map((f,idx)=>({f,idx})).filter(({f,idx})=>{
+          if(f.cleared) return false;
+          const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
+          return f.discovered||(exploredHere>=threshold);
+        }).map(({f,idx})=>({name:f.name,idx}));
+      })(),
       availableHeroes:availableHeroesByProv[p.id]||[],
       garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality})),
     };
@@ -4388,6 +4441,9 @@ const BATTLE_ARMY_SPELLS={
           if(!isNaN(id)) toProv=G.world.provinces[id];
         }
         if(!toProv){log('move',`${c.name}: invalid move target.`,{actor:c.player,targets:[c.player]});break;}
+        if(toProv.terrain==='frozen'){
+          log('move',`${c.name} reaches the edge of the known world at ${toProv.name} — an endless, impassable expanse of frozen wasteland. No army can cross the ice to the far north or south; the way is barred.`,{actor:c.player,targets:[c.player]});break;
+        }
         const sc=seaCap[c.id]||'land';
 
         // Determine which move pool to use
@@ -4665,6 +4721,12 @@ const BATTLE_ARMY_SPELLS={
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
             const targets=[c.player,defChar.player];
             battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets,provinceId:toProv.id,public:true}));
+            // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
+            // with _died on the shared army objects. Write those casualties back to the real
+            // characters and their reinforcements so destroyed armies are actually removed
+            // (otherwise annihilated units linger on the real characters).
+            [c,...pvpReinforcements].forEach(ch=>{ ch.armies=(ch.armies||[]).filter(a=>!a._died); });
+            [defChar,...defReinforcements].forEach(ch=>{ ch.armies=(ch.armies||[]).filter(a=>!a._died); });
             if(battle.won){
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
               toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
@@ -4853,13 +4915,13 @@ const BATTLE_ARMY_SPELLS={
           });
           if(mHired) break;
         }
-        // Can recruit in: owned provinces, or previously-visited provinces (knowledge of local armies)
-        const hasKnowledge=prov.owner===c.player||((prov.visitedBy||[]).includes(c.player));
-        if(!hasKnowledge){
-          log('system',`${c.name} attempts to recruit in ${prov.name} but has no knowledge of what armies are available there.`,{actor:c.player,targets:[c.player]});break;
-        }
-        // Must own to recruit non-garrison armies (except: if you just conquered it this turn, you own it)
+        // Native army recruitment requires CONTROL of the province — you cannot raise local
+        // troops in land you merely scouted or passed through. (Mercenaries, handled above, can be
+        // hired wherever they roam.) Conquering a province this turn sets prov.owner, so that counts.
         const isOwned=prov.owner===c.player;
+        if(!isOwned){
+          log('system',`${c.name} cannot recruit in ${prov.name} — you must control the province to raise troops there.`,{actor:c.player,targets:[c.player]});break;
+        }
         const selections=(extra||target||'Infantry|1').split(',').map(s=>s.trim()).filter(Boolean);
         let totalCost=0;let recruited=[];let blocked=[];
 
@@ -4980,36 +5042,28 @@ const BATTLE_ARMY_SPELLS={
           }
         }
 
-        // Base practice chance: 20% alone, 40% with 2+ characters in same province/phase
-        const astroBonus=hasDisc(c.player,'sd26')?0.05:0;
-        const skillKey=skill.toLowerCase().trim();
-
-        // MENTOR rule: any of THIS PLAYER's own characters in the same province this phase with a
-        // HIGHER level in the skill teaches the trainee — guaranteed improvement. The mentor does
-        // NOT have to spend their own turn practising: an experienced hero/king simply present in
-        // the province passes on their knowledge. (Previously the mentor also had to issue a
-        // Practice order for the same skill, so a trainee studying alongside a more skilled ally
-        // who was doing anything else made no progress.)
-        const mentors=(G.characters||[]).filter(other=>{
-          if(!other.alive||other.id===c.id) return false;
-          if(other.player!==c.player) return false;           // only your own kingdom teaches you
-          if(other.location!==c.location) return false;        // must be in the same province
-          return ((other.skills||{})[skillKey]||0) > current;  // must out-rank the trainee
-        });
-
-        // PEERS (group drilling bonus): your own characters in the same province & phase who are
-        // ALSO practising the same skill at the SAME level — shared drilling helps everyone.
-        // Orders may be stored as 'practice', 'Practice Skill', etc — normalise.
-        const peers=(G.characters||[]).filter(other=>{
-          if(!other.alive||other.id===c.id||other.player!==c.player||other.location!==c.location) return false;
-          if(((other.skills||{})[skillKey]||0) !== current) return false;
+        // Group training bonus: find all other characters in the same province
+        // who are also practising the same skill in this same phase
+        // Find co-trainers: same province, same phase, same skill
+        // Orders may be stored as 'practice', 'Practice Skill', etc — normalise
+        const coTrainers=(G.characters||[]).filter(other=>{
+          if(!other.alive||other.id===c.id||other.location!==c.location) return false;
           const otherOrder=(G.turnOrders[other.id]||[])[ph];
           if(!otherOrder) return false;
           const otherAction=(otherOrder.action||'').toLowerCase().replace(/[^a-z]/g,'');
           const isPractice=otherAction==='practice'||otherAction==='practiceskill'||otherAction==='practiceability';
           if(!isPractice) return false;
-          return (otherOrder.target||'').toLowerCase().trim()===skillKey;
+          const otherSkill=(otherOrder.target||'').toLowerCase().trim();
+          return otherSkill===skill.toLowerCase();
         });
+
+        // Base practice chance: 20% alone, 40% with 2+ characters in same province/phase
+        const astroBonus=hasDisc(c.player,'sd26')?0.05:0;
+        // Mentor rule: if any co-trainer in the same province/phase has a HIGHER level in
+        // this skill, they teach the character — the improvement is automatic (guaranteed).
+        const mentors=coTrainers.filter(t=>((t.skills||{})[skill]||0) > current);
+        // Peers: co-trainers at the SAME level (they justify the group bonus).
+        const peers=coTrainers.filter(t=>((t.skills||{})[skill]||0) === current);
         let successChance, bonusReason;
         if(mentors.length>0){
           successChance=1.0; // guaranteed — learning from a more skilled mentor
@@ -5742,6 +5796,7 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   }
 
   function canEnterTerrain(c, terrain, seaCap){
+    if(terrain==='frozen') return false; // impassable frozen wasteland — no one crosses the ice
     if(terrain==='sea'){
       if(seaCap==='all'||seaCap==='sea') return true;
       if(c._partSeaThisPhase) return true; // Part Sea spell active this phase
@@ -6395,6 +6450,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1015</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1230</div>
 </body>
 </html>
