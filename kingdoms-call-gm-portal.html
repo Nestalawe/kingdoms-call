@@ -145,6 +145,7 @@ section{display:none;}.section-active{display:block;}
         <option value="small">Small (8×6) — up to 2 players</option>
         <option value="medium" selected>Medium (12×8) — up to 5 players</option>
         <option value="large">Large (16×10) — up to 7 players</option>
+        <option value="huge">Huge (20×12) — up to 10 players</option>
       </select>
       <label>Maximum Players</label>
       <select id="new-game-maxplayers"><!-- filled from map size by updateMaxPlayersForMap() --></select>
@@ -538,7 +539,7 @@ function showNewGame(){
 
 // Comfortable player caps per map size — the most kings that fit with at least ~3 provinces
 // between every pair of home provinces (worked out from the best-of-N home placement). Minimum 2.
-const MAP_MAX_PLAYERS={small:2,medium:5,large:7};
+const MAP_MAX_PLAYERS={small:2,medium:5,large:7,huge:10};
 function updateMaxPlayersForMap(){
   const sizeEl=document.getElementById('new-game-mapsize');
   const sel=document.getElementById('new-game-maxplayers');
@@ -1012,7 +1013,7 @@ async function runTurn0(){
   try{ cfg=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):currentGame.game_state||{}; }catch(e){}
   const mapSize=cfg.mapSize||'medium';
   const maxTurns=cfg.maxTurns||12;
-  const sizemap={small:{cols:8,rows:6},medium:{cols:12,rows:8},large:{cols:16,rows:10}};
+  const sizemap={small:{cols:8,rows:6},medium:{cols:12,rows:8},large:{cols:16,rows:10},huge:{cols:20,rows:12}};
   const sz=sizemap[mapSize]||sizemap.medium;
 
   // Build player setup from their turn_reports (which store playerSetup from join)
@@ -1867,7 +1868,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       heroIds.push(hid);
     }
 
-    return{id:pi,name:sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50'][pi],race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:10,king:kingId,heroes:[...heroIds],provinces:[best.id],merits:0};
+    return{id:pi,name:sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:10,king:kingId,heroes:[...heroIds],provinces:[best.id],merits:0};
   });
 
   // Neutral heroes — one per non-home land province, and per sea province that has defenders,
@@ -6511,6 +6512,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1510</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1620</div>
 </body>
 </html>
