@@ -140,21 +140,14 @@ section{display:none;}.section-active{display:block;}
       <div id="new-game-msg"></div>
       <label>Game Name</label>
       <input type="text" id="new-game-name" placeholder="e.g. The War of Five Kings">
-      <label>Maximum Players</label>
-      <select id="new-game-maxplayers">
-        <option value="2">2 players</option>
-        <option value="3">3 players</option>
-        <option value="4" selected>4 players</option>
-        <option value="5">5 players</option>
-        <option value="6">6 players</option>
-        <option value="8">8 players</option>
-      </select>
       <label>Map Size</label>
-      <select id="new-game-mapsize">
-        <option value="small">Small (8×6) — up to 4 players</option>
-        <option value="medium" selected>Medium (12×8) — up to 6 players</option>
-        <option value="large">Large (16×10) — up to 8 players</option>
+      <select id="new-game-mapsize" onchange="updateMaxPlayersForMap()">
+        <option value="small">Small (8×6) — up to 2 players</option>
+        <option value="medium" selected>Medium (12×8) — up to 5 players</option>
+        <option value="large">Large (16×10) — up to 7 players</option>
       </select>
+      <label>Maximum Players</label>
+      <select id="new-game-maxplayers"><!-- filled from map size by updateMaxPlayersForMap() --></select>
       <label>Game Length</label>
       <select id="new-game-turns">
         <option value="8">Short — 8 turns</option>
@@ -539,13 +532,33 @@ async function loadGames(){
 // ── NEW GAME ──────────────────────────────────────────
 function showNewGame(){
   document.getElementById('new-game-msg').innerHTML='';
+  updateMaxPlayersForMap(); // ensure the player-count options match the selected map size
   show('sec-new-game');
+}
+
+// Comfortable player caps per map size — the most kings that fit with at least ~3 provinces
+// between every pair of home provinces (worked out from the best-of-N home placement). Minimum 2.
+const MAP_MAX_PLAYERS={small:2,medium:5,large:7};
+function updateMaxPlayersForMap(){
+  const sizeEl=document.getElementById('new-game-mapsize');
+  const sel=document.getElementById('new-game-maxplayers');
+  if(!sizeEl||!sel) return;
+  const max=MAP_MAX_PLAYERS[sizeEl.value]||5;
+  const prev=parseInt(sel.value)||max; // keep the GM's choice where possible
+  sel.innerHTML='';
+  for(let n=2;n<=max;n++){
+    const opt=document.createElement('option');
+    opt.value=String(n); opt.textContent=`${n} players`;
+    sel.appendChild(opt);
+  }
+  sel.value=String(Math.min(Math.max(2,prev),max));
 }
 
 async function createGame(){
   const name=document.getElementById('new-game-name').value.trim();
-  const maxP=parseInt(document.getElementById('new-game-maxplayers').value);
   const mapSize=document.getElementById('new-game-mapsize').value;
+  const cap=MAP_MAX_PLAYERS[mapSize]||5;
+  const maxP=Math.min(Math.max(2,parseInt(document.getElementById('new-game-maxplayers').value)||2),cap);
   const maxTurns=parseInt(document.getElementById('new-game-turns').value);
   const msg=document.getElementById('new-game-msg');
   if(!name){msg.innerHTML='<div class="msg-error">Please enter a game name.</div>';return;}
@@ -1075,7 +1088,7 @@ async function runTurn0(){
 // Self-contained mini game engine for the portal
 // (mirrors the logic in kingdoms-call-gm.html / game.js)
 
-const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf',frozen:'#dbe7ef'};
+const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const PROVINCE_ARMIES_P={
   plain:  {Human:['Infantry','Cavalry','Longbowmen','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison']},
   desert: {Human:['Infantry','Cavalry','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
@@ -1474,50 +1487,137 @@ function seedUsedArmyNames(gameState){
 function generateNewGame(setupPlayers, sz, maxTurns){
   const {cols,rows}=sz;
   const provinces=[];
-  const prefixes=['Iron','Stone','Green','Silver','Dark','High','Old','East','West','North','South','Golden','Swift','Storm','Ash','Red','Vale','Frost','Dawn','Ember'];
-  const suffixes=['hold','mere','fell','haven','ford','moor','watch','reach','dale','wood','keep','gate','field','shire','mark','holm','burg','cross','worth'];
   const nameSet=new Set();
 
-  const seaPrefixes=['Storm','Grey','Bitter','Salt','Iron','Deep','Dark','Pale','Foam','Murk','Jade','Leaden','Dread','Frozen','Black','Azure','Sunken','Wild','Ancient','Howling'];
-  const seaSuffixes=[' Sea',' Straits',' Sound',' Channel',' Gulf',' Bay',' Waters',' Deep',' Reach',' Passage',' Ocean',' Expanse',' Abyss',' Bight'];
+  // Hex neighbour offsets + helpers (defined up front — king placement below needs them).
+  const offEven=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+  const offOdd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+  const cellIdRC=(r,c)=>r*cols+c;
+  const neighbourCells=(r,c)=>{
+    const offs=r%2===0?offEven:offOdd;
+    return offs.map(([dr,dc])=>{const nr=r+dr;if(nr<0||nr>=rows)return null;const nc=((c+dc)%cols+cols)%cols;return{r:nr,c:nc,id:cellIdRC(nr,nc)};}).filter(Boolean);
+  };
+  const cellDistRC=(a,b)=>{let dc=Math.abs(a.c-b.c);dc=Math.min(dc,cols-dc);const dr=Math.abs(a.r-b.r);return Math.max(dc,dr,(dc+dr)>>1);};
+  const navalLevelOf=(sp)=>{let lvl=0;if(sp&&sp.skills)Object.entries(sp.skills).forEach(([k,v])=>{if((k||'').toLowerCase()==='naval')lvl+=v;});return lvl;};
+  const pickLand=()=>{const t=['plain','plain','plain','forest','mountain','desert','jungle'];return t[Math.floor(Math.random()*t.length)];};
 
-  // Names for the impassable frozen wastelands that wall off the far north and far south.
-  const frozenPrefixes=['Frost','Rime','Glacier','Ice','Winter','Hoar','Frozen','Bleak','Pale','White','Ever','Bitter','Shivering','Silent','Endless'];
-  const frozenSuffixes=[' Waste',' Wastes',' Barrens',' Reach',' Expanse',' Tundra',' Wall',' Fields',' Desolation',' Silence',' Frost',' Marches'];
+  // ── THEMATIC PROVINCE NAMING ──
+  // Names are assigned in a dedicated pass AFTER the map is fully populated (terrain, race and
+  // recruitable armies all final, including king home provinces), so each province gets a name
+  // that fits both its people and its land — e.g. an Elven forest reads very differently from an
+  // Orcish desert or a kraken-haunted deep.
+  const NAME_PREFIX_BY_RACE={
+    Human:['Iron','Stone','High','Old','Gold','Silver','Storm','Red','Ash','East','West','Grey','Fair','Duns','Wold','Marl','Bram','Wend','Ald','Hart'],
+    Elven:['Silver','Moon','Star','Leaf','Dawn','Sil','Aer','Elu','Lorn','Cael','Fae','Gil','Lith','Myr','Thal','Nym','Elen','Yll','Wist','Aely'],
+    Dwarven:['Iron','Stone','Deep','Gold','Grim','Kaz','Dur','Bar','Khaz','Grom','Thur','Kron','Bal','Dun','Forge','Anvil','Coal','Rune','Brom','Hald'],
+    Orcish:['Blood','Skull','Bone','Gor','Grash','Mor','Uruk','Kra','Zog','Gna','Rot','Dread','Gash','Mag','Grish','Nar','Vak','Ur','Krul','Rok'],
+  };
+  const NAME_PREFIX_PRIMAL=['Wyrm','Beast','Wild','Titan','Dread','Ancient','Grim','Feral','Elder','Savage','Broken','Fang','Talon','Scale','Horn','Ruin','Storm','Blight'];
+  const NAME_SUFFIX_BY_TERRAIN={
+    plain:['field','meadow','march','moor','hold','reach','down','wold','stead','heath','vale','ridge'],
+    forest:['wood','grove','thicket','hollow','glade','shaw','copse','weald','briar','root','leaf','fen'],
+    mountain:['peak','crag','spire','fell','cairn','tor','height','ridge','deep','delve','pass','stone'],
+    desert:['dune','waste','sands','drift','mesa','scar','barrens','reach','flats','scree','wells','expanse'],
+    jungle:['tangle','vale','verge','canopy','mire','delve','green','deep','vines','hollow','rot','fen'],
+  };
+  const NAME_SEA_BY_TYPE={
+    primal:{pre:['Kraken','Wyrm','Serpent','Abyssal','Drowned','Sunken','Titan','Leviathan','Dread','Deep','Black','Storm'],suf:[' Deep',' Abyss',' Maw',' Trench',' Reach',' Fathoms',' Gulf',' Dark']},
+    whale: {pre:['Whale','Grey','Cold','Deep','Wander','Song','Tide','Mist','Roam','Bower'],suf:[' Sound',' Waters',' Bay',' Reach',' Passage',' Run',' Sea',' Shoals']},
+    open:  {pre:['Storm','Grey','Salt','Foam','Pale','Azure','Wild','Bitter','Calm','Wide','Open','Far'],suf:[' Sea',' Straits',' Channel',' Gulf',' Waters',' Expanse',' Reach',' Ocean',' Bight']},
+  };
+  const pickFrom=arr=>arr[Math.floor(Math.random()*arr.length)];
+  const toRoman=n=>['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'][n]||(''+n);
+  const themedName=(p)=>{
+    if(p.terrain==='sea'){
+      let kind='open';
+      if(p.race==='Primal:Whale') kind='whale';
+      else if(p.race&&p.race.startsWith('Primal:')) kind='primal';
+      const pool=NAME_SEA_BY_TYPE[kind];
+      return pickFrom(pool.pre)+pickFrom(pool.suf);
+    }
+    // Land: prefix reflects the people (or wild primal beasts), suffix reflects the terrain.
+    const prePool=(p.race&&p.race.startsWith('Primal:'))?NAME_PREFIX_PRIMAL:(NAME_PREFIX_BY_RACE[p.race]||NAME_PREFIX_BY_RACE.Human);
+    const sufPool=NAME_SUFFIX_BY_TERRAIN[p.terrain]||NAME_SUFFIX_BY_TERRAIN.plain;
+    return pickFrom(prePool)+pickFrom(sufPool);
+  };
+  const nameAllProvinces=()=>{
+    provinces.forEach(p=>{
+      let name,tries=0;
+      do{ name=themedName(p); tries++; }while(nameSet.has(name)&&tries<50);
+      if(nameSet.has(name)){ let k=2; while(nameSet.has(name+' '+toRoman(k))) k++; name=name+' '+toRoman(k); }
+      nameSet.add(name);
+      p.name=name;
+    });
+  };
 
+  // ── PHASE 1: choose each king's HOME CELL first, as equidistant as possible ──
+  // Placing homes before any terrain is decided lets us control player spacing directly rather
+  // than leaving it to chance. Eligible cells exclude the top and bottom rows, so no king ever
+  // starts on the north or south edge of the world. We build several candidate layouts by
+  // farthest-point placement and keep the most spread-out one, so spacing is reliable (the player
+  // caps per map size assume this — see MAP_MAX_PLAYERS in the setup form).
+  const eligibleCells=[];
+  for(let r=1;r<=rows-2;r++) for(let c=0;c<cols;c++) eligibleCells.push({r,c,id:cellIdRC(r,c)});
+  const buildLayout=()=>{
+    const hc=[eligibleCells[Math.floor(Math.random()*eligibleCells.length)]]; // first king: random
+    while(hc.length<setupPlayers.length){
+      // Farthest-point: pick the eligible cell whose NEAREST chosen king is as far away as possible.
+      let bestCell=null,bestMin=-1;
+      for(const cell of eligibleCells){
+        if(hc.some(h=>h.id===cell.id)) continue;
+        let minD=Infinity; for(const h of hc){const d=cellDistRC(cell,h); if(d<minD)minD=d;}
+        if(minD>bestMin){bestMin=minD;bestCell=cell;}
+      }
+      hc.push(bestCell||eligibleCells[Math.floor(Math.random()*eligibleCells.length)]);
+    }
+    return hc;
+  };
+  const layoutMinDist=(hc)=>{let ms=Infinity;for(let a=0;a<hc.length;a++)for(let b=a+1;b<hc.length;b++){const d=cellDistRC(hc[a],hc[b]);if(d<ms)ms=d;}return hc.length<2?Infinity:ms;};
+  let homeCells=buildLayout(), homeMin=layoutMinDist(homeCells);
+  for(let att=0;att<60;att++){ const cand=buildLayout(); const m=layoutMinDist(cand); if(m>homeMin){homeMin=m;homeCells=cand;} }
+  const homeIdSet=new Set(homeCells.map(h=>h.id));
+
+  // ── PHASE 2: tailor each king's home NEIGHBOURHOOD ──
+  // Pre-assign terrain (and a tax band) to specific ring cells so every home satisfies its rules:
+  //   >=2 adjacent land, >=1 poor (tax 1-3) land, >=1 prosperous (tax 4-7) land, and >=1 adjacent
+  //   sea IF that king started with Naval>=1. Everything else is filled by the general rule.
+  // constraint[id] = { terrain, taxBand:'poor'|'prosperous'|null, isHome:bool }
+  const constraint={};
+  homeCells.forEach((home,ki)=>{
+    constraint[home.id]={terrain:pickLand(),taxBand:null,isHome:true}; // home is land (race/pool set later)
+    const ring=neighbourCells(home.r,home.c).filter(n=>!homeIdSet.has(n.id) && !constraint[n.id]); // free cells only
+    const shuffled=[...ring].sort(()=>Math.random()-0.5);
+    let i=0;
+    if(navalLevelOf(setupPlayers[ki])>=1 && i<shuffled.length){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; i++; }
+    if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'poor'}; i++; }        // one poor land
+    if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'prosperous'}; i++; }  // one prosperous land
+  });
+
+  // ── PHASE 3: generate every province ──
   for(let row=0;row<rows;row++){
     for(let col=0;col<cols;col++){
       const id=row*cols+col;
-      let pname;
-      let terrain;
-      // FAR NORTH / FAR SOUTH: the top and bottom rows of the world are impassable frozen
-      // wastelands — a wall of ice no army can cross. This is the narrative reason the map does
-      // not wrap north-to-south (it DOES wrap east-to-west). They are terrain only: no owner,
-      // armies, features or value; characters can never enter them.
-      if(row===0||row===rows-1){
-        terrain='frozen';
-        do{pname=frozenPrefixes[Math.floor(Math.random()*frozenPrefixes.length)]+frozenSuffixes[Math.floor(Math.random()*frozenSuffixes.length)];}while(nameSet.has(pname));
+      let terrain, taxOverride=null;
+      const con=constraint[id];
+      if(con){
+        // Home / tailored-neighbour cell: terrain (and sometimes tax band) was decided in Phase 2.
+        terrain=con.terrain;
+        if(con.taxBand==='poor') taxOverride=rP(1,3);
+        else if(con.taxBand==='prosperous') taxOverride=rP(4,7);
       } else {
-        // Interior rows are mostly land with occasional water. Sea now forms lakes, inland seas and
-        // coastlines instead of ringing the whole map, so there is far less open water than before.
-        // Base ~14% sea, rising to 45% next to water already placed so seas cluster into real bodies.
+        // General fill: aim for ~25% sea overall, clustering next to existing water so seas form
+        // coherent lakes / inland seas / coastlines rather than scattered single hexes.
         const leftProv = col>0 ? provinces[row*cols+(col-1)] : null;
         const upProv   = provinces[(row-1)*cols+col];
-        const seaChance = ((leftProv&&leftProv.terrain==='sea')||(upProv&&upProv.terrain==='sea')) ? 0.45 : 0.14;
-        if(Math.random()<seaChance){
-          terrain='sea';
-          do{pname=seaPrefixes[Math.floor(Math.random()*seaPrefixes.length)]+seaSuffixes[Math.floor(Math.random()*seaSuffixes.length)];}while(nameSet.has(pname));
-        } else {
-          const t=['plain','plain','plain','forest','mountain','desert','jungle'];terrain=t[Math.floor(Math.random()*t.length)];
-          do{pname=prefixes[Math.floor(Math.random()*prefixes.length)]+suffixes[Math.floor(Math.random()*suffixes.length)];}while(nameSet.has(pname));
-        }
+        const seaChance = ((leftProv&&leftProv.terrain==='sea')||(upProv&&upProv.terrain==='sea')) ? 0.42 : 0.16;
+        if(Math.random()<seaChance){ terrain='sea'; }
+        else { terrain=pickLand(); }
       }
-      nameSet.add(pname);
-      const baseTax={plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2),frozen:0}[terrain];
-      // Primal (non-humanoid) provinces are land-only — never sea, never frozen.
-      const isPrimal=terrain!=='sea'&&terrain!=='frozen'&&Math.random()<0.10;
+      const baseTax = taxOverride!=null ? taxOverride : {plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
+      // ~20% of LAND provinces are Primal (non-humanoid). Sea is never Primal at this stage.
+      const isPrimal=terrain!=='sea'&&Math.random()<0.20;
       let race;
-      if(terrain==='sea'||terrain==='frozen'){
+      if(terrain==='sea'){
         race=null;
       } else if(isPrimal){
         // Pick a primal sub-race based on terrain
@@ -1533,7 +1633,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       } else {
         race=RACES_P[Math.floor(Math.random()*4)];
       }
-      const population=(terrain==='sea'||terrain==='frozen')?0:rP(1,6);
+      const population=terrain==='sea'?0:rP(1,6);
       // Build army pool — primal provinces get special powerful armies
       let fullPool;
       if(race&&race.startsWith('Primal:')){
@@ -1550,19 +1650,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           'Titan Warbeast':['Titan Warbeasts','Stone Giants'],
         };
         fullPool=PRIMAL_POOL[subRace]||['Stone Giants'];
-      } else if(terrain==='frozen'){
-        fullPool=[]; // impassable frozen wasteland — nothing recruitable
       } else if(terrain==='sea'){
-        // Sea provinces: only non-humanoid naval creatures, and only 50% have any recruitables
-        if(Math.random()<0.5){
-          // Empty — no recruitables in this sea province
-          fullPool=[];
-        } else {
-          // Non-humanoid sea army pool: Whale Cohort (creature), Sea Giants, Kraken Tentacles, Leviathan Pods
-          const SEA_CREATURE_POOL=['Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'];
-          const count=Math.floor(Math.random()*2)+1; // 1-2 types available
-          fullPool=[...SEA_CREATURE_POOL].sort(()=>Math.random()-0.5).slice(0,count);
-        }
+        // Sea army pools are decided later by the province's sea TYPE (Primal / Whale / open water),
+        // so leave it empty here — the sea post-processing pass sets armyTypes definitively.
+        fullPool=[];
       } else {
         // Regular land province: pull army types for this terrain + race
         fullPool=(PROVINCE_ARMIES_P[terrain]||{})[race]||['Infantry'];
@@ -1574,12 +1665,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       const poolCount=Math.min(nonGarrison.length,Math.max(2,Math.floor(Math.random()*nonGarrison.length)+1));
       const shuffled=[...nonGarrison].sort(()=>Math.random()-0.5).slice(0,poolCount);
       const armyPool=[...shuffled,...garrison];
-      // Features
+      // Features (land provinces only): 2-4 explorable features each.
       const features=[];
-      if(terrain!=='sea'&&terrain!=='frozen'){
+      if(terrain!=='sea'){
         const pool=FEATURE_POOLS_P[terrain]||FEATURE_POOLS_P.plain;
-        const ftable=[1,2,2,3,3,3,3,4,4,5];
-        const fcount=ftable[Math.floor(Math.random()*ftable.length)];
+        const fcount=rP(2,4);
         const used=new Set();
         for(let fi=0;fi<fcount;fi++){
           let fname,tries=0;
@@ -1594,7 +1684,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       }
       // Neutral defenders
       let neutralDefenders=[];
-      if(terrain!=='sea'&&terrain!=='frozen'){
+      if(terrain!=='sea'){
         const isPrimalProv=race&&race.startsWith('Primal:');
         // Primal provinces: 2-4 defenders at higher quality; normal: 1-3 Average
         // Neutral army count based on province wealth — richer provinces are better defended
@@ -1611,17 +1701,14 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           neutralDefenders.push({type:dt,quality:defQuality,race:race||'Human',unitName:armyUnitName(dt)});
         }
       }
-      provinces.push({id,row,col,name:pname,terrain,tax:baseTax,race,population,owner:null,features,npcArmies:neutralDefenders.length,neutralDefenders,explored:0,characters:[],armyTypes:armyPool,garrisonArmies:[],visitedBy:[]});
+      provinces.push({id,row,col,name:null,terrain,tax:baseTax,race,population,owner:null,features,npcArmies:neutralDefenders.length,neutralDefenders,explored:0,characters:[],armyTypes:armyPool,garrisonArmies:[],visitedBy:[]});
     }
   }
 
   // Post-generation: add fleet types to coastal provinces (land adjacent to sea)
-  // and to some sea provinces
   const FLEET_BY_RACE={Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys','Whale Cohort'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']};
-  const offEven=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
-  const offOdd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
   provinces.forEach(p=>{
-    if(p.terrain==='sea'||p.terrain==='frozen') return; // pure sea + frozen handled/skipped
+    if(p.terrain==='sea') return; // sea handled separately below
     // Check if any neighbour is sea
     const offsets=p.row%2===0?offEven:offOdd;
     const adjSea=offsets.some(([dr,dc])=>{
@@ -1637,8 +1724,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     }
   });
   // Sea provinces: only non-humanoid sea armies — no Fleet/Corsair/Galleys/Longships
-  // 40% get primal sea armies (defended + recruitable), 30% get Whale Cohort only,
-  // 30% are empty open water
+  // Sea provinces get non-humanoid sea armies only (no player fleets). Their army pool and tax are
+  // decided purely by type: 40% Primal (Prosperous, tax 4-7), 20% Whale Cohort (Poor, tax 1-3),
+  // 40% open water (no armies, tax 1).
   const PRIMAL_SEA_TYPES=['Sea Giants','Kraken Tentacles','Leviathan Pods'];
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
     const r=Math.random();
@@ -1646,9 +1734,8 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       const chosen=PRIMAL_SEA_TYPES[Math.floor(Math.random()*PRIMAL_SEA_TYPES.length)];
       p.armyTypes=[chosen];
       p.race='Primal:'+chosen.replace(/s$/, '').replace('Kraken Tentacle','Kraken').replace('Leviathan Pod','Leviathan');
-      // Primal sea provinces have meaningful tax (their waters are rich in trade routes)
-      const seaTaxBoost=chosen==='Leviathan Pods'?rP(3,6):chosen==='Kraken Tentacles'?rP(2,5):rP(2,4);
-      p.tax=seaTaxBoost;
+      // Primal seas are Prosperous waters — tax 4-7, same band as prosperous land.
+      p.tax=rP(4,7);
       // Defender count and quality based on tier
       const isTier5=chosen==='Leviathan Pods';
       const defCount=isTier5?rP(1,2):rP(1,3);
@@ -1667,60 +1754,31 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         const sfMonster={...(seaMonsters.length>0?seaMonsters:MONSTERS_P)[Math.floor(Math.random()*(seaMonsters.length||MONSTERS_P.length))]};
         p.features=[{name:sfName,discovered:false,cleared:false,treasure:{gold:rP(sfMonster.minG,sfMonster.maxG)},monster:{...sfMonster}}];
       }
-    } else if(r<0.70){
+    } else if(r<0.60){
+      // Whale Cohort waters — Poor (tax 1-3)
       p.armyTypes=['Whale Cohort'];
       p.race='Primal:Whale';
       const defCount=rP(1,2);
       p.neutralDefenders=Array.from({length:defCount},()=>({type:'Whale Cohort',quality:'Average',race:'Primal',unitName:armyUnitName('Whale Cohort')}));
       p.npcArmies=defCount;
-      p.tax=rP(1,3); // whale waters have some value
+      p.tax=rP(1,3);
+    } else {
+      // Open water — no armies, no defenders, tax exactly 1.
+      p.armyTypes=[];
+      p.neutralDefenders=[];
+      p.npcArmies=0;
+      p.tax=1;
     }
-    // else: open water — no armies, no defenders
   });
 
-  // Place player starts (land only — never sea, never frozen)
-  const landProvinces=provinces.filter(p=>p.terrain!=='sea'&&p.terrain!=='frozen');
-  function isValidStart(p){
-    if(p.owner!==null||p.terrain==='sea'||p.terrain==='frozen') return false;
-    const neighbors=getNeighborsP(p,cols,rows,provinces);
-    const landNeighbors=neighbors.filter(n=>n.terrain!=='sea'&&n.terrain!=='frozen'&&n.owner===null);
-    if(landNeighbors.length<2) return false;
-    // Must have at least one poor (tax 1-3) and one prosperous (tax 4-7) neighbour
-    const hasPoor=landNeighbors.some(n=>n.tax>=1&&n.tax<=3);
-    const hasProsperous=landNeighbors.some(n=>n.tax>=4&&n.tax<=7);
-    return hasPoor&&hasProsperous;
-  }
-  const validStarts=landProvinces.filter(isValidStart);
+  // Player starts were already chosen up front (Phase 1) and their neighbourhoods tailored
+  // (Phase 2). Here we simply take each king's pre-selected home province in order.
   const playerStarts=[];
   const allChars=[];
   let nextItemId=0;
 
   const players=setupPlayers.map((sp,pi)=>{
-    let best=null,bestScore=-1;
-    const candidates=(validStarts.length>=setupPlayers.length?validStarts:landProvinces).filter(p=>p.owner===null);
-    // Require a minimum separation between home provinces (scaled to map size)
-    // At least 4 hexes apart, or fewer only if the map is too small to allow it
-    const minSeparation=Math.max(3,Math.min(5,Math.floor(cols/2)));
-    // First pass: only accept candidates that respect minSeparation
-    for(let attempt=0;attempt<200;attempt++){
-      const cand=candidates[Math.floor(Math.random()*candidates.length)];
-      if(!cand||cand.owner!==null) continue;
-      let minDist=999;
-      playerStarts.forEach(s=>{const d=hexDistP(cand,s,cols);if(d<minDist)minDist=d;});
-      // Accept immediately if it meets the separation requirement and beats current best
-      if(minDist>=minSeparation&&minDist>bestScore){bestScore=minDist;best=cand;}
-    }
-    // Fallback: if no candidate met minSeparation (tiny/crowded map), take the most-distant available
-    if(!best){
-      for(let attempt=0;attempt<200;attempt++){
-        const cand=candidates[Math.floor(Math.random()*candidates.length)];
-        if(!cand||cand.owner!==null) continue;
-        let minDist=999;
-        playerStarts.forEach(s=>{const d=hexDistP(cand,s,cols);if(d<minDist)minDist=d;});
-        if(minDist>bestScore){bestScore=minDist;best=cand;}
-      }
-    }
-    if(!best) best=candidates[0]||landProvinces[pi];
+    const best=provinces[homeCells[pi].id];
     // Home province race always matches the king's race, and army pool updates accordingly
     best.owner=pi;best.npcArmies=0;best.neutralDefenders=[];best.exploredBy={[pi]:100};best.explored=100;best.visitedBy=[pi];best.tax=10;
     best.race=sp.race;
@@ -1814,7 +1872,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
 
   // Neutral heroes — one per non-home land province, and per sea province that has defenders,
   // leading the province's neutral armies (so sea provinces actually fight when entered)
-  provinces.filter(p=>p.owner===null && p.terrain!=='frozen' && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
+  provinces.filter(p=>p.owner===null && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
     const hid=allChars.length;
     const hrace=lp.terrain==='sea'?'Primal':RACES_P[Math.floor(Math.random()*4)];
     const hSkills={};
@@ -1846,6 +1904,13 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // Province still keeps neutralDefenders for backward-compat intel display,
     // but armies actually live on the hero now
   });
+
+  // ── THEMATIC NAMING PASS ──
+  // Every province now has its final terrain, race and army pool (including king home provinces),
+  // so name them all thematically here, then point each character's stored location name at the
+  // freshly-named province they occupy.
+  nameAllProvinces();
+  allChars.forEach(c=>{ const pv=provinces[c.location]; if(pv) c.locationName=pv.name; });
 
   // Build turnOrders
   const turnOrders={};
@@ -4435,15 +4500,12 @@ const BATTLE_ARMY_SPELLS={
         if(target.startsWith('dir:')){
           const dir=target.slice(4);
           toProv=neighborInDir(prov,dir);
-          if(!toProv){log('move',`${c.name} tries to move ${dir} but hits the map edge.`,{actor:c.player,targets:[c.player]});break;}
+          if(!toProv){log('move',`${c.name} marches ${dir} to the edge of the world, but the impassable icy wastelands bar the way — no army can cross them to the far north or south.`,{actor:c.player,targets:[c.player]});break;}
         } else {
           const id=parseInt(target);
           if(!isNaN(id)) toProv=G.world.provinces[id];
         }
         if(!toProv){log('move',`${c.name}: invalid move target.`,{actor:c.player,targets:[c.player]});break;}
-        if(toProv.terrain==='frozen'){
-          log('move',`${c.name} reaches the edge of the known world at ${toProv.name} — an endless, impassable expanse of frozen wasteland. No army can cross the ice to the far north or south; the way is barred.`,{actor:c.player,targets:[c.player]});break;
-        }
         const sc=seaCap[c.id]||'land';
 
         // Determine which move pool to use
@@ -5796,7 +5858,6 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   }
 
   function canEnterTerrain(c, terrain, seaCap){
-    if(terrain==='frozen') return false; // impassable frozen wasteland — no one crosses the ice
     if(terrain==='sea'){
       if(seaCap==='all'||seaCap==='sea') return true;
       if(c._partSeaThisPhase) return true; // Part Sea spell active this phase
@@ -6450,6 +6511,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1230</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1510</div>
 </body>
 </html>

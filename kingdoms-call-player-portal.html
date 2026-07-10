@@ -2163,8 +2163,12 @@ function buildTargetField(c, ph, saved){
   const curLocObj=predictedLocation(c.id,ph);
   const curProv_=curLocObj?wProvs.find(p=>p.id===curLocObj.id):null;
 
+  // Build direction options, but ONLY for legal moves. The world wraps east-west, so W/E always
+  // lead somewhere; north-south do not wrap — beyond the top and bottom rows lie the impassable
+  // icy wastelands. Those off-map directions are omitted from the dropdown, and a note explains why.
+  let blockedNorth=false, blockedSouth=false;
   const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>{
-    let provLabel='';
+    let provLabel='', offMap=false;
     if(curProv_){
       const idx2=HEX_DIRS_BUILD.indexOf(v);
       if(idx2>=0){
@@ -2176,19 +2180,25 @@ function buildTargetField(c, ph, saved){
           const nid=nr*wCols+nc;
           const nbProv=wProvs.find(p=>p.id===nid);
           if(nbProv&&nbProv.name) provLabel=` (${nbProv.name})`;
-          else if(!nbProv) provLabel=' (edge of world)';
+          else if(!nbProv) offMap=true;
         } else {
-          provLabel=' (edge of world)';
+          offMap=true; // beyond the north or south edge of the world
+          if(dr<0) blockedNorth=true; else blockedSouth=true;
         }
       }
     }
+    if(offMap) return null; // legal moves only
     return`<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}${provLabel}</option>`;
-  }).join('');
+  }).filter(Boolean).join('');
 
   switch(action){
     // ── MOVE ──
-    case 'Move':
-      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
+    case 'Move':{
+      const edgeNote=(blockedNorth||blockedSouth)
+        ? `<div style="font-size:.72rem;color:var(--stone);margin-top:3px">\u2744 The impassable icy wastelands to the ${blockedNorth&&blockedSouth?'north and south':blockedNorth?'north':'south'} bar any further movement in that direction — the world does not extend beyond them.</div>`
+        : '';
+      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>${edgeNote}`;
+    }
 
     // ── EXPLORE / SPY / DEFEND / REST ──
     case 'Explore':
@@ -2567,7 +2577,7 @@ function updateRecruitTarget(charId, ph){
 // ── TERRAIN COLORS ────────────────────────────────────
 const TERRAIN_COLORS_MAP={
   plain:'#9eb68a',desert:'#c8c48a',forest:'#2d7a2d',
-  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf',frozen:'#dbe7ef'
+  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'
 };
 
 // ── TERRAIN ICONS (proper SVG element creation) ────────
@@ -2610,13 +2620,6 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
       [[0,-6],[0,6],[-5,-3],[5,-3],[-5,3],[5,3]].forEach(([dx,dy])=>{
         els.push(mk('line',{x1:cx+dx*.55,y1:cy+dy*.55,x2:cx+dx,y2:cy+dy,stroke:'rgba(255,255,255,0.3)','stroke-width':'1'}));
       });
-      break;
-    case 'frozen':
-      // Snowflake — impassable frozen wasteland (icy tint, dark strokes for contrast on pale fill)
-      [[0,-7,0,7],[-6,-3.5,6,3.5],[6,-3.5,-6,3.5]].forEach(([x1,y1,x2,y2])=>{
-        els.push(mk('line',{x1:cx+x1,y1:cy+y1,x2:cx+x2,y2:cy+y2,stroke:'rgba(90,120,150,0.75)','stroke-width':'1.2'}));
-      });
-      els.push(mk('circle',{cx,cy,r:'1.6',fill:'rgba(90,120,150,0.7)'}));
       break;
   }
   return els;
@@ -2864,9 +2867,7 @@ function renderMapIntoSvg(svgEl, report){
       g.style.cursor='pointer';
       g.addEventListener('mousemove',ev=>{
         let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
-        if(pd.terrain==='frozen'){
-          h+=`<span style="color:#9fb8cc">Frozen wasteland</span><br><span style="opacity:.85;font-style:italic">Impassable — the icy edge of the world. No army can cross to the far north or south.</span>`;
-        } else if(isOwned){
+        if(isOwned){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
@@ -2936,6 +2937,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.10-1230</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.10-1510</div>
 </body>
 </html>
