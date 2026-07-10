@@ -834,7 +834,7 @@ async function saveGMOrders(gpId, playerIndex){
 }
 
 async function loadTurnLog(gameId, turn){
-  const {data}=await sb.from('turn_logs').select('*').eq('game_id',gameId).eq('turn',turn);
+  const {data}=await sb.from('turn_logs').select('*').eq('game_id',gameId).eq('turn',turn).eq('player_index',-1);
   const el=document.getElementById('detail-log');
   if(!data||data.length===0){el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
 
@@ -1030,6 +1030,15 @@ async function runTurn0(){
         orders_submitted:false
       }).eq('id',sp.gamePlayerId);
       if(rErr) reportErrors.push(rErr.message);
+      // Founding snapshot (display "Turn 0") so players can revisit their starting map/report.
+      try{
+        await sb.from('turn_logs').insert({
+          game_id:currentGame.id,
+          player_index:sp.id,
+          turn:0,
+          entries:report
+        });
+      }catch(snapErr){ /* best-effort */ }
     }
 
     if(reportErrors.length>0){
@@ -4525,15 +4534,22 @@ const BATTLE_ARMY_SPELLS={
           // Sync hero's armies back from what survived in the battle
           neutralGuard.armies=[...(toProv.neutralDefenders||[])];
           toProv.neutralDefenders=_savedNeutralDefs;
-          // Split surviving combined armies back to each hero
-          if(friendlyReinforcements.length>0){
-            const survivingCombined=battleAttacker.armies||[];
-            // Simple split: each original army keeps its identity via reference
-            c.armies=(c.armies||[]).filter(a=>survivingCombined.includes(a));
-            friendlyReinforcements.forEach(ally=>{
-              ally.armies=(ally.armies||[]).filter(a=>survivingCombined.includes(a));
-            });
-          }
+          // Split surviving combined armies back to each hero.
+          // IMPORTANT: this MUST run even when there are no reinforcements. The battle is fought
+          // on a shallow copy (battleAttacker) whose army array is a *copy* of c.armies, so the
+          // casualties applied inside combatVsNPC (a._died / the filter on battleAttacker.armies)
+          // never reach the real c.armies unless we re-sync here. Skipping this for the
+          // no-reinforcement case left units that were "annihilated in the rout" still alive
+          // under their leader in the next report.
+          const survivingCombined=battleAttacker.armies||[];
+          // Simple split: each original army keeps its identity via reference
+          c.armies=(c.armies||[]).filter(a=>survivingCombined.includes(a));
+          friendlyReinforcements.forEach(ally=>{
+            ally.armies=(ally.armies||[]).filter(a=>survivingCombined.includes(a));
+          });
+          // combatVsNPC applies a losing retreat to the *copy* — propagate the real character's
+          // new location (and clear the stale _died flags left on removed army objects).
+          if(battleAttacker.location!==c.location) c.location=battleAttacker.location;
           battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id,public:true}));
           if(battle.won){
             if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
@@ -4964,28 +4980,36 @@ const BATTLE_ARMY_SPELLS={
           }
         }
 
-        // Group training bonus: find all other characters in the same province
-        // who are also practising the same skill in this same phase
-        // Find co-trainers: same province, same phase, same skill
-        // Orders may be stored as 'practice', 'Practice Skill', etc — normalise
-        const coTrainers=(G.characters||[]).filter(other=>{
-          if(!other.alive||other.id===c.id||other.location!==c.location) return false;
+        // Base practice chance: 20% alone, 40% with 2+ characters in same province/phase
+        const astroBonus=hasDisc(c.player,'sd26')?0.05:0;
+        const skillKey=skill.toLowerCase().trim();
+
+        // MENTOR rule: any of THIS PLAYER's own characters in the same province this phase with a
+        // HIGHER level in the skill teaches the trainee — guaranteed improvement. The mentor does
+        // NOT have to spend their own turn practising: an experienced hero/king simply present in
+        // the province passes on their knowledge. (Previously the mentor also had to issue a
+        // Practice order for the same skill, so a trainee studying alongside a more skilled ally
+        // who was doing anything else made no progress.)
+        const mentors=(G.characters||[]).filter(other=>{
+          if(!other.alive||other.id===c.id) return false;
+          if(other.player!==c.player) return false;           // only your own kingdom teaches you
+          if(other.location!==c.location) return false;        // must be in the same province
+          return ((other.skills||{})[skillKey]||0) > current;  // must out-rank the trainee
+        });
+
+        // PEERS (group drilling bonus): your own characters in the same province & phase who are
+        // ALSO practising the same skill at the SAME level — shared drilling helps everyone.
+        // Orders may be stored as 'practice', 'Practice Skill', etc — normalise.
+        const peers=(G.characters||[]).filter(other=>{
+          if(!other.alive||other.id===c.id||other.player!==c.player||other.location!==c.location) return false;
+          if(((other.skills||{})[skillKey]||0) !== current) return false;
           const otherOrder=(G.turnOrders[other.id]||[])[ph];
           if(!otherOrder) return false;
           const otherAction=(otherOrder.action||'').toLowerCase().replace(/[^a-z]/g,'');
           const isPractice=otherAction==='practice'||otherAction==='practiceskill'||otherAction==='practiceability';
           if(!isPractice) return false;
-          const otherSkill=(otherOrder.target||'').toLowerCase().trim();
-          return otherSkill===skill.toLowerCase();
+          return (otherOrder.target||'').toLowerCase().trim()===skillKey;
         });
-
-        // Base practice chance: 20% alone, 40% with 2+ characters in same province/phase
-        const astroBonus=hasDisc(c.player,'sd26')?0.05:0;
-        // Mentor rule: if any co-trainer in the same province/phase has a HIGHER level in
-        // this skill, they teach the character — the improvement is automatic (guaranteed).
-        const mentors=coTrainers.filter(t=>((t.skills||{})[skill]||0) > current);
-        // Peers: co-trainers at the SAME level (they justify the group bonus).
-        const peers=coTrainers.filter(t=>((t.skills||{})[skill]||0) === current);
         let successChance, bonusReason;
         if(mentors.length>0){
           successChance=1.0; // guaranteed — learning from a more skilled mentor
@@ -6312,6 +6336,19 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
       turn_report:JSON.stringify(report),
     }).eq('id',gp.id);
     if(rErr)reportErrors.push(gp.player_index+': '+rErr.message);
+
+    // Save a per-player snapshot of this report so the player portal can render the correct
+    // MAP and chronicle for this turn later. Keyed by the RESOLVED turn number (G.turn-1),
+    // matching the "Turn N results" the player sees. Stored as a separate turn_logs row
+    // (player_index = this player) — the GM full log uses player_index = -1.
+    try{
+      await sb.from('turn_logs').insert({
+        game_id:currentGame.id,
+        player_index:gp.player_index,
+        turn:G.turn-1,
+        entries:report
+      });
+    }catch(snapErr){ /* snapshot is best-effort — never block the turn on it */ }
   }
 
   // 11. Save full log to turn_logs table
@@ -6358,6 +6395,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.09-0850</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.10-1015</div>
 </body>
 </html>

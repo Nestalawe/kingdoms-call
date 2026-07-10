@@ -179,9 +179,10 @@ section{display:none;}.section-active{display:block;}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
         <div>
           <label>Race</label>
-          <select id="join-race">
+          <select id="join-race" onchange="updateRaceDesc()">
             <option>Human</option><option>Elven</option><option>Dwarven</option><option>Orcish</option>
           </select>
+          <div id="join-race-desc" style="font-size:.72rem;color:#555;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
         </div>
         <div>
           <label>Alignment</label>
@@ -193,9 +194,10 @@ section{display:none;}.section-active{display:block;}
         </div>
         <div>
           <label>Temper</label>
-          <select id="join-temper">
+          <select id="join-temper" onchange="updateTemperDesc()">
             <option>Berserk</option><option selected>Brave</option><option>Cautious</option><option>Cowardly</option>
           </select>
+          <div id="join-temper-desc" style="font-size:.72rem;color:#555;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
         </div>
       </div>
 
@@ -339,6 +341,8 @@ let joiningGame = null;
 let joinSkills = {};
 let currentGamePlayer = null;
 let currentReport = null;
+// The report currently shown on the map (current turn, or a past-turn snapshot when browsing history)
+let viewingReport = null;
 
 // ── INIT ─────────────────────────────────────────────
 async function init(){
@@ -543,6 +547,8 @@ async function showJoinGame(gameId, gameName, maxP, joined){
     :'';
   infoEl.innerHTML=`<div class="msg-info">${joined}/${maxP} players have already joined. There ${maxP-joined===1?'is':'are'} ${maxP-joined} open slot${maxP-joined===1?'':'s'}.</div>${takenNote}`;
   updateAlignmentDesc();
+  updateRaceDesc();
+  updateTemperDesc();
 }
 
 function renderSkillGrid(){
@@ -798,10 +804,45 @@ function buildChronicle(log, chars_for_log){
 } // end buildChronicle
 
 async function loadPastReport(gameId, playerIndex, turn){
-  document.getElementById('prev-report-banner').style.display='block';
-  const {data:logs}=await sb.from('turn_logs').select('*').eq('game_id',gameId).eq('turn',turn).limit(1);
-  const {data:g}=await sb.from('games').select('*').eq('id',gameId).single();
+  const banner=document.getElementById('prev-report-banner');
+  banner.style.display='block';
   const pi=playerIndex;
+
+  // Strictly hide orders and submit sections — past-turn views must never affect orders.
+  document.getElementById('orders-card').style.display='none';
+  const oc=document.getElementById('orders-column'); if(oc) oc.style.display='none';
+  const sw=document.getElementById('orders-submit-wrap');
+  if(sw) sw.style.display='none';
+  document.getElementById('orders-msg').innerHTML='';
+  document.getElementById('save-msg').style.display='none';
+
+  // 1. Try to load this player's full snapshot for the turn (gives the correct historical MAP).
+  let snapshot=null;
+  try{
+    const {data:snapRows}=await sb.from('turn_logs').select('*')
+      .eq('game_id',gameId).eq('turn',turn).eq('player_index',pi).limit(1);
+    if(snapRows&&snapRows[0]&&snapRows[0].entries){
+      const e=snapRows[0].entries;
+      snapshot=typeof e==='string'?JSON.parse(e):e;
+    }
+  }catch(err){ snapshot=null; }
+
+  banner.innerHTML=`Viewing Turn ${turn}${turn===0?' (founding)':''} — read only. `
+    +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#7a5510;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+
+  if(snapshot){
+    // Historical map + chronicle straight from the snapshot.
+    viewingReport=snapshot;
+    renderPlayerMap(snapshot);
+    buildChronicle(snapshot.lastTurnLog||[], snapshot.characters||[]);
+    return;
+  }
+
+  // 2. Fallback for games/turns saved before per-turn snapshots existed:
+  //    rebuild the chronicle from the GM full log and keep the current map (noted in the banner).
+  const {data:logs}=await sb.from('turn_logs').select('*')
+    .eq('game_id',gameId).eq('turn',turn).eq('player_index',-1).limit(1);
+  const {data:g}=await sb.from('games').select('*').eq('id',gameId).single();
   const gameState=g?.game_state||{};
   const allChars=gameState.characters||[];
   const ownCharIds=new Set(allChars.filter(c=>c.player===pi).map(c=>c.id));
@@ -813,14 +854,14 @@ async function loadPastReport(gameId, playerIndex, turn){
     return false;
   }).map(e=>({type:e.type,text:e.text,charId:ownCharIds.has(e.charId)?e.charId:null,phase:e.phase??null}));
 
-  buildChronicle(entries, allChars.filter(c=>c.player===pi));
-  // Strictly hide orders and submit sections — past turn views must never affect orders
-  document.getElementById('orders-card').style.display='none';
-  const oc=document.getElementById('orders-column'); if(oc) oc.style.display='none';
-  const sw=document.getElementById('orders-submit-wrap');
-  if(sw) sw.style.display='none';
-  document.getElementById('orders-msg').innerHTML='';
-  document.getElementById('save-msg').style.display='none';
+  if(entries.length>0){
+    buildChronicle(entries, allChars.filter(c=>c.player===pi));
+  }else if(turn===0){
+    document.getElementById('report-log').innerHTML='<div class="log-entry system">Your kingdom is founded. The realm awaits your first commands.</div>';
+  }
+  banner.innerHTML=`Viewing Turn ${turn} — read only. `
+    +`<span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> `
+    +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#7a5510;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 }
 
 function returnToCurrentReport(){
@@ -833,13 +874,18 @@ function returnToCurrentReport(){
     submitWrap.innerHTML=`
       <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
       <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-        Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}
+        Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}
       </button>`;
     submitWrap.style.display='flex';
     submitWrap.style.gap='8px';
   }
   submitWrap.style.display='flex';
-  if(currentReport) buildChronicle(currentReport.lastTurnLog||[], currentReport.characters||[]);
+  // Restore the current-turn map and chronicle
+  viewingReport=currentReport;
+  if(currentReport){
+    renderPlayerMap(currentReport);
+    buildChronicle(currentReport.lastTurnLog||[], currentReport.characters||[]);
+  }
 }
 
 // ── TURN REPORT ───────────────────────────────────────
@@ -859,22 +905,31 @@ async function openReport(gamePlayerId){
   const report=typeof gp.turn_report==='string'?JSON.parse(gp.turn_report):gp.turn_report||{};
   currentReport=report;
   currentReport._liveTurn=g.turn||1; // ensure submit uses live turn not report turn
+  viewingReport=report;              // map/history starts on the current report
 
-  document.getElementById('report-title').textContent=`${g.name} — Turn ${g.turn||0}`;
-  document.getElementById('orders-turn-num').textContent=g.turn||1;
+  // Turn numbering, player-facing:
+  //   liveTurn     = the turn currently being PLANNED (the GM runs this next)
+  //   resolvedTurn = the most recent RESOLVED turn — i.e. the results THIS report shows.
+  // The founding/starting report (before any turn is run) is Turn 0.
+  const liveTurn=g.turn||1;
+  const resolvedTurn=Math.max(0,(g.turn||1)-1);
+  document.getElementById('report-title').textContent=`${g.name} — Turn ${resolvedTurn}`;
+  document.getElementById('orders-turn-num').textContent=liveTurn;
 
-  // Build turn navigation buttons (1 to current)
-  const currentTurn=g.turn||1;
+  // Build turn navigation buttons: Turn 0 (founding) .. resolvedTurn (current view).
   const navEl=document.getElementById('turn-nav-btns');
   if(navEl){
     navEl.innerHTML='';
-    for(let t=1;t<=currentTurn;t++){
-      const isCurrent=t===currentTurn;
-      const btn=document.createElement('button');
-      btn.textContent=`T${t}`;
-      btn.style.cssText=`font-size:.68rem;padding:2px 8px;border:1px solid ${isCurrent?'var(--crimson)':'var(--stone)'};background:${isCurrent?'var(--crimson)':'transparent'};color:${isCurrent?'#fff':'var(--stone)'};cursor:pointer;border-radius:2px`;
-      btn.onclick=(()=>{const turn=t;const pi=gp.player_index;return()=>turn===currentTurn?returnToCurrentReport():loadPastReport(gp.game_id,pi,turn);})();
-      navEl.appendChild(btn);
+    if((g.turn||0)>=1){
+      for(let d=0;d<=resolvedTurn;d++){
+        const isCurrent=d===resolvedTurn;
+        const btn=document.createElement('button');
+        btn.textContent=`T${d}`;
+        btn.title=d===0?'Founding — your starting position':`Turn ${d} results`;
+        btn.style.cssText=`font-size:.68rem;padding:2px 8px;border:1px solid ${isCurrent?'var(--crimson)':'var(--stone)'};background:${isCurrent?'var(--crimson)':'transparent'};color:${isCurrent?'#fff':'var(--stone)'};cursor:pointer;border-radius:2px`;
+        btn.onclick=(()=>{const turn=d;const pi=gp.player_index;const cur=resolvedTurn;return()=>turn===cur?returnToCurrentReport():loadPastReport(gp.game_id,pi,turn);})();
+        navEl.appendChild(btn);
+      }
     }
   }
   document.getElementById('prev-report-banner').style.display='none';
@@ -1373,7 +1428,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   }).join('');
 
   btn.disabled=false;
-  btn.textContent=`Submit Orders for Turn ${(turnNum||1)+1}`;
+  btn.textContent=`Submit Orders for Turn ${(turnNum||1)}`;
 }
 
 function addEncounterTactic(charId, code){
@@ -1424,11 +1479,19 @@ function addEncounterTactic(charId, code){
       .filter(([school])=>(skills[school]||0)>=1 || practisingSchoolsEP.has(school))
       .flatMap(([school,spells])=>spells.map(s=>{
         const lvl=skills[school]||0;
-        const practising=practisingSchoolsEP.has(school)&&lvl===0;
-        const limit=combatSpellLimit(lvl);
+        // A character practising this school this turn will end the turn one level higher.
+        // Their *effective* level for the combat-spell limit is therefore lvl+1 (min 1).
+        // "practising" (for the label) means they don't know the school yet (unlocking it).
+        const practisingThis=practisingSchoolsEP.has(school);
+        const practising=practisingThis&&lvl===0;
+        const effLvl=practisingThis?Math.min(5,lvl+1):lvl;
+        const limit=combatSpellLimit(effLvl);
         const used=epSchoolCount[school]||0;
         const isDuplicate=epSpellsUsed.has(s);
-        const atSchoolLimit=!practising&&used>=limit;
+        // The school limit is ALWAYS enforced — previously a practising character skipped the
+        // limit entirely and could stack more elemental (or other) spells than a caster who
+        // already knew the school at the same level.
+        const atSchoolLimit=used>=limit;
         const blocked=isDuplicate||atSchoolLimit;
         const reason=isDuplicate?'already in plan':atSchoolLimit?`school limit ${used}/${limit}`:'';
         return{school,spell:s,level:lvl,practising,blocked,reason,used,limit};
@@ -1451,9 +1514,9 @@ function addEncounterTactic(charId, code){
     picker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a combat spell (${availSpells.filter(x=>!x.blocked).length} available):</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         ${availSpells.map(({school,spell,level,practising,blocked,reason,used,limit})=>{
-          const limitNote=!practising?` ${used}/${limit}`:'';
+          const limitNote=` ${used}/${limit}`;
           const labelExtra=practising
-            ? `<span style="color:#7a5510;font-size:.63rem">(${SKILL_LABELS[school]||school} — practising)</span>`
+            ? `<span style="color:#7a5510;font-size:.63rem">(${SKILL_LABELS[school]||school} — practising${limitNote})</span>`
             : `<span style="color:${blocked?'#bbb':'var(--stone)'};font-size:.63rem">(${SKILL_LABELS[school]||school} ${level}${limitNote})</span>`;
           const blockedNote=blocked?`<span style="color:#c44;font-size:.6rem"> ✗ ${reason}</span>`:'';
           return blocked
@@ -1790,7 +1853,7 @@ async function resubmitOrders(){
   document.getElementById('orders-submit-wrap').innerHTML=`
     <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
     <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-      Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}
+      Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}
     </button>`;
   const sw2=document.getElementById('orders-submit-wrap');
   sw2.style.display='flex';sw2.style.gap='8px';
@@ -1817,10 +1880,38 @@ function updateAlignmentDesc(){
   desc.innerHTML=DESCS[sel.value]||'';
 }
 
+function updateRaceDesc(){
+  const sel=document.getElementById('join-race');
+  const desc=document.getElementById('join-race-desc');
+  if(!sel||!desc) return;
+  const DESCS={
+    Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit a broad roster — Infantry, Cavalry and Longbowmen on the plains, plus flying Noble Griffons — and the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you, making Humans the most flexible race for any strategy. Heroes of your own race cost 2g/turn to keep.',
+    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, especially in forest and jungle where they fight best. Swift flying Eagle Riders (speed 5) scout and strike, and the Whale Cohort rules the seas. Fewer heavy units — you win through mobility and missile fire, not brute force.',
+    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough, disciplined Dwarven Guard and Crossbowmen anchor your line, and powerful Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flying units, and armoured Dwarf Ironclads dominate coastal waters. Dwarves are at their most dangerous defending or fighting in mountain terrain, but move slowly.',
+    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and ferocious Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) are your heavy hitters, thriving in forest, jungle and mountains. Orcs overwhelm through numbers and speed rather than quality.',
+  };
+  desc.innerHTML=DESCS[sel.value]||'';
+}
+
+function updateTemperDesc(){
+  const sel=document.getElementById('join-temper');
+  const desc=document.getElementById('join-temper-desc');
+  if(!sel||!desc) return;
+  // Temper affects how a character behaves in personal encounters, duels and monster fights,
+  // and how often they trigger encounters while exploring/searching (AK 2.4).
+  const DESCS={
+    Berserk:'🔥 <strong>Berserk:</strong> Fearless and aggressive. +20% chance to trigger an encounter while exploring (they seek out danger), and +10% to hit in duels and monster fights. No flee bonus — Berserk characters do not run. Best for offensive heroes who want action.',
+    Brave:'🦁 <strong>Brave:</strong> Bold but level-headed. +10% chance to trigger an encounter, and +10% to hit in duels and monster fights. A solid, balanced default that fights well without being reckless.',
+    Cautious:'🧭 <strong>Cautious:</strong> Careful and calculating. −5% encounter chance and no combat hit bonus, but +10% better chance to flee safely from a losing fight. Good for scouts and support heroes you want to keep alive.',
+    Cowardly:'🏃 <strong>Cowardly:</strong> Avoids danger. −15% encounter chance (rarely stumbles into trouble) and −5% to hit in monster fights, but +20% to flee from duels. Best for non-combat specialists — sages, spies and thieves — who should stay out of the fray.',
+  };
+  desc.innerHTML=DESCS[sel.value]||'';
+}
+
 function cancelSubmit(){
   document.getElementById('orders-msg').innerHTML='';
   const btn=document.getElementById('submit-btn');
-  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}`;}
+  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}`;}
 }
 
 async function doSaveOrders(){
@@ -1865,7 +1956,7 @@ async function reviseOrders(){
   buildOrdersForm(chars, false, gp.orders, currentReport?.turn||1);
   document.getElementById('orders-msg').innerHTML='<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
   document.getElementById('submit-btn').disabled=false;
-  document.getElementById('submit-btn').textContent=`Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)+1}`;
+  document.getElementById('submit-btn').textContent=`Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}`;
 }
 
 async function doSubmitOrders(){
@@ -2720,6 +2811,7 @@ function renderMapIntoSvg(svgEl, report){
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
           if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
           if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           const here=(pd.characters||[]).filter(c=>c.isOwn);
           if(here.length) h+=`<br>\u{1F464} ${here.map(c=>(c.isKing?'\u265B ':'')+c.name).join(', ')}`;
           if(pd.neutralDefenders?.length) h+=`<br>\u{1F6E1} ${pd.neutralGuard?pd.neutralGuard.name+' leads: ':''}${pd.neutralDefenders.map(d=>armyLabel(d)).join(', ')}`;
@@ -2727,10 +2819,12 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
           if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':''}`;
           if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         }
         tt.innerHTML=h;
         tt.style.display='block';
@@ -2747,8 +2841,9 @@ function renderMapIntoSvg(svgEl, report){
 // ── INLINE MAP ─────────────────────────────────────────
 function renderPlayerMap(report){
   const svg=document.getElementById('report-map-svg');
-  if(!svg||!report) return;
-  renderMapIntoSvg(svg, report);
+  const r=report||viewingReport||currentReport;
+  if(!svg||!r) return;
+  renderMapIntoSvg(svg, r);
 }
 
 // ── FULLSCREEN MAP ─────────────────────────────────────
@@ -2770,7 +2865,7 @@ function showFullscreenMap(){
   body.appendChild(fsSvg);
   modal.appendChild(hdr);modal.appendChild(body);
   document.body.appendChild(modal);
-  if(currentReport) renderMapIntoSvg(fsSvg, currentReport);
+  if(viewingReport||currentReport) renderMapIntoSvg(fsSvg, viewingReport||currentReport);
   modal.addEventListener('click',ev=>{if(ev.target===modal)modal.remove();});
 }
 
@@ -2780,6 +2875,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.09-0850</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.10-1015</div>
 </body>
 </html>
