@@ -1022,7 +1022,7 @@ async function openReport(gamePlayerId){
     Divine:`Your kingdom walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment.`,
     Good:`Your kingdom is known for honour and fellowship. Heroes of any alignment are willing to march under your banner — wandering heroes cost you the same-race rate regardless of their alignment. Your armies fight with a solid 40% chance of fanaticism, and your reputation makes it easier to unite allied forces in battle (Contingent Unify chance is enhanced).`,
     Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. In forest and jungle terrain, these armies fight as though they were a full quality tier higher (×1.5 strength). Creature armies also fight with 25% fanaticism bonus under your banner. Your armies fight with a 20% chance of fanaticism.`,
-    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 12% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Heroes of any race join your service at the standard 2g rate, regardless of their origins. Mercenary bands cost 1g less to hire than the going rate. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
+    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Heroes of any race join your service at the standard 2g rate, regardless of their origins. Mercenary bands cost 1g less to hire than the going rate. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
     Pagan:`Your kingdom draws on ancient and forgotten powers. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods and Bone Dragon — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
     Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a Skeletal Infantry at their side. All skeletal armies under your banner are exempt from the Druid penalty for undead army types, fight with 100% fanaticism in every battle, and cost only 1g upkeep each regardless of type. Battlefield graves in your provinces decay more slowly, preserving more fallen armies for the Skeletal Armies spell. Should enemy heroes fall within reach of your necromancers, they can be raised to serve your cause through the Resurrect spell.`,
@@ -1051,7 +1051,7 @@ async function openReport(gamePlayerId){
     <div style="font-size:.78rem;color:#444;margin-bottom:6px">${heirChar.name} has risen as your new king with ${heirChar._pendingSkillAllocation} unallocated skill point${heirChar._pendingSkillAllocation!==1?'s':''}. Assign them before submitting orders.</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px">
       ${['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'].map(sk=>
-        `<button onclick="allocateHeirSkill(${heirChar.id},'${sk}')" style="font-size:.7rem;padding:2px 6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;cursor:pointer">${sk} (${heirChar.skills?.[sk]||0})</button>`
+        `<button onclick="allocateHeirSkill(${heirChar.id},'${sk}')" style="font-size:.7rem;padding:2px 6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;cursor:pointer">${SKILL_LABELS[sk]||sk} (${heirChar.skills?.[sk]||0})</button>`
       ).join('')}
     </div>
     <div style="font-size:.72rem;color:#888;margin-top:4px">Points remaining: <strong>${heirChar._pendingSkillAllocation}</strong></div>
@@ -1101,7 +1101,7 @@ async function openReport(gamePlayerId){
     ?provs.map(p=>`<div class="prov-entry">
         <div class="prov-name">${p.name} <span style="font-size:.7rem;color:var(--stone);font-family:serif">${capitalise(p.terrain)}</span></div>
         <div class="prov-detail">
-          Tax: ${p.tax}g/turn · ${p.race||'Unknown'} · Explored: ${p.explored||0}%<br>
+          Tax: ${p.tax}g/turn · ${formatRace(p.race)} · Explored: ${p.explored||0}%<br>
           ${(p.features||[]).filter(f=>f.discovered&&!f.cleared).length>0
             ?`Known features: ${p.features.filter(f=>f.discovered&&!f.cleared).map(f=>f.name).join(', ')}`
             :'No features discovered yet'}
@@ -1317,6 +1317,7 @@ const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
   {code:'CA',label:'Cast Spell — combat spells: Lightning Bolt, Fireball, Psychic Blast, Hand of Death, Holy Symbol, Spiritwrack, Telekinetic Storm, Curse, Mirror Image',hasSpell:true},
+  {code:'CS',label:'Cast from School — during the pre-battle magic phase, cast a RANDOM battle spell from a chosen school (Elemental, Psychic or Necromancy)',hasSchool:true},
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter'},
@@ -1403,10 +1404,13 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Bone Dragon':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
           return armies.map(a=>{
             const req=DRUID_REQ[a.type]||0;
-            const shortfall=Math.max(0,req-druLevel);
-            const penalty=shortfall>0?` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${druLevel}/${req})</span>`:'';
+            // Same race as the commander → led as if Druid 1 (matches the server rule).
+            const sameRace=!!(a.race&&a.race===c.race);
+            const effDru=sameRace?Math.max(1,druLevel):druLevel;
+            const shortfall=Math.max(0,req-effDru);
+            const penalty=shortfall>0?` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
             return`<span style="color:var(--crimson)">${armyLabel(a)}${penalty}</span>`;
-          }).join(', ');
+          }).join('<br>');
         })()}
         ${(c.items||[]).length>0?`<span style="color:var(--gold)">🔮 ${c.items.map(it=>it.name+(it.desc?` (${it.desc})`:'')).join(', ')}</span>`:''}
       </div>
@@ -1590,6 +1594,49 @@ function addEncounterTactic(charId, code){
     return;
   }
 
+  // For CS (Cast from School), show a school picker — battle-magic schools the character knows.
+  if(code==='CS'){
+    const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
+    const skills=char?.skills||{};
+    const BATTLE_SCHOOLS=[['elemental','Elemental'],['psychic','Psychic'],['necromancy','Necromancy']];
+    const MAGIC_SCHOOLS_CS=new Set(['elemental','psychic','necromancy']);
+    const practisingCS=new Set();
+    for(let prevPh=0;prevPh<5;prevPh++){
+      const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
+      if(prevAction==='Practice Skill'){
+        const prevTarget=getOrderTarget(charId,prevPh);
+        if(prevTarget&&MAGIC_SCHOOLS_CS.has(prevTarget)) practisingCS.add(prevTarget);
+      }
+    }
+    const options=BATTLE_SCHOOLS.map(([key,label])=>{
+      const lvl=skills[key]||0;
+      const practising=practisingCS.has(key)&&lvl===0;
+      const known=lvl>=1||practisingCS.has(key);
+      return {key,label,lvl,practising,known};
+    }).filter(o=>o.known);
+    if(options.length===0){
+      alert('This character knows no battle-magic school (Elemental, Psychic or Necromancy).\n\nTip: Practise one of these schools earlier in your orders to unlock it.');return;
+    }
+    const wrap=document.getElementById(`ep-list-${charId}`);
+    if(!wrap)return;
+    const existingS=document.getElementById(`ep-school-picker-${charId}`);
+    if(existingS)existingS.remove();
+    const spicker=document.createElement('div');
+    spicker.id=`ep-school-picker-${charId}`;
+    spicker.style.cssText='background:#fff8e8;border:1px solid #c8922a;border-radius:3px;padding:8px 10px;margin:4px 0';
+    spicker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${options.map(o=>`<button onclick="confirmEPSchool('${charId}','${o.key}')"
+            style="font-size:.75rem;padding:4px 9px;border:1px solid ${o.practising?'#c8922a':'var(--stone)'};background:${o.practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
+            ${o.label} <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>
+          </button>`).join('')}
+        <button onclick="document.getElementById('ep-school-picker-${charId}').remove()"
+          style="font-size:.75rem;padding:4px 9px;border:1px solid var(--stone);background:#f0e8d8;cursor:pointer;border-radius:2px;color:var(--stone)">Cancel</button>
+      </div>`;
+    wrap.after(spicker);
+    return;
+  }
+
   current.push(code);
   hidden.value=current.join(',');
   refreshEncounterPlan(charId,current);
@@ -1616,6 +1663,21 @@ function confirmEPSpell(charId, spell, school, level){
   }
 
   current.push(`CA:${spell}`);
+  hidden.value=current.join(',');
+  refreshEncounterPlan(charId,current);
+}
+
+function confirmEPSchool(charId, school){
+  const picker=document.getElementById(`ep-school-picker-${charId}`);
+  if(picker)picker.remove();
+  const hidden=document.getElementById(`ep-tactics-${charId}`);
+  if(!hidden)return;
+  const current=hidden.value?hidden.value.split(',').filter(Boolean):[];
+  if(current.length>=8){alert('Maximum 8 tactics in an encounter plan.');return;}
+  if(current.some(t=>t.toUpperCase()==='CS:'+school.toUpperCase())){
+    alert(`A random ${SKILL_LABELS[school]||school} spell is already set for the pre-battle phase.`);return;
+  }
+  current.push(`CS:${school}`);
   hidden.value=current.join(',');
   refreshEncounterPlan(charId,current);
 }
@@ -1656,6 +1718,10 @@ function tacticLabel(code){
   if(code.startsWith('CA:')){
     const spell=code.slice(3);
     return `Cast Spell — ${spell}`;
+  }
+  if(code.startsWith('CS:')){
+    const school=code.slice(3);
+    return `Pre-battle: random ${SKILL_LABELS[school]||school} spell`;
   }
   const baseCode=code.split(':')[0];
   return ENCOUNTER_TACTICS.find(et=>et.code===baseCode)?.label||code;
@@ -1924,7 +1990,7 @@ function updateAlignmentDesc(){
     Divine:'✨ <strong>Divine:</strong> All heroes heal 3× more from Rest (6–15 HP vs 2–5). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives 80% tax bonus.',
     Good:'⚔ <strong>Good:</strong> Heroes of any alignment join your service at the same-race rate (2g). 40% fanaticism chance. Honourable reputation makes it easier to unite allied forces.',
     Druidic:'🌿 <strong>Druidic:</strong> Your king starts with Druid +1. Creature armies (Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort, Eagle Riders) need no Druid skill, gain +25% fanaticism, and fight ×1.5 stronger in forest and jungle. 20% fanaticism chance.',
-    Neutral:'⚖ <strong>Neutral:</strong> Province tax income +12% (practical traders). Hire any race of hero at the 2g same-race rate. Mercenaries cost 1g less. Sage discoveries happen twice as often.',
+    Neutral:'⚖ <strong>Neutral:</strong> Province tax income +20% (practical traders). Hire any race of hero at the 2g same-race rate. Mercenaries cost 1g less. Sage discoveries happen twice as often.',
     Pagan:'🔥 <strong>Pagan:</strong> Ancient rites and fickle gods. 15% fanaticism chance. Features and encounters tend to yield richer rewards for those willing to take risks.',
     Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are immediately looted for 50% of their tax value.',
     Undead:'💀 <strong>Undead:</strong> Your king starts with Necromancy +1 and one free Skeletal Infantry. Skeletal armies are always 100% fanatical, cost only 1g upkeep, and are exempt from Druid penalties. The Skeletal Armies spell raises fallen armies from battlefield graves.',
@@ -2077,6 +2143,14 @@ async function doSubmitOrders(){
 }
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
+// Present a province/unit race cleanly: humanoid races as-is, 'Primal:Whale' → 'Primal (Whale)',
+// bare 'Primal' as 'Primal', and empty/sea provinces as 'Uninhabited'.
+function formatRace(race){
+  if(!race) return 'Uninhabited';
+  if(race==='Primal') return 'Primal';
+  if(race.startsWith('Primal:')) return 'Primal ('+race.slice(7)+')';
+  return race;
+}
 
 // Primal army speeds (for UI calculations)
 const PRIMAL_ARMY_SPEEDS={'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,'Manticore Pride':4,'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,'Elder Dragons':4,'Crimson Rocs':5,'Titan Warbeasts':2,'Leviathan Pods':3};
@@ -2884,6 +2958,7 @@ function renderMapIntoSvg(svgEl, report){
         let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
         if(isOwned){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
+          h+=`<br>\u{1F6C2} ${formatRace(pd.race)}`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
           if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
@@ -2894,6 +2969,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.neutralDefenders?.length) h+=`<br>\u{1F6E1} ${pd.neutralGuard?pd.neutralGuard.name+' leads: ':''}${pd.neutralDefenders.map(d=>armyLabel(d)).join(', ')}`;
         } else if(isVisited){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
+          if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
           if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
@@ -2952,6 +3028,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.11-1752</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.11-2243</div>
 </body>
 </html>

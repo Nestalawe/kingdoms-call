@@ -222,6 +222,7 @@ const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
   {code:'CA',label:'Cast Spell — use a combat spell (requires magic skill)',hasSpell:true},
+  {code:'CS',label:'Cast from School — random pre-battle spell from a chosen school',hasSchool:true},
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter'},
@@ -265,6 +266,7 @@ function removeEncounterTactic(charId,idx){
 }
 function tacticLabel(code){
   if(code.startsWith('CA:')){const spell=code.slice(3);return 'Cast Spell — '+spell;}
+  if(code.startsWith('CS:')){const school=code.slice(3);return 'Pre-battle: random '+(SKILL_LABELS[school]||school)+' spell';}
   const baseCode=code.split(':')[0];
   return ENCOUNTER_TACTICS.find(et=>et.code===baseCode)?.label||code;
 }
@@ -1412,63 +1414,71 @@ const ALL_MAGIC_ITEMS_P=[
 function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 
 const PRIMAL_UNIT_NAMES={
-  'Stone Giants':['the Stoneback Clan','the Mountain-Shapers','the Ironhide Brethren','the World-Crushers','the Ancient Fist'],
-  'Forest Ents':['the Heartwood Wardens','the Root-Walkers','the Old Growth Guard','the Thornback Ancients','the Bark-and-Blood Clan'],
-  'Giant Eagles':['the Stormcrest Wing','the Thunder-Talon Flock','the Sky-Lords of the Peak','the Iron-Eye Squadron','the High-Aerie Wild'],
-  'Cave Trolls':['the Tunnel-Breakers','the Deepstone Hulks','the Regen-Blood Kin','the Cavern-Crushers','the Under-Mountain Terrors'],
-  'Manticore Pride':['the Sunscorch Pride','the Razor-Tail Pack','the Blood-Mane Pride','the Desert-Scourge','the Iron-Stinger Pride'],
-  'Basilisk Brood':['the Stone-Eye Clutch','the Petrifiers Brood','the Ancient Gaze','the Stoneborn Clutch','the Still-Eye Pack'],
-  'Sea Giants':['the Tide-Striders','the Deep-Waders','the Brine-Born Giants','the Abyssal Walkers','the Storm-Wave Clan'],
-  'Kraken Tentacles':['the Elder-Coil','the Abyss-Reach','the Crushing Depths','the Writhing Dark','the Void-Grasp'],
-  'Elder Dragons':['the Ageless Flame','the Ancient Wrath','the Worldburner Wing','the Elder-Brood','the Eternal Scales'],
-  'Crimson Rocs':['the Thunder-Wing Riders','the Sky-Mountain Cavalry','the Stormborn Flock','the Roc-Lord Squadron','the Cloud-Shatter Wing'],
-  'Titan Warbeasts':['the World-Trembler Pack','the Ancient-Blood Herd','the Primordial Stampede','the Myth-Bone Herd','the Epoch-Beast Pack'],
-  'Leviathan Pods':['the Endless-Deep Pod','the World-Serpent Cohort','the Abyss-Song Pod','the Ancient-Current Group','the Tide-Ender Pod'],
+  'Stone Giants':['the Stoneback Clan','the Mountain-Shapers','the Ironhide Brethren','the World-Crushers','the Ancient Fist','the Colossi of the Long Dark','the Host of the Deep Wild','the Elder Breakers','the Rift Colossi','the Host of the Dawn of Days','the Titan Fist','the Kin of the Long Dark','the World Shapers','the Rift Shapers','the Myth Titans','the Clan of the Old Storm','the Old-Blood Clan','the Titans of the Long Dark','the Storm Shapers','the Clan of the First Age','the Host of the Long Dark','the Sky Clan','the Breakers of the Rift','the Kin of the Bones of the Earth','the Host of the World-Root','the Wild Clan','the Fell Clan','the Kin of the Rift'],
+  'Forest Ents':['the Heartwood Wardens','the Root-Walkers','the Old Growth Guard','the Thornback Ancients','the Bark-and-Blood Clan','the Wild Rootborn','the Walkers of the Dawn of Days','the Ancients of the World-Root','the Myth Rootborn','the Earth Walkers','the Primeval Rootborn','the Storm Ancients','the Ancients of the Long Dark','the Deep Elders','the Wild Guard','the Fell Walkers','the World Clan','the Doom Grove-Kin','the Doom Bark-Host','the Rootborn of the Deep Wild','the Rootborn of the Dawn of Days','the Wardens of the Elder Peaks','the Titan Wardens','the Titan Guard','the Thunder Bark-Host','the Old-Blood Walkers','the Wardens of the Deep Wild','the Ancient Guard'],
+  'Giant Eagles':['the Stormcrest Wing','the Thunder-Talon Flock','the Sky-Lords of the Peak','the Iron-Eye Squadron','the High-Aerie Wild','the Doom Wild','the Skylords of the Sundered Lands','the Sky Talons','the Skylords of the World-Root','the Old-Blood Talons','the Squadron of the Deep Wild','the Earth Wild','the Old-Blood Flock','the Talons of the Elder Peaks','the Titan Talons','the Wing of the Elder Peaks','the Deep Wing','the Earth Aerie','the Earth Stormwing','the World Wing','the Flight of the Long Dark','the Sky Flight','the Elder Squadron','the Aerie of the Elder Peaks','the Sky Flock','the Squadron of the Bones of the Earth','the Flock of the Dawn of Days','the Myth Aerie'],
+  'Cave Trolls':['the Tunnel-Breakers','the Deepstone Hulks','the Regen-Blood Kin','the Cavern-Crushers','the Under-Mountain Terrors','the Brutes of the Old Storm','the Primeval Deepkin','the Ancient Kin','the Deepkin of the Dawn of Days','the Earth Breakers','the Sky Deepkin','the Mountain Hulks','the Sky Hulks','the Primeval Hulks','the Elder Maulers','the Doom Deepkin','the Terrors of the First Age','the Sky Terrors','the Ancient Deepkin','the Maulers of the Old Storm','the Kin of the Rift','the World Brutes','the Old-Blood Deepkin','the Mountain Brutes','the Maulers of the Rift','the Earth Brutes','the Thunder Crushers','the Primeval Gnashers'],
+  'Manticore Pride':['the Sunscorch Pride','the Razor-Tail Pack','the Blood-Mane Pride','the Desert-Scourge','the Iron-Stinger Pride','the Ancient Manes','the Manes of the Deep Wild','the Old-Blood Pride','the Doom Manes','the Pack of the World-Root','the Doom Scourge','the Hoary Pride','the Hunt of the Rift','the Hoary Pack','the Prowl of the Deep Wild','the Doom Pride','the Titan Bloodpride','the Thunder Pride','the Old-Blood Stingers','the Earth Hunt','the Scourge of the Deep Wild','the Myth Scourge','the Titan Pride','the Scourge of the Rift','the Prowl of the Bones of the Earth','the Ancient Terrors','the Deep Bloodpride','the Mountain Hunt'],
+  'Basilisk Brood':['the Stone-Eye Clutch','the Petrifiers Brood','the Ancient Gaze','the Stoneborn Clutch','the Still-Eye Pack','the Myth Fangs','the Petrifiers of the Sundered Lands','the Coil of the World-Root','the Pack of the Long Dark','the Wild Coil','the Hoary Brood','the Earth Stoneborn','the Wild Fangs','the Elder Coil','the Ancient Pack','the Storm Clutch','the Fangs of the Bones of the Earth','the Coil of the Elder Peaks','the Clutch of the Bones of the Earth','the Elder Petrifiers','the Titan Brood','the Old-Blood Petrifiers','the Old-Blood Gaze','the Doom Coil','the Deep Petrifiers','the Deep Fangs','the Storm Fangs','the Sky Coil'],
+  'Sea Giants':['the Tide-Striders','the Deep-Waders','the Brine-Born Giants','the Abyssal Walkers','the Storm-Wave Clan','the Waders of the Bones of the Earth','the Fell Striders','the Mountain Striders','the Storm Tideborn','the Primeval Tideborn','the Striders of the Deep Wild','the Storm Striders','the Doom Colossi','the Myth Walkers','the Clan of the Deep Wild','the Walkers of the Long Dark','the Earth Striders','the Colossi of the Dawn of Days','the Doom Walkers','the Elder Deepkin','the Deep Tideborn','the Thunder Walkers','the Sky Clan','the Deep Clan','the Thunder Striders','the Deepkin of the Elder Peaks','the Ancient Deepkin','the Sky Brine-Host'],
+  'Kraken Tentacles':['the Elder-Coil','the Abyss-Reach','the Crushing Depths','the Writhing Dark','the Void-Grasp','the Myth Writhe','the Maw of the First Age','the Dark of the Sundered Lands','the Maw of the Dawn of Days','the Depths of the Dawn of Days','the Deep Grasp','the Grasp of the Elder Peaks','the Fell Dark','the Dark of the First Age','the Sky Depths','the World Maw','the Dark of the Old Storm','the Grasp of the Deep Wild','the Thunder Reach','the Myth Drowners','the Reach of the Deep Wild','the Primeval Writhe','the Thunder Coil','the Reach of the Elder Peaks','the Earth Drowners','the Mountain Writhe','the Elder Abyss-Arms','the Deep Writhe'],
+  'Elder Dragons':['the Ageless Flame','the Ancient Wrath','the Worldburner Wing','the Elder-Brood','the Eternal Scales','the Rift Dread','the Scales of the Deep Wild','the Earth Wyrms','the Thunder Dread','the Titan Brood','the Old-Blood Firestorm','the Mountain Flame','the Storm Dread','the Doom Wyrms','the Old-Blood Flame','the Ancients of the Dawn of Days','the Firestorm of the Deep Wild','the Wyrms of the Bones of the Earth','the Wild Wyrms','the Myth Wrath','the Storm Brood','the Brood of the Deep Wild','the Wing of the Elder Peaks','the Myth Firestorm','the Wyrms of the Rift','the Titan Ancients','the Mountain Brood','the Fell Scales'],
+  'Crimson Rocs':['the Thunder-Wing Riders','the Sky-Mountain Cavalry','the Stormborn Flock','the Roc-Lord Squadron','the Cloud-Shatter Wing','the Skylords of the Elder Peaks','the World Flock','the Elder Cloudkin','the Ancient Riders','the Ancient Cavalry','the Thunder Skylords','the Flock of the Long Dark','the Fell Wing','the Squadron of the Deep Wild','the Riders of the Bones of the Earth','the Talons of the Rift','the Hoary Flock','the Thunder Talons','the Riders of the Rift','the Elder Flock','the World Wing','the Stormflight of the Elder Peaks','the Riders of the Dawn of Days','the Mountain Flock','the Doom Talons','the Primeval Flock','the Rift Wing','the Mountain Skylords'],
+  'Titan Warbeasts':['the World-Trembler Pack','the Ancient-Blood Herd','the Primordial Stampede','the Myth-Bone Herd','the Epoch-Beast Pack','the Sky Ramparts','the Old-Blood Ramparts','the Sky Behemoths','the Herd of the Sundered Lands','the Old-Blood Colossi','the Old-Blood Beasts','the World Behemoths','the Earth War-Herd','the Herd of the Old Storm','the Earth Pack','the Colossi of the Dawn of Days','the Earth Behemoths','the Pack of the Sundered Lands','the Herd of the Rift','the Primeval War-Herd','the Fell Stampede','the Primeval Colossi','the Hoary Ramparts','the Deep Pack','the Behemoths of the Dawn of Days','the Myth Colossi','the Hoary Beasts','the Pack of the Long Dark'],
+  'Leviathan Pods':['the Endless-Deep Pod','the World-Serpent Cohort','the Abyss-Song Pod','the Ancient-Current Group','the Tide-Ender Pod','the Mountain Serpents','the Serpents of the Elder Peaks','the Primeval Drowners','the Titan Serpents','the Doom Cohort','the Elder Abyss-Pod','the Myth Tide-Host','the Storm Abyss-Pod','the Group of the First Age','the Rift Serpents','the Cohort of the First Age','the Thunder Group','the Doom Drowners','the Titan Group','the Tide-Host of the First Age','the Cohort of the Elder Peaks','the Mountain Cohort','the Earth Cohort','the Mountain Drowners','the Sky Tide-Host','the Drowners of the Sundered Lands','the Serpents of the First Age','the Tide-Host of the Rift'],
 };
-// Unique army unit name descriptors by race+type
+// Unique army unit name descriptors by race+type. Pools are sized generously to the
+// largest-map distribution (Huge 20×12, 10 players) so descriptive names rarely repeat;
+// the fallback below composes further descriptive names rather than appending a bare number.
 const ARMY_UNIT_NAMES={
-  'Infantry':['the Ironfoot Company','the Shield-Brothers','the March Guard','the Spear-Wall','the Warborn'],
-  'Cavalry':['the Galloping Swords','the Harriers','the Lance-Brothers','the Outriders','the Swift-Blade'],
-  'Longbowmen':['the Far-Arrow Company','the Longreach Guard','the Bowstring Brotherhood','the Rain of Shafts','the Woodward Watch'],
-  'Knights':['the Gilded Lances','the Iron Chapter','the Order of the Hammer','the Dawn Crusaders','the Sunken Shield'],
-  'Human Garrison':['the Town Watch','the Wall-Keepers','the Gate Guard','the Hearth Wardens','the Levy Guard'],
-  'Elven Bowmen':['the Starlight Archers','the Moonpath Guard','the Silver-Arrow Kinsfolk','the Glade Wardens','the Leaf-Whisper Archers'],
-  'Forest Wardens':['the Oakenheart Rangers','the Greenpath Scouts','the Wild-Blood Wardens','the Thornwall Watch','the Deep-Wood Guard'],
-  'Shadow Archers':['the Nightfall Hunters','the Dusk-Eye Archers','the Veilborn Shafts','the Shade-Song Rangers','the Starless Watch'],
-  'Eagle Riders':['the Skythorn Riders','the Cloud-Claw Squadron','the Storm-Mane Wing','the High-Aerie Guard','the Windborn Talons'],
-  'Elven Garrison':['the Silver Tree Watch','the Glade-Gate Guard','the Leaf-Shield Levy','the Bough-Ward','the Moonveil Sentinels'],
-  'Dwarven Guard':['the Stonehammer Clan','the Deep-Forge Veterans','the Mountain Wall','the Anvil Brotherhood','the Ironback Guard'],
-  'Crossbowmen':['the Quarrel-and-Bolt Company','the Steelshot Marksmen','the Reloading Line','the Pavise Brothers','the Bolt-Thrower Watch'],
-  'Mountain Guns':['the Thunder-Barrel Crew','the Powder-Fist Detachment','the Ironpeak Artillery','the Boom-Stone Battery','the Shatter-Shot Company'],
-  'Dwarf Garrison':['the Mineshaft Watch','the Ore-Gate Guard','the Foundry Levy','the Holdfast Sentinels','the Deep-Door Wardens'],
-  'Warg Riders':['the Fang-Riders','the Moon-Howl Cavalry','the Scarbone Raiders','the Gore-Maw Pack','the Iron-Fang Mounted'],
-  'Orc Berserkers':['the Blood-Rage Clan','the Skull-Breakers','the Frenzied Warband','the Red-Eye Warriors','the Bone-Thunder Mob'],
-  'Goblin Horde':['the Scratch-and-Bite Mob','the Swarm of the Hollow','the Spit-and-Run Pack','the Rabble of Grusk','the Scuttling Horde'],
-  'Orc Garrison':['the Barricade Thugs','the Gate-Bash Watch','the Squabbling Ward','the Grudge-Holders','the Sullen Sentinels'],
-  'Galleon Fleet':['the Sea-Hammer Squadron','the Saltborn Fleet','the Crestwave Armada','the Iron-Keel Company','the Stormrider Ships'],
-  'Corsair Fleet':['the Red Sail Raiders','the Ironprow Corsairs','the Plunder-Wind Ships','the Scourge of the Strait','the Cutlass-and-Wave'],
-  'Elven Galleys':['the Moonwave Galleys','the Silver-Oar Fleet','the Tidecaller Ships','the Starborn Mariners','the Whisperwind Fleet'],
-  'Dwarf Ironclads':['the Iron-Hull Squadron','the Steam-and-Rivet Fleet','the Deep-Keel Ironclads','the Forge-at-Sea Ships','the Boilerplate Armada'],
-  'Orcish Longships':['the Bone-Prow Raiders','the Skull-Sail Fleet','the Storm-Oar Warships','the Sea-Ravager Longships','the Tide-Crusher Fleet'],
-  'Whale Cohort':['the Leviathan Riders','the Deep-Song Cavalry','the Crestmane Wave-Guard','the Bluewater Brotherhood','the Ancient-Tide Riders'],
-    };
+  'Infantry':['the Ironfoot Company','the Shield-Brothers','the March Guard','the Spear-Wall','the Warborn','the Grey Footmen','the Stone Company','the Footmen of the Redkeep','the Bloodied Legion','the Host of the Vale','the Bloodied Spear-Wall','the Bloodied Standard','the Crimson Host','the Free Column','the Border Cohort','the Golden Spear-Wall','the Steel Legion','the Cohort of the Vale','the Standard of the Vale','the Grey Ranks','the Host of the Pale','the Ashen Wardens','the Oaken Host','the Spear-Wall of the Marches','the Company of the North','the Ranks of the Ford','the Legion of the North','the Wardens of the Pale','the Ashen Vanguard','the Storm Vanguard','the Stalwart Vanguard','the Steel Cohort','the Old Legion','the Bloodied Footmen','the Wardens of the Redkeep','the Grey Legion','the Shield-Brothers of the Old Road','the Legion of the Frontier','the Grey Vanguard','the Wardens of the Marches'],
+  'Cavalry':['the Galloping Swords','the Harriers','the Lance-Brothers','the Outriders','the Swift-Blade','the Bulwark Lances','the Sable Riders','the Horse of the Marches','the Coursers of the Vale','the Bronze Riders','the Horse of the Ford','the Horse of the North','the Free Gallop','the Lances of the Vale','the Stalwart Horse','the Cavaliers of the Dawnward','the Old Lances','the Harriers of the Ford','the Outriders of the Ford','the Steel Outriders','the Riders of the Marches','the Riders of the Frontier','the Grey Gallop','the Golden Riders','the Bloodied Outriders','the Storm Cavaliers','the Oaken Lances','the Sable Harriers','the Swords of the Frontier','the Bronze Harriers','the Lances of the Barrows','the Stone Lances','the Bronze Coursers','the Bulwark Harriers','the Cavaliers of the Vale','the Outriders of the Hollow Hills','the Chargers of the Pale','the Border Chargers','the Border Outriders','the Bloodied Lances'],
+  'Longbowmen':['the Far-Arrow Company','the Longreach Guard','the Bowstring Brotherhood','the Rain of Shafts','the Woodward Watch','the Silver Longbows','the Fletchers of the Hollow Hills','the Arrows of the Marches','the Longbows of the North','the Fletchers of the Marches','the Steel Arrows','the Free Archers','the Border Volley','the Marksmen of the Redkeep','the Border Marksmen','the Fletchers of the North','the Bulwark Bowmen','the Bowmen of the Vale','the Old Fletchers','the Marksmen of the Pale','the Bronze Bowstring','the Volley of the Pale','the Stalwart Bowstring','the Longbows of the Frontier','the Iron Marksmen','the Grim Bowstring','the Stone Volley','the Old Yeomen','the Iron Bowmen','the Crimson Volley','the Golden Volley','the Bulwark Yeomen','the Stalwart Marksmen','the Bloodied Arrows','the Fletchers of the Old Road','the Storm Longbows','the Grim Shafts','the Archers of the Riverlands','the Free Shafts','the Arrows of the Pale'],
+  'Knights':['the Gilded Lances','the Iron Chapter','the Order of the Hammer','the Dawn Crusaders','the Sunken Shield','the Stone Paladins','the Chivalry of the Pale','the Crimson Order','the Banner of the Hollow Hills','the Cavaliers of the Barrows','the Sable Lances','the Silver Cavaliers','the Golden Champions','the Chapter of the Barrows','the Grim Cavaliers','the Steel Champions','the Crimson Chapter','the Silver Order','the Old Banner','the Lances of the Ford','the Vigil Chivalry','the Iron Lances','the Free Champions','the Crusaders of the Ford','the Storm Vanguard','the Bronze Lances','the Champions of the Old Road','the Free Vanguard','the Vigil Banner','the Storm Cavaliers','the Lances of the Barrows','the Sable Crusaders','the Border Banner','the Stone Chivalry','the Bloodied Crusaders','the Vanguard of the Riverlands','the Bloodied Champions','the Order of the Ford','the Vigil Chapter','the Vigil Crusaders'],
+  'Human Garrison':['the Town Watch','the Wall-Keepers','the Gate Guard','the Hearth Wardens','the Levy Guard','the Gatemen of the Frontier','the Guard of the Pale','the Grim Guard','the Free Keepers','the Levy of the Ford','the Border Watch','the Wardens of the Hollow Hills','the Wardens of the Redkeep','the Bulwark of the Frontier','the Keepers of the Frontier','the Golden Guard','the Old Gatemen','the Guard of the Ford','the Bulwark of the Hollow Hills','the Ashen Guard','the Sable Sentinels','the Iron Sentinels','the Old Levy','the Border Wall-Guard','the Watch of the Old Road','the Gatemen of the Marches','the Bronze Sentinels','the Free Watch','the Grim Watch','the Bulwark Gatemen','the Old Wall-Guard','the Keepers of the Vale','the Grim Sentinels','the Oaken Bulwark','the Bloodied Gatemen','the Levy of the Riverlands','the Oaken Levy','the Stone Guard','the Sentinels of the Dawnward','the Vigil Levy'],
+  'Elven Bowmen':['the Starlight Archers','the Moonpath Guard','the Silver-Arrow Kinsfolk','the Glade Wardens','the Leaf-Whisper Archers','the Evenstar Bowmen','the Bowmen of the Evenmere','the Amber Shafts','the Leaf Wardens','the Twilight Shafts','the Wardens of the Twilit Wood','the Emerald Shafts','the Dawn Bowsingers','the Dawn Shafts','the Moonlit Kinsfolk','the Marksmen of the Last Grove','the Silver Bowsingers','the Rangers of the Last Grove','the Whisper Longbows','the Wardens of the Whispering Vale','the Gilded Bowsingers','the Silver Kinsfolk','the Silver Archers','the Dawn Rangers','the Evenstar Rangers','the Kinsfolk of the Last Grove','the Wardens of the Glimmerfen','the Emerald Marksmen','the Glimmer Archers','the Glimmer Kinsfolk','the Willow Wardens','the Whisper Marksmen','the Amber Longbows','the Archers of the Amber Court','the Twilight Bowsingers','the Willow Bowmen','the Gilded Wardens','the Marksmen of the Twilit Wood','the Bowmen of the Last Grove','the Argent Kinsfolk'],
+  'Forest Wardens':['the Oakenheart Rangers','the Greenpath Scouts','the Wild-Blood Wardens','the Thornwall Watch','the Deep-Wood Guard','the Starwoven Pathfinders','the Woodsmen of the Amber Court','the Trackers of the Twilit Wood','the Willow Greenguard','the Leaf Stalkers','the Twilight Stalkers','the Rangers of the Evenmere','the Rangers of the Whispering Vale','the Emerald Woodsmen','the Woodsmen of the Dawnpetal','the Verdant Greenguard','the Greenguard of the Silver Glade','the Dawn Wardens','the Watch of the Last Grove','the Silver Scouts','the Silver Wardens','the Dawn Rangers','the Verdant Rangers','the Twilight Rangers','the Whisper Trackers','the Whisper Scouts','the Dusk Rangers','the Whisper Wardens','the Pathfinders of the Amber Court','the Scouts of the Dawnpetal','the Verdant Stalkers','the Emerald Greenguard','the Scouts of the Glimmerfen','the Starwoven Greenguard','the Silver Pathfinders','the Radiant Scouts','the Gilded Greenguard','the Dawn Trackers','the Stalkers of the Glimmerfen','the Woodsmen of the Last Grove'],
+  'Shadow Archers':['the Nightfall Hunters','the Dusk-Eye Archers','the Veilborn Shafts','the Shade-Song Rangers','the Starless Watch','the Leaf Nightbows','the Watch of the Last Grove','the Willow Archers','the Willow Hunters','the Leaf Rangers','the Silver Watch','the Starwoven Ghost-Bows','the Silver Rangers','the Shades of the Silver Glade','the Evenstar Hunters','the Dawn Archers','the Argent Watch','the Leaf Archers','the Rangers of the Last Grove','the Hunters of the Glimmerfen','the Verdant Rangers','the Amber Stalkers','the Shades of the Twilit Wood','the Pale Shades','the Amber Hunters','the Argent Hunters','the Archers of the Moonwood','the Glimmer Ghost-Bows','the Silver Hunters','the Verdant Watch','the Starwoven Watch','the Twilight Shafts','the Leaf Shades','the Twilight Hunters','the Gilded Nightbows','the Amber Archers','the Archers of the Amber Court','the Nightbows of the Whispering Vale','the Watch of the Whispering Vale','the Amber Shafts'],
+  'Eagle Riders':['the Skythorn Riders','the Cloud-Claw Squadron','the Storm-Mane Wing','the High-Aerie Guard','the Windborn Talons','the Verdant Talons','the Silver Skyriders','the Dawn Squadron','the Wing of the Amber Court','the Talons of the Starfall','the Dusk Guard','the Guard of the Glimmerfen','the Evenstar Windriders','the Guard of the Dawnpetal','the Emerald Guard','the Twilight Flight','the Amber Talons','the Skyriders of the Silver Glade','the Flight of the Starfall','the Wing of the Silver Glade','the Radiant Aerie-Guard','the Gilded Guard','the Radiant Skyriders','the Flight of the Evenmere','the Silver Wing','the Twilight Squadron','the Riders of the Silver Glade','the Squadron of the Silver Glade','the Silver Flight','the Starwoven Guard','the Emerald Wing','the Willow Riders','the Skyriders of the Dawnpetal','the Flight of the Amber Court','the Squadron of the Twilit Wood','the Glimmer Talons','the Starwoven Windriders','the Windriders of the Whispering Vale','the Emerald Skyriders','the Verdant Guard'],
+  'Elven Garrison':['the Silver Tree Watch','the Glade-Gate Guard','the Leaf-Shield Levy','the Bough-Ward','the Moonveil Sentinels','the Starwoven Ward','the Dusk Bough-Guard','the Keepers of the Whispering Vale','the Glimmer Levy','the Gilded Keepers','the Evenstar Sentinels','the Silver Ward','the Sentinels of the Twilit Wood','the Glimmer Ward','the Keepers of the Glimmerfen','the Bough-Guard of the Dawnpetal','the Bough-Guard of the Amber Court','the Emerald Wardens','the Gilded Ward','the Dusk Guard','the Bough-Guard of the Glimmerfen','the Radiant Ward','the Amber Watch','the Glimmer Wardens','the Watch of the Twilit Wood','the Bough-Guard of the Twilit Wood','the Leaf Ward','the Levy of the Starfall','the Guard of the Twilit Wood','the Verdant Gate-Watch','the Emerald Keepers','the Evenstar Ward','the Radiant Levy','the Guard of the Glimmerfen','the Radiant Gate-Watch','the Twilight Watch','the Bough-Guard of the Last Grove','the Silver Levy','the Gate-Watch of the Whispering Vale','the Whisper Guard'],
+  'Dwarven Guard':['the Stonehammer Clan','the Deep-Forge Veterans','the Mountain Wall','the Anvil Brotherhood','the Ironback Guard','the Forge Brotherhood','the Anvil Axes','the Anvil Ironsides','the Shieldbearers of the Deep Halls','the Coalfire Clan','the Guard of the Deep Halls','the Coalfire Guard','the Basalt Ironsides','the Forge Shieldbearers','the Bedrock Axes','the Bronze Hold-Guard','the Basalt Axes','the Steamed Brotherhood','the Basalt Hold-Guard','the Steamed Hold-Guard','the Runed Brotherhood','the Wall of the Underforge','the Axes of the Iron Gate','the Ore Clan','the Stone Guard','the Ironsides of the Molten Halls','the Forge Veterans','the Basalt Guard','the Ironbeard Hold-Guard','the Under Wall','the Wall of the Iron Gate','the Clan of the Deep Halls','the Stone Hold-Guard','the Cinder Veterans','the Axes of the Lost Delve','the Coalfire Brotherhood','the Hammer Guard','the Hold-Guard of the Great Vein','the Cinder Shieldbearers','the Molten Shieldbearers'],
+  'Crossbowmen':['the Quarrel-and-Bolt Company','the Steelshot Marksmen','the Reloading Line','the Pavise Brothers','the Bolt-Thrower Watch','the Deep Brothers','the Basalt Quarrels','the Bedrock Brothers','the Line of the Lost Delve','the Coalfire Watch','the Deep Shooters','the Marksmen of the Cinderhold','the Brothers of the Stone Root','the Molten Pavise-Guard','the Company of the Great Vein','the Cinder Shooters','the Coalfire Line','the Shooters of the Cinderhold','the Brothers of the Anvilhold','the Hammer Marksmen','the Ironbeard Marksmen','the Watch of the Lost Delve','the Deep Marksmen','the Forge Shooters','the Ironbeard Watch','the Granite Brothers','the Under Watch','the Line of the Iron Gate','the Bolts of the Molten Halls','the Forge Brothers','the Forge Marksmen','the Hammer Pavise-Guard','the Quarrels of the Lost Delve','the Anvil Pavise-Guard','the Pavise-Guard of the Emberdeep','the Granite Line','the Line of the Stone Root','the Ore Shooters','the Coalfire Quarrels','the Ore Pavise-Guard'],
+  'Mountain Guns':['the Thunder-Barrel Crew','the Powder-Fist Detachment','the Ironpeak Artillery','the Boom-Stone Battery','the Shatter-Shot Company','the Battery of the Underforge','the Cannoneers of the Lost Delve','the Coalfire Artillery','the Coalfire Detachment','the Crew of the Molten Halls','the Deep Powder-Crew','the Battery of the Lost Delve','the Coalfire Cannoneers','the Anvil Company','the Artillery of the Great Vein','the Molten Bombards','the Bombards of the Molten Halls','the Crew of the Great Vein','the Artillery of the Underforge','the Cinder Artillery','the Bedrock Battery','the Bronze Crew','the Powder-Crew of the Iron Gate','the Runed Battery','the Gunners of the Iron Gate','the Forge Company','the Runed Cannoneers','the Runed Gunners','the Artillery of the Deep Halls','the Stone Crew','the Ore Artillery','the Granite Company','the Granite Crew','the Ironbeard Battery','the Hammer Crew','the Bedrock Company','the Molten Powder-Crew','the Steamed Cannoneers','the Company of the Stone Root','the Anvil Powder-Crew'],
+  'Dwarf Garrison':['the Mineshaft Watch','the Ore-Gate Guard','the Foundry Levy','the Holdfast Sentinels','the Deep-Door Wardens','the Levy of the Iron Gate','the Hold-Guard of the Stone Root','the Bedrock Sentinels','the Hold-Guard of the Lost Delve','the Watch of the Deep Halls','the Stone Hold-Guard','the Molten Gate-Watch','the Ember Sentinels','the Bedrock Guard','the Runed Hold-Guard','the Wardens of the Molten Halls','the Runed Keepers','the Molten Hold-Guard','the Deepguard of the Lost Delve','the Basalt Wardens','the Anvil Deepguard','the Bedrock Deepguard','the Bronze Hold-Guard','the Sentinels of the Deep Halls','the Basalt Sentinels','the Keepers of the Iron Gate','the Hold-Guard of the Great Vein','the Guard of the Deep Halls','the Runed Sentinels','the Bedrock Hold-Guard','the Molten Wardens','the Hold-Guard of the Anvilhold','the Forge Guard','the Basalt Guard','the Wardens of the Lost Delve','the Guard of the Great Vein','the Keepers of the Emberdeep','the Guard of the Lost Delve','the Steamed Hold-Guard','the Under Levy'],
+  'Warg Riders':['the Fang-Riders','the Moon-Howl Cavalry','the Scarbone Raiders','the Gore-Maw Pack','the Iron-Fang Mounted','the Snarl Outriders','the Howlers of the Ashen Hills','the Jagged Howlers','the Riders of the Gorewood','the Bone Riders','the Riders of the Grime Warren','the Ash Mounted','the Raiders of the Bone Fields','the Rust Cavalry','the Outriders of the Bone Fields','the Howlers of the Gorewood','the Blood Raiders','the Snarl Raiders','the Skull Wolfriders','the Reeking Outriders','the Cruel Mounted','the Raiders of the Broken Teeth','the Howlers of the Broken Teeth','the Gutter Howlers','the Wolfriders of the Skullpit','the Bone Mounted','the Skull Outriders','the Cruel Cavalry','the Cavalry of the Waste','the Bone Howlers','the Howlers of the Bone Fields','the Howlers of the Skullpit','the Howlers of the Screaming Crag','the Warpaint Cavalry','the Skull Mounted','the Broken Mounted','the Riders of the Skullpit','the Cavalry of the Bone Fields','the Riders of the Bone Fields','the Cavalry of the Skullpit'],
+  'Orc Berserkers':['the Blood-Rage Clan','the Skull-Breakers','the Frenzied Warband','the Red-Eye Warriors','the Bone-Thunder Mob','the Warpaint Bloodhowlers','the Reeking Warband','the Reeking Breakers','the Broken Maulers','the Bloodhowlers of the Grime Warren','the Jagged Reavers','the Reavers of the Bone Fields','the Ragged Clan','the Fang Reavers','the Grime Mob','the Breakers of the Redfang Camp','the Skull Reavers','the Reeking Maulers','the Blood Warriors','the Skull Warriors','the Warpaint Reavers','the Fang Ragers','the Warpaint Breakers','the Warriors of the Gorewood','the Bone Warband','the Bone Reavers','the Maulers of the Redfang Camp','the Gutter Bloodhowlers','the Blood Breakers','the Ragged Maulers','the Warriors of the Bone Fields','the Reavers of the Ashen Hills','the Ragged Reavers','the Jagged Maulers','the Grime Maulers','the Warriors of the Grime Warren','the Ragers of the Bone Fields','the Jagged Warriors','the Reavers of the Skullpit','the Bone Mob'],
+  'Goblin Horde':['the Scratch-and-Bite Mob','the Swarm of the Hollow','the Spit-and-Run Pack','the Rabble of Grusk','the Scuttling Horde','the Broken Scuttlers','the Savage Skulkers','the Skulkers of the Bone Fields','the Gore Warren','the Grime Swarm','the Scuttlers of the Skullpit','the Cruel Swarm','the Fang Screechers','the Mob of the Bone Fields','the Savage Horde','the Skull Horde','the Ash Swarm','the Scuttlers of the Redfang Camp','the Rabble of the Skullpit','the Rust Mob','the Blood Skulkers','the Warpaint Horde','the Horde of the Ashen Hills','the Blood Mob','the Cruel Rabble','the Broken Screechers','the Warren of the Broken Teeth','the Mob of the Screaming Crag','the Rabble of the Waste','the Skull Swarm','the Skull Skulkers','the Warren of the Rust Pits','the Gutter Rabble','the Gutter Warren','the Warren of the Ashen Hills','the Scuttlers of the Gorewood','the Gore Pack','the Snarl Horde','the Screechers of the Screaming Crag','the Screechers of the Waste'],
+  'Orc Garrison':['the Barricade Thugs','the Gate-Bash Watch','the Squabbling Ward','the Grudge-Holders','the Sullen Sentinels','the Cruel Gate-Bashers','the Wall-Mob of the Gorewood','the Sentinels of the Redfang Camp','the Gutter Ward','the Cruel Bruisers','the Reeking Watch','the Bruisers of the Broken Teeth','the Thugs of the Ashen Hills','the Bruisers of the Skullpit','the Wall-Mob of the Waste','the Warpaint Grudge-Holders','the Gore Thugs','the Savage Bruisers','the Warpaint Watch','the Rust Bruisers','the Sentinels of the Screaming Crag','the Cruel Grudge-Holders','the Warpaint Bruisers','the Grudge-Holders of the Bone Fields','the Bone Thugs','the Rust Ward','the Sentinels of the Gorewood','the Grudge-Holders of the Broken Teeth','the Gutter Wall-Mob','the Ward of the Screaming Crag','the Bone Gate-Bashers','the Skull Wall-Mob','the Reeking Grudge-Holders','the Gutter Sentinels','the Cinder Ward','the Reeking Ward','the Grime Sentinels','the Savage Wall-Mob','the Thugs of the Skullpit','the Bruisers of the Waste'],
+  'Galleon Fleet':['the Sea-Hammer Squadron','the Saltborn Fleet','the Crestwave Armada','the Iron-Keel Company','the Stormrider Ships','the Maelstrom Ships','the Ships of the Deep','the Tide Company','the Storm Warships','the Warships of the Far Tide','the Iron Line','the Company of the Strait','the Tide Fleet','the Brine Fleet','the Flotilla of the Grey Waters','the Coral Flotilla','the Company of the Maelstrom','the Salt Armada','the Maelstrom Convoy','the Undertow Line','the Storm Fleet','the Squadron of the Far Tide','the Company of the Squalls','the Company of the Salt Coast','the Gale Armada','the Kraken Fleet','the Storm Line','the Salt Line','the Wind Ships','the Squadron of the Broken Reef','the Anchor Armada','the Brine Warships','the Ships of the Grey Waters','the Anchor Ships','the Salt Flotilla','the Kraken Squadron','the Deep Warships','the Undertow Ships','the Flotilla of the Drowned Shore','the Warships of the Squalls'],
+  'Corsair Fleet':['the Red Sail Raiders','the Ironprow Corsairs','the Plunder-Wind Ships','the Scourge of the Strait','the Cutlass-and-Wave','the Cutters of the Squalls','the Gale Corsairs','the Maelstrom Raiders','the Brine Corsairs','the Brine Rovers','the Wind Reavers','the Rovers of the Kraken Shoals','the Reavers of the Broken Reef','the Cutters of the Deep','the Rovers of the Broken Reef','the Reavers of the Maelstrom','the Sea-Wolves of the Strait','the Marauders of the Kraken Shoals','the Undertow Ships','the Wind Raiders','the Sea-Wolves of the Maelstrom','the Marauders of the Grey Waters','the Corsairs of the Kraken Shoals','the Privateers of the Far Tide','the Maelstrom Corsairs','the Salt Rovers','the Deep Cutters','the Deep Marauders','the Privateers of the Strait','the Marauders of the Maelstrom','the Cutters of the Drowned Shore','the Deep Sea-Wolves','the Wave Marauders','the Sea-Wolves of the Far Tide','the Kraken Sea-Wolves','the Brine Cutters','the Undertow Raiders','the Ships of the Squalls','the Coral Privateers','the Sea-Wolves of the Deep'],
+  'Elven Galleys':['the Moonwave Galleys','the Silver-Oar Fleet','the Tidecaller Ships','the Starborn Mariners','the Whisperwind Fleet','the Gilded Galleys','the Pale Convoy','the Dawn Wave-Ships','the Mariners of the Amber Court','the Fleet of the Last Grove','the Fleet of the Whispering Vale','the Willow Oarsingers','the Radiant Ships','the Pale Oarsingers','the Dawn Flotilla','the Radiant Galleys','the Verdant Fleet','the Willow Galleys','the Seakin of the Whispering Vale','the Whisper Mariners','the Pale Galleys','the Evenstar Convoy','the Silver Mariners','the Flotilla of the Dawnpetal','the Flotilla of the Silver Glade','the Glimmer Seakin','the Fleet of the Moonwood','the Fleet of the Glimmerfen','the Mariners of the Dawnpetal','the Radiant Seakin','the Fleet of the Amber Court','the Gilded Wave-Ships','the Convoy of the Dawnpetal','the Emerald Fleet','the Dusk Convoy','the Leaf Seakin','the Glimmer Wave-Ships','the Willow Ships','the Argent Flotilla','the Wave-Ships of the Evenmere'],
+  'Dwarf Ironclads':['the Iron-Hull Squadron','the Steam-and-Rivet Fleet','the Deep-Keel Ironclads','the Forge-at-Sea Ships','the Boilerplate Armada','the Molten Fleet','the Stone Ships','the Basalt Line','the Hulls of the Molten Halls','the Molten Ships','the Monitors of the Anvilhold','the Coalfire Hulls','the Steam-Ships of the Emberdeep','the Armada of the Molten Halls','the Deep Fleet','the Hulls of the Underforge','the Ember Fleet','the Hammer Monitors','the Bronze Hulls','the Stone Fleet','the Bronze Fleet','the Hulls of the Anvilhold','the Granite Monitors','the Runed Ironclads','the Steam-Ships of the Lost Delve','the Steam-Ships of the Underforge','the Stone Hulls','the Ironclads of the Molten Halls','the Line of the Emberdeep','the Ember Hulls','the Monitors of the Molten Halls','the Under Ships','the Ironbeard Armada','the Ore Ironclads','the Under Armada','the Runed Line','the Steamed Monitors','the Ships of the Great Vein','the Cinder Line','the Runed Hulls'],
+  'Orcish Longships':['the Bone-Prow Raiders','the Skull-Sail Fleet','the Storm-Oar Warships','the Sea-Ravager Longships','the Tide-Crusher Fleet','the Gutter Reavers','the Warpaint Wolves','the Fang Fleet','the Warships of the Ashen Hills','the Jagged Wolves','the Cruel Longships','the Reeking Sea-Raiders','the Rovers of the Bone Fields','the Blood Fleet','the Wolves of the Ashen Hills','the Cinder Fleet','the Gutter Rovers','the Ragged Longships','the Longships of the Redfang Camp','the Warpaint Rovers','the Warships of the Waste','the Warpaint Reavers','the Gutter Wolves','the Grime Reavers','the Sea-Raiders of the Grime Warren','the Rovers of the Gorewood','the Ash Sea-Raiders','the Fleet of the Skullpit','the Fleet of the Grime Warren','the Rust Wolves','the Warpaint Raiders','the Jagged Longships','the Grime Wolves','the Jagged Warships','the Blood Wolves','the Broken Raiders','the Rust Rovers','the Cruel Rovers','the Jagged Flotilla','the Fleet of the Rust Pits'],
+  'Whale Cohort':['the Leviathan Riders','the Deep-Song Cavalry','the Crestmane Wave-Guard','the Bluewater Brotherhood','the Ancient-Tide Riders','the Riders of the Far Tide','the Salt Tide-Guard','the Wave-Guard of the Deep','the Cavalry of the Salt Coast','the Maelstrom Song-Riders','the Brine Cavalry','the Riders of the Deep','the Maelstrom Riders','the Anchor Deep-Riders','the Kraken Cavalry','the Wave Riders','the Tide Whalekin','the Anchor Brotherhood','the Cavalry of the Grey Waters','the Tide Brotherhood','the Reef Whalekin','the Pods of the Grey Waters','the Storm Riders','the Iron Riders','the Riders of the Salt Coast','the Tide-Guard of the Drowned Shore','the Wind Cavalry','the Deep-Riders of the Strait','the Salt Cavalry','the Undertow Pods','the Squall Wave-Guard','the Tide-Guard of the Far Tide','the Grey Deep-Riders','the Undertow Wave-Guard','the Coral Whalekin','the Grey Tide-Guard','the Maelstrom Brotherhood','the Deep Brotherhood','the Reef Pods','the Cavalry of the Drowned Shore'],
+};
 
 // Track all army unit names in use across the game to ensure uniqueness
 const _usedArmyUnitNames=new Set();
 
+const _NAME_EPITHETS=['the Reformed','the Second','the Third','the New','the Elder','the Younger','the Lost','the Returned','the Grim','the Bold','the Far','the Sworn','the Undying','the Wandering','the Broken','the Reborn','the Hidden','the Last','the Steadfast','the Vengeful'];
+const _NAME_TAILS=['of the Reserve','of the Old Guard','of the New Levy','of the Far Marches','of the Rearguard','of the Second Muster','of the Long March','of the Last Stand'];
 function armyUnitName(type){
   const pool={...ARMY_UNIT_NAMES,...PRIMAL_UNIT_NAMES}[type]||['the Guard'];
-  // Try to find a unique name; if the pool is exhausted add a number suffix
+  // Try to find a unique name from the (generously sized) pool.
   let name;
   let attempts=0;
   do {
     name=pool[Math.floor(Math.random()*pool.length)];
     attempts++;
     if(attempts>pool.length*3){
-      // Pool exhausted — append a number to guarantee uniqueness
-      let n=2;
-      while(_usedArmyUnitNames.has(name+' '+n)) n++;
-      name=name+' '+n;
+      // Pool exhausted — compose a further DESCRIPTIVE name rather than appending a bare number.
+      // With the large pools this is rarely reached; the composition space is enormous.
+      const base=pool[Math.floor(Math.random()*pool.length)];
+      let composed=null;
+      for(const e of _NAME_EPITHETS){ const cand=`${base}, ${e}`; if(!_usedArmyUnitNames.has(cand)){ composed=cand; break; } }
+      if(!composed) for(const t of _NAME_TAILS){ const cand=`${base} ${t}`; if(!_usedArmyUnitNames.has(cand)){ composed=cand; break; } }
+      if(!composed) for(const e of _NAME_EPITHETS){ for(const t of _NAME_TAILS){ const cand=`${base}, ${e} ${t}`; if(!_usedArmyUnitNames.has(cand)){ composed=cand; break; } } if(composed) break; }
+      name=composed||`${base} of the ${Math.floor(Math.random()*9000+1000)}th Muster`;
       break;
     }
   } while(_usedArmyUnitNames.has(name));
@@ -2124,7 +2134,7 @@ function buildTurnReport(gameState, playerIndex){
     const prov=gameState.world.provinces[c.location];
     if(!prov) return;
     const ts=topSkill(c);
-    const topStr=ts?`best skill: ${ts.skill} ${ts.level}`:'no notable skills';
+    const topStr=ts?`best skill: ${SKILL_LABELS[ts.skill]||ts.skill} ${ts.level}`:'no notable skills';
     if(c.player===null){
       // Wandering/neutral hero
       heroSightings.push({
@@ -2185,7 +2195,7 @@ function buildTurnReport(gameState, playerIndex){
         };
       } else if(isVisited){
         // Visited: full terrain info including explored %
-        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
@@ -2706,16 +2716,18 @@ const UNIT_BASE_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison
 const UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 function unitBaseStrength(army){ return (UNIT_BASE_STR[army.type]||4)*(UNIT_Q_MULT[army.quality||'Average']||2); }
 // Pre-battle missile "softening": one volley shaves a small % of the TARGET's own base strength,
-// scaling gently with the shooter's Archery skill (Archery 0 = 6% … Archery 5 = 16% per volley),
-// halved vs agile flyers. Cumulative archery reduction on any one unit is capped at 30% of its
-// strength, so massed archery softens the enemy line but can never delete units outright.
+// scaling gently with the shooter's Archery skill (Archery 0 = 6% … Archery 5 = 16% per volley).
+// Archers are ESPECIALLY deadly to flyers: against a flying target they do DOUBLE the % damage,
+// and may soften a flyer up to 60% of its strength (vs 30% for ground units). The targeting logic
+// in each missile phase sends every archer at the enemy's flyers first when any are present.
 const MISSILE_PCT_BASE=0.06, MISSILE_PCT_PER_LVL=0.02, MISSILE_CAP_FRACTION=0.30;
 function applyMissileHit(target, archSkill){
   const baseStr=unitBaseStrength(target);
   const isFly=FLYING_TYPES.has(target.type);
   let dmg=Math.max(1, Math.round(baseStr*(MISSILE_PCT_BASE+MISSILE_PCT_PER_LVL*archSkill)));
-  if(isFly) dmg=Math.ceil(dmg/2);
-  const cap=Math.max(1, Math.floor(baseStr*MISSILE_CAP_FRACTION));
+  if(isFly) dmg=dmg*2; // archers are especially good against flyers — double damage
+  const capFraction=isFly?MISSILE_CAP_FRACTION*2:MISSILE_CAP_FRACTION; // flyers can be softened further
+  const cap=Math.max(1, Math.floor(baseStr*capFraction));
   const already=target._archeryRed||0;
   dmg=Math.max(0, Math.min(dmg, cap-already));
   if(dmg>0){ target._archeryRed=already+dmg; target._tempStrReduction=(target._tempStrReduction||0)+dmg; }
@@ -2866,6 +2878,37 @@ const BATTLE_ARMY_SPELLS={
     return true;
   }
 
+  // ── PRE-BATTLE MAGIC SCHOOL CHOICE ────────────────────────────────────────
+  // Players choose a magic SCHOOL in their Encounter Plan (tactic 'CS:<school>'); during the
+  // pre-battle magic phase a RANDOM battle spell the commander can cast from that school is chosen.
+  // Legacy 'CA:<spell>' tactics still cast that exact spell.
+  const BATTLE_SPELLS_BY_SCHOOL={elemental:['Fireball','Lightning Bolt'],psychic:['Psychic Blast','Telekinetic Storm'],necromancy:['Curse']};
+  const BATTLE_MAGIC_SPELL_SET=new Set(['Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+  function pickBattleSpell(tactics, heroChar){
+    tactics=tactics||[];
+    // Preferred: an explicit school choice — cast a random spell the commander knows from that school.
+    for(const t of tactics){
+      if((t||'').toUpperCase().startsWith('CS:')){
+        const school=t.slice(3).toLowerCase().trim();
+        const pool=BATTLE_SPELLS_BY_SCHOOL[school];
+        if(pool&&pool.length&&effStat(heroChar,school)>=1){
+          return {spellName:pool[Math.floor(Math.random()*pool.length)], school};
+        }
+      }
+    }
+    // Legacy: an explicit single-spell choice.
+    for(const t of tactics){
+      if((t||'').toUpperCase().startsWith('CA:')){
+        const spellName=t.slice(3);
+        if(BATTLE_MAGIC_SPELL_SET.has(spellName)){
+          const school=(SPELL_DEFS_P[spellName]?.school)||'elemental';
+          if(effStat(heroChar,school)>=1) return {spellName, school};
+        }
+      }
+    }
+    return null;
+  }
+
   // Returns {won, narrative:[strings]}
   function combatVsNPC(c, prov, neutralGuardHero){
     const narrative=[];
@@ -2913,16 +2956,10 @@ const BATTLE_ARMY_SPELLS={
     // ══════════════════════════════════════════════════════
     const BATTLE_MAGIC_SPELLS=new Set(['Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
     const heroTactics=(c.encounterPlan?.tactics)||[];
-    const heroSpellTactic=heroTactics.find(t=>{
-      const code=t.toUpperCase();
-      if(!code.startsWith('CA:')) return false;
-      const spellName=t.slice(3);
-      return BATTLE_MAGIC_SPELLS.has(spellName);
-    });
-    if(heroSpellTactic){
-      const spellName=heroSpellTactic.slice(3);
-      const spellDef=SPELL_DEFS_P[spellName];
-      const school=spellDef?.school||'elemental';
+    const heroPick=pickBattleSpell(heroTactics, c);
+    if(heroPick){
+      const spellName=heroPick.spellName;
+      const school=heroPick.school;
       const spellLvl=effStat(c,school);
       if(spellLvl>=1){
         const castChance=Math.min(95,20+spellLvl*10+(hasDisc(c.player,'sd27')?10:0));
@@ -3012,12 +3049,15 @@ const BATTLE_ARMY_SPELLS={
       let totalArrowDmg=0;
       missileAtk.forEach(atk=>{
         for(let v=0;v<volleys;v++){
-          // Shoot at front-row defenders (first atkCount slots or all if fewer)
+          // Archers loose at the enemy's flyers first if any are present (double damage vs flyers);
+          // otherwise they target a random front-row defender.
+          const flyDefs=defenders.filter(a=>FLYING_TYPES.has(a.type));
           const frontDefs=defenders.slice(0,Math.min(defenders.length,Math.max(1,atkCount)));
-          const target=frontDefs[Math.floor(Math.random()*frontDefs.length)];
+          const pool=flyDefs.length>0?flyDefs:frontDefs;
+          const target=pool[Math.floor(Math.random()*pool.length)];
           const hit=applyMissileHit(target, archSkillAtk);
           totalArrowDmg+=hit.dmg;
-          if(hit.dmg>0) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (½ vs flying)':''}${hit.capped?' (softened to the limit)':''}.`);
+          if(hit.dmg>0) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${hit.capped?' (softened to the limit)':''}.`);
           else narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}, but they are already softened as much as arrows can manage.`);
         }
       });
@@ -3029,12 +3069,12 @@ const BATTLE_ARMY_SPELLS={
     // fight back with magic, army spells, and missile fire (reduces ATTACKER strength)
     // ══════════════════════════════════════════════════════
     if(defHero){
-      // DEFENDER MAGIC: guard casts a battle spell from their encounter plan (or picks one they know)
+      // DEFENDER MAGIC: guard casts a battle spell from their encounter plan (school or specific), or picks one they know
       const defTactics=(defHero.encounterPlan?.tactics)||[];
       let defSpellName=null;
-      // First: explicit CA: tactic
-      const defSpellTactic=defTactics.find(t=>t.toUpperCase().startsWith('CA:')&&BATTLE_MAGIC_SPELLS.has(t.slice(3)));
-      if(defSpellTactic) defSpellName=defSpellTactic.slice(3);
+      // First: honour an explicit school ('CS:') or spell ('CA:') choice from the plan
+      const defPick=pickBattleSpell(defTactics, defHero);
+      if(defPick) defSpellName=defPick.spellName;
       // Otherwise: auto-pick a battle spell the guard has the school skill for
       if(!defSpellName){
         for(const sname of BATTLE_MAGIC_SPELLS){
@@ -3101,12 +3141,14 @@ const BATTLE_ARMY_SPELLS={
         narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} missile unit${missileDef.length!==1?'s':''}`);
         let totalDefArrow=0;
         missileDef.forEach(def=>{
-          // Fire at front-row attackers
+          // Loose at attacking flyers first if any are present (double damage vs flyers), else front row.
+          const flyAtk=armies.filter(a=>FLYING_TYPES.has(a.type));
           const frontAtk=armies.slice(0,Math.min(armies.length,Math.max(1,defCount)));
-          const target=frontAtk[Math.floor(Math.random()*frontAtk.length)];
+          const pool=flyAtk.length>0?flyAtk:frontAtk;
+          const target=pool[Math.floor(Math.random()*pool.length)];
           const hit=applyMissileHit(target, defArchSkill);
           totalDefArrow+=hit.dmg;
-          if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (½ vs flying)':''}${hit.capped?' (softened to the limit)':''}.`);
+          if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${hit.capped?' (softened to the limit)':''}.`);
           else narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but they are already as softened as arrows can manage.`);
         });
         narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${Math.round(MISSILE_CAP_FRACTION*100)}%).`);
@@ -3221,8 +3263,9 @@ const BATTLE_ARMY_SPELLS={
     const align=G.players[c.player]?.alignment||'Neutral';
     const FANATIC_CHANCE={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
     const fanatic=Math.random()<(FANATIC_CHANCE[align]||0.1);
-    // Skeletal armies under Undead kingdoms are always fanatical
-    const skeletalFanatic=align==='Undead'&&armies.some(a=>a._isSkeletal);
+    // Skeletal armies are always fanatical ONLY when led by the Undead king in person —
+    // other heroes serving the Undead kingdom do not inspire the same undying zeal.
+    const skeletalFanatic=align==='Undead'&&c.isKing&&armies.some(a=>a._isSkeletal);
     // Druidic: Creature armies get +25% fanaticism on top of base
     const druidicCreatureFanatic=align==='Druidic'&&armies.some(a=>CREATURE_ARMIES.has(a.type));
     // Evil: Monster armies get +25% fanaticism on top of base
@@ -3531,9 +3574,9 @@ const BATTLE_ARMY_SPELLS={
     const defAlign=G.players[def.player]?.alignment||'Neutral';
     const atkFanatic=Math.random()<(atkFanChance[atkAlign]||0.1);
     const defFanatic=Math.random()<(defFanChance[defAlign]||0.1);
-    // Undead kingdoms: skeletal armies always fanatical in PvP
-    const atkSkelFanatic=atkAlign==='Undead'&&atkArmies.some(a=>a._isSkeletal);
-    const defSkelFanatic=defAlign==='Undead'&&defArmies.some(a=>a._isSkeletal);
+    // Skeletal armies are always fanatical ONLY when led by the Undead king in person.
+    const atkSkelFanatic=atkAlign==='Undead'&&atk.isKing&&atkArmies.some(a=>a._isSkeletal);
+    const defSkelFanatic=defAlign==='Undead'&&def.isKing&&defArmies.some(a=>a._isSkeletal);
     // Druidic: Creature armies +25%; Evil: Monster armies +25%
     const atkDruidCreature=atkAlign==='Druidic'&&atkArmies.some(a=>CREATURE_ARMIES.has(a.type));
     const defDruidCreature=defAlign==='Druidic'&&defArmies.some(a=>CREATURE_ARMIES.has(a.type));
@@ -3589,10 +3632,10 @@ const BATTLE_ARMY_SPELLS={
 
     function applyPreBattleMagic(caster, targets, narr){
       const tactics=(caster.encounterPlan?.tactics)||[];
-      const spellTac=tactics.find(t=>t.toUpperCase().startsWith('CA:')&&BATTLE_MAGIC_PVP.has(t.slice(3)));
-      if(!spellTac||targets.length===0) return;
-      const spellName=spellTac.slice(3);
-      const school=(SPELL_DEFS_P[spellName]?.school)||'elemental';
+      const pick=pickBattleSpell(tactics, caster);
+      if(!pick||targets.length===0) return;
+      const spellName=pick.spellName;
+      const school=pick.school;
       const spellLvl=effStat(caster,school);
       if(spellLvl<1) return;
       const castChance=Math.min(95,20+spellLvl*10+(hasDisc(caster.player,'sd27')?10:0));
@@ -3654,10 +3697,12 @@ const BATTLE_ARMY_SPELLS={
       narr.push(`🏹 ${heroChar.name}'s archery: ${myMissile.length} unit${myMissile.length!==1?'s':''}${hasQ?' (double volleys)':''}`);
       myMissile.forEach(a=>{
         for(let v=0;v<volleys;v++){
+          const flyEn=enemyArmies.filter(u=>FLYING_TYPES.has(u.type));
           const frontEn=enemyArmies.slice(0,Math.max(1,myCount));
-          const t=frontEn[Math.floor(Math.random()*frontEn.length)];
+          const pool=flyEn.length>0?flyEn:frontEn;
+          const t=pool[Math.floor(Math.random()*pool.length)];
           const hit=applyMissileHit(t, archLvl);
-          if(hit.dmg>0) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: −${hit.dmg} str${hit.isFly?' (½ vs flying)':''}${hit.capped?' (softened to the limit)':''}.`);
+          if(hit.dmg>0) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: −${hit.dmg} str${hit.isFly?' (×2 vs flying!)':''}${hit.capped?' (softened to the limit)':''}.`);
           else narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: already softened as far as arrows allow.`);
         }
       });
@@ -5080,7 +5125,9 @@ const BATTLE_ARMY_SPELLS={
             c.armies=c.armies||[];
             // sd01 Superior Forging: recruited armies start at Veteran
           const startQuality=hasDisc(c.player,'sd01')?'Veteran':'Average';
-          c.armies.push({type:armyType,quality:startQuality,race:prov.race||'Human',unitName:armyUnitName(armyType)});
+          // Whale Cohorts are wild sea creatures — always the Primal race, whoever raises them.
+          const recruitRace=(armyType==='Whale Cohort')?'Primal':(prov.race||'Human');
+          c.armies.push({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
           }
           recordRecruit(armyType,prov.id);
           recruited.push(`${actualQty}× ${armyType}`);
@@ -5151,7 +5198,7 @@ const BATTLE_ARMY_SPELLS={
       case 'practice':{
         const skill=target;if(!skill)break;
         const current=(c.skills||{})[skill]||0;
-        if(current>=5){log('system',`${c.name} has already mastered ${skill} (level 5 — maximum).`,{actor:c.player,targets:[c.player]});break;}
+        if(current>=5){log('system',`${c.name} has already mastered ${SKILL_LABELS[skill]||skill} (level 5 — maximum).`,{actor:c.player,targets:[c.player]});break;}
         // Sage discovery check (AK 4.3.1): 5% per Sage level chance of a new discovery
         if(skill.toLowerCase()==='sage'){
           const sageLevel=effStat(c,'sage');
@@ -5207,7 +5254,7 @@ const BATTLE_ARMY_SPELLS={
         if(mentors.length>0){
           successChance=1.0; // guaranteed — learning from a more skilled mentor
           const bestMentor=mentors.reduce((a,b)=>((b.skills||{})[skill]||0)>((a.skills||{})[skill]||0)?b:a);
-          bonusReason=` — trained by ${bestMentor.name} (${skill} ${(bestMentor.skills||{})[skill]||0}), a more skilled mentor`;
+          bonusReason=` — trained by ${bestMentor.name} (${SKILL_LABELS[skill]||skill} ${(bestMentor.skills||{})[skill]||0}), a more skilled mentor`;
         } else if(peers.length>0){
           // Group practice among equals — the shared drilling helps everyone at this level.
           // A character who is the SOLE highest-skilled in the group gets no benefit (no mentor,
@@ -5222,9 +5269,9 @@ const BATTLE_ARMY_SPELLS={
             if(Math.random()<successChance){
           c.skills[skill]=(c.skills[skill]||0)+1;
           if(!c.isKing)c.pay=Math.max(1,Math.ceil(Object.values(c.skills).reduce((s,v)=>s+v,0)/4));
-          log('hire',`${c.name} practises ${skill} and improves to level ${c.skills[skill]}!${bonusReason}`,{actor:c.player,targets:[c.player]});
+          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}!${bonusReason}`,{actor:c.player,targets:[c.player]});
         } else {
-          log('system',`${c.name} practises ${skill} but makes no measurable progress this season.${bonusReason?` ${bonusReason}.`:''}`,{actor:c.player,targets:[c.player]});
+          log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season.${bonusReason?` ${bonusReason}.`:''}`,{actor:c.player,targets:[c.player]});
         }
 
         // Tactical training: if practising Tactical and leading armies, train them
@@ -6289,8 +6336,8 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
         const taxBonus=(G.characters||[]).filter(c=>c.player===p.id&&c.alive).reduce((s,c)=>s+(c.taxBonus||0),0);
         // sd12 Merchant Guilds: 5% interest on treasury (max 3g)
         const interestBonus=hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0;
-        // Neutral alignment: +12% tax income (practical traders)
-        const neutralTradeMult=p.alignment==='Neutral'?1.12:1.0;
+        // Neutral alignment: +20% tax income (practical traders)
+        const neutralTradeMult=p.alignment==='Neutral'?1.20:1.0;
         const neutralTradeBonus=p.alignment==='Neutral'?Math.floor(income*(neutralTradeMult-1)):0;
         // sd17 Granaries: hero wages -1g each (min 1g) — applied at wages stage, just note here
         p.gold=(p.gold||0)+income+taxBonus+interestBonus+neutralTradeBonus;
@@ -6710,6 +6757,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.11-1752</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.11-2243</div>
 </body>
 </html>
