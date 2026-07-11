@@ -1598,8 +1598,8 @@ function addEncounterTactic(charId, code){
   if(code==='CS'){
     const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
     const skills=char?.skills||{};
-    const BATTLE_SCHOOLS=[['elemental','Elemental'],['psychic','Psychic'],['necromancy','Necromancy']];
-    const MAGIC_SCHOOLS_CS=new Set(['elemental','psychic','necromancy']);
+    const BATTLE_SCHOOLS=[['white','White'],['elemental','Elemental'],['psychic','Psychic'],['necromancy','Necromancy']];
+    const MAGIC_SCHOOLS_CS=new Set(['white','elemental','psychic','necromancy']);
     const practisingCS=new Set();
     for(let prevPh=0;prevPh<5;prevPh++){
       const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
@@ -2322,7 +2322,7 @@ function buildTargetField(c, ph, saved){
     case 'Cast Spell':{
       const skills=c.skills||{};
       // Only show spells that are usable as phase orders
-      const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack',
+      const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
         'Illusory Terrain','Phantasmal Armies','Hide Feature','Invisibility',
         'Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon',
@@ -2393,7 +2393,7 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>(skills[school]||0)>=1||practisingSchools.has(school))
         .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Clairvoyance','Telekinetic Storm','Illusory Terrain','Phantasmal Armies','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Clairvoyance','Telekinetic Storm','Illusory Terrain','Phantasmal Armies','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
       const NEEDS_CHAR=new Set(['Resurrect','Spiritwrack','Psychic Blast','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
@@ -3028,6 +3028,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.11-2243</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.11-2347</div>
 </body>
 </html>

@@ -2348,19 +2348,19 @@ const SAGE_DISCOVERIES_P=[
 const SPELL_DEFS_P={
   // ══ WHITE MAGIC ══
   'Resurrect':      {school:'white',target:'character',encounter:false,phase:true,
-    desc:'Restore a slain hero to life with 8 HP. Only works if the hero died this turn. Costs 5g.',
+    desc:'Action: bring a slain (non-king) hero back to life — without their possessions. The hero must have been in your province at the start of the turn and not already been raised this turn.',
     fn:'white_resurrect'},
-  'Part Sea':       {school:'white',target:'none',encounter:false,phase:true,
-    desc:'For this phase, the caster\'s land armies may cross one adjacent sea province as if it were land. No fleet required.',
+  'Part Sea':       {school:'white',target:'province',encounter:false,phase:true,
+    desc:'Action: a sea province you are in or adjacent to becomes plains for the rest of this turn; fleets cannot enter or leave it from the next phase onward. Cancels Flood.',
     fn:'white_part_sea'},
   'Bless Province': {school:'white',target:'province',encounter:false,phase:true,
-    desc:'Target owned province produces +3 extra gold next tax collection. Lasts one turn.',
+    desc:'Action: a province you are in or adjacent to gains +60% tax base this turn. Only one Bless can affect a province at a time (does not stack).',
     fn:'white_bless_province'},
-  'Holy Symbol':    {school:'white',target:'none',encounter:true,phase:true,
-    desc:'Phase order: all your armies in the same province gain +20% strength vs Evil/Undead enemies this turn. Encounter: 6–14 damage to monster (double vs Undead monsters).',
+  'Holy Symbol':    {school:'white',target:'none',encounter:true,phase:false,
+    desc:'Combat: the opponent suffers −10% per caster level to hit (doubled vs undead/demons). Battle magic: all enemy undead units fight at 75% base strength.',
     fn:'white_holy_symbol'},
-  'Spiritwrack':    {school:'white',target:'character',encounter:true,phase:true,
-    desc:'Phase order: destroys one Skeletal Legion or deals 8 HP to a Bone Dragon/Undead character in same province. Encounter: 8–16 damage, double vs undead monsters.',
+  'Spiritwrack':    {school:'white',target:'none',encounter:true,phase:false,
+    desc:'Combat: for the next three combat phases the target cannot cast spells or use archery, and its melee damage is halved. Battle magic: all missile units fight at half base strength.',
     fn:'white_spiritwrack'},
 
   // ══ PSYCHIC MAGIC ══
@@ -2882,8 +2882,8 @@ const BATTLE_ARMY_SPELLS={
   // Players choose a magic SCHOOL in their Encounter Plan (tactic 'CS:<school>'); during the
   // pre-battle magic phase a RANDOM battle spell the commander can cast from that school is chosen.
   // Legacy 'CA:<spell>' tactics still cast that exact spell.
-  const BATTLE_SPELLS_BY_SCHOOL={elemental:['Fireball','Lightning Bolt'],psychic:['Psychic Blast','Telekinetic Storm'],necromancy:['Curse']};
-  const BATTLE_MAGIC_SPELL_SET=new Set(['Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+  const BATTLE_SPELLS_BY_SCHOOL={white:['Holy Symbol','Spiritwrack'],elemental:['Fireball','Lightning Bolt'],psychic:['Psychic Blast','Telekinetic Storm'],necromancy:['Curse']};
+  const BATTLE_MAGIC_SPELL_SET=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
   function pickBattleSpell(tactics, heroChar){
     tactics=tactics||[];
     // Preferred: an explicit school choice — cast a random spell the commander knows from that school.
@@ -2954,7 +2954,7 @@ const BATTLE_ARMY_SPELLS={
     // Hero casts first CA: spell from their encounter plan
     // that is relevant to army combat (hits provinces/armies)
     // ══════════════════════════════════════════════════════
-    const BATTLE_MAGIC_SPELLS=new Set(['Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+    const BATTLE_MAGIC_SPELLS=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
     const heroTactics=(c.encounterPlan?.tactics)||[];
     const heroPick=pickBattleSpell(heroTactics, c);
     if(heroPick){
@@ -2992,6 +2992,16 @@ const BATTLE_ARMY_SPELLS={
             // All defenders −15% effective strength (via global flag)
             defenders.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil((armStr(d,null,null,prov.terrain)*0.15));});
             narrative.push(`  Curse withers the defenders: all units −15% strength this battle.`);
+          } else if(spellName==='Holy Symbol'){
+            // All enemy UNDEAD units fight at 75% base strength.
+            const undeadDefs=defenders.filter(d=>d._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(d.type||''));
+            if(undeadDefs.length>0){ undeadDefs.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*0.25);}); narrative.push(`  ✝ Holy Symbol sears the enemy undead — ${undeadDefs.length} undead unit${undeadDefs.length!==1?'s':''} fight at 75% strength.`); }
+            else narrative.push(`  ✝ Holy Symbol blazes, but no undead stand among the defenders.`);
+          } else if(spellName==='Spiritwrack'){
+            // All enemy MISSILE units fight at half base strength.
+            const missileDefs=defenders.filter(d=>MISSILE_ARMIES.has(d.type));
+            if(missileDefs.length>0){ missileDefs.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*0.5);}); narrative.push(`  Spiritwrack unstrings the enemy's bows — ${missileDefs.length} missile unit${missileDefs.length!==1?'s':''} fight at half strength.`); }
+            else narrative.push(`  Spiritwrack howls, but the enemy fields no missile troops.`);
           }
           // Small chance to improve the spell school skill
           if(Math.random()<0.05&&spellLvl<5){c.skills[school]=(c.skills[school]||0)+1;narrative.push(`  ${c.name}'s ${school} skill improves to ${c.skills[school]}!`);}
@@ -3102,6 +3112,14 @@ const BATTLE_ARMY_SPELLS={
             } else if(defSpellName==='Curse'){
               armies.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(armStr(a,c,playerAlign,prov.terrain)*0.15);});
               narrative.push(`  Curse withers the attackers: all units −15% strength this battle.`);
+            } else if(defSpellName==='Holy Symbol'){
+              const undeadAtk=armies.filter(a=>a._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type||''));
+              if(undeadAtk.length>0){ undeadAtk.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(unitBaseStrength(a)*0.25);}); narrative.push(`  ✝ Holy Symbol sears the attacking undead — ${undeadAtk.length} unit${undeadAtk.length!==1?'s':''} at 75% strength.`); }
+              else narrative.push(`  ✝ Holy Symbol blazes, but no undead assail this province.`);
+            } else if(defSpellName==='Spiritwrack'){
+              const missileAtkU=armies.filter(a=>MISSILE_ARMIES.has(a.type));
+              if(missileAtkU.length>0){ missileAtkU.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(unitBaseStrength(a)*0.5);}); narrative.push(`  Spiritwrack unstrings the attackers' bows — ${missileAtkU.length} missile unit${missileAtkU.length!==1?'s':''} at half strength.`); }
+              else narrative.push(`  Spiritwrack howls, but the attackers field no missile troops.`);
             }
           } else {
             narrative.push(`  The spell fizzles — no defensive magical effect.`);
@@ -3435,9 +3453,285 @@ const BATTLE_ARMY_SPELLS={
     return{won,narrative};
   }
 
+  // ============================================================================
+  // UNIFIED PERSONAL COMBAT ENGINE  (character-vs-character duels AND monster/feature encounters)
+  // ----------------------------------------------------------------------------
+  // A "personal combat" is a round-based, hit-point duel between two Combatants. Each Combatant
+  // is either a CHARACTER (uses effStat skills + their Encounter Plan tactics) or a MONSTER (uses
+  // its own melee/archery/hp/spells + a simple AI). Every round each side performs the next tactic
+  // in its plan, resolving to-hit, damage, and any status effects. Combat spells are dispatched to
+  // pcCastCombatSpell(), which is where the CSV "Personal combat effect" for each spell lives.
+  //
+  // This engine is intentionally data-driven via a shared STATUS block so new spell effects can be
+  // added without touching the round loop:
+  //   hp, maxHp                     current / maximum hit points
+  //   stun                          rounds the combatant cannot act
+  //   hitPenalty                    % penalty to this combatant's own to-hit (decays 5%/round)
+  //   dodge                         incoming-attack difficulty multiplier vs THIS combatant
+  //                                 (1 = normal, 0.5 = twice as hard to hit — Invisibility)
+  //   meleeHalvedRounds             rounds this combatant's melee damage is halved (Spiritwrack)
+  //   silenceRounds                 rounds this combatant cannot cast or use archery (Spiritwrack)
+  //   dot: [{dmg, rounds, label}]   damage-over-time stacks applied at round start (Fireball etc.)
+  //   mirrorImages                  decoy hits that soak incoming melee/arrows (Mirror Image)
+  //   freeAttacksForFoe             attacker gets this many un-retaliated strikes (Psychic Blast)
+  //   fleeBonus                     flat % added to this combatant's flee attempts
+  //   bestAbilityHalved             flags that Curse has halved their best combat ability
+  // ----------------------------------------------------------------------------
+
+  // --- Combatant builders -----------------------------------------------------
+  function pcNewStatus(){
+    return {stun:0, hitPenalty:0, dodge:1, meleeHalvedRounds:0, silenceRounds:0,
+            dot:[], mirrorImages:0, freeAttacksForFoe:0, fleeBonus:0, bestAbilityHalved:false};
+  }
+  function pcCharCombatant(ch){
+    const maxHp=ch.maxHp||20;
+    return {
+      kind:'character', ref:ch, name:ch.name, player:ch.player,
+      hp:(ch.hp!=null?ch.hp:maxHp), maxHp,
+      melee:effStat(ch,'melee'), archery:effStat(ch,'archery'),
+      temper:ch.temper||'Brave',
+      school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
+              elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
+      tactics:((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME']).slice(),
+      tacIdx:0, range:'spell', status:pcNewStatus(),
+      castSpells:[], castSchool:{}, // per-combat spell limits
+      isUndead:(ch.alignment==='Undead'),
+    };
+  }
+  function pcMonsterCombatant(m){
+    const maxHp=m.hp||10;
+    const nm=(m.name||'creature');
+    const undeadWords=['Lich','Vampi','Death','Bone','Skeleton','Wraith','Ghoul','Ghost','Zombie'];
+    return {
+      kind:'monster', ref:m, name:nm, player:null,
+      hp:maxHp, maxHp,
+      melee:m.melee||1, archery:m.archery||0,
+      temper:'Brave',
+      school:{white:0,psychic:0,illusory:0,elemental:0,necromancy:0},
+      spells:m.spells||[], speed:m.speed||'medium',
+      tactics:['ME'], tacIdx:0, range:'spell', status:pcNewStatus(),
+      castSpells:[], castSchool:{},
+      isUndead:undeadWords.some(w=>nm.includes(w)),
+    };
+  }
+
+  // --- Small helpers ----------------------------------------------------------
+  function pcHitChance(attacker, defender, base){
+    // base 50 for melee; attacker melee vs defender melee shifts ±10/level; temper & penalties apply.
+    const diff=(attacker.melee||0)-(defender.melee||0);
+    let chance=base+diff*10;
+    const t=attacker.temper;
+    chance += (t==='Berserk'?10:t==='Brave'?10:t==='Cautious'?0:-5);
+    chance -= (attacker.status.hitPenalty||0);
+    chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
+    return Math.max(5, Math.min(95, chance));
+  }
+  function pcMeleeDamage(attacker, defender){
+    const diff=(attacker.melee||0)-(defender.melee||0);
+    let dmg=Math.max(1, rng(1,6)+Math.max(0,diff));
+    if(attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
+    return dmg;
+  }
+  function pcTakeHit(target, dmg, narrative, srcName, kind){
+    // Mirror images soak a hit first.
+    if(target.status.mirrorImages>0){
+      target.status.mirrorImages--;
+      narrative.push(`  ${srcName}'s ${kind} strikes a Mirror Image of ${target.name}! (${target.status.mirrorImages} image${target.status.mirrorImages!==1?'s':''} left)`);
+      return 0;
+    }
+    target.hp-=dmg;
+    return dmg;
+  }
+  function pcRoundStart(cbt, narrative){
+    // Damage-over-time
+    (cbt.status.dot||[]).forEach(d=>{
+      if(d.rounds>0){ cbt.hp-=d.dmg; d.rounds--; narrative.push(`  ${d.label||'Lingering harm'} afflicts ${cbt.name} for ${d.dmg}. (HP ${Math.max(0,Math.round(cbt.hp))})`); }
+    });
+    cbt.status.dot=(cbt.status.dot||[]).filter(d=>d.rounds>0);
+    // Decay to-hit penalty
+    if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-5);
+    if(cbt.status.meleeHalvedRounds>0) cbt.status.meleeHalvedRounds--;
+    if(cbt.status.silenceRounds>0) cbt.status.silenceRounds--;
+  }
+
+  // --- Combat spell dispatch (per-school CSV effects slot in here) -------------
+  // Returns true if the spell resolved (successfully cast), false if it fizzled/was invalid.
+  // NOTE: school-by-school CSV combat effects will be implemented here. For now it reproduces the
+  // previous encounter behaviour so nothing regresses while schools are migrated.
+  function pcCastCombatSpell(caster, target, spellName, narrative){
+    const SPELL_SCHOOL={'Holy Symbol':'white','Spiritwrack':'white','Psychic Blast':'psychic',
+      'Telekinetic Storm':'psychic','Invisibility':'illusory','Mirror Image':'illusory',
+      'Lightning Bolt':'elemental','Fireball':'elemental','Curse':'necromancy','Hand of Death':'necromancy',
+      'Control Undead':'necromancy','Charm':'psychic'};
+    const school=SPELL_SCHOOL[spellName];
+    if(!school){ return false; }
+    const lvl=caster.school[school]||0;
+    if(lvl<1){ narrative.push(`  ${caster.name} cannot cast ${spellName} (no ${school} skill).`); return false; }
+    // Per-combat spell limits: same spell once; per school 1 at Lv1, 2 at Lv2+.
+    const limit=lvl>=2?2:1;
+    if(caster.castSpells.includes(spellName)){ narrative.push(`  ${caster.name}: ${spellName} already cast this combat.`); return false; }
+    if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${school} spell limit reached this combat.`); return false; }
+    const castChance=Math.min(95,20+lvl*10);
+    if(Math.random()*100>=castChance){ narrative.push(`  ${caster.name}'s ${spellName} fizzles. [${castChance}%]`); return false; }
+    caster.castSpells.push(spellName); caster.castSchool[school]=(caster.castSchool[school]||0)+1;
+
+    // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
+    switch(spellName){
+      case 'Lightning Bolt':{ const d=rng(1,3)*Math.max(1,lvl); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt hits ${target.name} for ${dealt}. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Fireball':{ target.status.dot.push({dmg:Math.max(1,Math.round(target.maxHp*0.10)),rounds:3,label:'Fireball burns'}); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for 10% of its health over 3 rounds.`); break; }
+      // ── WHITE (CSV) ──
+      case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvl*10*(holy?2:1); target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
+      case 'Spiritwrack':{ target.status.silenceRounds=Math.max(target.status.silenceRounds,3); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,3); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for 3 phases it cannot cast or use archery, and its melee is halved.`); break; }
+      case 'Psychic Blast':{ target.status.stun=(target.status.stun||0)+1; caster.status.freeAttacksForFoe=0; caster._freeAttacks=(caster._freeAttacks||0)+3; narrative.push(`  🧠 Psychic Blast stuns ${target.name} — ${caster.name} gains 3 free attacks.`); break; }
+      case 'Telekinetic Storm':{ const d=Math.max(1,Math.round(target.maxHp*0.25)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt}; the strain costs ${caster.name} ${self}. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Mirror Image':{ caster.status.mirrorImages=(caster.status.mirrorImages||0)+2; narrative.push(`  ${caster.name} conjures Mirror Images — the next 2 attacks hit a decoy.`); break; }
+      case 'Invisibility':{ caster.status.dodge=Math.min(caster.status.dodge,0.5); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — twice as hard to hit, +30% flee.`); break; }
+      case 'Hand of Death':{ if(Math.random()*100<lvl*10){ const d=Math.max(1,Math.round(target.maxHp*0.5)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt}! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${lvl*10}%]`); break; }
+      case 'Curse':{ target.status.bestAbilityHalved=true; narrative.push(`  ${caster.name}'s Curse halves ${target.name}'s best combat ability.`); break; }
+      case 'Control Undead':{ if(target.isUndead){ target.status.stun=(target.status.stun||0)+Math.max(1,lvl); narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${Math.max(1,lvl)} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
+      default: narrative.push(`  ${caster.name} casts ${spellName}.`);
+    }
+    // small skill-up chance
+    if(Math.random()<0.06&&lvl<5&&caster.kind==='character'&&caster.ref.skills){ caster.ref.skills[school]=(caster.ref.skills[school]||0)+1; caster.school[school]=caster.ref.skills[school]; narrative.push(`  ${caster.name}'s ${school} skill improves to ${caster.ref.skills[school]}!`); }
+    return true;
+  }
+
+  // --- One combatant performs their next tactic against the foe ----------------
+  // Returns {won:false, fled:false} style flags folded into state.
+  function pcAct(actor, foe, narrative, state){
+    if(actor.status.stun>0){
+      narrative.push(`  ${actor.name} is stunned and cannot act. (${actor.status.stun} left)`);
+      actor.status.stun--;
+      return;
+    }
+    const tactic=actor.tactics[actor.tacIdx]||'ME';
+    actor.tacIdx=Math.min(actor.tacIdx+1, Math.max(0,actor.tactics.length-1));
+    const colon=tactic.indexOf(':');
+    const code=(colon>=0?tactic.slice(0,colon):tactic).toUpperCase();
+    const spell=colon>=0?tactic.slice(colon+1):null;
+
+    switch(code){
+      case 'ME': case 'MELEE':{
+        // Three ranges: spell → bow → melee. A Melee order at longer range CLOSES the distance
+        // one step (advancing) instead of attacking; only at melee range does it actually strike.
+        if(state.range!=='melee'){
+          state.range = (state.range==='spell') ? 'bow' : 'melee';
+          narrative.push(`  ${actor.name} advances — the combatants close to ${state.range} range.`);
+          break;
+        }
+        const hit=pcHitChance(actor,foe,50);
+        const roll=Math.random()*100;
+        narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}%${roll<hit?' ✓':' ✗'})`);
+        if(roll<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`); }
+        else narrative.push(`  ${actor.name}'s blow is turned aside.`);
+        break;
+      }
+      case 'FI': case 'FIRE': case 'ARROW':{
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot use archery (bound by Spiritwrack).`); break; }
+        if(actor.archery<=0){ narrative.push(`  ${actor.name} has no archery.`); break; }
+        // Arrows can only be loosed at BOW range — too far at spell range, too close at melee range.
+        if(state.range==='spell'){ narrative.push(`  ${actor.name} nocks an arrow, but the enemy is too far off (spell range) — hold until closer.`); break; }
+        if(state.range==='melee'){ narrative.push(`  ${actor.name} is locked in melee — too close to fire.`); break; }
+        const shots=Math.max(1,actor.archery); const hit=30+actor.archery*10;
+        for(let s=0;s<shots&&foe.hp>0;s++){ const r=Math.random()*100; if(r<hit*(foe.status.dodge||1)){ const d=rng(1,6); const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow'); if(dealt)narrative.push(`  ${actor.name}'s arrow hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`); } else narrative.push(`  ${actor.name}'s arrow flies wide.`); }
+        break;
+      }
+      case 'CA': case 'SPELL':{
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast.`); break; }
+        // Choose the spell: explicit CA:Name, else best available combat spell.
+        let name=spell;
+        if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name={elemental:'Lightning Bolt',necromancy:'Hand of Death',white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'}[best]; }
+        pcCastCombatSpell(actor, foe, name, narrative);
+        break;
+      }
+      case 'FL': case 'FLEE':{
+        const base=foe.kind==='monster'?(foe.speed==='slow'?80:foe.speed==='fast'?20:50):50;
+        const chance=Math.max(5,Math.min(95, base+(actor.temper==='Cautious'?10:0)+(actor.status.fleeBonus||0)));
+        const roll=Math.random()*100;
+        narrative.push(`  ${actor.name} attempts to flee (${chance.toFixed(0)}%${roll<chance?' ✓':' ✗'})`);
+        if(roll<chance){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
+        else { const d=rng(1,4); foe===actor?0:pcTakeHit(actor,d,narrative,foe.name,'parting blow'); narrative.push(`  ${actor.name} fails to escape and is struck for ${d}. (HP ${Math.max(0,Math.round(actor.hp))})`); }
+        break;
+      }
+      case 'TA': case 'TALK':{
+        if(foe.kind==='monster'){ const dr=actor.kind==='character'?effStat(actor.ref,'druid'):0; const chance=20+dr*15; if(Math.random()*100<chance){ state.parley=true; narrative.push(`  ${actor.name} parleys with ${foe.name}, which stands aside.`); } else narrative.push(`  ${actor.name}'s parley is refused.`); }
+        else narrative.push(`  ${actor.name} calls for parley, but blades are already drawn.`);
+        break;
+      }
+      case 'ST': case 'STEAL':{
+        const th=actor.kind==='character'?effStat(actor.ref,'thief'):0;
+        let bonus=0; if(actor.castSpells.includes('Invisibility')) bonus+=15;
+        const chance=15+th*15+bonus; if(Math.random()*100<chance){ state.stoleBy=actor; narrative.push(`  ${actor.name} slips past and seizes the prize! [${chance}%]`); } else narrative.push(`  ${actor.name}'s theft is noticed. [${chance}%]`);
+        break;
+      }
+      case 'SC': case 'SCOUT':{
+        const ex=actor.kind==='character'?effStat(actor.ref,'explorer'):0; const b=ex*5; if(b>0){ actor.status.hitPenalty=Math.max(0,(actor.status.hitPenalty||0)-b); narrative.push(`  ${actor.name} scouts the ground (+${b}% effectiveness).`); } else narrative.push(`  ${actor.name} scouts the ground.`);
+        break;
+      }
+      case 'CS': // battle-phase-only school choice — no effect in personal combat
+        narrative.push(`  ${actor.name} holds their battle-magic ready (no personal-combat effect).`); break;
+      default:
+        // unknown tactic → behave like Melee (advance if not yet at melee range, else strike)
+        if(state.range!=='melee'){ state.range=(state.range==='spell')?'bow':'melee'; narrative.push(`  ${actor.name} advances — the combatants close to ${state.range} range.`); }
+        else { const hit=pcHitChance(actor,foe,50); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}!`); } }
+    }
+  }
+
+  // --- Main entry: run a personal combat between two combatants ----------------
+  // opts: {maxRounds}. Returns {winner, loser, fledBy, parley, stoleBy, aHp, bHp, narrative}
+  function resolvePersonalCombat(A, B, opts){
+    opts=opts||{}; const maxRounds=opts.maxRounds||8;
+    const narrative=[];
+    const state={fledBy:null, parley:false, stoleBy:null, range:'spell'}; // encounters start at Spell range
+    // Initiative: higher (melee+archery) goes first; ties random.
+    const initA=(A.melee||0)+(A.archery||0)+Math.random();
+    const initB=(B.melee||0)+(B.archery||0)+Math.random();
+    const first=initA>=initB?A:B, second=first===A?B:A;
+
+    for(let round=0; round<maxRounds; round++){
+      if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
+      pcRoundStart(A,narrative); pcRoundStart(B,narrative);
+      if(A.hp<=0||B.hp<=0) break;
+      // First mover acts; extra "free attacks" (Psychic Blast) let them strike again without reply.
+      const order=[first,second];
+      for(const actor of order){
+        const foe=actor===A?B:A;
+        if(actor.hp<=0||foe.hp<=0) break;
+        pcAct(actor, foe, narrative, state);
+        // consume queued free attacks (Psychic Blast) — only land as strikes at melee range
+        let free=actor._freeAttacks||0;
+        while(free>0 && foe.hp>0 && state.range==='melee'){ const hit=pcHitChance(actor,foe,50); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'free strike'); if(dealt)narrative.push(`  ${actor.name} lands a free strike on ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`); } free--; }
+        actor._freeAttacks=0;
+        if(state.fledBy||state.parley||state.stoleBy||foe.hp<=0) break;
+      }
+    }
+    // Write back HP to underlying characters.
+    [A,B].forEach(cbt=>{ if(cbt.kind==='character'&&cbt.ref){ cbt.ref.hp=Math.max(0,Math.round(cbt.hp)); } });
+    let winner=null, loser=null;
+    if(!state.fledBy&&!state.parley&&!state.stoleBy){
+      if(A.hp<=0&&B.hp<=0){ winner=(A.melee>=B.melee)?A:B; loser=winner===A?B:A; winner.hp=1; if(winner.ref)winner.ref.hp=1; }
+      else if(A.hp<=0){ winner=B; loser=A; }
+      else if(B.hp<=0){ winner=A; loser=B; }
+    }
+    return {winner, loser, fledBy:state.fledBy, parley:state.parley, stoleBy:state.stoleBy,
+            aHp:Math.max(0,Math.round(A.hp)), bHp:Math.max(0,Math.round(B.hp)), narrative};
+  }
+
   // Resolve a personal duel between two commanders. Returns {winner, loser} or {} if inconclusive.
-  // Archery pre-phase then up to 4 melee rounds; whoever's HP hits 0 first is slain.
+  // Now runs on the unified personal-combat engine, so duels honour each commander's Encounter
+  // Plan tactics (melee, archery, combat spells, flee, etc.) just like feature encounters.
   function resolveDuel(atk, def, narrative){
+    const A=pcCharCombatant(atk), B=pcCharCombatant(def);
+    const res=resolvePersonalCombat(A, B, {maxRounds:6});
+    narrative.push(...res.narrative);
+    if(res.fledBy){
+      const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
+      narrative.push(`${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
+      return {}; // inconclusive: nobody slain
+    }
+    return {winner: res.winner?res.winner.ref:null, loser: res.loser?res.loser.ref:null};
+  }
+  function _resolveDuel_OLD(atk, def, narrative){
     const atkMelee=effStat(atk,'melee'), defMelee=effStat(def,'melee');
     let atkHp=atk.hp||20, defHp=def.hp||20;
     const duelNarr=[];
@@ -3628,7 +3922,7 @@ const BATTLE_ARMY_SPELLS={
     // ══════════════════════════════════════════════════════
     // PRE-BATTLE PHASE 1: MAGIC (both sides)
     // ══════════════════════════════════════════════════════
-    const BATTLE_MAGIC_PVP=new Set(['Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+    const BATTLE_MAGIC_PVP=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
 
     function applyPreBattleMagic(caster, targets, narr){
       const tactics=(caster.encounterPlan?.tactics)||[];
@@ -3654,6 +3948,14 @@ const BATTLE_ARMY_SPELLS={
       } else if(spellName==='Curse'){
         targets.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(armStr(d,null,null,prov.terrain)*0.15);});
         narr.push(`  Curse: all enemy units −15% str.`);
+      } else if(spellName==='Holy Symbol'){
+        const ud=targets.filter(d=>d._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(d.type||''));
+        if(ud.length>0){ ud.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*0.25);}); narr.push(`  ✝ Holy Symbol: ${ud.length} enemy undead unit${ud.length!==1?'s':''} at 75% str.`); }
+        else narr.push(`  ✝ Holy Symbol: no enemy undead to smite.`);
+      } else if(spellName==='Spiritwrack'){
+        const md=targets.filter(d=>MISSILE_A.has(d.type));
+        if(md.length>0){ md.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*0.5);}); narr.push(`  Spiritwrack: ${md.length} enemy missile unit${md.length!==1?'s':''} at half str.`); }
+        else narr.push(`  Spiritwrack: enemy fields no missile troops.`);
       }
     }
     applyPreBattleMagic(atk, defArmies, narrative);
@@ -5596,80 +5898,64 @@ const BATTLE_ARMY_SPELLS={
 
         // ── WHITE ──
         if(fn==='white_resurrect'){
-          // Resurrect: find a dead hero from graveyard (this turn OR previous turns)
+          // Bring a slain (non-king) hero back to life, WITHOUT their possessions. The body must lie
+          // in the caster's province, the player must know of the death, and no-one may have raised
+          // them earlier this turn. (We use the caster's current province as the resting place.)
           if(!G.heroGraveyard) G.heroGraveyard=[];
-          // Any dead hero can be resurrected — own or enemy — but caster must be in same province
-          // Player must have previously witnessed this dead hero (in knownDeadHeroIds)
+          if(!G._resurrectedThisTurn) G._resurrectedThisTurn=[];
           const knownIds=new Set(G.players[c.player]?.knownDeadHeroIds||[]);
-          const grave=(targetChar&&!targetChar.alive&&!targetChar.isKing)
+          // Resolve which grave: an explicitly targeted dead hero, else the most recent known body here.
+          const grave=(targetChar&&!targetChar.alive)
             ? G.heroGraveyard.find(g=>g.id===targetChar.id&&g.location===c.location&&knownIds.has(g.id))
             : G.heroGraveyard.filter(g=>g.location===c.location&&knownIds.has(g.id)).sort((a,b)=>b.killedOnTurn-a.killedOnTurn)[0];
           if(!grave){
-            // Check if body was known but already resurrected by someone else
-            const wasSeen=targetChar&&knownIds.has(targetChar.id);
-            const msg=wasSeen
-              ?`${c.name} casts Resurrect — the body of ${targetChar?.name||'the fallen hero'} is no longer in ${prov.name}. Someone else may have raised them already.`
-              :`${c.name} casts Resurrect — no known fallen hero lies in ${prov.name}.`;
-            log('system',msg,{actor:c.player,targets:[c.player]});break;
+            log('system',`${c.name} casts Resurrect, but no fallen hero you know of lies in ${prov.name} — perhaps another raised them first.`,{actor:c.player,targets:[c.player]});break;
           }
+          if(grave.isKing){ log('system',`${c.name}: ${grave.name} was a king — kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break; }
+          if(G._resurrectedThisTurn.includes(grave.id)){ log('system',`${c.name}: ${grave.name} has already been raised this turn.`,{actor:c.player,targets:[c.player]});break; }
           const deadHero=G.characters.find(ch=>ch.id===grave.id);
           if(!deadHero){log('system',`${c.name}: the spirit of ${grave.name} cannot be found.`,{actor:c.player,targets:[c.player]});break;}
-          if((player.gold||0)<5){log('system',`Resurrect requires 5g. ${c.name} cannot afford it.`,{actor:c.player,targets:[c.player]});break;}
-          player.gold-=5;
-          deadHero.alive=true;deadHero.hp=8;deadHero.location=c.location;
+          if(deadHero.isKing){ log('system',`${c.name}: kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break; }
+          // Revive — restored to their original owner, at full health, but WITHOUT possessions.
+          deadHero.alive=true;
+          deadHero.hp=deadHero.maxHp||20;
+          deadHero.location=c.location;
+          deadHero.player=grave.player!==undefined?grave.player:deadHero.player; // returns to their own side
+          deadHero.items=[]; deadHero.armies=[]; // raised without possessions
+          deadHero.killedThisTurn=false; deadHero._justDefeated=false;
           if(!prov.characters.includes(deadHero.id)) prov.characters.push(deadHero.id);
-          deadHero.killedThisTurn=false;
           G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==grave.id);
-          const wasEnemy=grave.player!==null&&grave.player!==c.player;
-          if(wasEnemy){deadHero.player=c.player;}
-          log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death with 8 HP!${grave.killedOnTurn<G.turn?' (risen from a previous turn)':''}${wasEnemy?' The fallen enemy now serves your cause!':''} (Cost: 5g)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          G._resurrectedThisTurn.push(grave.id);
+          const backToOwn=deadHero.player===c.player;
+          log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, though stripped of all possessions.${backToOwn?'':' They return to the service of their own lord.'}`,{actor:c.player,targets:[c.player,deadHero.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
         else if(fn==='white_part_sea'){
-          // Flag character for free sea crossing this phase
-          c._partSeaThisPhase=true;
-          log('explore',`✨ The waters part before ${c.name}! Land armies may cross one adjacent sea province this phase without a fleet.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // A sea province the caster is in or adjacent to becomes plains for the rest of the turn.
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){
+            log('system',`${c.name}: Part Sea can only target a sea province you are in or next to.`,{actor:c.player,targets:[c.player]});break;
+          }
+          if(targetProv.terrain!=='sea'){
+            log('system',`${c.name}: Part Sea can only be cast on a sea province.`,{actor:c.player,targets:[c.player]});break;
+          }
+          // Cancel any Flood on this province, then turn the sea to dry plains for the rest of the turn.
+          delete targetProv._flooded;
+          targetProv._partSea={orig:targetProv.terrain, turn:G.turn, blockFleetsFromPhase:ph+1};
+          targetProv.terrain='plains';
+          log('explore',`✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
         }
         else if(fn==='white_bless_province'){
-          // Bless can target any province the caster is in or adjacent to
           const casterProv=G.world.provinces[c.location];
-          const offE=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
-          const offO=[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
-          const offs=casterProv?.row%2===0?offE:offO;
-          const adjIds=new Set((offs||[]).map(([dr,dc2])=>{
-            const nr=(casterProv?.row||0)+dr;
-            const nc=(((casterProv?.col||0)+dc2)%G.world.cols+G.world.cols)%G.world.cols;
-            if(nr<0||nr>=G.world.rows) return null;
-            return G.world.provinces[nr*G.world.cols+nc]?.id;
-          }).filter(x=>x!=null));
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){
             log('system',`${c.name}: Bless Province can only target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;
           }
-          const blessAmount=Math.floor((targetProv.tax||0)*0.6);
-          if(!targetProv._blessBonus) targetProv._blessBonus=0;
-          targetProv._blessBonus+=blessAmount;
-          log('explore',`✨ ${c.name} blesses ${targetProv.name} — divine favour will bring +${blessAmount}g (60% of ${targetProv.tax}g tax) at next collection.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false});
-        }
-        else if(fn==='white_holy_symbol'){
-          // Province buff: armies get +20% vs Evil/Undead this turn
-          prov._holyBonus=prov._holyBonus||[];
-          prov._holyBonus.push(c.player);
-          log('explore',`✨ ${c.name} raises the Holy Symbol — your armies in ${prov.name} fight with holy fervour against darkness! (+20% strength vs Evil/Undead this turn)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        }
-        else if(fn==='white_spiritwrack'){
-          // Destroy or damage undead (_isSkeletal) armies and Undead-aligned characters
-          const undeadUnit=(prov.neutralDefenders||[]).find(a=>a._isSkeletal);
-          const undeadChar=targetChar&&(targetChar.alignment==='Undead')?targetChar:null;
-          if(undeadUnit){
-            prov.neutralDefenders=prov.neutralDefenders.filter(a=>a!==undeadUnit);
-            log('combat',`✨ Spiritwrack tears through the ${undeadUnit.unitName||undeadUnit.type}, reducing them to dust!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-          } else if(undeadChar){
-            const dmg=rng(8,16);
-            undeadChar.hp=Math.max(0,undeadChar.hp-dmg);
-            log('combat',`✨ Spiritwrack strikes ${undeadChar.name} for ${dmg} spiritual damage! (HP: ${undeadChar.hp})`,{actor:c.player,targets:[c.player,undeadChar.player].filter(x=>x!==null),provinceId:prov.id});
-            if(undeadChar.hp<=0){log('combat',`${undeadChar.name} is destroyed by the Spiritwrack!`,{actor:c.player,targets:[c.player,undeadChar.player].filter(x=>x!==null)});}
-          } else {
-            log('system',`Spiritwrack finds no undead to harm in ${prov.name}.`,{actor:c.player,targets:[c.player]});
+          if(targetProv._blessedTurn===G.turn){
+            log('system',`${c.name}: ${targetProv.name} is already blessed this turn — a second Bless has no further effect (they do not stack).`,{actor:c.player,targets:[c.player]});break;
           }
+          targetProv._blessedTurn=G.turn;
+          log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding +60% tax at collection this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false});
         }
 
         // ── PSYCHIC ──
@@ -6323,8 +6609,8 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
         const income=(p.provinces||[]).reduce((s,id)=>{
           const pv=G.world.provinces[id];if(!pv) return s;
           let t=pv.tax||0;
+          if(pv._blessedTurn===G.turn) t=Math.round(t*1.6); // Bless Province: +60% tax base this turn
           if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0));
-          if(pv._blessBonus) t+=pv._blessBonus;
           // sd11 Advanced Agriculture: +1g from provinces with tax>=3
           if(hasDisc(pi,'sd11')&&pv.tax>=3) t+=1;
           // sd15 Mining Techniques: +2g from mountain provinces
@@ -6501,6 +6787,7 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     if(p._earthquakeTax){delete p._earthquakeTax;}
     if(p._earthquakeSpeed) delete p._earthquakeSpeed;
     if(p._flooded) delete p._flooded;
+    if(p._partSea){ p.terrain=p._partSea.orig; delete p._partSea; } // Part Sea: restore the sea
     if(p._holyBonus) delete p._holyBonus;
     if(p._oratoryBonus) delete p._oratoryBonus;
     if(p._tempStrReduction) delete p._tempStrReduction;
@@ -6757,6 +7044,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.11-2243</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.11-2347</div>
 </body>
 </html>
