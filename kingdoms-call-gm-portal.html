@@ -1167,9 +1167,11 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   const required=getDruidLevel(armyType);
   if(required===0) return 1.0;
 
-  const rawDruid=Math.max(0,Math.min(5,(heroChar.skills?.druid||0)+((heroChar.items||[]).reduce((s,it)=>s+(it.effect?.stat==='druid'?it.effect.bonus:0),0))));
-  // Same-race troops are led as if the commander had at least Druid 1 for that race.
-  const herodruid=sameRace?Math.max(1,rawDruid):rawDruid;
+  // Psychic Blast (battle magic): this commander's Druid skill has been negated for the battle.
+  const rawDruid=heroChar._druidNegated?0:Math.max(0,Math.min(5,(heroChar.skills?.druid||0)+((heroChar.items||[]).reduce((s,it)=>s+(it.effect?.stat==='druid'?it.effect.bonus:0),0))));
+  // Same-race troops are led as if the commander had at least Druid 1 for that race
+  // (but a negated commander loses even that — their bond is severed).
+  const herodruid=(sameRace&&!heroChar._druidNegated)?Math.max(1,rawDruid):rawDruid;
   const shortfall=Math.max(0,required-herodruid);
   if(shortfall===0) return 1.0;
 
@@ -2177,6 +2179,8 @@ function buildTurnReport(gameState, playerIndex){
       const isOwned=ownedProvIds.has(p.id);
       const isVisited=visitedProvIds.has(p.id);
       const isAdjacent=adjacentProvIds.has(p.id);
+      // Illusory Terrain: enemies of the caster see a false terrain until they enter or it fades.
+      const _apparentTerrain=(p._illusoryTerrain && p._illusoryTerrain.caster!==playerIndex) ? p._illusoryTerrain.fake : p.terrain;
 
       if(isOwned){
         // Full info
@@ -2195,14 +2199,14 @@ function buildTurnReport(gameState, playerIndex){
         };
       } else if(isVisited){
         // Visited: full terrain info including explored %
-        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,race:p.race,
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
         };
       } else if(isAdjacent){
         // Adjacent: show name, terrain, wealth, owner, army types, explored %
-        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
@@ -2364,37 +2368,37 @@ const SPELL_DEFS_P={
     fn:'white_spiritwrack'},
 
   // ══ PSYCHIC MAGIC ══
-  'Charm':          {school:'psychic',target:'character',encounter:false,phase:true,
-    desc:'Target wandering hero joins your army for one turn (acts as yours in that turn only, then returns to wandering). Cannot charm a player\'s own king. 30%+10%/level chance.',
+  'Charm':          {school:'psychic',target:'character',encounter:true,phase:true,
+    desc:'Action: hire a wandering hero in your province for free (you still pay upkeep), or seize a general\'s command of an armyless enemy hero for the rest of the turn (reverts to its owner at end of turn). Combat: doubles the chance of a later successful Flee.',
     fn:'psychic_charm'},
   'Oratory':        {school:'psychic',target:'character',encounter:false,phase:true,
-    desc:'Target province you own: reduce army desertion chance to zero this turn AND wandering heroes in that province have 50% chance to join you for free next turn.',
+    desc:'Action: every army travelling with the target (self or an ally in your province) gains +1 quality level for the rest of the turn. Not cumulative.',
     fn:'psychic_oratory'},
-  'Clairvoyance':   {school:'psychic',target:'province',encounter:false,phase:true,
-    desc:'Reveals all owners, armies, characters and features in target province regardless of distance. Acts as Spy level 5 for that province this turn.',
+  'Clairvoyance':   {school:'psychic',target:'character',encounter:false,phase:true,
+    desc:'Action: everything that happens to the target character becomes known to you for the rest of the turn. Only one Clairvoyance may be active at a time — a new casting replaces the old.',
     fn:'psychic_clairvoyance'},
   'Psychic Blast':  {school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Phase order: deal 5–15 damage directly to a hero or king in the same province (armour and armies offer no protection). Encounter: 6–14 damage ignoring armour.',
+    desc:'Action: the target loses one level in a random skill. Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
     fn:'psychic_blast'},
-  'Telekinetic Storm':{school:'psychic',target:'province',encounter:true,phase:true,
-    desc:'Phase order: all armies in target province (any owner) take 2–5 damage each (strength reduction). Encounter: 5–12 damage to monster.',
+  'Telekinetic Storm':{school:'psychic',target:'character',encounter:true,phase:true,
+    desc:'Action: a number of the target\'s army units equal to your skill level each have a 50% chance to drop one experience level. Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
     fn:'psychic_storm'},
 
   // ══ ILLUSORY MAGIC ══
   'Illusory Terrain':{school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Target province appears as a different terrain type in all enemy reports for one full turn. Enemies moving there spend an extra move point.',
+    desc:'Action: a province you are in or adjacent to appears as a different random terrain on enemy maps (sea may look like land or vice-versa). Enemies who fight there do so at 80% strength. Reverts for any enemy hero who enters; 20% chance to fade each turn.',
     fn:'illusory_terrain'},
-  'Phantasmal Armies':{school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Target owned province: add 1–3 phantom army units that appear in enemy Spy reports but have zero strength. Lasts until province is attacked or end of next turn.',
+  'Phantasmal Armies':{school:'illusory',target:'character',encounter:false,phase:true,
+    desc:'Action: illusory soldiers march with a friendly army-leading hero (you or an adjacent ally) for the rest of the turn, adding +10% per caster level to the strength of the armies they directly lead in battle. Not cumulative.',
     fn:'illusory_phantasmal'},
   'Hide Feature':   {school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Conceal all discovered features in target province from enemy intelligence for one turn. Enemy Spy results show no features.',
+    desc:'Action: a feature you have discovered (in your province or adjacent) becomes invisible to explorers. 10% chance to fade each turn.',
     fn:'illusory_hide_feature'},
-  'Invisibility':   {school:'illusory',target:'none',encounter:false,phase:true,
-    desc:'Caster cannot be detected by Spy orders or seen on enemy maps for one full turn. Encounter plans and steal orders targeting them auto-fail.',
+  'Invisibility':   {school:'illusory',target:'none',encounter:true,phase:false,
+    desc:'Combat: the caster becomes twice as hard to hit for the fight, gains +15% to a following Steal and +30% to Flee.',
     fn:'illusory_invisibility'},
   'Mirror Image':   {school:'illusory',target:'none',encounter:true,phase:false,
-    desc:'Encounter only: absorbs the next 2 hits against the caster (each image blocks one attack). Also usable as CA tactic.',
+    desc:'Combat: conjures a phantom duplicate of your opponent that they must fight while you concentrate (taking no other actions). Each round they may disbelieve it (4% per total skill level); casting it again dissipates both images.',
     fn:'illusory_mirror_image'},
 
   // ══ ELEMENTAL MAGIC ══
@@ -2747,7 +2751,10 @@ function seaPenalty(armyType, terrain){
     const ARMY_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Crossbowmen':5,'Mountain Guns':7,'Dwarf Garrison':4,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':7,'Orc Garrison':3,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
       'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13};
     const Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
-    const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[army.quality||'Average']||2);
+    // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier higher.
+    const Q_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
+    const effQuality=(heroChar&&heroChar._oratoryBoost)?(Q_UP[army.quality||'Average']||army.quality||'Average'):(army.quality||'Average');
+    const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[effQuality]||2);
     // Apply Druid penalty
     let str=baseStr;
     if(heroChar){
@@ -2767,6 +2774,8 @@ function seaPenalty(armyType, terrain){
     }
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
     if(army._tempStrReduction){str=Math.max(0,str-army._tempStrReduction);delete army._tempStrReduction;delete army._archeryRed;}
+    // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
+    if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
     // Evil Terror: province was terrorised last turn — defending armies -10%
     // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
     return str;
@@ -2912,13 +2921,15 @@ const BATTLE_ARMY_SPELLS={
   // Returns {won, narrative:[strings]}
   function combatVsNPC(c, prov, neutralGuardHero){
     const narrative=[];
+    // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
+    if(c){c._druidNegated=false;c._tacticalNegated=false;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;}
     const armies=c.armies||[];
     const defenders=prov.neutralDefenders||[];
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
     consumeTerror(prov, defenders, narrative);
     // Neutral guard hero contributes their tactical/melee skill to defense
     const defHero=neutralGuardHero||null;
-    const tactSkill=effStat(c,'tactical');
+    const tactSkill=c._tacticalNegated?0:effStat(c,'tactical');
     const tactBonus=1+tactSkill*0.2;
     // Tactical only applies to land armies (not flying or naval) per AK 4.1.1
     // Tactical only applies in land provinces AND to land units
@@ -2976,11 +2987,14 @@ const BATTLE_ARMY_SPELLS={
               narrative.push(`  Fireball scorches ${d.unitName||d.type}: −${dmg} strength this battle.`);
             });
           } else if(spellName==='Telekinetic Storm'){
-            // 1–3 damage to ALL defenders
-            const dmg=rng(1,3);
-            defenders.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+dmg;});
-            narrative.push(`  Telekinetic Storm sweeps through all ${defenders.length} defending unit${defenders.length!==1?'s':''}: −${dmg} strength each.`);
-          } else if(spellName==='Lightning Bolt'||spellName==='Psychic Blast'){
+            // Negate the enemy commander's Tactical bonus for this battle.
+            if(neutralGuardHero){ neutralGuardHero._tacticalNegated=true; narrative.push(`  🌀 Telekinetic Storm scatters ${neutralGuardHero.name}'s formations — their Tactical command is negated this battle.`); }
+            else narrative.push(`  🌀 Telekinetic Storm rages, but these leaderless defenders have no tactical command to unmake.`);
+          } else if(spellName==='Psychic Blast'){
+            // Negate the enemy commander's Druid skill for this battle.
+            if(neutralGuardHero){ neutralGuardHero._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${neutralGuardHero.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
+            else narrative.push(`  🧠 Psychic Blast reaches out, but these defenders have no commander to unmake.`);
+          } else if(spellName==='Lightning Bolt'){
             // 3–6 damage to one random defender
             if(defenders.length>0){
               const d=defenders[Math.floor(Math.random()*defenders.length)];
@@ -3041,7 +3055,7 @@ const BATTLE_ARMY_SPELLS={
     });
 
     // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr below)
-    const defTactLvl=defHero?effStat(defHero,'tactical'):0;
+    const defTactLvl=defHero?(defHero._tacticalNegated?0:effStat(defHero,'tactical')):0;
     const defTactBonus=defTactLvl>0?1+defTactLvl*0.2:1;
     // Army / defender counts (needed by archery and battle lines)
     const atkCount=armies.length; const defCount=(prov.neutralDefenders||[]).length;
@@ -3101,14 +3115,15 @@ const BATTLE_ARMY_SPELLS={
           const castRoll=Math.random()*100;
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll.toFixed(0)} ${castRoll<castChance?'✓':'✗'}]`);
           if(castRoll<castChance){
-            if(defSpellName==='Fireball'||defSpellName==='Lightning Bolt'||defSpellName==='Psychic Blast'){
+            if(defSpellName==='Fireball'||defSpellName==='Lightning Bolt'){
               const tgt=armies[Math.floor(Math.random()*armies.length)];
               const dmg=rng(3,8)*(defSpellLvl>=3?2:1);
               tgt._tempStrReduction=(tgt._tempStrReduction||0)+dmg;
               narrative.push(`  ${defSpellName} strikes ${tgt.unitName||tgt.type}: −${dmg} strength this battle.`);
+            } else if(defSpellName==='Psychic Blast'){
+              if(c){ c._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${c.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             } else if(defSpellName==='Telekinetic Storm'){
-              armies.forEach(a=>{const dmg=rng(2,5);a._tempStrReduction=(a._tempStrReduction||0)+dmg;});
-              narrative.push(`  Telekinetic Storm batters all attacking units: −2–5 strength each.`);
+              if(c){ c._tacticalNegated=true; narrative.push(`  🌀 Telekinetic Storm scatters ${c.name}'s formations — their Tactical command is negated this battle.`); }
             } else if(defSpellName==='Curse'){
               armies.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(armStr(a,c,playerAlign,prov.terrain)*0.15);});
               narrative.push(`  Curse withers the attackers: all units −15% strength this battle.`);
@@ -3272,9 +3287,11 @@ const BATTLE_ARMY_SPELLS={
       const defFlankCount=groundDef.length-defLineWidth;
       narrative.push(`📊 Defenders: front row (${defLineWidth} units) — ${groundDef.slice(0,defLineWidth).map(x=>x.a.unitName||x.a.type).join(', ')}. Rear (${defFlankCount} units at ×0.5) — ${groundDef.slice(defLineWidth).map(x=>x.a.unitName||x.a.type).join(', ')}.`);
     }
-    // rawAtkStr already incorporates: terrain, sea penalty, battle lines, archery bonus, naval bonus, tactical bonus
-    // Use it directly — no need to recompute
-    const atkStr=rawAtkStr;
+    // Illusory Terrain: any player fighting here who did not cast the illusion fights at 80%.
+    const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
+    const atkIllMult = (_illCasterN!=null && c.player!==_illCasterN) ? 0.8 : 1;
+    if(atkIllMult<1) narrative.push(`  🌫 The illusory terrain of ${prov.name} disorients ${c.name}'s forces — they fight at 80% strength.`);
+    const atkStr=rawAtkStr*atkIllMult;
     const defStr=rawDefStr*defBonus*homeBonus;
 
     // Fanaticism check
@@ -3558,7 +3575,7 @@ const BATTLE_ARMY_SPELLS={
   // Returns true if the spell resolved (successfully cast), false if it fizzled/was invalid.
   // NOTE: school-by-school CSV combat effects will be implemented here. For now it reproduces the
   // previous encounter behaviour so nothing regresses while schools are migrated.
-  function pcCastCombatSpell(caster, target, spellName, narrative){
+  function pcCastCombatSpell(caster, target, spellName, narrative, state){
     const SPELL_SCHOOL={'Holy Symbol':'white','Spiritwrack':'white','Psychic Blast':'psychic',
       'Telekinetic Storm':'psychic','Invisibility':'illusory','Mirror Image':'illusory',
       'Lightning Bolt':'elemental','Fireball':'elemental','Curse':'necromancy','Hand of Death':'necromancy',
@@ -3584,11 +3601,25 @@ const BATTLE_ARMY_SPELLS={
       case 'Spiritwrack':{ target.status.silenceRounds=Math.max(target.status.silenceRounds,3); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,3); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for 3 phases it cannot cast or use archery, and its melee is halved.`); break; }
       case 'Psychic Blast':{ target.status.stun=(target.status.stun||0)+1; caster.status.freeAttacksForFoe=0; caster._freeAttacks=(caster._freeAttacks||0)+3; narrative.push(`  🧠 Psychic Blast stuns ${target.name} — ${caster.name} gains 3 free attacks.`); break; }
       case 'Telekinetic Storm':{ const d=Math.max(1,Math.round(target.maxHp*0.25)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt}; the strain costs ${caster.name} ${self}. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
-      case 'Mirror Image':{ caster.status.mirrorImages=(caster.status.mirrorImages||0)+2; narrative.push(`  ${caster.name} conjures Mirror Images — the next 2 attacks hit a decoy.`); break; }
+      case 'Mirror Image':{
+        if(!state){ narrative.push(`  ${caster.name} conjures a Mirror Image.`); break; }
+        if(state.mirror){ // casting again while an illusion fights dissipates both images
+          narrative.push(`  ${caster.name} weaves a second Mirror Image — the competing illusions unravel and both vanish.`);
+          state.mirror=null; break;
+        }
+        // Conjure a phantom duplicate of the OPPONENT, with their characteristics at this moment.
+        const ph={ kind:'phantasm', name:target.name+"'s mirror image",
+          hp:target.hp, maxHp:target.maxHp, melee:target.melee, archery:target.archery,
+          temper:target.temper, status:pcNewStatus() };
+        state.mirror={ caster, victim:target, phantasm:ph };
+        narrative.push(`  🪞 ${caster.name} conjures a perfect phantom of ${target.name} — ${target.name} must fight their own mirror while ${caster.name} concentrates, taking no other action.`);
+        break;
+      }
       case 'Invisibility':{ caster.status.dodge=Math.min(caster.status.dodge,0.5); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — twice as hard to hit, +30% flee.`); break; }
       case 'Hand of Death':{ if(Math.random()*100<lvl*10){ const d=Math.max(1,Math.round(target.maxHp*0.5)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt}! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${lvl*10}%]`); break; }
       case 'Curse':{ target.status.bestAbilityHalved=true; narrative.push(`  ${caster.name}'s Curse halves ${target.name}'s best combat ability.`); break; }
       case 'Control Undead':{ if(target.isUndead){ target.status.stun=(target.status.stun||0)+Math.max(1,lvl); narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${Math.max(1,lvl)} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
+      case 'Charm':{ caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
       default: narrative.push(`  ${caster.name} casts ${spellName}.`);
     }
     // small skill-up chance
@@ -3630,7 +3661,7 @@ const BATTLE_ARMY_SPELLS={
         if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot use archery (bound by Spiritwrack).`); break; }
         if(actor.archery<=0){ narrative.push(`  ${actor.name} has no archery.`); break; }
         // Arrows can only be loosed at BOW range — too far at spell range, too close at melee range.
-        if(state.range==='spell'){ narrative.push(`  ${actor.name} nocks an arrow, but the enemy is too far off (spell range) — hold until closer.`); break; }
+        if(state.range==='spell'){ state.range='bow'; narrative.push(`  ${actor.name} advances into bow range, drawing to fire.`); }
         if(state.range==='melee'){ narrative.push(`  ${actor.name} is locked in melee — too close to fire.`); break; }
         const shots=Math.max(1,actor.archery); const hit=30+actor.archery*10;
         for(let s=0;s<shots&&foe.hp>0;s++){ const r=Math.random()*100; if(r<hit*(foe.status.dodge||1)){ const d=rng(1,6); const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow'); if(dealt)narrative.push(`  ${actor.name}'s arrow hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`); } else narrative.push(`  ${actor.name}'s arrow flies wide.`); }
@@ -3641,12 +3672,13 @@ const BATTLE_ARMY_SPELLS={
         // Choose the spell: explicit CA:Name, else best available combat spell.
         let name=spell;
         if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name={elemental:'Lightning Bolt',necromancy:'Hand of Death',white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'}[best]; }
-        pcCastCombatSpell(actor, foe, name, narrative);
+        pcCastCombatSpell(actor, foe, name, narrative, state);
         break;
       }
       case 'FL': case 'FLEE':{
         const base=foe.kind==='monster'?(foe.speed==='slow'?80:foe.speed==='fast'?20:50):50;
-        const chance=Math.max(5,Math.min(95, base+(actor.temper==='Cautious'?10:0)+(actor.status.fleeBonus||0)));
+        let chance=Math.max(5,Math.min(95, base+(actor.temper==='Cautious'?10:0)+(actor.status.fleeBonus||0)));
+        if(actor.status.fleeDoubled){ chance=Math.min(95, chance*2); } // Charm combat effect
         const roll=Math.random()*100;
         narrative.push(`  ${actor.name} attempts to flee (${chance.toFixed(0)}%${roll<chance?' ✓':' ✗'})`);
         if(roll<chance){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
@@ -3682,7 +3714,7 @@ const BATTLE_ARMY_SPELLS={
   function resolvePersonalCombat(A, B, opts){
     opts=opts||{}; const maxRounds=opts.maxRounds||8;
     const narrative=[];
-    const state={fledBy:null, parley:false, stoleBy:null, range:'spell'}; // encounters start at Spell range
+    const state={fledBy:null, parley:false, stoleBy:null, range:'spell', mirror:null}; // encounters start at Spell range
     // Initiative: higher (melee+archery) goes first; ties random.
     const initA=(A.melee||0)+(A.archery||0)+Math.random();
     const initB=(B.melee||0)+(B.archery||0)+Math.random();
@@ -3692,6 +3724,34 @@ const BATTLE_ARMY_SPELLS={
       if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
       pcRoundStart(A,narrative); pcRoundStart(B,narrative);
       if(A.hp<=0||B.hp<=0) break;
+
+      // ── Mirror Image: while an illusion fights, the victim battles their own phantom and the
+      // caster concentrates (no other actions). Each round the victim may disbelieve.
+      if(state.mirror){
+        const {caster, victim, phantasm}=state.mirror;
+        // Disbelief chance: characters = 4% × total of all their skill levels; monsters = tougher = harder to fool.
+        let disbelief;
+        if(victim.kind==='character' && victim.ref && victim.ref.skills){
+          disbelief=4*Object.values(victim.ref.skills).reduce((s,v)=>s+(v||0),0);
+        } else { disbelief=5+3*(victim.melee||0); }
+        disbelief=Math.max(2, Math.min(90, disbelief));
+        if(Math.random()*100<disbelief){
+          narrative.push(`  ✨ ${victim.name} sees through the illusion (${disbelief.toFixed(0)}% disbelief) — the phantom dissolves and the real fight resumes.`);
+          state.mirror=null;
+          // fall through to a normal round below
+        } else {
+          // Victim fights their mirror (an even duel); the caster does nothing this round.
+          narrative.push(`  🪞 ${victim.name} trades blows with their own mirror image while ${caster.name} concentrates.`);
+          // victim strikes phantasm
+          if(Math.random()*100<pcHitChance(victim,phantasm,50)){ const d=pcMeleeDamage(victim,phantasm); phantasm.hp-=d; narrative.push(`    ${victim.name} strikes the phantom for ${d}. (Phantom HP ${Math.max(0,Math.round(phantasm.hp))})`); }
+          // phantasm strikes victim (real damage to the victim)
+          if(phantasm.hp>0 && Math.random()*100<pcHitChance(phantasm,victim,50)){ const d=pcMeleeDamage(phantasm,victim); const dealt=pcTakeHit(victim,d,narrative,phantasm.name,'blow'); if(dealt)narrative.push(`    the phantom strikes ${victim.name} for ${dealt}! (HP ${Math.max(0,Math.round(victim.hp))})`); }
+          if(phantasm.hp<=0){ narrative.push(`  🪞 ${victim.name} shatters the phantom — the illusion ends.`); state.mirror=null; }
+          if(victim.hp<=0){ narrative.push(`  ${victim.name} is struck down by their own mirror image!`); state.mirror=null; }
+          continue; // skip the normal round
+        }
+      }
+
       // First mover acts; extra "free attacks" (Psychic Blast) let them strike again without reply.
       const order=[first,second];
       for(const actor of order){
@@ -3781,10 +3841,12 @@ const BATTLE_ARMY_SPELLS={
   // Returns {won, narrative:[strings]}
   function combatVsChar(atk, def, prov){
     const narrative=[];
+    // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
+    if(atk){atk._druidNegated=false;atk._tacticalNegated=false;} if(def){def._druidNegated=false;def._tacticalNegated=false;}
     const atkArmies=atk.armies||[];
     const defArmies=def.armies||[];
-    const atkTact=effStat(atk,'tactical');
-    const defTact=effStat(def,'tactical');
+    const atkTact=atk._tacticalNegated?0:effStat(atk,'tactical');
+    const defTact=def._tacticalNegated?0:effStat(def,'tactical');
     // Tactical bonus only applies in land provinces
     const isPvPSea=prov.terrain==='sea';
     const atkTactBonus=isPvPSea?1:1+atkTact*0.2;
@@ -3924,7 +3986,7 @@ const BATTLE_ARMY_SPELLS={
     // ══════════════════════════════════════════════════════
     const BATTLE_MAGIC_PVP=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
 
-    function applyPreBattleMagic(caster, targets, narr){
+    function applyPreBattleMagic(caster, targets, narr, enemyCmdr){
       const tactics=(caster.encounterPlan?.tactics)||[];
       const pick=pickBattleSpell(tactics, caster);
       if(!pick||targets.length===0) return;
@@ -3940,9 +4002,10 @@ const BATTLE_ARMY_SPELLS={
         const hits=Math.min(targets.length,rng(1,3));
         targets.slice().sort(()=>Math.random()-0.5).slice(0,hits).forEach(d=>{const dmg=rng(2,4);d._tempStrReduction=(d._tempStrReduction||0)+dmg;narr.push(`  Fireball: ${d.unitName||d.type} −${dmg} str.`);});
       } else if(spellName==='Telekinetic Storm'){
-        const dmg=rng(1,3);targets.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+dmg;});
-        narr.push(`  Telekinetic Storm: all ${targets.length} enemy units −${dmg} str.`);
-      } else if(spellName==='Lightning Bolt'||spellName==='Psychic Blast'){
+        if(enemyCmdr){ enemyCmdr._tacticalNegated=true; narr.push(`  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is negated this battle.`); }
+      } else if(spellName==='Psychic Blast'){
+        if(enemyCmdr){ enemyCmdr._druidNegated=true; narr.push(`  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
+      } else if(spellName==='Lightning Bolt'){
         const d=targets[Math.floor(Math.random()*targets.length)];const dmg=rng(3,6);
         d._tempStrReduction=(d._tempStrReduction||0)+dmg;narr.push(`  ${spellName}: ${d.unitName||d.type} −${dmg} str.`);
       } else if(spellName==='Curse'){
@@ -3958,8 +4021,8 @@ const BATTLE_ARMY_SPELLS={
         else narr.push(`  Spiritwrack: enemy fields no missile troops.`);
       }
     }
-    applyPreBattleMagic(atk, defArmies, narrative);
-    applyPreBattleMagic(def, atkArmies, narrative);
+    applyPreBattleMagic(atk, defArmies, narrative, def);
+    applyPreBattleMagic(def, atkArmies, narrative, atk);
 
     // Army battle spells (primal/special units)
     function applyArmyBattleSpells(heroChar, myArmies, enemyArmies, narr){
@@ -4077,8 +4140,14 @@ const BATTLE_ARMY_SPELLS={
     const battleRollRangePvP=Math.max(1, Math.max(atkRaw, defRaw) * 0.9);
     const atkDice=Math.random()*battleRollRangePvP;
     const defDice=Math.random()*battleRollRangePvP;
-    const atkStr=atkRaw*atkFanMult*atkDiscBonus*atkMorale+atkDice;
-    const defStr=defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus+defDice;
+    // Illusory Terrain: a player fighting here who did not cast the illusion fights at 80%.
+    const _illCasterP = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
+    const atkIllP = (_illCasterP!=null && atk.player!==_illCasterP) ? 0.8 : 1;
+    const defIllP = (_illCasterP!=null && def.player!==_illCasterP) ? 0.8 : 1;
+    if(atkIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${atk.name}'s forces — they fight at 80% strength.`);
+    if(defIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${def.name}'s forces — they fight at 80% strength.`);
+    const atkStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP+atkDice;
+    const defStr=(defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP+defDice;
 
     // ── STAT BLOCK ──
     narrative.push(`📊 **Battle stats:**`);
@@ -4993,6 +5062,8 @@ const BATTLE_ARMY_SPELLS={
         }
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         c.location=toProv.id;
+        // Illusory Terrain is dispelled for good once an enemy hero sets foot in the province.
+        if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ delete toProv._illusoryTerrain; }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
         if(!toProv.visitedBy)toProv.visitedBy=[];
@@ -5008,7 +5079,7 @@ const BATTLE_ARMY_SPELLS={
           if(totalF>0){
             const thresh=100/totalF;
             toProv.features.forEach((f,idx)=>{
-              if(!f.discovered&&toProv.explored>=(thresh*(idx+1))){
+              if(!f.discovered&&!f._hidden&&toProv.explored>=(thresh*(idx+1))){
                 f.discovered=true;
                 log('explore',`Moving into ${toProv.name}, ${c.name} notices the ${f.name}!`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
               }
@@ -5916,18 +5987,20 @@ const BATTLE_ARMY_SPELLS={
           const deadHero=G.characters.find(ch=>ch.id===grave.id);
           if(!deadHero){log('system',`${c.name}: the spirit of ${grave.name} cannot be found.`,{actor:c.player,targets:[c.player]});break;}
           if(deadHero.isKing){ log('system',`${c.name}: kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break; }
-          // Revive — restored to their original owner, at full health, but WITHOUT possessions.
+          // Revive — the hero now serves the player whose character raised them, at full health,
+          // but WITHOUT any possessions they carried in life.
           deadHero.alive=true;
           deadHero.hp=deadHero.maxHp||20;
           deadHero.location=c.location;
-          deadHero.player=grave.player!==undefined?grave.player:deadHero.player; // returns to their own side
+          deadHero.player=c.player; // comes under the caster's control
+          deadHero.isKing=false; // a raised hero is no longer a king even if they once were (kings can't be raised anyway)
           deadHero.items=[]; deadHero.armies=[]; // raised without possessions
           deadHero.killedThisTurn=false; deadHero._justDefeated=false;
           if(!prov.characters.includes(deadHero.id)) prov.characters.push(deadHero.id);
           G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==grave.id);
           G._resurrectedThisTurn.push(grave.id);
-          const backToOwn=deadHero.player===c.player;
-          log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, though stripped of all possessions.${backToOwn?'':' They return to the service of their own lord.'}`,{actor:c.player,targets:[c.player,deadHero.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          const wasEnemy=(grave.player!=null&&grave.player!==c.player);
+          log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy?' The fallen foe is bound to a new master.':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         }
         else if(fn==='white_part_sea'){
           // A sea province the caster is in or adjacent to becomes plains for the rest of the turn.
@@ -5960,76 +6033,92 @@ const BATTLE_ARMY_SPELLS={
 
         // ── PSYCHIC ──
         else if(fn==='psychic_charm'){
-          // Target: a specific character in the same province (from extraId or targetChar)
-          const charmTarget=targetChar&&targetChar.location===c.location?targetChar:
-            G.characters.find(ch=>ch.alive&&ch.player===null&&ch.location===c.location&&!ch.isKing);
-          if(!charmTarget){log('system',`Charm: no valid target found in ${prov.name}. Target a character using the dropdown.`,{actor:c.player,targets:[c.player]});break;}
-          if(charmTarget.player===c.player){log('system',`Charm cannot be used on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
-          const charmChance=30+spellLevel*10;
-          const charmRoll=Math.random()*100;
-          log('system',`📊 Charm — ${c.name} targets ${charmTarget.name}: ${charmChance}% (roll ${charmRoll.toFixed(0)})`,{actor:c.player,targets:[c.player]});
-          if(charmRoll<charmChance){
-            charmTarget._charmedByPlayer=c.player;
-            charmTarget._charmedForPhase=ph;
-            log('hire',`✨ ${c.name}'s Charm takes hold — ${charmTarget.name} will follow your orders for the remainder of this turn, then return to wandering.`,{actor:c.player,targets:[c.player,charmTarget.player].filter(x=>x!==null),provinceId:prov.id});
+          const t=targetChar;
+          if(!t||t.location!==c.location){log('system',`Charm: no valid target hero stands in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(t.player===c.player){log('system',`Charm cannot be used on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          if(t.isKing){log('system',`Charm cannot sway a king.`,{actor:c.player,targets:[c.player]});break;}
+          if(t.player===null){
+            // Wandering hero — enters your service for free (you still pay upkeep).
+            t.player=c.player; t.hiredInPhase=ph;
+            if(typeof setMovePool==='function') setMovePool(t);
+            log('hire',`✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           } else {
-            log('system',`${c.name}'s Charm attempt on ${charmTarget.name} fails.`,{actor:c.player,targets:[c.player]});
+            // Enemy hero — only one leading NO armies can have their command seized for the turn.
+            if((t.armies||[]).length>0){log('system',`Charm can only seize command of an enemy hero leading no armies — ${t.name} still commands troops.`,{actor:c.player,targets:[c.player]});break;}
+            t._charmedByPlayer=c.player; t._charmedForPhase=ph; t._charmOriginalPlayer=t.player;
+            log('hire',`✨ ${c.name}'s Charm grips ${t.name} — you command them for the rest of this turn; they return to their own lord at turn's end.`,{actor:c.player,targets:[c.player,t.player].filter(x=>x!=null),provinceId:prov.id});
           }
         }
         else if(fn==='psychic_oratory'){
-          // Target: self (no extra) or a specific character in the same province
-          const oratoryTarget=targetChar&&targetChar.location===c.location?targetChar:c;
-          oratoryTarget._oratoryBonus=true;
-          const prov2=G.world.provinces[oratoryTarget.location];
-          log('explore',`✨ ${c.name}'s Oratory washes over ${oratoryTarget===c?'themselves':oratoryTarget.name} — ${oratoryTarget.name} is inspired! Army desertion chance is zero this turn, and wandering heroes in ${prov2?.name||'this province'} may freely join.`,{actor:c.player,targets:[c.player,oratoryTarget.player].filter(x=>x!==null&&x!==c.player),provinceId:c.location});
+          // Self or an allied character in the same province — their travelling armies gain +1 quality this turn.
+          const oratoryTarget=(targetChar&&targetChar.player===c.player&&targetChar.location===c.location)?targetChar:c;
+          oratoryTarget._oratoryBoost=true; // read by armStr: +1 effective quality tier (not cumulative)
+          log('explore',`✨ ${c.name}'s stirring Oratory lifts ${oratoryTarget===c?'their own':oratoryTarget.name+"'s"} troops — every army travelling with ${oratoryTarget===c?c.name:oratoryTarget.name} fights one quality level higher this turn.`,{actor:c.player,targets:[c.player],provinceId:c.location});
         }
         else if(fn==='psychic_clairvoyance'){
-          const tpId=targetProv.id;
-          const tpOwner=targetProv.owner!==null?G.players[targetProv.owner]?.name:'unclaimed';
-          const defs=(targetProv.neutralDefenders||[]).map(d=>`${d.quality} ${d.type}`).join(', ')||'none';
-          const enemyChars=G.characters.filter(ch=>ch.alive&&ch.location===tpId&&ch.player!==c.player);
-          const feats=(targetProv.features||[]).map(f=>`${f.name}${f.cleared?' (cleared)':f.discovered?` (guarded by ${f.monster?.name||'unknown'})`:'(hidden)'}`).join(', ')||'none';
-          log('explore',`✨ Clairvoyance reveals ${targetProv.name}: Owner: ${tpOwner}, Tax: ${targetProv.tax}g, Defenders: ${defs}. Characters present: ${enemyChars.map(h=>h.name+' ('+G.players[h.player]?.name+')').join(', ')||'none'}. Features: ${feats}.`,{actor:c.player,targets:[c.player],spy:true,provinceId:tpId});
-          // Also mark features as discovered for this player's report
-          if(!targetProv.visitedBy) targetProv.visitedBy=[];
-          if(!targetProv.visitedBy.includes(c.player)) targetProv.visitedBy.push(c.player);
+          if(!targetChar){log('system',`Clairvoyance: choose a character you have seen to watch.`,{actor:c.player,targets:[c.player]});break;}
+          // Only one Clairvoyance at a time — a new casting replaces the old.
+          (G.characters||[]).forEach(ch=>{ if(Array.isArray(ch._clairvoyantBy)) ch._clairvoyantBy=ch._clairvoyantBy.filter(pl=>pl!==c.player); });
+          targetChar._clairvoyantBy=targetChar._clairvoyantBy||[];
+          if(!targetChar._clairvoyantBy.includes(c.player)) targetChar._clairvoyantBy.push(c.player);
+          const tp=G.world.provinces[targetChar.location];
+          log('explore',`✨ ${c.name} opens their mind's eye upon ${targetChar.name} — all that befalls them is known to you for the rest of the turn. They are currently in ${tp?tp.name:'parts unknown'}.`,{actor:c.player,targets:[c.player],spy:true,provinceId:targetChar.location});
         }
         else if(fn==='psychic_blast'){
-          if(!targetChar){log('system',`Psychic Blast: no valid target character found.`,{actor:c.player,targets:[c.player]});break;}
-          if(targetChar.location!==c.location){log('system',`Psychic Blast: ${targetChar.name} is not in the same province.`,{actor:c.player,targets:[c.player]});break;}
-          const dmg=rng(5,15);
-          targetChar.hp=Math.max(0,targetChar.hp-dmg);
-          log('combat',`✨ ${c.name} unleashes Psychic Blast — ${dmg} psychic damage tears directly into ${targetChar.name}'s mind! (HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
-          if(targetChar.hp<=0){log('combat',`${targetChar.name} is destroyed by the Psychic Blast!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});handleHeroDeath(targetChar,c);}
+          if(!targetChar||targetChar.location!==c.location){log('system',`Psychic Blast: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Psychic Blast cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          // The target loses one level in a random skill they possess.
+          const owned=Object.keys(targetChar.skills||{}).filter(s=>(targetChar.skills[s]||0)>0);
+          if(owned.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          const sk=owned[Math.floor(Math.random()*owned.length)];
+          targetChar.skills[sk]=Math.max(0,(targetChar.skills[sk]||0)-1);
+          log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s ${SKILL_LABELS[sk]||sk} skill is seared down to level ${targetChar.skills[sk]}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
         else if(fn==='psychic_storm'){
-          const stormProv=targetProv;
-          const allArmiesInProv=[...(stormProv.neutralDefenders||[])];
-          G.characters.filter(ch=>ch.alive&&ch.location===stormProv.id).forEach(ch=>{allArmiesInProv.push(...(ch.armies||[]));});
-          let totalHit=0;
-          allArmiesInProv.forEach(a=>{const d=rng(2,5);a._tempStrReduction=(a._tempStrReduction||0)+d;totalHit++;});
-          log('combat',`✨ ${c.name} unleashes Telekinetic Storm over ${stormProv.name} — ${totalHit} army unit${totalHit!==1?'s':''} are battered by flying debris! (2–5 strength damage each, lasts this turn)`,{actor:c.player,targets:[],provinceId:stormProv.id,public:true});
+          if(!targetChar||targetChar.location!==c.location){log('system',`Telekinetic Storm: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Telekinetic Storm cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          const QUALITY_DOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
+          const armies=(targetChar.armies||[]).slice();
+          if(armies.length===0){log('combat',`✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          const n=Math.min(spellLevel, armies.length);
+          const picks=armies.sort(()=>Math.random()-0.5).slice(0,n);
+          let demoted=0;
+          picks.forEach(a=>{ if(Math.random()<0.5 && QUALITY_DOWN[a.quality]){ a.quality=QUALITY_DOWN[a.quality]; demoted++; } });
+          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} tested, ${demoted} dropped an experience level.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
 
         // ── ILLUSORY ──
         else if(fn==='illusory_terrain'){
-          const fakeTerr=['plain','forest','mountain','desert'][Math.floor(Math.random()*4)].replace(targetProv.terrain,'plain');
-          targetProv._illusoryTerrain={fakeTerrain:fakeTerr,caster:c.player,expires:G.turn};
-          log('explore',`✨ ${c.name} cloaks ${targetProv.name} in illusion — enemies will see it as ${fakeTerr} for one turn, costing them an extra move point.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Illusory Terrain must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
+          // Sea → 50% looks like random land; land → 50% looks like sea (else a different random land).
+          const LANDS=['plain','forest','mountain','desert'];
+          let fake;
+          if(targetProv.terrain==='sea'){ fake=Math.random()<0.5?LANDS[Math.floor(Math.random()*LANDS.length)]:'sea'; }
+          else { fake=Math.random()<0.5?'sea':(LANDS.filter(t=>t!==targetProv.terrain)[Math.floor(Math.random()*3)]); }
+          targetProv._illusoryTerrain={caster:c.player, fake, appliedTurn:G.turn};
+          log('explore',`✨ ${c.name} cloaks ${targetProv.name} in illusion — to your enemies it now appears as ${fake==='sea'?'open sea':fake+' land'}. Enemies who fight there do so at 80% strength.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
         }
         else if(fn==='illusory_phantasmal'){
-          if(targetProv.owner!==c.player){log('system',`Phantasmal Armies can only target your own provinces.`,{actor:c.player,targets:[c.player]});break;}
-          const phantomCount=rng(1,3);
-          targetProv._phantomArmies=(targetProv._phantomArmies||0)+phantomCount;
-          log('explore',`✨ ${c.name} conjures ${phantomCount} phantom army unit${phantomCount>1?'s':''} in ${targetProv.name} — enemies will see them in spy reports but they have no real strength.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
+          // Target: a friendly army-leading hero (self or an adjacent ally).
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          const t=(targetChar&&targetChar.player===c.player)?targetChar:c;
+          if(t.id!==c.id && t.location!==c.location && !adjIds.has(t.location)){log('system',`${c.name}: Phantasmal Armies must target yourself or an allied hero in your province or adjacent.`,{actor:c.player,targets:[c.player]});break;}
+          if((t.armies||[]).length===0){log('system',`${c.name}: Phantasmal Armies must accompany a hero who is leading armies.`,{actor:c.player,targets:[c.player]});break;}
+          const bonus=0.10*spellLevel;
+          t._phantasmalBonus=Math.max(t._phantasmalBonus||0, bonus); // not cumulative — take the strongest
+          log('explore',`✨ ${c.name} conjures phantom legions to march with ${t===c?'their own banner':t.name} — the armies they lead fight at +${Math.round(bonus*100)}% strength in battle this turn.`,{actor:c.player,targets:[c.player],provinceId:t.location});
         }
         else if(fn==='illusory_hide_feature'){
-          targetProv._featuresHidden={caster:c.player,expires:G.turn};
-          log('explore',`✨ ${c.name} veils the features of ${targetProv.name} — enemy intelligence will reveal no features there this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
-        }
-        else if(fn==='illusory_invisibility'){
-          c._invisible=true;
-          log('explore',`✨ ${c.name} fades from sight — they cannot be detected by Spy orders or seen on enemy maps for this turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Hide Feature must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
+          const disc=(targetProv.features||[]).filter(f=>f.discovered&&!f._hidden);
+          if(disc.length===0){log('system',`${c.name}: no discovered feature to hide in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});break;}
+          disc.forEach(f=>{f._hidden=true; f._hiddenBy=c.player;});
+          log('explore',`✨ ${c.name} veils ${disc.length>1?disc.length+' features':'the '+(disc[0].name||'feature')} in ${targetProv.name} from the eyes of explorers.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
         }
 
         // ── ELEMENTAL ──
@@ -6778,10 +6867,20 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     delete c._mirrorImages;
     delete c._invisible;
     delete c._charmedByPlayer;
+    delete c._charmedForPhase;
+    delete c._charmOriginalPlayer;
+    delete c._oratoryBoost;
+    delete c._clairvoyantBy;
+    delete c._druidNegated;
+    delete c._tacticalNegated;
+    delete c._phantasmalBonus;
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
-    if(p._illusoryTerrain) delete p._illusoryTerrain;
+    // Illusory Terrain persists until it fades (20%/turn) or an enemy hero enters (handled on move).
+    if(p._illusoryTerrain && Math.random()<0.20){ delete p._illusoryTerrain; }
+    // Hidden features persist until they fade (10%/turn).
+    (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.10){ delete f._hidden; delete f._hiddenBy; } });
     if(p._phantomArmies) delete p._phantomArmies;
     if(p._featuresHidden) delete p._featuresHidden;
     if(p._earthquakeTax){delete p._earthquakeTax;}
@@ -7044,6 +7143,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.11-2347</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.12-0702</div>
 </body>
 </html>

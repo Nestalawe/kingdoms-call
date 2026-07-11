@@ -1749,8 +1749,8 @@ function onSpellChange(charId, ph, selectedSpell){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
   const report=currentReport||{};
 
-  const NEEDS_PROV=new Set(['Bless Province','Clairvoyance','Telekinetic Storm','Illusory Terrain','Phantasmal Armies','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
-  const NEEDS_CHAR=new Set(['Resurrect','Spiritwrack','Psychic Blast','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
+  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
+  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
 
   // Remove any existing secondary selector/hint, keep the spell select
   const spellSelect=document.getElementById(`po-target-${charId}-${ph}`);
@@ -2324,7 +2324,7 @@ function buildTargetField(c, ph, saved){
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
-        'Illusory Terrain','Phantasmal Armies','Hide Feature','Invisibility',
+        'Illusory Terrain','Phantasmal Armies','Hide Feature',
         'Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon',
         'Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy']);
 
@@ -2393,8 +2393,8 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>(skills[school]||0)>=1||practisingSchools.has(school))
         .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Clairvoyance','Telekinetic Storm','Illusory Terrain','Phantasmal Armies','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
-      const NEEDS_CHAR=new Set(['Resurrect','Spiritwrack','Psychic Blast','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
+      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
         const provOpts=(report.ownedProvinces||[]).concat(report.visitedProvinces||[])
@@ -2418,13 +2418,18 @@ function buildTargetField(c, ph, saved){
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
           const allies=(report.characters||[]).filter(x=>x.id!==c.id&&x.locationId===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+        } else if(selSpell==='Clairvoyance'){
+          // Clairvoyance: any character you have seen, anywhere on the map.
+          const seen=(report.visibleChars||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':x.player===c.player?' (yours)':' ⚔ (enemy)'} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>You have not seen any characters yet</option>';
         } else {
-          // Other character-target spells (Spiritwrack, Psychic Blast, Lightning, Curse, Hand of Death, Kill Enemy)
-          // Target visible enemy characters in the same province
+          // Other character-target spells (Psychic Blast, Telekinetic Storm, Lightning, Curse, etc.)
+          // Target visible enemy/neutral characters in the same province
           const targets=(report.visibleChars||[]).filter(x=>
-            x.player!==c.player && x.player!==null && x.locationId===casterLoc);
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} ⚔ — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No enemy heroes in this province</option>';
+            x.player!==c.player && x.locationId===casterLoc);
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
         }
         secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${charOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
@@ -3028,6 +3033,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.11-2347</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.12-0702</div>
 </body>
 </html>
