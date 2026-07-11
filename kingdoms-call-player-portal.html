@@ -2482,10 +2482,25 @@ function buildTargetField(c, ph, saved){
 
       if(baseArmies.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to leave" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
-      const othersHere=(report.characters||[]).filter(x=>x.id!==c.id);
-      const recipOpts=[`<option value="-1" ${extra==='-1'||!extra?'selected':''}>Garrison in province</option>`,
-        ...othersHere.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`)
-      ].join('');
+      // Where is this character predicted to be at this phase (accounting for earlier-phase moves)?
+      const cLoc=predictedLocation(c.id,ph);
+      const cLocId=cLoc?cLoc.id:null;
+      const ownedIds=new Set((report.ownedProvinces||[]).map(p=>p.id));
+      // Garrison is only a valid recipient if the player OWNS the province they are in.
+      const canGarrison=cLocId!=null&&ownedIds.has(cLocId);
+      // Recipients: only the player's OWN characters predicted to be in the SAME province this phase.
+      // (report.characters already contains only this player's living characters, so neutral heroes
+      // and enemy characters can never appear here.)
+      const othersHere=(report.characters||[]).filter(x=>{
+        if(x.id===c.id) return false;
+        const xl=predictedLocation(x.id,ph);
+        return xl&&cLocId!=null&&xl.id===cLocId;
+      });
+      const recipParts=[];
+      if(canGarrison) recipParts.push(`<option value="-1" ${extra==='-1'||!extra?'selected':''}>Garrison in ${cLoc.name||'province'}</option>`);
+      othersHere.forEach(x=>recipParts.push(`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`));
+      if(recipParts.length===0) recipParts.push(`<option value="" disabled selected>No valid recipient here — garrison requires owning the province, or place another of your characters here first</option>`);
+      const recipOpts=recipParts.join('');
       const checkboxes=baseArmies.map((a,i)=>{
         const val=a.unitName||a.type;
         const chk=savedTgts.includes(val)||savedTgts.includes('all')?'checked':'';
@@ -2937,6 +2952,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.10-1620</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.11-1752</div>
 </body>
 </html>
