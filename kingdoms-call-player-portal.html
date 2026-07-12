@@ -336,7 +336,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
-  'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell',
+  'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
   'Spy','Practice Skill','Defend','Rest'];
 const ALL_ABILITIES = ['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 
@@ -1749,8 +1749,8 @@ function onSpellChange(charId, ph, selectedSpell){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
   const report=currentReport||{};
 
-  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Plague']);
-  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Lightning Bolt','Curse','Charm','Oratory']);
+  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Feature','Earthquake','Flood','Plague']);
+  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
 
   // Remove any existing secondary selector/hint, keep the spell select
   const spellSelect=document.getElementById(`po-target-${charId}-${ph}`);
@@ -2318,6 +2318,15 @@ function buildTargetField(c, ph, saved){
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features in current province" disabled>`;}
 
+    // ── USE ITEM (active magic items only) ──
+    case 'Use Item':{
+      const ACTIVE_ITEM_STATS=new Set(['massPromote']);
+      const active=(c.items||[]).filter(it=>it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
+      if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No usable (active) items — most items are passive" disabled>`;
+      const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.name} — ${it.desc}</option>`).join('');
+      return `<select id="po-target-${c.id}-${ph}">${opts}</select>`;
+    }
+
     // ── CAST SPELL ──
     case 'Cast Spell':{
       const skills=c.skills||{};
@@ -2325,7 +2334,7 @@ function buildTargetField(c, ph, saved){
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
         'Illusory Terrain','Phantasmal Armies','Hide Feature',
-        'Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon',
+        'Earthquake','Flood','Elemental Summon',
         'Control Undead','Skeletal Armies','Curse','Plague']);
 
       // Also include schools being practised in an earlier phase this turn.
@@ -2393,8 +2402,8 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>(skills[school]||0)>=1||practisingSchools.has(school))
         .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Plague']);
-      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Lightning Bolt','Curse','Charm','Oratory']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Feature','Earthquake','Flood','Plague']);
+      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
         const provOpts=(report.ownedProvinces||[]).concat(report.visitedProvinces||[])
@@ -3033,6 +3042,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.12-2019</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.13-0850</div>
 </body>
 </html>

@@ -206,7 +206,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Spy','Practice Skill','Defend','Rest'];
+const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item','Spy','Practice Skill','Defend','Rest'];
 
 // ── SHARED ORDER ENTRY HELPERS (mirrored from player portal) ──
 const SPELLS_BY_SCHOOL={
@@ -1233,7 +1233,7 @@ const MONSTERS_P=[
   {name:'Rock Giant',hp:35,power:'Powerful',melee:3,archery:0,speed:'slow',minG:4,maxG:7,
     spells:[{name:'Boulder Hurl',school:'elemental',dmg:[7,12],effect:'',castChance:40,flavour:'The giant wrenches a boulder from the earth and hurls it with bone-crushing force!'},
             {name:'Tremor Stomp',school:'elemental',dmg:[4,8],effect:'all armies take 2 dmg each',castChance:30,flavour:'The giant\'s foot strikes the earth — a shockwave tears through the ground!'}]},
-  {name:'Basilisk',hp:25,power:'Powerful',melee:3,archery:0,speed:'slow',minG:4,maxG:7,
+  {name:'Basilisk',hp:22,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Petrifying Gaze',school:'illusory',dmg:[0,0],effect:'hero loses 2 attack rounds (slowly turning to stone)',castChance:40,flavour:'The basilisk\'s terrible eyes meet yours — your limbs begin to stiffen!'},
             {name:'Stone Spit',school:'elemental',dmg:[5,9],effect:'',castChance:30,flavour:'Streams of petrifying slime fly from the basilisk\'s maw!'}]},
   {name:'Hydra',hp:38,power:'Powerful',melee:3,archery:0,speed:'slow',minG:4,maxG:8,
@@ -1252,7 +1252,7 @@ const MONSTERS_P=[
   {name:'Storm Eagle',hp:24,power:'Powerful',melee:2,archery:0,speed:'fast',minG:3,maxG:7,
     spells:[{name:'Lightning Strike',school:'elemental',dmg:[5,10],effect:'',castChance:45,flavour:'The eagle calls down a spear of lightning from storm clouds above!'},
             {name:'Gale Force',school:'elemental',dmg:[3,6],effect:'hero\'s ranged attacks impossible for 1 round',castChance:35,flavour:'Screaming winds make it impossible to aim!'}]},
-  {name:'Lich Acolyte',hp:28,power:'Powerful',melee:2,archery:0,speed:'slow',minG:5,maxG:8,
+  {name:'Lich Acolyte',hp:21,power:'Moderate',melee:2,archery:0,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Necrotic Bolt',school:'necromancy',dmg:[6,11],effect:'',castChance:45,flavour:'A bolt of necrotic energy strips the life from your flesh!'},
             {name:'Bone Shield',school:'necromancy',dmg:[0,0],effect:'acolyte absorbs next 8 dmg',castChance:30,flavour:'A swirling shield of animated bones snaps into place!'},
             {name:'Raise Fallen',school:'necromancy',dmg:[0,0],effect:'acolyte regains 5 HP',castChance:25,flavour:'The acolyte chants and draws life-force from the bodies of the fallen!'}]},
@@ -1266,41 +1266,38 @@ const MONSTERS_P=[
             {name:'Necrotic Burst',school:'necromancy',dmg:[6,12],effect:'hero loses 1 from highest skill for 1 turn',castChance:50,flavour:'A wave of entropic energy corrodes your very essence!'},
             {name:'Undead Thralls',school:'necromancy',dmg:[0,0],effect:'lich regains 8 HP as it draws power from nearby dead',castChance:35,flavour:'The lich stretches its hands wide, drinking the death-energy of the battlefield!'},
             {name:'Paralyse',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:30,flavour:'Iron bands of psychic force clamp around your mind and body!'}]},
-  {name:'Fire Drake',hp:48,power:'Legendary',melee:4,archery:0,speed:'fast',minG:6,maxG:10,
-    spells:[{name:'Inferno Breath',school:'elemental',dmg:[9,16],effect:'lasts 2 rounds: 4 dmg next round too',castChance:50,flavour:'Not just fire — the drake breathes pure magical conflagration!'},
-            {name:'Flame Wall',school:'elemental',dmg:[5,9],effect:'hero cannot advance for 1 round',castChance:40,flavour:'A wall of magical fire roars up between you and the drake!'},
-            {name:'Melt Armour',school:'elemental',dmg:[0,0],effect:'hero takes +3 dmg from all attacks this encounter',castChance:30,flavour:'Magical heat melts your armour into the flesh beneath!'}]},
-  {name:'Ice Giant',hp:42,power:'Legendary',melee:4,archery:0,speed:'slow',minG:5,maxG:9,
-    spells:[{name:'Blizzard',school:'elemental',dmg:[6,12],effect:'hero -20% to all rolls for 2 rounds (frozen)',castChance:45,flavour:'The giant spreads its arms and summons a localized blizzard!'},
-            {name:'Glacier Smash',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'A fist wrapped in a glacier-sized ball of ice comes down!'},
-            {name:'Flash Freeze',school:'elemental',dmg:[0,0],effect:'hero is frozen solid for 1 round — takes no action',castChance:30,flavour:'A beam of absolute cold freezes you from the outside in!'}]},
   {name:'Ancient Wyrm',hp:65,power:'Legendary',melee:5,archery:0,speed:'fast',minG:8,maxG:10,
     spells:[{name:'Ancient Flame',school:'elemental',dmg:[10,18],effect:'',castChance:55,flavour:'Flame older than civilisation pours from the Ancient Wyrm\'s jaws!'},
             {name:'Psychic Roar',school:'psychic',dmg:[5,10],effect:'hero loses all Archery shots this round',castChance:45,flavour:'The wyrm\'s mindless roar shatters conscious thought!'},
             {name:'Tail Sweep',school:'elemental',dmg:[6,10],effect:'hero knocked back: loses next attack',castChance:40,flavour:'A tail like a castle wall sweeps everything aside!'},
             {name:'Draconic Presence',school:'psychic',dmg:[0,0],effect:'hero must beat 60% courage or all attacks -15% for encounter',castChance:35,flavour:'The wyrm\'s sheer age and power exerts a crushing mental weight!'}]},
-  {name:'Death Knight',hp:40,power:'Legendary',melee:4,archery:2,speed:'medium',minG:6,maxG:10,
-    spells:[{name:'Soul Rend',school:'necromancy',dmg:[7,13],effect:'',castChance:50,flavour:'The Death Knight drives its spectral blade into your soul!'},
-            {name:'Doom Aura',school:'necromancy',dmg:[0,0],effect:'hero takes 3 dmg at start of each round for 3 rounds',castChance:40,flavour:'A sickly aura of death radiates from the knight — it seeps into your wounds!'},
-            {name:'Dark Command',school:'psychic',dmg:[0,0],effect:'hero\'s armies suffer -20% str for 2 rounds',castChance:35,flavour:'The Death Knight\'s voice carries an authority from beyond death — your soldiers waver!'}]},
   {name:'Elder Titan',hp:70,power:'Legendary',melee:5,archery:0,speed:'slow',minG:7,maxG:10,
     spells:[{name:'World-Shaker',school:'elemental',dmg:[8,15],effect:'all armies take 5 dmg each',castChance:45,flavour:'The Elder Titan stamps — the very world shakes to its foundations!'},
             {name:'Divine Wrath',school:'white',dmg:[10,20],effect:'ignores all armour and defensive bonuses',castChance:40,flavour:'Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!'},
             {name:'Time Stop',school:'illusory',dmg:[0,0],effect:'hero loses 3 rounds completely — cannot act',castChance:25,flavour:'Reality stutters. You blink and three rounds have passed — you\'ve been standing frozen!'}]},
-  {name:'Leviathan',hp:60,power:'Legendary',melee:4,archery:0,speed:'fast',minG:7,maxG:10,
-    spells:[{name:'Tidal Wave',school:'elemental',dmg:[9,15],effect:'all armies take 4 dmg each',castChance:50,flavour:'The Leviathan breaches and comes down — a wall of ocean follows!'},
-            {name:'Abyssal Scream',school:'psychic',dmg:[6,11],effect:'',castChance:45,flavour:'A sound from the deepest ocean abyss shreds eardrums and sanity alike!'},
-            {name:'Vortex',school:'elemental',dmg:[0,0],effect:'hero is pulled in: -30% to flee chance this encounter',castChance:35,flavour:'A swirling vortex pulls you inexorably towards the creature\'s maw!'}]},
-  {name:'Phoenix',hp:45,power:'Legendary',melee:4,archery:0,speed:'fast',minG:6,maxG:10,
-    spells:[{name:'Flame Burst',school:'elemental',dmg:[7,13],effect:'',castChance:50,flavour:'Feathers of pure fire explode outward in all directions!'},
-            {name:'Rebirth',school:'white',dmg:[0,0],effect:'if killed, phoenix revives at 15 HP (once per encounter)',castChance:100,flavour:'The phoenix bursts into ash — then the ash explodes back into blazing life!'},
-            {name:'Solar Beam',school:'elemental',dmg:[8,14],effect:'blinds hero: -25% to hit for 2 rounds',castChance:35,flavour:'A concentrated beam of the sun\'s fire lances directly at you!'}]},
-  {name:'Demon Lord',hp:55,power:'Legendary',melee:5,archery:0,speed:'medium',minG:7,maxG:10,
-    spells:[{name:'Hellstorm',school:'elemental',dmg:[10,18],effect:'',castChance:50,flavour:'The sky turns red. Pillars of hellfire rain down across the battlefield!'},
-            {name:'Mass Terror',school:'psychic',dmg:[0,0],effect:'all armies immediately lose 25% str for remainder of encounter',castChance:45,flavour:'The Demon Lord\'s presence broadcasts waves of supernatural dread!'},
-            {name:'Soul Harvest',school:'necromancy',dmg:[6,12],effect:'demon lord heals equal to half damage dealt',castChance:40,flavour:'The lord of demons reaches into you and tears out a shard of your soul!'},
-            {name:'Reality Tear',school:'illusory',dmg:[0,0],effect:'hero\'s next 2 spells automatically fail',castChance:30,flavour:'The demon tears reality itself — your magic unravels in its hands!'}]},
+  {name:'Kobold Skirmishers',hp:7,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5},
+  {name:'Zombie Shamblers',hp:10,power:'Weak',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Rotting Grasp',school:'necromancy',dmg:[2,5],effect:'',castChance:35,flavour:'Cold dead hands claw at you with surprising strength.'}]},
+  {name:'Wild Boars',hp:9,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:5},
+  {name:'Giant Centipede',hp:8,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Venom Bite',school:'elemental',dmg:[2,4],effect:'hero -10% to hit next round',castChance:40,flavour:'Its mandibles sink in, dripping burning venom.'}]},
+  {name:'Marsh Sprites',hp:6,power:'Weak',melee:1,archery:0,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Will-o-Wisp',school:'illusory',dmg:[1,4],effect:'',castChance:40,flavour:'Ghostly lights dart in and sting like wasps.'}]},
+  {name:'Bandit Scouts',hp:8,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
 ];
+const ITEMS_BY_TIER={1:[],2:[],3:[]};
+ALL_MAGIC_ITEMS_P.forEach(it=>{(ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1]).push(it);});
+// Loot quality climbs with the monster's tier: tougher foes yield rarer (higher-tier) items.
+function rollMagicItem(monsterPower){
+  const r=Math.random();
+  let t;
+  if(monsterPower==='Legendary') t=r<0.5?3:2;
+  else if(monsterPower==='Powerful') t=r<0.15?3:2;
+  else if(monsterPower==='Moderate') t=r<0.25?2:1;
+  else t=1; // Weak
+  const pool=(ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 const FEATURE_POOLS_P={
   plain:[
     'Ancient Battlefield','Ruined Watchtower','Goblin Camp','Roadside Shrine',
@@ -1336,82 +1333,82 @@ const FEATURE_POOLS_P={
 // Comprehensive magic items — one or more per skill, plus special army-type bonuses
 const ALL_MAGIC_ITEMS_P=[
   // ── Melee ──
-  {name:'Blade of Fury',desc:'Melee +2',effect:{stat:'melee',bonus:2}},
-  {name:'Warbringer Gauntlets',desc:'Melee +1, +2 dmg in encounters',effect:{stat:'melee',bonus:1}},
+  {name:'Blade of Fury',desc:'Melee +2',effect:{stat:'melee',bonus:2},tier:2},
+  {name:'Warbringer Gauntlets',desc:'Melee +1, +2 dmg in encounters',effect:{stat:'melee',bonus:1},tier:1},
   // ── Archery ──
-  {name:'Elven Longbow',desc:'Archery +2',effect:{stat:'archery',bonus:2}},
-  {name:'Quiver of the Hawk',desc:'Archery +1. In the pre-battle archery phase, your missile units each fire two volleys instead of one.',effect:{stat:'archery',bonus:1}},
+  {name:'Elven Longbow',desc:'Archery +2',effect:{stat:'archery',bonus:2},tier:2},
+  {name:'Quiver of the Hawk',desc:'Archery +1. In the pre-battle archery phase, your missile units each fire two volleys instead of one.',effect:{stat:'archery',bonus:1},tier:1},
   // ── Tactical ──
-  {name:'Tome of Tactics',desc:'Tactical +2',effect:{stat:'tactical',bonus:2}},
-  {name:'War Drum of the Ancients',desc:'Tactical +1, all armies +1 quality tier in one battle',effect:{stat:'tactical',bonus:1}},
+  {name:'Tome of Tactics',desc:'Tactical +2',effect:{stat:'tactical',bonus:2},tier:2},
+  {name:'War Drum of the Ancients',desc:'Tactical +1, all armies +1 quality tier in one battle',effect:{stat:'tactical',bonus:1},tier:1},
   // ── March ──
-  {name:'Boots of the Wind',desc:'March +2',effect:{stat:'march',bonus:2}},
-  {name:'Traveller\'s Cloak',desc:'March +1, +1 move point per turn',effect:{stat:'march',bonus:1}},
+  {name:'Boots of the Wind',desc:'March +2',effect:{stat:'march',bonus:2},tier:2},
+  {name:'Traveller\'s Cloak',desc:'March +1, +1 move point per turn',effect:{stat:'march',bonus:1},tier:1},
   // ── Naval ──
-  {name:'Admiral\'s Spyglass',desc:'Naval +2, fleets +2 str',effect:{stat:'naval',bonus:2}},
-  {name:'Sea Chart of the Deep',desc:'Naval +1, may enter any sea province freely',effect:{stat:'naval',bonus:1}},
+  {name:'Admiral\'s Spyglass',desc:'Naval +2, fleets +2 str',effect:{stat:'naval',bonus:2},tier:2},
+  {name:'Sea Chart of the Deep',desc:'Naval +1, may enter any sea province freely',effect:{stat:'naval',bonus:1},tier:1},
   // ── Sage ──
-  {name:'Sage\'s Crown',desc:'Sage +2',effect:{stat:'sage',bonus:2}},
-  {name:'Philosopher\'s Lens',desc:'Sage +1, reveals one random feature when exploring',effect:{stat:'sage',bonus:1}},
+  {name:'Sage\'s Crown',desc:'Sage +2',effect:{stat:'sage',bonus:2},tier:2},
+  {name:'Philosopher\'s Lens',desc:'Sage +1, reveals one random feature when exploring',effect:{stat:'sage',bonus:1},tier:1},
   // ── Spy ──
-  {name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2}},
-  {name:'Crystal Orb',desc:'Spy always succeeds — no roll needed',effect:{stat:'oracle',bonus:1}},
-  {name:'Whispering Mirror',desc:'Spy +1, enemy army strength always shown as Moderate',effect:{stat:'spy',bonus:1}},
+  {name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2},tier:2},
+  {name:'Crystal Orb',desc:'Spy always succeeds — no roll needed',effect:{stat:'oracle',bonus:1},tier:3},
+  {name:'Whispering Mirror',desc:'Spy +1, enemy army strength always shown as Moderate',effect:{stat:'spy',bonus:1},tier:1},
   // ── Thief ──
-  {name:'Gloves of the Nightcrawler',desc:'Thief +2',effect:{stat:'thief',bonus:2}},
-  {name:'Lock-Pick of Legends',desc:'Thief +1, +20% steal chance in encounters',effect:{stat:'thief',bonus:1}},
+  {name:'Gloves of the Nightcrawler',desc:'Thief +2',effect:{stat:'thief',bonus:2},tier:2},
+  {name:'Lock-Pick of Legends',desc:'Thief +1, +20% steal chance in encounters',effect:{stat:'thief',bonus:1},tier:1},
   // ── Druid ──
-  {name:'Staff of the Wildwood',desc:'Druid +2',effect:{stat:'druid',bonus:2}},
-  {name:'Green Stone of Speaking',desc:'Druid +1, Talk tactic always opens a negotiation',effect:{stat:'druid',bonus:1}},
+  {name:'Staff of the Wildwood',desc:'Druid +2',effect:{stat:'druid',bonus:2},tier:2},
+  {name:'Green Stone of Speaking',desc:'Druid +1, and Talk can pacify even creatures that would normally never parley',effect:{stat:'druid',bonus:1},tier:1},
   // ── Explorer ──
-  {name:'Ring of the Explorer',desc:'Explorer +2',effect:{stat:'explorer',bonus:2}},
-  {name:'Compass of the Wanderer',desc:'Explorer +1, first visit to a province reveals all features',effect:{stat:'explorer',bonus:1}},
+  {name:'Ring of the Explorer',desc:'Explorer +2',effect:{stat:'explorer',bonus:2},tier:2},
+  {name:'Compass of the Wanderer',desc:'Explorer +1, first visit to a province reveals all features',effect:{stat:'explorer',bonus:1},tier:1},
   // ── White Magic ──
-  {name:'Holy Reliquary',desc:'White Magic +2',effect:{stat:'white',bonus:2}},
-  {name:'Chalice of Dawn',desc:'White Magic +1, Divine armies +15% str',effect:{stat:'white',bonus:1}},
+  {name:'Holy Reliquary',desc:'White Magic +2',effect:{stat:'white',bonus:2},tier:2},
+  {name:'Chalice of Dawn',desc:'White Magic +1, Divine armies +15% str',effect:{stat:'white',bonus:1},tier:1},
   // ── Psychic Magic ──
-  {name:'Mind\'s Eye Amulet',desc:'Psychic Magic +2',effect:{stat:'psychic',bonus:2}},
-  {name:'Dreamstone',desc:'Psychic Magic +1, target of Charm must roll twice',effect:{stat:'psychic',bonus:1}},
+  {name:'Mind\'s Eye Amulet',desc:'Psychic Magic +2',effect:{stat:'psychic',bonus:2},tier:2},
+  {name:'Dreamstone',desc:'Psychic Magic +1, and your Psychic Blast in personal combat stuns for an extra round',effect:{stat:'psychic',bonus:1},tier:1},
   // ── Illusory Magic ──
-  {name:'Veil of Illusions',desc:'Illusory Magic +2',effect:{stat:'illusory',bonus:2}},
-  {name:'Mirror Shard',desc:'Illusory Magic +1, Invisibility lasts an extra phase',effect:{stat:'illusory',bonus:1}},
+  {name:'Veil of Illusions',desc:'Illusory Magic +2',effect:{stat:'illusory',bonus:2},tier:2},
+  {name:'Mirror Shard',desc:'Illusory Magic +1, and your Mirror Image illusions are harder to disbelieve',effect:{stat:'illusory',bonus:1},tier:1},
   // ── Elemental Magic ──
-  {name:'Orb of the Storm',desc:'Elemental Magic +2',effect:{stat:'elemental',bonus:2}},
-  {name:'Ember Rune',desc:'Elemental Magic +1, Fireball may target any province in sight',effect:{stat:'elemental',bonus:1}},
+  {name:'Orb of the Storm',desc:'Elemental Magic +2',effect:{stat:'elemental',bonus:2},tier:2},
+  {name:'Ember Rune',desc:'Elemental Magic +1, and your Fireball may target any province within sight',effect:{stat:'elemental',bonus:1},tier:1},
   // ── Necromancy ──
-  {name:'Skull of the Undying',desc:'Necromancy +2',effect:{stat:'necromancy',bonus:2}},
-  {name:'Death\'s Finger Ring',desc:'Necromancy +1, Kill Enemy chance doubled',effect:{stat:'necromancy',bonus:1}},
+  {name:'Skull of the Undying',desc:'Necromancy +2',effect:{stat:'necromancy',bonus:2},tier:2},
+  {name:'Death\'s Finger Ring',desc:'Necromancy +1, and your Hand of Death strikes home more readily in combat',effect:{stat:'necromancy',bonus:1},tier:1},
   // ── HP ──
-  {name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8}},
-  {name:'Iron Heart Talisman',desc:'Max HP +5, +2 HP recovered each Rest order',effect:{stat:'maxHp',bonus:5}},
+  {name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8},tier:2},
+  {name:'Iron Heart Talisman',desc:'Max HP +5, +2 HP recovered each Rest order',effect:{stat:'maxHp',bonus:5},tier:1},
   // ── Army bonuses (general) ──
-  {name:'Battle Standard',desc:'All armies led: strength +3 each',effect:{stat:'armyBonus',bonus:3}},
-  {name:'Banner of the Realm',desc:'All armies led: +1 quality tier when defending home province',effect:{stat:'homeDefBonus',bonus:1}},
+  {name:'Battle Standard',desc:'All armies led: strength +3 each',effect:{stat:'armyBonus',bonus:3},tier:3},
+  {name:'Banner of the Realm',desc:'All armies led: +1 quality tier when defending home province',effect:{stat:'homeDefBonus',bonus:1},tier:2},
   // ── Cavalry-specific ──
-  {name:'Golden Spur',desc:'Cavalry and Knights: +25% strength when you lead them',effect:{stat:'cavBonus',bonus:1}},
-  {name:'War-Horn of the Plains',desc:'Cavalry units in your force: pursue chance 100% (always pursue)',effect:{stat:'cavPursuit',bonus:1}},
+  {name:'Golden Spur',desc:'Cavalry and Knights: +25% strength when you lead them',effect:{stat:'cavBonus',bonus:1},tier:1},
+  {name:'War-Horn of the Plains',desc:'Cavalry units in your force: pursue chance 100% (always pursue)',effect:{stat:'cavPursuit',bonus:1},tier:1},
   // ── Infantry-specific ──
-  {name:'Legionnaire\'s Mark',desc:'Infantry units you lead: +20% strength in all terrain',effect:{stat:'infBonus',bonus:1}},
-  {name:'Shield-Wall Rune',desc:'Infantry units you lead never retreat from a losing battle (stay and fight)',effect:{stat:'infStay',bonus:1}},
+  {name:'Legionnaire\'s Mark',desc:'Infantry units you lead: +20% strength in all terrain',effect:{stat:'infBonus',bonus:1},tier:1},
+  {name:'Shield-Wall Rune',desc:'Infantry units you lead never retreat from a losing battle (stay and fight)',effect:{stat:'infStay',bonus:1},tier:1},
   // ── Archer-specific ──
-  {name:'Quiver of Many Arrows',desc:'Archer units you lead: fire one extra shot in the archery pre-phase',effect:{stat:'archBonus',bonus:1}},
-  {name:'Eagle-Eye Pendant',desc:'Longbowmen and Elven Bowmen: +30% strength',effect:{stat:'archerStr',bonus:1}},
+  {name:'Quiver of Many Arrows',desc:'Archer units you lead: fire one extra shot in the archery pre-phase',effect:{stat:'archBonus',bonus:1},tier:1},
+  {name:'Eagle-Eye Pendant',desc:'Longbowmen and Elven Bowmen: +30% strength',effect:{stat:'archerStr',bonus:1},tier:1},
   // ── Naval-specific ──
-  {name:'Kraken Figurehead',desc:'All fleets you lead: +3 strength and +1 speed',effect:{stat:'navalBonus',bonus:1}},
-  {name:'Tide-Caller\'s Horn',desc:'Fleets may move through any sea province regardless of sea movement rules',effect:{stat:'navalMove',bonus:1}},
+  {name:'Kraken Figurehead',desc:'All fleets you lead: +3 strength and +1 speed',effect:{stat:'navalBonus',bonus:1},tier:3},
+  {name:'Tide-Caller\'s Horn',desc:'Fleets may move through any sea province regardless of sea movement rules',effect:{stat:'navalMove',bonus:1},tier:2},
   // ── Heavy/Siege-specific ──
-  {name:'Engineer\'s Blueprint',desc:'Mountain Guns and Dwarf Ironclads: +4 strength',effect:{stat:'heavyBonus',bonus:1}},
-  {name:'Siege Master\'s Ring',desc:'Province defence bonuses reduced by half when you attack',effect:{stat:'siegeBonus',bonus:1}},
+  {name:'Engineer\'s Blueprint',desc:'Mountain Guns and Dwarf Ironclads: +4 strength',effect:{stat:'heavyBonus',bonus:1},tier:1},
+  {name:'Siege Master\'s Ring',desc:'Province defence bonuses reduced by half when you attack',effect:{stat:'siegeBonus',bonus:1},tier:2},
   // ── Undead-specific ──
-  {name:'Black Sceptre',desc:'Skeletal Legions you lead: +3 strength and never disband',effect:{stat:'undeadBonus',bonus:1}},
-  {name:'Wailing Phylactery',desc:'Necromancy spells always succeed first cast per turn',effect:{stat:'necroAuto',bonus:1}},
+  {name:'Black Sceptre',desc:'Skeletal Legions you lead: +3 strength and never disband',effect:{stat:'undeadBonus',bonus:1},tier:1},
+  {name:'Wailing Phylactery',desc:'Necromancy spells always succeed first cast per turn',effect:{stat:'necroAuto',bonus:1},tier:3},
   // ── Economy ──
-  {name:'Ring of Wealth',desc:'+2g collected each tax season',effect:{stat:'taxBonus',bonus:2}},
-  {name:'Merchant\'s Ledger',desc:'+1g collected per province owned',effect:{stat:'taxPerProv',bonus:1}},
+  {name:'Ring of Wealth',desc:'+2g collected each tax season',effect:{stat:'taxBonus',bonus:2},tier:1},
+  {name:'Merchant\'s Ledger',desc:'+1g collected per province owned',effect:{stat:'taxPerProv',bonus:1},tier:1},
   // ── Special ──
-  {name:'Philosopher\'s Stone',desc:'Once per game: instantly promote all armies one quality tier',effect:{stat:'massPromote',bonus:1}},
-  {name:'Cloak of Many Faces',desc:'This hero may not be targeted by Spy, Kill Enemy or Encounter Character orders',effect:{stat:'hidden',bonus:1}},
-  {name:'Crown of Command',desc:'All characters in the same province gain +1 to all skills for the duration of the turn',effect:{stat:'aura',bonus:1}},
+  {name:'Philosopher\'s Stone',desc:'Once per game: instantly promote all armies one quality tier',effect:{stat:'massPromote',bonus:1},tier:3},
+  {name:'Cloak of Many Faces',desc:'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter Character orders',effect:{stat:'hidden',bonus:1},tier:3},
+  {name:'Crown of Command',desc:'All characters in the same province gain +1 to all skills for the duration of the turn',effect:{stat:'aura',bonus:1},tier:3},
 ];
 
 
@@ -2404,20 +2401,20 @@ const SPELL_DEFS_P={
     fn:'illusory_mirror_image'},
 
   // ══ ELEMENTAL MAGIC ══
-  'Lightning Bolt': {school:'elemental',target:'character',encounter:true,phase:true,
-    desc:'Phase order: deal 8–20 damage to target hero in same province. Encounter: 8–18 damage to monster. Highest single-target damage spell.',
+  'Lightning Bolt': {school:'elemental',target:'none',encounter:true,phase:false,
+    desc:'Combat: deals 1–3 damage per caster level to the opponent. Battle magic: a number of enemy armies equal to your level have their base strength reduced by 1 for the battle.',
     fn:'elemental_lightning'},
-  'Fireball':       {school:'elemental',target:'province',encounter:true,phase:true,
-    desc:'Phase order: deal 3–7 damage to each army unit in target province (any owner). Encounter: 6–14 damage to monster.',
+  'Fireball':       {school:'elemental',target:'none',encounter:true,phase:false,
+    desc:'Combat: burns the target for 10% of its health each phase for the next three phases. Battle magic: a random enemy army unit has its base strength halved for the battle.',
     fn:'elemental_fireball'},
   'Earthquake':     {school:'elemental',target:'province',encounter:false,phase:true,
-    desc:'Target province: tax reduced by 1–3 for one full turn AND all armies there move at half speed next phase.',
+    desc:'Action: a province you are in or adjacent to yields no tax revenue at the end of this turn.',
     fn:'elemental_earthquake'},
   'Flood':          {school:'elemental',target:'province',encounter:false,phase:true,
-    desc:'Target province (must be plain/desert/forest/jungle): all land armies there cannot move for one full phase. Coastal provinces only.',
+    desc:'Action: a land province you are in or adjacent to acts as a sea province for the rest of the turn (cancels Part Sea).',
     fn:'elemental_flood'},
   'Elemental Summon':{school:'elemental',target:'none',encounter:false,phase:true,
-    desc:'Summon a temporary Fire Elemental army (Str 6, Speed 3, Average quality) that lasts one turn then dissolves. Cannot be transferred.',
+    desc:'Action: summon a random elemental (Air, Fire, Earth, Water or Darkness) to fight under your command for the rest of the turn, then it dissolves. Roughly as strong as a powerful primal unit.',
     fn:'elemental_summon'},
 
   // ══ NECROMANCY ══
@@ -2615,6 +2612,8 @@ async function runTurn(){
     let base=(c.skills||{})[stat]||0;
     (c.items||[]).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;});
     base-=(c._curses||{})[stat]||0; // Curse spell reduces skill temporarily
+    // Crown of Command: +1 to ALL skills if a co-located ally (or self) carries the aura item.
+    if(c&&c.location!=null&&(G.characters||[]).some(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&(o.items||[]).some(it=>it.effect&&it.effect.stat==='aura'))) base+=1;
     return Math.max(0,Math.min(5,base));
   }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
@@ -2737,7 +2736,7 @@ function terrainMod(armyType, terrain){
 // Module-level base unit strength (type × quality), independent of terrain/druid/temporary reductions.
 // Used by the pre-battle missile phases to make arrow damage proportionate to the target and cappable.
 const UNIT_BASE_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Crossbowmen':5,'Mountain Guns':7,'Dwarf Garrison':4,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':7,'Orc Garrison':3,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
-  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13};
+  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
 const UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 function unitBaseStrength(army){ return (UNIT_BASE_STR[army.type]||4)*(UNIT_Q_MULT[army.quality||'Average']||2); }
 // Pre-battle missile "softening": one volley shaves a small % of the TARGET's own base strength,
@@ -2770,7 +2769,7 @@ function seaPenalty(armyType, terrain){
 
   function armStr(army, heroChar, playerAlignment, terrain){
     const ARMY_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Crossbowmen':5,'Mountain Guns':7,'Dwarf Garrison':4,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':7,'Orc Garrison':3,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
-      'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13};
+      'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
     const Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
     // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier higher.
     const Q_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
@@ -2797,6 +2796,22 @@ function seaPenalty(armyType, terrain){
     if(army._tempStrReduction){str=Math.max(0,str-army._tempStrReduction);delete army._tempStrReduction;delete army._archeryRed;}
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
     if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
+    // Magic-item army bonuses carried by the leading commander.
+    if(heroChar&&heroChar.items&&heroChar.items.length){
+      const has=(st)=>heroChar.items.some(it=>it.effect&&it.effect.stat===st);
+      const CAV_I=new Set(['Cavalry','Knights','Warg Riders','Eagle Riders','Noble Griffons']);
+      const INF_I=new Set(['Infantry','Dwarven Guard','Orc Berserkers']);
+      const ARCH_I=new Set(['Longbowmen','Elven Bowmen','Shadow Archers','Crossbowmen']);
+      const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
+      const FLEET_I=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+      if(has('armyBonus')) str+=3;                                   // Battle Standard
+      if(has('cavBonus')&&CAV_I.has(army.type)) str=Math.round(str*1.25); // Golden Spur
+      if(has('infBonus')&&INF_I.has(army.type)) str=Math.round(str*1.2);  // Legionnaire's Mark
+      if(has('archerStr')&&ARCH_I.has(army.type)) str=Math.round(str*1.3);// Eagle-Eye Pendant
+      if(has('heavyBonus')&&HEAVY_I.has(army.type)) str+=4;          // Engineer's Blueprint
+      if(has('navalBonus')&&FLEET_I.has(army.type)) str+=3;         // Kraken Figurehead
+      if(has('undeadBonus')&&army._isSkeletal) str+=3;              // Black Sceptre
+    }
     // Evil Terror: province was terrorised last turn — defending armies -10%
     // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
     return str;
@@ -3000,14 +3015,8 @@ const BATTLE_ARMY_SPELLS={
         if(castRoll<castChance){
           trySkillGain(c, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
           if(spellName==='Fireball'){
-            // 2–4 damage to 1–3 random defenders
-            const hits=Math.min(defenders.length,rng(1,3));
-            const targets=defenders.slice().sort(()=>Math.random()-0.5).slice(0,hits);
-            targets.forEach(d=>{
-              const dmg=rng(2,4);
-              d._tempStrReduction=(d._tempStrReduction||0)+dmg;
-              narrative.push(`  Fireball scorches ${d.unitName||d.type}: −${dmg} strength this battle.`);
-            });
+            // A random enemy unit's base strength is halved for the battle.
+            if(defenders.length>0){ const d=defenders[Math.floor(Math.random()*defenders.length)]; const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5)); d._tempStrReduction=(d._tempStrReduction||0)+cut; narrative.push(`  🔥 Fireball engulfs ${d.unitName||d.type} — its strength is halved this battle (−${cut}).`); }
           } else if(spellName==='Telekinetic Storm'){
             // Negate the enemy commander's Tactical bonus for this battle.
             if(neutralGuardHero){ neutralGuardHero._tacticalNegated=true; narrative.push(`  🌀 Telekinetic Storm scatters ${neutralGuardHero.name}'s formations — their Tactical command is negated this battle.`); }
@@ -3017,13 +3026,11 @@ const BATTLE_ARMY_SPELLS={
             if(neutralGuardHero){ neutralGuardHero._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${neutralGuardHero.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             else narrative.push(`  🧠 Psychic Blast reaches out, but these defenders have no commander to unmake.`);
           } else if(spellName==='Lightning Bolt'){
-            // 3–6 damage to one random defender
-            if(defenders.length>0){
-              const d=defenders[Math.floor(Math.random()*defenders.length)];
-              const dmg=rng(3,6);
-              d._tempStrReduction=(d._tempStrReduction||0)+dmg;
-              narrative.push(`  ${spellName} strikes ${d.unitName||d.type}: −${dmg} strength this battle.`);
-            }
+            // A number of enemy armies equal to the caster's level lose 1 base strength for the battle.
+            const n=Math.min(defenders.length, Math.max(1,spellLvl));
+            const picks=defenders.slice().sort(()=>Math.random()-0.5).slice(0,n);
+            picks.forEach(d=>{ const qm={Green:1,Average:2,Veteran:3,Crack:4,Elite:5}[d.quality||'Average']||2; d._tempStrReduction=(d._tempStrReduction||0)+qm; });
+            narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — base strength −1 each this battle.`);
           } else if(spellName==='Curse'){
             // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the battle.
             if(neutralGuardHero){ const tac=effStat(neutralGuardHero,'tactical'),dru=(neutralGuardHero.skills?.druid||0); neutralGuardHero._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${neutralGuardHero.name}'s ${neutralGuardHero._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
@@ -3143,11 +3150,15 @@ const BATTLE_ARMY_SPELLS={
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll.toFixed(0)} ${castRoll<castChance?'✓':'✗'}]`);
           if(castRoll<castChance){
             trySkillGain(defHero, school, SKILLGAIN_STD);
-            if(defSpellName==='Fireball'||defSpellName==='Lightning Bolt'){
+            if(defSpellName==='Fireball'){
               const tgt=armies[Math.floor(Math.random()*armies.length)];
-              const dmg=rng(3,8)*(defSpellLvl>=3?2:1);
-              tgt._tempStrReduction=(tgt._tempStrReduction||0)+dmg;
-              narrative.push(`  ${defSpellName} strikes ${tgt.unitName||tgt.type}: −${dmg} strength this battle.`);
+              const cut=Math.max(1,Math.round(unitBaseStrength(tgt)*0.5));
+              tgt._tempStrReduction=(tgt._tempStrReduction||0)+cut;
+              narrative.push(`  🔥 Fireball halves the ${tgt.unitName||tgt.type}'s strength this battle (−${cut}).`);
+            } else if(defSpellName==='Lightning Bolt'){
+              const n=Math.min(armies.length,Math.max(1,defSpellLvl));
+              armies.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(a=>{ const qm={Green:1,Average:2,Veteran:3,Crack:4,Elite:5}[a.quality||'Average']||2; a._tempStrReduction=(a._tempStrReduction||0)+qm; });
+              narrative.push(`  ⚡ Lightning Bolt sears ${n} attacking unit${n!==1?'s':''} — base strength −1 each.`);
             } else if(defSpellName==='Psychic Blast'){
               if(c){ c._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${c.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             } else if(defSpellName==='Telekinetic Storm'){
@@ -3628,8 +3639,8 @@ const BATTLE_ARMY_SPELLS={
 
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
     switch(spellName){
-      case 'Lightning Bolt':{ const d=rng(1,3)*Math.max(1,lvl); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt hits ${target.name} for ${dealt}. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
-      case 'Fireball':{ target.status.dot.push({dmg:Math.max(1,Math.round(target.maxHp*0.10)),rounds:3,label:'Fireball burns'}); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for 10% of its health over 3 rounds.`); break; }
+      case 'Lightning Bolt':{ let d=0; for(let i=0;i<Math.max(1,lvl);i++) d+=rng(1,3); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt}. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Fireball':{ target.status.dot.push({dmg:Math.max(1,Math.round(target.maxHp*0.10)),rounds:3,label:'Fireball burns'}); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for 10% of its health each phase for 3 phases.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvl*10*(holy?2:1); target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
       case 'Spiritwrack':{ target.status.silenceRounds=Math.max(target.status.silenceRounds,3); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,3); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for 3 phases it cannot cast or use archery, and its melee is halved.`); break; }
@@ -4053,15 +4064,15 @@ const BATTLE_ARMY_SPELLS={
       if(castRoll>=castChance){narr.push(`  Spell fizzles.`);return;}
       trySkillGain(caster, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
       if(spellName==='Fireball'){
-        const hits=Math.min(targets.length,rng(1,3));
-        targets.slice().sort(()=>Math.random()-0.5).slice(0,hits).forEach(d=>{const dmg=rng(2,4);d._tempStrReduction=(d._tempStrReduction||0)+dmg;narr.push(`  Fireball: ${d.unitName||d.type} −${dmg} str.`);});
+        if(targets.length>0){const d=targets[Math.floor(Math.random()*targets.length)];const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;narr.push(`  🔥 Fireball halves ${d.unitName||d.type} (−${cut} str).`);}
       } else if(spellName==='Telekinetic Storm'){
         if(enemyCmdr){ enemyCmdr._tacticalNegated=true; narr.push(`  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is negated this battle.`); }
       } else if(spellName==='Psychic Blast'){
         if(enemyCmdr){ enemyCmdr._druidNegated=true; narr.push(`  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
       } else if(spellName==='Lightning Bolt'){
-        const d=targets[Math.floor(Math.random()*targets.length)];const dmg=rng(3,6);
-        d._tempStrReduction=(d._tempStrReduction||0)+dmg;narr.push(`  ${spellName}: ${d.unitName||d.type} −${dmg} str.`);
+        const n=Math.min(targets.length,Math.max(1,spellLvl));
+        targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{const qm={Green:1,Average:2,Veteran:3,Crack:4,Elite:5}[d.quality||'Average']||2;d._tempStrReduction=(d._tempStrReduction||0)+qm;});
+        narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} −1 base str.`);
       } else if(spellName==='Curse'){
         if(enemyCmdr){ const tac=effStat(enemyCmdr,'tactical'),dru=(enemyCmdr.skills?.druid||0); enemyCmdr._curseHalveStat=(tac>=dru?'tactical':'druid'); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${enemyCmdr._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
       } else if(spellName==='Control Undead'){
@@ -4443,6 +4454,30 @@ const BATTLE_ARMY_SPELLS={
     return{atkHp,defHp,atkKilled,defKilled,narrative};
   }
 
+  // Derive a monster's combat weaknesses/resistances and closing speed from its nature, so that
+  // different strategies suit different monsters (no single dominant encounter plan).
+  //   mods.melee/archery/spell  — <1 resists that approach, >1 is vulnerable to it
+  //   pacifiable                — a beast that Talk (Druid) can turn aside
+  //   closeRounds               — rounds to reach melee (fast 1 / medium 2 / slow 3): the archer's window
+  function monsterTraits(m){
+    const n=(m.name||'').toLowerCase();
+    const mods={melee:1, archery:1, spell:1};
+    const undead=/lich|skelet|zombie|wraith|ghoul|vampir|bone|death knight|undead|ghost|spectr/.test(n);
+    const demon=/demon|devil|fiend|hell|chaos|brimstone/.test(n);
+    const flyer=/harpy|wasp|bat|wyvern|eagle|roc\b|manticore|dragon|wyrm|drake|griffon|sprite|pixie|storm eagle/.test(n);
+    const armoured=/giant|troll|golem|knight|titan|basilisk|rock|stone|gargoyle|ironclad|carapace/.test(n);
+    const beast=/wolf|bear|boar|spider|rat|lizard|serpent|hound|centipede|wurm|snake|slime|feral|wild/.test(n);
+    if(undead){ mods.spell+=0.5; mods.archery-=0.3; }      // magic-vulnerable, arrows pass through bone
+    if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×2)
+    if(flyer){ mods.archery+=0.5; }                        // shot out of the sky
+    if(armoured){ mods.melee-=0.35; mods.spell+=0.3; }     // blades turn aside; magic ignores armour
+    if(beast&&!undead){ mods.melee+=0.2; }                 // soft-bodied, blades bite
+    for(const k in mods) mods[k]=Math.max(0.4, Math.min(1.8, mods[k]));
+    const pacifiable=beast&&!undead&&!demon;
+    const closeRounds={fast:2, medium:3, slow:4}[m.speed||'medium']||3;
+    return {mods, pacifiable, closeRounds};
+  }
+
   function resolveEncounter(c, feature, prov, tactics, effStat, rng, player){
     const m=feature.monster||{name:'creature',hp:10,power:'',minG:1,maxG:3};
     const narrative=[];
@@ -4450,6 +4485,12 @@ const BATTLE_ARMY_SPELLS={
     let heroHp=c.hp||10;
     let monsterHp=m.hp||10;
     let heroDidMelee=false, heroDidArchery=false; // for skill gains on victory
+    // ── Weakness matrix (derived from the monster's nature) ──
+    const traits=monsterTraits(m);
+    // How the monster's melee/archery/spell vulnerabilities scale the hero's damage:
+    const modMelee=traits.mods.melee, modArch=traits.mods.archery, modSpell=traits.mods.spell;
+    // The monster closes distance over several rounds by speed — this is the archer's firing window.
+    let monsterCloseCounter=traits.closeRounds;
     // Bridge to the unified engine: the hero's combat spells resolve through the SAME
     // pcCastCombatSpell used in duels, so White→Necromancy combat spells behave identically.
     // We keep lightweight combatant wrappers in sync with the scalar hero/monster HP each round.
@@ -4499,7 +4540,13 @@ const BATTLE_ARMY_SPELLS={
       pcRoundStart(monCbt, narrative); pcRoundStart(heroCbt, narrative);
       heroHp=heroCbt.hp; monsterHp=monCbt.hp;
       if(heroHp<=0||monsterHp<=0){ if(monsterHp<=0)won=true; break; }
-      // Mirror Image: the monster is locked fighting its own phantom while the hero concentrates.
+      // Monster closes the distance by speed. Until it reaches melee, the hero may keep firing —
+      // so slow monsters can be kited down with archery, while fast ones force melee/spells quickly.
+      if(range!=='melee'){
+        monsterCloseCounter--;
+        if(monsterCloseCounter<=0){ range='melee'; narrative.push(`The ${m.name} closes to melee range.`); }
+        else { range='bow'; }
+      }
       if(encState.mirror){
         const {victim, phantasm}=encState.mirror; victim.hp=monsterHp;
         let disbelief=Math.max(2,Math.min(90,5+3*(victim.melee||0)));
@@ -4565,9 +4612,9 @@ const BATTLE_ARMY_SPELLS={
           heroHitPenalty=Math.max(0,heroHitPenalty-5);
           if(heroRoll<heroFinalHit){
             heroDidMelee=true;
-            const dmg=Math.max(1,rng(1,6)+Math.max(0,meleeDiff));
+            const dmg=Math.max(1,Math.round((rng(1,6)+Math.max(0,meleeDiff))*modMelee));
             monsterHp-=dmg;
-            narrative.push(`${c.name} ${rng(0,1)?'strikes':'slashes'} the ${m.name} for ${dmg} damage! (Monster HP: ${Math.max(0,monsterHp)})`)
+            narrative.push(`${c.name} ${rng(0,1)?'strikes':'slashes'} the ${m.name} for ${dmg} damage!${modMelee>1.15?' (vulnerable!)':modMelee<0.85?' (well-armoured)':''} (Monster HP: ${Math.max(0,monsterHp)})`)
             if(m._reflectDamage){heroHp-=m._reflectDamage;damageToHero+=m._reflectDamage;narrative.push(`Brimstone Shield reflects ${m._reflectDamage} back at ${c.name}! (HP: ${Math.max(0,heroHp)})`);}
           } else {
             narrative.push(`${c.name}'s ${rng(0,1)?'blow glances off':'attack misses'} the ${m.name}.`);
@@ -4716,11 +4763,10 @@ const BATTLE_ARMY_SPELLS={
           for(let s=0;s<shots&&monsterHp>0;s++){
             const r=Math.random()*100;
             if(r<hitChance){
-              const dmg=rng(1,6);
+              const dmg=Math.max(1,Math.round(rng(1,6)*modArch));
               monsterHp-=dmg;
               heroDidArchery=true;
-              narrative.push(`${c.name}'s arrow finds its mark! ${dmg} damage to the ${m.name}. (Monster HP: ${Math.max(0,monsterHp)}) [roll ${r.toFixed(0)} < ${hitChance}]`);
-              if(Math.random()<0.07&&(c.skills.archery||0)<5){c.skills.archery=(c.skills.archery||0)+1;narrative.push(`${c.name}'s Archery skill improves to ${c.skills.archery}!`);}
+              narrative.push(`${c.name}'s arrow finds its mark! ${dmg} damage to the ${m.name}.${modArch>1.15?' (vulnerable to arrows!)':modArch<0.85?' (arrows glance off)':''} (Monster HP: ${Math.max(0,monsterHp)}) [roll ${r.toFixed(0)} < ${hitChance}]`);
             } else {
               narrative.push(`${c.name} looses an arrow but it flies wide. [roll ${r.toFixed(0)} ≥ ${hitChance}]`);
             }
@@ -4805,17 +4851,21 @@ const BATTLE_ARMY_SPELLS={
           // pcCastCombatSpell used in duels (cast chance, per-encounter limits, and all effects),
           // so White→Necromancy combat spells behave identically in feature fights.
           heroCbt.hp=heroHp; monCbt.hp=monsterHp; monCbt.melee=monsterMelee; encState.range=range;
+          const _mHpBefore=monCbt.hp;
           pcCastCombatSpell(heroCbt, monCbt, encSpellName, narrative, encState);
-          heroHp=heroCbt.hp; monsterHp=monCbt.hp; monsterMelee=monCbt.melee;
+          const _spellDmg=Math.max(0,_mHpBefore-monCbt.hp);
+          heroHp=heroCbt.hp; monsterMelee=monCbt.melee;
+          monsterHp=_mHpBefore-Math.round(_spellDmg*modSpell); // scale spell damage by the monster's magic vulnerability
+          if(modSpell>1.15&&_spellDmg>0) narrative.push(`  (the ${m.name} is vulnerable to magic — damage amplified)`);
           if(monsterHp<=0){won=true;}
           break;}
 
                 case 'TA':
         case 'TALK':{
           const druidSkill=effStat(c,'druid');
-          const talkChance=20+druidSkill*15;
+          const talkChance=traits.pacifiable ? (20+druidSkill*15) : 0;
           const talkRoll=Math.random()*100;
-          narrative.push(`📊 Talk — Druid ${druidSkill}: parley chance ${talkChance}% (roll ${talkRoll.toFixed(0)}${talkRoll<talkChance?' ✓':' ✗'})`);
+          narrative.push(`📊 Talk — Druid ${druidSkill}: parley chance ${talkChance}%${traits.pacifiable?` (roll ${talkRoll.toFixed(0)}${talkRoll<talkChance?' ✓':' ✗'})`:` — the ${m.name} cannot be reasoned with`}`);
           if(talkRoll<talkChance){
             narrative.push(`${c.name} attempts to parley with the ${m.name}. To their surprise, the creature seems to listen...`);
             narrative.push(`After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`);
@@ -5036,6 +5086,7 @@ const BATTLE_ARMY_SPELLS={
       'defend':'defend','rest':'rest','rest & heal':'rest','rest and heal':'rest',
       'encounter':'encounter','encounter character':'encounter',
       'steal':'steal','steal item':'steal','steal from character':'steal',
+      'use_item':'use_item','use item':'use_item','use magic item':'use_item',
       
     };
     const action=ACTION_MAP[rawAction]||'defend';
@@ -5497,29 +5548,35 @@ const BATTLE_ARMY_SPELLS={
           log('explore',`${c.name} escapes with ${gold}g in stolen treasure! The ${f.monster?.name||'guardian'} still guards the ${f.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(encounter.won){
           f.cleared=true;
-          const gold=rng(f.monster?.minG||1,f.monster?.maxG||5);
+          const tier=f.monster?.power||'Weak';
+          // Reward ladder — tougher monsters are meaningfully more worthwhile (gold + item odds + HP).
+          const T=({Weak:{gold:[3,8],hp:[1,3],itemChance:0.25,bonusItem:0},
+                    Moderate:{gold:[8,16],hp:[2,4],itemChance:0.60,bonusItem:0},
+                    Powerful:{gold:[18,35],hp:[3,6],itemChance:1.0,bonusItem:0.15},
+                    Legendary:{gold:[40,70],hp:[5,9],itemChance:1.0,bonusItem:0.50}})[tier]
+                    ||{gold:[1,5],hp:[1,3],itemChance:0.25,bonusItem:0};
+          const gold=rng(T.gold[0],T.gold[1]);
           player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
-          // Hero HP gain from combat experience — always a permanent max HP increase
-          const mHp=f.monster?.hp||10;
-          const hpGain=mHp>=36?rng(4,8):mHp>=21?rng(3,6):mHp>=13?rng(2,4):rng(1,3);
-          c.maxHp=(c.maxHp||20)+hpGain;
-          log('explore',`⚔ ${c.name} grows hardened from the fight — maximum HP permanently increases by ${hpGain} (now ${c.maxHp} max HP).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          // Also heal 50% of HP lost during the battle
-          const hpLost=Math.max(0,(c.maxHp-hpGain)-(encounter.heroHpAfter??c.hp));
+          // Permanent max-HP growth (the main power curve alongside magic items).
+          const preHpMax=c.maxHp||20;
+          const hpGain=rng(T.hp[0],T.hp[1]);
+          c.maxHp=preHpMax+hpGain;
+          const postHp=(encounter.heroHpAfter!=null?encounter.heroHpAfter:c.hp);
+          const hpLost=Math.max(0,preHpMax-postHp);
           const healAmt=Math.ceil(hpLost*0.5)+hpGain;
-          c.hp=Math.min(c.maxHp, c.hp+healAmt);
-          log('explore',`${c.name} catches their breath — restored to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          const ITEMS=ALL_MAGIC_ITEMS_P;
-          const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;
-          const item={...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:itemId};
-          // sd25 Alchemical Theory: 10% chance of finding a second item
-          const alchBonusItem=hasDisc(c.player,'sd25')&&Math.random()<0.10?
-            {...ITEMS[Math.floor(Math.random()*ITEMS.length)],id:(G.nextItemId||0)+1}:null;
-          if(alchBonusItem) G.nextItemId=(G.nextItemId||0)+1;
-          c.items=(c.items||[]);c.items.push(item);
-          if(alchBonusItem){c.items.push(alchBonusItem);log('explore',`Alchemical Theory yields a second find: the ${alchBonusItem.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id});}
-          if(item.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+item.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+item.effect.bonus);}
-          log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and finds a ${item.name} (${item.desc}).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          c.hp=Math.min(c.maxHp, postHp+healAmt);
+          log('explore',`⚔ ${c.name} grows hardened — max HP +${hpGain} (now ${c.maxHp}), and catches their breath to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Item drops — chance/quantity scale with tier, and item QUALITY scales with tier too.
+          const drops=[];
+          const rollItem=()=>{const base=rollMagicItem(tier);const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;return {...base,id:itemId};};
+          if(Math.random()<T.itemChance) drops.push(rollItem());
+          if(Math.random()<T.bonusItem) drops.push(rollItem());
+          // sd25 Alchemical Theory: 10% chance of an extra find.
+          if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
+          c.items=(c.items||[]);
+          drops.forEach(it=>{ c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+it.effect.bonus);} });
+          if(drops.length>0) log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and recovers ${drops.map(d=>'the '+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          else log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name}, though the lair holds no magic this time.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(!encounter.fled){
           const dmg=encounter.damageToHero||rng(2,7);
           c.hp=Math.max(1,c.hp-dmg);
@@ -5751,6 +5808,25 @@ const BATTLE_ARMY_SPELLS={
           } else if((c.armies||[]).length===0){
             log('system',`${c.name} practises tactical theory alone — training armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
           }
+        }
+        break;
+      }
+      case 'use_item':{
+        // Trigger an ACTIVE magic item (one that must be invoked, not a passive bonus).
+        const it=(c.items||[]).find(x=>String(x.id)===String(target)||x.name===target);
+        if(!it){log('system',`${c.name}: no such item to use.`,{actor:c.player,targets:[c.player]});break;}
+        if(it._spent){log('system',`The ${it.name} has already been used.`,{actor:c.player,targets:[c.player]});break;}
+        const st=it.effect?.stat;
+        if(st==='massPromote'){
+          // Philosopher's Stone — once per game: promote all your armies one quality tier.
+          const UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
+          let n=0;
+          (G.characters||[]).filter(ch=>ch.alive&&ch.player===c.player).forEach(ch=>{(ch.armies||[]).forEach(a=>{if(UP[a.quality]&&UP[a.quality]!==a.quality){a.quality=UP[a.quality];n++;}});});
+          (G.world.provinces||[]).forEach(pv=>{if(pv.owner===c.player){(pv.garrison||[]).forEach(a=>{if(UP[a.quality]&&UP[a.quality]!==a.quality){a.quality=UP[a.quality];n++;}});}});
+          it._spent=true;
+          log('explore',`✨ ${c.name} invokes the ${it.name} — a wave of power sweeps the realm and ${n} army unit${n!==1?'s':''} advance one quality tier! (Once per game.)`,{actor:c.player,targets:[c.player],public:true});
+        } else {
+          log('system',`The ${it.name} is a passive item and does not need to be used — its power is always active.`,{actor:c.player,targets:[c.player]});
         }
         break;
       }
@@ -6220,24 +6296,36 @@ const BATTLE_ARMY_SPELLS={
           log('combat',`✨ ${c.name} hurls Fireball into ${fbProv.name}! ${fbTotal} enemy unit${fbTotal!==1?'s':''} scorched for 3–7 strength each.`,{actor:c.player,targets:[],provinceId:fbProv.id,public:true});
         }
         else if(fn==='elemental_earthquake'){
-          const eqProv=targetProv;
-          const taxReduce=rng(1,3);
-          eqProv._earthquakeTax=(eqProv._earthquakeTax||0)+taxReduce;
-          eqProv._earthquakeSpeed=true;
-          log('combat',`✨ ${c.name} tears the earth apart with Earthquake! ${eqProv.name} loses ${taxReduce} tax this turn, and all armies there move at half speed next phase.`,{actor:c.player,targets:[],provinceId:eqProv.id,public:true});
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Earthquake must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
+          targetProv._earthquakeNoTax=G.turn;
+          log('combat',`✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true});
         }
         else if(fn==='elemental_flood'){
-          const flProv=targetProv;
-          if(flProv.terrain==='mountain'||flProv.terrain==='sea'){log('system',`Flood cannot target mountain or sea provinces.`,{actor:c.player,targets:[c.player]});break;}
-          flProv._flooded=true;
-          log('combat',`✨ ${c.name} summons torrential floods — all land armies in ${flProv.name} cannot move for one full phase!`,{actor:c.player,targets:[],provinceId:flProv.id,public:true});
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Flood must target a land province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetProv.terrain==='sea'){log('system',`${c.name}: Flood can only be cast on a land province.`,{actor:c.player,targets:[c.player]});break;}
+          // Cancel Part Sea if present, then submerge the province for the rest of the turn.
+          if(targetProv._partSea){ delete targetProv._partSea; }
+          targetProv._flood={orig:targetProv.terrain, turn:G.turn};
+          targetProv.terrain='sea';
+          log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets may pass.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true});
         }
         else if(fn==='elemental_summon'){
           if(c._elementalSummonedThisTurn){log('system',`${c.name} has already summoned an elemental this turn.`,{actor:c.player,targets:[c.player]});break;}
-          const elemental={type:'Fire Elemental',quality:'Average',race:'Elemental',unitName:'the Conjured Flame',_temporary:true,_expiresAfterPhase:ph};
+          const ELEMENTALS=[
+            {type:'Air Elemental',unitName:'the Howling Gale'},
+            {type:'Fire Elemental',unitName:'the Living Conflagration'},
+            {type:'Earth Elemental',unitName:'the Walking Mountain'},
+            {type:'Water Elemental',unitName:'the Surging Tide'},
+            {type:'Darkness Elemental',unitName:'the Devouring Shade'}];
+          const pick=ELEMENTALS[Math.floor(Math.random()*ELEMENTALS.length)];
+          const elemental={type:pick.type,quality:'Veteran',race:'Elemental',unitName:pick.unitName,_temporary:true,_expiresAfterPhase:-1};
           c.armies=(c.armies||[]);c.armies.push(elemental);
           c._elementalSummonedThisTurn=true;
-          log('explore',`✨ ${c.name} tears open a rift and a Fire Elemental (Str 6, Average) blazes forth to fight this turn! It will dissolve at end of turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('explore',`✨ ${c.name} tears open a rift and ${pick.unitName} — a ${pick.type} — surges forth to fight under your command! It will dissolve at the end of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         }
 
         // ── NECROMANCY ──
@@ -6778,6 +6866,7 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
         const income=(p.provinces||[]).reduce((s,id)=>{
           const pv=G.world.provinces[id];if(!pv) return s;
           let t=pv.tax||0;
+          if(pv._earthquakeNoTax===G.turn) t=0; // Earthquake: no revenue this turn
           if(pv._blessedTurn===G.turn) t=Math.round(t*1.6); // Bless Province: +60% tax base this turn
           if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0));
           // sd11 Advanced Agriculture: +1g from provinces with tax>=3
@@ -6968,6 +7057,7 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     if(p._earthquakeSpeed) delete p._earthquakeSpeed;
     if(p._flooded) delete p._flooded;
     if(p._partSea){ p.terrain=p._partSea.orig; delete p._partSea; } // Part Sea: restore the sea
+    if(p._flood){ p.terrain=p._flood.orig; delete p._flood; } // Flood: recedes at turn's end
     if(p._holyBonus) delete p._holyBonus;
     if(p._oratoryBonus) delete p._oratoryBonus;
     if(p._tempStrReduction) delete p._tempStrReduction;
@@ -7224,6 +7314,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.12-2019</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.13-0850</div>
 </body>
 </html>
