@@ -4450,6 +4450,12 @@ const BATTLE_ARMY_SPELLS={
     let heroHp=c.hp||10;
     let monsterHp=m.hp||10;
     let heroDidMelee=false, heroDidArchery=false; // for skill gains on victory
+    // Bridge to the unified engine: the hero's combat spells resolve through the SAME
+    // pcCastCombatSpell used in duels, so White→Necromancy combat spells behave identically.
+    // We keep lightweight combatant wrappers in sync with the scalar hero/monster HP each round.
+    const heroCbt=pcCharCombatant(c); heroCbt.maxHp=c.maxHp||20; heroCbt.hp=heroHp;
+    const monCbt=pcMonsterCombatant(m); monCbt.hp=monsterHp;
+    const encState={range:'spell', mirror:null};
     let damageToHero=0;
     let heroSkippedRounds=0;  // paralysis, freeze etc.
     let heroHitPenalty=0;     // cumulative % penalty to hit
@@ -4487,6 +4493,42 @@ const BATTLE_ARMY_SPELLS={
       tacIdx=Math.min(tacIdx+1,tactics.length-1);
 
       // ── Round-start effects ──
+      // Sync engine combatants to current HP, then let the unified status system tick (DoT from
+      // Fireball, decay of Holy Symbol/Spiritwrack penalties, etc.), then read HP back.
+      heroCbt.hp=heroHp; monCbt.hp=monsterHp;
+      pcRoundStart(monCbt, narrative); pcRoundStart(heroCbt, narrative);
+      heroHp=heroCbt.hp; monsterHp=monCbt.hp;
+      if(heroHp<=0||monsterHp<=0){ if(monsterHp<=0)won=true; break; }
+      // Mirror Image: the monster is locked fighting its own phantom while the hero concentrates.
+      if(encState.mirror){
+        const {victim, phantasm}=encState.mirror; victim.hp=monsterHp;
+        let disbelief=Math.max(2,Math.min(90,5+3*(victim.melee||0)));
+        if(Math.random()*100<disbelief){ narrative.push(`The ${m.name} sees through the illusion — the phantom dissolves and it turns back on ${c.name}.`); encState.mirror=null; }
+        else {
+          narrative.push(`🪞 The ${m.name} battles its own mirror image while ${c.name} concentrates.`);
+          if(Math.random()*100<pcHitChance(victim,phantasm,50)){ phantasm.hp-=pcMeleeDamage(victim,phantasm); }
+          if(phantasm.hp>0&&Math.random()*100<pcHitChance(phantasm,victim,50)){ const d=pcMeleeDamage(phantasm,victim); victim.hp-=d; narrative.push(`   The phantom strikes the ${m.name} for ${d}. (Monster HP: ${Math.max(0,Math.round(victim.hp))})`); }
+          monsterHp=victim.hp;
+          if(phantasm.hp<=0){ narrative.push(`The ${m.name} shatters the phantom — the illusion ends.`); encState.mirror=null; }
+          if(monsterHp<=0){ won=true; narrative.push(`The ${m.name} is slain by its own mirror image!`); break; }
+          continue;
+        }
+      }
+      // Psychic Blast free strikes — the hero lands un-answered blows at melee range.
+      if((heroCbt._freeAttacks||0)>0 && range==='melee' && monsterHp>0){
+        while(heroCbt._freeAttacks>0 && monsterHp>0){
+          const hm=effStat(c,'melee')-monsterMelee;
+          if(Math.random()*100<Math.max(5,50+hm*10)){ const d=Math.max(1,rng(1,6)+Math.max(0,hm)); monsterHp-=d; narrative.push(`⚡ ${c.name} lands a free strike on the ${m.name} for ${d}! (Monster HP: ${Math.max(0,monsterHp)})`); }
+          heroCbt._freeAttacks--;
+        }
+        if(monsterHp<=0){ won=true; break; }
+      }
+      // Monster stunned by Psychic Blast / held by Control Undead — it loses this round.
+      if(monCbt.status.stun>0){
+        narrative.push(`The ${m.name} is held helpless and cannot act this round. (${monCbt.status.stun} left)`);
+        monCbt.status.stun--;
+        continue;
+      }
       // Doom Aura ongoing damage
       if(m._doomAura>0){heroHp-=m._doomAura;damageToHero+=m._doomAura;narrative.push(`💀 Doom Aura pulses — ${c.name} takes ${m._doomAura} necrotic damage! (HP: ${Math.max(0,heroHp)})`);}
       // Hero skipped rounds (paralysis, freeze)
@@ -4511,7 +4553,8 @@ const BATTLE_ARMY_SPELLS={
           const heroMelee=effStat(c,'melee');
           const meleeDiff=heroMelee-monsterMelee;
           const heroHit=Math.max(10,Math.min(90,50+meleeDiff*10));
-          const monHit=Math.max(10,Math.min(90,50-meleeDiff*10));
+          let monHit=Math.max(10,Math.min(90,50-meleeDiff*10));
+          monHit=Math.max(5,(monHit-(monCbt.status.hitPenalty||0))*(heroCbt.status.dodge||1)); // Holy Symbol / Invisibility
           const temper=c.temper||'Brave';
           const hitMod=temper==='Berserk'?10:temper==='Brave'?10:temper==='Cautious'?0:-5;
           const heroFinalHit=Math.max(5,heroHit+hitMod-heroHitPenalty+(c._scoutBonus||0));
@@ -4536,7 +4579,8 @@ const BATTLE_ARMY_SPELLS={
                 c._mirrorImages--;
                 narrative.push(`The ${m.name} strikes — but hits a Mirror Image! (${c._mirrorImages} image${c._mirrorImages!==1?'s':''} remaining)`);
               } else {
-                const mDmg=Math.max(1,rng(1,6))+(m._incomingDmgBonus||0);
+                let mDmg=Math.max(1,rng(1,6))+(m._incomingDmgBonus||0);
+                if(monCbt.status.meleeHalvedRounds>0) mDmg=Math.max(1,Math.floor(mDmg/2)); // Spiritwrack
                 heroHp-=mDmg;damageToHero+=mDmg;
                 narrative.push(`The ${m.name} ${rng(0,1)?'retaliates':'counter-attacks'} for ${mDmg} damage! (Hero HP: ${Math.max(0,heroHp)})`);
               }
@@ -4545,8 +4589,8 @@ const BATTLE_ARMY_SPELLS={
             }
           }
 
-          // Monster spell phase — fires after melee counter each round
-          if(monsterHp>0&&(m.spells||[]).length>0){
+          // Monster spell phase — fires after melee counter each round (unless silenced by Spiritwrack)
+          if(monsterHp>0&&(m.spells||[]).length>0&&monCbt.status.silenceRounds<=0){
             const availSpells=m.spells.filter(s=>Math.random()*100<s.castChance);
             if(availSpells.length>0){
               const ms=availSpells[Math.floor(Math.random()*availSpells.length)];
@@ -4757,48 +4801,13 @@ const BATTLE_ARMY_SPELLS={
           }
           if(encLevel===0){narrative.push(`${c.name} knows no combat spells.`);break;}
 
-          const arcBonus2=hasDisc(c.player,'sd27')?10:0;
-          const castChance2=Math.min(95,20+encLevel*10+arcBonus2);
-          const spellRoll2=Math.random()*100;
-          narrative.push(`📊 ${encSpellName} (${encSchool} ${encLevel}): cast chance ${castChance2}% [roll ${spellRoll2.toFixed(0)}${spellRoll2<castChance2?' ✓':' ✗'}]`);
-
-          if(spellRoll2>=castChance2){narrative.push(`${c.name}'s ${encSpellName} fizzles.`);break;}
-
-          if(encSpellName==='Holy Symbol'){
-            const isUndead=m.name.includes('Lich')||m.name.includes('Vampi')||m.name.includes('Death')||m.name.includes('Bone')||m.name.includes('Skeleton');
-            const dmg2=rng(6,14)*(isUndead?2:1);monsterHp-=dmg2;
-            narrative.push(`${c.name} raises the Holy Symbol — sacred light ${isUndead?'DEVASTATES':'burns'} the ${m.name} for ${dmg2} damage!${isUndead?' (×2 vs undead)':''} (Monster HP: ${Math.max(0,monsterHp)})`);
-          } else if(encSpellName==='Spiritwrack'){
-            const isUndead2=m.name.includes('Lich')||m.name.includes('Vampi')||m.name.includes('Death')||m.name.includes('Bone');
-            const dmg2=rng(8,16)*(isUndead2?2:1);monsterHp-=dmg2;
-            narrative.push(`Spiritwrack tears through the ${m.name} for ${dmg2} spiritual damage!${isUndead2?' (×2 vs undead!)':''} (Monster HP: ${Math.max(0,monsterHp)})`);
-          } else if(encSpellName==='Psychic Blast'){
-            const dmg2=rng(6,14);monsterHp-=dmg2;
-            narrative.push(`${c.name} unleashes Psychic Blast — ${dmg2} direct mental damage! (Monster HP: ${Math.max(0,monsterHp)})`);
-          } else if(encSpellName==='Telekinetic Storm'){
-            const dmg2=rng(5,12);monsterHp-=dmg2;
-            narrative.push(`${c.name} hurls debris with Telekinetic Storm! ${dmg2} damage. (Monster HP: ${Math.max(0,monsterHp)})`);
-          } else if(encSpellName==='Mirror Image'){
-            c._mirrorImages=(c._mirrorImages||0)+2;
-            narrative.push(`${c.name} conjures Mirror Images — next 2 attacks against them will hit a decoy!`);
-          } else if(encSpellName==='Lightning Bolt'){
-            const dmg2=rng(8,18);monsterHp-=dmg2;
-            narrative.push(`${c.name} calls down Lightning Bolt — ${dmg2} searing damage! (Monster HP: ${Math.max(0,monsterHp)})`);
-          } else if(encSpellName==='Fireball'){
-            const dmg2=rng(6,14);monsterHp-=dmg2;
-            narrative.push(`${c.name} hurls Fireball — ${dmg2} fire damage engulfs the ${m.name}! (Monster HP: ${Math.max(0,monsterHp)})`);
-          } else if(encSpellName==='Curse'){
-            monsterMelee=Math.max(0,(monsterMelee||1)-1);m._cursed=true;
-            narrative.push(`${c.name}'s Curse settles over the ${m.name} — Melee −1, strength weakened for rest of encounter!`);
-          } else if(encSpellName==='Hand of Death'){
-            const dmg2=rng(6,16);const heal2=Math.ceil(dmg2/2);monsterHp-=dmg2;
-            heroHp=Math.min(c.maxHp||20,heroHp+heal2);
-            narrative.push(`${c.name} reaches with Hand of Death — ${dmg2} damage drains the ${m.name}, restoring ${heal2} HP! (Monster HP: ${Math.max(0,monsterHp)}, Hero HP: ${heroHp})`);
-          } else {
-            const dmg2=rng(4,12);monsterHp-=dmg2;
-            narrative.push(`${c.name} casts ${encSpellName} for ${dmg2} damage! (Monster HP: ${Math.max(0,monsterHp)})`);
-          }
-          if(Math.random()<0.08&&encLevel<5){c.skills[encSchool]=(c.skills[encSchool]||0)+1;narrative.push(`${c.name}'s ${encSchool} skill improves to ${c.skills[encSchool]}!`);}
+          // ── Bridge to the unified engine: the hero's combat spells resolve through the SAME
+          // pcCastCombatSpell used in duels (cast chance, per-encounter limits, and all effects),
+          // so White→Necromancy combat spells behave identically in feature fights.
+          heroCbt.hp=heroHp; monCbt.hp=monsterHp; monCbt.melee=monsterMelee; encState.range=range;
+          pcCastCombatSpell(heroCbt, monCbt, encSpellName, narrative, encState);
+          heroHp=heroCbt.hp; monsterHp=monCbt.hp; monsterMelee=monCbt.melee;
+          if(monsterHp<=0){won=true;}
           break;}
 
                 case 'TA':
@@ -4819,7 +4828,7 @@ const BATTLE_ARMY_SPELLS={
         case 'ST':
         case 'STEAL':{
           const thiefLevel=effStat(c,'thief');
-          const stealChance=15+thiefLevel*15;
+          const stealChance=15+thiefLevel*15+(heroCbt.castSpells.includes('Invisibility')?15:0); // +15% under Invisibility
           const stealRoll=Math.random()*100;
           narrative.push(`📊 Steal — Thief ${thiefLevel}: steal chance ${stealChance}% (roll ${stealRoll.toFixed(0)}${stealRoll<stealChance?' ✓':' ✗'})`);
           if(stealRoll<stealChance){
@@ -4842,7 +4851,7 @@ const BATTLE_ARMY_SPELLS={
           const temper=c.temper||'Brave';
           const tempBonus=temper==='Cautious'?10:0;
           const fleePenalty=m._fleePenalty||0;
-          const totalFleeChance=Math.max(5,fleeChance+tempBonus-fleePenalty);
+          const totalFleeChance=Math.max(5,fleeChance+tempBonus-fleePenalty+(heroCbt.status.fleeBonus||0)); // +30% under Invisibility
           const fleeRoll=Math.random()*100;
           narrative.push(`📊 Flee — monster speed ${monsterSpeed}: ${fleeChance}%${tempBonus?` + Cautious ${tempBonus}%`:''}${fleePenalty?` − Vortex ${fleePenalty}%`:''} = ${totalFleeChance}% (roll ${fleeRoll.toFixed(0)}${fleeRoll<totalFleeChance?' ✓':' ✗'})`);
           if(fleeRoll<totalFleeChance){
@@ -7215,6 +7224,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.12-1526</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.12-2019</div>
 </body>
 </html>
