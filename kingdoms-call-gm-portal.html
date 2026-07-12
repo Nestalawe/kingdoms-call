@@ -1168,7 +1168,9 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   if(required===0) return 1.0;
 
   // Psychic Blast (battle magic): this commander's Druid skill has been negated for the battle.
-  const rawDruid=heroChar._druidNegated?0:Math.max(0,Math.min(5,(heroChar.skills?.druid||0)+((heroChar.items||[]).reduce((s,it)=>s+(it.effect?.stat==='druid'?it.effect.bonus:0),0))));
+  let rawDruid=heroChar._druidNegated?0:Math.max(0,Math.min(5,(heroChar.skills?.druid||0)+((heroChar.items||[]).reduce((s,it)=>s+(it.effect?.stat==='druid'?it.effect.bonus:0),0))));
+  // Curse (battle magic): if Druid is the commander's cursed ability, it is halved for the battle.
+  if(heroChar._curseHalveStat==='druid') rawDruid=Math.floor(rawDruid/2);
   // Same-race troops are led as if the commander had at least Druid 1 for that race
   // (but a negated commander loses even that — their bond is severed).
   const herodruid=(sameRace&&!heroChar._druidNegated)?Math.max(1,rawDruid):rawDruid;
@@ -2419,27 +2421,27 @@ const SPELL_DEFS_P={
     fn:'elemental_summon'},
 
   // ══ NECROMANCY ══
-  'Control Undead': {school:'necromancy',target:'province',encounter:false,phase:true,
-    desc:'Take control of one Skeletal Legion in target province (any owner, including neutral defenders). 40%+10%/level chance. That unit joins your army.',
+  'Control Undead': {school:'necromancy',target:'character',encounter:true,phase:true,
+    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province. Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
     fn:'necromancy_control'},
-  'Skeletal Armies':{school:'necromancy',target:'province',encounter:false,phase:true,
-    desc:'After this phase, if you won a battle, raise one free Skeletal Legion from the fallen and perished in previous turns. One army per Necromancy level can be raised. Skeletal armies cost 1g upkeep and cannot gain experience. Graves decay ~10% per turn.',
+  'Skeletal Armies':{school:'necromancy',target:'none',encounter:false,phase:true,
+    desc:'Action: raise one random dead army unit lying in your province as a skeletal version under your command.',
     fn:'necromancy_skeletal'},
   'Curse':          {school:'necromancy',target:'character',encounter:true,phase:true,
-    desc:'Phase order: target hero loses 1 from their highest skill for one full turn. Encounter: monster loses 20% strength for remainder of encounter.',
+    desc:'Action: the target\'s highest skill is halved (rounded down) for the rest of the turn. Combat: the target\'s best combat ability is halved for the fight. Battle magic: the enemy commander\'s best combat-affecting skill (Tactical or Druid) is halved for the battle.',
     fn:'necromancy_curse'},
-  'Hand of Death':  {school:'necromancy',target:'character',encounter:true,phase:true,
-    desc:'Phase order: deal 6–16 damage to target hero; caster heals half the damage dealt. Encounter: 6–16 damage, caster heals 3 HP.',
+  'Hand of Death':  {school:'necromancy',target:'none',encounter:true,phase:false,
+    desc:'Combat: 10% per Necromancy level to deal damage equal to 50% of the enemy\'s maximum health.',
     fn:'necromancy_hand'},
-  'Kill Enemy':     {school:'necromancy',target:'character',encounter:false,phase:true,
-    desc:'15%+8%/level chance to instantly slay target hero (not kings). On failure, target takes 4–10 damage and is warned. Cannot target kings.',
-    fn:'necromancy_kill'},
+  'Plague':         {school:'necromancy',target:'province',encounter:false,phase:true,
+    desc:'Action: in your province or an adjacent one, each humanoid army unit has a (10% + 10%/level) chance to drop an experience level; survivors are immunised (half chance thereafter). The plague then spreads to adjacent provinces (15% each per phase) until turn\'s end. Not cumulative.',
+    fn:'necromancy_plague'},
 };
 
 // Spells available in encounters as CA tactic (subset of above)
 const ENCOUNTER_SPELLS_P=new Set([
-  'Holy Symbol','Spiritwrack','Psychic Blast','Telekinetic Storm',
-  'Mirror Image','Lightning Bolt','Fireball','Curse','Hand of Death'
+  'Holy Symbol','Spiritwrack','Psychic Blast','Telekinetic Storm','Charm',
+  'Mirror Image','Invisibility','Lightning Bolt','Fireball','Curse','Hand of Death','Control Undead'
 ]);
 
 // Spells available in encounters as CA tactic (subset of above)
@@ -2616,6 +2618,25 @@ async function runTurn(){
     return Math.max(0,Math.min(5,base));
   }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+  // ── SKILL GAIN THROUGH EXPERIENCE ─────────────────────────────────────────
+  // Characters may improve a skill by performing the matching action. Base 10% at level 0,
+  // easing off slightly as the skill rises. Common actions (move/explore) use a lower base
+  // because they happen so often. Combat resolves on COPIES, so we award to the real character.
+  const SKILLGAIN_STD=0.10, SKILLGAIN_COMMON=0.04;
+  function trySkillGain(char, skill, base){
+    if(!char) return;
+    const real=(char.id!=null && G.characters[char.id]) ? G.characters[char.id] : char;
+    if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
+    const lvl=(real.skills||{})[skill]||0;
+    if(lvl>=5) return;
+    const chance=(base==null?SKILLGAIN_STD:base)*(1-0.10*lvl); // slight easing per level
+    if(Math.random()<chance){
+      real.skills=real.skills||{}; real.skills[skill]=lvl+1;
+      log('system',`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience.`,{actor:real.player,targets:[real.player]});
+    }
+  }
+  const HUMANOID_RACES_SG=new Set(['Human','Elven','Dwarven','Orcish']);
 
 // ── TERRAIN STRENGTH MODIFIERS ─────────────────────────────
 // Applied to individual army unit strength during battle resolution.
@@ -2891,8 +2912,8 @@ const BATTLE_ARMY_SPELLS={
   // Players choose a magic SCHOOL in their Encounter Plan (tactic 'CS:<school>'); during the
   // pre-battle magic phase a RANDOM battle spell the commander can cast from that school is chosen.
   // Legacy 'CA:<spell>' tactics still cast that exact spell.
-  const BATTLE_SPELLS_BY_SCHOOL={white:['Holy Symbol','Spiritwrack'],elemental:['Fireball','Lightning Bolt'],psychic:['Psychic Blast','Telekinetic Storm'],necromancy:['Curse']};
-  const BATTLE_MAGIC_SPELL_SET=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+  const BATTLE_SPELLS_BY_SCHOOL={white:['Holy Symbol','Spiritwrack'],elemental:['Fireball','Lightning Bolt'],psychic:['Psychic Blast','Telekinetic Storm'],necromancy:['Curse','Control Undead']};
+  const BATTLE_MAGIC_SPELL_SET=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
   function pickBattleSpell(tactics, heroChar){
     tactics=tactics||[];
     // Preferred: an explicit school choice — cast a random spell the commander knows from that school.
@@ -2922,14 +2943,14 @@ const BATTLE_ARMY_SPELLS={
   function combatVsNPC(c, prov, neutralGuardHero){
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
-    if(c){c._druidNegated=false;c._tacticalNegated=false;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;}
+    if(c){c._druidNegated=false;c._tacticalNegated=false;c._curseHalveStat=null;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;neutralGuardHero._curseHalveStat=null;}
     const armies=c.armies||[];
     const defenders=prov.neutralDefenders||[];
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
     consumeTerror(prov, defenders, narrative);
     // Neutral guard hero contributes their tactical/melee skill to defense
     const defHero=neutralGuardHero||null;
-    const tactSkill=c._tacticalNegated?0:effStat(c,'tactical');
+    let tactSkill=c._tacticalNegated?0:effStat(c,'tactical'); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2);
     const tactBonus=1+tactSkill*0.2;
     // Tactical only applies to land armies (not flying or naval) per AK 4.1.1
     // Tactical only applies in land provinces AND to land units
@@ -2965,7 +2986,7 @@ const BATTLE_ARMY_SPELLS={
     // Hero casts first CA: spell from their encounter plan
     // that is relevant to army combat (hits provinces/armies)
     // ══════════════════════════════════════════════════════
-    const BATTLE_MAGIC_SPELLS=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+    const BATTLE_MAGIC_SPELLS=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
     const heroTactics=(c.encounterPlan?.tactics)||[];
     const heroPick=pickBattleSpell(heroTactics, c);
     if(heroPick){
@@ -2977,6 +2998,7 @@ const BATTLE_ARMY_SPELLS={
         const castRoll=Math.random()*100;
         narrative.push(`✨ **Pre-battle Magic: ${c.name} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll.toFixed(0)}${castRoll<castChance?' ✓':' ✗'}]`);
         if(castRoll<castChance){
+          trySkillGain(c, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
           if(spellName==='Fireball'){
             // 2–4 damage to 1–3 random defenders
             const hits=Math.min(defenders.length,rng(1,3));
@@ -3003,9 +3025,14 @@ const BATTLE_ARMY_SPELLS={
               narrative.push(`  ${spellName} strikes ${d.unitName||d.type}: −${dmg} strength this battle.`);
             }
           } else if(spellName==='Curse'){
-            // All defenders −15% effective strength (via global flag)
-            defenders.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil((armStr(d,null,null,prov.terrain)*0.15));});
-            narrative.push(`  Curse withers the defenders: all units −15% strength this battle.`);
+            // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the battle.
+            if(neutralGuardHero){ const tac=effStat(neutralGuardHero,'tactical'),dru=(neutralGuardHero.skills?.druid||0); neutralGuardHero._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${neutralGuardHero.name}'s ${neutralGuardHero._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
+            else narrative.push(`  ☠ Curse seeks a commander to wither, but these defenders are leaderless.`);
+          } else if(spellName==='Control Undead'){
+            // One random enemy undead unit defects to the caster's side.
+            const ui=defenders.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
+            if(ui.length>0){ const pick=ui[Math.floor(Math.random()*ui.length)]; const unit=defenders.splice(pick.i,1)[0]; armies.push(unit); const rc=G.characters[c.id]; if(rc){rc.armies=rc.armies||[]; rc.armies.push(unit);} narrative.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} — it defects to ${c.name}'s side!`); }
+            else narrative.push(`  ☠ Control Undead reaches out, but the enemy fields no undead to turn.`);
           } else if(spellName==='Holy Symbol'){
             // All enemy UNDEAD units fight at 75% base strength.
             const undeadDefs=defenders.filter(d=>d._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(d.type||''));
@@ -3055,7 +3082,7 @@ const BATTLE_ARMY_SPELLS={
     });
 
     // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr below)
-    const defTactLvl=defHero?(defHero._tacticalNegated?0:effStat(defHero,'tactical')):0;
+    let defTactLvl=defHero?(defHero._tacticalNegated?0:effStat(defHero,'tactical')):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2);
     const defTactBonus=defTactLvl>0?1+defTactLvl*0.2:1;
     // Army / defender counts (needed by archery and battle lines)
     const atkCount=armies.length; const defCount=(prov.neutralDefenders||[]).length;
@@ -3115,6 +3142,7 @@ const BATTLE_ARMY_SPELLS={
           const castRoll=Math.random()*100;
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll.toFixed(0)} ${castRoll<castChance?'✓':'✗'}]`);
           if(castRoll<castChance){
+            trySkillGain(defHero, school, SKILLGAIN_STD);
             if(defSpellName==='Fireball'||defSpellName==='Lightning Bolt'){
               const tgt=armies[Math.floor(Math.random()*armies.length)];
               const dmg=rng(3,8)*(defSpellLvl>=3?2:1);
@@ -3125,8 +3153,11 @@ const BATTLE_ARMY_SPELLS={
             } else if(defSpellName==='Telekinetic Storm'){
               if(c){ c._tacticalNegated=true; narrative.push(`  🌀 Telekinetic Storm scatters ${c.name}'s formations — their Tactical command is negated this battle.`); }
             } else if(defSpellName==='Curse'){
-              armies.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(armStr(a,c,playerAlign,prov.terrain)*0.15);});
-              narrative.push(`  Curse withers the attackers: all units −15% strength this battle.`);
+              if(c){ const tac=effStat(c,'tactical'),dru=(c.skills?.druid||0); c._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${c.name}'s ${c._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
+            } else if(defSpellName==='Control Undead'){
+              const ui=armies.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
+              if(ui.length>0){ const pick=ui[Math.floor(Math.random()*ui.length)]; const unit=armies.splice(pick.i,1)[0]; defHero.armies=defHero.armies||[]; defHero.armies.push(unit); const rc=G.characters[defHero.id]; if(rc&&rc!==defHero){rc.armies=rc.armies||[]; rc.armies.push(unit);} narrative.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} to ${defHero.name}'s side!`); }
+              else narrative.push(`  ☠ Control Undead finds no undead among the attackers.`);
             } else if(defSpellName==='Holy Symbol'){
               const undeadAtk=armies.filter(a=>a._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type||''));
               if(undeadAtk.length>0){ undeadAtk.forEach(a=>{a._tempStrReduction=(a._tempStrReduction||0)+Math.ceil(unitBaseStrength(a)*0.25);}); narrative.push(`  ✝ Holy Symbol sears the attacking undead — ${undeadAtk.length} unit${undeadAtk.length!==1?'s':''} at 75% strength.`); }
@@ -3293,6 +3324,8 @@ const BATTLE_ARMY_SPELLS={
     if(atkIllMult<1) narrative.push(`  🌫 The illusory terrain of ${prov.name} disorients ${c.name}'s forces — they fight at 80% strength.`);
     const atkStr=rawAtkStr*atkIllMult;
     const defStr=rawDefStr*defBonus*homeBonus;
+    // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
+    { const _rc=G.characters[c.id]; if(_rc) delete _rc._phantasmalBonus; if(c) delete c._phantasmalBonus; }
 
     // Fanaticism check
     const align=G.players[c.player]?.alignment||'Neutral';
@@ -3332,6 +3365,7 @@ const BATTLE_ARMY_SPELLS={
     // Combat result narrative
     const margin=finalAtk-finalDef;
     const won=margin>=0;
+    if(won && prov.terrain!=='sea') trySkillGain(c,'tactical',SKILLGAIN_STD); // Tactical: win a land battle
 
     // Closeness of battle affects retreat/stay and casualties
     const closenessRatio=Math.min(finalAtk,finalDef)/Math.max(finalAtk,finalDef);
@@ -3617,13 +3651,26 @@ const BATTLE_ARMY_SPELLS={
       }
       case 'Invisibility':{ caster.status.dodge=Math.min(caster.status.dodge,0.5); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — twice as hard to hit, +30% flee.`); break; }
       case 'Hand of Death':{ if(Math.random()*100<lvl*10){ const d=Math.max(1,Math.round(target.maxHp*0.5)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt}! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${lvl*10}%]`); break; }
-      case 'Curse':{ target.status.bestAbilityHalved=true; narrative.push(`  ${caster.name}'s Curse halves ${target.name}'s best combat ability.`); break; }
+      case 'Curse':{
+        // Halve (round down) the target's best combat ability for the duration of the fight.
+        const bestSchool=['white','psychic','illusory','elemental','necromancy'].reduce((b,s)=>(target.school[s]||0)>(target.school[b]||0)?s:b,'white');
+        const cands=[['melee',target.melee],['archery',target.archery],['magic',target.school[bestSchool]||0]];
+        cands.sort((a,b)=>b[1]-a[1]);
+        const [bestKey,bestVal]=cands[0];
+        if(bestVal>0){
+          if(bestKey==='melee') target.melee=Math.floor(target.melee/2);
+          else if(bestKey==='archery') target.archery=Math.floor(target.archery/2);
+          else target.school[bestSchool]=Math.floor(target.school[bestSchool]/2);
+          narrative.push(`  ${caster.name}'s Curse withers ${target.name}'s ${bestKey==='magic'?bestSchool+' magic':bestKey} — halved to ${bestKey==='melee'?target.melee:bestKey==='archery'?target.archery:target.school[bestSchool]} for the fight.`);
+        } else narrative.push(`  ${caster.name}'s Curse finds no ability in ${target.name} worth withering.`);
+        break;
+      }
       case 'Control Undead':{ if(target.isUndead){ target.status.stun=(target.status.stun||0)+Math.max(1,lvl); narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${Math.max(1,lvl)} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
       case 'Charm':{ caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
       default: narrative.push(`  ${caster.name} casts ${spellName}.`);
     }
     // small skill-up chance
-    if(Math.random()<0.06&&lvl<5&&caster.kind==='character'&&caster.ref.skills){ caster.ref.skills[school]=(caster.ref.skills[school]||0)+1; caster.school[school]=caster.ref.skills[school]; narrative.push(`  ${caster.name}'s ${school} skill improves to ${caster.ref.skills[school]}!`); }
+    if(caster.kind==='character'&&caster.ref){ trySkillGain(caster.ref, school, SKILLGAIN_STD); if(caster.ref.skills) caster.school[school]=caster.ref.skills[school]||caster.school[school]; }
     return true;
   }
 
@@ -3653,7 +3700,7 @@ const BATTLE_ARMY_SPELLS={
         const hit=pcHitChance(actor,foe,50);
         const roll=Math.random()*100;
         narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}%${roll<hit?' ✓':' ✗'})`);
-        if(roll<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`); }
+        if(roll<hit){ actor._didMelee=true; const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`); }
         else narrative.push(`  ${actor.name}'s blow is turned aside.`);
         break;
       }
@@ -3664,7 +3711,7 @@ const BATTLE_ARMY_SPELLS={
         if(state.range==='spell'){ state.range='bow'; narrative.push(`  ${actor.name} advances into bow range, drawing to fire.`); }
         if(state.range==='melee'){ narrative.push(`  ${actor.name} is locked in melee — too close to fire.`); break; }
         const shots=Math.max(1,actor.archery); const hit=30+actor.archery*10;
-        for(let s=0;s<shots&&foe.hp>0;s++){ const r=Math.random()*100; if(r<hit*(foe.status.dodge||1)){ const d=rng(1,6); const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow'); if(dealt)narrative.push(`  ${actor.name}'s arrow hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`); } else narrative.push(`  ${actor.name}'s arrow flies wide.`); }
+        for(let s=0;s<shots&&foe.hp>0;s++){ const r=Math.random()*100; if(r<hit*(foe.status.dodge||1)){ actor._didArchery=true; const d=rng(1,6); const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow'); if(dealt)narrative.push(`  ${actor.name}'s arrow hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`); } else narrative.push(`  ${actor.name}'s arrow flies wide.`); }
         break;
       }
       case 'CA': case 'SPELL':{
@@ -3773,6 +3820,12 @@ const BATTLE_ARMY_SPELLS={
       else if(A.hp<=0){ winner=B; loser=A; }
       else if(B.hp<=0){ winner=A; loser=B; }
     }
+    // Skill gains: the victor who landed blows improves the matching skill; a thief who stole improves Thief.
+    if(winner&&winner.kind==='character'&&winner.ref){
+      if(winner._didMelee) trySkillGain(winner.ref,'melee',SKILLGAIN_STD);
+      if(winner._didArchery) trySkillGain(winner.ref,'archery',SKILLGAIN_STD);
+    }
+    if(state.stoleBy&&state.stoleBy.kind==='character'&&state.stoleBy.ref) trySkillGain(state.stoleBy.ref,'thief',SKILLGAIN_STD);
     return {winner, loser, fledBy:state.fledBy, parley:state.parley, stoleBy:state.stoleBy,
             aHp:Math.max(0,Math.round(A.hp)), bHp:Math.max(0,Math.round(B.hp)), narrative};
   }
@@ -3842,11 +3895,11 @@ const BATTLE_ARMY_SPELLS={
   function combatVsChar(atk, def, prov){
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
-    if(atk){atk._druidNegated=false;atk._tacticalNegated=false;} if(def){def._druidNegated=false;def._tacticalNegated=false;}
+    if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._curseHalveStat=null;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._curseHalveStat=null;}
     const atkArmies=atk.armies||[];
     const defArmies=def.armies||[];
-    const atkTact=atk._tacticalNegated?0:effStat(atk,'tactical');
-    const defTact=def._tacticalNegated?0:effStat(def,'tactical');
+    let atkTact=atk._tacticalNegated?0:effStat(atk,'tactical'); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2);
+    let defTact=def._tacticalNegated?0:effStat(def,'tactical'); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2);
     // Tactical bonus only applies in land provinces
     const isPvPSea=prov.terrain==='sea';
     const atkTactBonus=isPvPSea?1:1+atkTact*0.2;
@@ -3984,7 +4037,7 @@ const BATTLE_ARMY_SPELLS={
     // ══════════════════════════════════════════════════════
     // PRE-BATTLE PHASE 1: MAGIC (both sides)
     // ══════════════════════════════════════════════════════
-    const BATTLE_MAGIC_PVP=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast']);
+    const BATTLE_MAGIC_PVP=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
 
     function applyPreBattleMagic(caster, targets, narr, enemyCmdr){
       const tactics=(caster.encounterPlan?.tactics)||[];
@@ -3998,6 +4051,7 @@ const BATTLE_ARMY_SPELLS={
       const castRoll=Math.random()*100;
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll.toFixed(0)}${castRoll<castChance?' ✓':' ✗'}]`);
       if(castRoll>=castChance){narr.push(`  Spell fizzles.`);return;}
+      trySkillGain(caster, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
       if(spellName==='Fireball'){
         const hits=Math.min(targets.length,rng(1,3));
         targets.slice().sort(()=>Math.random()-0.5).slice(0,hits).forEach(d=>{const dmg=rng(2,4);d._tempStrReduction=(d._tempStrReduction||0)+dmg;narr.push(`  Fireball: ${d.unitName||d.type} −${dmg} str.`);});
@@ -4009,8 +4063,11 @@ const BATTLE_ARMY_SPELLS={
         const d=targets[Math.floor(Math.random()*targets.length)];const dmg=rng(3,6);
         d._tempStrReduction=(d._tempStrReduction||0)+dmg;narr.push(`  ${spellName}: ${d.unitName||d.type} −${dmg} str.`);
       } else if(spellName==='Curse'){
-        targets.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(armStr(d,null,null,prov.terrain)*0.15);});
-        narr.push(`  Curse: all enemy units −15% str.`);
+        if(enemyCmdr){ const tac=effStat(enemyCmdr,'tactical'),dru=(enemyCmdr.skills?.druid||0); enemyCmdr._curseHalveStat=(tac>=dru?'tactical':'druid'); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${enemyCmdr._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
+      } else if(spellName==='Control Undead'){
+        const ui=targets.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
+        if(ui.length>0){ const pick=ui[Math.floor(Math.random()*ui.length)]; const unit=targets.splice(pick.i,1)[0]; caster.armies=caster.armies||[]; caster.armies.push(unit); const rc=G.characters[caster.id]; if(rc&&rc!==caster){rc.armies=rc.armies||[]; rc.armies.push(unit);} narr.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} to ${caster.name}'s side!`); }
+        else narr.push(`  ☠ Control Undead finds no enemy undead to turn.`);
       } else if(spellName==='Holy Symbol'){
         const ud=targets.filter(d=>d._isSkeletal||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(d.type||''));
         if(ud.length>0){ ud.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*0.25);}); narr.push(`  ✝ Holy Symbol: ${ud.length} enemy undead unit${ud.length!==1?'s':''} at 75% str.`); }
@@ -4148,6 +4205,8 @@ const BATTLE_ARMY_SPELLS={
     if(defIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${def.name}'s forces — they fight at 80% strength.`);
     const atkStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP+atkDice;
     const defStr=(defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP+defDice;
+    // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
+    [atk,def].forEach(x=>{ if(!x)return; const rx=G.characters[x.id]; if(rx) delete rx._phantasmalBonus; delete x._phantasmalBonus; });
 
     // ── STAT BLOCK ──
     narrative.push(`📊 **Battle stats:**`);
@@ -4165,6 +4224,7 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  Win chance (before dice): attacker needs >${(defStr-atkDice).toFixed(0)} raw adjusted (attacker had ${(atkStr-atkDice).toFixed(0)})`);
 
     const won=atkStr>=defStr;
+    if(prov.terrain!=='sea') trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD); // Tactical: win a land battle
     const margin=Math.abs(atkStr-defStr);
     const totalStrPvP=Math.max(1,atkStr+defStr);
     const margRatioPvP=margin/totalStrPvP;
@@ -4389,6 +4449,7 @@ const BATTLE_ARMY_SPELLS={
     let won=false, fled=false;
     let heroHp=c.hp||10;
     let monsterHp=m.hp||10;
+    let heroDidMelee=false, heroDidArchery=false; // for skill gains on victory
     let damageToHero=0;
     let heroSkippedRounds=0;  // paralysis, freeze etc.
     let heroHitPenalty=0;     // cumulative % penalty to hit
@@ -4460,12 +4521,11 @@ const BATTLE_ARMY_SPELLS={
           // Decay penalty each round
           heroHitPenalty=Math.max(0,heroHitPenalty-5);
           if(heroRoll<heroFinalHit){
+            heroDidMelee=true;
             const dmg=Math.max(1,rng(1,6)+Math.max(0,meleeDiff));
             monsterHp-=dmg;
             narrative.push(`${c.name} ${rng(0,1)?'strikes':'slashes'} the ${m.name} for ${dmg} damage! (Monster HP: ${Math.max(0,monsterHp)})`)
             if(m._reflectDamage){heroHp-=m._reflectDamage;damageToHero+=m._reflectDamage;narrative.push(`Brimstone Shield reflects ${m._reflectDamage} back at ${c.name}! (HP: ${Math.max(0,heroHp)})`);}
-          // 5% chance melee skill improves through combat
-          if(Math.random()<0.05&&(c.skills.melee||0)<5){c.skills.melee=(c.skills.melee||0)+1;narrative.push(`${c.name}'s Melee skill improves to ${c.skills.melee} through combat experience!`);};
           } else {
             narrative.push(`${c.name}'s ${rng(0,1)?'blow glances off':'attack misses'} the ${m.name}.`);
           }
@@ -4614,6 +4674,7 @@ const BATTLE_ARMY_SPELLS={
             if(r<hitChance){
               const dmg=rng(1,6);
               monsterHp-=dmg;
+              heroDidArchery=true;
               narrative.push(`${c.name}'s arrow finds its mark! ${dmg} damage to the ${m.name}. (Monster HP: ${Math.max(0,monsterHp)}) [roll ${r.toFixed(0)} < ${hitChance}]`);
               if(Math.random()<0.07&&(c.skills.archery||0)<5){c.skills.archery=(c.skills.archery||0)+1;narrative.push(`${c.name}'s Archery skill improves to ${c.skills.archery}!`);}
             } else {
@@ -4762,6 +4823,7 @@ const BATTLE_ARMY_SPELLS={
           const stealRoll=Math.random()*100;
           narrative.push(`📊 Steal — Thief ${thiefLevel}: steal chance ${stealChance}% (roll ${stealRoll.toFixed(0)}${stealRoll<stealChance?' ✓':' ✗'})`);
           if(stealRoll<stealChance){
+            trySkillGain(c,'thief',SKILLGAIN_STD); // Thief: successful steal
             narrative.push(`${c.name} uses superior stealth to slip past the ${m.name} and seize the treasure — the creature never even notices!`);
             // Steal: hero gets gold but monster stays (feature not cleared)
             // won=true is NOT set — the monster remains in the feature
@@ -4823,6 +4885,9 @@ const BATTLE_ARMY_SPELLS={
 
     if(won&&!fled){
       narrative.push(`With a final ${rng(0,1)?'decisive blow':'burst of effort'}, the ${m.name} is defeated!`);
+      // Skill gains: victory won with at least one successful melee/archery attack.
+      if(heroDidMelee) trySkillGain(c,'melee',SKILLGAIN_STD);
+      if(heroDidArchery) trySkillGain(c,'archery',SKILLGAIN_STD);
     } else if(!fled&&heroHp>0&&monsterHp>0){
       narrative.push(`Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
     }
@@ -5064,6 +5129,11 @@ const BATTLE_ARMY_SPELLS={
         c.location=toProv.id;
         // Illusory Terrain is dispelled for good once an enemy hero sets foot in the province.
         if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ delete toProv._illusoryTerrain; }
+        // Skill gains from movement: March (land move leading an army) / Naval (sea move with a fleet).
+        if((c.armies||[]).length>0){
+          if(toProv.terrain==='sea'){ if((c.armies||[]).some(a=>SEA_TYPES.has(a.type))) trySkillGain(c,'naval',SKILLGAIN_STD); }
+          else { trySkillGain(c,'march',SKILLGAIN_COMMON); }
+        }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
         if(!toProv.visitedBy)toProv.visitedBy=[];
@@ -5351,6 +5421,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'explore':{
+        trySkillGain(c,'explorer',SKILLGAIN_COMMON); // Explorer: performing an Explore order
         // AK 3.2: Basic Exploration Number × (Explorer skill + 1)%
         // Terrain table: Plain 50%, Desert 25%, Forest 15%, Mountain 15%, Jungle 10%, Sea 25%
         const BASIC_EXPLORE={plain:50,desert:25,forest:15,mountain:15,jungle:10,sea:25};
@@ -5501,6 +5572,7 @@ const BATTLE_ARMY_SPELLS={
           // Whale Cohorts are wild sea creatures — always the Primal race, whoever raises them.
           const recruitRace=(armyType==='Whale Cohort')?'Primal':(prov.race||'Human');
           c.armies.push({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
+          if(!HUMANOID_RACES_SG.has(recruitRace)) trySkillGain(c,'druid',SKILLGAIN_STD); // Druid: led a non-humanoid recruit
           }
           recordRecruit(armyType,prov.id);
           recruited.push(`${actualQty}× ${armyType}`);
@@ -5556,8 +5628,7 @@ const BATTLE_ARMY_SPELLS={
         // sd23 Disguise Techniques: this spy cannot be detected by intrusion notifications
         if(success&&hasDisc(c.player,'sd23')) c._spyDisguised=true;
         if(success){
-          // 6% chance Spy skill improves through espionage
-          if(Math.random()<0.06&&effStat(c,'spy')<5){c.skills.spy=(c.skills.spy||0)+1;log('explore',`${c.name}\'s Spy skill grows to ${c.skills.spy} through fieldwork!`,{actor:c.player,targets:[c.player]});}
+          trySkillGain(c,'spy',SKILLGAIN_STD); // Spy: successful espionage
           // sd14 Taxation Records: exact tax always shown in spy results
           const taxInfo=hasDisc(c.player,'sd14')?` Tax: ${prov.tax}g/turn.`:'';
           const defs=(prov.neutralDefenders||[]).map(d=>`${d.quality} ${d.type}`).join(', ')||'none';
@@ -5589,6 +5660,7 @@ const BATTLE_ARMY_SPELLS={
               const disc=available[Math.floor(Math.random()*available.length)];
               player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn});
               log('explore',`💡 ${c.name}'s scholarly pursuits bear fruit! **${disc.name}** (${disc.category}) discovered. ${disc.desc}`,{actor:c.player,targets:[c.player]});
+              trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
             } else {
               log('system',`${c.name} studies diligently — the roll succeeded but all known discoveries have already been made by your kingdom.`,{actor:c.player,targets:[c.player]});
             }
@@ -6161,26 +6233,14 @@ const BATTLE_ARMY_SPELLS={
 
         // ── NECROMANCY ──
         else if(fn==='necromancy_control'){
-          const controlChance=40+spellLevel*10;
-          const controlRoll=Math.random()*100;
-          log('system',`📊 Control Undead — ${controlChance}% (roll ${controlRoll.toFixed(0)})`,{actor:c.player,targets:[c.player]});
-          // Find a skeletal army in the target province (neutral or enemy)
-          const skelIdx=(targetProv.neutralDefenders||[]).findIndex(a=>a._isSkeletal);
-          const enemyCharWithSkel=G.characters.find(ch=>ch.alive&&ch.player!==c.player&&ch.location===targetProv.id&&(ch.armies||[]).some(a=>a._isSkeletal));
-          if(skelIdx>=0&&controlRoll<controlChance){
-            const skel=targetProv.neutralDefenders.splice(skelIdx,1)[0];
-            c.armies=(c.armies||[]);c.armies.push(skel);
-            log('hire',`✨ ${c.name}'s Control Undead reaches into the grave — the ${skel.unitName||skel.type} tears free from its old allegiance and marches under your banner!`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
-          } else if(enemyCharWithSkel&&controlRoll<controlChance){
-            const skelArmyIdx=(enemyCharWithSkel.armies||[]).findIndex(a=>a._isSkeletal);
-            if(skelArmyIdx>=0){
-              const skel=enemyCharWithSkel.armies.splice(skelArmyIdx,1)[0];
-              c.armies=(c.armies||[]);c.armies.push(skel);
-              log('hire',`✨ Control Undead wrests ${skel.unitName||skel.type} from ${enemyCharWithSkel.name}!`,{actor:c.player,targets:[c.player,enemyCharWithSkel.player].filter(x=>x!==null),provinceId:targetProv.id,public:true});
-            }
-          } else {
-            log('system',`${c.name}'s Control Undead${controlRoll>=controlChance?' fails to take hold':'finds no skeletal armies to control'} in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});
-          }
+          if(!targetChar||targetChar.location!==c.location){log('system',`Control Undead: no valid target hero stands in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Control Undead cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          const undeadIdxs=(targetChar.armies||[]).map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
+          if(undeadIdxs.length===0){log('system',`${c.name}'s Control Undead finds no undead among ${targetChar.name}'s forces.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const pick=undeadIdxs[Math.floor(Math.random()*undeadIdxs.length)];
+          const seized=targetChar.armies.splice(pick.i,1)[0];
+          c.armies=(c.armies||[]); c.armies.push(seized);
+          log('hire',`✨ ${c.name}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} — it now marches under your banner!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
         else if(fn==='necromancy_skeletal'){
           // Skeletal Armies: raise destroyed armies from this province's battlefield graves
@@ -6188,40 +6248,24 @@ const BATTLE_ARMY_SPELLS={
           if(graves.length===0){
             log('explore',`${c.name} calls out to the fallen in ${prov.name}, but there are no battlefield dead here to answer. Seek a province where armies have previously perished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
           }
-          const necroLvl=effStat(c,'necromancy');
-          // Raise a single army from the graves (regardless of necromancy level)
-          const canRaise=1;
-          const raised=[];
-          for(let r=0;r<canRaise;r++){
-            const gIdx=Math.floor(Math.random()*prov.battleGraves.length);
-            const grave=prov.battleGraves.splice(gIdx,1)[0];
-            const skel={
-              type:grave.type,quality:grave.quality,race:'Undead',_isSkeletal:true,
-              unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)`,
-            };
-            c.armies=(c.armies||[]);c.armies.push(skel);raised.push(skel);
-            log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-          }
-          if(raised.length>0){
-            const remaining=prov.battleGraves.length;
-            log('explore',`✨ ${raised.length} skeletal arm${raised.length!==1?'ies':'y'} raised (${raised.map(a=>a.quality+' '+a.type).join(', ')}). Upkeep: ${raised.length}g/turn. ${remaining} grave${remaining!==1?'s':''} remain in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          }
-          if(prov.owner!==null&&prov.owner!==c.player){
-            log('system',`${c.name} raises skeletal forces in enemy-controlled ${prov.name} — any defending armies may contest this province in subsequent phases.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          }
+          const gIdx=Math.floor(Math.random()*prov.battleGraves.length);
+          const grave=prov.battleGraves.splice(gIdx,1)[0];
+          const skel={ type:grave.type,quality:grave.quality,race:'Undead',_isSkeletal:true,
+            unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)` };
+          c.armies=(c.armies||[]);c.armies.push(skel);
+          log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn; ${prov.battleGraves.length} grave${prov.battleGraves.length!==1?'s':''} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         }
         else if(fn==='necromancy_curse'){
-          if(!targetChar){log('system',`Curse: no valid target character.`,{actor:c.player,targets:[c.player]});break;}
-          if(targetChar.location!==c.location){log('system',`Curse: target is not in the same province.`,{actor:c.player,targets:[c.player]});break;}
-          // Find highest skill and reduce by 1 for one turn
-          const highSkill=Object.entries(targetChar.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
-          if(highSkill){
-            if(!targetChar._curses) targetChar._curses={};
-            targetChar._curses[highSkill[0]]=(targetChar._curses[highSkill[0]]||0)+1;
-            log('combat',`✨ ${c.name}'s Curse settles over ${targetChar.name} — their ${highSkill[0]} is reduced by 1 for this turn!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
-          } else {
-            log('system',`${targetChar.name} has no skills to curse.`,{actor:c.player,targets:[c.player]});
-          }
+          if(!targetChar||targetChar.location!==c.location){log('system',`Curse: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Curse cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          // The target's highest skill is halved (rounded down) for the rest of the turn.
+          const high=Object.entries(targetChar.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+          if(!high){log('system',`${targetChar.name} has no skills to curse.`,{actor:c.player,targets:[c.player]});break;}
+          const [sk,val]=high;
+          const reduce=val-Math.floor(val/2);
+          targetChar._curses=targetChar._curses||{};
+          targetChar._curses[sk]=(targetChar._curses[sk]||0)+reduce;
+          log('combat',`✨ ${c.name}'s Curse settles over ${targetChar.name} — their ${SKILL_LABELS[sk]||sk} is halved (${val}→${Math.floor(val/2)}) for the rest of the turn!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
         else if(fn==='necromancy_hand'){
           if(!targetChar){log('system',`Hand of Death: no valid target.`,{actor:c.player,targets:[c.player]});break;}
@@ -6233,28 +6277,19 @@ const BATTLE_ARMY_SPELLS={
           log('combat',`✨ ${c.name} reaches with the Hand of Death — ${dmg} damage drains ${targetChar.name}, restoring ${heal} HP to ${c.name}! (${targetChar.name} HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
           if(targetChar.hp<=0){log('combat',`${targetChar.name} is slain by the Hand of Death!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
         }
-        else if(fn==='necromancy_kill'){
-          if(!targetChar){log('system',`Kill Enemy: no valid target.`,{actor:c.player,targets:[c.player]});break;}
-          if(targetChar.isKing){log('system',`Kill Enemy cannot target kings.`,{actor:c.player,targets:[c.player]});break;}
-          if(targetChar.location!==c.location){log('system',`Kill Enemy: target is not in the same province.`,{actor:c.player,targets:[c.player]});break;}
-          const killChance=15+spellLevel*8;
-          const killRoll=Math.random()*100;
-          log('system',`📊 Kill Enemy — ${killChance}% (roll ${killRoll.toFixed(0)})`,{actor:c.player,targets:[c.player]});
-          if(killRoll<killChance){
-            log('combat',`✨ Kill Enemy strikes true! ${targetChar.name} collapses, life extinguished.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});
-            handleHeroDeath(targetChar,c);
-          } else {
-            const warnDmg=rng(4,10);
-            targetChar.hp=Math.max(1,targetChar.hp-warnDmg);
-            log('combat',`${c.name}'s Kill Enemy misses its mark — ${targetChar.name} feels the brush of death and takes ${warnDmg} damage! They have been warned.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
-          }
+        else if(fn==='necromancy_plague'){
+          // Target the caster's province or an adjacent one.
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Plague must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetProv._plaguedTurn===G.turn){log('system',`${targetProv.name} is already stricken with plague this turn — a second casting adds nothing (not cumulative).`,{actor:c.player,targets:[c.player]});break;}
+          targetProv._plaguedTurn=G.turn; targetProv._plagueLevel=spellLevel; targetProv._plagueCaster=c.player;
+          const res=applyPlague(targetProv, spellLevel);
+          log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true});
         }
 
-        // Skill improvement chance after successful cast
-        if(Math.random()<0.08&&spellLevel<5){
-          c.skills[school]=(c.skills[school]||0)+1;
-          log('explore',`${c.name}'s ${school} skill improves to ${c.skills[school]} through spellcasting!`,{actor:c.player,targets:[c.player]});
-        }
+        // Magic school skill gain on a successful action cast
+        trySkillGain(c, school, SKILLGAIN_STD);
         break;
       }
 
@@ -6553,6 +6588,41 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   function armyTotalStr(ch, prov){
     return (ch.armies||[]).reduce((s,a)=>s+armStr(a, ch, (G.players[ch.player]?.alignment), prov.terrain), 0);
   }
+
+  // ── PLAGUE (Necromancy) ───────────────────────────────────────────────────
+  // Each humanoid army unit in the province has a (10% + 10%/level) chance to lose an experience
+  // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
+  const _PLAGUE_QDOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
+  function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
+  function applyPlague(prov, level){
+    const chance=0.10+0.10*(level||0);
+    const armies=[...(prov.neutralDefenders||[])];
+    (G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id).forEach(ch=>armies.push(...(ch.armies||[])));
+    let tested=0, affected=0;
+    armies.forEach(a=>{
+      if(!_isHumanoidRace(a.race)) return;
+      tested++;
+      const eff=a._plagueImmune?chance*0.5:chance;
+      if(Math.random()<eff && _PLAGUE_QDOWN[a.quality]){ a.quality=_PLAGUE_QDOWN[a.quality]; affected++; }
+      a._plagueImmune=true; // survived a plague → immunised for the future
+    });
+    return {tested, affected};
+  }
+  // Each phase, an active plague spreads to adjacent provinces (15% each) and can spread further.
+  function spreadPlagues(ph){
+    const sources=(G.world.provinces||[]).filter(p=>p&&p._plaguedTurn===G.turn);
+    sources.forEach(p=>{
+      getNeighborsP(p,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{
+        if(!nb||nb._plaguedTurn===G.turn) return;
+        if(Math.random()<0.15){
+          nb._plaguedTurn=G.turn; nb._plagueLevel=p._plagueLevel||0; nb._plagueCaster=p._plagueCaster;
+          const res=applyPlague(nb, nb._plagueLevel);
+          log('combat',`☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested!==1?'s':''} sicken.`,{actor:null,targets:[],provinceId:nb.id,public:true});
+        }
+      });
+    });
+  }
+
   function resolveStalledBattles(ph){
     (G.world.provinces||[]).forEach(prov=>{
       if(!prov||!prov._battleUnresolved) return;
@@ -6650,6 +6720,7 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
     log('system',`— ${SEASONS[ph]} —`);
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     resolveStalledBattles(ph);
+    spreadPlagues(ph);
     const active=(G.characters||[]).filter(c=>c.player!==null&&c.alive);
     const sorted=[...active].sort((a,b)=>{
       const aD=(G.turnOrders[a.id]||[])[ph];
@@ -6874,6 +6945,7 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     delete c._druidNegated;
     delete c._tacticalNegated;
     delete c._phantasmalBonus;
+    delete c._curseHalveStat;
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
@@ -7143,6 +7215,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.12-0702</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.12-1526</div>
 </body>
 </html>

@@ -1259,7 +1259,7 @@ const SPELLS_BY_SCHOOL={
   psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm'],
   illusory:['Illusory Terrain','Phantasmal Armies','Hide Feature','Invisibility'],  // Mirror Image is encounter-only
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon'],
-  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy'],
+  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague'],
 };
 // Encounter-only (CA tactic): Mirror Image
 const ENCOUNTER_ONLY_SPELLS=new Set(['Mirror Image']);
@@ -1295,11 +1295,11 @@ const SPELL_HINTS={
   'Earthquake':'Target: any province. Tax −1–3, armies move at half speed next phase.',
   'Flood':'Target: non-mountain province. All land armies there cannot move for one phase.',
   'Elemental Summon':'Summons a Fire Elemental (Str 6, Average) that lasts until end of turn.',
-  'Control Undead':'Target: province with a Skeletal Legion. 40%+10%/level chance to seize it.',
+  'Control Undead':'Target: an enemy/neutral hero here — seize one of their undead units.',
   'Skeletal Armies':'Raise fallen armies from this province\'s battlefield graves. One army per Necromancy level, one Skeletal Legion rises from the fallen.',
   'Curse':'Target: a character here. Their highest skill −1 for this turn.',
   'Hand of Death':'Target: a character here. 6–16 damage; you heal half the damage dealt.',
-  'Kill Enemy':'Target: a non-king character here. 15%+8%/level instant death chance.',
+  'Plague':'Target: your province or adjacent — humanoid units may lose experience; spreads over the turn.',
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 // Army display helper — shows unit name if known, falls back to plain type+quality
@@ -1503,7 +1503,7 @@ function addEncounterTactic(charId, code){
       psychic:['Psychic Blast','Telekinetic Storm'],
       illusory:['Mirror Image'],
       elemental:['Lightning Bolt','Fireball'],
-      necromancy:['Curse','Hand of Death'],
+      necromancy:['Curse','Hand of Death','Control Undead'],
     };
 
     // Also include schools being practised in any phase this turn
@@ -1749,8 +1749,8 @@ function onSpellChange(charId, ph, selectedSpell){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
   const report=currentReport||{};
 
-  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
-  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
+  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Plague']);
+  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Lightning Bolt','Curse','Charm','Oratory']);
 
   // Remove any existing secondary selector/hint, keep the spell select
   const spellSelect=document.getElementById(`po-target-${charId}-${ph}`);
@@ -2326,7 +2326,7 @@ function buildTargetField(c, ph, saved){
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
         'Illusory Terrain','Phantasmal Armies','Hide Feature',
         'Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon',
-        'Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy']);
+        'Control Undead','Skeletal Armies','Curse','Plague']);
 
       // Also include schools being practised in an earlier phase this turn.
       // The practice may or may not succeed, but the player should be able to
@@ -2393,8 +2393,8 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>(skills[school]||0)>=1||practisingSchools.has(school))
         .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Control Undead']);
-      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Lightning Bolt','Curse','Hand of Death','Kill Enemy','Charm','Oratory']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Feature','Fireball','Earthquake','Flood','Plague']);
+      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Lightning Bolt','Curse','Charm','Oratory']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
         const provOpts=(report.ownedProvinces||[]).concat(report.visitedProvinces||[])
@@ -3033,6 +3033,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.12-0702</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.12-1526</div>
 </body>
 </html>
