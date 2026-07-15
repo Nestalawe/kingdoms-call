@@ -1257,21 +1257,21 @@ const MONSTERS_P=[
             {name:'Bone Shield',school:'necromancy',dmg:[0,0],effect:'acolyte absorbs next 8 dmg',castChance:30,flavour:'A swirling shield of animated bones snaps into place!'},
             {name:'Raise Fallen',school:'necromancy',dmg:[0,0],effect:'acolyte regains 5 HP',castChance:25,flavour:'The acolyte chants and draws life-force from the bodies of the fallen!'}]},
   // ── Legendary (hp 40–70) — powerful multi-spell casters ──
-  {name:'Dragon',hp:58,power:'Legendary',melee:4,archery:0,speed:'fast',minG:7,maxG:10,
+  {name:'Dragon',hp:48,power:'Legendary',melee:4,archery:0,speed:'fast',minG:7,maxG:10,
     spells:[{name:'Fire Breath',school:'elemental',dmg:[8,15],effect:'',castChance:55,flavour:'The dragon inhales — then a torrent of searing dragonfire engulfs you!'},
             {name:'Wing Storm',school:'elemental',dmg:[4,8],effect:'all your armies take 3 dmg each',castChance:35,flavour:'Wings the size of sails create a hurricane blast!'},
             {name:'Dragon Terror',school:'psychic',dmg:[0,0],effect:'hero must pass courage test or flee (50%)',castChance:40,flavour:'The dragon\'s ancient gaze radiates primal terror — your every instinct screams to run!'}]},
-  {name:'Lich',hp:44,power:'Legendary',melee:3,archery:0,speed:'slow',minG:6,maxG:10,
+  {name:'Lich',hp:42,power:'Legendary',melee:3,archery:0,speed:'slow',minG:6,maxG:10,
     spells:[{name:'Finger of Death',school:'necromancy',dmg:[10,18],effect:'10% instant kill',castChance:45,flavour:'A bony finger points — black death magic surges towards you!'},
             {name:'Necrotic Burst',school:'necromancy',dmg:[6,12],effect:'hero loses 1 from highest skill for 1 turn',castChance:50,flavour:'A wave of entropic energy corrodes your very essence!'},
             {name:'Undead Thralls',school:'necromancy',dmg:[0,0],effect:'lich regains 8 HP as it draws power from nearby dead',castChance:35,flavour:'The lich stretches its hands wide, drinking the death-energy of the battlefield!'},
             {name:'Paralyse',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:30,flavour:'Iron bands of psychic force clamp around your mind and body!'}]},
-  {name:'Ancient Wyrm',hp:65,power:'Legendary',melee:5,archery:0,speed:'fast',minG:8,maxG:10,
+  {name:'Ancient Wyrm',hp:48,power:'Legendary',melee:5,archery:0,speed:'fast',minG:8,maxG:10,
     spells:[{name:'Ancient Flame',school:'elemental',dmg:[10,18],effect:'',castChance:55,flavour:'Flame older than civilisation pours from the Ancient Wyrm\'s jaws!'},
             {name:'Psychic Roar',school:'psychic',dmg:[5,10],effect:'hero loses all Archery shots this round',castChance:45,flavour:'The wyrm\'s mindless roar shatters conscious thought!'},
             {name:'Tail Sweep',school:'elemental',dmg:[6,10],effect:'hero knocked back: loses next attack',castChance:40,flavour:'A tail like a castle wall sweeps everything aside!'},
             {name:'Draconic Presence',school:'psychic',dmg:[0,0],effect:'hero must beat 60% courage or all attacks -15% for encounter',castChance:35,flavour:'The wyrm\'s sheer age and power exerts a crushing mental weight!'}]},
-  {name:'Elder Titan',hp:70,power:'Legendary',melee:5,archery:0,speed:'slow',minG:7,maxG:10,
+  {name:'Elder Titan',hp:50,power:'Legendary',melee:5,archery:0,speed:'slow',minG:7,maxG:10,
     spells:[{name:'World-Shaker',school:'elemental',dmg:[8,15],effect:'all armies take 5 dmg each',castChance:45,flavour:'The Elder Titan stamps — the very world shakes to its foundations!'},
             {name:'Divine Wrath',school:'white',dmg:[10,20],effect:'ignores all armour and defensive bonuses',castChance:40,flavour:'Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!'},
             {name:'Time Stop',school:'illusory',dmg:[0,0],effect:'hero loses 3 rounds completely — cannot act',castChance:25,flavour:'Reality stutters. You blink and three rounds have passed — you\'ve been standing frozen!'}]},
@@ -1382,7 +1382,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8},tier:2},
   {name:'Iron Heart Talisman',desc:'Max HP +5, +2 HP recovered each Rest order',effect:{stat:'maxHp',bonus:5},tier:1},
   // ── Army bonuses (general) ──
-  {name:'Battle Standard',desc:'All armies led: strength +3 each',effect:{stat:'armyBonus',bonus:3},tier:3},
+  {name:'Battle Standard',desc:'All armies led: strength +2 each',effect:{stat:'armyBonus',bonus:2},tier:3},
   {name:'Banner of the Realm',desc:'All armies led: +1 quality tier when defending home province',effect:{stat:'homeDefBonus',bonus:1},tier:2},
   // ── Cavalry-specific ──
   {name:'Golden Spur',desc:'Cavalry and Knights: +25% strength when you lead them',effect:{stat:'cavBonus',bonus:1},tier:1},
@@ -1394,13 +1394,13 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Quiver of Many Arrows',desc:'Archer units you lead: fire one extra shot in the archery pre-phase',effect:{stat:'archBonus',bonus:1},tier:1},
   {name:'Eagle-Eye Pendant',desc:'Longbowmen and Elven Bowmen: +30% strength',effect:{stat:'archerStr',bonus:1},tier:1},
   // ── Naval-specific ──
-  {name:'Kraken Figurehead',desc:'All fleets you lead: +3 strength and +1 speed',effect:{stat:'navalBonus',bonus:1},tier:3},
+  {name:'Kraken Figurehead',desc:'All fleets you lead: +2 strength and +1 speed',effect:{stat:'navalBonus',bonus:1},tier:3},
   {name:'Tide-Caller\'s Horn',desc:'Fleets may move through any sea province regardless of sea movement rules',effect:{stat:'navalMove',bonus:1},tier:2},
   // ── Heavy/Siege-specific ──
   {name:'Engineer\'s Blueprint',desc:'Mountain Guns and Dwarf Ironclads: +4 strength',effect:{stat:'heavyBonus',bonus:1},tier:1},
   {name:'Siege Master\'s Ring',desc:'Province defence bonuses reduced by half when you attack',effect:{stat:'siegeBonus',bonus:1},tier:2},
   // ── Undead-specific ──
-  {name:'Black Sceptre',desc:'Skeletal Legions you lead: +3 strength and never disband',effect:{stat:'undeadBonus',bonus:1},tier:1},
+  {name:'Black Sceptre',desc:'Skeletal Legions you lead: +2 strength and never disband',effect:{stat:'undeadBonus',bonus:1},tier:1},
   {name:'Wailing Phylactery',desc:'Necromancy spells always succeed first cast per turn',effect:{stat:'necroAuto',bonus:1},tier:3},
   // ── Economy ──
   {name:'Ring of Wealth',desc:'+2g collected each tax season',effect:{stat:'taxBonus',bonus:2},tier:1},
@@ -2617,6 +2617,8 @@ async function runTurn(){
     return Math.max(0,Math.min(5,base));
   }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+  // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character.
+  function isHiddenChar(ch){ return !!(ch&&(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden')); }
 
   // ── SKILL GAIN THROUGH EXPERIENCE ─────────────────────────────────────────
   // Characters may improve a skill by performing the matching action. Base 10% at level 0,
@@ -2793,7 +2795,7 @@ function seaPenalty(armyType, terrain){
       str=Math.floor(str*terrainMultFinal);
     }
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
-    if(army._tempStrReduction){str=Math.max(0,str-army._tempStrReduction);delete army._tempStrReduction;delete army._archeryRed;}
+    if(army._tempStrReduction){str=Math.max(0,str-army._tempStrReduction);} // battle-only; cleared at battle end
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
     if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
     // Magic-item army bonuses carried by the leading commander.
@@ -2804,13 +2806,13 @@ function seaPenalty(armyType, terrain){
       const ARCH_I=new Set(['Longbowmen','Elven Bowmen','Shadow Archers','Crossbowmen']);
       const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
       const FLEET_I=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-      if(has('armyBonus')) str+=3;                                   // Battle Standard
+      if(has('armyBonus')) str+=2;                                   // Battle Standard
       if(has('cavBonus')&&CAV_I.has(army.type)) str=Math.round(str*1.25); // Golden Spur
       if(has('infBonus')&&INF_I.has(army.type)) str=Math.round(str*1.2);  // Legionnaire's Mark
       if(has('archerStr')&&ARCH_I.has(army.type)) str=Math.round(str*1.3);// Eagle-Eye Pendant
       if(has('heavyBonus')&&HEAVY_I.has(army.type)) str+=4;          // Engineer's Blueprint
-      if(has('navalBonus')&&FLEET_I.has(army.type)) str+=3;         // Kraken Figurehead
-      if(has('undeadBonus')&&army._isSkeletal) str+=3;              // Black Sceptre
+      if(has('navalBonus')&&FLEET_I.has(army.type)) str+=2;         // Kraken Figurehead
+      if(has('undeadBonus')&&army._isSkeletal) str+=2;              // Black Sceptre
     }
     // Evil Terror: province was terrorised last turn — defending armies -10%
     // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
@@ -2984,7 +2986,8 @@ const BATTLE_ARMY_SPELLS={
 
     // Terrain and defender bonus
     // sd03 Siege Engines: attacker with this discovery reduces defender bonus
-    const defBonus=hasDisc(c.player,'sd03')?1.10:1.25;
+    let defBonus=hasDisc(c.player,'sd03')?1.10:1.25;
+    if((c.items||[]).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${c.name}'s siege mastery halves the defenders' fortifications.`); }
     const isHome=prov.tax>=10;
     if(isHome) narrative.push(`The defenders fight on home soil, gaining an additional ×1.2 bonus.`);
     const homeBonus=isHome?1.2:1;
@@ -3015,8 +3018,8 @@ const BATTLE_ARMY_SPELLS={
         if(castRoll<castChance){
           trySkillGain(c, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
           if(spellName==='Fireball'){
-            // A random enemy unit's base strength is halved for the battle.
-            if(defenders.length>0){ const d=defenders[Math.floor(Math.random()*defenders.length)]; const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5)); d._tempStrReduction=(d._tempStrReduction||0)+cut; narrative.push(`  🔥 Fireball engulfs ${d.unitName||d.type} — its strength is halved this battle (−${cut}).`); }
+            // The strongest enemy unit has its base strength halved for the battle.
+            if(defenders.length>0){ const d=defenders.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b); const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5)); d._tempStrReduction=(d._tempStrReduction||0)+cut; narrative.push(`  🔥 Fireball engulfs the enemy's strongest unit, ${d.unitName||d.type} — its strength is halved this battle (−${cut}).`); }
           } else if(spellName==='Telekinetic Storm'){
             // Negate the enemy commander's Tactical bonus for this battle.
             if(neutralGuardHero){ neutralGuardHero._tacticalNegated=true; narrative.push(`  🌀 Telekinetic Storm scatters ${neutralGuardHero.name}'s formations — their Tactical command is negated this battle.`); }
@@ -3026,11 +3029,11 @@ const BATTLE_ARMY_SPELLS={
             if(neutralGuardHero){ neutralGuardHero._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${neutralGuardHero.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             else narrative.push(`  🧠 Psychic Blast reaches out, but these defenders have no commander to unmake.`);
           } else if(spellName==='Lightning Bolt'){
-            // A number of enemy armies equal to the caster's level lose 1 base strength for the battle.
+            // A number of enemy armies equal to the caster's level lose 10% of their strength for the battle.
             const n=Math.min(defenders.length, Math.max(1,spellLvl));
             const picks=defenders.slice().sort(()=>Math.random()-0.5).slice(0,n);
-            picks.forEach(d=>{ const qm={Green:1,Average:2,Veteran:3,Crack:4,Elite:5}[d.quality||'Average']||2; d._tempStrReduction=(d._tempStrReduction||0)+qm; });
-            narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — base strength −1 each this battle.`);
+            picks.forEach(d=>{ d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.10)); });
+            narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — each loses 10% of its strength this battle.`);
           } else if(spellName==='Curse'){
             // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the battle.
             if(neutralGuardHero){ const tac=effStat(neutralGuardHero,'tactical'),dru=(neutralGuardHero.skills?.druid||0); neutralGuardHero._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${neutralGuardHero.name}'s ${neutralGuardHero._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
@@ -3151,14 +3154,14 @@ const BATTLE_ARMY_SPELLS={
           if(castRoll<castChance){
             trySkillGain(defHero, school, SKILLGAIN_STD);
             if(defSpellName==='Fireball'){
-              const tgt=armies[Math.floor(Math.random()*armies.length)];
+              const tgt=armies.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b);
               const cut=Math.max(1,Math.round(unitBaseStrength(tgt)*0.5));
               tgt._tempStrReduction=(tgt._tempStrReduction||0)+cut;
-              narrative.push(`  🔥 Fireball halves the ${tgt.unitName||tgt.type}'s strength this battle (−${cut}).`);
+              narrative.push(`  🔥 Fireball halves the attackers' strongest unit, ${tgt.unitName||tgt.type} (−${cut}).`);
             } else if(defSpellName==='Lightning Bolt'){
               const n=Math.min(armies.length,Math.max(1,defSpellLvl));
-              armies.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(a=>{ const qm={Green:1,Average:2,Veteran:3,Crack:4,Elite:5}[a.quality||'Average']||2; a._tempStrReduction=(a._tempStrReduction||0)+qm; });
-              narrative.push(`  ⚡ Lightning Bolt sears ${n} attacking unit${n!==1?'s':''} — base strength −1 each.`);
+              armies.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(a=>{ a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(a)*0.10)); });
+              narrative.push(`  ⚡ Lightning Bolt sears ${n} attacking unit${n!==1?'s':''} — each loses 10% of its strength.`);
             } else if(defSpellName==='Psychic Blast'){
               if(c){ c._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${c.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             } else if(defSpellName==='Telekinetic Storm'){
@@ -3486,9 +3489,10 @@ const BATTLE_ARMY_SPELLS={
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
       const friendlyAdj=adjProvs.filter(p2=>p2.owner===c.player);
       prov._hadBattleThisTurn=true;
-      if(friendlyAdj.length===0){
-        // Routed in place — no retreat available, extra casualties
-        narrative.push(`${c.name}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`);
+      const infStay=(c.items||[]).some(it=>it.effect&&it.effect.stat==='infStay');
+      if(friendlyAdj.length===0 || infStay){
+        // Routed in place — no retreat available (or Shield-Wall Rune: the line will not break)
+        narrative.push(infStay?`${c.name}'s Shield-Wall holds — the infantry refuse to retreat and stand their ground, come what may.`:`${c.name}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`);
         armies.filter(a=>!a._died).forEach(a=>{
           if(Math.random()<0.15){
             narrative.push(`— ${a.unitName||a.type} are cut down in the rout — no escape!${a._isSkeletal?' Their bones crumble to dust.':''}`);
@@ -3512,6 +3516,8 @@ const BATTLE_ARMY_SPELLS={
       c.armies=c.armies.filter(a=>!a._died);
     }
 
+    // Battle-magic strength reductions last only for this battle — units recover afterward.
+    [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._archeryRed;});
     return{won,narrative};
   }
 
@@ -3983,7 +3989,9 @@ const BATTLE_ARMY_SPELLS={
 
     // Province and defender bonuses
     const isHome=prov.tax>=10;
-    const defBonus=1.25*(isHome?1.2:1);
+    let defBonus=1.25*(isHome?1.2:1);
+    if(isHome && prov.owner===def.player && (def.items||[]).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${def.name}'s Banner of the Realm rallies the home defense (+25%).`); }
+    if((atk.items||[]).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atk.name}'s siege mastery halves the defenders' fortifications.`); }
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
     if(defTact>0) narrative.push(`📊 ${def.name} leads the defense: Tactical ${defTact} (×${defTactBonus.toFixed(1)} for land armies).`);
 
@@ -4064,15 +4072,15 @@ const BATTLE_ARMY_SPELLS={
       if(castRoll>=castChance){narr.push(`  Spell fizzles.`);return;}
       trySkillGain(caster, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
       if(spellName==='Fireball'){
-        if(targets.length>0){const d=targets[Math.floor(Math.random()*targets.length)];const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;narr.push(`  🔥 Fireball halves ${d.unitName||d.type} (−${cut} str).`);}
+        if(targets.length>0){const d=targets.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b);const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;narr.push(`  🔥 Fireball halves the enemy's strongest unit, ${d.unitName||d.type} (−${cut}).`);}
       } else if(spellName==='Telekinetic Storm'){
         if(enemyCmdr){ enemyCmdr._tacticalNegated=true; narr.push(`  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is negated this battle.`); }
       } else if(spellName==='Psychic Blast'){
         if(enemyCmdr){ enemyCmdr._druidNegated=true; narr.push(`  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
       } else if(spellName==='Lightning Bolt'){
         const n=Math.min(targets.length,Math.max(1,spellLvl));
-        targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{const qm={Green:1,Average:2,Veteran:3,Crack:4,Elite:5}[d.quality||'Average']||2;d._tempStrReduction=(d._tempStrReduction||0)+qm;});
-        narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} −1 base str.`);
+        targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.10));});
+        narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} lose 10% strength.`);
       } else if(spellName==='Curse'){
         if(enemyCmdr){ const tac=effStat(enemyCmdr,'tactical'),dru=(enemyCmdr.skills?.druid||0); enemyCmdr._curseHalveStat=(tac>=dru?'tactical':'druid'); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${enemyCmdr._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
       } else if(spellName==='Control Undead'){
@@ -4365,6 +4373,8 @@ const BATTLE_ARMY_SPELLS={
       }
     }
 
+    // Battle-magic strength reductions last only for this battle — units recover afterward.
+    [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._archeryRed;});
     return{won,narrative};
   }
 
@@ -4491,6 +4501,7 @@ const BATTLE_ARMY_SPELLS={
     const modMelee=traits.mods.melee, modArch=traits.mods.archery, modSpell=traits.mods.spell;
     // The monster closes distance over several rounds by speed — this is the archer's firing window.
     let monsterCloseCounter=traits.closeRounds;
+    let monsterSpellCd=0; // monster spell cooldown (prevents relentless chain-casting)
     // Bridge to the unified engine: the hero's combat spells resolve through the SAME
     // pcCastCombatSpell used in duels, so White→Necromancy combat spells behave identically.
     // We keep lightweight combatant wrappers in sync with the scalar hero/monster HP each round.
@@ -4529,7 +4540,7 @@ const BATTLE_ARMY_SPELLS={
     let monsterMelee=m.melee||1;  // mutable — Curse/Dark Blessing can modify
     const monsterArch=m.archery||0;
 
-    for(let round=0;round<8&&heroHp>0&&monsterHp>0&&!fled&&!won;round++){
+    for(let round=0;round<16&&heroHp>0&&monsterHp>0&&!fled&&!won;round++){
       const tactic=tactics[tacIdx]||'ME';
       tacIdx=Math.min(tacIdx+1,tactics.length-1);
 
@@ -4636,10 +4647,12 @@ const BATTLE_ARMY_SPELLS={
             }
           }
 
-          // Monster spell phase — fires after melee counter each round (unless silenced by Spiritwrack)
-          if(monsterHp>0&&(m.spells||[]).length>0&&monCbt.status.silenceRounds<=0){
+          // Monster spell phase — fires after melee counter (unless silenced), at most once every 2 rounds
+          if(monsterSpellCd>0) monsterSpellCd--;
+          if(monsterHp>0&&(m.spells||[]).length>0&&monCbt.status.silenceRounds<=0&&monsterSpellCd<=0){
             const availSpells=m.spells.filter(s=>Math.random()*100<s.castChance);
             if(availSpells.length>0){
+              monsterSpellCd=2; // must wait a round before casting again
               const ms=availSpells[Math.floor(Math.random()*availSpells.length)];
               narrative.push(`✨ ${m.name} casts **${ms.name}**! "${ms.flavour}"`);
 
@@ -5990,6 +6003,9 @@ const BATTLE_ARMY_SPELLS={
         // Find the target character in the same province
         const targetId=parseInt(target);
         const targetChar=G.characters.find(ch=>ch.alive&&ch.id===targetId&&ch.location===c.location);
+        if(targetChar&&targetChar.player!==c.player&&isHiddenChar(targetChar)){
+          log('system',`${c.name} searches for ${targetChar.name}, but they are cloaked and cannot be found.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+        }
         if(!targetChar){
           log('system',`${c.name} looks for a character to encounter in ${prov.name} but finds no one.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
@@ -6109,7 +6125,10 @@ const BATTLE_ARMY_SPELLS={
 
         // Cast chance: 20% + 10% per level; Arcane Codex discovery +10%
         const arcaneBonus=hasDisc(c.player,'sd27')?10:0;
-        const castChance=Math.min(95,20+spellLevel*10+arcaneBonus);
+        // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
+        const necroAuto = school==='necromancy' && !c._necroAutoUsed && (c.items||[]).some(it=>it.effect&&it.effect.stat==='necroAuto');
+        const castChance=necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus);
+        if(necroAuto) c._necroAutoUsed=true;
         const castRoll=Math.random()*100;
         log('system',`📊 ${c.name} casts ${spellName} (${school} ${spellLevel}): ${castChance}% chance [roll ${castRoll.toFixed(0)}${castRoll<castChance?' ✓':' ✗'}]`,{actor:c.player,targets:[c.player],provinceId:prov.id});
 
@@ -6123,6 +6142,10 @@ const BATTLE_ARMY_SPELLS={
         const extraId=parseInt(extra)||0;
         const targetProv=extraId>=0&&G.world.provinces[extraId]?G.world.provinces[extraId]:prov;
         const targetChar=G.characters.find(ch=>ch.alive&&ch.id===extraId);
+        // Cloak of Many Faces: shields the wearer from hostile Psychic Blast / Curse.
+        if(targetChar&&targetChar.player!==c.player&&isHiddenChar(targetChar)&&(spellName==='Psychic Blast'||spellName==='Curse')){
+          log('system',`${c.name}'s ${spellName} cannot find ${targetChar.name} — they are cloaked from hostile magic.`,{actor:c.player,targets:[c.player]});break;
+        }
 
         // ── WHITE ──
         if(fn==='white_resurrect'){
@@ -6877,15 +6900,17 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
           if(hasDisc(pi,'sd18')&&(pv.terrain==='plain'||pv.terrain==='desert')) t+=1;
           return s+t;
         },0);
-        const taxBonus=(G.characters||[]).filter(c=>c.player===p.id&&c.alive).reduce((s,c)=>s+(c.taxBonus||0),0);
-        // sd12 Merchant Guilds: 5% interest on treasury (max 3g)
+        const pChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
+        const itemStat=(st)=>pChars.reduce((s,c)=>s+((c.items||[]).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
+        const taxBonus=pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+itemStat('taxBonus'); // Ring of Wealth
+        // Merchant's Ledger: +1g per province owned (if any of the player's heroes carries one).
+        const ledgers=pChars.some(c=>(c.items||[]).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
+        const perProvBonus=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
         const interestBonus=hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0;
-        // Neutral alignment: +20% tax income (practical traders)
         const neutralTradeMult=p.alignment==='Neutral'?1.20:1.0;
         const neutralTradeBonus=p.alignment==='Neutral'?Math.floor(income*(neutralTradeMult-1)):0;
-        // sd17 Granaries: hero wages -1g each (min 1g) — applied at wages stage, just note here
-        p.gold=(p.gold||0)+income+taxBonus+interestBonus+neutralTradeBonus;
-        if(income>0)log('system',`${p.name} collects ${income+taxBonus+interestBonus+neutralTradeBonus}g in taxes${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}${hasDisc(pi,'sd11')?' (Advanced Agriculture active)':''}${hasDisc(pi,'sd15')?' (Mining Techniques active)':''}${hasDisc(pi,'sd18')?' (Aqueducts active)':''}.`,{actor:p.id,targets:[p.id]});
+        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus;
+        if(income>0||perProvBonus>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus}g in taxes${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}.`,{actor:p.id,targets:[p.id]});
       });
       log('system','═ Army wages & hero wages ═');
       G.players.forEach(p=>{
@@ -7044,6 +7069,7 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     delete c._tacticalNegated;
     delete c._phantasmalBonus;
     delete c._curseHalveStat;
+    delete c._necroAutoUsed;
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
@@ -7314,6 +7340,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.13-0850</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.15-2112</div>
 </body>
 </html>
