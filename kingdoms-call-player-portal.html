@@ -2909,11 +2909,14 @@ function renderMapIntoSvg(svgEl, report){
   provs.forEach(p=>{
     if(p.row===undefined||p.col===undefined) return;
     const{x,y}=hexCentre(p.col,p.row);
-    const isOwned=ownedIds.has(p.id);
-    const isVisited=visitedIds.has(p.id)&&!isOwned;
-    const isAdj=adjacentIds.has(p.id);
-    const known=isOwned||isVisited||isAdj;
     const pd=provById[p.id]||p;
+    // Item 1: visibility tier from the report (owned / live / border / remembered / unknown).
+    const tier=pd.tier||(ownedIds.has(p.id)?'owned':'unknown');
+    const isOwned=tier==='owned';
+    const isRemembered=tier==='remembered';
+    const isVisited=(tier==='live'||tier==='border'||tier==='remembered')&&!isOwned;
+    const isAdj=tier==='border';
+    const known=tier!=='unknown';
     const g=document.createElementNS(svgNS,'g');
 
     // Hex fill
@@ -2921,7 +2924,7 @@ function renderMapIntoSvg(svgEl, report){
     fill.setAttribute('points',hexPts(x,y));
     if(known&&pd.terrain){
       fill.setAttribute('fill',TERRAIN_COLORS_MAP[pd.terrain]||'#555');
-      fill.setAttribute('opacity',isOwned?'1':isVisited?'0.85':'0.5');
+      fill.setAttribute('opacity',isOwned?'1':(tier==='live'||tier==='border')?'0.85':isRemembered?'0.45':'0.5');
     } else {
       fill.setAttribute('fill','#555');fill.setAttribute('opacity','1');
     }
@@ -3005,6 +3008,8 @@ function renderMapIntoSvg(svgEl, report){
       // Own characters
       if(ownChars.length>0){
         const mx=markerX,my=y-HS+9;
+        const mg=document.createElementNS(svgNS,'g');
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.5) translate(${-mx} ${-my})`); // half size
         const circ=document.createElementNS(svgNS,'circle');
         circ.setAttribute('cx',mx);circ.setAttribute('cy',my);circ.setAttribute('r','5');
         circ.setAttribute('fill',playerColor);circ.setAttribute('stroke','#fff');circ.setAttribute('stroke-width','1');
@@ -3015,7 +3020,7 @@ function renderMapIntoSvg(svgEl, report){
         clbl.setAttribute('fill','#fff');clbl.setAttribute('pointer-events','none');
         const hasKing=ownChars.some(c=>c.isKing);
         clbl.textContent=hasKing?'♛':ownChars.length>1?String(ownChars.length):'';
-        g.appendChild(circ);g.appendChild(clbl);
+        mg.appendChild(circ);mg.appendChild(clbl);
         // Hero person icon (head+shoulders) for non-king single hero
         if(!hasKing&&ownChars.length===1){
           const hd=document.createElementNS(svgNS,'circle');
@@ -3024,13 +3029,16 @@ function renderMapIntoSvg(svgEl, report){
           const sh=document.createElementNS(svgNS,'path');
           sh.setAttribute('d',`M${mx-2.8},${my+2.2} Q${mx},${my+0.5} ${mx+2.8},${my+2.2}`);
           sh.setAttribute('fill','#fff');sh.setAttribute('pointer-events','none');
-          g.appendChild(hd);g.appendChild(sh);
+          mg.appendChild(hd);mg.appendChild(sh);
         }
-        markerX-=12;
+        g.appendChild(mg);
+        markerX-=8;
       }
       // Enemy characters
       if(enemyChars.length>0){
         const mx=markerX,my=y-HS+9;
+        const mg=document.createElementNS(svgNS,'g');
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.5) translate(${-mx} ${-my})`); // half size
         const ec=document.createElementNS(svgNS,'circle');
         // Use enemy's colour if available
         const enemyCol=enemyChars[0].ownerColor||'#7a1c1c';
@@ -3043,7 +3051,7 @@ function renderMapIntoSvg(svgEl, report){
         elbl.setAttribute('fill','#fff');elbl.setAttribute('pointer-events','none');
         const eHasKing=enemyChars.some(c=>c.isKing);
         elbl.textContent=eHasKing?'♛':'';
-        g.appendChild(ec);g.appendChild(elbl);
+        mg.appendChild(ec);mg.appendChild(elbl);
         if(!eHasKing&&enemyChars.length===1){
           const ehd=document.createElementNS(svgNS,'circle');
           ehd.setAttribute('cx',mx);ehd.setAttribute('cy',my-1.5);ehd.setAttribute('r','1.8');
@@ -3051,13 +3059,16 @@ function renderMapIntoSvg(svgEl, report){
           const esh=document.createElementNS(svgNS,'path');
           esh.setAttribute('d',`M${mx-2.8},${my+2.2} Q${mx},${my+0.5} ${mx+2.8},${my+2.2}`);
           esh.setAttribute('fill','#fff');esh.setAttribute('pointer-events','none');
-          g.appendChild(ehd);g.appendChild(esh);
+          mg.appendChild(ehd);mg.appendChild(esh);
         }
-                markerX-=11;
+        g.appendChild(mg);
+        markerX-=8;
       }
       // Wandering heroes
       if(wanderers.length>0){
         const mx=markerX,my=y-HS+9;
+        const mg=document.createElementNS(svgNS,'g');
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.5) translate(${-mx} ${-my})`); // half size
         const wc=document.createElementNS(svgNS,'circle');
         wc.setAttribute('cx',mx);wc.setAttribute('cy',my);wc.setAttribute('r','4.5');
         wc.setAttribute('fill','#888');wc.setAttribute('stroke','#fff');wc.setAttribute('stroke-width','1');
@@ -3067,7 +3078,8 @@ function renderMapIntoSvg(svgEl, report){
         wlbl.setAttribute('text-anchor','middle');wlbl.setAttribute('font-size','5');
         wlbl.setAttribute('fill','#fff');wlbl.setAttribute('pointer-events','none');
         wlbl.textContent='?';
-        g.appendChild(wc);g.appendChild(wlbl);
+        mg.appendChild(wc);mg.appendChild(wlbl);
+        g.appendChild(mg);
       }
     }
 
@@ -3103,11 +3115,13 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
+          if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
+          if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
-          h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':''}`;
+          h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
           if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         }
@@ -3160,6 +3174,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.16-2201</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.17-0857</div>
 </body>
 </html>

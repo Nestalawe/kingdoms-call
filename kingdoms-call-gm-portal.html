@@ -2231,6 +2231,22 @@ function buildTurnReport(gameState, playerIndex){
   // Also add intel text entries for the chronicle
   heroSightings.forEach(s=>intel.push(s.text));
 
+  // ── Item 1: tiered map visibility (last-seen fog of war) ──
+  const mem=(player&&player._provMemory)||{};
+  // Provinces adjacent to a province this player OWNS. Their core info and CURRENT ownership are
+  // always visible — you watch your own borders continuously all turn.
+  const ownedAdjacentIds=new Set();
+  provinces.forEach(p=>{
+    if(!ownedProvIds.has(p.id)) return;
+    const offs=p.row%2===0?offsets_even:offsets_odd;
+    offs.forEach(([dr,dc])=>{
+      const nr=p.row+dr; if(nr<0||nr>=rows) return;
+      const nc=((p.col+dc)%cols+cols)%cols;
+      const nid=nr*cols+nc;
+      if(!ownedProvIds.has(nid)) ownedAdjacentIds.add(nid);
+    });
+  });
+
   // World meta — full hex grid with visibility-appropriate data for map rendering
   const worldMeta={
     cols,rows,
@@ -2244,43 +2260,62 @@ function buildTurnReport(gameState, playerIndex){
       }).filter(n=>n!==null);
 
       const isOwned=ownedProvIds.has(p.id);
-      const isVisited=visitedProvIds.has(p.id);
-      const isAdjacent=adjacentProvIds.has(p.id);
+      const isLive=!isOwned && ownCharLocs.has(p.id);                    // you have a character here now
+      const isBorder=!isOwned && !isLive && ownedAdjacentIds.has(p.id);  // adjacent to your own land
+      const memo=mem[p.id];
       // Illusory Terrain: enemies of the caster see a false terrain until they enter or it fades.
       const _apparentTerrain=(p._illusoryTerrain && p._illusoryTerrain.caster!==playerIndex) ? p._illusoryTerrain.fake : p.terrain;
+      const explored=(p.exploredBy&&p.exploredBy[playerIndex])||0;
+      // Live-visible characters here: own characters always; enemy/neutral only where this player
+      // currently has a character present. Enemy units/characters are NEVER shown as "last seen"
+      // — only when visible at the end of the turn (line of sight).
+      const liveChars=()=>(p.characters||[]).map(cid=>{
+        const c=gameState.characters[cid];
+        if(!c||!c.alive) return null;
+        const isOwn=c.player===playerIndex;
+        if(!isOwn && !ownCharLocs.has(p.id)) return null;
+        return{id:c.id,name:c.name,isOwn,isKing:c.isKing,
+          isWanderer:c.player===null,
+          ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
+      }).filter(Boolean);
 
       if(isOwned){
-        // Full info
-        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,
+        // Full live info — your own province.
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,tier:'owned',
           tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           hadBattle:!!p._hadBattleThisTurn,
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,
-          characters:(p.characters||[]).map(cid=>{
-            const c=gameState.characters[cid];
-            if(!c) return null;
-            return{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing,
-              isWanderer:c.player===null,
-              ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
-          }).filter(Boolean),
+          armyTypes:p.armyTypes,neighbors,explored,
+          characters:liveChars(),
         };
-      } else if(isVisited){
-        // Visited: full terrain info including explored %
-        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,race:p.race,
+      } else if(isLive){
+        // You have a character standing here right now — full current info + line-of-sight characters.
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'live',race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
+          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn,
+          characters:liveChars(),
         };
-      } else if(isAdjacent){
-        // Adjacent: show name, terrain, wealth, owner, army types, explored %
-        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,
+      } else if(isBorder){
+        // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
+        return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'border',race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
-          ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,hadBattle:!!p._hadBattleThisTurn,
+          owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
+          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn,
+          characters:[],
+        };
+      } else if(memo){
+        // Remembered: frozen at the last phase one of your characters could see it. Core info and
+        // ownership are as last observed (may be out of date); no live units/characters shown.
+        return{id:p.id,row:p.row,col:p.col,name:memo.name,terrain:memo.terrain,tier:'remembered',race:memo.race,
+          wealth:memo.tax>=7?'Rich':memo.tax>=3?'Prosperous':'Poor',
+          owner:memo.owner,ownerName:memo.ownerName??null,ownerColor:memo.ownerColor??null,
+          armyTypes:memo.armyTypes||[],neighbors,explored,seenTurn:memo.turn,
+          characters:[],
         };
       } else {
-        // Unknown — just the grid position so we can draw an empty hex
-        return{id:p.id,row:p.row,col:p.col,terrain:null,neighbors};
+        // Unknown — just the grid position so we can draw an empty hex.
+        return{id:p.id,row:p.row,col:p.col,terrain:null,tier:'unknown',neighbors};
       }
     }),
   };
@@ -5281,7 +5316,7 @@ const BATTLE_ARMY_SPELLS={
             log('move',`${c.name}'s fleet has no sea movement points remaining to sail to ${toProv.name}.`,{actor:c.player,targets:[c.player]});break;
           }
           seaMovePoints[c.id]=smp-1;
-          log('move',`${c.name} sails along the coast to ${toProv.name}. Sea move points remaining: ${seaMovePoints[c.id]}`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+          log('move',`${c.name} sails along the coast to ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
         } else if(enteringSea){
           // Check sea capability
           if(!canEnterTerrain(c,toProv.terrain,sc)){
@@ -5303,7 +5338,7 @@ const BATTLE_ARMY_SPELLS={
           }
           seaMovePoints[c.id]=smp-1;
           const navalLvl=effStat(c,'naval');
-          log('move',`${c.name} moves across sea to ${toProv.name}. Sea move points remaining: ${seaMovePoints[c.id]}${navalLvl>0?` (Naval ${navalLvl} provided sea pool of ${(seaMovePoints[c.id]+1)+'+'+navalLvl+'= '+(seaMovePoints[c.id]+1)} sea MPs)`:''}`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+          log('move',`${c.name} moves across sea to ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
         } else if(coastalLanding){
           // Moving from sea province to land: coastal landing, costs 1 sea MP
           const smp=seaMovePoints[c.id]??0;
@@ -5312,7 +5347,7 @@ const BATTLE_ARMY_SPELLS={
           }
           // Check the target province is actually adjacent (coastal landing must be to adjacent land)
           seaMovePoints[c.id]=smp-1;
-          log('move',`${c.name} makes a coastal landing in ${toProv.name}. Sea move points remaining: ${seaMovePoints[c.id]}`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+          log('move',`${c.name} makes a coastal landing in ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
         } else {
           // Land-to-land move: check land pool
           if(!canEnterTerrain(c,toProv.terrain,sc)){
@@ -5489,7 +5524,7 @@ const BATTLE_ARMY_SPELLS={
               if(loot>0){player.gold=(player.gold||0)+loot;log('combat',`⚔ Evil looting: ${c.name}'s forces plunder ${toProv.name} — ${loot}g seized immediately!`,{actor:c.player,targets:[c.player],provinceId:toProv.id});}
             }
             toProv._hadBattleThisTurn=true;
-          log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit. Move points left: ${movePoints[c.id]})`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+          log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             } // end if(defSurvivors.length===0)
           } else {
@@ -5548,7 +5583,7 @@ const BATTLE_ARMY_SPELLS={
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
               toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-              log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (Move points left: ${movePoints[c.id]})`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+              log('combat',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
             } else {
               toProv.characters=toProv.characters.filter(id=>id!==c.id);
               prov.characters.push(c.id);c.location=prov.id;if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
@@ -5613,7 +5648,7 @@ const BATTLE_ARMY_SPELLS={
           const usesSea=enteringSea||coastalLanding||coastalHop;
           // Coastal landings and coastal hops already logged their own message — don't double-log
           if(!coastalLanding&&!coastalHop){
-            log('move',`${c.name} moves to ${toProv.name}. (${usesSea?seaMovePoints[c.id]:movePoints[c.id]} ${usesSea?'sea ':''}move point${(usesSea?seaMovePoints[c.id]:movePoints[c.id])!==1?'s':''} remaining this turn)`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
+            log('move',`${c.name} moves to ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
           }
         }
         break;
@@ -6964,8 +6999,61 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
   // A fresh turn: clear last turn's death flags so 'killedThisTurn' marks only deaths this turn.
   G.characters.forEach(c=>{ delete c.killedThisTurn; });
 
+  // Item 4: record which players had a character present in each province at the START of each
+  // phase. Used to decide who may see battle reports they didn't participate in (line-of-sight).
+  const presenceByPhase=[];
+
+  // Item 1: per-player province memory. Called at the end of each phase — snapshots the observable
+  // state of every province a player can currently see (owned, occupied, their neighbours, or spied
+  // that phase) into player._provMemory. Latest observation wins, so the map shows phase-accurate
+  // "last seen" info: a player only learns of changes made while they can actually see the province.
+  function updateProvinceMemory(ph){
+    const cols=G.world.cols, rows=G.world.rows;
+    const spiedThisPhase={}; // player index -> Set(provinceId)
+    turnLog.forEach(e=>{
+      if(e.spy && e.actor!=null && e.provinceId!=null && e.phase===ph){
+        (spiedThisPhase[e.actor]=spiedThisPhase[e.actor]||new Set()).add(e.provinceId);
+      }
+    });
+    G.players.forEach((pl,pi)=>{
+      if(!pl._provMemory) pl._provMemory={};
+      // Core: provinces this player owns or currently occupies.
+      const core=new Set();
+      (G.world.provinces||[]).forEach(pv=>{ if(pv&&pv.owner===pi) core.add(pv.id); });
+      (G.characters||[]).forEach(c=>{ if(c.player===pi && c.alive && c.location!=null) core.add(c.location); });
+      // Observed = core + their neighbours + anything spied this phase.
+      const observed=new Set(core);
+      core.forEach(pid=>{
+        const pv=G.world.provinces[pid]; if(!pv) return;
+        getNeighborsP(pv,cols,rows,G.world.provinces).forEach(n=>{ if(n) observed.add(n.id); });
+      });
+      (spiedThisPhase[pi]||[]).forEach(id=>observed.add(id));
+      // Snapshot each observed province's current observable state (frozen at this phase).
+      observed.forEach(pid=>{
+        const pv=G.world.provinces[pid]; if(!pv) return;
+        pl._provMemory[pid]={
+          turn:G.turn, phase:ph,
+          name:pv.name, terrain:pv.terrain, race:pv.race, tax:pv.tax,
+          armyTypes:(pv.armyTypes||[]).slice(),
+          owner:pv.owner,
+          ownerName:pv.owner!=null?G.players[pv.owner]?.name:null,
+          ownerColor:pv.owner!=null?G.players[pv.owner]?.color:null,
+        };
+      });
+    });
+  }
+
   for(let ph=0;ph<5;ph++){
     log('system',`— ${SEASONS[ph]} —`);
+    // Snapshot presence at phase start (before this phase's moves/battles).
+    presenceByPhase[ph]=new Map();
+    (G.characters||[]).forEach(c=>{
+      if(c.alive && c.location!=null && c.player!=null){
+        let s=presenceByPhase[ph].get(c.location);
+        if(!s){ s=new Set(); presenceByPhase[ph].set(c.location,s); }
+        s.add(c.player);
+      }
+    });
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     resolveStalledBattles(ph);
     spreadPlagues(ph);
@@ -6992,6 +7080,9 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
 
     // Generate intrusion notifications for this phase
     generateIntrusionNotifications(ph);
+
+    // Item 1: snapshot each player's observable view of the world at the end of this phase.
+    updateProvinceMemory(ph);
 
     // Tax collection moved to Early Winter block below
 
@@ -7382,15 +7473,44 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     // Build set of this player's own character IDs
     const ownCharIds=new Set((G.characters||[]).filter(c=>c.player===pi).map(c=>c.id));
 
+    // Item 4: earliest phase this player spied each province this turn (spy sees battles at that
+    // phase or later in the same province).
+    const spyPhaseByProv={};
+    turnLog.forEach(e=>{
+      if(e.actor===pi && e.spy && e.provinceId!=null){
+        const ph=e.phase??0;
+        if(spyPhaseByProv[e.provinceId]===undefined || ph<spyPhaseByProv[e.provinceId]) spyPhaseByProv[e.provinceId]=ph;
+      }
+    });
+    // True if this player could witness a battle in prov at phase ph: a character present there at
+    // that phase, or a spy on that province in the same phase or earlier.
+    const canSeeBattle=(prov,ph)=>{
+      if(prov==null) return false;
+      if(ph!=null && presenceByPhase[ph] && presenceByPhase[ph].get(prov)?.has(pi)) return true;
+      const sp=spyPhaseByProv[prov];
+      if(sp!==undefined && (ph==null || sp<=ph)) return true;
+      return false;
+    };
+
     report.lastTurnLog=turnLog.filter(e=>{
       // 1. Directly targeted at this player (wages, intel notifications, spell hits etc.)
       if((e.targets||[]).includes(pi)) return true;
       // 2. This player's own character performed the action
       if(e.actor===pi) return true;
-      // 3. Public event in a province this player can see
-      if(e.public && e.provinceId!=null && playerVisitedProvs.has(e.provinceId)) return true;
       // 4. Entry attributed to one of this player's own characters (charId match)
       if(e.charId!=null && ownCharIds.has(e.charId)) return true;
+      // 3. Public events. Battle reports the player did NOT participate in are only visible with
+      //    line-of-sight: a character present in the battle province at the battle's phase, or a
+      //    spy on that province in the same phase or earlier. Non-combat public events keep the
+      //    broader "province you can see" visibility.
+      if(e.public && e.provinceId!=null){
+        if(e.type==='combat'){
+          if(e.phase!=null) return canSeeBattle(e.provinceId, e.phase);
+          // Combat line with no phase context — fall back to territory visibility.
+          return playerVisitedProvs.has(e.provinceId);
+        }
+        return playerVisitedProvs.has(e.provinceId);
+      }
       // Everything else: hidden
       return false;
     }).map(e=>({
@@ -7462,6 +7582,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.16-2201</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.17-0857</div>
 </body>
 </html>
