@@ -1466,9 +1466,11 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             }).join('')}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${ENCOUNTER_TACTICS.map(t=>`<button onclick="addEncounterTactic('${c.id}','${t.code}')"
-              style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
-              title="${t.label}">+ ${t.code}</button>`).join('')}
+            ${ENCOUNTER_TACTICS.map(t=>{
+              const noThief=t.code==='ST'&&((c.skills?.thief||0)<1);
+              return `<button onclick="addEncounterTactic('${c.id}','${t.code}')" ${noThief?'disabled':''}
+              style="font-size:.7rem;padding:3px 8px;border:1px solid ${noThief?'#ddd':'var(--stone)'};background:${noThief?'#f0f0f0':'var(--parchment-dark)'};color:${noThief?'#bbb':'inherit'};cursor:${noThief?'not-allowed':'pointer'};border-radius:2px"
+              title="${noThief?'Requires Thief skill (level 1+)':t.label}">+ ${t.code}</button>`;}).join('')}
           </div>
           <input type="hidden" id="ep-tactics-${c.id}" value="${currentTactics.join(',')}">
           <div style="margin-top:6px">
@@ -1635,6 +1637,16 @@ function addEncounterTactic(charId, code){
       </div>`;
     wrap.after(spicker);
     return;
+  }
+
+  // ST (Steal) requires at least one level of Thief skill.
+  if(code==='ST'){
+    const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
+    const thiefLvl=(char?.skills||{}).thief||0;
+    if(thiefLvl<1){
+      alert('This character has no Thief skill and cannot attempt to steal.\n\nThe Steal tactic requires at least Thief level 1. Practise the Thief skill first.');
+      return;
+    }
   }
 
   current.push(code);
@@ -2685,7 +2697,7 @@ function updateRecruitTarget(charId, ph){
 
 // ── TERRAIN COLORS ────────────────────────────────────
 const TERRAIN_COLORS_MAP={
-  plain:'#9eb68a',desert:'#c8c48a',forest:'#2d7a2d',
+  plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',
   jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'
 };
 
@@ -3048,6 +3060,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.16-1636</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.16-2134</div>
 </body>
 </html>

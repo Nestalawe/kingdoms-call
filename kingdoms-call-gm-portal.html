@@ -1091,7 +1091,7 @@ async function runTurn0(){
 // Self-contained mini game engine for the portal
 // (mirrors the logic in kingdoms-call-gm.html / game.js)
 
-const TERRAIN_COLORS_P={plain:'#6ab04c',desert:'#c8a44a',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+const TERRAIN_COLORS_P={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const PROVINCE_ARMIES_P={
   plain:  {Human:['Infantry','Cavalry','Longbowmen','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison']},
   desert: {Human:['Infantry','Cavalry','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
@@ -2952,7 +2952,11 @@ const BATTLE_ARMY_SPELLS={
   }
   // Consume any lingering terror in a province at the start of a battle: returns true if applied.
   function consumeTerror(prov, defenders, narrative){
-    if(!prov._terrorStacks||prov._terrorTurn===undefined||prov._terrorTurn>=G.turn) return false;
+    // Terror lingers until the NEXT battle fought here — same turn or later. It is safe to consume
+    // same-turn because consumeTerror runs at battle START and spreadTerror at battle END, so a
+    // battle can never consume the terror it itself created. (Previously gated to _terrorTurn<G.turn,
+    // which wrongly denied the demoralise effect to same-turn follow-up attacks.)
+    if(!prov._terrorStacks||prov._terrorTurn===undefined) return false;
     const stacks=Math.min(TERROR_MAX_STACKS,prov._terrorStacks);
     const frac=Math.min(TERROR_PCT_PER_STACK*stacks, TERROR_PCT_PER_STACK*TERROR_MAX_STACKS);
     (defenders||[]).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*frac);});
@@ -3796,6 +3800,7 @@ const BATTLE_ARMY_SPELLS={
       }
       case 'ST': case 'STEAL':{
         const th=actor.kind==='character'?effStat(actor.ref,'thief'):0;
+        if(th<1){ narrative.push(`  ${actor.name} has no Thief skill and cannot attempt a steal — they strike instead.`); if(state.range!=='melee'){ state.range=(state.range==='spell')?'bow':'melee'; } else { const hit=pcHitChance(actor,foe,50); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}!`); } } break; }
         let bonus=0; if(actor.castSpells.includes('Invisibility')) bonus+=15;
         const chance=15+th*15+bonus; if(Math.random()*100<chance){ state.stoleBy=actor; narrative.push(`  ${actor.name} slips past and seizes the prize! [${chance}%]`); } else narrative.push(`  ${actor.name}'s theft is noticed. [${chance}%]`);
         break;
@@ -4494,8 +4499,10 @@ const BATTLE_ARMY_SPELLS={
         if(fleeRoll<fleeChance){narrative.push(`${atk.name} breaks away and escapes!`);break;}
         else narrative.push(`${atk.name} cannot escape!`);
       } else if(atkTac==='ST'||atkTac==='STEAL'){
-        // Steal in character encounter = pick pocket
+        // Steal in character encounter = pick pocket — requires at least Thief 1.
         const thiefLvl=effStat(atk,'thief');
+        if(thiefLvl<1){ narrative.push(`${atk.name} has no Thief skill and cannot pickpocket ${def.name}.`); }
+        else{
         const stealChance=15+thiefLvl*15;
         const stealRoll=Math.random()*100;
         narrative.push(`📊 ${atk.name} attempts to steal (Thief ${thiefLvl}): ${stealChance}% (roll ${stealRoll.toFixed(0)})`);
@@ -4505,6 +4512,7 @@ const BATTLE_ARMY_SPELLS={
           G.players[atk.player].gold=(G.players[atk.player].gold||0)+stolen;
           narrative.push(`${atk.name} pickpockets ${stolen}g from ${def.name}!`);
         } else narrative.push(`${atk.name}'s theft attempt fails.`);
+        }
       } else {
         // Melee round
         const atkMelee=effStat(atk,'melee'); const defMelee=effStat(def,'melee');
@@ -4965,6 +4973,7 @@ const BATTLE_ARMY_SPELLS={
         case 'ST':
         case 'STEAL':{
           const thiefLevel=effStat(c,'thief');
+          if(thiefLevel<1){ narrative.push(`${c.name} has no Thief skill and cannot attempt to steal from the ${m.name}.`); break; }
           const stealChance=15+thiefLevel*15+(heroCbt.castSpells.includes('Invisibility')?15:0); // +15% under Invisibility
           const stealRoll=Math.random()*100;
           narrative.push(`📊 Steal — Thief ${thiefLevel}: steal chance ${stealChance}% (roll ${stealRoll.toFixed(0)}${stealRoll<stealChance?' ✓':' ✗'})`);
@@ -7411,6 +7420,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.16-1636</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.16-2134</div>
 </body>
 </html>
