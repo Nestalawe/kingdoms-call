@@ -123,6 +123,7 @@ section{display:none;}.section-active{display:block;}
       <div style="display:flex;gap:8px">
         <button class="btn btn-gold" onclick="showNewGame()">+ New Game</button>
         <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
+        <button class="btn btn-ghost" onclick="changePassword()">🔑 Change Password</button>
         <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
       </div>
     </div>
@@ -496,6 +497,44 @@ async function doSignOut(){
   await sb.auth.signOut();
   currentUser=null;
   show('sec-auth');
+}
+
+// ── Change Password (Supabase updateUser — requires the active signed-in session) ──
+function changePassword(){
+  if(document.getElementById('cp-overlay')) return;
+  const ov=document.createElement('div');
+  ov.id='cp-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999';
+  ov.innerHTML=`
+    <div style="background:#f5ecd8;color:#1a1208;border:2px solid #c8922a;border-radius:6px;padding:20px;max-width:360px;width:90%">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:12px;color:#7a1c1c">🔑 Change Password</div>
+      <label style="font-size:.75rem;display:block;margin-bottom:2px">New password</label>
+      <input type="password" id="cp-new" placeholder="At least 6 characters" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')document.getElementById('cp-new2').focus()">
+      <label style="font-size:.75rem;display:block;margin-bottom:2px">Confirm new password</label>
+      <input type="password" id="cp-new2" placeholder="Repeat password" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitChangePassword()">
+      <div id="cp-msg" style="font-size:.78rem;margin-bottom:10px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeChangePassword()" style="padding:7px 14px;border:1px solid #999;background:#eee;border-radius:3px;cursor:pointer">Cancel</button>
+        <button onclick="submitChangePassword()" style="padding:7px 14px;border:none;background:#7a1c1c;color:#fff;border-radius:3px;cursor:pointer">Update Password</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('cp-new').focus();
+}
+function closeChangePassword(){ const o=document.getElementById('cp-overlay'); if(o)o.remove(); }
+async function submitChangePassword(){
+  const p1=document.getElementById('cp-new').value;
+  const p2=document.getElementById('cp-new2').value;
+  const msg=document.getElementById('cp-msg');
+  if(!p1||p1.length<6){ msg.innerHTML='<span style="color:#c00">Password must be at least 6 characters.</span>'; return; }
+  if(p1!==p2){ msg.innerHTML='<span style="color:#c00">Passwords do not match.</span>'; return; }
+  msg.innerHTML='<span style="color:#555">Updating…</span>';
+  try{
+    const {error}=await sb.auth.updateUser({password:p1});
+    if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
+    msg.innerHTML='<span style="color:#2d7a2d">✓ Password updated.</span>';
+    setTimeout(closeChangePassword,1200);
+  }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
 }
 
 function onSignedIn(){
@@ -2085,7 +2124,10 @@ function buildTurnReport(gameState, playerIndex){
     if(!skills.length) return null;
     const maxLevel=Math.max(...skills.map(([,v])=>v));
     const tied=skills.filter(([,v])=>v===maxLevel);
-    const [sk,lv]=tied[Math.floor(Math.random()*tied.length)];
+    // Deterministic tie-break by canonical skill order, so the same hero shows the same
+    // "best skill" everywhere (Intelligence report AND the Hire Hero orders window).
+    tied.sort((a,b)=>ALL_SKILLS.indexOf(a[0])-ALL_SKILLS.indexOf(b[0]));
+    const [sk,lv]=tied[0];
     return{skill:sk,level:lv};
   }
 
@@ -2259,7 +2301,7 @@ function buildTurnReport(gameState, playerIndex){
     if(provHeroes.length>0){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
         id:h.id, name:h.name, race:h.race, alignment:h.alignment, temper:h.temper,
-        skills:h.skills||{}, pay:h.pay||1,
+        skills:h.skills||{}, topSkill:topSkill(h), pay:h.pay||1,
         locationName:p.name,
       }));
     }
@@ -3463,22 +3505,22 @@ const BATTLE_ARMY_SPELLS={
       const guardName=defHero?defHero.name+' and their forces':('the defenders of '+prov.name);
       narrative.push(`After a ${severity} engagement (margin ${(margRatio*100).toFixed(0)}% of total strength), ${c.name}'s forces ${pick(WIN_VERBS)} ${guardName}!`);
       narrative.push(`⚔ **Your forces** (${c.name}):`);
-      let winSurv=0;
+      let winSurv=0, winEvents=0;
       armies.forEach(a=>{
         if(a._isSkeletal) return;
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathChance*steelMult){
           narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} suffered heavily and were destroyed in the fighting.`);
-          a._died=true;
+          a._died=true; winEvents++;
         } else if(roll<winDeathChance*steelMult+xpChance(winXPChance*milMult,a.quality)){
-          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.unitName||a.type} distinguished themselves and are promoted to ${a.quality}!`);}
+          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.unitName||a.type} distinguished themselves and are promoted to ${a.quality}!`);winEvents++;}
           else winSurv++;
         } else {
           winSurv++;
         }
       });
-      if(winSurv>0) narrative.push(`— All other forces survive the engagement.`);
+      if(winSurv>0) narrative.push(`— ${winEvents>0?'All other':'All'} forces survive the engagement.`);
       c.armies=c.armies.filter(a=>!a._died);
       // Evil: Terror effect on decisive win — battle province AND all adjacent provinces demoralised (stacking)
       if(isDecisive&&G.players[c.player]?.alignment==='Evil'){
@@ -3499,7 +3541,7 @@ const BATTLE_ARMY_SPELLS={
           narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} fell defending ${prov.name}.`);
         }
       });
-      if(defenders.some(a=>!a._defDied)) narrative.push(`— All other forces survive the engagement.`);
+      if(defenders.some(a=>!a._defDied)) narrative.push(`— ${defenders.some(a=>a._defDied)?'All other':'All'} forces survive the engagement.`);
       const defSurv=defenders.filter(a=>!a._defDied);
       const defLost=defenders.filter(a=>a._defDied);
       if(defLost.length>0) recordBattleGraves(prov,defLost);
@@ -3551,7 +3593,7 @@ const BATTLE_ARMY_SPELLS={
         movePoints[c.id]=0; seaMovePoints[c.id]=0;
       }
 
-      if(armies.some(a=>!a._died&&!a._notable)) narrative.push(`— All other forces survive the engagement.`);
+      if(armies.some(a=>!a._died&&!a._notable)) narrative.push(`— ${armies.some(a=>a._died||a._notable)?'All other':'All'} forces survive the engagement.`);
       recordBattleGraves(prov, armies.filter(a=>a._died));
       c.armies=c.armies.filter(a=>!a._died);
     }
@@ -7420,6 +7462,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.16-2134</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.16-2201</div>
 </body>
 </html>

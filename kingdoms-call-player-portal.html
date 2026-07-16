@@ -150,6 +150,7 @@ section{display:none;}.section-active{display:block;}
         <div id="player-name-display" style="font-size:.95rem;color:var(--parchment)"></div>
       </div>
       <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
+        <button class="btn btn-ghost" onclick="changePassword()">🔑 Change Password</button>
         <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
     </div>
 
@@ -420,6 +421,44 @@ async function doSignOut(){
   await sb.auth.signOut();
   currentUser=null;currentProfile=null;currentGamePlayer=null;currentReport=null;
   location.reload(); // full reset so no stale state carries over when another player signs in on the same browser
+}
+
+// ── Change Password (Supabase updateUser — requires the active signed-in session) ──
+function changePassword(){
+  if(document.getElementById('cp-overlay')) return;
+  const ov=document.createElement('div');
+  ov.id='cp-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999';
+  ov.innerHTML=`
+    <div style="background:#f5ecd8;color:#1a1208;border:2px solid #c8922a;border-radius:6px;padding:20px;max-width:360px;width:90%">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:12px;color:#7a1c1c">🔑 Change Password</div>
+      <label style="font-size:.75rem;display:block;margin-bottom:2px">New password</label>
+      <input type="password" id="cp-new" placeholder="At least 6 characters" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')document.getElementById('cp-new2').focus()">
+      <label style="font-size:.75rem;display:block;margin-bottom:2px">Confirm new password</label>
+      <input type="password" id="cp-new2" placeholder="Repeat password" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitChangePassword()">
+      <div id="cp-msg" style="font-size:.78rem;margin-bottom:10px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeChangePassword()" style="padding:7px 14px;border:1px solid #999;background:#eee;border-radius:3px;cursor:pointer">Cancel</button>
+        <button onclick="submitChangePassword()" style="padding:7px 14px;border:none;background:#7a1c1c;color:#fff;border-radius:3px;cursor:pointer">Update Password</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('cp-new').focus();
+}
+function closeChangePassword(){ const o=document.getElementById('cp-overlay'); if(o)o.remove(); }
+async function submitChangePassword(){
+  const p1=document.getElementById('cp-new').value;
+  const p2=document.getElementById('cp-new2').value;
+  const msg=document.getElementById('cp-msg');
+  if(!p1||p1.length<6){ msg.innerHTML='<span style="color:#c00">Password must be at least 6 characters.</span>'; return; }
+  if(p1!==p2){ msg.innerHTML='<span style="color:#c00">Passwords do not match.</span>'; return; }
+  msg.innerHTML='<span style="color:#555">Updating…</span>';
+  try{
+    const {error}=await sb.auth.updateUser({password:p1});
+    if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
+    msg.innerHTML='<span style="color:#2d7a2d">✓ Password updated.</span>';
+    setTimeout(closeChangePassword,1200);
+  }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
 }
 
 async function onSignedIn(){
@@ -1073,7 +1112,7 @@ async function openReport(gamePlayerId){
   const CREATURES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
   const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']);
   const tag=CREATURES.has(a.type)?' [C]':MONSTERS.has(a.type)?' [M]':'';
-  return armyLabel(a)+tag;
+  return '⚔ '+armyLabel(a)+tag;
 }).join('<br>')
         :'No armies — Move: 5 hexes/order';
       const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
@@ -1088,8 +1127,8 @@ async function openReport(gamePlayerId){
           ${c.race} · ${c.alignment} · ${c.temper} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).length>0?`<br>🔮 Items: ${c.items.map(i=>i.name+(i.desc?` (${i.desc})`:'')).join(', ')}`:''}
-          <br>⚔ ${armies}
+          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.desc?` (${i.desc})`:''}`).join('')}
+          <br>${armies}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
         </div>
       </div>`;
@@ -1369,6 +1408,12 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
     const currentTactics=savedEP.tactics||['ME'];
+    // Separate the pre-battle "Cast from School" choice out of the round-by-round encounter tactics.
+    // CS is not an encounter tactic (it does nothing in the personal-combat loop) — it only sets a
+    // random spell for the pre-battle magic phase of army battles. Stored separately in the UI, then
+    // merged back into the tactics payload at submit so the GM engine is unchanged.
+    const epOrdered=currentTactics.filter(t=>!String(t).toUpperCase().startsWith('CS:'));
+    const epPreSchool=(currentTactics.find(t=>String(t).toUpperCase().startsWith('CS:'))||'').slice(3).toLowerCase();
 
     return`
     <div class="orders-char-block">
@@ -1409,10 +1454,10 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             const effDru=sameRace?Math.max(1,druLevel):druLevel;
             const shortfall=Math.max(0,req-effDru);
             const penalty=shortfall>0?` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
-            return`<span style="color:var(--crimson)">${armyLabel(a)}${penalty}</span>`;
-          }).join('<br>');
+            return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">⚔ ${armyLabel(a)}${penalty}</div>`;
+          }).join('');
         })()}
-        ${(c.items||[]).length>0?`<span style="color:var(--gold)">🔮 ${c.items.map(it=>it.name+(it.desc?` (${it.desc})`:'')).join(', ')}</span>`:''}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -1450,7 +1495,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           <div id="ep-list-${c.id}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px"
             ondragover="event.preventDefault()"
             ondrop="epDropTactic(event,'${c.id}')">
-            ${currentTactics.map((t,i)=>{
+            ${epOrdered.map((t,i)=>{
               return`<div draggable="true"
                 data-char="${c.id}" data-idx="${i}"
                 ondragstart="epDragStart(event,'${c.id}',${i})"
@@ -1466,13 +1511,23 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             }).join('')}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${ENCOUNTER_TACTICS.map(t=>{
+            ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS').map(t=>{
               const noThief=t.code==='ST'&&((c.skills?.thief||0)<1);
               return `<button onclick="addEncounterTactic('${c.id}','${t.code}')" ${noThief?'disabled':''}
               style="font-size:.7rem;padding:3px 8px;border:1px solid ${noThief?'#ddd':'var(--stone)'};background:${noThief?'#f0f0f0':'var(--parchment-dark)'};color:${noThief?'#bbb':'inherit'};cursor:${noThief?'not-allowed':'pointer'};border-radius:2px"
               title="${noThief?'Requires Thief skill (level 1+)':t.label}">+ ${t.code}</button>`;}).join('')}
           </div>
-          <input type="hidden" id="ep-tactics-${c.id}" value="${currentTactics.join(',')}">
+          <input type="hidden" id="ep-tactics-${c.id}" value="${epOrdered.join(',')}">
+
+          <!-- Pre-battle magic (army battles) — separate from the round-by-round encounter tactics -->
+          <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
+            <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
+              ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— one random spell cast in army battles (not encounters)</span>
+            </div>
+            <input type="hidden" id="ep-preschool-${c.id}" value="${epPreSchool||''}">
+            <div id="ep-preschool-display-${c.id}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
+          </div>
+
           <div style="margin-top:6px">
             <label style="font-size:.72rem">Notes for GM (optional):</label>
             <input type="text" id="ep-notes-${c.id}" value="${savedEP.notes||''}"
@@ -1485,8 +1540,79 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     </div>`;
   }).join('');
 
+  // Populate the per-character pre-battle magic (Cast from School) control.
+  chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
+
   btn.disabled=false;
   btn.textContent=`Submit Orders for Turn ${(turnNum||1)}`;
+}
+
+// Render the "Pre-battle magic" control for a character from its hidden ep-preschool field.
+function renderPreSchool(charId){
+  const disp=document.getElementById(`ep-preschool-display-${charId}`);
+  const hidden=document.getElementById(`ep-preschool-${charId}`);
+  if(!disp||!hidden) return;
+  const school=(hidden.value||'').toLowerCase();
+  if(school){
+    disp.innerHTML=`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff8e8;border:1px solid #c8922a;border-radius:2px;padding:3px 8px;font-size:.78rem">
+        <span style="color:#7a5a10">Random <strong>${SKILL_LABELS[school]||school}</strong> spell</span>
+        <button onclick="clearPreSchool('${charId}')" title="Remove" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:0 6px;cursor:pointer;font-size:.7rem">✕</button>
+      </span>
+      <button onclick="openPreSchoolPicker('${charId}')" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">Change</button>`;
+  } else {
+    disp.innerHTML=`<button onclick="openPreSchoolPicker('${charId}')" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">+ Choose spell school</button>
+      <span style="font-size:.72rem;color:#aaa">None set</span>`;
+  }
+}
+
+// Open the school picker for the pre-battle magic control.
+function openPreSchoolPicker(charId){
+  const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
+  const skills=char?.skills||{};
+  const BATTLE_SCHOOLS=[['white','White'],['elemental','Elemental'],['psychic','Psychic'],['necromancy','Necromancy']];
+  const MAGIC_SCHOOLS_CS=new Set(['white','elemental','psychic','necromancy']);
+  const practisingCS=new Set();
+  for(let prevPh=0;prevPh<5;prevPh++){
+    const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
+    if(prevAction==='Practice Skill'){
+      const prevTarget=getOrderTarget(charId,prevPh);
+      if(prevTarget&&MAGIC_SCHOOLS_CS.has(prevTarget)) practisingCS.add(prevTarget);
+    }
+  }
+  const options=BATTLE_SCHOOLS.map(([key,label])=>{
+    const lvl=skills[key]||0;
+    const practising=practisingCS.has(key)&&lvl===0;
+    const known=lvl>=1||practisingCS.has(key);
+    return {key,label,lvl,practising,known};
+  }).filter(o=>o.known);
+  if(options.length===0){
+    alert('This character knows no battle-magic school (White, Elemental, Psychic or Necromancy).\n\nTip: Practise one of these schools earlier in your orders to unlock it.');return;
+  }
+  const disp=document.getElementById(`ep-preschool-display-${charId}`);
+  if(!disp)return;
+  const existingS=document.getElementById(`ep-school-picker-${charId}`);
+  if(existingS)existingS.remove();
+  const spicker=document.createElement('div');
+  spicker.id=`ep-school-picker-${charId}`;
+  spicker.style.cssText='background:#fff8e8;border:1px solid #c8922a;border-radius:3px;padding:8px 10px;margin:4px 0;flex-basis:100%';
+  spicker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${options.map(o=>`<button onclick="confirmEPSchool('${charId}','${o.key}')"
+          style="font-size:.75rem;padding:4px 9px;border:1px solid ${o.practising?'#c8922a':'var(--stone)'};background:${o.practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
+          ${o.label} <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>
+        </button>`).join('')}
+      <button onclick="document.getElementById('ep-school-picker-${charId}').remove()"
+        style="font-size:.75rem;padding:4px 9px;border:1px solid var(--stone);background:#f0e8d8;cursor:pointer;border-radius:2px;color:var(--stone)">Cancel</button>
+    </div>`;
+  disp.after(spicker);
+}
+
+function clearPreSchool(charId){
+  const hidden=document.getElementById(`ep-preschool-${charId}`);
+  if(hidden) hidden.value='';
+  const picker=document.getElementById(`ep-school-picker-${charId}`);
+  if(picker)picker.remove();
+  renderPreSchool(charId);
 }
 
 function addEncounterTactic(charId, code){
@@ -1596,49 +1722,6 @@ function addEncounterTactic(charId, code){
     return;
   }
 
-  // For CS (Cast from School), show a school picker — battle-magic schools the character knows.
-  if(code==='CS'){
-    const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
-    const skills=char?.skills||{};
-    const BATTLE_SCHOOLS=[['white','White'],['elemental','Elemental'],['psychic','Psychic'],['necromancy','Necromancy']];
-    const MAGIC_SCHOOLS_CS=new Set(['white','elemental','psychic','necromancy']);
-    const practisingCS=new Set();
-    for(let prevPh=0;prevPh<5;prevPh++){
-      const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
-      if(prevAction==='Practice Skill'){
-        const prevTarget=getOrderTarget(charId,prevPh);
-        if(prevTarget&&MAGIC_SCHOOLS_CS.has(prevTarget)) practisingCS.add(prevTarget);
-      }
-    }
-    const options=BATTLE_SCHOOLS.map(([key,label])=>{
-      const lvl=skills[key]||0;
-      const practising=practisingCS.has(key)&&lvl===0;
-      const known=lvl>=1||practisingCS.has(key);
-      return {key,label,lvl,practising,known};
-    }).filter(o=>o.known);
-    if(options.length===0){
-      alert('This character knows no battle-magic school (Elemental, Psychic or Necromancy).\n\nTip: Practise one of these schools earlier in your orders to unlock it.');return;
-    }
-    const wrap=document.getElementById(`ep-list-${charId}`);
-    if(!wrap)return;
-    const existingS=document.getElementById(`ep-school-picker-${charId}`);
-    if(existingS)existingS.remove();
-    const spicker=document.createElement('div');
-    spicker.id=`ep-school-picker-${charId}`;
-    spicker.style.cssText='background:#fff8e8;border:1px solid #c8922a;border-radius:3px;padding:8px 10px;margin:4px 0';
-    spicker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">
-        ${options.map(o=>`<button onclick="confirmEPSchool('${charId}','${o.key}')"
-            style="font-size:.75rem;padding:4px 9px;border:1px solid ${o.practising?'#c8922a':'var(--stone)'};background:${o.practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
-            ${o.label} <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>
-          </button>`).join('')}
-        <button onclick="document.getElementById('ep-school-picker-${charId}').remove()"
-          style="font-size:.75rem;padding:4px 9px;border:1px solid var(--stone);background:#f0e8d8;cursor:pointer;border-radius:2px;color:var(--stone)">Cancel</button>
-      </div>`;
-    wrap.after(spicker);
-    return;
-  }
-
   // ST (Steal) requires at least one level of Thief skill.
   if(code==='ST'){
     const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
@@ -1682,16 +1765,10 @@ function confirmEPSpell(charId, spell, school, level){
 function confirmEPSchool(charId, school){
   const picker=document.getElementById(`ep-school-picker-${charId}`);
   if(picker)picker.remove();
-  const hidden=document.getElementById(`ep-tactics-${charId}`);
+  const hidden=document.getElementById(`ep-preschool-${charId}`);
   if(!hidden)return;
-  const current=hidden.value?hidden.value.split(',').filter(Boolean):[];
-  if(current.length>=8){alert('Maximum 8 tactics in an encounter plan.');return;}
-  if(current.some(t=>t.toUpperCase()==='CS:'+school.toUpperCase())){
-    alert(`A random ${SKILL_LABELS[school]||school} spell is already set for the pre-battle phase.`);return;
-  }
-  current.push(`CS:${school}`);
-  hidden.value=current.join(',');
-  refreshEncounterPlan(charId,current);
+  hidden.value=school;
+  renderPreSchool(charId);
 }
 
 function epDragStart(event, charId, fromIdx){
@@ -1855,12 +1932,19 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   card.className='orders-char-block';
   card.style.cssText='border:2px dashed #c8922a;opacity:0.9;margin-top:8px';
 
-  // Build the char summary bar
-  const skillStr=Object.entries(fakeChar.skills||{}).filter(([,v])=>v>0)
-    .map(([k,v])=>`<span style="color:var(--forest)"><strong>${SKILL_LABELS[k]||k}:</strong> ${v}</span>`).join(' ')||'<span style="color:#aaa">No skills</span>';
+  // Build the char summary bar — show only the single highest skill, matching the
+  // "Best skill" shown for this hero in the Intelligence report (not the full skill list).
+  let hireTop=heroData.topSkill||null;
+  if(!hireTop){
+    const sk=Object.entries(heroData.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if(sk.length) hireTop={skill:sk[0][0],level:sk[0][1]};
+  }
+  const skillStr=hireTop
+    ?`<span style="color:var(--forest)"><strong>Best skill:</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill} ${hireTop.level}</span>`
+    :'<span style="color:#aaa">No notable skills</span>';
 
   card.innerHTML=`
-    <div class="orders-char-head" style="background:#fdf5e0">
+    <div class="orders-char-head" style="background:#fdf5e0;color:#4a4a4a">
       ⚔ ${heroData.name}
       <span style="color:#c8922a;font-size:.7rem;margin-left:6px">(newly hired — can act from ${SEASONS_H[firstActable]||'next turn'})</span>
     </div>
@@ -1907,17 +1991,25 @@ function injectHiredHeroOrders(charId, ph, charIdx){
       <div style="font-size:.8rem;padding:4px 8px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px">ME — Melee</div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${ENCOUNTER_TACTICS.map(t=>`<button onclick="addEncounterTactic('${hiredCharId}','${t.code}')"
+      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS').map(t=>`<button onclick="addEncounterTactic('${hiredCharId}','${t.code}')"
         style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
         title="${t.label}">+ ${t.code}</button>`).join('')}
     </div>
     <input type="hidden" id="ep-tactics-${hiredCharId}" value="ME">
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
+        ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— one random spell cast in army battles (not encounters)</span>
+      </div>
+      <input type="hidden" id="ep-preschool-${hiredCharId}" value="">
+      <div id="ep-preschool-display-${hiredCharId}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
+    </div>
     <div style="margin-top:6px">
       <label style="font-size:.72rem">Notes for GM:</label>
       <input type="text" id="ep-notes-${hiredCharId}" placeholder="e.g. Only fight if outnumbered"
         style="font-size:.8rem;margin-top:2px">
     </div>`;
   card.appendChild(epDiv);
+  renderPreSchool(hiredCharId);
 }
 
 // Get target value — handles both regular selects/inputs and recruit checkbox lists
@@ -2057,7 +2149,12 @@ async function doSaveOrders(){
     });
     const tacHidden=document.getElementById(`ep-tactics-${c.id}`);
     const notesEl=document.getElementById(`ep-notes-${c.id}`);
-    if(tacHidden) encounterPlans[c.id]={tactics:(tacHidden.value||'ME').split(',').filter(Boolean),notes:notesEl?.value||''};
+    const preSchool=(document.getElementById(`ep-preschool-${c.id}`)?.value||'').toLowerCase();
+    if(tacHidden){
+      const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
+      if(preSchool) tacts.push(`CS:${preSchool}`);
+      encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||''};
+    }
   });
   const gp=currentGamePlayer;
   if(!gp?.id){console.warn('doSaveOrders: no currentGamePlayer');return;}
@@ -2121,9 +2218,12 @@ async function doSubmitOrders(){
     // Collect encounter plan
     const tacHidden=document.getElementById(`ep-tactics-${c.id}`);
     const notesEl=document.getElementById(`ep-notes-${c.id}`);
+    const preSchool=(document.getElementById(`ep-preschool-${c.id}`)?.value||'').toLowerCase();
     if(tacHidden){
+      const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
+      if(preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id]={
-        tactics:(tacHidden.value||'ME').split(',').filter(Boolean),
+        tactics:tacts,
         notes:notesEl?.value||'',
       };
     }
@@ -3060,6 +3160,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.16-2134</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.16-2201</div>
 </body>
 </html>
