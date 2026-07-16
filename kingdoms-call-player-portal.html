@@ -1342,7 +1342,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     const SEASONS_RO=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
     el.innerHTML=`<div style="opacity:.65;pointer-events:none;user-select:none">
       <div style="font-family:Cinzel,serif;font-size:.72rem;color:var(--stone);text-transform:uppercase;letter-spacing:.08em;padding:6px 0 8px">Submitted orders (read-only):</div>
-      ${chars.map(c=>{
+      ${chars.filter(c=>c.alive!==false).map(c=>{
         const cOrders=savedO[c.id]||[];
         const hasAny=cOrders.some(o=>o&&o.action&&o.action!=='Defend'&&o.action!=='defend');
         return`<div style="margin-bottom:12px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
@@ -1365,7 +1365,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   const savedOrders=rawSaved.orders||rawSaved; // unwrap {orders:{...}, encounterPlans:{...}}
   const savedEncounterPlans=rawSaved.encounterPlans||{};
 
-  el.innerHTML=chars.map(c=>{
+  el.innerHTML=chars.filter(c=>c.alive!==false).map(c=>{
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
     const currentTactics=savedEP.tactics||['ME'];
@@ -1931,7 +1931,7 @@ async function submitOrders(){
   // Validate: all phases filled?
   // Skip phases that are locked because the character was hired mid-turn
   let missingCount=0;
-  chars.forEach(c=>{
+  chars.filter(c=>c.alive!==false).forEach(c=>{
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     SEASONS.forEach((_,ph)=>{
       if(ph<=hiredPh) return; // legitimately locked — no order possible before hire
@@ -2053,8 +2053,10 @@ async function doSaveOrders(){
   if(document.getElementById('prev-report-banner')?.style.display==='block'){
     console.warn('doSaveOrders: blocked — viewing past turn report');return;
   }
+  const kingSkills={};
+  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0}; });
   const {error:saveErr}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills}),
     orders_submitted:false
   }).eq('id',gp.id);
   if(saveErr){console.error('Save draft error:',saveErr.message);return;}
@@ -2124,8 +2126,11 @@ async function doSubmitOrders(){
       target:getOrderTarget(cid,ph),extra:getOrderExtra(cid,ph),desc:'',
     }));
   });
+  // Collect royal-succession skill allocations for any newly-crowned heir.
+  const kingSkills={};
+  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0}; });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,forTurn:expectedTurn}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -2310,10 +2315,11 @@ function buildTargetField(c, ph, saved){
 
     // ── SEARCH FEATURE ──
     case 'Search Feature':{
-      // Use character's start-of-turn province only — features must be known at turn start
-      // (can't search a feature in a province you're only moving to this turn)
-      const startPd=provOrderData[c.locationId]||null;
-      const feats=(startPd?.features||[]).map(f=>`<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}</option>`).join('');
+      // Use the character's projected province for THIS phase (accounting for earlier-phase moves),
+      // and list every feature known there — including ones discovered by another of your characters.
+      const loc=predictedLocation(c.id,ph);
+      const pd=(loc?provOrderData[loc.id]:null)||provOrderData[c.locationId]||null;
+      const feats=(pd?.features||[]).map(f=>`<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}</option>`).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features in current province" disabled>`;}
@@ -3042,6 +3048,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.15-2112</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.16-1636</div>
 </body>
 </html>

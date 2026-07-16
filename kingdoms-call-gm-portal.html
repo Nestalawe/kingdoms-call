@@ -695,7 +695,7 @@ function renderGMCharOrders(player, char, existingOrders){
   const charOrders=orders[char.id]||[null,null,null,null,null];
   // Build a minimal report stub for buildTargetField
   const gs=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):currentGame.game_state||{};
-  const allChars=(gs.characters||[]).filter(c=>c.player===char.player&&c.alive);
+  const allChars=(gs.characters||[]).filter(c=>c.player===char.player&&(c.alive||c.killedThisTurn));
   const reportStub={
     characters:allChars.map(c=>({
       id:c.id,name:c.name,isKing:c.isKing,skills:c.skills||{},aptitude:c.aptitude||{},armies:c.armies||[],items:c.items||[],
@@ -807,7 +807,7 @@ function onGMActionChange(playerId, charId, ph){
   const gp=currentGamePlayers.find(p=>p.id===playerId);
   if(!gp) return;
   const reportStub={
-    characters:(gs.characters||[]).filter(c=>c.player===char.player&&c.alive).map(c=>({
+    characters:(gs.characters||[]).filter(c=>c.player===char.player&&(c.alive||c.killedThisTurn)).map(c=>({
       id:c.id,name:c.name,isKing:c.isKing,skills:c.skills||{},aptitude:c.aptitude||{},armies:c.armies||[],items:c.items||[],
       locationId:c.location,locationName:(gs.world?.provinces||[])[c.location]?.name||'?',
       effectiveSpeed:c.armies?.length===0?5:Math.min(...(c.armies||[]).map(a=>ARMY_SPEED_GM[a.type]||3)),
@@ -1285,19 +1285,6 @@ const MONSTERS_P=[
     spells:[{name:'Will-o-Wisp',school:'illusory',dmg:[1,4],effect:'',castChance:40,flavour:'Ghostly lights dart in and sting like wasps.'}]},
   {name:'Bandit Scouts',hp:8,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
 ];
-const ITEMS_BY_TIER={1:[],2:[],3:[]};
-ALL_MAGIC_ITEMS_P.forEach(it=>{(ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1]).push(it);});
-// Loot quality climbs with the monster's tier: tougher foes yield rarer (higher-tier) items.
-function rollMagicItem(monsterPower){
-  const r=Math.random();
-  let t;
-  if(monsterPower==='Legendary') t=r<0.5?3:2;
-  else if(monsterPower==='Powerful') t=r<0.15?3:2;
-  else if(monsterPower==='Moderate') t=r<0.25?2:1;
-  else t=1; // Weak
-  const pool=(ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P;
-  return pool[Math.floor(Math.random()*pool.length)];
-}
 const FEATURE_POOLS_P={
   plain:[
     'Ancient Battlefield','Ruined Watchtower','Goblin Camp','Roadside Shrine',
@@ -1410,6 +1397,20 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Cloak of Many Faces',desc:'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter Character orders',effect:{stat:'hidden',bonus:1},tier:3},
   {name:'Crown of Command',desc:'All characters in the same province gain +1 to all skills for the duration of the turn',effect:{stat:'aura',bonus:1},tier:3},
 ];
+// ── Item-tier pools (built after the item list so they can reference it) ──
+const ITEMS_BY_TIER={1:[],2:[],3:[]};
+ALL_MAGIC_ITEMS_P.forEach(it=>{(ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1]).push(it);});
+// Loot quality climbs with the monster's tier: tougher foes yield rarer (higher-tier) items.
+function rollMagicItem(monsterPower){
+  const r=Math.random();
+  let t;
+  if(monsterPower==='Legendary') t=r<0.5?3:2;
+  else if(monsterPower==='Powerful') t=r<0.15?3:2;
+  else if(monsterPower==='Moderate') t=r<0.25?2:1;
+  else t=1; // Weak
+  const pool=(ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 
 
 function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
@@ -1621,11 +1622,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         if(con.taxBand==='poor') taxOverride=rP(1,3);
         else if(con.taxBand==='prosperous') taxOverride=rP(4,7);
       } else {
-        // General fill: aim for ~25% sea overall, clustering next to existing water so seas form
+        // General fill: aim for ~40% sea overall, clustering next to existing water so seas form
         // coherent lakes / inland seas / coastlines rather than scattered single hexes.
         const leftProv = col>0 ? provinces[row*cols+(col-1)] : null;
         const upProv   = provinces[(row-1)*cols+col];
-        const seaChance = ((leftProv&&leftProv.terrain==='sea')||(upProv&&upProv.terrain==='sea')) ? 0.42 : 0.16;
+        const seaChance = ((leftProv&&leftProv.terrain==='sea')||(upProv&&upProv.terrain==='sea')) ? 0.55 : 0.28;
         if(Math.random()<seaChance){ terrain='sea'; }
         else { terrain=pickLand(); }
       }
@@ -1801,6 +1802,29 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     best.armyTypes=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Infantry'];
     // 100% explored = all features discovered at start
     (best.features||[]).forEach(f=>{f.discovered=true;});
+
+    // ── Guarantee: the home is adjacent to at least one POOR (tax 1-3) and one PROSPEROUS (tax 4-7)
+    // land province. The Phase-2 ring constraints usually place these, but if a home ran short of
+    // free ring cells (edge of map / clustered starts) we fix it here so the rule always holds.
+    const homeLandNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
+    if(homeLandNbrs.length>=1 && !homeLandNbrs.some(n=>n.tax>=1&&n.tax<=3)) homeLandNbrs[0].tax=rP(1,3);
+    const prospCandidates=homeLandNbrs.filter(n=>!(n.tax>=1&&n.tax<=3));
+    if(prospCandidates.length>=1 && !homeLandNbrs.some(n=>n.tax>=4&&n.tax<=7)) prospCandidates[0].tax=rP(4,7);
+
+    // ── Guarantee: at least one WEAK feature in every player's home province ──
+    {
+      const SEA_MONS=new Set(['Sea Serpent','Kraken Spawn','Leviathan','Leviathan Young','Pirate Captain','Ghost Galleon Crew','Shark Pack','Giant Crab']);
+      const weakMons=MONSTERS_P.filter(mm=>mm.power==='Weak'&&!SEA_MONS.has(mm.name));
+      if(weakMons.length>0){
+        best.features=best.features||[];
+        if(best.features.length===0){
+          const wpool=FEATURE_POOLS_P[best.terrain]||FEATURE_POOLS_P.plain;
+          best.features.push({name:wpool[Math.floor(Math.random()*wpool.length)],monster:{...weakMons[Math.floor(Math.random()*weakMons.length)]},discovered:true,cleared:false,treasure:Math.max(1,rP(1,6))});
+        } else if(!best.features.some(f=>f.monster&&f.monster.power==='Weak')){
+          best.features[0].monster={...weakMons[Math.floor(Math.random()*weakMons.length)]};
+        }
+      }
+    }
     playerStarts.push(best);
 
     // Build king skills
@@ -1956,7 +1980,7 @@ function hexDistP(a,b,cols){
 // ── BUILD PLAYER TURN REPORT ──────────────────────────
 function buildTurnReport(gameState, playerIndex){
   const player=gameState.players[playerIndex];
-  const chars=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
+  const chars=gameState.characters.filter(c=>c.player===playerIndex&&(c.alive||c.killedThisTurn));
   const ownedProvIds=new Set(player.provinces||[]);
   const visitedProvIds=new Set(gameState.world.provinces.filter(p=>(p.visitedBy||[]).includes(playerIndex)).map(p=>p.id));
 
@@ -2042,6 +2066,8 @@ function buildTurnReport(gameState, playerIndex){
       effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,
       hiredInPhase:c.hiredInPhase??-1,  // -1 = was hired before this turn
       encounterPlan:c.encounterPlan||{tactics:['ME'],notes:''},
+      alive:c.alive!==false, killedThisTurn:!!c.killedThisTurn,   // so the report can show a fallen hero's own section
+      _isHeir:!!c._isHeir, _pendingSkillAllocation:c._pendingSkillAllocation||0, // royal succession skill choice
     };
   });
 
@@ -2402,7 +2428,7 @@ const SPELL_DEFS_P={
 
   // ══ ELEMENTAL MAGIC ══
   'Lightning Bolt': {school:'elemental',target:'none',encounter:true,phase:false,
-    desc:'Combat: deals 1–3 damage per caster level to the opponent. Battle magic: a number of enemy armies equal to your level have their base strength reduced by 1 for the battle.',
+    desc:'Combat: deals 1–3 damage per caster level to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
     fn:'elemental_lightning'},
   'Fireball':       {school:'elemental',target:'none',encounter:true,phase:false,
     desc:'Combat: burns the target for 10% of its health each phase for the next three phases. Battle magic: a random enemy army unit has its base strength halved for the battle.',
@@ -2492,10 +2518,12 @@ async function runTurn(){
     // vs old format: {charId:[phases]}
     let ordersObj=raw;
     let epObj={};
+    let kingSkillsObj={};
     let forTurn=null;
     if(raw.orders!==undefined&&raw.encounterPlans!==undefined){
       ordersObj=raw.orders||{};
       epObj=raw.encounterPlans||{};
+      kingSkillsObj=raw.kingSkills||{};
       forTurn=raw.forTurn??null;
     }
     // CRITICAL: reject orders that were stamped for a different turn (stale submissions)
@@ -2525,6 +2553,14 @@ async function runTurn(){
     Object.entries(epObj).forEach(([charId,plan])=>{
       const ch=G.characters.find(c=>c.id===parseInt(charId));
       if(ch&&plan) ch.encounterPlan=plan;
+    });
+    // Apply royal-succession skill allocations to a newly-crowned heir, then retire the flags.
+    Object.entries(kingSkillsObj).forEach(([charId,alloc])=>{
+      const ch=G.characters.find(c=>c.id===parseInt(charId));
+      if(ch&&ch._isHeir&&alloc&&alloc.skills){
+        ch.skills=alloc.skills;
+        delete ch._isHeir; delete ch._pendingSkillAllocation;
+      }
     });
   });
 
@@ -3032,8 +3068,8 @@ const BATTLE_ARMY_SPELLS={
             // A number of enemy armies equal to the caster's level lose 10% of their strength for the battle.
             const n=Math.min(defenders.length, Math.max(1,spellLvl));
             const picks=defenders.slice().sort(()=>Math.random()-0.5).slice(0,n);
-            picks.forEach(d=>{ d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.10)); });
-            narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — each loses 10% of its strength this battle.`);
+            picks.forEach(d=>{ d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20)); });
+            narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — each loses 20% of its strength this battle.`);
           } else if(spellName==='Curse'){
             // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the battle.
             if(neutralGuardHero){ const tac=effStat(neutralGuardHero,'tactical'),dru=(neutralGuardHero.skills?.druid||0); neutralGuardHero._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${neutralGuardHero.name}'s ${neutralGuardHero._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
@@ -3160,8 +3196,8 @@ const BATTLE_ARMY_SPELLS={
               narrative.push(`  🔥 Fireball halves the attackers' strongest unit, ${tgt.unitName||tgt.type} (−${cut}).`);
             } else if(defSpellName==='Lightning Bolt'){
               const n=Math.min(armies.length,Math.max(1,defSpellLvl));
-              armies.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(a=>{ a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(a)*0.10)); });
-              narrative.push(`  ⚡ Lightning Bolt sears ${n} attacking unit${n!==1?'s':''} — each loses 10% of its strength.`);
+              armies.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(a=>{ a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(a)*0.20)); });
+              narrative.push(`  ⚡ Lightning Bolt sears ${n} attacking unit${n!==1?'s':''} — each loses 20% of its strength.`);
             } else if(defSpellName==='Psychic Blast'){
               if(c){ c._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${c.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             } else if(defSpellName==='Telekinetic Storm'){
@@ -3553,11 +3589,13 @@ const BATTLE_ARMY_SPELLS={
   }
   function pcCharCombatant(ch){
     const maxHp=ch.maxHp||20;
+    // Rage (AK §2.4): a Berserker shrugs off pain, granting 1-4 extra hit points for the fight.
+    const rageHp=(ch.temper==='Berserk')?rng(1,4):0;
     return {
       kind:'character', ref:ch, name:ch.name, player:ch.player,
-      hp:(ch.hp!=null?ch.hp:maxHp), maxHp,
+      hp:(ch.hp!=null?ch.hp:maxHp)+rageHp, maxHp:maxHp+rageHp,
       melee:effStat(ch,'melee'), archery:effStat(ch,'archery'),
-      temper:ch.temper||'Brave',
+      temper:ch.temper||'Brave', alignment:ch.alignment,
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
               elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
       tactics:((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME']).slice(),
@@ -3585,11 +3623,13 @@ const BATTLE_ARMY_SPELLS={
 
   // --- Small helpers ----------------------------------------------------------
   function pcHitChance(attacker, defender, base){
-    // base 50 for melee; attacker melee vs defender melee shifts ±10/level; temper & penalties apply.
+    // base 50 for melee; attacker melee vs defender melee shifts ±10/level; AK tempers apply.
     const diff=(attacker.melee||0)-(defender.melee||0);
     let chance=base+diff*10;
-    const t=attacker.temper;
-    chance += (t==='Berserk'?10:t==='Brave'?10:t==='Cautious'?0:-5);
+    // ── AK §2.4 Tempers (melee) ──
+    if(attacker.temper==='Brave') chance += 10;                          // Elan: bold, exploits openings
+    if(defender.temper==='Cautious') chance -= 10;                       // Parrying: expert defence
+    if(defender.temper==='Berserk') chance -= ({Brave:5,Cautious:10,Cowardly:15}[attacker.temper]||0); // Intimidation
     chance -= (attacker.status.hitPenalty||0);
     chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
     return Math.max(5, Math.min(95, chance));
@@ -3727,7 +3767,7 @@ const BATTLE_ARMY_SPELLS={
         // Arrows can only be loosed at BOW range — too far at spell range, too close at melee range.
         if(state.range==='spell'){ state.range='bow'; narrative.push(`  ${actor.name} advances into bow range, drawing to fire.`); }
         if(state.range==='melee'){ narrative.push(`  ${actor.name} is locked in melee — too close to fire.`); break; }
-        const shots=Math.max(1,actor.archery); const hit=30+actor.archery*10;
+        const shots=1; const hit=30+actor.archery*10; // one shot per Fire action; skill governs accuracy
         for(let s=0;s<shots&&foe.hp>0;s++){ const r=Math.random()*100; if(r<hit*(foe.status.dodge||1)){ actor._didArchery=true; const d=rng(1,6); const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow'); if(dealt)narrative.push(`  ${actor.name}'s arrow hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`); } else narrative.push(`  ${actor.name}'s arrow flies wide.`); }
         break;
       }
@@ -3828,9 +3868,43 @@ const BATTLE_ARMY_SPELLS={
         actor._freeAttacks=0;
         if(state.fledBy||state.parley||state.stoleBy||foe.hp<=0) break;
       }
+
+      // ── Flight from Combat (AK §2.4): a fighter's Temper may make them break off when death nears ──
+      if(!state.fledBy&&!state.parley&&!state.stoleBy){
+        for(const cbt of [A,B]){
+          if(cbt.hp<=0) continue;
+          const foe=cbt===A?B:A; if(foe.hp<=0) continue;
+          const ratio=cbt.hp/(cbt.maxHp||20);
+          let urge=0;
+          if(cbt.temper==='Berserk') urge=0;                                   // never flees
+          else if(cbt.temper==='Brave') urge=(ratio<0.20 && cbt.hp<foe.hp)?0.40:0; // only when losing badly
+          else if(cbt.temper==='Cautious') urge=(ratio<0.35)?0.50:0;           // when a death blow is a real risk
+          else if(cbt.temper==='Cowardly') urge=(ratio<0.60)?0.65:0;           // at the first serious danger
+          if(urge>0 && Math.random()<urge){
+            const fleeChance=50+(cbt.temper==='Cautious'?10:0)+(cbt.status.fleeBonus||0); // Cautious "Fleeing"
+            if(Math.random()*100<fleeChance){ state.fledBy=cbt; narrative.push(`  🏃 ${cbt.name} (${cbt.temper}) loses the stomach for the fight and breaks off!`); break; }
+          }
+        }
+        if(state.fledBy) break;
+      }
     }
     // Write back HP to underlying characters.
     [A,B].forEach(cbt=>{ if(cbt.kind==='character'&&cbt.ref){ cbt.ref.hp=Math.max(0,Math.round(cbt.hp)); } });
+    // ── Begging for Mercy (AK §2.4): a Cowardly fighter felled in combat may plead and be spared,
+    // fleeing the field instead of dying. It works best against Good/similar alignments. ──
+    for(const cbt of [A,B]){
+      const foe=cbt===A?B:A;
+      if(cbt.hp<=0 && cbt.kind==='character' && cbt.temper==='Cowardly' && !state.fledBy && !cbt._begged){
+        const foeAlign=foe.alignment||(foe.ref&&foe.ref.alignment)||'';
+        let mercy=50;
+        if(foeAlign==='Good'||foeAlign==='Divine'||foeAlign==='Druidic') mercy=75;
+        else if(foeAlign==='Evil'||foeAlign==='Undead') mercy=20;
+        if(Math.random()*100<mercy){
+          cbt.hp=1; if(cbt.ref)cbt.ref.hp=1; cbt._begged=true; state.fledBy=cbt;
+          narrative.push(`  🙏 ${cbt.name} falls, but begs for mercy — and ${foe.name} grants it. ${cbt.name} flees the field with their life.`);
+        }
+      }
+    }
     let winner=null, loser=null;
     if(!state.fledBy&&!state.parley&&!state.stoleBy){
       if(A.hp<=0&&B.hp<=0){ winner=(A.melee>=B.melee)?A:B; loser=winner===A?B:A; winner.hp=1; if(winner.ref)winner.ref.hp=1; }
@@ -4079,8 +4153,8 @@ const BATTLE_ARMY_SPELLS={
         if(enemyCmdr){ enemyCmdr._druidNegated=true; narr.push(`  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
       } else if(spellName==='Lightning Bolt'){
         const n=Math.min(targets.length,Math.max(1,spellLvl));
-        targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.10));});
-        narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} lose 10% strength.`);
+        targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20));});
+        narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} lose 20% strength.`);
       } else if(spellName==='Curse'){
         if(enemyCmdr){ const tac=effStat(enemyCmdr,'tactical'),dru=(enemyCmdr.skills?.druid||0); enemyCmdr._curseHalveStat=(tac>=dru?'tactical':'druid'); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${enemyCmdr._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
       } else if(spellName==='Control Undead'){
@@ -4770,9 +4844,9 @@ const BATTLE_ARMY_SPELLS={
           const archLevel=effStat(c,'archery');
           if(archLevel===0){narrative.push(`${c.name} has no archery skill and cannot fire.`);break;}
           if(range==='melee'){narrative.push(`${c.name} is at melee range — cannot fire arrows.`);break;}
-          const shots=Math.max(1,archLevel);
+          const shots=1; // one shot per Fire action; archery skill governs accuracy, not volume
           const hitChance=30+archLevel*10;
-          narrative.push(`📊 Archery — Archery ${archLevel}: ${shots} shot${shots>1?'s':''}, hit chance ${hitChance}% each`);
+          narrative.push(`📊 Archery — Archery ${archLevel}: 1 shot, hit chance ${hitChance}%`);
           for(let s=0;s<shots&&monsterHp>0;s++){
             const r=Math.random()*100;
             if(r<hitChance){
@@ -6836,6 +6910,9 @@ const ARMY_SPEED_R={'Infantry':3,'Cavalry':4,'Longbowmen':3,'Knights':4,'Human G
     });
   }
 
+  // A fresh turn: clear last turn's death flags so 'killedThisTurn' marks only deaths this turn.
+  G.characters.forEach(c=>{ delete c.killedThisTurn; });
+
   for(let ph=0;ph<5;ph++){
     log('system',`— ${SEASONS[ph]} —`);
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
@@ -6998,51 +7075,45 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
   // 7. Advance turn counter
   G.turn=(G.turn||1)+1;
 
-  // 7b. King succession — spawn heirs for any player whose king died
+  // 7b. King succession — crown an heir for any player whose king has died.
   G.players.forEach((p,pi)=>{
-    const king=G.characters.find(c=>c.isKing&&c.player===pi);
-    if(!king||!king.alive){
-      if(!p.heirPending){
-        p.heirPending=true;
-        const wealthiest=(p.provinces||[]).reduce((best,pid)=>{
-          const pv=G.world.provinces[pid];
-          return(!best||pv?.tax>best.tax)?{id:pid,tax:pv?.tax||0}:best;
-        },null);
-        p.heirProvinceId=wealthiest?.id??null;
-        log('system',`⚠ ${p.name}'s king has fallen! An heir will be crowned at the start of next turn.`,{actor:pi,targets:[pi]});
-      }
-    } else if(p.heirPending){
-      // Spawn the heir now (king was dead last turn, heir spawns this turn)
-      p.heirPending=false;
-      const heirProvId=p.heirProvinceId??null;
-      const heirProv=heirProvId!=null?G.world.provinces[heirProvId]:null;
-      if(heirProv){
-        const deadKing=G.characters.find(c=>c.isKing&&c.player===pi&&!c.alive);
-        const heirSkills={melee:2,archery:1,sage:1};
-        if(p.alignment==='Divine') heirSkills.white=(heirSkills.white||0)+1;
-        if(p.alignment==='Druidic') heirSkills.druid=(heirSkills.druid||0)+1;
-        if(p.alignment==='Undead') heirSkills.necromancy=(heirSkills.necromancy||0)+1;
-        const heirName=nextHeroName?nextHeroName():(deadKing?'Heir of '+deadKing.name:'The New King');
-        const heir={
-          id:G.characters.length,name:heirName,isKing:true,player:pi,
-          race:p.race||'Human',alignment:p.alignment||'Neutral',
-          temper:['Bold','Cautious','Cunning','Honourable'][Math.floor(Math.random()*4)],
-          hp:22,maxHp:22,skills:heirSkills,aptitude:{},
-          armies:[],items:[],location:heirProv.id,alive:true,merits:0,taxBonus:0,
-          pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
-          _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills
-        };
-        const ABILITIES_P2=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
-        ABILITIES_P2.forEach(ab=>{heir.aptitude[ab]=Math.ceil(Math.random()*4);});
-        G.characters.push(heir);
-        heirProv.characters=(heirProv.characters||[]);
-        if(!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
-        p.heirProvinceId=null;
-        log('system',`👑 ${heir.name} rises as heir to ${p.name}'s throne, appearing in ${heirProv.name}. The player must allocate 4 additional skills before submitting orders.`,{actor:pi,targets:[pi],provinceId:heirProv.id,public:true});
-      }
-    } else {
-      p.heirPending=false;
+    const aliveKing=G.characters.find(c=>c.isKing&&c.player===pi&&c.alive);
+    if(aliveKing){ p.heirPending=false; return; } // reigning king is fine
+    // No living king. If we haven't already crowned an heir, do so now so the player has a new
+    // king (with skills to allocate) ready for next turn's orders.
+    const wealthiest=(p.provinces||[]).reduce((best,pid)=>{
+      const pv=G.world.provinces[pid];
+      return(!best||(pv&&pv.tax>best.tax))?{id:pid,tax:pv?.tax||0}:best;
+    },null);
+    const heirProv=wealthiest?G.world.provinces[wealthiest.id]:null;
+    if(!heirProv){
+      // No provinces left — the line has ended; the player is effectively eliminated.
+      if(!p._eliminated){ p._eliminated=true; log('system',`⚠ ${p.name}'s king has fallen and no lands remain — their dynasty is extinguished.`,{actor:pi,targets:[pi]}); }
+      return;
     }
+    p.heirPending=false;
+    const deadKing=G.characters.find(c=>c.isKing&&c.player===pi&&!c.alive);
+    if(deadKing) deadKing.isKing=false; // demote the fallen king so the realm has exactly one monarch
+    const heirSkills={melee:2,archery:1,sage:1};
+    if(p.alignment==='Divine') heirSkills.white=(heirSkills.white||0)+1;
+    if(p.alignment==='Druidic') heirSkills.druid=(heirSkills.druid||0)+1;
+    if(p.alignment==='Undead') heirSkills.necromancy=(heirSkills.necromancy||0)+1;
+    const heirName=(typeof nextHeroName==='function')?nextHeroName():(deadKing?'Heir of '+deadKing.name:'The New Monarch');
+    const heir={
+      id:G.characters.length,name:heirName,isKing:true,player:pi,
+      race:p.race||'Human',alignment:p.alignment||'Neutral',
+      temper:['Bold','Cautious','Cunning','Honourable'][Math.floor(Math.random()*4)],
+      hp:22,maxHp:22,skills:heirSkills,aptitude:{},
+      armies:[],items:[],location:heirProv.id,alive:true,merits:0,taxBonus:0,
+      pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
+      _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills before ordering
+    };
+    const ABILITIES_P2=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+    ABILITIES_P2.forEach(ab=>{heir.aptitude[ab]=Math.ceil(Math.random()*4);});
+    G.characters.push(heir);
+    heirProv.characters=(heirProv.characters||[]);
+    if(!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
+    log('system',`👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Allocate their 4 remaining skill points before submitting orders.`,{actor:pi,targets:[pi],provinceId:heirProv.id,public:true});
   });
 
   // 7c. Expire temporary summons and reset hire phase flags
@@ -7340,6 +7411,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.15-2112</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.16-1636</div>
 </body>
 </html>
