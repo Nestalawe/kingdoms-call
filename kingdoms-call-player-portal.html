@@ -179,8 +179,17 @@ section{display:none;}.section-active{display:block;}
       <div id="join-msg"></div>
       <div id="join-game-info" style="margin-bottom:16px"></div>
 
-      <label>Your Kingdom / King's Name</label>
-      <input type="text" id="join-king-name" placeholder="e.g. King Aldric of the Iron Throne">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label>Your King's Name</label>
+          <input type="text" id="join-king-name" placeholder="e.g. King Aldric">
+        </div>
+        <div>
+          <label>Your Kingdom's Name</label>
+          <input type="text" id="join-kingdom-name" placeholder="e.g. the Kingdom of Woe">
+          <div style="font-size:.68rem;color:#777;margin-top:2px">Shown in reports as "…of &lt;this&gt;". Include "the" if you want it, e.g. "the Iron Throne".</div>
+        </div>
+      </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
         <div>
@@ -526,6 +535,18 @@ async function loadOpenGames(){
     if(!slotsByGame[s.game_id]) slotsByGame[s.game_id]=[];
     slotsByGame[s.game_id].push(s);
   });
+  // Item 3: fetch GM display names + parse world size for each game.
+  const gmIds=[...new Set(games.map(g=>g.gm_user_id).filter(Boolean))];
+  const gmNameById={};
+  if(gmIds.length){
+    const {data:gmProfiles}=await sb.from('profiles').select('id,name').in('id',gmIds);
+    (gmProfiles||[]).forEach(pr=>{ gmNameById[pr.id]=pr.name; });
+  }
+  const SIZE_LABEL={small:'Small (8×6)',medium:'Medium (12×8)',large:'Large (16×10)',huge:'Huge (20×12)'};
+  const gameInfo=g=>{
+    let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
+    return { gm: gmNameById[g.gm_user_id]||'the Game Master', size: SIZE_LABEL[cfg.mapSize]||'Medium (12×8)' };
+  };
 
   const openGames=games.filter(g=>{
     if(myGameIds.has(g.id)) return false;
@@ -540,16 +561,19 @@ async function loadOpenGames(){
   el.innerHTML=openGames.map(g=>{
     const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
     const maxP=g.max_players||4;
-    return`<div class="game-card clickable" onclick="showJoinGame('${g.id}','${g.name.replace(/'/g,"\\'")}',${maxP},${joined})">
+    const info=gameInfo(g);
+    const gmEsc=info.gm.replace(/'/g,"\\'");
+    return`<div class="game-card clickable" onclick="showJoinGame('${g.id}','${g.name.replace(/'/g,"\\'")}',${maxP},${joined},'${gmEsc}','${info.size}')">
       <div class="gc-name">${g.name} <span class="pill pill-green">Open</span></div>
-      <div class="gc-meta">${joined}/${maxP} players joined · Click to join this game</div>
+      <div class="gc-meta">GM: <strong>${info.gm}</strong> · World: ${info.size} · ${joined}/${maxP} players joined</div>
+      <div class="gc-meta" style="opacity:.7">Click to join this game</div>
     </div>`;
   }).join('');
 }
 
 // ── JOIN GAME ─────────────────────────────────────────
-async function showJoinGame(gameId, gameName, maxP, joined){
-  joiningGame={id:gameId,name:gameName,maxP,joined};
+async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
+  joiningGame={id:gameId,name:gameName,maxP,joined,gmName,worldSize};
   joinSkills={};
   document.getElementById('join-game-title').textContent=`Join: ${gameName}`;
   document.getElementById('join-king-name').value='';
@@ -589,7 +613,11 @@ async function showJoinGame(gameId, gameName, maxP, joined){
   const takenNote=warningParts.length>0
     ?`<div class="msg-warning" style="margin-top:6px">⚠ <strong>${warningParts.join(' and ')}</strong> alignment${warningParts.length>1?'s are':' is'} already taken in this game — only one player per game may be Divine or Undead.</div>`
     :'';
-  infoEl.innerHTML=`<div class="msg-info">${joined}/${maxP} players have already joined. There ${maxP-joined===1?'is':'are'} ${maxP-joined} open slot${maxP-joined===1?'':'s'}.</div>${takenNote}`;
+  const gmBox=`<div style="background:#f5f0e8;border:1px solid var(--gold);border-radius:3px;padding:8px 12px;font-size:.82rem;line-height:1.6;margin-bottom:8px">
+      <div>\u{1F451} <strong>Game Master:</strong> ${joiningGame?.gmName||'the Game Master'}</div>
+      <div>\u{1F5FA}\uFE0F <strong>World size:</strong> ${joiningGame?.worldSize||'Medium (12×8)'}</div>
+    </div>`;
+  infoEl.innerHTML=`${gmBox}<div class="msg-info">${joined}/${maxP} players have already joined. There ${maxP-joined===1?'is':'are'} ${maxP-joined} open slot${maxP-joined===1?'':'s'}.</div>${takenNote}`;
   updateAlignmentDesc();
   updateRaceDesc();
   updateTemperDesc();
@@ -670,11 +698,13 @@ function adjustSkill(skill,delta){
 
 async function joinGame(){
   const kingName=document.getElementById('join-king-name').value.trim();
+  const kingdomName=document.getElementById('join-kingdom-name').value.trim();
   const race=document.getElementById('join-race').value;
   const alignment=document.getElementById('join-alignment').value;
   const temper=document.getElementById('join-temper').value;
   const msg=document.getElementById('join-msg');
   if(!kingName){msg.innerHTML='<div class="msg-error">Please enter your King\'s name.</div>';return;}
+  if(!kingdomName){msg.innerHTML='<div class="msg-error">Please name your Kingdom.</div>';return;}
   const spent=Object.values(joinSkills).reduce((s,v)=>s+v,0);
   if(spent<4){msg.innerHTML=`<div class="msg-warning">You still have ${4-spent} skill point${4-spent!==1?'s':''} to spend. Are you sure? <button class="btn btn-gold" style="padding:4px 10px;margin-left:8px" onclick="doJoinGame('${joiningGame.id}')">Join Anyway</button></div>`;return;}
   await doJoinGame(joiningGame.id);
@@ -682,6 +712,7 @@ async function joinGame(){
 
 async function doJoinGame(gameId){
   const kingName=document.getElementById('join-king-name').value.trim();
+  const kingdomName=document.getElementById('join-kingdom-name').value.trim()||kingName;
   const race=document.getElementById('join-race').value;
   const alignment=document.getElementById('join-alignment').value;
   const temper=document.getElementById('join-temper').value;
@@ -710,12 +741,12 @@ async function doJoinGame(gameId){
   while(takenIndices.has(nextIndex)&&nextIndex<maxP) nextIndex++;
   if(nextIndex>=maxP){msg.innerHTML='<div class="msg-error">This game is now full.</div>';return;}
 
-  const playerSetup={kingName,race,alignment,temper,skills:joinSkills};
+  const playerSetup={kingName,kingdomName,race,alignment,temper,skills:joinSkills};
   const {data:slot,error}=await sb.from('game_players').insert({
     game_id:gameId,
     user_id:currentUser.id,
     player_index:nextIndex,
-    display_name:kingName,
+    display_name:kingdomName,
     orders_submitted:false,
     turn_report:JSON.stringify({playerSetup, status:'joined', waitingForTurn0:true})
   }).select().single();
@@ -1063,7 +1094,7 @@ async function openReport(gamePlayerId){
     Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. In forest and jungle terrain, these armies fight as though they were a full quality tier higher (×1.5 strength). Creature armies also fight with 25% fanaticism bonus under your banner. Your armies fight with a 20% chance of fanaticism.`,
     Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Heroes of any race join your service at the standard 2g rate, regardless of their origins. Mercenary bands cost 1g less to hire than the going rate. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
     Pagan:`Your kingdom draws on ancient and forgotten powers. Your armies fight with a 15% chance of fanaticism.`,
-    Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods and Bone Dragon — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
+    Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
     Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a Skeletal Infantry at their side. All skeletal armies under your banner are exempt from the Druid penalty for undead army types, fight with 100% fanaticism in every battle, and cost only 1g upkeep each regardless of type. Battlefield graves in your provinces decay more slowly, preserving more fallen armies for the Skeletal Armies spell. Should enemy heroes fall within reach of your necromancers, they can be raised to serve your cause through the Resurrect spell.`,
   };
 
@@ -1081,7 +1112,7 @@ async function openReport(gamePlayerId){
       ${playerAlignment==='Druidic'?'🌿 <strong>Druidic bonuses</strong> — <span style="color:#2d7a2d"><strong>[C] Creature</strong></span> armies get no Druid penalty, +25% fanaticism, ×1.5 strength in forest/jungle. Your king starts with Druid +1.':''}
       ${playerAlignment==='Evil'?'💀 <strong>Evil bonuses</strong> — <span style="color:#8a1c1c"><strong>[M] Monster</strong></span> armies get +25% fanaticism. On decisive wins: Terror effect. On province conquest: instant 50% loot.':''}
       <br><span style="color:#2d7a2d;font-weight:600">[C] Creatures:</span> Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort, Eagle Riders
-      ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods, Bone Dragon':''}
+      ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods':''}
     </div>`:'';
   // Show heir skill allocation banner if applicable
   const heirChar=chars.find(c=>c._isHeir&&(c._pendingSkillAllocation||0)>0);
@@ -1098,7 +1129,14 @@ async function openReport(gamePlayerId){
   document.getElementById('report-kingdom').innerHTML=alignBanner+heirBanner+cmGuide+`
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
-      <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div></div>
+      <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div>${(()=>{
+        const parts=[];
+        if((kingdom.neutralTradeBonus||0)>0) parts.push(`+${kingdom.neutralTradeBonus}g Neutral trade`);
+        if((kingdom.taxBonus||0)>0) parts.push(`+${kingdom.taxBonus}g tax bonus`);
+        if((kingdom.perProvBonus||0)>0) parts.push(`+${kingdom.perProvBonus}g Merchant's Ledger`);
+        if((kingdom.interestBonus||0)>0) parts.push(`+${kingdom.interestBonus}g interest`);
+        return parts.length?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">incl. ${parts.join(', ')}</div>`:'';
+      })()}</div>
       <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
@@ -1110,9 +1148,9 @@ async function openReport(gamePlayerId){
       const armies=(c.armies||[]).length>0
         ?c.armies.map(a=>{
   const CREATURES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-  const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']);
+  const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
   const tag=CREATURES.has(a.type)?' [C]':MONSTERS.has(a.type)?' [M]':'';
-  return '⚔ '+armyLabel(a)+tag;
+  return unitEmoji(a.type)+' '+armyLabel(a)+tag;
 }).join('<br>')
         :'No armies — Move: 5 hexes/order';
       const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
@@ -1147,8 +1185,9 @@ async function openReport(gamePlayerId){
           ${(p.features||[]).filter(f=>f.cleared).length>0
             ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>f.name).join(', ')}`
             :''}
-          <br>Recruitable: ${(p.armyTypes||[]).join(', ')||'none'}
-          ${(p.neutralDefenders||[]).length?`<br>⚔ Defenders: ${p.neutralDefenders.map(d=>armyLabel(d)).join(', ')}`:''}
+          <br>Recruitable: ${(p.armyTypes||[]).map(t=>`${unitEmoji(t)} ${t}`).join(' · ')||'none'}
+          ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>${unitEmoji(a.type)} ${armyLabel(a)}`).join('')}`:''}
+          ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} ${armyLabel(d)}`).join('')}`:''}
         </div>
       </div>`).join('')
     :'<div style="color:#999;font-size:.85rem">No provinces owned yet.</div>';
@@ -1187,9 +1226,12 @@ async function openReport(gamePlayerId){
       intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Wandering Heroes</div>`;
       intelHtml+=wanderers.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
+        const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
+          ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+          : `Best skill: ${topStr}`;
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">Best skill: ${topStr} · Hire for <strong>${s.pay}g/turn</strong>${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine} · Hire for <strong>${s.pay}g/turn</strong>${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -1197,18 +1239,49 @@ async function openReport(gamePlayerId){
       intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Enemy Heroes Sighted</div>`;
       intelHtml+=enemies.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
+        const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
+          ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+          : `Best skill: ${topStr}`;
         return`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom} — ${s.locationName}<br>
-          <span style="font-size:.78rem">Best skill: ${topStr}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
         </div>`;
       }).join('');
     }
   }
 
   // Province reports
+  const provCharIntel=report.provinceCharIntel||[];
   const provinceIntel=intel.filter(i=>!i.match(/^Wandering hero|last seen/));
-  if(provinceIntel.length>0){
-    if(sightings.length>0) intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Province Reports</div>`;
+  if(provCharIntel.length>0||provinceIntel.length>0){
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Province Reports</div>`;
+    // Structured per-province character intel: names + army-unit counts, with unit detail only where
+    // one of your characters spied the province this turn.
+    provCharIntel.forEach(pr=>{
+      const rows=pr.characters.map(c=>{
+        const icon=c.category==='own'?'\u{1F464}':c.category==='enemy'?'\u{1F441}':'\u2694';
+        const km=c.isKing?'\u265B ':'';
+        const who=(c.category==='enemy'&&c.kingdom)?`${c.name} of ${c.kingdom}`:(c.category==='neutral'?`${c.name} (wandering)`:c.name);
+        const col=c.category==='enemy'?'#c05050':c.category==='neutral'?'#b07d2a':'var(--ink)';
+        let line=`${icon} <strong style="color:${col}">${km}${who}</strong>`;
+        if(c.spiedSkills&&Object.keys(c.spiedSkills).some(k=>c.spiedSkills[k]>0)){
+          line+=`<br><span style="font-size:.7rem;padding-left:14px;color:#2d7a2d">🔍 ${Object.entries(c.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}</span>`;
+        }
+        if(c.armies&&c.armies.length){
+          line+=`<br><span style="font-size:.72rem;padding-left:14px">${c.armies.map(a=>`${unitEmoji(a.type)} ${armyLabel(a)}`).join(', ')}</span>`;
+        } else if(c.armies){
+          line+=` — <span style="opacity:.75;font-size:.74rem">no armies</span>`;
+        } else {
+          line+=` — <span style="opacity:.85;font-size:.74rem">${c.armyCount} army unit${c.armyCount!==1?'s':''}${c.armyCount>0?' (strength unknown — spy to reveal)':''}</span>`;
+        }
+        return `<div style="padding:1px 0">${line}</div>`;
+      }).join('');
+      intelHtml+=`<div class="intel-entry"${pr.spied?' style="border-left-color:#c8922a"':''}>
+        <strong style="font-family:'Cinzel',serif;font-size:.76rem">${pr.provName}</strong>${pr.spied?' <span style="color:#c8922a;font-size:.66rem">\u{1F50D} spied this turn</span>':''}
+        ${rows}
+      </div>`;
+    });
+    // Legacy free-text province intel (spy result lines etc.)
     intelHtml+=provinceIntel.map(i=>`<div class="intel-entry">${i}</div>`).join('');
   }
 
@@ -1326,7 +1399,7 @@ const SPELL_HINTS={
   'Psychic Blast':'Target: a character here. 5–15 direct damage, bypasses armies.',
   'Telekinetic Storm':'Target: any province. All armies there take 2–5 strength damage.',
   'Illusory Terrain':'Target: any province. Appears as different terrain to enemies for one turn.',
-  'Phantasmal Armies':'Target: your province. 1–3 phantom units appear in enemy spy reports.',
+  'Phantasmal Armies':'Target: yourself or a friendly hero in your province this phase who is leading armies. Their led armies fight at +10% strength per caster level in battle this turn.',
   'Hide Feature':'Target: any province. Features hidden from enemy intelligence this turn.',
   'Invisibility':'You cannot be detected by Spy orders or seen on maps this turn.',
   'Lightning Bolt':'Target: a character here. 8–20 damage — highest single-target damage spell.',
@@ -1347,6 +1420,21 @@ function armyLabel(a, opts={}){
   const detail=`${a.type}, ${a.quality}`;
   if(opts.short) return name?`${name}`:`${a.quality} ${a.type}`;
   return name?`${name} (${detail})`:`${a.quality} ${a.type}`;
+}
+
+// Item 5: an icon representing the *kind* of unit (land / sea / flying / creature / monster) so
+// players can tell them apart at a glance. Priority resolves overlaps (a Wyvern is a flying monster
+// → monster; a Whale Cohort is a sea creature → sea).
+function unitEmoji(type){
+  const _MON=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Crimson Rocs']);
+  const _FLY=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+  const _SEA=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+  const _CRE=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+  if(_MON.has(type)) return '\u{1F409}';   // 🐉 monster
+  if(_FLY.has(type)) return '\u{1F985}';   // 🦅 flying
+  if(_SEA.has(type)) return '\u26F5';       // ⛵ sea
+  if(_CRE.has(type)) return '\u{1F43E}';   // 🐾 creature
+  return '\u{1F6E1}\uFE0F';                 // 🛡️ land
 }
 
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
@@ -1446,7 +1534,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           if(armies.length===0) return '<span style="color:#aaa">No armies</span>';
           const druLevel=(c.skills||{}).druid||0;
           // Druid requirement thresholds (matches server table)
-          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Bone Dragon':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
+          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
           return armies.map(a=>{
             const req=DRUID_REQ[a.type]||0;
             // Same race as the commander → led as if Druid 1 (matches the server rule).
@@ -1454,7 +1542,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             const effDru=sameRace?Math.max(1,druLevel):druLevel;
             const shortfall=Math.max(0,req-effDru);
             const penalty=shortfall>0?` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
-            return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">⚔ ${armyLabel(a)}${penalty}</div>`;
+            return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
         ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.desc?` (${it.desc})`:''}</div>`).join('')}
@@ -1529,10 +1617,11 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           </div>
 
           <div style="margin-top:6px">
-            <label style="font-size:.72rem">Notes for GM (optional):</label>
+            <label style="font-size:.72rem">Describe your battlecry:</label>
             <input type="text" id="ep-notes-${c.id}" value="${savedEP.notes||''}"
-              placeholder="e.g. Only fight if outnumbered; try to talk first"
+              placeholder="e.g. For glory and the fallen — none shall pass!"
               style="font-size:.8rem;margin-top:2px">
+            <div style="font-size:.68rem;color:#777;margin-top:2px">Shouted at any enemy — monster or rival — as combat begins.</div>
           </div>
         </div>
 
@@ -1853,9 +1942,18 @@ function onSpellChange(charId, ph, selectedSpell){
     secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
       <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selectedSpell]||''}</div>`;
   } else if(NEEDS_CHAR.has(selectedSpell)){
+    const isPhantasmal=selectedSpell==='Phantasmal Armies';
     const selfChar2=(report.characters||[]).find(x=>String(x.id)===String(charId));
-    const selfOpt2=selectedSpell==='Oratory'&&selfChar2?`<option value="${selfChar2.id}">${selfChar2.name} (self)</option>`:'';
-    const charOpts=(report.characters||[]).filter(x=>String(x.id)!==String(charId))
+    // Oratory and Phantasmal Armies may be cast on the caster themselves.
+    const selfOpt2=((selectedSpell==='Oratory'||isPhantasmal)&&selfChar2)?`<option value="${selfChar2.id}">${selfChar2.name} (self)</option>`:'';
+    // Phantasmal Armies can only target a friendly hero in the SAME province this phase.
+    const casterLoc=isPhantasmal?predictedLocation(charId,ph):null;
+    const casterLocId=casterLoc?casterLoc.id:null;
+    const charOpts=(report.characters||[]).filter(x=>{
+        if(String(x.id)===String(charId)) return false;
+        if(isPhantasmal){ const xl=predictedLocation(x.id,ph); return xl&&casterLocId!=null&&xl.id===casterLocId; }
+        return true;
+      })
       .map(x=>`<option value="${x.id}">${x.name} — ${x.locationName||'?'}</option>`).join('');
     secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${selfOpt2}${charOpts}</select>
       <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selectedSpell]||''}</div>`;
@@ -2004,8 +2102,8 @@ function injectHiredHeroOrders(charId, ph, charIdx){
       <div id="ep-preschool-display-${hiredCharId}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
     </div>
     <div style="margin-top:6px">
-      <label style="font-size:.72rem">Notes for GM:</label>
-      <input type="text" id="ep-notes-${hiredCharId}" placeholder="e.g. Only fight if outnumbered"
+      <label style="font-size:.72rem">Describe your battlecry:</label>
+      <input type="text" id="ep-notes-${hiredCharId}" placeholder="e.g. For glory and the fallen — none shall pass!"
         style="font-size:.8rem;margin-top:2px">
     </div>`;
   card.appendChild(epDiv);
@@ -2334,6 +2432,28 @@ function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive){
   return recruited;
 }
 
+// Item 3: conditional recruit in a non-owned province.
+// Returns true if, by phase `ph`, this character has moved INTO province `provId` via a Move order
+// queued in an EARLIER phase (< ph) while leading at least one army — i.e. they arrived with a
+// force capable of taking control. The GM engine still enforces that they actually gained control
+// (won any defenders / claimed the land) before a recruit there resolves; this only decides whether
+// the order form OFFERS the recruit option.
+function movedInWithArmyBy(charId, provId, upToPhaseExclusive){
+  const report=currentReport;
+  if(!report) return false;
+  const char=(report.characters||[]).find(c=>c.id===charId);
+  if(!char) return false;
+  // Must lead at least one army at the start of the turn to have moved in "with units".
+  if((char.armies||[]).length===0) return false;
+  // Must not already be standing in this province at the start of the turn — the feature is for a
+  // province they MOVE into during the turn, not one they already occupy.
+  if(char.locationId===provId) return false;
+  // Must have queued a Move landing here in an earlier phase than the recruit phase.
+  if(upToPhaseExclusive<1) return false;
+  const arriveLoc=predictedLocation(charId, upToPhaseExclusive);
+  return !!(arriveLoc && arriveLoc.id===provId);
+}
+
 function buildTargetField(c, ph, saved){
   const action=saved.action||'';
   const target=saved.target||'';
@@ -2545,6 +2665,11 @@ function buildTargetField(c, ph, saved){
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
           const allies=(report.characters||[]).filter(x=>x.id!==c.id&&x.locationId===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+        } else if(selSpell==='Phantasmal Armies'){
+          // Phantasmal Armies: self, or a friendly hero in the SAME province this phase.
+          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         } else if(selSpell==='Clairvoyance'){
           // Clairvoyance: any character you have seen, anywhere on the map.
           const seen=(report.visibleChars||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -2577,8 +2702,18 @@ function buildTargetField(c, ph, saved){
       // Also show mercenaries available in this province
       const mercsAvail=(report.mercIntel||[]).filter(m=>m.locationId===loc?.id);
       const gold=report.kingdom?.gold||0;
-      if(!pd||!pd.canRecruit){
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`${loc.name} is not your territory — cannot recruit here`:'Province unknown'}" disabled>`;
+      // Item 3 — conditional recruit in a NON-owned province. Normally recruiting is limited to
+      // provinces you control. But if (a) you already knew this province's recruitable units at the
+      // start of this turn (its army types are present in your intel below) AND (b) this character
+      // moved in with an army during an earlier phase — potentially seizing control — then offer the
+      // recruit here. The GM engine still enforces that you actually took control before the recruit
+      // resolves; if you didn't, the order is skipped at resolution.
+      const conditionalRecruit=!!(pd && !pd.canRecruit && (pd.armyTypes||[]).length>0 && loc && movedInWithArmyBy(c.id, loc.id, ph));
+      if(!pd || (!pd.canRecruit && !conditionalRecruit)){
+        const why = !pd ? 'Province unknown'
+          : (pd.armyTypes||[]).length===0 ? `${loc.name} is not your territory — cannot recruit here`
+          : `${loc.name} is not yours yet — move in with an army in an earlier phase to recruit here if you take control`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
       }
       const alreadyRecruited=getAlreadyRecruitedThisTurn(c.id,ph);
       // Show the recruit list whenever the province has army types with capacity left this turn.
@@ -2595,7 +2730,8 @@ function buildTargetField(c, ph, saved){
       // Multi-select: use checkboxes rendered as a scrollable list
       const checkId=`po-recruit-${c.id}-${ph}`;
       const savedSels=(target||'').split(',').filter(Boolean);
-      return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:120px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+      return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:140px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        ${conditionalRecruit?`<div style="font-size:.68rem;color:#8a4a4a;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet. This recruit only happens if this character <strong>takes control</strong> of the province earlier in the turn.</div>`:''}
         ${(pd.armyTypes||[]).flatMap(at=>{
           const done=alreadyRecruited[at.type]||0;
           const remaining=at.maxPerTurn-done;
@@ -2609,7 +2745,7 @@ function buildTargetField(c, ph, saved){
               1× ${at.type} (${costEach}g)${
                 new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']).has(at.type)
                   ? ' <span style="color:#2d7a2d;font-size:.72rem">[Creature]</span>'
-                : new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Bone Dragon']).has(at.type)
+                : new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']).has(at.type)
                   ? ' <span style="color:#8a1c1c;font-size:.72rem">[Monster]</span>'
                 : ''}
             </label>`;
@@ -2686,7 +2822,6 @@ function buildTargetField(c, ph, saved){
         }
       }
 
-      if(baseArmies.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to leave" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
       // Where is this character predicted to be at this phase (accounting for earlier-phase moves)?
       const cLoc=predictedLocation(c.id,ph);
@@ -2707,6 +2842,23 @@ function buildTargetField(c, ph, saved){
       othersHere.forEach(x=>recipParts.push(`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`));
       if(recipParts.length===0) recipParts.push(`<option value="" disabled selected>No valid recipient here — garrison requires owning the province, or place another of your characters here first</option>`);
       const recipOpts=recipParts.join('');
+      const allChk=savedTgts.includes('all')?'checked':'';
+      // Item 4 — ALWAYS offer an "All armies" option, even when the projected army list is empty.
+      // A character may gain armies earlier in this SAME phase in ways the order form can't foresee
+      // (e.g. a successful Skeletal Armies cast, Elemental Summon, Control Undead, or mercenary hire).
+      // The GM resolves "all" against the character's ACTUAL armies at that phase, so it correctly
+      // moves whatever they hold when the order fires — nothing if they gained none.
+      if(baseArmies.length===0){
+        return`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+          <div style="font-size:.68rem;color:#8a4a4a;margin-bottom:4px;line-height:1.35">No armies to leave right now, but you can still queue <strong>All armies</strong> in case this character gains a force earlier this phase (e.g. Skeletal Armies).</div>
+          <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+            <strong>All armies</strong>
+          </label>
+          <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+        </div>
+        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;
+      }
       const checkboxes=baseArmies.map((a,i)=>{
         const val=a.unitName||a.type;
         const chk=savedTgts.includes(val)||savedTgts.includes('all')?'checked':'';
@@ -2715,7 +2867,6 @@ function buildTargetField(c, ph, saved){
           ${armyLabel(a)}
         </label>`;
       }).join('');
-      const allChk=savedTgts.includes('all')?'checked':'';
       return`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
         <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
           <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
@@ -2754,10 +2905,13 @@ function buildTargetField(c, ph, saved){
     case 'Pick Up Army':{
       const loc2=predictedLocation(c.id,ph);
       const pd2=loc2?provOrderData[loc2.id]:null;
-      const garrisons=(pd2?.garrisonArmies||[]).map((a,i)=>`<option value="-1:${i}">${armyLabel(a)} — garrison</option>`).join('');
+      const garrArr=(pd2?.garrisonArmies||[]);
+      const garrisons=garrArr.map((a,i)=>`<option value="-1:${i}">${armyLabel(a)} — garrison</option>`).join('');
+      // 'All' sweeps up every unled (garrison) army in the province at once.
+      const allOpt=garrArr.length>0?`<option value="all">⚑ All garrison armies (${garrArr.length})</option>`:'';
       const othersHere=(report.characters||[]).filter(x=>x.id!==c.id&&(x.armies||[]).length>0);
       const heroArmyOpts=othersHere.flatMap(x=>(x.armies||[]).map((a,i)=>`<option value="${x.id}:${i}">${armyLabel(a)} from ${x.name}</option>`)).join('');
-      const all=garrisons+heroArmyOpts;
+      const all=allOpt+garrisons+heroArmyOpts;
       return all
         ?`<select id="po-target-${c.id}-${ph}">${all}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies available to pick up" disabled>`;}
@@ -2847,6 +3001,20 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
 }
 
 // ── CORE MAP RENDERER ─────────────────────────────────
+// Popup helper: list characters you know are in a province (own / neutral / enemy) at end of turn.
+function popupKnownChars(pd){
+  const chars=pd&&pd.characters||[];
+  if(!chars.length) return '';
+  const cnt=(c)=>c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'';
+  const own=chars.filter(c=>c.isOwn);
+  const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer);
+  const wand=chars.filter(c=>c.isWanderer);
+  let s='';
+  if(own.length)   s+=own.map(c=>`<br>\u{1F464} ${(c.isKing?'\u265B ':'')}${c.name}${cnt(c)}`).join('');
+  if(enemy.length) s+=enemy.map(c=>`<br>\u{1F441} <span style="color:#e05050">${(c.isKing?'\u265B ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`).join('');
+  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:#c8922a">${c.name} (wandering)</span>${cnt(c)}`).join('');
+  return s;
+}
 // Single function renders into any SVG element (inline or fullscreen)
 function renderMapIntoSvg(svgEl, report){
   const svgNS='http://www.w3.org/2000/svg';
@@ -3106,23 +3274,27 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
           if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
-          if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
-          const here=(pd.characters||[]).filter(c=>c.isOwn);
-          if(here.length) h+=`<br>\u{1F464} ${here.map(c=>(c.isKing?'\u265B ':'')+c.name).join(', ')}`;
-          if(pd.neutralDefenders?.length) h+=`<br>\u{1F6E1} ${pd.neutralGuard?pd.neutralGuard.name+' leads: ':''}${pd.neutralDefenders.map(d=>armyLabel(d)).join(', ')}`;
+          const _kc=popupKnownChars(pd);
+          if(_kc) h+=_kc;
+          if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} ${armyLabel(d)}`).join('')}`;
         } else if(isVisited){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
-          if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          const kf2=(pd.features||[]).filter(f=>!f.cleared);
+          if(kf2.length) h+=`<br>\u2b50 ${kf2.map(f=>f.name).join(', ')}`;
+          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
+          const _kcV=popupKnownChars(pd);
+          if(_kcV) h+=_kcV;
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
-          if(pd.armyTypes?.length) h+=`<br>\u2694 ${pd.armyTypes.join(', ')}`;
+          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         }
         tt.innerHTML=h;
@@ -3174,6 +3346,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.17-0857</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.18-1312</div>
 </body>
 </html>
