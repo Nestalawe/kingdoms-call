@@ -637,7 +637,7 @@ const SKILL_INFO={
   explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden features and terrain sooner so you can search and settle faster.',
   white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine kingdoms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
-  illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Feature. Confuse enemy intelligence and battles.',
+  illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Features. Confuse enemy intelligence and battles.',
   elemental:'Elemental Magic — destruction spells: Lightning Bolt, Fireball, Earthquake, Flood and Elemental Summon. Raw offensive power against armies and provinces.',
   necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Kill Enemy (Undead kingdoms start with Necromancy 1).',
 };
@@ -1369,7 +1369,7 @@ async function openReport(gamePlayerId){
 const SPELLS_BY_SCHOOL={
   white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack'],
   psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm'],
-  illusory:['Illusory Terrain','Phantasmal Armies','Hide Feature','Invisibility'],  // Mirror Image is encounter-only
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image'],  // Invisibility & Mirror Image are encounter-only (filtered from action orders by PHASE_SPELLS)
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon'],
   necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague'],
 };
@@ -1388,30 +1388,30 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 
 // Spell hints shown below the order form
 const SPELL_HINTS={
-  'Resurrect':'Target: select a hero who fell this turn. Restores them to 8 HP at their last location. Costs 5g.',
-  'Part Sea':'Your land armies may cross one adjacent sea province this phase without a fleet.',
-  'Bless Province':'Target: one of your provinces. +60% of province tax as bonus gold at next tax collection.',
-  'Holy Symbol':'All your armies here +20% vs Evil/Undead this turn.',
-  'Spiritwrack':'Destroys a Skeletal Legion or damages an Undead character here.',
-  'Charm':'Target: a wandering or enemy hero in the same province. They follow your orders for one turn if the charm succeeds.',
-  'Oratory':'Target: yourself or a character in the same province. Inspired character has zero army desertion this turn; wandering heroes in the province may freely join.',
-  'Clairvoyance':'Target: any province. Full spy-level-5 report regardless of distance.',
-  'Psychic Blast':'Target: a character here. 5–15 direct damage, bypasses armies.',
-  'Telekinetic Storm':'Target: any province. All armies there take 2–5 strength damage.',
-  'Illusory Terrain':'Target: any province. Appears as different terrain to enemies for one turn.',
-  'Phantasmal Armies':'Target: yourself or a friendly hero in your province this phase who is leading armies. Their led armies fight at +10% strength per caster level in battle this turn.',
-  'Hide Feature':'Target: any province. Features hidden from enemy intelligence this turn.',
-  'Invisibility':'You cannot be detected by Spy orders or seen on maps this turn.',
-  'Lightning Bolt':'Target: a character here. 8–20 damage — highest single-target damage spell.',
-  'Fireball':'Target: any province. All enemy armies there take 3–7 strength damage each.',
-  'Earthquake':'Target: any province. Tax −1–3, armies move at half speed next phase.',
-  'Flood':'Target: non-mountain province. All land armies there cannot move for one phase.',
-  'Elemental Summon':'Summons a Fire Elemental (Str 6, Average) that lasts until end of turn.',
-  'Control Undead':'Target: an enemy/neutral hero here — seize one of their undead units.',
-  'Skeletal Armies':'Raise fallen armies from this province\'s battlefield graves. One army per Necromancy level, one Skeletal Legion rises from the fallen.',
-  'Curse':'Target: a character here. Their highest skill −1 for this turn.',
-  'Hand of Death':'Target: a character here. 6–16 damage; you heal half the damage dealt.',
-  'Plague':'Target: your province or adjacent — humanoid units may lose experience; spreads over the turn.',
+  'Resurrect':'Target: a hero (yours or an enemy) who fell this turn whose body lies in your province. Revives at full HP under your command, stripped of all items and armies. Kings can\u2019t be raised.',
+  'Part Sea':'Target: a sea province you\u2019re in or next to. Becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cancels Flood.',
+  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn. One Bless per province \u2014 does not stack.',
+  'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
+  'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
+  'Charm':'Target: a wandering or armyless enemy hero in your province. Wandering \u2192 joins you free (you still pay upkeep); enemy \u2192 you command them until end of turn. Combat: doubles a later Flee attempt.',
+  'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
+  'Clairvoyance':'Target: any character you\u2019ve ever seen, anywhere. You learn all that happens to them this turn and see their full skills. Only one active at a time.',
+  'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
+  'Telekinetic Storm':'Target: an enemy hero leading armies in your province. Up to your-level units each have a 50% chance to fight one level lower in their next battle this turn (temporary). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
+  'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Shows a false terrain to enemies; they fight there at 80% strength. An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
+  'Phantasmal Armies':'Target: yourself or an ally in your province who leads armies. Their led armies fight +10% per caster level in battle this turn. Not cumulative.',
+  'Hide Features':'Target: a province you\u2019re in or adjacent to. Hides ALL features you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
+  'Invisibility':'Combat: you become twice as hard to hit for the fight, +30% to Flee, and +15% to a following Steal.',
+  'Lightning Bolt':'Combat: 2\u20134 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
+  'Fireball':'Combat: burns the target for 10% of its health each round for 3 rounds. Battle: a random enemy unit\u2019s strength is halved.',
+  'Earthquake':'Target: a province you\u2019re in or adjacent to. It yields no tax at the end of this turn.',
+  'Flood':'Target: a land province you\u2019re in or adjacent to. It acts as a sea province for the rest of the turn (land armies stranded). Cancels Part Sea.',
+  'Elemental Summon':'Summons a random elemental (Air/Fire/Earth/Water/Darkness, Veteran) to fight under you for the rest of the turn, then it dissolves. One per turn.',
+  'Control Undead':'Target: an enemy/neutral hero here to seize one random undead unit \u2014 OR cast on THIS province to reveal the dead army units lying here. Combat: an undead foe is frozen for your-level rounds. Battle: one enemy undead unit defects.',
+  'Skeletal Armies':'Raises one random battlefield-grave unit in your province as a Skeletal (Undead) unit under your command (1g upkeep). Needs fallen armies present.',
+  'Curse':'Target: an enemy/neutral hero here. Their highest skill is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
+  'Hand of Death':'Combat: 10% per Necromancy level to deal damage equal to 50% of the target\u2019s max HP.',
+  'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 10%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 // Army display helper — shows unit name if known, falls back to plain type+quality
@@ -1443,8 +1443,8 @@ const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'M
 const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
-  {code:'CA',label:'Cast Spell — combat spells: Lightning Bolt, Fireball, Psychic Blast, Hand of Death, Holy Symbol, Spiritwrack, Telekinetic Storm, Curse, Mirror Image',hasSpell:true},
-  {code:'CS',label:'Cast from School — during the pre-battle magic phase, cast a RANDOM battle spell from a chosen school (Elemental, Psychic or Necromancy)',hasSchool:true},
+  {code:'CA',label:'Cast Spell — combat spells: Lightning Bolt, Fireball, Psychic Blast, Telekinetic Storm, Hand of Death, Curse, Control Undead, Holy Symbol, Spiritwrack, Mirror Image, Invisibility, Charm',hasSpell:true},
+  {code:'CS',label:'Cast from School — during the pre-battle magic phase, cast a RANDOM battle spell from a chosen school (White, Elemental, Psychic or Necromancy)',hasSchool:true},
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter'},
@@ -1717,8 +1717,8 @@ function addEncounterTactic(charId, code){
     // Encounter-valid spells: direct damage, debuffs, or Mirror Image
     const ENCOUNTER_VALID={
       white:['Holy Symbol','Spiritwrack'],
-      psychic:['Psychic Blast','Telekinetic Storm'],
-      illusory:['Mirror Image'],
+      psychic:['Psychic Blast','Telekinetic Storm','Charm'],
+      illusory:['Mirror Image','Invisibility'],
       elemental:['Lightning Bolt','Fireball'],
       necromancy:['Curse','Hand of Death','Control Undead'],
     };
@@ -1927,7 +1927,7 @@ function onSpellChange(charId, ph, selectedSpell){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
   const report=currentReport||{};
 
-  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Feature','Earthquake','Flood','Plague']);
+  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Features','Earthquake','Flood','Plague']);
   const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
 
   // Remove any existing secondary selector/hint, keep the spell select
@@ -1955,7 +1955,9 @@ function onSpellChange(charId, ph, selectedSpell){
         return true;
       })
       .map(x=>`<option value="${x.id}">${x.name} — ${x.locationName||'?'}</option>`).join('');
-    secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${selfOpt2}${charOpts}</select>
+    // Control Undead may also be cast on the caster's own province to reveal the dead army units there.
+    const cuScan=(selectedSpell==='Control Undead')?`<option value="__scan__">🔍 Cast on THIS province — reveal the dead army units here</option>`:'';
+    secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${selfOpt2}${cuScan}${charOpts}</select>
       <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selectedSpell]||''}</div>`;
   } else {
     secondaryHtml=`<input id="po-extra-${charId}-${ph}" type="hidden" value="">
@@ -2571,7 +2573,7 @@ function buildTargetField(c, ph, saved){
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
-        'Illusory Terrain','Phantasmal Armies','Hide Feature',
+        'Illusory Terrain','Phantasmal Armies','Hide Features',
         'Earthquake','Flood','Elemental Summon',
         'Control Undead','Skeletal Armies','Curse','Plague']);
 
@@ -2640,7 +2642,7 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>(skills[school]||0)>=1||practisingSchools.has(school))
         .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Feature','Earthquake','Flood','Plague']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Features','Earthquake','Flood','Plague']);
       const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
@@ -2675,6 +2677,13 @@ function buildTargetField(c, ph, saved){
           const seen=(report.visibleChars||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
           charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':x.player===c.player?' (yours)':' ⚔ (enemy)'} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>You have not seen any characters yet</option>';
+        } else if(selSpell==='Control Undead'){
+          // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
+          // to reveal the dead army units lying in it.
+          const scanOpt=`<option value="__scan__" ${extra==='__scan__'?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
+          const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
+          const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+          charOpts=scanOpt+enemyOpts;
         } else {
           // Other character-target spells (Psychic Blast, Telekinetic Storm, Lightning, Curse, etc.)
           // Target visible enemy/neutral characters in the same province
@@ -3346,6 +3355,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.18-1312</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.18-1442</div>
 </body>
 </html>

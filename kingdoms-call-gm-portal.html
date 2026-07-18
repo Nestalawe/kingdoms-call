@@ -213,7 +213,7 @@ const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero',
 const SPELLS_BY_SCHOOL={
   white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack'],
   psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm'],
-  illusory:['Illusory Terrain','Phantasmal Armies','Hide Feature','Invisibility','Mirror Image'],
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image'],
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon'],
   necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy'],
 };
@@ -2615,18 +2615,18 @@ const SPELL_DEFS_P={
     desc:'Action: the target loses one level in a random skill. Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
     fn:'psychic_blast'},
   'Telekinetic Storm':{school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Action: a number of the target\'s army units equal to your skill level each have a 50% chance to drop one experience level. Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
+    desc:'Action: a number of the target\'s army units equal to your skill level each have a 50% chance to fight as if one experience level lower in their next battle this turn (temporary — they recover afterward). Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
     fn:'psychic_storm'},
 
   // ══ ILLUSORY MAGIC ══
   'Illusory Terrain':{school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Action: a province you are in or adjacent to appears as a different random terrain on enemy maps (sea may look like land or vice-versa). Enemies who fight there do so at 80% strength. Reverts for any enemy hero who enters; 20% chance to fade each turn.',
+    desc:'Action: a province you are in or adjacent to appears as a different random terrain on enemy maps (sea may look like land or vice-versa). Enemies who fight there do so at 80% strength. An enemy hero who enters dispels it at the end of that turn; otherwise 20% chance to fade each turn.',
     fn:'illusory_terrain'},
   'Phantasmal Armies':{school:'illusory',target:'character',encounter:false,phase:true,
     desc:'Action: illusory soldiers march with a friendly army-leading hero (you or an adjacent ally) for the rest of the turn, adding +10% per caster level to the strength of the armies they directly lead in battle. Not cumulative.',
     fn:'illusory_phantasmal'},
-  'Hide Feature':   {school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Action: a feature you have discovered (in your province or adjacent) becomes invisible to explorers. 10% chance to fade each turn.',
+  'Hide Features':  {school:'illusory',target:'province',encounter:false,phase:true,
+    desc:'Action: all features you have discovered in a province you are in or adjacent to become invisible to explorers. 10% chance to fade each turn.',
     fn:'illusory_hide_feature'},
   'Invisibility':   {school:'illusory',target:'none',encounter:true,phase:false,
     desc:'Combat: the caster becomes twice as hard to hit for the fight, gains +15% to a following Steal and +30% to Flee.',
@@ -2654,13 +2654,13 @@ const SPELL_DEFS_P={
 
   // ══ NECROMANCY ══
   'Control Undead': {school:'necromancy',target:'character',encounter:true,phase:true,
-    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province. Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
+    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province — or cast it on your own province to sense the battlefield dead lying there. Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
     fn:'necromancy_control'},
   'Skeletal Armies':{school:'necromancy',target:'none',encounter:false,phase:true,
     desc:'Action: raise one random dead army unit lying in your province as a skeletal version under your command.',
     fn:'necromancy_skeletal'},
   'Curse':          {school:'necromancy',target:'character',encounter:true,phase:true,
-    desc:'Action: the target\'s highest skill is halved (rounded down) for the rest of the turn. Combat: the target\'s best combat ability is halved for the fight. Battle magic: the enemy commander\'s best combat-affecting skill (Tactical or Druid) is halved for the battle.',
+    desc:'Action: the target\'s highest skill is halved (rounded down) for the rest of the turn. Combat: the target\'s best combat ability is halved for the fight. Battle magic: the enemy commander\'s best combat-affecting skill (Tactical, Druid or Naval) is halved for the battle.',
     fn:'necromancy_curse'},
   'Hand of Death':  {school:'necromancy',target:'none',encounter:true,phase:false,
     desc:'Combat: 10% per Necromancy level to deal damage equal to 50% of the enemy\'s maximum health.',
@@ -2986,6 +2986,14 @@ const UNIT_BASE_STR={Infantry:4,Cavalry:5,Longbowmen:4,Knights:6,'Human Garrison
   'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
 const UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 function unitBaseStrength(army){ return (UNIT_BASE_STR[army.type]||4)*(UNIT_Q_MULT[army.quality||'Average']||2); }
+// Battle-magic Curse: pick the commander's best combat-affecting skill to halve.
+// Candidates are Tactical (land battles), Druid (army penalties/creature buffs) and Naval (sea battles).
+function bestCurseSkill(hero){
+  const tac=effStat(hero,'tactical'), dru=(hero.skills?.druid||0), nav=effStat(hero,'naval');
+  if(nav>=tac && nav>=dru && nav>0) return 'naval';
+  return (tac>=dru)?'tactical':'druid';
+}
+function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='druid'?'Druid mastery':'Tactical command'; }
 // Pre-battle missile "softening": one volley shaves a small % of the TARGET's own base strength,
 // scaling gently with the shooter's Archery skill (Archery 0 = 6% … Archery 5 = 16% per volley).
 // Archers are ESPECIALLY deadly to flyers: against a flying target they do DOUBLE the % damage,
@@ -3265,7 +3273,8 @@ const BATTLE_ARMY_SPELLS={
     const MISSILE_ARMIES=new Set(['Longbowmen','Elven Bowmen','Shadow Archers','Crossbowmen','Mountain Guns','Goblin Horde']);
     const archSkillAtk=effStat(c,'archery');
     const archMissileBonus=1+(archSkillAtk*0.05)+(hasDisc(c.player,'sd07')?0.10:0);
-    const navalSkillAtk=effStat(c,'naval');
+    let navalSkillAtk=effStat(c,'naval');
+    if(c._curseHalveStat==='naval') navalSkillAtk=Math.floor(navalSkillAtk/2); // Curse (battle magic) can wither Naval command
     const navalFleetBonus=1+(navalSkillAtk*0.2);
     const playerAlign=G.players[c.player]?.alignment||'Neutral';
     // ══════════════════════════════════════════════════════
@@ -3305,7 +3314,7 @@ const BATTLE_ARMY_SPELLS={
             narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — each loses 20% of its strength this battle.`);
           } else if(spellName==='Curse'){
             // Halve the enemy commander's best combat-affecting skill (Tactical or Druid) for the battle.
-            if(neutralGuardHero){ const tac=effStat(neutralGuardHero,'tactical'),dru=(neutralGuardHero.skills?.druid||0); neutralGuardHero._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${neutralGuardHero.name}'s ${neutralGuardHero._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
+            if(neutralGuardHero){ neutralGuardHero._curseHalveStat=bestCurseSkill(neutralGuardHero); narrative.push(`  ☠ Curse withers ${neutralGuardHero.name}'s ${curseSkillLabel(neutralGuardHero._curseHalveStat)} — halved for this battle.`); }
             else narrative.push(`  ☠ Curse seeks a commander to wither, but these defenders are leaderless.`);
           } else if(spellName==='Control Undead'){
             // One random enemy undead unit defects to the caster's side.
@@ -3436,7 +3445,7 @@ const BATTLE_ARMY_SPELLS={
             } else if(defSpellName==='Telekinetic Storm'){
               if(c){ c._tacticalNegated=true; narrative.push(`  🌀 Telekinetic Storm scatters ${c.name}'s formations — their Tactical command is negated this battle.`); }
             } else if(defSpellName==='Curse'){
-              if(c){ const tac=effStat(c,'tactical'),dru=(c.skills?.druid||0); c._curseHalveStat=(tac>=dru?'tactical':'druid'); narrative.push(`  ☠ Curse withers ${c.name}'s ${c._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
+              if(c){ c._curseHalveStat=bestCurseSkill(c); narrative.push(`  ☠ Curse withers ${c.name}'s ${curseSkillLabel(c._curseHalveStat)} — halved for this battle.`); }
             } else if(defSpellName==='Control Undead'){
               const ui=armies.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
               if(ui.length>0){ const pick=ui[Math.floor(Math.random()*ui.length)]; const unit=armies.splice(pick.i,1)[0]; defHero.armies=defHero.armies||[]; defHero.armies.push(unit); const rc=G.characters[defHero.id]; if(rc&&rc!==defHero){rc.armies=rc.armies||[]; rc.armies.push(unit);} narrative.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} to ${defHero.name}'s side!`); }
@@ -3918,7 +3927,7 @@ const BATTLE_ARMY_SPELLS={
 
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
     switch(spellName){
-      case 'Lightning Bolt':{ let d=0; for(let i=0;i<Math.max(1,lvl);i++) d+=rng(1,3); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt}. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Lightning Bolt':{ let d=0; for(let i=0;i<Math.max(1,lvl);i++) d+=rng(2,4); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt}. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
       case 'Fireball':{ target.status.dot.push({dmg:Math.max(1,Math.round(target.maxHp*0.10)),rounds:3,label:'Fireball burns'}); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for 10% of its health each phase for 3 phases.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvl*10*(holy?2:1); target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
@@ -4343,8 +4352,8 @@ const BATTLE_ARMY_SPELLS={
     const MISSILE_A=new Set(['Longbowmen','Elven Bowmen','Shadow Archers','Crossbowmen','Mountain Guns','Goblin Horde']);
     const atkArch=effStat(atk,'archery'); const atkArchBonus=1+(atkArch*0.05);
     const defArch=effStat(def,'archery'); const defArchBonus=1+(defArch*0.05);
-    const atkNav=effStat(atk,'naval');    const atkNavBonus=1+(atkNav*0.2);
-    const defNav=effStat(def,'naval');    const defNavBonus=1+(defNav*0.2);
+    let atkNav=effStat(atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
+    let defNav=effStat(def,'naval'); if(def._curseHalveStat==='naval') defNav=Math.floor(defNav/2); const defNavBonus=1+(defNav*0.2);
     const atkAlign2=G.players[atk.player]?.alignment||'Neutral';
     const defAlign2=G.players[def.player]?.alignment||'Neutral';
 
@@ -4392,7 +4401,7 @@ const BATTLE_ARMY_SPELLS={
         targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20));});
         narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} lose 20% strength.`);
       } else if(spellName==='Curse'){
-        if(enemyCmdr){ const tac=effStat(enemyCmdr,'tactical'),dru=(enemyCmdr.skills?.druid||0); enemyCmdr._curseHalveStat=(tac>=dru?'tactical':'druid'); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${enemyCmdr._curseHalveStat==='tactical'?'Tactical command':'Druid mastery'} — halved for this battle.`); }
+        if(enemyCmdr){ enemyCmdr._curseHalveStat=bestCurseSkill(enemyCmdr); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${curseSkillLabel(enemyCmdr._curseHalveStat)} — halved for this battle.`); }
       } else if(spellName==='Control Undead'){
         const ui=targets.map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
         if(ui.length>0){ const pick=ui[Math.floor(Math.random()*ui.length)]; const unit=targets.splice(pick.i,1)[0]; caster.armies=caster.armies||[]; caster.armies.push(unit); const rc=G.characters[caster.id]; if(rc&&rc!==caster){rc.armies=rc.armies||[]; rc.armies.push(unit);} narr.push(`  ☠ Control Undead turns the ${unit.unitName||unit.type} to ${caster.name}'s side!`); }
@@ -5510,8 +5519,9 @@ const BATTLE_ARMY_SPELLS={
         }
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         c.location=toProv.id;
-        // Illusory Terrain is dispelled for good once an enemy hero sets foot in the province.
-        if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ delete toProv._illusoryTerrain; }
+        // Illusory Terrain: an enemy hero setting foot here dispels it — but not until the END of this
+        // turn (the illusion holds for the rest of the turn they arrive, then lifts).
+        if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ toProv._illusoryTerrain._enteredByEnemy=true; }
         // Skill gains from movement: March (land move leading an army) / Naval (sea move with a fleet).
         if((c.armies||[]).length>0){
           if(toProv.terrain==='sea'){ if((c.armies||[]).some(a=>SEA_TYPES.has(a.type))) trySkillGain(c,'naval',SKILLGAIN_STD); }
@@ -6600,7 +6610,19 @@ const BATTLE_ARMY_SPELLS={
           log('explore',`✨ ${c.name}'s stirring Oratory lifts ${oratoryTarget===c?'their own':oratoryTarget.name+"'s"} troops — every army travelling with ${oratoryTarget===c?c.name:oratoryTarget.name} fights one quality level higher this turn.`,{actor:c.player,targets:[c.player],provinceId:c.location});
         }
         else if(fn==='psychic_clairvoyance'){
-          if(!targetChar){log('system',`Clairvoyance: choose a character you have seen to watch.`,{actor:c.player,targets:[c.player]});break;}
+          if(!targetChar){
+            // The intended target may have died (targetChar only resolves living characters).
+            // If so, tell the caster their quarry is dead and where the body lies.
+            const deadT=(G.characters||[]).find(ch=>ch.id===extraId);
+            if(deadT&&!deadT.alive){
+              const grave=(G.heroGraveyard||[]).find(g=>g.id===extraId);
+              const bodyLoc=(grave&&grave.location!=null)?grave.location:deadT.location;
+              const bp=(bodyLoc!=null)?G.world.provinces[bodyLoc]:null;
+              log('explore',`✨ ${c.name} casts Clairvoyance upon ${deadT.name}, but reaches only silence — ${deadT.name} is dead. Their body lies in ${bp?bp.name:'parts unknown'}.`,{actor:c.player,targets:[c.player],spy:true,provinceId:bodyLoc});
+              break;
+            }
+            log('system',`Clairvoyance: choose a character you have seen to watch.`,{actor:c.player,targets:[c.player]});break;
+          }
           // Only one Clairvoyance at a time — a new casting replaces the old.
           (G.characters||[]).forEach(ch=>{ if(Array.isArray(ch._clairvoyantBy)) ch._clairvoyantBy=ch._clairvoyantBy.filter(pl=>pl!==c.player); });
           targetChar._clairvoyantBy=targetChar._clairvoyantBy||[];
@@ -6640,8 +6662,18 @@ const BATTLE_ARMY_SPELLS={
           const n=Math.min(spellLevel, armies.length);
           const picks=armies.sort(()=>Math.random()-0.5).slice(0,n);
           let demoted=0;
-          picks.forEach(a=>{ if(Math.random()<0.5 && QUALITY_DOWN[a.quality]){ a.quality=QUALITY_DOWN[a.quality]; demoted++; } });
-          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} tested, ${demoted} dropped an experience level.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          // The affected units fight as if one experience level lower — but ONLY for the duration of the
+          // next battle they're drawn into (a battle-scoped strength reduction, cleared at battle end and at
+          // turn's end). Their actual quality tier is NOT permanently changed.
+          picks.forEach(a=>{
+            const lower=QUALITY_DOWN[a.quality];
+            if(lower && Math.random()<0.5){
+              const drop=unitBaseStrength(a)-unitBaseStrength({...a,quality:lower});
+              a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,drop);
+              demoted++;
+            }
+          });
+          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} tested, ${demoted} will fight as if a level lower in their next battle this turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
 
         // ── ILLUSORY ──
@@ -6669,7 +6701,7 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='illusory_hide_feature'){
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
-          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Hide Feature must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Hide Features must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
           const disc=(targetProv.features||[]).filter(f=>f.discovered&&!f._hidden);
           if(disc.length===0){log('system',`${c.name}: no discovered feature to hide in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});break;}
           disc.forEach(f=>{f._hidden=true; f._hiddenBy=c.player;});
@@ -6677,22 +6709,7 @@ const BATTLE_ARMY_SPELLS={
         }
 
         // ── ELEMENTAL ──
-        else if(fn==='elemental_lightning'){
-          if(!targetChar){log('system',`Lightning Bolt: no valid target character found.`,{actor:c.player,targets:[c.player]});break;}
-          if(targetChar.location!==c.location){log('system',`Lightning Bolt: ${targetChar.name} is not in the same province.`,{actor:c.player,targets:[c.player]});break;}
-          const dmg=rng(8,20);
-          targetChar.hp=Math.max(0,targetChar.hp-dmg);
-          log('combat',`✨ ${c.name} calls down Lightning Bolt — ${dmg} damage sears ${targetChar.name}! (HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id,public:true});
-          if(targetChar.hp<=0){log('combat',`${targetChar.name} is slain by the Lightning Bolt!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
-        }
-        else if(fn==='elemental_fireball'){
-          const fbProv=targetProv;
-          const fbTargets=[...(fbProv.neutralDefenders||[])];
-          G.characters.filter(ch=>ch.alive&&ch.location===fbProv.id&&ch.player!==c.player).forEach(ch=>{fbTargets.push(...(ch.armies||[]));});
-          let fbTotal=0;
-          fbTargets.forEach(a=>{const d=rng(3,7);a._tempStrReduction=(a._tempStrReduction||0)+d;fbTotal++;});
-          log('combat',`✨ ${c.name} hurls Fireball into ${fbProv.name}! ${fbTotal} enemy unit${fbTotal!==1?'s':''} scorched for 3–7 strength each.`,{actor:c.player,targets:[],provinceId:fbProv.id,public:true});
-        }
+        // (Lightning Bolt & Fireball are combat/battle-magic spells only — no action-phase form.)
         else if(fn==='elemental_earthquake'){
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
@@ -6729,6 +6746,21 @@ const BATTLE_ARMY_SPELLS={
 
         // ── NECROMANCY ──
         else if(fn==='necromancy_control'){
+          // Province-scan mode: cast on the province the caster stands in to sense the battlefield dead
+          // lying there (the units a Skeletal Armies cast could raise).
+          if(extra==='__scan__'){
+            const graves=prov.battleGraves||[];
+            if(graves.length===0){
+              log('explore',`✨ ${c.name}'s Control Undead searches ${prov.name} for the dead — but no fallen army units lie here to sense.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            } else {
+              const counts={};
+              graves.forEach(g=>{const k=`${g.quality||'Average'} ${g.type}`;counts[k]=(counts[k]||0)+1;});
+              const list=Object.entries(counts).map(([k,nn])=>`${nn}× ${k}`).join(', ');
+              log('explore',`💀 ${c.name}'s Control Undead senses the dead of ${prov.name}: ${list}. (${graves.length} grave${graves.length!==1?'s':''} that could be raised as skeletal servants.)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            }
+            trySkillGain(c, school, SKILLGAIN_STD);
+            break;
+          }
           if(!targetChar||targetChar.location!==c.location){log('system',`Control Undead: no valid target hero stands in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(targetChar.player===c.player){log('system',`Control Undead cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const undeadIdxs=(targetChar.armies||[]).map((a,i)=>({a,i})).filter(x=>x.a._isSkeletal||x.a.race==='Undead'||/Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type||''));
@@ -6767,16 +6799,7 @@ const BATTLE_ARMY_SPELLS={
           targetChar._curses[sk]=(targetChar._curses[sk]||0)+reduce;
           log('combat',`✨ ${c.name}'s Curse settles over ${targetChar.name} — their ${SKILL_LABELS[sk]||sk} is halved (${val}→${Math.floor(val/2)}) for the rest of the turn!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         }
-        else if(fn==='necromancy_hand'){
-          if(!targetChar){log('system',`Hand of Death: no valid target.`,{actor:c.player,targets:[c.player]});break;}
-          if(targetChar.location!==c.location){log('system',`Hand of Death: target is not here.`,{actor:c.player,targets:[c.player]});break;}
-          const dmg=rng(6,16);
-          const heal=Math.ceil(dmg/2);
-          targetChar.hp=Math.max(0,targetChar.hp-dmg);
-          c.hp=Math.min(c.maxHp||20,c.hp+heal);
-          log('combat',`✨ ${c.name} reaches with the Hand of Death — ${dmg} damage drains ${targetChar.name}, restoring ${heal} HP to ${c.name}! (${targetChar.name} HP: ${targetChar.hp})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null),provinceId:prov.id});
-          if(targetChar.hp<=0){log('combat',`${targetChar.name} is slain by the Hand of Death!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});}
-        }
+        // (Hand of Death is a combat-only spell — no action-phase form.)
         else if(fn==='necromancy_plague'){
           // Target the caster's province or an adjacent one.
           const casterProv=G.world.provinces[c.location];
@@ -7600,11 +7623,20 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     delete c._phantasmalBonus;
     delete c._curseHalveStat;
     delete c._necroAutoUsed;
+    // Units fully recover between turns — clear any lingering battle-scoped strength loss
+    // (e.g. a Telekinetic Storm cast in an action phase that saw no ensuing battle).
+    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._archeryRed) delete a._archeryRed; });
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
-    // Illusory Terrain persists until it fades (20%/turn) or an enemy hero enters (handled on move).
-    if(p._illusoryTerrain && Math.random()<0.20){ delete p._illusoryTerrain; }
+    // Illusory Terrain: an enemy hero who entered this turn dispels it at TURN'S END (not the instant
+    // they arrive); otherwise it persists until it fades naturally (20%/turn).
+    if(p._illusoryTerrain){
+      if(p._illusoryTerrain._enteredByEnemy || Math.random()<0.20){ delete p._illusoryTerrain; }
+    }
+    // Clear any battle-scoped strength reductions still sitting on this province's neutral defenders
+    // (e.g. a Telekinetic Storm cast with no ensuing battle) so units fully recover between turns.
+    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._archeryRed) delete a._archeryRed; });
     // Hidden features persist until they fade (10%/turn).
     (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.10){ delete f._hidden; delete f._hiddenBy; } });
     if(p._phantomArmies) delete p._phantomArmies;
@@ -7951,6 +7983,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.18-1312</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.18-1442</div>
 </body>
 </html>
