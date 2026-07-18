@@ -3307,7 +3307,7 @@ const BATTLE_ARMY_SPELLS={
             if(neutralGuardHero){ neutralGuardHero._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${neutralGuardHero.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
             else narrative.push(`  🧠 Psychic Blast reaches out, but these defenders have no commander to unmake.`);
           } else if(spellName==='Lightning Bolt'){
-            // A number of enemy armies equal to the caster's level lose 10% of their strength for the battle.
+            // A number of enemy armies equal to the caster's level lose 20% of their base strength for the battle.
             const n=Math.min(defenders.length, Math.max(1,spellLvl));
             const picks=defenders.slice().sort(()=>Math.random()-0.5).slice(0,n);
             picks.forEach(d=>{ d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20)); });
