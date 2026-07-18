@@ -1225,6 +1225,31 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
 }
 const ALIGNMENTS_P=['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead'];
 const TEMPERS_P=['Berserk','Brave','Cautious','Cowardly'];
+// ── TEMPERS (AK §2.4) ────────────────────────────────────────────────────────
+// One table drives every temper effect in the game. Each temper is built to be worth
+// choosing: an offensive edge, a defensive edge, a ranged/larcenous edge, or raw survivability.
+//   meleeHit     % added to this character's own melee to-hit
+//   archeryHit   % added to this character's own archery to-hit
+//   defence      % subtracted from anyone attacking them in melee
+//   meleeDamage  flat bonus to melee damage dealt
+//   damageSoak   flat reduction on incoming melee damage (never below 1)
+//   withdrawMod  % added to breaking out of melee back to firing range
+//   stealMod     % added to Steal attempts
+//   fleeMod      % added to flee attempts
+//   fleeAt       HP fraction below which they start looking for a way out
+//   fleeUrge     chance per round of acting on that impulse
+//   losingOnly   only considers flight while actually behind on HP
+//   rageHp       [min,max] extra hit points gained for the fight (null = none)
+//   secondWind   fraction of max HP recovered, once per fight, on first dropping below fleeAt+0.05
+//   mercy        may beg for mercy when felled instead of dying
+//   encounterMod % added to the chance of triggering an encounter while exploring
+const TEMPER_TRAITS={
+  Berserk:  {meleeHit:18, archeryHit:0,  defence:-10, meleeDamage:1, damageSoak:0, withdrawMod:-10, stealMod:0,  fleeMod:-20, fleeAt:0.15, fleeUrge:0.20, losingOnly:false, rageHp:[1,5], secondWind:0,    mercy:false, encounterMod:20},
+  Brave:    {meleeHit:12, archeryHit:8,  defence:4,   meleeDamage:0, damageSoak:0, withdrawMod:0,   stealMod:0,  fleeMod:10,  fleeAt:0.25, fleeUrge:0.30, losingOnly:true,  rageHp:null,  secondWind:0.22, mercy:false, encounterMod:10},
+  Cautious: {meleeHit:0,  archeryHit:0,  defence:14,  meleeDamage:0, damageSoak:1, withdrawMod:10,  stealMod:0,  fleeMod:20,  fleeAt:0.40, fleeUrge:0.35, losingOnly:false, rageHp:null,  secondWind:0,    mercy:false, encounterMod:-5},
+  Cowardly: {meleeHit:-10,archeryHit:22, defence:6,   meleeDamage:0, damageSoak:0, withdrawMod:15,  stealMod:15, fleeMod:30,  fleeAt:0.40, fleeUrge:0.40, losingOnly:false, rageHp:null,  secondWind:0,    mercy:true,  encounterMod:-15},
+};
+function temperOf(t){ return TEMPER_TRAITS[t]||TEMPER_TRAITS.Brave; }
 const ABILITIES_P=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 // Hero names are themed by ALIGNMENT. Each alignment has a pool of given names and a pool of
 // alignment-flavoured epithets; a hero's name is composed "{Given} {Epithet}". The combinatorial
@@ -1281,28 +1306,28 @@ function seedUsedHeroNames(gameState){
 }
 const MONSTERS_P=[
   // ── Weak (hp 6–12) — no spells ──
-  {name:'Goblin Warband',hp:8,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Goblin Warband',hp:8,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:2},
   {name:'Giant Rat Pack',hp:6,power:'Weak',melee:0,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Skeleton Patrol',hp:7,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:2},
+  {name:'Skeleton Patrol',hp:7,power:'Weak',melee:1,archery:1,speed:'medium',minG:1,maxG:2},
   {name:'Feral Wolves',hp:10,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
   {name:'Bandit Crew',hp:9,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:3},
   {name:'Giant Wasps',hp:8,power:'Weak',melee:0,archery:0,speed:'fast',minG:1,maxG:2},
   {name:'Cave Bats',hp:6,power:'Weak',melee:0,archery:0,speed:'fast',minG:1,maxG:2},
   {name:'Swamp Lizards',hp:11,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Harpy Flock',hp:12,power:'Weak',melee:1,archery:0,speed:'fast',minG:2,maxG:4},
+  {name:'Harpy Flock',hp:12,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
   {name:'Cutthroat Gang',hp:9,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:4},
   // ── Moderate (hp 13–22) — minor spells ──
-  {name:'Giant Spider',hp:13,power:'Moderate',melee:1,archery:0,speed:'medium',minG:1,maxG:3,
+  {name:'Giant Spider',hp:13,power:'Moderate',melee:1,archery:1,speed:'medium',minG:1,maxG:3,
     spells:[{name:'Venom Web',school:'elemental',dmg:[3,6],effect:'hero movement slowed for 1 round',castChance:30,flavour:'The spider hurls a web of crackling venom!'}]},
   {name:'Bandit King',hp:12,power:'Moderate',melee:2,archery:1,speed:'medium',minG:2,maxG:4,
     spells:[{name:'Battle Cry',school:'psychic',dmg:[0,0],effect:'hero -10% to hit for 2 rounds',castChance:25,flavour:'The bandit king bellows a terrifying war cry — your nerves waver!'}]},
-  {name:'Stone Troll',hp:17,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Stone Troll',hp:17,power:'Moderate',melee:2,archery:1,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Stone Hide',school:'elemental',dmg:[0,0],effect:'troll gains +5 HP (regenerates)',castChance:35,flavour:'The troll\'s stony hide knits itself back together!'}]},
   {name:'Sand Wurm',hp:19,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Sand Blast',school:'elemental',dmg:[4,8],effect:'',castChance:40,flavour:'The wurm exhales a scouring storm of razor sand!'}]},
   {name:'Manticore',hp:20,power:'Moderate',melee:2,archery:1,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Tail Volley',school:'elemental',dmg:[3,7],effect:'',castChance:40,flavour:'The manticore launches a volley of iron-hard tail spikes!'}]},
-  {name:'Ogre Chieftain',hp:18,power:'Moderate',melee:2,archery:0,speed:'medium',minG:2,maxG:5,
+  {name:'Ogre Chieftain',hp:18,power:'Moderate',melee:2,archery:2,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Earthshake',school:'elemental',dmg:[3,6],effect:'hero -1 melee for next round',castChance:25,flavour:'The ogre hammers the ground, throwing you off balance!'}]},
   {name:'Werewolf',hp:15,power:'Moderate',melee:2,archery:0,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Howl of the Moon',school:'psychic',dmg:[0,0],effect:'hero flees or loses next attack round',castChance:30,flavour:'An unearthly howl fills the air — raw animal terror grips you!'}]},
@@ -1321,7 +1346,7 @@ const MONSTERS_P=[
     spells:[{name:'Life Drain',school:'necromancy',dmg:[5,10],effect:'vampire heals half the damage dealt',castChance:45,flavour:'The vampire\'s eyes glow crimson as it drains your vitality — you feel your life force flowing away!'},
             {name:'Charm Gaze',school:'psychic',dmg:[0,0],effect:'hero loses one attack round (entranced)',castChance:35,flavour:'The vampire\'s hypnotic gaze locks onto yours — your mind goes blank!'},
             {name:'Bat Swarm',school:'necromancy',dmg:[3,6],effect:'',castChance:30,flavour:'A shrieking cloud of bats erupts from the shadows!'}]},
-  {name:'Rock Giant',hp:35,power:'Powerful',melee:3,archery:0,speed:'slow',minG:4,maxG:7,
+  {name:'Rock Giant',hp:35,power:'Powerful',melee:3,archery:2,speed:'slow',minG:4,maxG:7,
     spells:[{name:'Boulder Hurl',school:'elemental',dmg:[7,12],effect:'',castChance:40,flavour:'The giant wrenches a boulder from the earth and hurls it with bone-crushing force!'},
             {name:'Tremor Stomp',school:'elemental',dmg:[4,8],effect:'all armies take 2 dmg each',castChance:30,flavour:'The giant\'s foot strikes the earth — a shockwave tears through the ground!'}]},
   {name:'Basilisk',hp:22,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
@@ -1348,7 +1373,7 @@ const MONSTERS_P=[
             {name:'Bone Shield',school:'necromancy',dmg:[0,0],effect:'acolyte absorbs next 8 dmg',castChance:30,flavour:'A swirling shield of animated bones snaps into place!'},
             {name:'Raise Fallen',school:'necromancy',dmg:[0,0],effect:'acolyte regains 5 HP',castChance:25,flavour:'The acolyte chants and draws life-force from the bodies of the fallen!'}]},
   // ── Legendary (hp 40–70) — powerful multi-spell casters ──
-  {name:'Dragon',hp:48,power:'Legendary',melee:4,archery:0,speed:'fast',minG:7,maxG:10,
+  {name:'Dragon',hp:48,power:'Legendary',melee:4,archery:2,speed:'fast',minG:7,maxG:10,
     spells:[{name:'Fire Breath',school:'elemental',dmg:[8,15],effect:'',castChance:55,flavour:'The dragon inhales — then a torrent of searing dragonfire engulfs you!'},
             {name:'Wing Storm',school:'elemental',dmg:[4,8],effect:'all your armies take 3 dmg each',castChance:35,flavour:'Wings the size of sails create a hurricane blast!'},
             {name:'Dragon Terror',school:'psychic',dmg:[0,0],effect:'hero must pass courage test or flee (50%)',castChance:40,flavour:'The dragon\'s ancient gaze radiates primal terror — your every instinct screams to run!'}]},
@@ -1357,12 +1382,12 @@ const MONSTERS_P=[
             {name:'Necrotic Burst',school:'necromancy',dmg:[6,12],effect:'hero loses 1 from highest skill for 1 turn',castChance:50,flavour:'A wave of entropic energy corrodes your very essence!'},
             {name:'Undead Thralls',school:'necromancy',dmg:[0,0],effect:'lich regains 8 HP as it draws power from nearby dead',castChance:35,flavour:'The lich stretches its hands wide, drinking the death-energy of the battlefield!'},
             {name:'Paralyse',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:30,flavour:'Iron bands of psychic force clamp around your mind and body!'}]},
-  {name:'Ancient Wyrm',hp:48,power:'Legendary',melee:5,archery:0,speed:'fast',minG:8,maxG:10,
+  {name:'Ancient Wyrm',hp:48,power:'Legendary',melee:5,archery:3,speed:'fast',minG:8,maxG:10,
     spells:[{name:'Ancient Flame',school:'elemental',dmg:[10,18],effect:'',castChance:55,flavour:'Flame older than civilisation pours from the Ancient Wyrm\'s jaws!'},
             {name:'Psychic Roar',school:'psychic',dmg:[5,10],effect:'hero loses all Archery shots this round',castChance:45,flavour:'The wyrm\'s mindless roar shatters conscious thought!'},
             {name:'Tail Sweep',school:'elemental',dmg:[6,10],effect:'hero knocked back: loses next attack',castChance:40,flavour:'A tail like a castle wall sweeps everything aside!'},
             {name:'Draconic Presence',school:'psychic',dmg:[0,0],effect:'hero must beat 60% courage or all attacks -15% for encounter',castChance:35,flavour:'The wyrm\'s sheer age and power exerts a crushing mental weight!'}]},
-  {name:'Elder Titan',hp:50,power:'Legendary',melee:5,archery:0,speed:'slow',minG:7,maxG:10,
+  {name:'Elder Titan',hp:50,power:'Legendary',melee:5,archery:2,speed:'slow',minG:7,maxG:10,
     spells:[{name:'World-Shaker',school:'elemental',dmg:[8,15],effect:'all armies take 5 dmg each',castChance:45,flavour:'The Elder Titan stamps — the very world shakes to its foundations!'},
             {name:'Divine Wrath',school:'white',dmg:[10,20],effect:'ignores all armour and defensive bonuses',castChance:40,flavour:'Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!'},
             {name:'Time Stop',school:'illusory',dmg:[0,0],effect:'hero loses 3 rounds completely — cannot act',castChance:25,flavour:'Reality stutters. You blink and three rounds have passed — you\'ve been standing frozen!'}]},
@@ -1372,7 +1397,7 @@ const MONSTERS_P=[
   {name:'Wild Boars',hp:9,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:5},
   {name:'Giant Centipede',hp:8,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Venom Bite',school:'elemental',dmg:[2,4],effect:'hero -10% to hit next round',castChance:40,flavour:'Its mandibles sink in, dripping burning venom.'}]},
-  {name:'Marsh Sprites',hp:6,power:'Weak',melee:1,archery:0,speed:'fast',minG:2,maxG:5,
+  {name:'Marsh Sprites',hp:6,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Will-o-Wisp',school:'illusory',dmg:[1,4],effect:'',castChance:40,flavour:'Ghostly lights dart in and sting like wasps.'}]},
   {name:'Bandit Scouts',hp:8,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
 ];
@@ -2050,6 +2075,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       items:[],location:lp.id,alive:true,merits:0,taxBonus:0,
       spellsUsedThisTurn:[],locationName:lp.name,
       _isNeutralGuard:true,  // flag: currently defending their home province
+      // NOTE: no encounterPlan here on purpose. autoEncounterPlan/ensureEncounterPlan live inside
+      // runTurn's scope and are NOT reachable from generateNewGame — calling them here throws a
+      // ReferenceError and world generation dies. NPC plans are built lazily at combat time.
     };
     h.maxHp=h.hp;
     ABILITIES_P.forEach(ab=>{h.aptitude[ab]=rP(1,4);});
@@ -2766,8 +2794,12 @@ async function runTurn(){
     // Apply royal-succession skill allocations to a newly-crowned heir, then retire the flags.
     Object.entries(kingSkillsObj).forEach(([charId,alloc])=>{
       const ch=G.characters.find(c=>c.id===parseInt(charId));
-      if(ch&&ch._isHeir&&alloc&&alloc.skills){
-        ch.skills=alloc.skills;
+      if(ch&&ch._isHeir&&alloc){
+        if(alloc.skills) ch.skills=alloc.skills;
+        // The player may christen their heir and choose the Temper they were raised with.
+        const nm=String(alloc.name||'').trim().slice(0,40);
+        if(nm) ch.name=nm;
+        if(alloc.temper&&TEMPERS_P.includes(alloc.temper)) ch.temper=alloc.temper;
         delete ch._isHeir; delete ch._pendingSkillAllocation;
       }
     });
@@ -3409,6 +3441,7 @@ const BATTLE_ARMY_SPELLS={
     // ══════════════════════════════════════════════════════
     if(defHero){
       // DEFENDER MAGIC: guard casts a battle spell from their encounter plan (school or specific), or picks one they know
+      ensureEncounterPlan(defHero);
       const defTactics=(defHero.encounterPlan?.tactics)||[];
       let defSpellName=null;
       // First: honour an explicit school ('CS:') or spell ('CA:') choice from the plan
@@ -3824,15 +3857,81 @@ const BATTLE_ARMY_SPELLS={
   //   bestAbilityHalved             flags that Curse has halved their best combat ability
   // ----------------------------------------------------------------------------
 
+  // ── Speed model ─────────────────────────────────────────────────────────────
+  // Numeric speed decides who acts first each round and whether a combatant can
+  // change range (advance to firing range, or break away from melee to fire).
+  //   monsters: fast 3 / medium 2 / slow 1      characters: 2 + any bonus
+  function pcSpeedOf(cbt){
+    if(!cbt) return 2;
+    if(cbt.kind==='monster') return ({fast:3, medium:2, slow:1}[cbt.speedName||'medium'])||2;
+    return 2+(cbt.speedBonus||0);
+  }
+  function pcHasRanged(cbt){
+    if(!cbt) return false;
+    if(cbt.kind==='monster') return (cbt.archery||0)>0 || !!cbt.ranged;
+    return (cbt.archery||0)>0;
+  }
+  const PC_RANGES=['spell','bow','melee'];
+  function pcRangeStep(from, dir){
+    const i=Math.max(0, Math.min(2, PC_RANGES.indexOf(from)+dir));
+    return PC_RANGES[i];
+  }
+  // Chance to change range. Advancing into firing range is a test of one's own speed;
+  // breaking back out of melee is an opposed contest — a faster foe pins you in place.
+  function pcMoveCheck(actor, foe, mode){
+    const a=pcSpeedOf(actor), f=pcSpeedOf(foe);
+    const chance=(mode==='withdraw') ? 40+15*(a-f)+temperOf(actor.temper).withdrawMod : 60+15*(a-2);
+    return Math.max(10, Math.min(90, chance));
+  }
+
+  // --- NPC encounter plans ----------------------------------------------------
+  // Neutral guards and wandering heroes never receive orders, so they need a plan of their own.
+  // It is built from their skills — best weapon first, opening with magic since every combat
+  // starts at spell range — and from their Temper. Berserk and Brave commit to a fight
+  // (aggressive actions, no Flee anywhere), so they will ISSUE a pre-battle challenge.
+  // Cautious and Cowardly open with Flee, so they REFUSE a challenge rather than risk single
+  // combat — trading 20% of their force's strength for their commander's life.
+  const NPC_SPELL_BY_SCHOOL={elemental:'Lightning Bolt',necromancy:'Hand of Death',
+    white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'};
+  function autoEncounterPlan(ch){
+    const melee=effStat(ch,'melee'), arch=effStat(ch,'archery');
+    const schools=['elemental','necromancy','psychic','white','illusory'];
+    const bestSchool=schools.reduce((b,sk)=>effStat(ch,sk)>effStat(ch,b)?sk:b,'elemental');
+    const magic=effStat(ch,bestSchool);
+    const temper=ch.temper||'Brave';
+    const avoids=(temper==='Cautious'||temper==='Cowardly');
+    const plan=[];
+    if(avoids) plan.push('FL');                       // refuse the challenge, and look for a way out
+    if(magic>0) plan.push('CA:'+NPC_SPELL_BY_SCHOOL[bestSchool]);
+    if(arch>0){
+      // A Berserk charges regardless; everyone else works the bow while the range allows it.
+      const shots=(temper==='Berserk')?1:(arch>=melee?3:1);
+      for(let i=0;i<shots;i++) plan.push('FI');
+    }
+    while(plan.length<6) plan.push('ME');
+    return plan.slice(0,6);
+  }
+  // Give any un-ordered character (player === null) a plan the moment one is needed.
+  function ensureEncounterPlan(ch){
+    if(!ch) return null;
+    const t=ch.encounterPlan&&ch.encounterPlan.tactics;
+    if(ch.player===null && (!Array.isArray(t)||t.length===0)){
+      ch.encounterPlan={tactics:autoEncounterPlan(ch), notes:'', _auto:true};
+    }
+    return ch.encounterPlan;
+  }
+
   // --- Combatant builders -----------------------------------------------------
   function pcNewStatus(){
     return {stun:0, hitPenalty:0, dodge:1, meleeHalvedRounds:0, silenceRounds:0,
-            dot:[], mirrorImages:0, freeAttacksForFoe:0, fleeBonus:0, bestAbilityHalved:false};
+            dot:[], mirrorImages:0, freeAttacksForFoe:0, fleeBonus:0, fleePenalty:0,
+            reflect:0, absorb:0, incomingDmgBonus:0, bestAbilityHalved:false};
   }
   function pcCharCombatant(ch){
+    ensureEncounterPlan(ch);
     const maxHp=ch.maxHp||20;
     // Rage (AK §2.4): a Berserker shrugs off pain, granting 1-4 extra hit points for the fight.
-    const rageHp=(ch.temper==='Berserk')?rng(1,4):0;
+    const rg=temperOf(ch.temper).rageHp; const rageHp=rg?rng(rg[0],rg[1]):0;
     return {
       kind:'character', ref:ch, name:ch.name, player:ch.player,
       hp:(ch.hp!=null?ch.hp:maxHp)+rageHp, maxHp:maxHp+rageHp,
@@ -3841,10 +3940,32 @@ const BATTLE_ARMY_SPELLS={
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
               elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
       tactics:((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME']).slice(),
-      tacIdx:0, range:'spell', status:pcNewStatus(),
+      tacIdx:0, planExhausted:false, neverFlees:false,
+      speedBonus:ch._speedBonus||0, specials:[],
+      status:pcNewStatus(),
       castSpells:[], castSchool:{}, // per-combat spell limits
       isUndead:(ch.alignment==='Undead'),
     };
+  }
+  // A monster's default action plan. Monsters get Fire actions only if they actually have a
+  // ranged attack (archery > 0, or an explicit `ranged` flag), and each of their special
+  // abilities appears in the plan as an MS: action — the monster equivalent of Cast.
+  // Plans run longer than a character's six so the creature stays unpredictable; when it runs
+  // out it simply keeps swinging, because monsters never flee.
+  function pcMonsterPlan(m){
+    const specials=(m.spells||[]).map(s=>'MS:'+s.name);
+    const ranged=(m.archery||0)>0 || !!m.ranged;
+    const plan=[];
+    if(specials.length) plan.push(specials[0]);
+    if(ranged) plan.push('FI');
+    plan.push('ME');
+    let si=1, guard=0;
+    while(plan.length<12 && guard++<40){
+      plan.push('ME');
+      if(ranged && plan.length%4===0) plan.push('FI');
+      if(specials.length && plan.length%3===0){ plan.push(specials[si%specials.length]); si++; }
+    }
+    return plan.slice(0,12);
   }
   function pcMonsterCombatant(m){
     const maxHp=m.hp||10;
@@ -3853,11 +3974,13 @@ const BATTLE_ARMY_SPELLS={
     return {
       kind:'monster', ref:m, name:nm, player:null,
       hp:maxHp, maxHp,
-      melee:m.melee||1, archery:m.archery||0,
-      temper:'Brave',
+      melee:m.melee||1, archery:m.archery||0, ranged:!!m.ranged,
+      temper:'Brave', neverFlees:true,
       school:{white:0,psychic:0,illusory:0,elemental:0,necromancy:0},
-      spells:m.spells||[], speed:m.speed||'medium',
-      tactics:['ME'], tacIdx:0, range:'spell', status:pcNewStatus(),
+      specials:(m.spells||[]).slice(), speedName:m.speed||'medium',
+      tactics:pcMonsterPlan(m), tacIdx:0, planExhausted:false,
+      pacifiable:false, vuln:{melee:1,archery:1,spell:1},
+      status:pcNewStatus(),
       castSpells:[], castSchool:{},
       isUndead:undeadWords.some(w=>nm.includes(w)),
     };
@@ -3868,29 +3991,44 @@ const BATTLE_ARMY_SPELLS={
     // base 50 for melee; attacker melee vs defender melee shifts ±10/level; AK tempers apply.
     const diff=(attacker.melee||0)-(defender.melee||0);
     let chance=base+diff*10;
-    // ── AK §2.4 Tempers (melee) ──
-    if(attacker.temper==='Brave') chance += 10;                          // Elan: bold, exploits openings
-    if(defender.temper==='Cautious') chance -= 10;                       // Parrying: expert defence
-    if(defender.temper==='Berserk') chance -= ({Brave:5,Cautious:10,Cowardly:15}[attacker.temper]||0); // Intimidation
+    // ── AK §2.4 Tempers ── the attacker's aggression against the defender's guard.
+    // A Berserk has a negative `defence`: they attack wide open and are easier to hit.
+    chance += temperOf(attacker.temper).meleeHit;
+    chance -= temperOf(defender.temper).defence;
     chance -= (attacker.status.hitPenalty||0);
     chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
     return Math.max(5, Math.min(95, chance));
   }
   function pcMeleeDamage(attacker, defender){
     const diff=(attacker.melee||0)-(defender.melee||0);
-    let dmg=Math.max(1, rng(1,6)+Math.max(0,diff));
-    if(attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
+    let dmg=Math.max(1, rng(1,6)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
+    if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
+    // A Cautious fighter rolls with the blow rather than taking it square on.
+    dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
     return dmg;
   }
+  // Which damage channel a hit belongs to, so a monster's vulnerabilities/resistances
+  // (monsterTraits) scale it: blades, arrows or magic.
+  const PC_CHANNEL={'blow':'melee','free strike':'melee','parting blow':'melee','arrow':'archery'};
   function pcTakeHit(target, dmg, narrative, srcName, kind){
     // Mirror images soak a hit first.
-    if(target.status.mirrorImages>0){
+    if(target.status && target.status.mirrorImages>0){
       target.status.mirrorImages--;
       narrative.push(`  ${srcName}'s ${kind} strikes a Mirror Image of ${target.name}! (${target.status.mirrorImages} image${target.status.mirrorImages!==1?'s':''} left)`);
       return 0;
     }
-    target.hp-=dmg;
-    return dmg;
+    let d=dmg;
+    // Monster nature: armoured hides turn blades, bone shrugs off arrows, magic ignores plate.
+    if(target.vuln){ const ch=PC_CHANNEL[kind]||'spell'; d=Math.max(1, Math.round(d*(target.vuln[ch]||1))); }
+    if(target.status && target.status.incomingDmgBonus>0) d+=target.status.incomingDmgBonus; // Melt Armour
+    if(target.status && target.status.absorb>0){
+      const soak=Math.min(target.status.absorb, d);
+      target.status.absorb-=soak; d-=soak;
+      narrative.push(`  A ward around ${target.name} drinks ${soak} of the blow.`);
+      if(d<=0) return 0;
+    }
+    target.hp-=d;
+    return d;
   }
   function pcRoundStart(cbt, narrative){
     // Damage-over-time
@@ -3973,99 +4111,279 @@ const BATTLE_ARMY_SPELLS={
     return true;
   }
 
-  // --- One combatant performs their next tactic against the foe ----------------
-  // Returns {won:false, fled:false} style flags folded into state.
+  // --- Monster special abilities ----------------------------------------------
+  // A monster's special is its equivalent of a Cast action: it appears in the creature's
+  // action plan as MS:<name> and resolves here. Effects are parsed from the ability's
+  // `effect` text so new monsters can be added as data without touching the engine.
+  function pcMonsterSpecial(actor, foe, sp, narrative, state){
+    narrative.push(`  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour?` "${sp.flavour}"`:''}`);
+    const eff=String(sp.effect||'');
+    let dealt=0;
+    if(sp.dmg&&(sp.dmg[0]>0||sp.dmg[1]>0)){
+      let d=rng(sp.dmg[0],sp.dmg[1]);
+      if(/hits twice/i.test(eff)) d*=2;
+      dealt=pcTakeHit(foe,d,narrative,actor.name,sp.name);
+      if(dealt) narrative.push(`  ${sp.name} tears into ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`);
+    }
+    // ── Self-healing ──
+    let heal=0;
+    if(/heals half/i.test(eff)) heal=Math.ceil(dealt/2);
+    else{
+      const hm=eff.match(/(?:regains|gains)\s*\+?(\d+)\s*HP/i);
+      if(hm) heal=parseInt(hm[1]);
+      else if(/heal|regenerat/i.test(eff)) heal=rng(3,8);
+    }
+    if(heal>0){
+      actor.hp=Math.min(actor.maxHp, actor.hp+heal);
+      narrative.push(`  The ${actor.name} knits its wounds for ${heal}. (HP ${Math.round(actor.hp)})`);
+    }
+    // ── Lost actions ──
+    let stun=0;
+    if(/loses 3 rounds/i.test(eff)) stun=3;
+    else if(/loses 2 (?:attack )?rounds/i.test(eff)) stun=2;
+    else if(/loses (?:one|1|next) attack|loses next attack|knocked back|entranced|loses all Archery/i.test(eff)) stun=1;
+    if(stun>0){
+      foe.status.stun=(foe.status.stun||0)+stun;
+      narrative.push(`  ${foe.name} is caught helpless — ${stun} action${stun!==1?'s':''} lost.`);
+    }
+    // ── To-hit penalties ──
+    const pm=eff.match(/[-−](\d+)%/);
+    if(pm){
+      const pen=parseInt(pm[1]);
+      foe.status.hitPenalty=(foe.status.hitPenalty||0)+pen;
+      narrative.push(`  ${foe.name} is thrown off balance (−${pen}% to hit).`);
+    }
+    // ── Stat swings ──
+    if(/hero\s*[-−]1 melee/i.test(eff)){ foe.melee=Math.max(0,(foe.melee||0)-1); narrative.push(`  ${foe.name}'s guard is beaten down — Melee now ${foe.melee}.`); }
+    const bm=eff.match(/gains \+(\d+) melee/i);
+    if(bm){ actor.melee=(actor.melee||0)+parseInt(bm[1]); narrative.push(`  The ${actor.name}'s Melee surges to ${actor.melee}!`); }
+    // ── Lingering harm ──
+    const dm=eff.match(/takes (\d+) dmg at start of each round for (\d+) rounds/i);
+    if(dm){ foe.status.dot.push({dmg:parseInt(dm[1]), rounds:parseInt(dm[2]), label:sp.name}); narrative.push(`  ${sp.name} festers on ${foe.name}.`); }
+    // ── Wards and shields ──
+    const rf=eff.match(/reflects (\d+) dmg/i);
+    if(rf){ actor.status.reflect=(actor.status.reflect||0)+parseInt(rf[1]); narrative.push(`  Every blow against the ${actor.name} will bite back for ${actor.status.reflect}.`); }
+    const ab=eff.match(/absorbs next (\d+) dmg/i);
+    if(ab){ actor.status.absorb=(actor.status.absorb||0)+parseInt(ab[1]); narrative.push(`  A ward shrouds the ${actor.name}, ready to drink ${actor.status.absorb} damage.`); }
+    if(/ignores all armour/i.test(eff)) foe.status.incomingDmgBonus=(foe.status.incomingDmgBonus||0)+3;
+    // ── Instant kill ──
+    const ik=eff.match(/(\d+)% instant kill/i);
+    if(ik && Math.random()*100<parseInt(ik[1])){
+      foe.hp=0;
+      narrative.push(`  ☠ ${foe.name} is struck down where they stand!`);
+    }
+    // ── Terror ──
+    if(/courage test or flee/i.test(eff) && !foe.neverFlees){
+      if(Math.random()<0.5){ state.fledBy=foe; narrative.push(`  ${foe.name} is overcome with primal terror and flees!`); }
+      else narrative.push(`  ${foe.name} steels their nerve.`);
+    }
+    if(/flee chance/i.test(eff)){ foe.status.fleePenalty=(foe.status.fleePenalty||0)+30; narrative.push(`  ${foe.name} feels dragged towards the creature — escape will be far harder.`); }
+    // ── Rebirth (Phoenix) — banked, spent if the creature is felled ──
+    if(/rebirth/i.test(sp.name||'')) actor._rebirth=true;
+  }
+
+  // --- Shared attack routines --------------------------------------------------
+  function pcMeleeStrike(actor, foe, narrative){
+    const hit=pcHitChance(actor,foe,50);
+    const roll=Math.random()*100;
+    narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}%${roll<hit?' ✓':' ✗'})`);
+    if(roll<hit){
+      actor._didMelee=true;
+      const dmg=pcMeleeDamage(actor,foe);
+      const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow');
+      if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`);
+      // Brimstone-style shields bite back at whoever lands a blow.
+      if(dealt && foe.status.reflect>0){
+        actor.hp-=foe.status.reflect;
+        narrative.push(`  ${foe.name}'s shield lashes back for ${foe.status.reflect}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
+      }
+    } else narrative.push(`  ${actor.name}'s blow is turned aside.`);
+  }
+  function pcAdvanceOrStrike(actor, foe, narrative, state){
+    if(state.range!=='melee'){
+      state.range=pcRangeStep(state.range,+1);
+      narrative.push(`  ${actor.name} advances — the combatants close to ${state.range} range.`);
+      return;
+    }
+    pcMeleeStrike(actor, foe, narrative);
+  }
+  // ── Archery ─────────────────────────────────────────────────────────────────
+  // Skill buys accuracy, weight of fire AND penetration. A trained archer (Archery 3+) looses
+  // two arrows per Fire action, and every third level of skill adds a point of damage.
+  // Without the last two, archery damage stayed a flat 1d6 at every level while melee damage
+  // scaled with skill advantage — which made raising Archery actively worse than spending the
+  // same points on Melee (measured: equal-level archer duel win rate fell 8.5% → 0.3% across
+  // levels 1–5). Archers also pay a positioning tax melee never does: a failed advance or a
+  // failed withdrawal consumes the whole Fire action.
+  const ARCHERY_VOLLEY_AT=3;   // arrows per Fire action becomes 2 at this skill level
+  function pcVolleySize(cbt){ return (cbt.archery||0)>=ARCHERY_VOLLEY_AT ? 2 : 1; }
+  function pcArrowDamage(cbt){ return rng(1,6)+Math.floor((cbt.archery||0)/3); }
+  function pcFireShot(actor, foe, narrative){
+    const volley=pcVolleySize(actor);
+    if(volley>1) narrative.push(`  ${actor.name} draws and looses a volley of ${volley} arrows (Archery ${actor.archery}).`);
+    for(let v=0; v<volley && foe.hp>0; v++) pcFireOne(actor, foe, narrative);
+  }
+  function pcFireOne(actor, foe, narrative){
+    const hit=Math.max(5, Math.min(95, 30+(actor.archery||0)*10+temperOf(actor.temper).archeryHit-(actor.status.hitPenalty||0)));
+    const r=Math.random()*100;
+    if(r<hit*(foe.status.dodge||1)){
+      actor._didArchery=true;
+      const d=pcArrowDamage(actor);
+      const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow');
+      if(dealt)narrative.push(`  ${actor.name}'s shot hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`);
+    } else narrative.push(`  ${actor.name}'s shot flies wide. [${hit.toFixed(0)}%]`);
+  }
+
+  // --- Tactic selection --------------------------------------------------------
+  // Once a plan is spent, Temper takes over: fight on, or look for a way out.
+  // Monsters never flee — they fight to the last.
+  function pcTemperFallback(actor, foe){
+    const tt=temperOf(actor.temper);
+    const ratio=actor.hp/(actor.maxHp||20);
+    if(ratio>=tt.fleeAt) return 'ME';
+    if(tt.losingOnly && actor.hp>=foe.hp) return 'ME';
+    return 'FL';
+  }
+  function pcNextTactic(actor, foe){
+    if(actor.tacIdx<actor.tactics.length){
+      const t=actor.tactics[actor.tacIdx];
+      actor.tacIdx++;
+      return t||'ME';
+    }
+    if(!actor.planExhausted){
+      actor.planExhausted=true;
+    }
+    if(actor.neverFlees) return 'ME';
+    return pcTemperFallback(actor, foe);
+  }
+
+  // --- One combatant performs their next action against the foe ---------------
+  // Actions alternate strictly, one per combatant per round, in initiative order.
   function pcAct(actor, foe, narrative, state){
     if(actor.status.stun>0){
       narrative.push(`  ${actor.name} is stunned and cannot act. (${actor.status.stun} left)`);
       actor.status.stun--;
       return;
     }
-    const tactic=actor.tactics[actor.tacIdx]||'ME';
-    actor.tacIdx=Math.min(actor.tacIdx+1, Math.max(0,actor.tactics.length-1));
+    const tactic=pcNextTactic(actor, foe);
     const colon=tactic.indexOf(':');
     const code=(colon>=0?tactic.slice(0,colon):tactic).toUpperCase();
-    const spell=colon>=0?tactic.slice(colon+1):null;
+    const arg=colon>=0?tactic.slice(colon+1):null;
 
     switch(code){
       case 'ME': case 'MELEE':{
-        // Three ranges: spell → bow → melee. A Melee order at longer range CLOSES the distance
-        // one step (advancing) instead of attacking; only at melee range does it actually strike.
-        if(state.range!=='melee'){
-          state.range = (state.range==='spell') ? 'bow' : 'melee';
-          narrative.push(`  ${actor.name} advances — the combatants close to ${state.range} range.`);
-          break;
-        }
-        const hit=pcHitChance(actor,foe,50);
-        const roll=Math.random()*100;
-        narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}%${roll<hit?' ✓':' ✗'})`);
-        if(roll<hit){ actor._didMelee=true; const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`); }
-        else narrative.push(`  ${actor.name}'s blow is turned aside.`);
+        // Three ranges: spell → bow → melee. A Melee action at longer range CLOSES the distance
+        // one step; only at melee range does it actually strike.
+        pcAdvanceOrStrike(actor, foe, narrative, state);
         break;
       }
       case 'FI': case 'FIRE': case 'ARROW':{
-        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot use archery (bound by Spiritwrack).`); break; }
-        if(actor.archery<=0){ narrative.push(`  ${actor.name} has no archery.`); break; }
-        // Arrows can only be loosed at BOW range — too far at spell range, too close at melee range.
-        if(state.range==='spell'){ state.range='bow'; narrative.push(`  ${actor.name} advances into bow range, drawing to fire.`); }
-        if(state.range==='melee'){ narrative.push(`  ${actor.name} is locked in melee — too close to fire.`); break; }
-        const shots=1; const hit=30+actor.archery*10; // one shot per Fire action; skill governs accuracy
-        for(let s=0;s<shots&&foe.hp>0;s++){ const r=Math.random()*100; if(r<hit*(foe.status.dodge||1)){ actor._didArchery=true; const d=rng(1,6); const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow'); if(dealt)narrative.push(`  ${actor.name}'s arrow hits ${foe.name} for ${dealt}. (HP ${Math.max(0,Math.round(foe.hp))})`); } else narrative.push(`  ${actor.name}'s arrow flies wide.`); }
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot shoot (bound by Spiritwrack).`); break; }
+        if(!pcHasRanged(actor)){
+          narrative.push(`  ${actor.name} has no ranged attack — they press forward instead.`);
+          pcAdvanceOrStrike(actor, foe, narrative, state);
+          break;
+        }
+        // A Fire action means: get to firing range, then shoot. Speed decides whether the
+        // move succeeds — closing the gap, or breaking back out of a melee the foe is holding.
+        if(state.range==='spell'){
+          const ch=pcMoveCheck(actor,foe,'advance'), roll=Math.random()*100;
+          narrative.push(`  ${actor.name} moves up to firing range (${ch.toFixed(0)}%${roll<ch?' ✓':' ✗'})`);
+          if(roll>=ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
+          state.range='bow';
+        } else if(state.range==='melee'){
+          const ch=pcMoveCheck(actor,foe,'withdraw'), roll=Math.random()*100;
+          narrative.push(`  ${actor.name} tries to break away to firing range (${ch.toFixed(0)}%${roll<ch?' ✓':' ✗'})`);
+          if(roll>=ch){ narrative.push(`  ${foe.name} stays right on top of ${actor.name} — no room to draw.`); break; }
+          state.range='bow';
+          narrative.push(`  ${actor.name} disengages to bow range.`);
+        }
+        pcFireShot(actor, foe, narrative);
+        break;
+      }
+      case 'MS':{ // monster special ability — the creature's equivalent of Cast
+        const sp=(actor.specials||[]).find(s=>s && s.name===arg);
+        if(!sp){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
+        if(actor.status.silenceRounds>0){
+          narrative.push(`  ${actor.name}'s power is bound and will not answer.`);
+          pcAdvanceOrStrike(actor, foe, narrative, state); break;
+        }
+        const cc=(sp.castChance!=null?sp.castChance:50);
+        if(Math.random()*100>=cc){
+          narrative.push(`  ${actor.name} gathers itself for ${sp.name} but the moment slips away. [${cc}%]`);
+          pcAdvanceOrStrike(actor, foe, narrative, state); break;
+        }
+        pcMonsterSpecial(actor, foe, sp, narrative, state);
         break;
       }
       case 'CA': case 'SPELL':{
         if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast.`); break; }
         // Choose the spell: explicit CA:Name, else best available combat spell.
-        let name=spell;
+        let name=arg;
         if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name={elemental:'Lightning Bolt',necromancy:'Hand of Death',white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'}[best]; }
         pcCastCombatSpell(actor, foe, name, narrative, state);
         break;
       }
       case 'FL': case 'FLEE':{
-        const base=foe.kind==='monster'?(foe.speed==='slow'?80:foe.speed==='fast'?20:50):50;
-        let chance=Math.max(5,Math.min(95, base+(actor.temper==='Cautious'?10:0)+(actor.status.fleeBonus||0)));
+        if(actor.neverFlees){ narrative.push(`  ${actor.name} knows nothing of retreat.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
+        const base=foe.kind==='monster'?(pcSpeedOf(foe)===1?80:pcSpeedOf(foe)===3?20:50):50;
+        let chance=Math.max(5,Math.min(95, base+temperOf(actor.temper).fleeMod+(actor.status.fleeBonus||0)-(actor.status.fleePenalty||0)));
         if(actor.status.fleeDoubled){ chance=Math.min(95, chance*2); } // Charm combat effect
         const roll=Math.random()*100;
         narrative.push(`  ${actor.name} attempts to flee (${chance.toFixed(0)}%${roll<chance?' ✓':' ✗'})`);
         if(roll<chance){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
-        else { const d=rng(1,4); foe===actor?0:pcTakeHit(actor,d,narrative,foe.name,'parting blow'); narrative.push(`  ${actor.name} fails to escape and is struck for ${d}. (HP ${Math.max(0,Math.round(actor.hp))})`); }
+        else { const d=rng(1,4); const dealt=pcTakeHit(actor,d,narrative,foe.name,'parting blow'); narrative.push(`  ${actor.name} fails to escape and is struck for ${dealt}. (HP ${Math.max(0,Math.round(actor.hp))})`); }
         break;
       }
       case 'TA': case 'TALK':{
-        if(foe.kind==='monster'){ const dr=actor.kind==='character'?effStat(actor.ref,'druid'):0; const chance=20+dr*15; if(Math.random()*100<chance){ state.parley=true; narrative.push(`  ${actor.name} parleys with ${foe.name}, which stands aside.`); } else narrative.push(`  ${actor.name}'s parley is refused.`); }
+        if(foe.kind==='monster'){
+          const dr=actor.kind==='character'?effStat(actor.ref,'druid'):0;
+          const chance=(foe.pacifiable===false)?0:(20+dr*15);
+          const roll=Math.random()*100;
+          narrative.push(`  ${actor.name} calls for parley (Druid ${dr}, ${chance}%${chance?(roll<chance?' ✓':' ✗'):' — it cannot be reasoned with'})`);
+          if(chance>0 && roll<chance){ state.parley=true; narrative.push(`  ${foe.name} lowers its guard and stands aside.`); }
+          else narrative.push(`  ${foe.name} answers with a roar.`);
+        }
         else narrative.push(`  ${actor.name} calls for parley, but blades are already drawn.`);
         break;
       }
       case 'ST': case 'STEAL':{
         const th=actor.kind==='character'?effStat(actor.ref,'thief'):0;
-        if(th<1){ narrative.push(`  ${actor.name} has no Thief skill and cannot attempt a steal — they strike instead.`); if(state.range!=='melee'){ state.range=(state.range==='spell')?'bow':'melee'; } else { const hit=pcHitChance(actor,foe,50); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}!`); } } break; }
-        let bonus=0; if(actor.castSpells.includes('Invisibility')) bonus+=15;
-        const chance=15+th*15+bonus; if(Math.random()*100<chance){ state.stoleBy=actor; narrative.push(`  ${actor.name} slips past and seizes the prize! [${chance}%]`); } else narrative.push(`  ${actor.name}'s theft is noticed. [${chance}%]`);
+        if(th<1){ narrative.push(`  ${actor.name} has no Thief skill and cannot attempt a steal — they press forward instead.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
+        let bonus=temperOf(actor.temper).stealMod; if(actor.castSpells.includes('Invisibility')) bonus+=15;
+        const chance=15+th*15+bonus;
+        if(Math.random()*100<chance){ state.stoleBy=actor; narrative.push(`  ${actor.name} slips past and seizes the prize! [${chance}%]`); }
+        else narrative.push(`  ${actor.name}'s theft is noticed. [${chance}%]`);
         break;
       }
       case 'SC': case 'SCOUT':{
-        const ex=actor.kind==='character'?effStat(actor.ref,'explorer'):0; const b=ex*5; if(b>0){ actor.status.hitPenalty=Math.max(0,(actor.status.hitPenalty||0)-b); narrative.push(`  ${actor.name} scouts the ground (+${b}% effectiveness).`); } else narrative.push(`  ${actor.name} scouts the ground.`);
+        const ex=actor.kind==='character'?effStat(actor.ref,'explorer'):0;
+        const b=ex*5;
+        if(state.feature && !state.feature.scouted) state.feature.scouted=true;
+        if(b>0){ actor.status.hitPenalty=Math.max(0,(actor.status.hitPenalty||0)-b); actor._scoutBonus=(actor._scoutBonus||0)+b; narrative.push(`  ${actor.name} reads the ground (Explorer ${ex}: +${b}% effectiveness).`); }
+        else narrative.push(`  ${actor.name} scouts the ground.`);
         break;
       }
       case 'CS': // battle-phase-only school choice — no effect in personal combat
         narrative.push(`  ${actor.name} holds their battle-magic ready (no personal-combat effect).`); break;
       default:
-        // unknown tactic → behave like Melee (advance if not yet at melee range, else strike)
-        if(state.range!=='melee'){ state.range=(state.range==='spell')?'bow':'melee'; narrative.push(`  ${actor.name} advances — the combatants close to ${state.range} range.`); }
-        else { const hit=pcHitChance(actor,foe,50); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow'); if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt}!`); } }
+        pcAdvanceOrStrike(actor, foe, narrative, state);
     }
   }
 
   // --- Main entry: run a personal combat between two combatants ----------------
-  // opts: {maxRounds}. Returns {winner, loser, fledBy, parley, stoleBy, aHp, bHp, narrative}
+  // Combat runs up to 16 rounds. Each round both sides take exactly one action from their
+  // plan, the faster/higher-initiative side going first — a strict back-and-forth.
+  // opts: {maxRounds, feature}. Returns {winner, loser, fledBy, parley, stoleBy, aHp, bHp, narrative}
   function resolvePersonalCombat(A, B, opts){
-    opts=opts||{}; const maxRounds=opts.maxRounds||8;
+    opts=opts||{}; const maxRounds=opts.maxRounds||16;
     const narrative=[];
-    const state={fledBy:null, parley:false, stoleBy:null, range:'spell', mirror:null}; // encounters start at Spell range
-    // Initiative: higher (melee+archery) goes first; ties random.
-    const initA=(A.melee||0)+(A.archery||0)+Math.random();
-    const initB=(B.melee||0)+(B.archery||0)+Math.random();
+    const state={fledBy:null, parley:false, stoleBy:null, range:'spell', mirror:null, feature:opts.feature||null}; // all combats begin at Spell range
+    // Initiative: speed first, then raw martial skill; ties broken at random.
+    const initA=pcSpeedOf(A)*10+(A.melee||0)+(A.archery||0)+Math.random();
+    const initB=pcSpeedOf(B)*10+(B.melee||0)+(B.archery||0)+Math.random();
     const first=initA>=initB?A:B, second=first===A?B:A;
+    narrative.push(`  ${first.name} has the initiative. The fight opens at spell range.`);
 
     for(let round=0; round<maxRounds; round++){
       if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
@@ -4089,9 +4407,7 @@ const BATTLE_ARMY_SPELLS={
         } else {
           // Victim fights their mirror (an even duel); the caster does nothing this round.
           narrative.push(`  🪞 ${victim.name} trades blows with their own mirror image while ${caster.name} concentrates.`);
-          // victim strikes phantasm
           if(Math.random()*100<pcHitChance(victim,phantasm,50)){ const d=pcMeleeDamage(victim,phantasm); phantasm.hp-=d; narrative.push(`    ${victim.name} strikes the phantom for ${d}. (Phantom HP ${Math.max(0,Math.round(phantasm.hp))})`); }
-          // phantasm strikes victim (real damage to the victim)
           if(phantasm.hp>0 && Math.random()*100<pcHitChance(phantasm,victim,50)){ const d=pcMeleeDamage(phantasm,victim); const dealt=pcTakeHit(victim,d,narrative,phantasm.name,'blow'); if(dealt)narrative.push(`    the phantom strikes ${victim.name} for ${dealt}! (HP ${Math.max(0,Math.round(victim.hp))})`); }
           if(phantasm.hp<=0){ narrative.push(`  🪞 ${victim.name} shatters the phantom — the illusion ends.`); state.mirror=null; }
           if(victim.hp<=0){ narrative.push(`  ${victim.name} is struck down by their own mirror image!`); state.mirror=null; }
@@ -4099,9 +4415,8 @@ const BATTLE_ARMY_SPELLS={
         }
       }
 
-      // First mover acts; extra "free attacks" (Psychic Blast) let them strike again without reply.
-      const order=[first,second];
-      for(const actor of order){
+      // ── The exchange: one action each, initiative first ──
+      for(const actor of [first,second]){
         const foe=actor===A?B:A;
         if(actor.hp<=0||foe.hp<=0) break;
         pcAct(actor, foe, narrative, state);
@@ -4109,22 +4424,34 @@ const BATTLE_ARMY_SPELLS={
         let free=actor._freeAttacks||0;
         while(free>0 && foe.hp>0 && state.range==='melee'){ const hit=pcHitChance(actor,foe,50); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'free strike'); if(dealt)narrative.push(`  ${actor.name} lands a free strike on ${foe.name} for ${dealt}! (HP ${Math.max(0,Math.round(foe.hp))})`); } free--; }
         actor._freeAttacks=0;
-        if(state.fledBy||state.parley||state.stoleBy||foe.hp<=0) break;
+        // Rebirth (Phoenix and kin): a banked resurrection is spent the moment it falls.
+        if(foe.hp<=0 && foe._rebirth){ foe._rebirth=false; foe.hp=Math.max(5,Math.round(foe.maxHp*0.4)); narrative.push(`  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`); }
+        if(actor.hp<=0 && actor._rebirth){ actor._rebirth=false; actor.hp=Math.max(5,Math.round(actor.maxHp*0.4)); narrative.push(`  🔥 ${actor.name} bursts into ash — then blazes back to life! (HP ${actor.hp})`); }
+        if(state.fledBy||state.parley||state.stoleBy||foe.hp<=0||actor.hp<=0) break;
+      }
+
+      // ── Second Wind: a level-headed fighter steadies themselves once, when the fight turns. ──
+      for(const cbt of [A,B]){
+        const tt=temperOf(cbt.temper);
+        if(!tt.secondWind || cbt._secondWindUsed || cbt.hp<=0) continue;
+        if(cbt.hp/(cbt.maxHp||20) >= tt.fleeAt+0.05) continue;
+        cbt._secondWindUsed=true;
+        const back=Math.max(1, Math.round((cbt.maxHp||20)*tt.secondWind));
+        cbt.hp=Math.min(cbt.maxHp||20, cbt.hp+back);
+        narrative.push(`  💪 ${cbt.name} (${cbt.temper}) finds their second wind and fights on — ${back} HP recovered. (HP ${Math.round(cbt.hp)})`);
       }
 
       // ── Flight from Combat (AK §2.4): a fighter's Temper may make them break off when death nears ──
       if(!state.fledBy&&!state.parley&&!state.stoleBy){
         for(const cbt of [A,B]){
-          if(cbt.hp<=0) continue;
+          if(cbt.hp<=0||cbt.neverFlees) continue;
           const foe=cbt===A?B:A; if(foe.hp<=0) continue;
+          const tt=temperOf(cbt.temper);
           const ratio=cbt.hp/(cbt.maxHp||20);
-          let urge=0;
-          if(cbt.temper==='Berserk') urge=0;                                   // never flees
-          else if(cbt.temper==='Brave') urge=(ratio<0.20 && cbt.hp<foe.hp)?0.40:0; // only when losing badly
-          else if(cbt.temper==='Cautious') urge=(ratio<0.35)?0.50:0;           // when a death blow is a real risk
-          else if(cbt.temper==='Cowardly') urge=(ratio<0.60)?0.65:0;           // at the first serious danger
-          if(urge>0 && Math.random()<urge){
-            const fleeChance=50+(cbt.temper==='Cautious'?10:0)+(cbt.status.fleeBonus||0); // Cautious "Fleeing"
+          // Even a Berserk has a breaking point — it is just a very late and unreliable one.
+          const wants=(ratio<tt.fleeAt) && !(tt.losingOnly && cbt.hp>=foe.hp);
+          if(wants && Math.random()<tt.fleeUrge){
+            const fleeChance=50+tt.fleeMod+(cbt.status.fleeBonus||0)-(cbt.status.fleePenalty||0);
             if(Math.random()*100<fleeChance){ state.fledBy=cbt; narrative.push(`  🏃 ${cbt.name} (${cbt.temper}) loses the stomach for the fight and breaks off!`); break; }
           }
         }
@@ -4137,7 +4464,7 @@ const BATTLE_ARMY_SPELLS={
     // fleeing the field instead of dying. It works best against Good/similar alignments. ──
     for(const cbt of [A,B]){
       const foe=cbt===A?B:A;
-      if(cbt.hp<=0 && cbt.kind==='character' && cbt.temper==='Cowardly' && !state.fledBy && !cbt._begged){
+      if(cbt.hp<=0 && cbt.kind==='character' && temperOf(cbt.temper).mercy && !state.fledBy && !cbt._begged){
         const foeAlign=foe.alignment||(foe.ref&&foe.ref.alignment)||'';
         let mercy=50;
         if(foeAlign==='Good'||foeAlign==='Divine'||foeAlign==='Druidic') mercy=75;
@@ -4165,64 +4492,19 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Resolve a personal duel between two commanders. Returns {winner, loser} or {} if inconclusive.
-  // Now runs on the unified personal-combat engine, so duels honour each commander's Encounter
-  // Plan tactics (melee, archery, combat spells, flee, etc.) just like feature encounters.
+  // Runs on the unified personal-combat engine, so duels, character encounters and monster
+  // encounters all obey exactly the same rounds, ranges and action alternation.
   function resolveDuel(atk, def, narrative){
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
-    const res=resolvePersonalCombat(A, B, {maxRounds:6});
+    const res=resolvePersonalCombat(A, B, {maxRounds:16});
     narrative.push(...res.narrative);
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
       narrative.push(`${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
-      return {}; // inconclusive: nobody slain
+      // Nobody is slain, but breaking off IS losing the duel — the caller demoralises their force.
+      return {fled:runner, heldField:stayer};
     }
     return {winner: res.winner?res.winner.ref:null, loser: res.loser?res.loser.ref:null};
-  }
-  function _resolveDuel_OLD(atk, def, narrative){
-    const atkMelee=effStat(atk,'melee'), defMelee=effStat(def,'melee');
-    let atkHp=atk.hp||20, defHp=def.hp||20;
-    const duelNarr=[];
-    // Archery pre-phase
-    const atkArch=effStat(atk,'archery'), defArch=effStat(def,'archery');
-    if(atkArch>0){
-      const hit=30+atkArch*10;
-      for(let s=0;s<atkArch&&defHp>0;s++){
-        const r=Math.random()*100;
-        if(r<hit){const dmg=rng(1,6);defHp-=dmg;duelNarr.push(`${atk.name} looses an arrow, striking ${def.name} for ${dmg}! (HP ${Math.max(0,defHp)})`);}
-        else duelNarr.push(`${atk.name}'s arrow flies wide.`);
-      }
-    }
-    if(defArch>0&&defHp>0){
-      const hit=30+defArch*10;
-      for(let s=0;s<defArch&&atkHp>0;s++){
-        const r=Math.random()*100;
-        if(r<hit){const dmg=rng(1,6);atkHp-=dmg;duelNarr.push(`${def.name} returns fire, hitting ${atk.name} for ${dmg}! (HP ${Math.max(0,atkHp)})`);}
-        else duelNarr.push(`${def.name}'s arrow falls short.`);
-      }
-    }
-    // Melee rounds
-    const diff=atkMelee-defMelee;
-    const atkHit=Math.max(10,Math.min(90,50+diff*10));
-    const defHit=Math.max(10,Math.min(90,50-diff*10));
-    for(let r=0;r<4&&atkHp>0&&defHp>0;r++){
-      if(Math.random()*100<atkHit){const dmg=rng(1,6)+Math.max(0,diff);defHp-=dmg;duelNarr.push(`R${r+1}: ${atk.name} ${pick(['strikes','lunges at','presses','drives back'])} ${def.name} for ${dmg}! (HP ${Math.max(0,defHp)})`);}
-      else duelNarr.push(`R${r+1}: ${atk.name}'s blow is ${pick(['parried','evaded','blocked','deflected'])}.`);
-      if(defHp>0){
-        if(Math.random()*100<defHit){const dmg=rng(1,6)+Math.max(0,-diff);atkHp-=dmg;duelNarr.push(`R${r+1}: ${def.name} ${pick(['counters','retaliates','strikes back at'])} ${atk.name} for ${dmg}! (HP ${Math.max(0,atkHp)})`);}
-        else duelNarr.push(`R${r+1}: ${def.name}'s riposte ${pick(['is turned aside','misses its mark','finds no opening'])}.`);
-      }
-      if(atkHp<=0||defHp<=0) break;
-    }
-    narrative.push(...duelNarr);
-    atk.hp=Math.max(0,atkHp); def.hp=Math.max(0,defHp);
-    if(atkHp<=0&&defHp<=0){
-      // Both fell — the one with more melee skill survives barely (tiebreaker)
-      if(atkMelee>=defMelee){atk.hp=1;return{winner:atk,loser:def};}
-      def.hp=1;return{winner:def,loser:atk};
-    }
-    if(atkHp<=0) return{winner:def,loser:atk};
-    if(defHp<=0) return{winner:atk,loser:def};
-    return{}; // inconclusive — both survived 4 rounds
   }
 
   // Returns {won, narrative:[strings]}
@@ -4252,11 +4534,12 @@ const BATTLE_ARMY_SPELLS={
     // commander fights the duel first, then flees. Any Flee in the plan means they won't
     // challenge. Flee always works but reduces that commander's troops by 25%. Otherwise
     // one commander is slain and the loser's troops are reduced by 25%.
-    const AGGRESSIVE=new Set(['ME','FI','CA','AT','ATTACK','MELEE','FIRE']);
-    const isFlee=t=>{const u=(t||'').toUpperCase();return u==='FL'||u==='FLEE'||u.startsWith('CA:CHARM');};
+    const AGGRESSIVE=new Set(['ME','FI','CA','AT','ATTACK','MELEE','FIRE','ARROW','SPELL']);
+    const isFlee=t=>{const u=(t||'').toUpperCase();return u==='FL'||u==='FLEE';};
+    const norm=t=>{const u=(t||'').toUpperCase();const i=u.indexOf(':');return i>=0?u.slice(0,i):u;};
+    ensureEncounterPlan(atk); ensureEncounterPlan(def); // NPC commanders act on an auto-built plan
     const atkTactList=(atk.encounterPlan?.tactics)||[];
     const defTactList=(def.encounterPlan?.tactics)||[];
-    const norm=t=>{const u=(t||'').toUpperCase();return u.startsWith('CA:')?'CA':u;};
     const atkHasAggr=atkTactList.some(t=>AGGRESSIVE.has(norm(t)));
     const defHasAggr=defTactList.some(t=>AGGRESSIVE.has(norm(t)));
     const atkHasFlee=atkTactList.some(isFlee);
@@ -4264,46 +4547,53 @@ const BATTLE_ARMY_SPELLS={
     const atkFleesFirst=atkTactList.length>0&&isFlee(atkTactList[0]);
     const defFleesFirst=defTactList.length>0&&isFlee(defTactList[0]);
 
-    // A commander challenges if they have an aggressive action and no Flee anywhere.
+    // A commander issues a challenge only if their plan is unambiguously committed:
+    // at least one aggressive action (ME / FI / CA) and no Flee anywhere in it.
     const atkChallenges=atkHasAggr&&!atkHasFlee;
     const defChallenges=defHasAggr&&!defHasFlee;
 
-    // Morale multipliers applied to each side's army strength (1 = no penalty, 0.75 = -25%)
+    // Morale multiplier applied to each side's army strength (1 = none, 0.80 = −20%).
+    const DUEL_MORALE_PENALTY=0.80;
     let atkMorale=1, defMorale=1;
+    const demoralise=(who,why)=>{
+      if(who===atk) atkMorale=DUEL_MORALE_PENALTY; else defMorale=DUEL_MORALE_PENALTY;
+      narrative.push(`📉 ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
+    };
 
     if(atkChallenges||defChallenges){
-      // Determine who is being challenged and whether they refuse (flee-first)
+      // If both sides are committed the attacker issues the challenge.
       const challenger=atkChallenges?atk:def;
-      const challenged=atkChallenges?def:atk;
-      const challengedFleesFirst=atkChallenges?defFleesFirst:atkFleesFirst;
-      const challengedName=challenged.name, challengerName=challenger.name;
+      const challenged=challenger===atk?def:atk;
+      const challengedFleesFirst=challenged===atk?atkFleesFirst:defFleesFirst;
+
+      narrative.push(`— ${challenger.name} rides out and challenges ${challenged.name} to single combat. —`);
 
       if(challengedFleesFirst){
-        // Challenged commander refuses the duel by fleeing — their troops suffer -25%
-        narrative.push(`— ${challengerName} challenges ${challengedName} to single combat, but ${challengedName}'s plan calls for immediate withdrawal. ${challengedName} refuses the duel and flees — their troops are disgusted by the cowardice (−25% strength).`);
-        if(challenged===atk) atkMorale=0.75; else defMorale=0.75;
+        // The challenged commander's plan opens with Flee: they will not answer the call.
+        narrative.push(`${challenged.name}'s plan calls for immediate withdrawal — the challenge is refused, and the watching ranks see it.`);
+        demoralise(challenged, `their commander refused the challenge`);
       } else {
-        // Duel is fought to the death
-        narrative.push(`⚔ — Personal duel: ${atk.name} vs ${def.name} —`);
-        pushBattlecry(narrative, atk, def.name);
-        pushBattlecry(narrative, def, atk.name);
-        const duelResult=resolveDuel(atk,def,narrative);
-        // Loser dies; their troops are disheartened (-25%)
+        narrative.push(`⚔ — Personal duel: ${challenger.name} vs ${challenged.name} —`);
+        pushBattlecry(narrative, challenger, challenged.name);
+        pushBattlecry(narrative, challenged, challenger.name);
+        const duelResult=resolveDuel(challenger, challenged, narrative);
         if(duelResult.loser){
           const loser=duelResult.loser, winner=duelResult.winner;
-          narrative.push(`💀 ${loser.name} is slain in the duel! Their leaderless troops are disheartened (−25% strength).`);
-          if(loser===atk) atkMorale=0.75; else defMorale=0.75;
-          // The losing commander dies — handle army/item transfer & graveyard
+          narrative.push(`💀 ${loser.name} is slain in the duel!`);
+          demoralise(loser, `their commander fell in single combat`);
           awardKillXP(winner, loser, narrative);
           handleHeroDeath(loser, winner);
+        } else if(duelResult.fled){
+          // Breaking off the duel is losing it — the runner's own troops saw them go.
+          demoralise(duelResult.fled, `their commander broke off the duel`);
         } else {
-          narrative.push(`The duel ends inconclusively — both commanders live to fight on.`);
+          narrative.push(`The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`);
         }
       }
-    } else if(atkHasFlee&&atkFleesFirst){
-      // Attacker's own plan opens with Flee (and no challenge from defender) — they withdraw
-      narrative.push(`${atk.name}'s plan opens with a withdrawal — the attack is called off before contact. Their troops are dispirited (−25% strength).`);
-      atkMorale=0.75;
+    } else if(atkFleesFirst){
+      // No challenge was issued, but the attacker's own plan opens with a withdrawal.
+      narrative.push(`${atk.name}'s plan opens with a withdrawal — the attack is called off before contact.`);
+      demoralise(atk, `their commander would not press the attack`);
     }
 
     // Province and defender bonuses
@@ -4551,13 +4841,13 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  Attacker (${atk.name}): ${atkArmies.length} units, raw str ${atkRaw}`
       +(atkTact>0?` × tactical ×${atkTactBonus.toFixed(1)}`:'')
       +(atkFanatic?` × fanaticism ×1.30`:'')
-      +(atkMorale<1?` (duel morale ×${atkMorale})`:'')
+      +(atkMorale<1?` (duel morale ×${atkMorale.toFixed(2)})`:'')
       +` + dice ${atkDice} = **${atkStr.toFixed(1)}**`);
     narrative.push(`  Defender (${def.name}): ${defArmies.length} units, raw str ${defRaw}`
       +(defTact>0?` × tactical ×${defTactBonus.toFixed(1)}`:'')
       +(defFanatic?` × fanaticism ×1.30`:'')
       +` × defender ×${defBonus.toFixed(1)}`
-      +(defMorale<1?` (duel morale ×${defMorale})`:'')
+      +(defMorale<1?` (duel morale ×${defMorale.toFixed(2)})`:'')
       +` + dice ${defDice} = **${defStr.toFixed(1)}**`);
     narrative.push(`  Win chance (before dice): attacker needs >${(defStr-atkDice).toFixed(0)} raw adjusted (attacker had ${(atkStr-atkDice).toFixed(0)})`);
 
@@ -4701,89 +4991,48 @@ const BATTLE_ARMY_SPELLS={
   // ── ENCOUNTER ENGINE (AK 5.0–5.8) ─────────────────────
   // Resolves a full encounter between a character and a feature monster.
   // Returns {won, fled, damageToHero, narrative:[...strings]}
-  // Character vs Character encounter (triggered by 'Encounter Character' order)
+  // Character vs Character encounter (triggered by 'Encounter Character' order).
+  // Runs on the unified personal-combat engine — identical rounds, ranges and alternation
+  // to duels and monster encounters. The only difference is who is on the other side.
   function resolveCharVsChar(atk, def, atkTactics, defTactics, prov, effStat, rng, G){
     const narrative=[];
-    let atkHp=atk.hp||10; let defHp=def.hp||10;
-    let atkKilled=false; let defKilled=false;
-
     narrative.push(`${atk.name} (${atk.race}, ${atk.temper}) meets ${def.name} (${def.race}, ${def.player!==null?G.players[def.player]?.name:'wandering'}) in a personal encounter.`);
     pushBattlecry(narrative, atk, def.name);
     pushBattlecry(narrative, def, atk.name);
 
-    // Archery pre-phase from attacker's plan
-    if((atkTactics[0]||'ME')==='FI'||(atkTactics[0]||'ME')==='FIRE'){
-      const archSkill=effStat(atk,'archery');
-      if(archSkill>0){
-        const hitChance=30+archSkill*10;
-        narrative.push(`📊 ${atk.name} opens with archery (Archery ${archSkill}): ${archSkill} shot${archSkill>1?'s':''} at ${hitChance}% each`);
-        for(let s=0;s<archSkill&&defHp>0;s++){
-          const r=Math.random()*100;
-          if(r<hitChance){const dmg=rng(1,6);defHp-=dmg;narrative.push(`Arrow strikes ${def.name} for ${dmg}! (HP:${Math.max(0,defHp)}) [${r.toFixed(0)}<${hitChance}]`);}
-          else narrative.push(`Arrow misses. [${r.toFixed(0)}≥${hitChance}]`);
-        }
+    const A=pcCharCombatant(atk), B=pcCharCombatant(def);
+    if(Array.isArray(atkTactics)&&atkTactics.length) A.tactics=atkTactics.slice();
+    if(Array.isArray(defTactics)&&defTactics.length) B.tactics=defTactics.slice();
+
+    const res=resolvePersonalCombat(A, B, {maxRounds:16});
+    narrative.push(...res.narrative);
+
+    // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
+    if(res.stoleBy===A && def.player!==null && atk.player!==null){
+      const purse=G.players[def.player]?.gold||0;
+      const stolen=Math.min(purse, rng(1,5));
+      if(stolen>0){
+        G.players[def.player].gold-=stolen;
+        G.players[atk.player].gold=(G.players[atk.player].gold||0)+stolen;
+        narrative.push(`${atk.name} lifts ${stolen}g from ${def.name}'s purse and is gone.`);
+      } else narrative.push(`${atk.name} finds ${def.name}'s purse empty.`);
+    } else if(res.stoleBy===B && atk.player!==null && def.player!==null){
+      const purse=G.players[atk.player]?.gold||0;
+      const stolen=Math.min(purse, rng(1,5));
+      if(stolen>0){
+        G.players[atk.player].gold-=stolen;
+        G.players[def.player].gold=(G.players[def.player].gold||0)+stolen;
+        narrative.push(`${def.name} lifts ${stolen}g from ${atk.name}'s purse and is gone.`);
       }
     }
+    if(res.fledBy) narrative.push(`${res.fledBy.name} breaks away and escapes the encounter.`);
 
-    // Up to 5 rounds
-    let atkTacIdx=0; let defTacIdx=0;
-    for(let round=0;round<5&&atkHp>0&&defHp>0;round++){
-      const atkTac=(atkTactics[atkTacIdx]||'ME').toUpperCase().split(':')[0];
-      const defTac=(defTactics[defTacIdx]||'ME').toUpperCase().split(':')[0];
-      atkTacIdx=Math.min(atkTacIdx+1,atkTactics.length-1);
-      defTacIdx=Math.min(defTacIdx+1,defTactics.length-1);
-
-      // Attacker's action this round
-      if(atkTac==='FL'||atkTac==='FLEE'){
-        const fleeRoll=d100();
-        const fleeChance=50+(atk.temper==='Cautious'?10:atk.temper==='Cowardly'?20:0);
-        narrative.push(`📊 ${atk.name} attempts to flee: ${fleeChance}% (roll ${fleeRoll})`);
-        if(fleeRoll<=fleeChance){narrative.push(`${atk.name} breaks away and escapes!`);break;}
-        else narrative.push(`${atk.name} cannot escape!`);
-      } else if(atkTac==='ST'||atkTac==='STEAL'){
-        // Steal in character encounter = pick pocket — requires at least Thief 1.
-        const thiefLvl=effStat(atk,'thief');
-        if(thiefLvl<1){ narrative.push(`${atk.name} has no Thief skill and cannot pickpocket ${def.name}.`); }
-        else{
-        const stealChance=15+thiefLvl*15;
-        const stealRoll=d100();
-        narrative.push(`📊 ${atk.name} attempts to steal (Thief ${thiefLvl}): ${stealChance}% (roll ${stealRoll})`);
-        if(stealRoll<=stealChance&&def.gold>0){
-          const stolen=Math.min(def.gold||0,rng(1,5));
-          if(def.player!==null) G.players[def.player].gold-=stolen;
-          G.players[atk.player].gold=(G.players[atk.player].gold||0)+stolen;
-          narrative.push(`${atk.name} pickpockets ${stolen}g from ${def.name}!`);
-        } else narrative.push(`${atk.name}'s theft attempt fails.`);
-        }
-      } else {
-        // Melee round
-        const atkMelee=effStat(atk,'melee'); const defMelee=effStat(def,'melee');
-        const diff=atkMelee-defMelee;
-        const atkHitChance=Math.max(10,Math.min(90,50+diff*10))+(atk.temper==='Berserk'||atk.temper==='Brave'?10:0);
-        const defHitChance=Math.max(10,Math.min(90,50-diff*10))+(def.temper==='Berserk'||def.temper==='Brave'?10:0);
-        const atkRoll=d100();
-        narrative.push(`📊 Round ${round+1}: ${atk.name} Melee ${atkMelee} vs ${def.name} Melee ${defMelee} — atk ${atkHitChance}% (roll ${atkRoll}${atkRoll<=atkHitChance?' ✓':' ✗'})`);
-        if(atkRoll<=atkHitChance){
-          const dmg=rng(1,6)+Math.max(0,diff); defHp-=dmg;
-          narrative.push(`${atk.name} strikes ${def.name} for ${dmg}! (${def.name} HP: ${Math.max(0,defHp)})`);
-        } else narrative.push(`${atk.name}'s blow is turned aside.`);
-
-        if(def.player!==null&&defHp>0){
-          // Defender uses their own plan
-          if(defTac!=='FL'&&defTac!=='FLEE'){
-            const defRoll=d100();
-            narrative.push(`  ${def.name} counter (${defHitChance}%): roll ${defRoll}${defRoll<=defHitChance?' ✓':' ✗'}`);
-            if(defRoll<=defHitChance){
-              const mDmg=rng(1,6)+Math.max(0,-diff); atkHp-=mDmg;
-              narrative.push(`${def.name} retaliates for ${mDmg}! (${atk.name} HP: ${Math.max(0,atkHp)})`);
-            } else narrative.push(`${def.name}'s riposte misses.`);
-          }
-        }
-      }
-
-      if(atkHp<=0){narrative.push(`${atk.name} is overwhelmed!`);atkKilled=atk.isKing?false:Math.random()<0.3;break;}
-      if(defHp<=0){narrative.push(`${def.name} is overcome!`);defKilled=!def.isKing&&def.player!==null&&Math.random()<0.3;break;}
-    }
+    const atkHp=res.aHp, defHp=res.bHp;
+    // A felled commander is not always slain — a third of the time the fight ends in
+    // capitulation rather than death. Kings are always spared this way.
+    let atkKilled=false, defKilled=false;
+    if(atkHp<=0){ narrative.push(`${atk.name} is overwhelmed!`); atkKilled=atk.isKing?false:Math.random()<0.3; }
+    if(defHp<=0){ narrative.push(`${def.name} is overcome!`); defKilled=!def.isKing&&def.player!==null&&Math.random()<0.3; }
 
     return{atkHp,defHp,atkKilled,defKilled,narrative};
   }
@@ -4812,33 +5061,18 @@ const BATTLE_ARMY_SPELLS={
     return {mods, pacifiable, closeRounds};
   }
 
+  // Resolves a full encounter between a character and a feature monster.
+  // All of the fighting is delegated to the unified personal-combat engine — this function
+  // handles only the framing (scene description) and the feature-level consequences
+  // (treasure stolen, monster cleared, hero slain).
+  // Returns {won, fled, damageToHero, heroHpAfter, heroKilled, narrative:[...strings]}
   function resolveEncounter(c, feature, prov, tactics, effStat, rng, player){
     const m=feature.monster||{name:'creature',hp:10,power:'',minG:1,maxG:3};
     const narrative=[];
-    let won=false, fled=false;
-    let heroHp=c.hp||10;
-    let monsterHp=m.hp||10;
-    let heroDidMelee=false, heroDidArchery=false; // for skill gains on victory
-    // ── Weakness matrix (derived from the monster's nature) ──
+    const startHp=c.hp||10;
     const traits=monsterTraits(m);
-    // How the monster's melee/archery/spell vulnerabilities scale the hero's damage:
-    const modMelee=traits.mods.melee, modArch=traits.mods.archery, modSpell=traits.mods.spell;
-    // The monster closes distance over several rounds by speed — this is the archer's firing window.
-    let monsterCloseCounter=traits.closeRounds;
-    let monsterSpellCd=0; // monster spell cooldown (prevents relentless chain-casting)
-    // Bridge to the unified engine: the hero's combat spells resolve through the SAME
-    // pcCastCombatSpell used in duels, so White→Necromancy combat spells behave identically.
-    // We keep lightweight combatant wrappers in sync with the scalar hero/monster HP each round.
-    const heroCbt=pcCharCombatant(c); heroCbt.maxHp=c.maxHp||20; heroCbt.hp=heroHp;
-    const monCbt=pcMonsterCombatant(m); monCbt.hp=monsterHp;
-    const encState={range:'spell', mirror:null};
-    let damageToHero=0;
-    let heroSkippedRounds=0;  // paralysis, freeze etc.
-    let heroHitPenalty=0;     // cumulative % penalty to hit
-    // Reset per-encounter combat spell tracking
-    c._encCastSpells=[];c._encCastSchool={};
 
-    // Opening description
+    // ── Opening description ──
     const featureDescs={
       'Ancient Battlefield':'crosses the bones of a long-forgotten battle and stumbles upon',
       'Ruined Watchtower':'climbs the crumbling stones of',
@@ -4851,448 +5085,50 @@ const BATTLE_ARMY_SPELLS={
     };
     const entryVerb=featureDescs[feature.name]||featureDescs.default;
     narrative.push(`${c.name} ${entryVerb} the ${feature.name} in ${prov.name}.`);
-
-    // Monster description
     const monsterPower=m.power||'';
     const powerDesc=monsterPower?` (${monsterPower})`:'';
-    const monHpDesc=monsterHp<=12?'a weary-looking':monsterHp<=25?'a formidable':monsterHp<=40?'a powerful':'an enormous';
+    const monHp=m.hp||10;
+    const monHpDesc=monHp<=12?'a weary-looking':monHp<=25?'a formidable':monHp<=40?'a powerful':'an enormous';
     narrative.push(`Within lurks ${monHpDesc} ${m.name}${powerDesc}, blocking the path to the treasure.`);
     pushBattlecry(narrative, c, `the ${m.name}`);
 
-    // Process tactics in order
-    let range='spell'; // spell → bow → melee
-    let tacIdx=0;
-    let monsterMelee=m.melee||1;  // mutable — Curse/Dark Blessing can modify
-    const monsterArch=m.archery||0;
+    // ── Build both sides and hand the fight to the engine ──
+    const hero=pcCharCombatant(c);
+    if(Array.isArray(tactics)&&tactics.length) hero.tactics=tactics.slice();
+    const mon=pcMonsterCombatant(m);
+    // The monster's nature decides what hurts it: blades, arrows or magic.
+    mon.vuln={melee:traits.mods.melee, archery:traits.mods.archery, spell:traits.mods.spell};
+    mon.pacifiable=!!traits.pacifiable;
+    narrative.push(`The ${m.name} is ${mon.speedName}-moving${pcHasRanged(mon)?', and fights at range as well as close':''}. Its plan: ${mon.tactics.slice(0,6).join(', ')}…`);
 
-    for(let round=0;round<16&&heroHp>0&&monsterHp>0&&!fled&&!won;round++){
-      const tactic=tactics[tacIdx]||'ME';
-      tacIdx=Math.min(tacIdx+1,tactics.length-1);
+    const res=resolvePersonalCombat(hero, mon, {maxRounds:16, feature});
+    narrative.push(...res.narrative);
 
-      // ── Round-start effects ──
-      // Sync engine combatants to current HP, then let the unified status system tick (DoT from
-      // Fireball, decay of Holy Symbol/Spiritwrack penalties, etc.), then read HP back.
-      heroCbt.hp=heroHp; monCbt.hp=monsterHp;
-      pcRoundStart(monCbt, narrative); pcRoundStart(heroCbt, narrative);
-      heroHp=heroCbt.hp; monsterHp=monCbt.hp;
-      if(heroHp<=0||monsterHp<=0){ if(monsterHp<=0)won=true; break; }
-      // Monster closes the distance by speed. Until it reaches melee, the hero may keep firing —
-      // so slow monsters can be kited down with archery, while fast ones force melee/spells quickly.
-      if(range!=='melee'){
-        monsterCloseCounter--;
-        if(monsterCloseCounter<=0){ range='melee'; narrative.push(`The ${m.name} closes to melee range.`); }
-        else { range='bow'; }
-      }
-      if(encState.mirror){
-        const {victim, phantasm}=encState.mirror; victim.hp=monsterHp;
-        let disbelief=Math.max(2,Math.min(90,5+3*(victim.melee||0)));
-        if(Math.random()*100<disbelief){ narrative.push(`The ${m.name} sees through the illusion — the phantom dissolves and it turns back on ${c.name}.`); encState.mirror=null; }
-        else {
-          narrative.push(`🪞 The ${m.name} battles its own mirror image while ${c.name} concentrates.`);
-          if(Math.random()*100<pcHitChance(victim,phantasm,50)){ phantasm.hp-=pcMeleeDamage(victim,phantasm); }
-          if(phantasm.hp>0&&Math.random()*100<pcHitChance(phantasm,victim,50)){ const d=pcMeleeDamage(phantasm,victim); victim.hp-=d; narrative.push(`   The phantom strikes the ${m.name} for ${d}. (Monster HP: ${Math.max(0,Math.round(victim.hp))})`); }
-          monsterHp=victim.hp;
-          if(phantasm.hp<=0){ narrative.push(`The ${m.name} shatters the phantom — the illusion ends.`); encState.mirror=null; }
-          if(monsterHp<=0){ won=true; narrative.push(`The ${m.name} is slain by its own mirror image!`); break; }
-          continue;
-        }
-      }
-      // Psychic Blast free strikes — the hero lands un-answered blows at melee range.
-      if((heroCbt._freeAttacks||0)>0 && range==='melee' && monsterHp>0){
-        while(heroCbt._freeAttacks>0 && monsterHp>0){
-          const hm=effStat(c,'melee')-monsterMelee;
-          if(Math.random()*100<Math.max(5,50+hm*10)){ const d=Math.max(1,rng(1,6)+Math.max(0,hm)); monsterHp-=d; narrative.push(`⚡ ${c.name} lands a free strike on the ${m.name} for ${d}! (Monster HP: ${Math.max(0,monsterHp)})`); }
-          heroCbt._freeAttacks--;
-        }
-        if(monsterHp<=0){ won=true; break; }
-      }
-      // Monster stunned by Psychic Blast / held by Control Undead — it loses this round.
-      if(monCbt.status.stun>0){
-        narrative.push(`The ${m.name} is held helpless and cannot act this round. (${monCbt.status.stun} left)`);
-        monCbt.status.stun--;
-        continue;
-      }
-      // Doom Aura ongoing damage
-      if(m._doomAura>0){heroHp-=m._doomAura;damageToHero+=m._doomAura;narrative.push(`💀 Doom Aura pulses — ${c.name} takes ${m._doomAura} necrotic damage! (HP: ${Math.max(0,heroHp)})`);}
-      // Hero skipped rounds (paralysis, freeze)
-      if(heroSkippedRounds>0){
-        narrative.push(`${c.name} cannot act this round — ${heroSkippedRounds} round${heroSkippedRounds!==1?'s':''} of stun remaining.`);
-        heroSkippedRounds--;
-        const mHitPassive=Math.max(10,Math.min(90,50-(effStat(c,'melee')-monsterMelee)*10));
-        if(Math.random()*100<mHitPassive){const dP=rng(1,6)+(m._incomingDmgBonus||0);heroHp-=dP;damageToHero+=dP;narrative.push(`The ${m.name} attacks the defenceless ${c.name} for ${dP}! (HP: ${Math.max(0,heroHp)})`);}
-        heroHitPenalty=Math.max(0,heroHitPenalty-5);
-        continue;
-      }
-
-      // Decode CA:SpellName format — extract base code and optional spell
-      const colonIdx=tactic.indexOf(':');
-      const baseCode=colonIdx>=0?tactic.slice(0,colonIdx):tactic;
-      const chosenSpell=colonIdx>=0?tactic.slice(colonIdx+1):null;
-
-      switch(baseCode.toUpperCase()){
-        case 'ME':
-        case 'MELEE':{
-          if(range!=='melee'){narrative.push(`${c.name} closes to melee range.`);range='melee';}
-          const heroMelee=effStat(c,'melee');
-          const meleeDiff=heroMelee-monsterMelee;
-          const heroHit=Math.max(10,Math.min(90,50+meleeDiff*10));
-          let monHit=Math.max(10,Math.min(90,50-meleeDiff*10));
-          monHit=Math.max(5,(monHit-(monCbt.status.hitPenalty||0))*(heroCbt.status.dodge||1)); // Holy Symbol / Invisibility
-          const temper=c.temper||'Brave';
-          const hitMod=temper==='Berserk'?10:temper==='Brave'?10:temper==='Cautious'?0:-5;
-          const heroFinalHit=Math.max(5,heroHit+hitMod-heroHitPenalty+(c._scoutBonus||0));
-          const heroRoll=d100();
-          const penaltyNote=heroHitPenalty>0?` [−${heroHitPenalty}% penalty]`:'';
-          narrative.push(`📊 Melee — ${c.name} Melee ${heroMelee} vs monster Melee ${monsterMelee}: hero hit chance ${heroFinalHit.toFixed(0)}%${penaltyNote} (roll ${heroRoll}${heroRoll<=heroFinalHit?' ✓':' ✗'}), monster counter chance ${monHit.toFixed(0)}%`);
-          // Decay penalty each round
-          heroHitPenalty=Math.max(0,heroHitPenalty-5);
-          if(heroRoll<=heroFinalHit){
-            heroDidMelee=true;
-            const dmg=Math.max(1,Math.round((rng(1,6)+Math.max(0,meleeDiff))*modMelee));
-            monsterHp-=dmg;
-            narrative.push(`${c.name} ${rng(0,1)?'strikes':'slashes'} the ${m.name} for ${dmg} damage!${modMelee>1.15?' (vulnerable!)':modMelee<0.85?' (well-armoured)':''} (Monster HP: ${Math.max(0,monsterHp)})`)
-            if(m._reflectDamage){heroHp-=m._reflectDamage;damageToHero+=m._reflectDamage;narrative.push(`Brimstone Shield reflects ${m._reflectDamage} back at ${c.name}! (HP: ${Math.max(0,heroHp)})`);}
-          } else {
-            narrative.push(`${c.name}'s ${rng(0,1)?'blow glances off':'attack misses'} the ${m.name}.`);
-          }
-          if(monsterHp>0){
-            const monRoll=d100();
-            if(monRoll<=monHit){
-              if(c._mirrorImages>0){
-                c._mirrorImages--;
-                narrative.push(`The ${m.name} strikes — but hits a Mirror Image! (${c._mirrorImages} image${c._mirrorImages!==1?'s':''} remaining)`);
-              } else {
-                let mDmg=Math.max(1,rng(1,6))+(m._incomingDmgBonus||0);
-                if(monCbt.status.meleeHalvedRounds>0) mDmg=Math.max(1,Math.floor(mDmg/2)); // Spiritwrack
-                heroHp-=mDmg;damageToHero+=mDmg;
-                narrative.push(`The ${m.name} ${rng(0,1)?'retaliates':'counter-attacks'} for ${mDmg} damage! (Hero HP: ${Math.max(0,heroHp)})`);
-              }
-            } else {
-              narrative.push(`The ${m.name} lunges but ${c.name} ${rng(0,1)?'evades':'parries'} the blow.`);
-            }
-          }
-
-          // Monster spell phase — fires after melee counter (unless silenced), at most once every 2 rounds
-          if(monsterSpellCd>0) monsterSpellCd--;
-          if(monsterHp>0&&(m.spells||[]).length>0&&monCbt.status.silenceRounds<=0&&monsterSpellCd<=0){
-            const availSpells=m.spells.filter(s=>Math.random()*100<s.castChance);
-            if(availSpells.length>0){
-              monsterSpellCd=2; // must wait a round before casting again
-              const ms=availSpells[Math.floor(Math.random()*availSpells.length)];
-              narrative.push(`✨ ${m.name} casts **${ms.name}**! "${ms.flavour}"`);
-
-              // ── Direct damage ──
-              if(ms.dmg&&(ms.dmg[0]>0||ms.dmg[1]>0)){
-                const msDmg=rng(ms.dmg[0],ms.dmg[1]);
-                heroHp-=msDmg;damageToHero+=msDmg;
-                narrative.push(`📊 ${ms.name}: ${msDmg} damage dealt. (Hero HP: ${Math.max(0,heroHp)})`);
-              }
-
-              // ── Mechanical special effects ──
-              const eff=ms.effect||'';
-              // Monster heals (Life Drain, Stone Hide, Regenerate Head, Undead Thralls, Soul Harvest etc.)
-              if(eff.includes('heal')||eff.includes('heals half')){
-                const lastDmg=ms.dmg&&ms.dmg[1]>0?rng(ms.dmg[0],ms.dmg[1]):0;
-                const healAmt=eff.includes('half')?Math.ceil(lastDmg/2):Math.floor(rng(3,8));
-                monsterHp=Math.min(m.hp,monsterHp+healAmt);
-                narrative.push(`The ${m.name} heals ${healAmt} HP! (Monster HP: ${monsterHp})`);
-              } else if(eff.includes('regains')){
-                const hpMatch=eff.match(/(\d+) HP/);
-                const healAmt=hpMatch?parseInt(hpMatch[1]):5;
-                monsterHp=Math.min(m.hp,monsterHp+healAmt);
-                narrative.push(`The ${m.name} regains ${healAmt} HP! (Monster HP: ${monsterHp})`);
-              }
-
-              // Rebirth (Phoenix) — special: revive once if would die
-              if(ms.name==='Rebirth'&&monsterHp<=0){
-                monsterHp=15;won=false;
-                narrative.push(`The ${m.name} bursts into ash — then blazes back to life! (Monster HP: ${monsterHp})`);
-              }
-
-              // Hero loses rounds (Petrifying Gaze, Paralyse, Time Stop, Flash Freeze, Charm Gaze)
-              if(eff.includes('loses 2 rounds')||eff.includes('2 attack rounds')){
-                heroSkippedRounds=(heroSkippedRounds||0)+2;
-                narrative.push(`${c.name} is immobilised — loses 2 rounds of action!`);
-              } else if(eff.includes('loses 3 rounds')){
-                heroSkippedRounds=(heroSkippedRounds||0)+3;
-                narrative.push(`${c.name} is frozen solid — loses 3 rounds!`);
-              } else if(eff.includes('loses one attack round')||eff.includes('entranced')){
-                heroSkippedRounds=(heroSkippedRounds||0)+1;
-                narrative.push(`${c.name} is ${eff.includes('entranced')?'entranced':'stunned'} — loses 1 round!`);
-              }
-
-              // Hero hit chance penalty (Soul Scream, Wing Buffet, Doom Aura, Blizzard etc.)
-              if(eff.includes('-20%')||eff.includes('−20%')){
-                monsterMelee=Math.max(0,(monsterMelee||1)-0); // no change to monster
-                heroHitPenalty=(heroHitPenalty||0)+20;
-                narrative.push(`${c.name}'s effectiveness is reduced (−20% to hit rolls for next rounds).`);
-              } else if(eff.includes('-15%')||eff.includes('−15%')){
-                heroHitPenalty=(heroHitPenalty||0)+15;
-                narrative.push(`${c.name}'s concentration is shattered (−15% to hit rolls).`);
-              } else if(eff.includes('-10%')||eff.includes('−10%')){
-                heroHitPenalty=(heroHitPenalty||0)+10;
-                narrative.push(`${c.name} is shaken (−10% to hit rolls).`);
-              } else if(eff.includes('-25%')||eff.includes('−25%')){
-                heroHitPenalty=(heroHitPenalty||0)+25;
-                narrative.push(`${c.name} is blinded (−25% to hit rolls).`);
-              } else if(eff.includes('-30%')||eff.includes('−30%')){
-                heroHitPenalty=(heroHitPenalty||0)+30;
-                narrative.push(`${c.name} cannot see clearly (−30% to hit rolls).`);
-              }
-
-              // Monster melee reduction (Curse)
-              if(eff.includes('Melee reduced by 1')||eff.includes('Melee −1')){
-                monsterMelee=Math.max(0,(monsterMelee||1)-1);
-                narrative.push(`The ${m.name}'s Melee is reduced to ${monsterMelee}!`);
-              }
-
-              // Monster melee bonus (Dark Blessing, Chaos Knight)
-              if(eff.includes('+2 melee')||eff.includes('gains +2 melee')){
-                monsterMelee=(monsterMelee||1)+2;
-                narrative.push(`The ${m.name}'s Melee surges to ${monsterMelee}!`);
-              }
-
-              // Doom Aura — ongoing damage
-              if(ms.name==='Doom Aura'){
-                m._doomAura=(m._doomAura||0)+3;
-                narrative.push(`A sickly aura of death emanates from the ${m.name} — ${c.name} will take 3 damage at the start of each round!`);
-              }
-
-              // Hero flee chance penalty (Vortex)
-              if(eff.includes('flee chance')){
-                m._fleePenalty=(m._fleePenalty||0)+30;
-                narrative.push(`${c.name} feels pulled towards the creature — flee chance reduced by 30%!`);
-              }
-
-              // Brimstone Shield — reflect damage
-              if(ms.name==='Brimstone Shield'){
-                m._reflectDamage=3;
-                narrative.push(`Every attack against the ${m.name} will deal 3 damage back to ${c.name}!`);
-              }
-
-              // Melt Armour — incoming damage bonus
-              if(ms.name==='Melt Armour'){
-                m._incomingDmgBonus=(m._incomingDmgBonus||0)+3;
-                narrative.push(`${c.name}'s armour is melted — all incoming damage increased by 3!`);
-              }
-
-              // Force flee (Dragon Terror, Howl of the Moon, Werewolf)
-              if(eff.includes('courage test')||eff.includes('must pass courage')){
-                if(Math.random()<0.5){
-                  fled=true;
-                  narrative.push(`${c.name} is overcome with primal terror and FLEES from the ${m.name}!`);
-                } else {
-                  narrative.push(`${c.name} steels their nerve against the ${m.name}'s terror!`);
-                }
-              }
-            }
-          }
-          break;}
-
-        case 'FI':
-        case 'FIRE':
-        case 'ARROW':{
-          const archLevel=effStat(c,'archery');
-          if(archLevel===0){narrative.push(`${c.name} has no archery skill and cannot fire.`);break;}
-          if(range==='melee'){narrative.push(`${c.name} is at melee range — cannot fire arrows.`);break;}
-          const shots=1; // one shot per Fire action; archery skill governs accuracy, not volume
-          const hitChance=30+archLevel*10;
-          narrative.push(`📊 Archery — Archery ${archLevel}: 1 shot, hit chance ${hitChance}%`);
-          for(let s=0;s<shots&&monsterHp>0;s++){
-            const r=d100();
-            if(r<=hitChance){
-              const dmg=Math.max(1,Math.round(rng(1,6)*modArch));
-              monsterHp-=dmg;
-              heroDidArchery=true;
-              narrative.push(`${c.name}'s arrow finds its mark! ${dmg} damage to the ${m.name}.${modArch>1.15?' (vulnerable to arrows!)':modArch<0.85?' (arrows glance off)':''} (Monster HP: ${Math.max(0,monsterHp)}) [roll ${r} ≤ ${hitChance}]`);
-            } else {
-              narrative.push(`${c.name} looses an arrow but it flies wide. [roll ${r} > ${hitChance}]`);
-            }
-          }
-          // Monster may counter at range
-          if(monsterHp>0&&monsterArch>0){
-            const mHitChance=30+monsterArch*10;
-            for(let s=0;s<monsterArch&&heroHp>0;s++){
-              if(Math.random()*100<mHitChance){
-                const mDmg=rng(1,6);heroHp-=mDmg;damageToHero+=mDmg;
-                narrative.push(`The ${m.name} retaliates with its own missiles! ${mDmg} damage. (Hero HP: ${Math.max(0,heroHp)})`);
-              }
-            }
-          }
-          // Monster may also cast at range
-          if(monsterHp>0&&(m.spells||[]).length>0&&range!=='melee'){
-            const rangeSpells=m.spells.filter(s=>Math.random()*100<Math.floor(s.castChance*0.6));
-            if(rangeSpells.length>0){
-              const ms=rangeSpells[Math.floor(Math.random()*rangeSpells.length)];
-              narrative.push(`✨ ${m.name} casts ${ms.name} at range! "${ms.flavour}"`);
-              if(ms.dmg&&(ms.dmg[0]>0||ms.dmg[1]>0)){
-                const msDmg=rng(ms.dmg[0],ms.dmg[1]);
-                heroHp-=msDmg;damageToHero+=msDmg;
-                narrative.push(`📊 ${msDmg} damage. (Hero HP: ${Math.max(0,heroHp)})`);
-              }
-              if(ms.effect&&!ms.effect.includes('heal')) narrative.push(`Effect: ${ms.effect}.`);
-            }
-          }
-          break;}
-
-        case 'CA':
-        case 'SPELL':{
-          // Enforce combat spell limits (AK rules):
-          // - same spell cannot appear twice in one encounter
-          // - per-school: 1 spell at level 1, 2 spells at level 2+
-          if(chosenSpell){
-            const encSchoolCheck=Object.entries({white:['Holy Symbol','Spiritwrack'],psychic:['Psychic Blast','Telekinetic Storm'],illusory:['Mirror Image'],elemental:['Lightning Bolt','Fireball'],necromancy:['Curse','Hand of Death']})
-              .find(([,list])=>list.includes(chosenSpell))?.[0];
-            if(encSchoolCheck){
-              const encLvlCheck=effStat(c,encSchoolCheck);
-              const combatLimit=encLvlCheck>=2?2:1;
-              // Count how many times this spell and school have been cast so far in this encounter
-              // We track via c._encCastSchool and c._encCastSpells
-              if(!c._encCastSpells) c._encCastSpells=[];
-              if(!c._encCastSchool) c._encCastSchool={};
-              if(c._encCastSpells.includes(chosenSpell)){
-                narrative.push(`${c.name}: ${chosenSpell} has already been cast in this encounter — cannot cast the same combat spell twice.`);break;
-              }
-              const schoolUsed=c._encCastSchool[encSchoolCheck]||0;
-              if(schoolUsed>=combatLimit){
-                narrative.push(`${c.name}: ${SKILL_LABELS[encSchoolCheck]||encSchoolCheck} Lv${encLvlCheck} combat spell limit reached (${schoolUsed}/${combatLimit} per encounter).`);break;
-              }
-              c._encCastSpells.push(chosenSpell);
-              c._encCastSchool[encSchoolCheck]=(c._encCastSchool[encSchoolCheck]||0)+1;
-            }
-          }
-          // Use specifically chosen spell (e.g. 'CA:Lightning Bolt') or pick best combat school
-          const spellSkills=['white','psychic','illusory','elemental','necromancy'];
-          let encSpellName=chosenSpell||'';
-          let encSchool=null;let encLevel=0;
-          const ENCOUNTER_SPELL_SCHOOLS={
-            'Holy Symbol':'white','Spiritwrack':'white',
-            'Psychic Blast':'psychic','Telekinetic Storm':'psychic',
-            'Mirror Image':'illusory',
-            'Lightning Bolt':'elemental','Fireball':'elemental',
-            'Curse':'necromancy','Hand of Death':'necromancy'
-          };
-          if(encSpellName&&ENCOUNTER_SPELLS_P.has(encSpellName)){
-            encSchool=ENCOUNTER_SPELL_SCHOOLS[encSpellName];
-            encLevel=encSchool?effStat(c,encSchool):0;
-          }
-          if(!encSchool||encLevel===0){
-            const combatSchools=['elemental','necromancy','white','psychic'];
-            encSchool=combatSchools.reduce((best,sk)=>effStat(c,sk)>effStat(c,best)?sk:best,'elemental');
-            encLevel=effStat(c,encSchool);
-            const defaultSpells={white:'Holy Symbol',psychic:'Psychic Blast',elemental:'Lightning Bolt',necromancy:'Hand of Death',illusory:'Mirror Image'};
-            encSpellName=defaultSpells[encSchool]||'Lightning Bolt';
-          }
-          if(encLevel===0){narrative.push(`${c.name} knows no combat spells.`);break;}
-
-          // ── Bridge to the unified engine: the hero's combat spells resolve through the SAME
-          // pcCastCombatSpell used in duels (cast chance, per-encounter limits, and all effects),
-          // so White→Necromancy combat spells behave identically in feature fights.
-          heroCbt.hp=heroHp; monCbt.hp=monsterHp; monCbt.melee=monsterMelee; encState.range=range;
-          const _mHpBefore=monCbt.hp;
-          pcCastCombatSpell(heroCbt, monCbt, encSpellName, narrative, encState);
-          const _spellDmg=Math.max(0,_mHpBefore-monCbt.hp);
-          heroHp=heroCbt.hp; monsterMelee=monCbt.melee;
-          monsterHp=_mHpBefore-Math.round(_spellDmg*modSpell); // scale spell damage by the monster's magic vulnerability
-          if(modSpell>1.15&&_spellDmg>0) narrative.push(`  (the ${m.name} is vulnerable to magic — damage amplified)`);
-          if(monsterHp<=0){won=true;}
-          break;}
-
-                case 'TA':
-        case 'TALK':{
-          const druidSkill=effStat(c,'druid');
-          const talkChance=traits.pacifiable ? (20+druidSkill*15) : 0;
-          const talkRoll=d100();
-          narrative.push(`📊 Talk — Druid ${druidSkill}: parley chance ${talkChance}%${traits.pacifiable?` (roll ${talkRoll}${talkRoll<=talkChance?' ✓':' ✗'})`:` — the ${m.name} cannot be reasoned with`}`);
-          if(talkRoll<=talkChance){
-            narrative.push(`${c.name} attempts to parley with the ${m.name}. To their surprise, the creature seems to listen...`);
-            narrative.push(`After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`);
-            won=true;
-          } else {
-            narrative.push(`${c.name} calls out words of parley, but the ${m.name} roars and attacks regardless! [roll ${talkRoll} > ${talkChance}]`);
-          }
-          break;}
-
-        case 'ST':
-        case 'STEAL':{
-          const thiefLevel=effStat(c,'thief');
-          if(thiefLevel<1){ narrative.push(`${c.name} has no Thief skill and cannot attempt to steal from the ${m.name}.`); break; }
-          const stealChance=15+thiefLevel*15+(heroCbt.castSpells.includes('Invisibility')?15:0); // +15% under Invisibility
-          const stealRoll=d100();
-          narrative.push(`📊 Steal — Thief ${thiefLevel}: steal chance ${stealChance}% (roll ${stealRoll}${stealRoll<=stealChance?' ✓':' ✗'})`);
-          if(stealRoll<=stealChance){
-            trySkillGain(c,'thief',SKILLGAIN_STD); // Thief: successful steal
-            narrative.push(`${c.name} uses superior stealth to slip past the ${m.name} and seize the treasure — the creature never even notices!`);
-            // Steal: hero gets gold but monster stays (feature not cleared)
-            // won=true is NOT set — the monster remains in the feature
-            // We mark 'stole' so the search case knows to give gold without clearing
-            fled=true; // use fled as 'escaped with loot' — hero withdraws safely
-            m._treasureStolen=true;
-          } else {
-            narrative.push(`${c.name}'s attempt at stealth fails — the ${m.name} spots the intrusion and attacks! [roll ${stealRoll} > ${stealChance}]`);
-          }
-          break;}
-
-        case 'FL':
-        case 'FLEE':{
-          const monsterSpeed=m.speed||'medium';
-          const fleeChance=monsterSpeed==='slow'?80:monsterSpeed==='fast'?20:50;
-          const temper=c.temper||'Brave';
-          const tempBonus=temper==='Cautious'?10:0;
-          const fleePenalty=m._fleePenalty||0;
-          const totalFleeChance=Math.max(5,fleeChance+tempBonus-fleePenalty+(heroCbt.status.fleeBonus||0)); // +30% under Invisibility
-          const fleeRoll=d100();
-          narrative.push(`📊 Flee — monster speed ${monsterSpeed}: ${fleeChance}%${tempBonus?` + Cautious ${tempBonus}%`:''}${fleePenalty?` − Vortex ${fleePenalty}%`:''} = ${totalFleeChance}% (roll ${fleeRoll}${fleeRoll<=totalFleeChance?' ✓':' ✗'})`);
-          if(fleeRoll<=totalFleeChance){
-            narrative.push(`${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
-            fled=true;
-          } else {
-            narrative.push(`${c.name} tries to flee but the ${m.name} is too fast! Caught!`);
-            const catchDmg=rng(1,4)+(m._incomingDmgBonus||0);heroHp-=catchDmg;damageToHero+=catchDmg;
-            narrative.push(`The ${m.name} strikes ${c.name} from behind for ${catchDmg} damage! (Hero HP: ${Math.max(0,heroHp)})`);
-          }
-          break;}
-
-        case 'SC':
-        case 'SCOUT':{
-          const explorerLvl=effStat(c,'explorer');
-          const scoutBonus=explorerLvl*5; // +5% per Explorer level to all subsequent tactics
-          if(!feature.scouted){
-            feature.scouted=true;
-            narrative.push(`${c.name} carefully scouts the ${feature.name}, mapping its layout.${scoutBonus>0?` Explorer ${explorerLvl}: all subsequent tactics gain +${scoutBonus}% success bonus this encounter.`:''}`);
-            // Apply the bonus to hero hit chance for all subsequent rounds
-            heroHitPenalty=Math.max(0,heroHitPenalty-scoutBonus); // positive effect = reduce any penalty
-            c._scoutBonus=(c._scoutBonus||0)+scoutBonus;
-          } else {
-            narrative.push(`${c.name} reviews the layout of the ${feature.name} — already familiar with its patterns.${scoutBonus>0?` +${scoutBonus}% bonus maintained.`:''}`);
-          }
-          break;}
-
-        default:
-          // Unknown tactic — default to melee
-          tacIdx--; // retry with melee
-          tactics[tacIdx]='ME';
-      }
-
-      if(monsterHp<=0) won=true;
-      if(heroHp<=0){
-        narrative.push(`${c.name} falls to their knees, overwhelmed by the ${m.name}!`);
-        break;
-      }
-    }
-
-    if(won&&!fled){
+    // ── Outcome ──
+    let won=false, fled=false;
+    if(res.parley){
+      won=true;
+      narrative.push(`After tense negotiations, the ${m.name} agrees to step aside and allow passage to the treasure.`);
+    } else if(res.stoleBy===hero){
+      // Escaped with the loot: the hero withdraws safely but the creature still holds the site.
+      fled=true; m._treasureStolen=true;
+      narrative.push(`${c.name} slips away with the prize — the ${m.name} never even notices.`);
+    } else if(res.fledBy===hero){
+      fled=true;
+      narrative.push(`${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
+    } else if(res.winner===hero){
+      won=true;
       narrative.push(`With a final ${rng(0,1)?'decisive blow':'burst of effort'}, the ${m.name} is defeated!`);
-      // Skill gains: victory won with at least one successful melee/archery attack.
-      if(heroDidMelee) trySkillGain(c,'melee',SKILLGAIN_STD);
-      if(heroDidArchery) trySkillGain(c,'archery',SKILLGAIN_STD);
-    } else if(!fled&&heroHp>0&&monsterHp>0){
+    } else if(res.winner===mon){
+      narrative.push(`${c.name} falls to their knees, overwhelmed by the ${m.name}!`);
+    } else {
       narrative.push(`Neither ${c.name} nor the ${m.name} can gain the upper hand. ${c.name} withdraws to recover.`);
     }
 
+    const heroHp=res.aHp;
     c.hp=Math.max(0,heroHp);
-    // Hero (or king) can die from monster combat if HP reaches 0
     const heroKilled=heroHp<=0;
+    const damageToHero=Math.max(0, startHp-heroHp);
     return{won,fled,damageToHero,heroHpAfter:Math.max(0,heroHp),heroKilled,narrative};
   }
 
@@ -6385,7 +6221,7 @@ const BATTLE_ARMY_SPELLS={
         }
         // Encounter chance: 20% base + 10% per Sage level + modified by temper
         const sageBonus=effStat(c,'sage')*10;
-        const temperMod=c.temper==='Berserk'?20:c.temper==='Brave'?10:c.temper==='Cautious'?-5:c.temper==='Cowardly'?-15:0;
+        const temperMod=temperOf(c.temper).encounterMod;
         const encounterChance=Math.min(80,20+sageBonus+temperMod);
         const roll=d100();
         log('system',`📊 Encounter attempt — ${c.name} vs ${targetChar.name}: chance ${encounterChance}% (roll ${roll}${roll<=encounterChance?' ✓':' ✗'})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!==null)});
@@ -6398,6 +6234,7 @@ const BATTLE_ARMY_SPELLS={
         // Filter out Talk/Steal/Scout from PvP encounter plans (melee/spell only)
         const COMBAT_ONLY_TACTICS=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
         const atkPlan=((c.encounterPlan?.tactics)||['ME']).filter(t=>COMBAT_ONLY_TACTICS.has(t.split(':')[0].toUpperCase())||t.toUpperCase().startsWith('CA:'));
+        ensureEncounterPlan(targetChar);
         const defPlan=((targetChar.encounterPlan?.tactics)||['ME']).filter(t=>COMBAT_ONLY_TACTICS.has(t.split(':')[0].toUpperCase())||t.toUpperCase().startsWith('CA:'));
         if(atkPlan.length===0) atkPlan.push('ME');
         if(defPlan.length===0) defPlan.push('ME');
@@ -7584,18 +7421,18 @@ const ARMY_COST={'Infantry':2,'Cavalry':3,'Longbowmen':2,'Knights':3,'Human Garr
     const heir={
       id:G.characters.length,name:heirName,isKing:true,player:pi,
       race:p.race||'Human',alignment:p.alignment||'Neutral',
-      temper:['Bold','Cautious','Cunning','Honourable'][Math.floor(Math.random()*4)],
+      temper:TEMPERS_P[Math.floor(Math.random()*TEMPERS_P.length)], // provisional — the player may rename and re-temper their heir
       hp:22,maxHp:22,skills:heirSkills,aptitude:{},
       armies:[],items:[],location:heirProv.id,alive:true,merits:0,taxBonus:0,
       pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
-      _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills before ordering
+      _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills, and may set name + temper, before ordering
     };
     const ABILITIES_P2=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
     ABILITIES_P2.forEach(ab=>{heir.aptitude[ab]=Math.ceil(Math.random()*4);});
     G.characters.push(heir);
     heirProv.characters=(heirProv.characters||[]);
     if(!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
-    log('system',`👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Allocate their 4 remaining skill points before submitting orders.`,{actor:pi,targets:[pi],provinceId:heirProv.id,public:true});
+    log('system',`👑 With the old king fallen, ${heir.name} is crowned in ${heirProv.name}. Name them, choose their Temper and allocate their 4 remaining skill points before submitting orders.`,{actor:pi,targets:[pi],provinceId:heirProv.id,public:true});
   });
 
   // 7c. Expire temporary summons and reset hire phase flags
@@ -7983,6 +7820,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.18-1442</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.18-2315</div>
 </body>
 </html>

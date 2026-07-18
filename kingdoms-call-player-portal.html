@@ -626,7 +626,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Missile combat. Adds +5% strength per level to your bow/crossbow units (Longbowmen, Elven Bowmen, Crossbowmen, etc.) and helps in ranged encounter rounds. The King starts with Archery 1.',
+  archery:'Missile combat. In battle it adds +5% strength per level to your bow/crossbow units (Longbowmen, Elven Bowmen, Crossbowmen, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles and improves movement across sea provinces. Essential for a maritime power.',
@@ -1115,16 +1115,30 @@ async function openReport(gamePlayerId){
       ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods':''}
     </div>`:'';
   // Show heir skill allocation banner if applicable
-  const heirChar=chars.find(c=>c._isHeir&&(c._pendingSkillAllocation||0)>0);
+  const heirChar=chars.find(c=>c._isHeir);
+  const HEIR_TEMPERS=['Berserk','Brave','Cautious','Cowardly'];
   const heirBanner=heirChar?`<div style="background:#fff8e8;border:2px solid var(--gold);border-radius:3px;padding:8px 12px;margin-bottom:10px">
-    <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Allocate Heir's Skills</div>
-    <div style="font-size:.78rem;color:#444;margin-bottom:6px">${heirChar.name} has risen as your new king with ${heirChar._pendingSkillAllocation} unallocated skill point${heirChar._pendingSkillAllocation!==1?'s':''}. Assign them before submitting orders.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:4px">
+    <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Name, Temper and Skills</div>
+    <div style="font-size:.78rem;color:#444;margin-bottom:6px">A new monarch has risen. Choose their name and temper, and assign their ${heirChar._pendingSkillAllocation||0} remaining skill point${(heirChar._pendingSkillAllocation||0)!==1?'s':''} before submitting orders.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
+      <label style="font-size:.74rem;color:#555">Name
+        <input id="heir-name" value="${(heirChar.name||'').replace(/"/g,'&quot;')}" maxlength="40" oninput="setHeirName(${heirChar.id},this.value)"
+          style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px;width:200px">
+      </label>
+      <label style="font-size:.74rem;color:#555">Temper
+        <select id="heir-temper" onchange="setHeirTemper(${heirChar.id},this.value)"
+          style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px">
+          ${HEIR_TEMPERS.map(t=>`<option value="${t}"${heirChar.temper===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+      </label>
+    </div>
+    ${(heirChar._pendingSkillAllocation||0)>0?`<div style="display:flex;flex-wrap:wrap;gap:4px">
       ${['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'].map(sk=>
         `<button onclick="allocateHeirSkill(${heirChar.id},'${sk}')" style="font-size:.7rem;padding:2px 6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;cursor:pointer">${SKILL_LABELS[sk]||sk} (${heirChar.skills?.[sk]||0})</button>`
       ).join('')}
     </div>
-    <div style="font-size:.72rem;color:#888;margin-top:4px">Points remaining: <strong>${heirChar._pendingSkillAllocation}</strong></div>
+    <div style="font-size:.72rem;color:#888;margin-top:4px">Points remaining: <strong>${heirChar._pendingSkillAllocation}</strong></div>`
+    :`<div style="font-size:.72rem;color:#888">All skill points allocated.</div>`}
   </div>`:'';
   document.getElementById('report-kingdom').innerHTML=alignBanner+heirBanner+cmGuide+`
     <div class="report-grid">
@@ -1442,7 +1456,7 @@ const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'M
 // Encounter plan tactics (AK 5.0-5.8)
 const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
-  {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
+  {code:'FI',label:'Fire Arrow — move to bow range and shoot (requires Archery skill; 2 arrows at Archery 3+)'},
   {code:'CA',label:'Cast Spell — combat spells: Lightning Bolt, Fireball, Psychic Blast, Telekinetic Storm, Hand of Death, Curse, Control Undead, Holy Symbol, Spiritwrack, Mirror Image, Invisibility, Charm',hasSpell:true},
   {code:'CS',label:'Cast from School — during the pre-battle magic phase, cast a RANDOM battle spell from a chosen school (White, Elemental, Psychic or Necromancy)',hasSchool:true},
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
@@ -2154,6 +2168,23 @@ async function submitOrders(){
   await doSubmitOrders();
 }
 
+function setHeirName(charId, value){
+  if(!currentReport) return;
+  const c=currentReport.characters.find(x=>x.id===charId);
+  if(!c||!c._isHeir) return;
+  c.name=String(value||'').slice(0,40);
+  doSaveOrders(); // persist without re-rendering, so the field keeps focus
+}
+
+function setHeirTemper(charId, value){
+  if(!currentReport) return;
+  const c=currentReport.characters.find(x=>x.id===charId);
+  if(!c||!c._isHeir) return;
+  if(!['Berserk','Brave','Cautious','Cowardly'].includes(value)) return;
+  c.temper=value;
+  doSaveOrders();
+}
+
 function allocateHeirSkill(charId, skill){
   if(!currentReport) return;
   const c=currentReport.characters.find(x=>x.id===charId);
@@ -2222,10 +2253,10 @@ function updateTemperDesc(){
   // Temper affects how a character behaves in personal encounters, duels and monster fights,
   // and how often they trigger encounters while exploring/searching (AK 2.4).
   const DESCS={
-    Berserk:'🔥 <strong>Berserk:</strong> Fearless and aggressive. +20% chance to trigger an encounter while exploring (they seek out danger), and +10% to hit in duels and monster fights. No flee bonus — Berserk characters do not run. Best for offensive heroes who want action.',
-    Brave:'🦁 <strong>Brave:</strong> Bold but level-headed. +10% chance to trigger an encounter, and +10% to hit in duels and monster fights. A solid, balanced default that fights well without being reckless.',
-    Cautious:'🧭 <strong>Cautious:</strong> Careful and calculating. −5% encounter chance and no combat hit bonus, but +10% better chance to flee safely from a losing fight. Good for scouts and support heroes you want to keep alive.',
-    Cowardly:'🏃 <strong>Cowardly:</strong> Avoids danger. −15% encounter chance (rarely stumbles into trouble) and −5% to hit in monster fights, but +20% to flee from duels. Best for non-combat specialists — sages, spies and thieves — who should stay out of the fray.',
+    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +1 melee damage, 1–5 bonus HP</strong> every fight, and +20% encounter chance while exploring. The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
+    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +4% guard, +10% encounter chance. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
+    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% to hit them</strong> and every melee blow that lands does <strong>1 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus and −5% encounter chance; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
+    Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. The cost is −10% melee to hit and −15% encounter chance, and they break off below 40% health. Poor in a melee, excellent as an archer, thief or spy — and the safest temper for a king you cannot afford to lose.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
 }
@@ -2263,7 +2294,7 @@ async function doSaveOrders(){
     console.warn('doSaveOrders: blocked — viewing past turn report');return;
   }
   const kingSkills={};
-  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0}; });
+  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
   const {error:saveErr}=await sb.from('game_players').update({
     orders:JSON.stringify({orders,encounterPlans,kingSkills}),
     orders_submitted:false
@@ -2340,7 +2371,7 @@ async function doSubmitOrders(){
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
   const kingSkills={};
-  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0}; });
+  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
   const {error}=await sb.from('game_players').update({
     orders:JSON.stringify({orders,encounterPlans,kingSkills,forTurn:expectedTurn}),
     orders_submitted:true,
@@ -3355,6 +3386,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.18-1442</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.18-2315</div>
 </body>
 </html>
