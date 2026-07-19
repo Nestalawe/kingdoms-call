@@ -345,7 +345,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
-const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
+const ACTIONS = ['Move','Pursue','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
   'Spy','Practice Skill','Defend','Rest'];
 const ALL_ABILITIES = ['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
@@ -626,7 +626,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Missile combat. In battle it adds +5% strength per level to your bow/crossbow units (Longbowmen, Elven Bowmen, Crossbowmen, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
+  archery:'Missile combat. In battle it adds +5% strength per level to your bow/crossbow units (Yeoman Longbows, Elven Bowmen, Ironwood Crossbows, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles and improves movement across sea provinces. Essential for a maritime power.',
@@ -1095,7 +1095,7 @@ async function openReport(gamePlayerId){
     Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Heroes of any race join your service at the standard 2g rate, regardless of their origins. Mercenary bands cost 1g less to hire than the going rate. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
     Pagan:`Your kingdom draws on ancient and forgotten powers. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
-    Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a Skeletal Infantry at their side. All skeletal armies under your banner are exempt from the Druid penalty for undead army types, fight with 100% fanaticism in every battle, and cost only 1g upkeep each regardless of type. Battlefield graves in your provinces decay more slowly, preserving more fallen armies for the Skeletal Armies spell. Should enemy heroes fall within reach of your necromancers, they can be raised to serve your cause through the Resurrect spell.`,
+    Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty for undead army types, fight with 100% fanaticism in every battle, and cost only 1g upkeep each regardless of type. Battlefield graves in your provinces decay more slowly, preserving more fallen armies for the Skeletal Armies spell. Should enemy heroes fall within reach of your necromancers, they can be raised to serve your cause through the Resurrect spell.`,
   };
 
   const alignSummary=ALIGNMENT_SUMMARIES[playerAlignment]||'';
@@ -1440,20 +1440,38 @@ function armyLabel(a, opts={}){
 // players can tell them apart at a glance. Priority resolves overlaps (a Wyvern is a flying monster
 // → monster; a Whale Cohort is a sea creature → sea).
 function unitEmoji(type){
-  const _MON=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods','Crimson Rocs']);
-  const _FLY=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
-  const _SEA=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+  // Icons signal MOVEMENT CLASS first, then creature/monster nature — that is what a player needs
+  // at a glance. Sea monsters therefore get their own icon rather than the land-dragon one, and the
+  // winged primals are counted as flying because they genuinely cross water without a fleet.
+  // These sets mirror the GM engine's AERIAL_TYPES / SEA_TYPES / CREATURE_ARMIES / MONSTER_ARMIES.
+  // Crimson Rocs are a CREATURE in the engine (they take the Druidic bonus, not the Evil one) — the
+  // old list called them a monster, which showed Druidic players the wrong icon on their own units.
+  const _SEAMON=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
+  const _MON=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Elder Dragons','Titan Warbeasts']);
+  const _FLY=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders',
+    'Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+  const _SEA=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
   const _CRE=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-  if(_MON.has(type)) return '\u{1F409}';   // 🐉 monster
-  if(_FLY.has(type)) return '\u{1F985}';   // 🦅 flying
-  if(_SEA.has(type)) return '\u26F5';       // ⛵ sea
-  if(_CRE.has(type)) return '\u{1F43E}';   // 🐾 creature
-  return '\u{1F6E1}\uFE0F';                 // 🛡️ land
+  const _ELEM=new Set(['Air Elemental','Fire Elemental','Earth Elemental','Water Elemental','Darkness Elemental']);
+  if(_ELEM.has(type))   return '\u{1F300}';   // 🌀 summoned elemental
+  if(_SEAMON.has(type)) return '\u{1F30A}';   // 🌊 sea monster
+  if(_SEA.has(type))    return '\u26F5';       // ⛵ fleet / sea
+  if(_MON.has(type))    return '\u{1F409}';   // 🐉 monster
+  if(_FLY.has(type))    return '\u{1F985}';   // 🦅 flying
+  if(_CRE.has(type))    return '\u{1F43E}';   // 🐾 creature
+  return '\u{1F6E1}\uFE0F';                   // 🛡️ land
 }
+
 
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
 
 // Encounter plan tactics (AK 5.0-5.8)
+// How a commander answers the call to single combat at the start of an army battle.
+const DUEL_STANCES=[
+  {code:'challenge',label:'⚔ Challenge — ride out and demand single combat'},
+  {code:'accept',   label:'🛡 Accept — will not initiate, but will answer a challenge'},
+  {code:'refuse',   label:'🏳 Refuse — will not duel (−20% strength if challenged)'},
+];
 const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — move to bow range and shoot (requires Archery skill; 2 arrows at Archery 3+)'},
@@ -1461,7 +1479,7 @@ const ENCOUNTER_TACTICS=[
   {code:'CS',label:'Cast from School — during the pre-battle magic phase, cast a RANDOM battle spell from a chosen school (White, Elemental, Psychic or Necromancy)',hasSchool:true},
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
-  {code:'FL',label:'Flee — attempt to escape from the encounter'},
+  {code:'FL',label:'Flee — attempt to escape from the encounter (does not affect duels; see Duel stance)'},
   {code:'SC',label:'Scout — scout the feature for secrets and special functions'},
 ];
 
@@ -1628,6 +1646,19 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             </div>
             <input type="hidden" id="ep-preschool-${c.id}" value="${epPreSchool||''}">
             <div id="ep-preschool-display-${c.id}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
+          </div>
+
+          <!-- Duel stance (army battles) — sits beside pre-battle magic, as both are battle-only -->
+          <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
+            <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
+              🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— single combat at the start of an army battle (not encounters)</span>
+            </div>
+            <select id="ep-duel-${c.id}" style="font-size:.8rem;width:100%">
+              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'accept')===d.code?' selected':''}>${d.label}</option>`).join('')}
+            </select>
+            <div style="font-size:.68rem;color:#777;margin-top:2px">
+              A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
+            </div>
           </div>
 
           <div style="margin-top:6px">
@@ -2112,6 +2143,14 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     <input type="hidden" id="ep-tactics-${hiredCharId}" value="ME">
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
+        🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— single combat at the start of an army battle</span>
+      </div>
+      <select id="ep-duel-${hiredCharId}" style="font-size:.8rem;width:100%">
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
         ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— one random spell cast in army battles (not encounters)</span>
       </div>
       <input type="hidden" id="ep-preschool-${hiredCharId}" value="">
@@ -2228,19 +2267,47 @@ function updateAlignmentDesc(){
     Neutral:'⚖ <strong>Neutral:</strong> Province tax income +20% (practical traders). Hire any race of hero at the 2g same-race rate. Mercenaries cost 1g less. Sage discoveries happen twice as often.',
     Pagan:'🔥 <strong>Pagan:</strong> Ancient rites and fickle gods. 15% fanaticism chance. Features and encounters tend to yield richer rewards for those willing to take risks.',
     Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are immediately looted for 50% of their tax value.',
-    Undead:'💀 <strong>Undead:</strong> Your king starts with Necromancy +1 and one free Skeletal Infantry. Skeletal armies are always 100% fanatical, cost only 1g upkeep, and are exempt from Druid penalties. The Skeletal Armies spell raises fallen armies from battlefield graves.',
+    Undead:'💀 <strong>Undead:</strong> Your king starts with Necromancy +1 and one free unit of Skeletal Shieldwall Levies. Skeletal armies are always 100% fanatical, cost only 1g upkeep, and are exempt from Druid penalties. The Skeletal Armies spell raises fallen armies from battlefield graves.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
 }
+
+// Every humanoid unit has one always-on ability. Kept in step with unitAbilityMult /
+// missileDamageMult / the casualty block in the GM portal.
+const UNIT_ABILITIES={
+  'Shieldwall Levies':'Shieldwall — +25% strength when at least two are in the same force.',
+  'Free Lances':'Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
+  'Yeoman Longbows':'Massed Volley — +10% missile damage per other missile unit in the force (max +30%).',
+  'Gilded Lances':'Shock of the Charge — +40% strength when attacking. No bonus defending.',
+  'Galleon Fleet':'Broadside — fires in the pre-battle archery phase during sea battles.',
+  'Corsair Fleet':'Cut the Line — if at least half your winning force are Corsairs, the enemy cannot retreat by sea. Against neutral guards they instead keep your own line of escape to the ships open.',
+  'Elven Bowmen':'Woodland Volley — double missile damage in forest and jungle.',
+  'Forest Wardens':'Ambush — enemy archers cannot fire at all when Wardens defend forest or jungle.',
+  'Shadow Archers':'Loosed From Cover — cannot be targeted by enemy missile fire.',
+  'Eagle Riders':'Skyward Retreat — never suffer the extra casualties of being trapped with no retreat.',
+  'Elven Galleys':'Sea Archers — your missile units ignore the land-unit penalty at sea.',
+  'Dwarven Guard':'Hold the Line — if at least half the force are Guard (and it still has a quarter of the enemy\'s strength), it never retreats; the province stays contested instead.',
+  'Ironwood Crossbows':'Punch Through — can soften a target to 45% instead of the usual 30% limit.',
+  'Mountain Guns':'Bombardment — fire before all other missile units, and +50% damage against garrisons.',
+  'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
+  'Dwarf Ironclads':'Armoured Hulls — immune to pre-battle missile damage.',
+  'Warg Riders':'Run Them Down — if at least half your winning force are Wargs, you pursue the beaten commander automatically. Against neutral guards, who cannot be pursued, they end the fight fast instead: half casualties for you on a win.',
+  'Orc Berserkers':'Outnumbered and Uncaring — +10% strength for every 25% the enemy outnumbers you (max +30%).',
+  'Goblin Horde':'Sheer Numbers — +10% strength per other Goblin Horde in the force (max +30%).',
+  'Wyvern Riders':'Terror From Above — enemy fanaticism chance reduced by 15%. Against neutral guards, who have no fanaticism, they cut the defenders’ bonus by 10% instead.',
+  'Orcish Longships':'Reaver Crews — the whole force fights at +25% in any battle the phase it lands from these ships.',
+  'Whale Cohort':'Breach and Swamp — 25% chance each to sink one enemy fleet outright before the battle is fought.',
+};
+function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 
 function updateRaceDesc(){
   const sel=document.getElementById('join-race');
   const desc=document.getElementById('join-race-desc');
   if(!sel||!desc) return;
   const DESCS={
-    Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit a broad roster — Infantry, Cavalry and Longbowmen on the plains, plus flying Noble Griffons — and the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you, making Humans the most flexible race for any strategy. Heroes of your own race cost 2g/turn to keep.',
+    Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit a broad roster — Shieldwall Levies, Free Lances and Yeoman Longbows on the plains, heavily-armoured Gilded Lances, plus flying Noble Griffons — and the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you, making Humans the most flexible race for any strategy. Heroes of your own race cost 2g/turn to keep.',
     Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, especially in forest and jungle where they fight best. Swift flying Eagle Riders (speed 5) scout and strike, and the Whale Cohort rules the seas. Fewer heavy units — you win through mobility and missile fire, not brute force.',
-    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough, disciplined Dwarven Guard and Crossbowmen anchor your line, and powerful Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flying units, and armoured Dwarf Ironclads dominate coastal waters. Dwarves are at their most dangerous defending or fighting in mountain terrain, but move slowly.',
+    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough, disciplined Dwarven Guard and Ironwood Crossbows anchor your line, and powerful Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flying units, and armoured Dwarf Ironclads dominate coastal waters. Dwarves are at their most dangerous defending or fighting in mountain terrain, but move slowly.',
     Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and ferocious Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) are your heavy hitters, thriving in forest, jungle and mountains. Orcs overwhelm through numbers and speed rather than quality.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
@@ -2284,7 +2351,8 @@ async function doSaveOrders(){
     if(tacHidden){
       const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
       if(preSchool) tacts.push(`CS:${preSchool}`);
-      encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||''};
+      encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||'',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept'};
     }
   });
   const gp=currentGamePlayer;
@@ -2356,6 +2424,7 @@ async function doSubmitOrders(){
       encounterPlans[c.id]={
         tactics:tacts,
         notes:notesEl?.value||'',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
       };
     }
   });
@@ -2368,6 +2437,16 @@ async function doSubmitOrders(){
       action:document.getElementById(`po-action-${cid}-${ph}`)?.value||'Defend',
       target:getOrderTarget(cid,ph),extra:getOrderExtra(cid,ph),desc:'',
     }));
+    // Hired heroes' encounter plans were previously never collected at all.
+    const hTac=document.getElementById(`ep-tactics-${cid}`);
+    if(hTac){
+      const hTacts=(hTac.value||'ME').split(',').filter(Boolean);
+      const hPre=(document.getElementById(`ep-preschool-${cid}`)?.value||'').toLowerCase();
+      if(hPre) hTacts.push(`CS:${hPre}`);
+      encounterPlans[cid]={tactics:hTacts,
+        notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+    }
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
   const kingSkills={};
@@ -2405,6 +2484,27 @@ const PRIMAL_ARMY_SPEEDS={'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cav
 
 // ── PREDICTED LOCATION ────────────────────────────────
 // Simulates where a character will be at a given phase based on earlier move orders
+// Distance in provinces between two map hexes, on the same offset-hex grid the GM engine uses.
+// The world wraps east-west, so column distance takes the shorter way round.
+function hexDistanceBetween(a, b, cols){
+  if(!a||!b) return Infinity;
+  const C=cols||20;
+  const toCube=(p)=>{
+    const q=p.col-((p.row-(p.row&1))>>1);
+    const r=p.row;
+    return {x:q, z:r, y:-q-r};
+  };
+  let best=Infinity;
+  // Try the direct column offset and both wrapped offsets, keep the shortest.
+  [0,-C,C].forEach(shift=>{
+    const A=toCube({row:a.row,col:a.col+shift});
+    const B=toCube(b);
+    const d=Math.max(Math.abs(A.x-B.x),Math.abs(A.y-B.y),Math.abs(A.z-B.z));
+    if(d<best) best=d;
+  });
+  return best;
+}
+
 function predictedLocation(charId, upToPhaseExclusive){
   const report=currentReport;
   if(!report) return null;
@@ -2544,12 +2644,51 @@ function buildTargetField(c, ph, saved){
       return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>${edgeNote}`;
     }
 
-    // ── EXPLORE / SPY / DEFEND / REST ──
+    // ── EXPLORE / SPY / REST ──
     case 'Explore':
     case 'Spy':
-    case 'Defend':
     case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
+
+    // ── DEFEND (AK [3.15]) ──
+    // A general on Defend keeps watch over a 7-province area for the REST of the turn, reacting to
+    // enemy incursions. The area is centred on any province up to two away, so the field offers the
+    // character's own province plus everything within two provinces of it that this player knows.
+    case 'Defend':{
+      if((c.armies||[]).length===0){
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(holds position — only a general leading troops can guard a province)" disabled>`;
+      }
+      if(!curProv_){
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(guards current province)" disabled>`;
+      }
+      const within2=wProvs.filter(p=>{
+        if(!p||!p.name) return false;
+        return hexDistanceBetween(p,curProv_,wCols)<=2;
+      }).sort((a,b)=>hexDistanceBetween(a,curProv_,wCols)-hexDistanceBetween(b,curProv_,wCols)||String(a.name).localeCompare(String(b.name)));
+      const opts=within2.map(p=>{
+        const d=hexDistanceBetween(p,curProv_,wCols);
+        const tag=d===0?' — where he stands':(p.owner===c.player?' — your land':'');
+        return`<option value="${p.id}" ${String(target)===String(p.id)?'selected':''}>${p.name}${tag}</option>`;
+      }).join('');
+      return`<select id="po-target-${c.id}-${ph}"><option value="">— Guard the province he stands in —</option>${opts}</select>
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn. He rides to any province invaded that is next to <em>both</em> where he stands and the area he guards. Cancelled by a later Move or Pursue order, or by losing a battle.</div>`;
+    }
+
+    // ── PURSUE (AK [3.16]) ──
+    case 'Pursue':{
+      const seen=(report.visibleChars||[]).filter(x=>x.id!==c.id);
+      const sightings=(report.heroSightings||[]).filter(x=>x.id!==c.id);
+      const merged=[];
+      const push=(x,note)=>{ if(!merged.some(m=>String(m.id)===String(x.id))) merged.push({id:x.id,label:`${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'whereabouts uncertain'}${note}`}); };
+      seen.forEach(x=>push(x,''));
+      sightings.forEach(x=>push(x,' (last known)'));
+      if(merged.length===0){
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No characters known well enough to hunt" disabled>`;
+      }
+      const opts=merged.map(x=>`<option value="${x.id}" ${String(target)===String(x.id)?'selected':''}>${x.label}</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose the man to hunt —</option>${opts}</select>
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">He rides after this man for the rest of the turn, and his later orders wait until the chase is done. Both of you must be leading armies, or neither — otherwise the chase is called off.</div>`;
+    }
 
     // ── ENCOUNTER CHARACTER ──
     case 'Encounter Character':{
@@ -3314,7 +3453,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
           if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
-          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
+          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>{const ab=unitAbilityText(t);return `<br>${unitEmoji(t)} ${t}`+(ab?`<br><span style="font-size:.68rem;color:var(--stone);padding-left:1.1em">${ab}</span>`:'');}).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           const _kc=popupKnownChars(pd);
           if(_kc) h+=_kc;
@@ -3326,7 +3465,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           if(kf2.length) h+=`<br>\u2b50 ${kf2.map(f=>f.name).join(', ')}`;
-          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
+          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>{const ab=unitAbilityText(t);return `<br>${unitEmoji(t)} ${t}`+(ab?`<br><span style="font-size:.68rem;color:var(--stone);padding-left:1.1em">${ab}</span>`:'');}).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
           const _kcV=popupKnownChars(pd);
@@ -3334,7 +3473,7 @@ function renderMapIntoSvg(svgEl, report){
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
-          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
+          if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>{const ab=unitAbilityText(t);return `<br>${unitEmoji(t)} ${t}`+(ab?`<br><span style="font-size:.68rem;color:var(--stone);padding-left:1.1em">${ab}</span>`:'');}).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         }
         tt.innerHTML=h;
@@ -3386,6 +3525,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.18-2315</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.20-0926</div>
 </body>
 </html>
