@@ -239,16 +239,7 @@ const ARMY_SPEED_MASTER={
   // ── Orcish ──
   'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,
   'Wyvern Riders':5,'Orcish Longships':3,
-  // ── Primal (Druid 4/5) ──
-  // These were previously ABSENT from this table, so every lookup fell through to the default of 3
-  // and a Stone Giant marched as fast as a Free Lance. Speeds below match PRIMAL_ARMY_DEFS_P.
-  'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,'Manticore Pride':4,
-  'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,'Elder Dragons':4,'Crimson Rocs':5,
-  'Titan Warbeasts':2,'Leviathan Pods':3,
 };
-// Top-level mirror of the engine's PRIMAL_SEA_TYPES, for report/order-data builders that run
-// outside the resolution scope. Keep the two in sync.
-const PRIMAL_SEA_NAMES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
 // ══════════════════════════════════════════════════════════════════════════════
 // UNIT ABILITIES — single source of truth
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1033,7 +1024,7 @@ function buildGMProvinceOrderData(gs, playerIndex){
       isOwned, isVisited, isHome,
       // Recruit native armies only in provinces you control (mercenaries are handled separately)
       canRecruit:isOwned,
-      armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({type:at,cost:ARMY_COST_GM[at]||2,maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1})),
+      armyTypes:(p.armyTypes||[]).map(at=>({type:at,cost:ARMY_COST_GM[at]||2,maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1})),
       features:(()=>{
         // Match the province panel's visibility (discovered OR explored past its threshold) and
         // carry the ORIGINAL index into p.features so the engine's search handler resolves the
@@ -1380,8 +1371,7 @@ const PROVINCE_ARMIES_P={
 const RACES_P=['Human','Elven','Dwarven','Orcish'];
 // Recruitable naval/fleet unit types (used during map generation, e.g. to keep them out of a
 // king's starting land armies). Mirrors SEA_TYPES used in the resolution engine.
-const SEA_TYPES_GEN=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',
-  'Sea Giants','Kraken Tentacles','Leviathan Pods']);
+const SEA_TYPES_GEN=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
 // Primal races: not humanoid, require high Druid to lead effectively
 const PRIMAL_RACES_P=['Whale Cohort','Stone Giant','Forest Ent','Giant Eagle','Cave Troll','Manticore Pride',
   'Basilisk Brood','Sea Giant','Kraken Tentacle','Elder Dragon','Roc Rider','Titan Warbeast','Leviathan Pod'];
@@ -2425,8 +2415,7 @@ function buildTurnReport(gameState, playerIndex){
     const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
     function repSpd(a){
       const base=a.speed||3;
-      const SEA_T=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',
-        'Sea Giants','Kraken Tentacles','Leviathan Pods']);
+      const SEA_T=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
       const FLY_T=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
       if(SEA_T.has(a.type)) return base+navalLvl;
       if(FLY_T.has(a.type)) return base;
@@ -2751,8 +2740,7 @@ function buildTurnReport(gameState, playerIndex){
       name:p.name, terrain:p.terrain, race:p.race, tax:p.tax,
       isOwned, isVisited, isHome,
       canRecruit:isOwned,
-      // Primal sea beasts are only offered where they can actually be summoned: at sea.
-      armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({
+      armyTypes:(p.armyTypes||[]).map(at=>({
         type:at, cost:ARMY_COST_OD[at]||2,
         maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1,
       })),
@@ -3160,9 +3148,6 @@ async function runTurn(){
 // Flying units (Eagle Riders, Wyvern Riders, Gnomish Gyrocopters) always 1.0.
 // Naval units in land provinces already get no Naval bonus; add explicit land penalty below.
 const TERRAIN_MODS={
-  // SEA GIANTS ON LAND: 0.80, not the 0.60 every other naval unit takes. They are amphibious
-  // giants and wade ashore, per their unit description ("can also fight in coastal land provinces
-  // at -20% strength"). Krakens and Leviathans keep the full 0.60 beaching penalty.
   plain:{
     'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.0,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.80,
@@ -3175,7 +3160,7 @@ const TERRAIN_MODS={
     'Stone Giants':0.90,'Forest Ents':0.85,'Cave Trolls':1.0,
     'Manticore Pride':1.15,'Basilisk Brood':0.90,'Titan Warbeasts':1.15,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
-    'Sea Giants':0.80,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
+    'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   desert:{
     'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':0.90,
@@ -3189,7 +3174,7 @@ const TERRAIN_MODS={
     'Stone Giants':0.90,'Forest Ents':0.60,'Cave Trolls':0.85,
     'Manticore Pride':1.15,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
-    'Sea Giants':0.80,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
+    'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   forest:{
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':0.85,
@@ -3203,7 +3188,7 @@ const TERRAIN_MODS={
     'Stone Giants':0.90,'Forest Ents':1.20,'Cave Trolls':1.10,
     'Manticore Pride':0.80,'Basilisk Brood':1.0,'Titan Warbeasts':0.75,
     'Crimson Rocs':0.90,'Elder Dragons':1.0,
-    'Sea Giants':0.80,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
+    'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   jungle:{
     'Shieldwall Levies':0.85,'Free Lances':0.70,'Gilded Lances':0.70,'Yeoman Longbows':0.80,
@@ -3217,7 +3202,7 @@ const TERRAIN_MODS={
     'Stone Giants':0.80,'Forest Ents':1.20,'Cave Trolls':1.05,
     'Manticore Pride':0.80,'Basilisk Brood':1.10,'Titan Warbeasts':0.70,
     'Crimson Rocs':0.85,'Elder Dragons':1.0,
-    'Sea Giants':0.80,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
+    'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   mountain:{
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':1.0,
@@ -3231,7 +3216,7 @@ const TERRAIN_MODS={
     'Stone Giants':1.15,'Forest Ents':0.85,'Cave Trolls':1.15,
     'Manticore Pride':0.80,'Basilisk Brood':0.90,'Titan Warbeasts':0.75,
     'Crimson Rocs':1.10,'Elder Dragons':1.10,
-    'Sea Giants':0.80,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
+    'Sea Giants':0.60,'Kraken Tentacles':0.60,'Leviathan Pods':0.60,
   },
   sea:{
     // All land armies penalised in sea — ×0.75 (applied separately as seaLandPenalty)
@@ -5836,17 +5821,7 @@ const BATTLE_ARMY_SPELLS={
             if(armies.length>0&&armies.every(a=>SEA_TYPES.has(a.type))){
               seaBlockReason=`${c.name} leads only naval armies (${armies.map(a=>a.type).join(', ')}) and cannot move directly between land provinces without crossing sea.`;
             } else {
-              // Restate the ACTUAL capacity rule: light foot take half a hull, everything else a
-              // full one, and primal sea beasts (which swim but carry nothing) provide no capacity.
-              const LIGHT_MSG=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
-                'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde',
-                'Forest Wardens','Dwarven Guard','Orc Berserkers']);
-              const hulls=armies.filter(a=>CARRIER_TYPES.has(a.type)).length;
-              const capNeed=landArmies.reduce((s,a)=>s+(LIGHT_MSG.has(a.type)?0.5:1),0);
-              const swimmers=armies.filter(a=>PRIMAL_SEA_TYPES.has(a.type));
-              seaBlockReason=`${c.name} cannot put to sea: ${landArmies.length} land arm${landArmies.length!==1?'ies':'y'} (${landArmies.map(a=>a.type).join(', ')}) need ${capNeed} hull${capNeed!==1?'s':''} of shipping, but the force has only ${hulls} fleet unit${hulls!==1?'s':''}.`
-                +(swimmers.length>0?` The ${swimmers.map(a=>a.type).join(' and ')} swim under their own power but cannot carry troops.`:'')
-                +` (Light foot take half a hull each; cavalry, heavy foot, siege and beasts take a full hull.) Move blocked.`;
+              seaBlockReason=`${c.name} has ${landArmies.length} land arm${landArmies.length!==1?'ies':'y'} (${landArmies.map(a=>a.type).join(', ')}) but only ${seaArmies.length} naval unit${seaArmies.length!==1?'s':''} — needs at least 1 naval unit per land army to enter sea. Move blocked.`;
             }
             log('move',seaBlockReason,{actor:c.player,targets:[c.player]});break;
           }
@@ -6331,11 +6306,6 @@ const BATTLE_ARMY_SPELLS={
         for(const sel of selections){
           const[armyType,qtyStr]=sel.split('|');
           const qty=parseInt(qtyStr)||1;
-          // Primal sea beasts are called out of deep water — they can only be raised in a sea
-          // province, never on a coast. (Fleets remain recruitable wherever the province offers them.)
-          if(PRIMAL_SEA_TYPES.has(armyType)&&prov.terrain!=='sea'){
-            blocked.push(`${armyType} (can only be summoned in a sea province)`);continue;
-          }
           // Check turn-wide recruit limit
           if(!canRecruit(armyType,prov.id,prov,c.player)){
             blocked.push(`${armyType} (already recruited this turn)`);continue;
@@ -7365,33 +7335,20 @@ const ARMY_SPEED_R=ARMY_SPEED_MASTER; // alias → master table at top of script
 
 
   // Sea-capable armies (fleets etc)
-  // CARRIER_TYPES — the six humanoid fleets. These are the ONLY units that can ferry land armies
-  // across a sea province; each hull provides 1 point of carrying capacity.
-  const CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-  // PRIMAL_SEA_TYPES — Druid-summoned sea beasts. They swim under their own power, so they need no
-  // escort to enter the sea, but they are not ships: they carry NOTHING. A kraken cannot ferry
-  // infantry. They also cannot march: like a fleet, their only legal land moves are land→sea and
-  // sea→coastal land. Recruitable only in sea provinces (see the 'recruit' case).
-  const PRIMAL_SEA_TYPES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
-  // SEA_TYPES — every unit that crosses sea under its own power. Used throughout the engine for
-  // "is this a naval unit" (sea-battle penalties, Naval-skill bonuses, hull targeting, move pools).
-  const SEA_TYPES=new Set([...CARRIER_TYPES,...PRIMAL_SEA_TYPES]);
+  const SEA_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
 
   // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
   // stored per character for the whole turn
   function getSeaCapability(armies){
     if(armies.length===0) return 'all';
     const landArmies=armies.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
-    // Only CARRIERS provide capacity. Primal sea beasts swim themselves across but carry nothing,
-    // so they contribute 0 — a force of one Kraken plus one Goblin Horde still cannot put to sea.
-    const seaCount=armies.filter(a=>CARRIER_TYPES.has(a.type)).length;
+    const seaCount=armies.filter(a=>SEA_TYPES.has(a.type)).length;
     const flyCount=armies.filter(a=>AERIAL_TYPES.has(a.type)).length;
     if(landArmies.length===0) return 'all'; // only flying/sea
-    // Fleet capacity: light foot = 0.5 capacity (2 per hull), heavy/cavalry/siege/beast = 1 per hull
+    // Fleet capacity: infantry/archers = 0.5 capacity (2 per fleet), cavalry+ = 1 capacity (1 per fleet)
     const LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
       'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison',
-      'Goblin Horde',
-      'Forest Wardens','Dwarven Guard','Orc Berserkers']);
+      'Goblin Horde']);
     let landCapNeeded=0;
     landArmies.forEach(a=>{
       landCapNeeded+=LIGHT_ARMIES.has(a.type)?0.5:1; // light=0.5 cap, heavy/cavalry=1
@@ -9098,6 +9055,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.20-0926</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.20-0902</div>
 </body>
 </html>
