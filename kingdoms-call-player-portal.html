@@ -637,7 +637,7 @@ const SKILL_INFO={
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles and improves movement across sea provinces. Essential for a maritime power.',
-  sage:'Scholarship. Each level gives a 5% chance per turn, when practising Sage, to make a permanent Sage Discovery (kingdom-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
+  sage:'Scholarship. Each level gives a 5% chance per turn (10% with the Library discovery), when practising Sage, to make a permanent Sage Discovery (kingdom-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — both via the Steal order and by pickpocketing during encounters.',
   druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. Higher Druid unlocks the most powerful primal beasts.',
@@ -1157,7 +1157,7 @@ async function openReport(gamePlayerId){
       <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
     </div>
-    ${chars.map(c=>{
+    ${chars.filter(c=>c.alive!==false).map(c=>{
       const hpPct=Math.round((c.hp/c.maxHp)*100)||0;
       const skillTags=Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="skill-tag">${k} ${v}</span>`).join('');
       const armies=(c.armies||[]).length>0
@@ -1282,7 +1282,7 @@ async function openReport(gamePlayerId){
       const rows=pr.characters.map(c=>{
         const icon=c.category==='own'?'\u{1F464}':c.category==='enemy'?'\u{1F441}':'\u2694';
         const km=c.isKing?'\u265B ':'';
-        const who=(c.category==='enemy'&&c.kingdom)?`${c.name} of ${c.kingdom}`:(c.category==='neutral'?`${c.name} (wandering)`:c.name);
+        const who=(c.category==='enemy'&&c.kingdom)?`${c.name} of ${c.kingdom}`:(c.category==='neutral'?neutralCharLabel(c):c.name);
         const col=c.category==='enemy'?'#c05050':c.category==='neutral'?'#b07d2a':'var(--ink)';
         let line=`${icon} <strong style="color:${col}">${km}${who}</strong>`;
         if(c.spiedSkills&&Object.keys(c.spiedSkills).some(k=>c.spiedSkills[k]>0)){
@@ -1467,7 +1467,7 @@ function armyLabel(a, opts={}){
   // Race first, then type, quality and the unit's base strength (type × quality tier) — enough to
   // judge a force at a glance without opening the rules. formatRace() keeps the internal "Primal"
   // term out of player sight, showing 'Creature (Stone Giant)' / 'Monster (Cave Troll)' instead.
-  const race=a.race?formatRace(a.race):null;
+  const race=a.race?formatRace(a.race,a.type):null;
   const str=unitBaseStrengthP(a);
   const detail=[race,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
   return name?`${name} (${detail})`:`${detail}`;
@@ -2492,7 +2492,7 @@ function updateRaceDesc(){
   if(!sel||!desc) return;
   const DESCS={
     Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit a broad roster — Shieldwall Levies, Free Lances and Yeoman Longbows on the plains, heavily-armoured Gilded Lances, plus flying Noble Griffons — and the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you, making Humans the most flexible race for any strategy. Heroes of your own race cost 2g/turn to keep.',
-    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, especially in forest and jungle where they fight best. Swift flying Eagle Riders (speed 5) scout and strike, and the Whale Cohort rules the seas. Fewer heavy units — you win through mobility and missile fire, not brute force.',
+    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, especially in forest and jungle where they fight best. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. Fewer heavy units — you win through mobility and missile fire, not brute force.',
     Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough, disciplined Dwarven Guard and Ironwood Crossbows anchor your line, and powerful Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flying units, and armoured Dwarf Ironclads dominate coastal waters. Dwarves are at their most dangerous defending or fighting in mountain terrain, but move slowly.',
     Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and ferocious Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) are your heavy hitters, thriving in forest, jungle and mountains. Orcs overwhelm through numbers and speed rather than quality.',
   };
@@ -2697,6 +2697,10 @@ function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 // Every primal sub-race is either a Creature or a Monster (mirrors the GM engine's CREATURE_ARMIES /
 // MONSTER_ARMIES sets — Druidic favours Creatures, Evil favours Monsters). "Primal" is an internal
 // engine term; players only ever see Creature or Monster.
+// Player-facing class of each primal unit TYPE, mirroring the engine's CREATURE_ARMIES /
+// MONSTER_ARMIES sets. Used where only the unit type is known (race stored as a bare 'Primal').
+const CREATURE_ARMIES_UI=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+const MONSTER_ARMIES_UI=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
 const PRIMAL_SUBRACE_CLASS={
   'Stone Giant':'Creature','Forest Ent':'Creature','Giant Eagle':'Creature','Roc':'Creature','Whale':'Creature',
   'Cave Troll':'Monster','Manticore':'Monster','Basilisk':'Monster','Dragon':'Monster','Titan':'Monster',
@@ -2705,12 +2709,15 @@ const PRIMAL_SUBRACE_CLASS={
 // Present a province/unit race cleanly: humanoid races as-is, primal provinces as their player-facing
 // category — 'Primal:Stone Giant' → 'Creature (Stone Giant)', 'Primal:Cave Troll' → 'Monster (Cave
 // Troll)' — and empty/sea provinces as 'Uninhabited'. Never shows the word "Primal".
-function formatRace(race){
+function formatRace(race, unitType){
   if(!race) return 'Uninhabited';
   if(race.startsWith('Primal')){
     const sub=race.slice(7).trim(); // '' for bare 'Primal', else the sub-race after 'Primal:'
-    const cls=PRIMAL_SUBRACE_CLASS[sub]||'Creature';
-    return sub?`${cls} (${sub})`:cls;
+    // Bare 'Primal' (as stored on sea beasts and recruited Whale Cohorts) carries no sub-race, so
+    // fall back to classifying the UNIT TYPE — otherwise every Kraken and Leviathan read "Creature".
+    if(sub) return PRIMAL_SUBRACE_CLASS[sub]||'Creature';
+    if(unitType) return MONSTER_ARMIES_UI.has(unitType)?'Monster':'Creature';
+    return 'Creature';
   }
   return race;
 }
@@ -2794,6 +2801,7 @@ function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive){
     const tgt=domAction?getOrderTarget(charId,ph):(parsedOrders[ph]?.target||'');
     if(!tgt) continue;
     tgt.split(',').forEach(sel=>{
+      if(sel.trim().startsWith('merc:')) return; // mercenary hire — not a native recruit
       const parts=sel.trim().split('|');
       if(parts[0]) recruited[parts[0].trim()]=(recruited[parts[0].trim()]||0)+1;
     });
@@ -3124,7 +3132,24 @@ function buildTargetField(c, ph, saved){
       // recruit here. The GM engine still enforces that you actually took control before the recruit
       // resolves; if you didn't, the order is skipped at resolution.
       const conditionalRecruit=!!(pd && !pd.canRecruit && (pd.armyTypes||[]).length>0 && loc && movedInWithArmyBy(c.id, loc.id, ph));
+      // Mercenary bands answer to gold, not to borders: they can be hired in ANY province this
+      // character occupies, owned or not, and are never subject to the native per-turn recruit cap.
+      // They are therefore listed independently of every gate below.
+      const savedSelsM=(target||'').split(',').filter(Boolean);
+      const mercRows=mercsAvail.map(m=>{
+        const val=`merc:${m.id}`;
+        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;background:#fbeeee;border-radius:2px">
+          <input type="checkbox" value="${val}" ${savedSelsM.includes(val)?'checked':''} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
+          \u2694 ${m.unitName||m.type} (${m.quality} ${m.type}, ${m.cost??'?'}g) <span style="color:#8a1c1c;font-size:.72rem">[mercenary]</span>
+        </label>`;
+      }).join('');
+      const mercWrap=(inner)=>`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:140px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        ${inner}
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+      </div>`;
       if(!pd || (!pd.canRecruit && !conditionalRecruit)){
+        // No native recruitment here — but if mercenaries are roaming the province, offer those.
+        if(mercRows) return mercWrap(`<div style="font-size:.68rem;color:#8a4a4a;margin-bottom:4px;line-height:1.35">Mercenaries can be hired anywhere. Native troops need control of the province.</div>${mercRows}`);
         const why = !pd ? 'Province unknown'
           : (pd.armyTypes||[]).length===0 ? `${loc.name} is not your territory — cannot recruit here`
           : `${loc.name} is not yours yet — move in with an army in an earlier phase to recruit here if you take control`;
@@ -3137,6 +3162,7 @@ function buildTargetField(c, ph, saved){
       // showed "No armies available to recruit".)
       const anyRecruitable=(pd.armyTypes||[]).some(at=>(at.maxPerTurn-(alreadyRecruited[at.type]||0))>0);
       if(!anyRecruitable){
+        if(mercRows) return mercWrap(mercRows);
         const why=(pd.armyTypes||[]).length===0
           ? `No native recruitable armies in ${pd.name}`
           : `Already recruited the maximum in ${pd.name} this turn`;
@@ -3147,6 +3173,7 @@ function buildTargetField(c, ph, saved){
       const savedSels=(target||'').split(',').filter(Boolean);
       return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:140px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
         ${conditionalRecruit?`<div style="font-size:.68rem;color:#8a4a4a;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet. This recruit only happens if this character <strong>takes control</strong> of the province earlier in the turn.</div>`:''}
+        ${mercRows}
         ${(pd.armyTypes||[]).flatMap(at=>{
           const done=alreadyRecruited[at.type]||0;
           const remaining=at.maxPerTurn-done;
@@ -3422,6 +3449,14 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
 
 // ── CORE MAP RENDERER ─────────────────────────────────
 // Popup helper: list characters you know are in a province (own / neutral / enemy) at end of turn.
+// A player-facing label for an unaligned (player===null) character. Provincial guardians are
+// "local chieftains"; only masterless heroes are "wandering". The engine bakes ' (wandering)' into
+// the NAME of a guardian once they are beaten off their province, so strip any existing suffix
+// first — otherwise a defeated chieftain rendered as "Name (wandering) (wandering)".
+function neutralCharLabel(c){
+  const base=String(c&&c.name||'').replace(/\s*\(wandering\)/gi,'').trim();
+  return `${base} (${c&&c.isNeutralGuard?'local chieftain':'wandering'})`;
+}
 function popupKnownChars(pd){
   const chars=pd&&pd.characters||[];
   if(!chars.length) return '';
@@ -3432,7 +3467,7 @@ function popupKnownChars(pd){
   let s='';
   if(own.length)   s+=own.map(c=>`<br>\u{1F464} ${(c.isKing?'\u265B ':'')}${c.name}${cnt(c)}`).join('');
   if(enemy.length) s+=enemy.map(c=>`<br>\u{1F441} <span style="color:#e05050">${(c.isKing?'\u265B ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`).join('');
-  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:#c8922a">${c.name} (wandering)</span>${cnt(c)}`).join('');
+  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:#c8922a">${neutralCharLabel(c)}</span>${cnt(c)}`).join('');
   return s;
 }
 // Single function renders into any SVG element (inline or fullscreen)
@@ -3782,6 +3817,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.23-1519</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.23-2204</div>
 </body>
 </html>

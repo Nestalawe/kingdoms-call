@@ -622,7 +622,7 @@ function getAlreadyRecruitedThisTurn(charId,upToPhaseExclusive){
     if(!actionEl||actionEl.value!=='Recruit Armies')continue;
     const tgt=getOrderTarget(charId,ph);
     if(!tgt)continue;
-    tgt.split(',').forEach(sel=>{const[at]=sel.split('|');if(at)recruited[at.trim()]=(recruited[at.trim()]||0)+1;});
+    tgt.split(',').forEach(sel=>{if(sel.trim().startsWith('merc:'))return;const[at]=sel.split('|');if(at)recruited[at.trim()]=(recruited[at.trim()]||0)+1;});
   }
   return recruited;
 }
@@ -660,10 +660,25 @@ function buildTargetField(c,ph,saved){
       const loc=predictedLocation(c.id,ph);
       const pd=loc?provOrderData[loc.id]:null;
       const gold=report.kingdom?.gold||0;
+      // Mercenary bands roam free of any border — they can be hired in ANY province the character
+      // stands in, owned or not, so they are listed before (and independently of) the native pool.
+      const mercsAvail=(report.mercIntel||[]).filter(m=>m.locationId===(loc&&loc.id));
+      const mercRows=mercsAvail.map(m=>{
+        const val=`merc:${m.id}`;
+        return`<label style="display:flex;align-items:center;gap:5px;padding:2px 4px;font-size:.78rem;cursor:pointer;background:#fbeeee">
+          <input type="checkbox" value="${val}" ${(target||'').split(',').includes(val)?'checked':''} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
+          ⚔ ${m.unitName||m.type} (${m.quality} ${m.type}, ${m.cost??'?'}g) <span style="color:#8a1c1c">[mercenary]</span>
+        </label>`;
+      }).join('');
       if(!pd||!pd.isOwned){
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`${loc.name} — not your territory`:'Province unknown'}" disabled>`;}
+        if(!mercRows) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`${loc.name} — not your territory`:'Province unknown'}" disabled>`;
+        return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:110px;overflow-y:auto;background:#fdf8ee;border:1px solid #ccc;border-radius:2px;padding:3px">
+          ${mercRows}
+          <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+        </div>`;}
       const already=getAlreadyRecruitedThisTurn(c.id,ph);
       return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:110px;overflow-y:auto;background:#fdf8ee;border:1px solid #ccc;border-radius:2px;padding:3px">
+        ${mercRows}
         ${(pd.armyTypes||[]).flatMap(at=>{
           const done=already[at.type]||0;const rem=at.maxPerTurn-done;
           if(rem<=0)return[];
@@ -1512,13 +1527,44 @@ async function runTurn0(){
 const TERRAIN_COLORS_P={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const PROVINCE_ARMIES_P={
   plain:  {Human:['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Orc Berserkers','Orc Garrison']},
-  desert: {Human:['Shieldwall Levies','Free Lances','Gilded Lances','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Orc Garrison']},
+  desert: {Human:['Shieldwall Levies','Free Lances','Gilded Lances','Noble Griffons','Human Garrison'],Elven:['Elven Bowmen','Eagle Riders','Elven Garrison'],Dwarven:['Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Warg Riders','Wyvern Riders','Orc Garrison']},
   forest: {Human:['Yeoman Longbows','Shieldwall Levies','Human Garrison'],Elven:['Forest Wardens','Elven Bowmen','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Ironwood Crossbows','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Warg Riders','Goblin Horde','Wyvern Riders','Orc Garrison']},
-  jungle: {Human:['Shieldwall Levies','Human Garrison'],Elven:['Forest Wardens','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Ironwood Crossbows','Dwarf Garrison'],Orcish:['Goblin Horde','Orc Berserkers','Wyvern Riders','Orc Garrison']},
+  jungle: {Human:['Shieldwall Levies','Yeoman Longbows','Free Lances','Human Garrison'],Elven:['Forest Wardens','Shadow Archers','Eagle Riders','Elven Garrison'],Dwarven:['Ironwood Crossbows','Dwarven Guard','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Goblin Horde','Orc Berserkers','Wyvern Riders','Orc Garrison']},
   mountain:{Human:['Human Garrison','Shieldwall Levies','Noble Griffons'],Elven:['Eagle Riders','Elven Bowmen','Elven Garrison'],Dwarven:['Dwarven Guard','Ironwood Crossbows','Mountain Guns','Gnomish Gyrocopters','Dwarf Garrison'],Orcish:['Orc Berserkers','Wyvern Riders','Orc Garrison']},
   sea:    {Human:[],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']},
 };
 const RACES_P=['Human','Elven','Dwarven','Orcish'];
+// The four playable humanoid races, as a Set, for world-gen membership tests (a province race is
+// either one of these, null for open sea, or a 'Primal:<sub-race>' string).
+const HUMANOID_RACES_GEN=new Set(RACES_P);
+const LAND_TERRAINS_GEN=['plain','desert','forest','jungle','mountain'];
+// Each race's heartland. Province race allocation is weighted towards these terrains, so most
+// Human provinces are plains, most Elven ones forest, and so on — while any race can still turn up
+// anywhere. See the allocation pass in generateNewGame.
+const SIGNATURE_TERRAIN_P={Human:'plain',Elven:'forest',Dwarven:'mountain',Orcish:'desert'};
+// How much more likely a race is to be placed in its signature terrain than in any other. 6 puts
+// roughly two thirds of a terrain's provinces with its signature race while leaving every race
+// genuinely possible everywhere.
+const SIGNATURE_WEIGHT_P=6;
+
+// Every humanoid province offers 2-3 recruitable land types PLUS its racial garrison. Every
+// terrain/race cell in PROVINCE_ARMIES_P carries at least 3 non-garrison units so this is always
+// satisfiable from the province's OWN terrain — no cross-terrain borrowing, so terrain stays
+// meaningful. The fuzz suite asserts that table invariant; if you thin a cell, it will fail there
+// rather than silently handing out short pools.
+function buildHumanoidPool(terrain, race, count, rnd){
+  const full=(PROVINCE_ARMIES_P[terrain]||{})[race]||['Shieldwall Levies'];
+  const garrison=full.filter(t=>t.toLowerCase().includes('garrison'));
+  const local=full.filter(t=>!t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t));
+  return{types:[...local].sort(()=>rnd()-0.5).slice(0,count), garrison};
+}
+// ── WORLD-GEN TUNING ──
+// Share of LAND provinces that are Primal (wild Creature / Monster country). The remainder is split
+// exactly equally between the four humanoid races.
+const PRIMAL_LAND_CHANCE=0.30;
+// Share of coastal HUMANOID provinces that also offer their race's naval unit, on top of their
+// 2-3 land types and their garrison. Primal and raceless coasts never offer one.
+const COASTAL_NAVAL_CHANCE=0.80;
 // Recruitable naval/fleet unit types (used during map generation, e.g. to keep them out of a
 // king's starting land armies). Mirrors SEA_TYPES used in the resolution engine.
 const SEA_TYPES_GEN=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',
@@ -2125,6 +2171,18 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // randomly so it isn't always Creature-first. "Primal" stays the internal umbrella — players only
   // ever see the Creature / Monster label (see formatRace / primalClass in the player portal).
   let _primalCreatureNext = Math.random()<0.5;
+  // Non-primal land provinces are split EXACTLY equally between the four humanoid races. A plain
+  // per-province random draw drifted several provinces off even on a normal map, which visibly
+  // favoured one race's units. Instead we deal from a repeatedly-reshuffled four-card deck: within
+  // every block of four humanoid provinces each race appears once, so the totals can never differ
+  // by more than the length of the final partial block.
+  let _raceDeck=[];
+  // Provisional race, replaced wholesale by the terrain-weighted allocation pass below. The pass
+  // needs every province's terrain decided first, so the loop cannot make the final call itself.
+  const nextHumanoidRace=()=>{
+    if(_raceDeck.length===0) _raceDeck=[...RACES_P].sort(()=>Math.random()-0.5);
+    return _raceDeck.pop();
+  };
   for(let row=0;row<rows;row++){
     for(let col=0;col<cols;col++){
       const id=row*cols+col;
@@ -2145,10 +2203,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         else { terrain=pickLand(); }
       }
       const baseTax = taxOverride!=null ? taxOverride : {plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
-      // 40% of LAND provinces are Primal (non-humanoid), split evenly Creature / Monster. Each such
+      // PRIMAL_LAND_CHANCE of LAND provinces are Primal (non-humanoid), split evenly Creature /
+      // Monster. Each such
       // province recruits exactly ONE unit type — a single wild unit makes these provinces special.
       // Sea is never Primal at this stage (the sea post-pass below assigns sea beasts separately).
-      const isPrimal=terrain!=='sea'&&Math.random()<0.40;
+      const isPrimal=terrain!=='sea'&&Math.random()<PRIMAL_LAND_CHANCE;
       let race, primalUnit=null;
       if(terrain==='sea'){
         race=null;
@@ -2178,7 +2237,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         // portal maps that to "Creature (Stone Giant)" / "Monster (Cave Troll)" and never shows "Primal".
         race='Primal:'+(PRIMAL_ARMY_DEFS_P[primalUnit]?.race||primalUnit);
       } else {
-        race=RACES_P[Math.floor(Math.random()*4)];
+        race=nextHumanoidRace();
       }
       const population=terrain==='sea'?0:rP(1,6);
       // Build army pool — primal provinces recruit their single wild unit; all others use the pool.
@@ -2193,13 +2252,22 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         // Regular land province: pull army types for this terrain + race
         fullPool=(PROVINCE_ARMIES_P[terrain]||{})[race]||['Shieldwall Levies'];
       }
-      // Randomise the available army pool: take 2-4 types from the full pool
-      // (home province will get its full pool restored separately)
-      const nonGarrison=fullPool.filter(t=>!t.toLowerCase().includes('garrison'));
-      const garrison=fullPool.filter(t=>t.toLowerCase().includes('garrison'));
-      const poolCount=Math.min(nonGarrison.length,Math.max(2,Math.floor(Math.random()*nonGarrison.length)+1));
-      const shuffled=[...nonGarrison].sort(()=>Math.random()-0.5).slice(0,poolCount);
-      const armyPool=[...shuffled,...garrison];
+      // Randomise the available army pool: every humanoid province offers 2-3 recruitable unit
+      // types IN ADDITION to its race's garrison unit (which is always available). Primal provinces
+      // have a single wild unit and are capped by the size of their own pool.
+      // (The king's home province gets its full racial pool restored separately.)
+      let armyPool;
+      if(HUMANOID_RACES_GEN.has(race)){
+        const hp=buildHumanoidPool(terrain, race, rP(2,3), Math.random);
+        armyPool=[...hp.types,...hp.garrison];
+      } else {
+        // Primal (single wild unit) and sea provinces keep whatever their pool already holds.
+        const nonGarrison=fullPool.filter(t=>!t.toLowerCase().includes('garrison'));
+        const garrison=fullPool.filter(t=>t.toLowerCase().includes('garrison'));
+        const poolCount=Math.min(nonGarrison.length,rP(2,3));
+        const shuffled=[...nonGarrison].sort(()=>Math.random()-0.5).slice(0,poolCount);
+        armyPool=[...shuffled,...garrison];
+      }
       // Features (land provinces only): 2-4 explorable features each.
       const features=[];
       if(terrain!=='sea'){
@@ -2249,9 +2317,51 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // Post-generation: add fleet types to coastal provinces (land adjacent to sea)
   // Whale Cohorts are NOT an Elven unit — they are wild primal sea-beasts, raised only in the
   // whale waters that generate them, by any kingdom with the Druid skill to command them.
+  // ── Race allocation: weighted towards each race's heartland, balanced to equal totals ──
+  // Two requirements pull against each other. Races should cluster in their signature terrain
+  // (Humans on plains, Elves in forest, Dwarves in mountains, Orcs in desert), but the four races
+  // must also hold equal numbers of provinces — and terrain is NOT evenly distributed, so a plain
+  // weighted draw would hand whichever race owns the commonest terrain a permanent advantage.
+  //
+  // Resolved by giving each race a hard quota of floor(n/4) provinces (the remainder spread at
+  // random) and then, for each province in random order, drawing among the races that still have
+  // quota left, weighted by SIGNATURE_WEIGHT_P for a terrain match and by each race's REMAINING
+  // quota. The quota term is what keeps it balanced: a race that has been getting its way falls
+  // back automatically as its allowance runs down. Totals are exact to within one province.
+  {
+    const humanoidProvs=provinces.filter(p=>p.terrain!=='sea'&&HUMANOID_RACES_GEN.has(p.race));
+    const n=humanoidProvs.length;
+    const quota={}; RACES_P.forEach(r=>{quota[r]=Math.floor(n/4);});
+    [...RACES_P].sort(()=>Math.random()-0.5).slice(0,n-Math.floor(n/4)*4).forEach(r=>{quota[r]++;});
+    for(const p of [...humanoidProvs].sort(()=>Math.random()-0.5)){
+      const pool=RACES_P.filter(r=>quota[r]>0);
+      const cands=pool.length?pool:[...RACES_P];
+      const weights=cands.map(r=>(SIGNATURE_TERRAIN_P[r]===p.terrain?SIGNATURE_WEIGHT_P:1)*Math.max(1,quota[r]));
+      let roll=Math.random()*weights.reduce((a,b)=>a+b,0), pick=cands[cands.length-1];
+      for(let i=0;i<cands.length;i++){ roll-=weights[i]; if(roll<=0){ pick=cands[i]; break; } }
+      quota[pick]--;
+      p.race=pick;
+      // Rebuild everything downstream of race: the recruitable pool and the neutral garrison that
+      // was rolled from it. Province count, wealth, terrain and features are untouched.
+      const hp=buildHumanoidPool(p.terrain, pick, rP(2,3), Math.random);
+      p.armyTypes=[...hp.types,...hp.garrison];
+      const drawPool=hp.types.length?hp.types:p.armyTypes;
+      (p.neutralDefenders||[]).forEach(d=>{
+        d.type=drawPool[Math.floor(Math.random()*drawPool.length)];
+        d.race=pick;
+        d.unitName=armyUnitName(d.type);
+      });
+    }
+  }
+
   const FLEET_BY_RACE={Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']};
   provinces.forEach(p=>{
     if(p.terrain==='sea') return; // sea handled separately below
+    // Naval units are a HUMANOID shipbuilding tradition. Primal provinces (race 'Primal:...') and
+    // raceless provinces never offer a fleet — previously the FLEET_BY_RACE lookup missed on a
+    // primal race string and silently fell through to 'Galleon Fleet', which is why Giant Eagle and
+    // Cave Troll coastlines were handing out human galleons.
+    if(!HUMANOID_RACES_GEN.has(p.race)) return;
     // Check if any neighbour is sea
     const offsets=p.row%2===0?offEven:offOdd;
     const adjSea=offsets.some(([dr,dc])=>{
@@ -2260,7 +2370,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       const nb=provinces[nr*cols+nc];
       return nb&&nb.terrain==='sea';
     });
-    if(adjSea&&Math.random()<0.6){ // 60% of coastal provinces get fleet options
+    if(adjSea&&Math.random()<COASTAL_NAVAL_CHANCE){ // share of coastal humanoid provinces with a fleet option
       const fleets=FLEET_BY_RACE[p.race||'Human']||['Galleon Fleet'];
       const fleet=fleets[Math.floor(Math.random()*fleets.length)];
       if(!p.armyTypes.includes(fleet)) p.armyTypes.push(fleet);
@@ -2325,7 +2435,25 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // Home province race always matches the king's race, and army pool updates accordingly
     best.owner=pi;best.npcArmies=0;best.neutralDefenders=[];best.exploredBy={[pi]:100};best.explored=100;best.visitedBy=[pi];best.tax=10;
     best.race=sp.race;
+    // The home province is the ONE humanoid province exempt from the 2-3-types cap: a king opens
+    // with his race's complete land roster. Restoring it here overwrites anything the coastal pass
+    // added, so a coastal capital is re-offered its racial fleet on the same terms as any other
+    // coastal humanoid province.
     best.armyTypes=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Shieldwall Levies'];
+    {
+      const hOffs=best.row%2===0?offEven:offOdd;
+      const homeCoastal=hOffs.some(([dr,dc])=>{
+        const nr=best.row+dr; if(nr<0||nr>=rows) return false;
+        const nc=((best.col+dc)%cols+cols)%cols;
+        const nb=provinces[nr*cols+nc];
+        return nb&&nb.terrain==='sea';
+      });
+      if(homeCoastal&&Math.random()<COASTAL_NAVAL_CHANCE){
+        const hf=({Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[];
+        const pickH=hf[Math.floor(Math.random()*hf.length)];
+        if(pickH&&!best.armyTypes.includes(pickH)) best.armyTypes.push(pickH);
+      }
+    }
     // 100% explored = all features discovered at start
     (best.features||[]).forEach(f=>{f.discovered=true;});
 
@@ -2336,6 +2464,51 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     if(homeLandNbrs.length>=1 && !homeLandNbrs.some(n=>n.tax>=1&&n.tax<=3)) homeLandNbrs[0].tax=rP(1,3);
     const prospCandidates=homeLandNbrs.filter(n=>!(n.tax>=1&&n.tax<=3));
     if(prospCandidates.length>=1 && !homeLandNbrs.some(n=>n.tax>=4&&n.tax<=7)) prospCandidates[0].tax=rP(4,7);
+
+    // ── Guarantee: at least one land province adjacent to the home is the KING'S OWN RACE ──
+    // Without this a king could be ringed entirely by foreign or primal country, so every early
+    // conquest raised troops he needed Druid skill (or a race penalty) to lead. We only convert a
+    // neighbour if none already matches; the province keeps its terrain, tax and features and is
+    // simply re-raced, with its recruitable pool and neutral garrison rebuilt to suit.
+    if(!homeLandNbrs.some(n=>n.race===sp.race)){
+      // Prefer converting a primal neighbour over another humanoid race's province: the humanoid
+      // ones are already someone's recognisable homeland, and re-racing primal country costs the
+      // map less character than deleting an Elven or Dwarven holding.
+      const convCandidates=[...homeLandNbrs].sort((a,b)=>
+        (String(b.race||'').startsWith('Primal')?1:0)-(String(a.race||'').startsWith('Primal')?1:0));
+      const conv=convCandidates[0];
+      if(conv){
+        conv.race=sp.race;
+        const cHp=buildHumanoidPool(conv.terrain, sp.race, rP(2,3), Math.random);
+        conv.armyTypes=[...cHp.types,...cHp.garrison];
+        // Coastal humanoid provinces keep their chance of a racial fleet, same rule as world gen.
+        {
+          const offs=conv.row%2===0?offEven:offOdd;
+          const convCoastal=offs.some(([dr,dc])=>{
+            const nr=conv.row+dr; if(nr<0||nr>=rows) return false;
+            const nc=((conv.col+dc)%cols+cols)%cols;
+            const nb=provinces[nr*cols+nc];
+            return nb&&nb.terrain==='sea';
+          });
+          if(convCoastal&&Math.random()<COASTAL_NAVAL_CHANCE){
+            const cf=({Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[];
+            const pickF=cf[Math.floor(Math.random()*cf.length)];
+            if(pickF&&!conv.armyTypes.includes(pickF)) conv.armyTypes.push(pickF);
+          }
+        }
+        // Rebuild the neutral garrison from the new pool. This runs BEFORE the neutral-guard hero
+        // pass, so the hero picks up the corrected armies; province wealth still sets the count.
+        const cDrawPool=conv.armyTypes.filter(t=>!t.toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t));
+        const cPool=cDrawPool.length>0?cDrawPool:conv.armyTypes;
+        const cCount=conv.tax>=8?rP(4,5):conv.tax>=4?rP(3,4):rP(2,3);
+        conv.neutralDefenders=Array.from({length:cCount},()=>{
+          const dt=cPool[Math.floor(Math.random()*cPool.length)];
+          return{type:dt,quality:'Average',race:sp.race,unitName:armyUnitName(dt)};
+        });
+        conv.npcArmies=conv.neutralDefenders.length;
+        conv.name=null; // re-named thematically by the naming pass below
+      }
+    }
 
     // ── Guarantee: at least one WEAK feature in every player's home province ──
     {
@@ -2702,6 +2875,10 @@ function buildTurnReport(gameState, playerIndex){
     const p2=gameState.world.provinces[merc.location];
     mercIntel.push({
       id:merc.id,type:merc.type,quality:merc.quality,unitName:merc.unitName,
+      race:merc.race||null,
+      // Hire price, so the Recruit Armies order form can list mercenaries beside native units.
+      // Neutral kingdoms get 1g off (min 1g) — mirrored from the recruit handler.
+      cost:Math.max(1,(ARMY_COST_MASTER[merc.type]||2)-(player&&player.alignment==='Neutral'?1:0)),
       location:p2?.name||'unknown',locationId:merc.location,isSea:merc.isSea,
     });
   });
@@ -2804,6 +2981,10 @@ function buildTurnReport(gameState, playerIndex){
         if(!isOwn && !ownCharLocs.has(p.id)) return null;
         return{id:c.id,name:c.name,isOwn,isKing:c.isKing,
           isWanderer:c.player===null,
+          // A neutral character is either the sworn guardian of this province ("local chieftain")
+          // or a masterless hero passing through ("wandering"). The portal needs the distinction
+          // to label them correctly — they are otherwise indistinguishable client-side.
+          isNeutralGuard:!!c._isNeutralGuard,
           ownerName:c.player!=null&&!isOwn?(gameState.players[c.player]?.name||null):null,
           armyCount:(c.armies||[]).length,
           ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
@@ -3720,6 +3901,10 @@ const BATTLE_ARMY_SPELLS={
     const defenders=prov.neutralDefenders||[];
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
     consumeTerror(prov, defenders, narrative);
+    // ── Duel before battle ── Only when the province has a commander to answer for it; leaderless
+    // garrisons have nobody to ride out. The guardian's stance comes from their Temper.
+    const _npcDuel=preBattleDuel(c, neutralGuardHero, narrative);
+    const _npcAtkMorale=_npcDuel.atkMorale, _npcDefMorale=_npcDuel.defMorale;
     // Neutral guard hero contributes their tactical/melee skill to defense
     const defHero=neutralGuardHero||null;
     let tactSkill=c._tacticalNegated?0:effStat(c,'tactical'); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2);
@@ -4125,8 +4310,8 @@ const BATTLE_ARMY_SPELLS={
     const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
     const atkIllMult = (_illCasterN!=null && c.player!==_illCasterN) ? 0.8 : 1;
     if(atkIllMult<1) narrative.push(`  🌫 The illusory terrain of ${prov.name} disorients ${c.name}'s forces — they fight at 80% strength.`);
-    const atkStr=rawAtkStr*atkIllMult;
-    const defStr=rawDefStr*defBonus*homeBonus;
+    const atkStr=rawAtkStr*atkIllMult*_npcAtkMorale;
+    const defStr=rawDefStr*defBonus*homeBonus*_npcDefMorale;
     // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
     { const _rc=G.characters[c.id]; if(_rc) delete _rc._phantasmalBonus; if(c) delete c._phantasmalBonus; }
 
@@ -4476,11 +4661,14 @@ const BATTLE_ARMY_SPELLS={
   // 'accept'    — will not initiate, but answers a challenge  (default)
   // 'refuse'    — will not duel; costs their force 20% strength if challenged
   const DUEL_STANCES_P=['challenge','accept','refuse'];
+  const NPC_DUEL_STANCE_BY_TEMPER={Berserk:'challenge',Brave:'challenge',Cautious:'accept',Cowardly:'refuse'};
   function duelStanceOf(ch){
     const v=ch&&ch.encounterPlan&&ch.encounterPlan.duelStance;
     if(DUEL_STANCES_P.includes(v)) return v;
-    // NPC commanders have no orders: Temper decides. The bold seek single combat, the wary avoid it.
-    if(ch&&ch.player===null) return (ch.temper==='Berserk'||ch.temper==='Brave')?'challenge':'refuse';
+    // NPC commanders have no orders, so Temper decides — across all THREE stances, not just the
+    // two extremes. Berserk and Brave ride out and demand single combat; Cautious will answer a
+    // challenge but won't issue one; only the Cowardly refuse outright and shame their own ranks.
+    if(ch&&ch.player===null) return NPC_DUEL_STANCE_BY_TEMPER[ch&&ch.temper]||'accept';
     return 'accept';
   }
 
@@ -4490,7 +4678,7 @@ const BATTLE_ARMY_SPELLS={
     const t=ch.encounterPlan&&ch.encounterPlan.tactics;
     if(ch.player===null && (!Array.isArray(t)||t.length===0)){
       ch.encounterPlan={tactics:autoEncounterPlan(ch), notes:'', _auto:true,
-        duelStance:(ch.temper==='Berserk'||ch.temper==='Brave')?'challenge':'refuse'};
+        duelStance:NPC_DUEL_STANCE_BY_TEMPER[ch.temper]||'accept'};
     }
     return ch.encounterPlan;
   }
@@ -5072,6 +5260,51 @@ const BATTLE_ARMY_SPELLS={
   // Resolve a personal duel between two commanders. Returns {winner, loser} or {} if inconclusive.
   // Runs on the unified personal-combat engine, so duels, character encounters and monster
   // encounters all obey exactly the same rounds, ranges and action alternation.
+  // ── PRE-BATTLE DUEL ──
+  // Shared by combatVsChar (player-vs-player) and combatVsNPC (vs a neutral guard / chieftain).
+  // It previously lived inline in combatVsChar ONLY, which is why duels never fired in the far more
+  // common battles against province guardians. Returns the morale multiplier each side carries into
+  // the battle proper; callers must apply both to their strength totals or the duel has no effect.
+  function preBattleDuel(atk, def, narrative){
+    const DUEL_MORALE_PENALTY=0.80;
+    let atkMorale=1, defMorale=1;
+    if(!atk||!def) return{atkMorale,defMorale};
+    const demoralise=(who,why)=>{
+      if(who===atk) atkMorale=DUEL_MORALE_PENALTY; else defMorale=DUEL_MORALE_PENALTY;
+      narrative.push(`\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
+    };
+    ensureEncounterPlan(atk); ensureEncounterPlan(def); // NPC commanders fall back on Temper
+    const atkStance=duelStanceOf(atk), defStance=duelStanceOf(def);
+    if(atkStance!=='challenge'&&defStance!=='challenge') return{atkMorale,defMorale};
+    // If both sides mean to challenge, the attacker issues it.
+    const challenger=(atkStance==='challenge')?atk:def;
+    const challenged=(challenger===atk)?def:atk;
+    const challengedStance=(challenged===atk)?atkStance:defStance;
+    narrative.push(`— ${challenger.name} rides out and challenges ${challenged.name} to single combat. —`);
+    if(challengedStance==='refuse'){
+      narrative.push(`${challenged.name} will not answer the call, and the watching ranks see it.`);
+      demoralise(challenged, `their commander refused the challenge`);
+      return{atkMorale,defMorale};
+    }
+    narrative.push(`\u2694 — Personal duel: ${challenger.name} vs ${challenged.name} —`);
+    pushBattlecry(narrative, challenger, challenged.name);
+    pushBattlecry(narrative, challenged, challenger.name);
+    const duelResult=resolveDuel(challenger, challenged, narrative);
+    if(duelResult.loser){
+      const loser=duelResult.loser, winner=duelResult.winner;
+      narrative.push(`\u{1F480} ${loser.name} is slain in the duel!`);
+      demoralise(loser, `their commander fell in single combat`);
+      awardKillXP(winner, loser, narrative);
+      handleHeroDeath(loser, winner);
+    } else if(duelResult.fled){
+      // Breaking off the duel is losing it — the runner's own troops saw them go.
+      demoralise(duelResult.fled, `their commander broke off the duel`);
+    } else {
+      narrative.push(`The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`);
+    }
+    return{atkMorale,defMorale};
+  }
+
   function resolveDuel(atk, def, narrative){
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
     const res=resolvePersonalCombat(A, B, {maxRounds:16});
@@ -5117,47 +5350,9 @@ const BATTLE_ARMY_SPELLS={
     // inferred this from whether FL appeared in the encounter plan, which conflated "how I fight
     // a monster" with "will I duel a rival"; the stance is explicit and the encounter plan is
     // no longer consulted here at all.
-    ensureEncounterPlan(atk); ensureEncounterPlan(def); // NPC commanders fall back on Temper
-    const atkStance=duelStanceOf(atk), defStance=duelStanceOf(def);
+    const _duelOutcome=preBattleDuel(atk, def, narrative);
+    const atkMorale=_duelOutcome.atkMorale, defMorale=_duelOutcome.defMorale;
 
-    // Morale multiplier applied to each side's army strength (1 = none, 0.80 = −20%).
-    const DUEL_MORALE_PENALTY=0.80;
-    let atkMorale=1, defMorale=1;
-    const demoralise=(who,why)=>{
-      if(who===atk) atkMorale=DUEL_MORALE_PENALTY; else defMorale=DUEL_MORALE_PENALTY;
-      narrative.push(`📉 ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
-    };
-
-    if(atkStance==='challenge'||defStance==='challenge'){
-      // If both sides mean to challenge, the attacker issues it.
-      const challenger=(atkStance==='challenge')?atk:def;
-      const challenged=(challenger===atk)?def:atk;
-      const challengedStance=(challenged===atk)?atkStance:defStance;
-
-      narrative.push(`— ${challenger.name} rides out and challenges ${challenged.name} to single combat. —`);
-
-      if(challengedStance==='refuse'){
-        narrative.push(`${challenged.name} will not answer the call, and the watching ranks see it.`);
-        demoralise(challenged, `their commander refused the challenge`);
-      } else {
-        narrative.push(`⚔ — Personal duel: ${challenger.name} vs ${challenged.name} —`);
-        pushBattlecry(narrative, challenger, challenged.name);
-        pushBattlecry(narrative, challenged, challenger.name);
-        const duelResult=resolveDuel(challenger, challenged, narrative);
-        if(duelResult.loser){
-          const loser=duelResult.loser, winner=duelResult.winner;
-          narrative.push(`💀 ${loser.name} is slain in the duel!`);
-          demoralise(loser, `their commander fell in single combat`);
-          awardKillXP(winner, loser, narrative);
-          handleHeroDeath(loser, winner);
-        } else if(duelResult.fled){
-          // Breaking off the duel is losing it — the runner's own troops saw them go.
-          demoralise(duelResult.fled, `their commander broke off the duel`);
-        } else {
-          narrative.push(`The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`);
-        }
-      }
-    }
     // No challenge issued: nobody is shamed and no duel is fought, whatever the stances were.
 
     // Province and defender bonuses
@@ -6090,6 +6285,10 @@ const BATTLE_ARMY_SPELLS={
         }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
+        // Remember that this player set foot here THIS PHASE, before any battle is fought. If the
+        // move ends in a repulse the character will be gone by the end of the phase, but they still
+        // scouted the province and its surrounds and the map must reflect that.
+        noteEntered(c.player, toProv.id);
         if(!toProv.visitedBy)toProv.visitedBy=[];
         if(!toProv.visitedBy.includes(c.player)) toProv.visitedBy.push(c.player);
         {
@@ -6538,13 +6737,20 @@ const BATTLE_ARMY_SPELLS={
       }
       case 'recruit':{
         const ARMY_COST_P=ARMY_COST_MASTER; // alias → master table at top of script
-        // First: check for mercenaries in province
+        // ── First: mercenary bands roaming this province ──
+        // The order form now lists mercenaries alongside native units, tagged 'merc:<id>'. A single
+        // Recruit Armies order may therefore mix the two, so mercenary tokens are consumed here and
+        // stripped from the list before native recruitment runs on the remainder. (The older bare
+        // id / type / unitName tokens are still accepted so orders saved by an earlier build resolve.)
         const mercsHere=(G.mercenaries||[]).filter(m=>m.location===c.location);
-        if(mercsHere.length>0&&target){
-          const rList=target.split(',').map(t=>t.trim()).filter(Boolean);
-          let mHired=false;
+        const _rawSel=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
+        const _mercTokens=new Set();
+        let mHired=false;
+        if(mercsHere.length>0&&_rawSel.length>0){
           mercsHere.forEach(merc=>{
-            if(!rList.some(t=>t===merc.id||t===merc.type||t===merc.unitName))return;
+            const tok=_rawSel.find(t=>t===`merc:${merc.id}`||t===String(merc.id)||t===merc.type||t===merc.unitName);
+            if(!tok) return;
+            _mercTokens.add(tok);
             const baseMercCost=ARMY_COST_P[merc.type]||2;
             // Neutral alignment: mercenaries cost 1g less (min 1g)
             const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?1:0));
@@ -6554,8 +6760,12 @@ const BATTLE_ARMY_SPELLS={
             G.mercenaries=G.mercenaries.filter(m=>m.id!==merc.id);mHired=true;
             log('hire',`${c.name} hires mercenary band ${merc.unitName||merc.type} (${merc.quality}) for ${mCost}g${mCost<baseMercCost?' (Neutral discount)':''}.`,{actor:c.player,targets:[c.player],provinceId:c.location});
           });
-          if(mHired){ resolveUnitGainInProvince(c, prov, ph); break; }
+          if(mHired) resolveUnitGainInProvince(c, prov, ph);
         }
+        // Whatever is left of the order after the mercenary tokens are removed is native recruitment.
+        const _nativeSel=(extra||_rawSel.filter(t=>!_mercTokens.has(t)).join(',')||(mHired?'':'Shieldwall Levies|1'))
+          .split(',').map(s=>s.trim()).filter(Boolean);
+        if(_nativeSel.length===0) break; // mercenaries only — nothing further to raise
         // Native army recruitment requires CONTROL of the province — you cannot raise local
         // troops in land you merely scouted or passed through. (Mercenaries, handled above, can be
         // hired wherever they roam.) Conquering a province this turn sets prov.owner, so that counts.
@@ -6563,7 +6773,7 @@ const BATTLE_ARMY_SPELLS={
         if(!isOwned){
           log('system',`${c.name} cannot recruit in ${prov.name} — you must control the province to raise troops there.`,{actor:c.player,targets:[c.player]});break;
         }
-        const selections=(extra||target||'Shieldwall Levies|1').split(',').map(s=>s.trim()).filter(Boolean);
+        const selections=_nativeSel;
         let totalCost=0;let recruited=[];let blocked=[];
 
         for(const sel of selections){
@@ -6687,15 +6897,22 @@ const BATTLE_ARMY_SPELLS={
         const _snap=(G._phaseSkillSnapshot||{});
         const snapLvl=(ch)=>{ const v=(_snap[ch.id]||{})[skill]; return v==null?((ch.skills||{})[skill]||0):v; };
         const current=snapLvl(c);
-        if(current>=5){log('system',`${c.name} has already mastered ${SKILL_LABELS[skill]||skill} (level 5 — maximum).`,{actor:c.player,targets:[c.player]});break;}
-        // Sage discovery check (AK 4.3.1): 5% per Sage level chance of a new discovery
+        // ── Sage discovery runs BEFORE the mastery check ──
+        // Making discoveries is a SEPARATE mechanic from levelling the skill up, and it is exactly
+        // what a fully-trained Sage is for. Previously the level-5 mastery check broke out of the
+        // handler first, so a Sage 5 — the best scholar a kingdom can field — could never roll for
+        // a discovery at all. The mastery notice now comes after the roll, and only suppresses the
+        // skill-gain attempt.
         if(skill.toLowerCase()==='sage'){
           const sageLevel=effStat(c,'sage');
           // Neutral alignment: double sage discovery chance (pragmatic scholars)
           const neutralSageBonus=G.players[c.player]?.alignment==='Neutral'?sageLevel*5:0;
-          const discoveryChance=sageLevel*5+neutralSageBonus;
+          // Library (sd30): 10% per Sage level instead of 5%. This discovery defined an effect
+          // (`sageDiscoveryBonus`) that nothing ever read — the rate was hard-coded at 5%.
+          const perLevel=hasDisc(c.player,'sd30')?10:5;
+          const discoveryChance=sageLevel*perLevel+neutralSageBonus;
           const dRoll=d100();
-          log('system',`📊 Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
+          log('system',`📊 Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${perLevel===10?', Library ×2':''}${neutralSageBonus>0?', Neutral ×2':''}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
           if(dRoll<=discoveryChance){
             const player=G.players[c.player];
             if(!player.discoveries) player.discoveries=[];
@@ -6713,6 +6930,8 @@ const BATTLE_ARMY_SPELLS={
             log('system',`${c.name} studies hard but makes no new discovery this turn.`,{actor:c.player,targets:[c.player]});
           }
         }
+        // Mastery: no further levels to gain, but the discovery roll above has already happened.
+        if(current>=5){log('system',`${c.name} has already mastered ${SKILL_LABELS[skill]||skill} (level 5 — maximum).`,{actor:c.player,targets:[c.player]});break;}
 
         // Group training bonus: find all other characters in the same province
         // who are also practising the same skill in this same phase
@@ -7819,6 +8038,11 @@ const BATTLE_ARMY_SPELLS={
       const guard=armedHere.find(ch=>ch.player===null&&ch._isNeutralGuard);
       const playerForces=armedHere.filter(ch=>ch.player!==null);
       if(playerForces.length===0) return; // nobody left to press the fight
+      // A resumed battle belongs to the character leading it, in the phase it happens — exactly
+      // like a first-contact battle. resolveStalledBattles runs outside the per-character loop that
+      // normally sets _logCtx, so without this every resumed battle was filed with no character and
+      // no phase, which is what pushed them into the end-of-turn Kingdom Events block.
+      _logCtx={charId:[...playerForces].sort((a,b)=>armyTotalStr(b,prov)-armyTotalStr(a,prov))[0].id, phase:ph};
 
       // CASE A — neutral guard still holds an unowned province with an enemy force present
       if(guard&&prov.owner===null){
@@ -7936,6 +8160,46 @@ const BATTLE_ARMY_SPELLS={
   // phase. Used to decide who may see battle reports they didn't participate in (line-of-sight).
   const presenceByPhase=[];
 
+  // Provinces a player's characters ENTERED during the current phase, even if they did not stay.
+  // A commander who marches in, fights, and is thrown back still saw the place; the map should
+  // remember it. Reset at the top of every phase.
+  let enteredThisPhase={};
+  const noteEntered=(pi, provId)=>{
+    if(pi==null||provId==null) return;
+    (enteredThisPhase[pi]=enteredThisPhase[pi]||new Set()).add(provId);
+  };
+
+  // ── province.characters is DERIVED STATE — rebuild it, never trust it ──
+  // Every province carries a `characters` array of ids, and roughly fifteen sites across the engine
+  // maintain it by hand alongside `character.location`. Any path that updates one and not the other
+  // desyncs the two, and the map renderer reads the ARRAY while visibility reads the LOCATION — so a
+  // desync makes a character vanish from the map while the province still counts as occupied.
+  //
+  // That is exactly what happened after a contested battle: combatVsNPC and combatVsChar fight on
+  // shallow COPIES and decide the attacker's fate on the copy, and the callers propagate the copy's
+  // `location` back to the real character WITHOUT touching either province's `characters` array. The
+  // character ended up listed in the province they had left and missing from the one they were in.
+  //
+  // Rather than patch each site (and wait for the next one to drift), `location` is now the single
+  // source of truth and this pass rebuilds every array from it. Cheap, total, and it retires the
+  // whole class of bug.
+  function reconcileProvinceCharacters(){
+    // The DEAD are kept, at the location they fell. Nothing previously removed a corpse from this
+    // array and one reader (the GM's province panel) lists ids without an alive check, so dropping
+    // them here would quietly delete bodies from the map. Readers that want only the living already
+    // filter for themselves.
+    const byProv=new Map();
+    (G.characters||[]).forEach(c=>{
+      if(!c||c.location==null) return;
+      if(!byProv.has(c.location)) byProv.set(c.location,[]);
+      byProv.get(c.location).push(c.id);
+    });
+    (G.world.provinces||[]).forEach(pv=>{
+      if(!pv) return;
+      pv.characters=byProv.get(pv.id)||[];
+    });
+  }
+
   // Item 1: per-player province memory. Called at the end of each phase — snapshots the observable
   // state of every province a player can currently see (owned, occupied, their neighbours, or spied
   // that phase) into player._provMemory. Latest observation wins, so the map shows phase-accurate
@@ -7961,6 +8225,14 @@ const BATTLE_ARMY_SPELLS={
         getNeighborsP(pv,cols,rows,G.world.provinces).forEach(n=>{ if(n) observed.add(n.id); });
       });
       (spiedThisPhase[pi]||[]).forEach(id=>observed.add(id));
+      // Provinces entered this phase — and their neighbours — even if the character was thrown
+      // back out again. Marching in and being repelled still buys you the same look at the country
+      // that walking in unopposed would have: you learn the province and what borders it.
+      (enteredThisPhase[pi]||[]).forEach(pid=>{
+        observed.add(pid);
+        const pv=G.world.provinces[pid]; if(!pv) return;
+        getNeighborsP(pv,cols,rows,G.world.provinces).forEach(n=>{ if(n) observed.add(n.id); });
+      });
       // Snapshot each observed province's current observable state (frozen at this phase).
       observed.forEach(pid=>{
         const pv=G.world.provinces[pid]; if(!pv) return;
@@ -8676,10 +8948,12 @@ const BATTLE_ARMY_SPELLS={
     // train. Group-training comparisons (mentor / peer) read these frozen levels, so a character
     // who trains up earlier this phase can't retroactively become a mentor to a co-trainer who is
     // processed later in the same phase.
+    enteredThisPhase={}; // provinces entered during THIS phase only
     G._phaseSkillSnapshot={};
     (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; });
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     resolveStalledBattles(ph);
+    _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
     spreadPlagues(ph);
 
     // Heroes hired this phase can't act yet, but should still be told so.
@@ -8758,8 +9032,12 @@ const BATTLE_ARMY_SPELLS={
     // Generate intrusion notifications for this phase
     generateIntrusionNotifications(ph);
 
+    // province.characters is derived from character.location — rebuild it before anything reads it,
+    // so a battle that moved someone on a copy cannot leave the map out of step.
+    reconcileProvinceCharacters();
     // Item 1: snapshot each player's observable view of the world at the end of this phase.
     updateProvinceMemory(ph);
+    enteredThisPhase={}; // consumed by the snapshot above — start the next phase clean
 
     // Tax collection moved to Early Winter block below
 
@@ -8946,7 +9224,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       c.hiredInPhase=-1; // -1 = hired before this turn, fully active
     }
     if((c.armies||[]).some(a=>a._temporary)){
+      // Summoned elementals hold together only for the turn that called them. Previously they were
+      // filtered out silently and the player simply found them missing next turn.
+      const _gone=c.armies.filter(a=>a._temporary);
       c.armies=c.armies.filter(a=>!a._temporary);
+      const _names=_gone.map(a=>`${a.unitName||a.type}${a.unitName?` (${a.type})`:''}`).join(', ');
+      log('explore',`\u2728 The binding fails as the season turns — ${_names} ${_gone.length===1?'dissolves':'dissolve'} and ${_gone.length===1?'returns':'return'} to the elemental plane, leaving ${c.name}'s host.`,{actor:c.player,targets:[c.player].filter(x=>x!==null),provinceId:c.location});
     }
     // Clear one-turn spell flags
     delete c._partSeaThisPhase;
@@ -9118,6 +9401,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // plans are intentionally KEPT so a player's chosen combat plan carries over turn to turn
   // until they change it.
   G.turnOrders={};
+  // Final reconcile before the state is persisted AND before reports are built. Steps 7-9 (Raise
+  // Hero, Divine resurrection, wandering-hero drift) all relocate characters, and the turn report
+  // reads province.characters for the map. Rebuilding here means what is saved, what is rendered
+  // and where characters actually are can never disagree.
+  reconcileProvinceCharacters();
   const {error:saveErr}=await sb.from('games').update({
     game_state:JSON.stringify(G),
     turn:G.turn,
@@ -9244,6 +9532,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const spyRec=(c.player!==pi)?_spiedSkillsPi[c.id]:null;
         return{
           name:c.name, isKing:!!c.isKing, category,
+          isNeutralGuard:!!c._isNeutralGuard,
           kingdom:(c.player!=null&&c.player!==pi)?(G.players[c.player]?.name||'an enemy realm'):null,
           color:c.player!=null?G.players[c.player]?.color:null,
           armyCount:armies.length,
@@ -9324,6 +9613,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.23-1519</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.23-2204</div>
 </body>
 </html>
