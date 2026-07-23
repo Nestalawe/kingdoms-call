@@ -249,6 +249,13 @@ const ARMY_SPEED_MASTER={
 // Top-level mirror of the engine's PRIMAL_SEA_TYPES, for report/order-data builders that run
 // outside the resolution scope. Keep the two in sync.
 const PRIMAL_SEA_NAMES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
+// ── DISPLAY ROUNDING ──────────────────────────────────────────────────────────
+// Battle maths is done in floats (flank ×0.5, tactical ×1.2, dice = Math.random()*range), but a
+// player report should never show a decimal — "roll 7.2384719283" is noise, not information.
+// n0() is a DISPLAY-ONLY rounder: use it on every number interpolated into narrative/log text.
+// It must NEVER be used on a value that feeds back into the maths, and it is deliberately NOT
+// applied to multipliers — "× tactical ×1.2" rounded to "×1" would be meaningless.
+function n0(x){ const v=Number(x); return Number.isFinite(v)?String(Math.round(v)):String(x); }
 // ══════════════════════════════════════════════════════════════════════════════
 // UNIT ABILITIES — single source of truth
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1158,11 +1165,42 @@ function buildGMProvinceOrderData(gs, playerIndex){
   return data;
 }
 
+// ── PLAYER MAP CENTRING ───────────────────────────────────────────────────────
+// The world wraps east-west, so a kingdom founded near column 0 used to be drawn hard against the
+// left edge with its own western neighbours appearing on the far RIGHT of the map. Each player's
+// map is therefore rolled horizontally so their founding capital sits in the middle column; the
+// wrap seam then falls behind them instead of through their territory. Same world, different
+// starting column per player. North-south is untouched — the grid does not wrap that way.
+//
+// Games saved before this existed have no homeProvinceId, so it is backfilled once, here, and then
+// frozen: provinces[0] was seeded with the capital at world gen, and the king's location is the
+// last resort. Backfilling from the CURRENT province list would let the centre drift as land
+// changes hands, which is exactly what this is meant to prevent.
+function homeProvinceIdFor(gs, playerIndex){
+  const pl=(gs&&gs.players||[])[playerIndex];
+  if(!pl) return null;
+  if(pl.homeProvinceId!=null) return pl.homeProvinceId;
+  let fallback=(pl.provinces&&pl.provinces.length&&pl.provinces[0]!=null)?pl.provinces[0]:null;
+  if(fallback==null){
+    const king=(gs.characters||[]).find(c=>c.player===playerIndex&&c.isKing);
+    fallback=king?king.location:null;
+  }
+  if(fallback!=null) pl.homeProvinceId=fallback; // freeze it from now on
+  return fallback;
+}
+// The column the map should be rolled around, or null to leave the map unshifted.
+function mapCentreColFor(gs, playerIndex){
+  const hid=homeProvinceIdFor(gs, playerIndex);
+  if(hid==null) return null;
+  const hp=(gs.world&&gs.world.provinces||[])[hid];
+  return (hp&&hp.col!=null)?hp.col:null;
+}
+
 function buildGMWorldMeta(gs, playerIndex){
   const{cols,rows,provinces}=gs.world||{cols:8,rows:6,provinces:[]};
   const offsets_even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
   const offsets_odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
-  return{cols,rows,provinces:(provinces||[]).map(p=>{
+  return{cols,rows,centreCol:mapCentreColFor(gs,playerIndex),provinces:(provinces||[]).map(p=>{
     const offsets=p.row%2===0?offsets_even:offsets_odd;
     const neighbors=offsets.map(([dr,dc])=>{const nr=p.row+dr;if(nr<0||nr>=rows)return null;const nc=((p.col+dc)%cols+cols)%cols;return nr*cols+nc;}).filter(n=>n!==null);
     return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,neighbors};
@@ -2396,7 +2434,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       heroIds.push(hid);
     }
 
-    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:10,king:kingId,heroes:[...heroIds],provinces:[best.id],merits:0};
+    // homeProvinceId is the founding capital and is written ONCE, here. It is deliberately separate
+    // from provinces[0], which shifts as land is won and lost — the player map is centred on this
+    // province for the whole game, so it must never move under them mid-campaign.
+    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:10,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0};
   });
 
   // Neutral heroes — one per non-home land province, and per sea province that has defenders,
@@ -2650,7 +2691,7 @@ function buildTurnReport(gameState, playerIndex){
   // Dead heroes this player has EVER seen (for Resurrect targeting)
   const knownDeadHeroes=(gameState.heroGraveyard||[])
     .filter(g=>g.player===playerIndex||knownEver.has(g.id))
-    .map(g=>({id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,
+    .map(g=>({id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,race:g.race||null,
       locationName:gameState.world.provinces[g.location]?.name||'unknown',
       wasOwnHero:g.player===playerIndex}));
 
@@ -2736,6 +2777,7 @@ function buildTurnReport(gameState, playerIndex){
   // World meta — full hex grid with visibility-appropriate data for map rendering
   const worldMeta={
     cols,rows,
+    centreCol:mapCentreColFor(gameState,playerIndex),
     provinces:provinces.map(p=>{
       // Compute neighbour IDs for the map renderer
       const offsets=p.row%2===0?offsets_even:offsets_odd;
@@ -3125,6 +3167,26 @@ async function runTurn(){
       return; // skip this player's stale orders entirely
     }    Object.entries(ordersObj).forEach(([charId,phaseOrders])=>{
       if(!Array.isArray(phaseOrders)) return;
+      // Handle synthetic RESURRECTION IDs: 'resurrect_HEROID_via_CASTERID_phPH'
+      // A player who orders Resurrect in phase PH may pre-write orders for the hero they intend to
+      // raise, exactly as they can for a hero they intend to hire. These are held as PENDING and are
+      // only written into turnOrders inside the successful white_resurrect branch — never here.
+      // That matters: a corpse can be targeted by more than one player in the same turn, and writing
+      // straight to G.turnOrders[realHeroId] would let a player who LOST the race to raise a body
+      // still puppet that hero for the rest of the turn. Orders are also scoped to phases AFTER the
+      // cast, since the hero is still dead in every phase up to and including it.
+      const resMatch=charId.match(/^resurrect_(\d+)_via_(\d+)_ph(\d+)$/);
+      if(resMatch){
+        if(!G._pendingResurrectOrders) G._pendingResurrectOrders=[];
+        G._pendingResurrectOrders.push({
+          heroId:parseInt(resMatch[1]),
+          casterId:parseInt(resMatch[2]),
+          castPhase:parseInt(resMatch[3]),
+          player:gp.player_index,
+          orders:phaseOrders,
+        });
+        return;
+      }
       // Handle synthetic hired hero IDs: 'hired_HEROID_via_CHARID_phPH'
       const hiredMatch=charId.match(/^hired_(\d+)_via_\d+_ph(\d+)$/);
       if(hiredMatch){
@@ -3142,9 +3204,15 @@ async function runTurn(){
       }
       G.turnOrders[charId]=phaseOrders;
     });
-    // Apply encounter plans to characters
+    // Apply encounter plans to characters.
+    // Synthetic ids ('hired_H_via_C_phP', 'resurrect_H_via_C_phP') carry the real hero id in the
+    // first capture group. parseInt() on the whole string returns NaN, so plans submitted for a
+    // hired — and now a raised — hero used to be collected by the portal and then silently dropped
+    // here, leaving them fighting on the default ME plan.
     Object.entries(epObj).forEach(([charId,plan])=>{
-      const ch=G.characters.find(c=>c.id===parseInt(charId));
+      const syn=String(charId).match(/^(?:hired|resurrect)_(\d+)_via_\d+_ph\d+$/);
+      const realId=syn?parseInt(syn[1]):parseInt(charId);
+      const ch=G.characters.find(c=>c.id===realId);
       if(ch&&plan) ch.encounterPlan=plan;
     });
     // Apply royal-succession skill allocations to a newly-crowned heir, then retire the flags.
@@ -4095,7 +4163,7 @@ const BATTLE_ARMY_SPELLS={
     //  terrain-based front width. No separate cosmetic line needed here.)
 
     // ── STAT BLOCK (visible to GM; included in player chronicle) ──
-    narrative.push(`📊 **Battle stats:** Attacker raw strength ${rawAtkStr} × tactical ×${tactBonus.toFixed(1)}${fanatic?` × fanaticism ×1.30`:''} + roll ${atkRoll} = **${finalAtk.toFixed(1)}** | Defender raw ${rawDefStr} × defender bonus ×${defBonus.toFixed(1)}${homeBonus>1?` × home ×${homeBonus.toFixed(1)}`:''} + roll ${defRoll} = **${finalDef.toFixed(1)}** | Margin: ${(finalAtk-finalDef).toFixed(1)} (attacker ${finalAtk>=finalDef?'wins':'loses'})`);
+    narrative.push(`📊 **Battle stats:** Attacker raw strength ${n0(rawAtkStr)} × tactical ×${tactBonus.toFixed(1)}${fanatic?` × fanaticism ×1.30`:''} + roll ${n0(atkRoll)} = **${n0(finalAtk)}** | Defender raw ${n0(rawDefStr)} × defender bonus ×${defBonus.toFixed(1)}${homeBonus>1?` × home ×${homeBonus.toFixed(1)}`:''} + roll ${n0(defRoll)} = **${n0(finalDef)}** | Margin: ${n0(finalAtk-finalDef)} (attacker ${finalAtk>=finalDef?'wins':'loses'})`);
 
     // Combat result narrative
     const margin=finalAtk-finalDef;
@@ -4180,7 +4248,7 @@ const BATTLE_ARMY_SPELLS={
           narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} suffered heavily and were destroyed in the fighting.`);
           a._died=true; winEvents++;
         } else if(roll<winDeathChance*steelMult+xpChance(winXPChance*milMult,a.quality)){
-          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.unitName||a.type} distinguished themselves and are promoted to ${a.quality}!`);winEvents++;}
+          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} distinguished themselves and are promoted to ${a.quality}!`);winEvents++;}
           else winSurv++;
         } else {
           winSurv++;
@@ -4219,7 +4287,10 @@ const BATTLE_ARMY_SPELLS={
       const _defFallen=defenders.filter(a=>a._died);
       if(_defFallen.length>0) recordBattleGraves(prov, _defFallen);
       const _defLeft=defenders.filter(a=>!a._died&&!a._disbanded);
-      if(_defLeft.length>0) narrative.push(`— ${_defFallen.length>0?'All other':'All'} defending forces survive the engagement and hold their ground.`);
+      // (No "all other defenders hold their ground" line here: the CALLER runs erodeGuardSurvivors
+      // immediately after this returns, and that decides each survivor's fate individually — rally,
+      // demote, disband or flee as mercenaries. Announcing that they held the ground first flatly
+      // contradicted the very next lines of the same report.)
       prov.neutralDefenders=_defLeft;
       prov.npcArmies=_defLeft.length;
       if(defHero) defHero.armies=_defLeft;
@@ -5379,18 +5450,18 @@ const BATTLE_ARMY_SPELLS={
 
     // ── STAT BLOCK ──
     narrative.push(`📊 **Battle stats:**`);
-    narrative.push(`  Attacker (${atk.name}): ${atkArmies.length} units, raw str ${atkRaw}`
+    narrative.push(`  Attacker (${atk.name}): ${atkArmies.length} units, raw str ${n0(atkRaw)}`
       +(atkTact>0?` × tactical ×${atkTactBonus.toFixed(1)}`:'')
       +(atkFanatic?` × fanaticism ×1.30`:'')
       +(atkMorale<1?` (duel morale ×${atkMorale.toFixed(2)})`:'')
-      +` + dice ${atkDice} = **${atkStr.toFixed(1)}**`);
-    narrative.push(`  Defender (${def.name}): ${defArmies.length} units, raw str ${defRaw}`
+      +` + dice ${n0(atkDice)} = **${n0(atkStr)}**`);
+    narrative.push(`  Defender (${def.name}): ${defArmies.length} units, raw str ${n0(defRaw)}`
       +(defTact>0?` × tactical ×${defTactBonus.toFixed(1)}`:'')
       +(defFanatic?` × fanaticism ×1.30`:'')
       +` × defender ×${defBonus.toFixed(1)}`
       +(defMorale<1?` (duel morale ×${defMorale.toFixed(2)})`:'')
-      +` + dice ${defDice} = **${defStr.toFixed(1)}**`);
-    narrative.push(`  Win chance (before dice): attacker needs >${(defStr-atkDice).toFixed(0)} raw adjusted (attacker had ${(atkStr-atkDice).toFixed(0)})`);
+      +` + dice ${n0(defDice)} = **${n0(defStr)}**`);
+    narrative.push(`  Win chance (before dice): attacker needs >${n0(defStr-atkDice)} raw adjusted (attacker had ${n0(atkStr-atkDice)})`);
 
     const won=atkStr>=defStr;
     if(prov.terrain!=='sea') trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD); // Tactical: win a land battle
@@ -5400,7 +5471,7 @@ const BATTLE_ARMY_SPELLS={
     const isNarrowPvP=margRatioPvP<0.10;
     const isDecisivePvP=margRatioPvP>0.30;
     const severity=isDecisivePvP?'decisive':!isNarrowPvP?'clear':'narrow';
-    narrative.push(`📊 Final: ${atk.name} ${atkStr.toFixed(1)} vs ${def.name} ${defStr.toFixed(1)} — ${won?atk.name:def.name} wins (margin ${(margRatioPvP*100).toFixed(0)}% of total strength — ${severity})`);
+    narrative.push(`📊 Final: ${atk.name} ${n0(atkStr)} vs ${def.name} ${n0(defStr)} — ${won?atk.name:def.name} wins (margin ${(margRatioPvP*100).toFixed(0)}% of total strength — ${severity})`);
     // Evil: a decisive victory by an Evil commander terrorises the battle province and all adjacent provinces (stacking).
     const _pvpWinner=won?atk:def;
     if(isDecisivePvP&&G.players[_pvpWinner.player]?.alignment==='Evil'){
@@ -6229,14 +6300,64 @@ const BATTLE_ARMY_SPELLS={
             // (otherwise annihilated units linger on the real characters).
             [c,...pvpReinforcements].forEach(ch=>{ ch.armies=(ch.armies||[]).filter(a=>!a._died&&!a._disbanded); });
             [defChar,...defReinforcements].forEach(ch=>{ ch.armies=(ch.armies||[]).filter(a=>!a._died&&!a._disbanded); });
+            // combatVsChar decides the DEFENDER's fate on the pooled copy too: on a clean rout it
+            // moves combinedDef to the retreat province (fixing both provinces' character lists),
+            // while a dug-in (Dwarven Hold the Line) or trapped defence is deliberately left standing
+            // where it is. The real defChar's location was never synced back from that copy, leaving a
+            // retreating defender as a ghost — listed in the retreat province but still claiming to be
+            // located in the province they just fled. Sync it, and take the rest of the defending
+            // contingent with them: they fought as one pooled force, so they rout as one rather than
+            // being abandoned as orphans in a province that is about to change hands.
+            if(combinedDef.location!==defChar.location){
+              const _defFellBackTo=G.world.provinces[combinedDef.location];
+              if(_defFellBackTo){
+                if(!_defFellBackTo.characters) _defFellBackTo.characters=[];
+                [defChar,...defReinforcements].forEach(ch=>{
+                  toProv.characters=(toProv.characters||[]).filter(id=>id!==ch.id);
+                  if(!_defFellBackTo.characters.includes(ch.id)) _defFellBackTo.characters.push(ch.id);
+                  ch.location=_defFellBackTo.id; ch.locationName=_defFellBackTo.name;
+                  movePoints[ch.id]=0; seaMovePoints[ch.id]=0;
+                });
+                if(defReinforcements.length>0){
+                  log('combat',`${defReinforcements.map(d=>d.name).join(', ')} fall back to ${_defFellBackTo.name} alongside ${defChar.name}.`,{actor:defChar.player,targets,provinceId:_defFellBackTo.id,public:true});
+                }
+              }
+            }
             if(battle.won){
-              G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-              toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+              // Winning the battle is not the same as taking the ground. A dug-in or trapped defence
+              // (Dwarven Hold the Line / nowhere to retreat) leaves enemy armies still standing here,
+              // and so does a third party's force that was never part of this fight. Claiming the
+              // province over the top of them would hand the attacker ownership of ground they do not
+              // hold and quietly end a battle that is still going. Only take the province if nobody
+              // armed and hostile is left standing in it; otherwise leave it contested so
+              // resolveStalledBattles resumes the fight next phase.
+              const _hostileLeft=(G.characters||[]).some(ch=>ch.alive&&ch.location===toProv.id
+                &&(ch.armies||[]).length>0&&ch.player!==null&&ch.player!==c.player);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-              log('combat',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+              if(_hostileLeft){
+                toProv._battleUnresolved=true;
+                log('combat',`${c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+              } else {
+                G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
+                toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                log('combat',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+              }
             } else {
-              toProv.characters=toProv.characters.filter(id=>id!==c.id);
-              prov.characters.push(c.id);c.location=prov.id;if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
+              // Attacker repelled. combatVsChar fights on COPIES and decides the attacker's fate on
+              // the copy: if they were TRAPPED (no friendly province to fall back to) or dug in
+              // (Dwarven Hold the Line) the copy is deliberately LEFT standing in the province and
+              // the province is flagged _battleUnresolved so the fight resumes next phase. Hauling
+              // the REAL character back to their origin regardless would separate the two forces —
+              // resolveStalledBattles would then find only one side in the contested province,
+              // silently clear the flag, and the battle would never resume on its own. So follow the
+              // copy's decision rather than overriding it.
+              const _stoodGround=(combinedAtk.location===toProv.id);
+              const _fellBackTo=_stoodGround?toProv:(G.world.provinces[combinedAtk.location]||prov);
+              if(!_stoodGround) toProv.characters=(toProv.characters||[]).filter(id=>id!==c.id);
+              if(!_fellBackTo.characters) _fellBackTo.characters=[];
+              if(!_fellBackTo.characters.includes(c.id)) _fellBackTo.characters.push(c.id);
+              c.location=_fellBackTo.id;
+              if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
             }
           } else {
             // Check for garrison armies defending without a hero — they fight to the last
@@ -7125,6 +7246,28 @@ const BATTLE_ARMY_SPELLS={
           if(!prov.characters.includes(deadHero.id)) prov.characters.push(deadHero.id);
           G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==grave.id);
           G._resurrectedThisTurn.push(grave.id);
+          // The raise succeeded — now, and only now, honour any orders this player pre-wrote for
+          // this hero. Matched on caster AND hero so a rival's pre-orders for the same corpse are
+          // ignored; applied only to phases after the cast, since actingThisPhase() will skip the
+          // hero in every earlier phase anyway (they were dead).
+          {
+            const pend=(G._pendingResurrectOrders||[]).find(x=>
+              x.heroId===deadHero.id && x.casterId===c.id && x.player===c.player);
+            if(pend&&Array.isArray(pend.orders)){
+              const slots=G.turnOrders[deadHero.id]||[null,null,null,null,null];
+              let applied=0;
+              pend.orders.forEach((o,pi2)=>{
+                if(pi2>ph&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){ slots[pi2]=o; applied++; }
+              });
+              G.turnOrders[deadHero.id]=slots;
+              if(applied>0) log('system',`${deadHero.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player]});
+            }
+            // Step 3 of order ingestion only defaults LIVING characters to Defend, and this hero was
+            // a corpse when it ran. Fill the rest of the turn in now so they behave like anyone else.
+            const fin=G.turnOrders[deadHero.id]||[null,null,null,null,null];
+            for(let pz=0;pz<5;pz++){ if(pz>ph&&!fin[pz]) fin[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
+            G.turnOrders[deadHero.id]=fin;
+          }
           const wasEnemy=(grave.player!=null&&grave.player!==c.player);
           log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy?' The fallen foe is bound to a new master.':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         }
@@ -7764,6 +7907,14 @@ const BATTLE_ARMY_SPELLS={
           if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
           log('combat',`${winner.name} secures ${prov.name}!`,{actor:winner.player,targets:[],provinceId:prov.id,public:true});
         }
+        // Safety net: the flag was cleared at the top of this function and combatVsChar only re-sets
+        // it for its own stalemate cases (dug in / trapped). If two players' armed forces are STILL
+        // standing in this province after the re-fight, the province is by definition still
+        // contested — re-flag it so the battle resumes next phase (including phase 0 of next turn)
+        // instead of the contest silently lapsing.
+        const _sidesLeft=new Set((G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id
+          &&(ch.armies||[]).length>0&&ch.player!==null).map(ch=>ch.player));
+        if(_sidesLeft.size>=2) prov._battleUnresolved=true;
         return;
       }
 
@@ -7862,6 +8013,20 @@ const BATTLE_ARMY_SPELLS={
       battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id,public:true}));
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
+      // Same pooled-copy sync as the move handler: combatVsChar retreats the COPY, so the real
+      // defenders must follow it or they are left as ghosts in a province they have fled.
+      if(combinedDef.location!==enemyChar.location){
+        const _defFellBackTo=G.world.provinces[combinedDef.location];
+        if(_defFellBackTo){
+          if(!_defFellBackTo.characters) _defFellBackTo.characters=[];
+          [enemyChar,...defReinf].forEach(d=>{
+            prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
+            if(!_defFellBackTo.characters.includes(d.id)) _defFellBackTo.characters.push(d.id);
+            d.location=_defFellBackTo.id; d.locationName=_defFellBackTo.name;
+            movePoints[d.id]=0; seaMovePoints[d.id]=0;
+          });
+        }
+      }
     } else if(neutralGuard){
       // Fight the guard's OWN armies, then sync survivors back to him — the same swap the move
       // case uses. Without it this path fought prov.neutralDefenders (stale intel) instead.
@@ -7887,9 +8052,17 @@ const BATTLE_ARMY_SPELLS={
           line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}));
       }
       const guardLeft=neutralGuard?(neutralGuard.armies||[]).length:0;
+      // A beaten PLAYER defender can also still be standing here — dug in (Dwarven Hold the Line) or
+      // trapped with nowhere to retreat. Winning the fighting does not give you ground someone else's
+      // army is still occupying, so treat that exactly like surviving neutral guards.
+      const _hostileLeft=(G.characters||[]).some(d=>d.alive&&d.location===prov.id
+        &&(d.armies||[]).length>0&&d.player!=null&&d.player!==c.player);
       if(guardLeft>0){
         prov._battleUnresolved=true;
         log('combat',`⚔ ${c.name} has the better of the fighting in ${prov.name}, but ${neutralGuard.name.replace(' (wandering)','')} still holds the field with ${guardLeft} unit${guardLeft!==1?'s':''} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+      } else if(_hostileLeft){
+        prov._battleUnresolved=true;
+        log('combat',`⚔ ${c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else {
         claim();
         log('combat',`${c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,{actor:c.player,targets,provinceId:prov.id,public:true});
@@ -8454,7 +8627,20 @@ const BATTLE_ARMY_SPELLS={
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       if(combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; }
-      if(combinedDef.location!==quarry.location){ quarry.location=combinedDef.location; const np=G.world.provinces[quarry.location]; if(np) quarry.locationName=np.name; }
+      if(combinedDef.location!==quarry.location){
+        const np=G.world.provinces[combinedDef.location];
+        quarry.location=combinedDef.location; if(np) quarry.locationName=np.name;
+        // The quarry's unified defenders rout with them rather than being left behind alone.
+        if(np){
+          if(!np.characters) np.characters=[];
+          defReinf.forEach(d=>{
+            prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
+            if(!np.characters.includes(d.id)) np.characters.push(d.id);
+            d.location=np.id; d.locationName=np.name;
+            movePoints[d.id]=0; seaMovePoints[d.id]=0;
+          });
+        }
+      }
       prov._hadBattleThisTurn=true;
     } else {
       // Neither leads an army: a personal encounter, resolved from both encounter plans.
@@ -8506,12 +8692,31 @@ const BATTLE_ARMY_SPELLS={
     // ── STAGE 1: declare intent (read-only) ──
     const intents=buildPhaseIntents(ph);
 
+    // ── STAGE 1b: battle-lock pin (AK: you are stuck in a province until its battle is decided) ──
+    // resolveStalledBattles(ph) has just re-fought every contested province. Any province that is
+    // STILL flagged _battleUnresolved has an unresolved battle whose outcome pins the forces in it:
+    // an army-leader standing there cannot march away this phase — they must see the fight through.
+    // This is what stops a character who won a battle but whose foe rallied from slipping out to
+    // start a fresh battle somewhere else. Only relocating orders (Move / Pursue) are cancelled;
+    // other orders are left untouched.
+    intents.forEach(it=>{
+      if(it.cancelled) return;
+      if(it.action!=='move'&&it.action!=='pursue') return;
+      if(!it.leadsArmy) return;
+      const here=G.world.provinces[it.fromId];
+      if(!here||!here._battleUnresolved) return;
+      it.cancelled=true; it.cancelReason='battleLocked';
+      log('combat',`${it.c.name} is still locked in the unresolved battle for ${here.name} and cannot march away — the fight must be seen through before they can move on.`,
+        {actor:it.player,targets:[it.player],provinceId:it.fromId,public:false,charId:it.id,phase:ph});
+    });
+
     // ── STAGE 2a: movement interlocks — pin generals whose province is invaded before they leave ──
     applyMoveInterlocks(ph,intents);
     intents.forEach(it=>{
       if(!it.cancelled) return;
       if(!G.turnOrders[it.id]) G.turnOrders[it.id]=[null,null,null,null,null];
-      G.turnOrders[it.id][ph]={action:'defend',target:'',extra:'',desc:'Defend (held in place)',_pinned:true};
+      const _pinDesc=it.cancelReason==='battleLocked'?'Locked in ongoing battle':'Defend (held in place)';
+      G.turnOrders[it.id][ph]={action:'defend',target:'',extra:'',desc:_pinDesc,_pinned:true};
       it.action='defend'; it.toId=null; it.dest=null;
     });
 
@@ -9119,6 +9324,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.23-0946</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.23-1519</div>
 </body>
 </html>

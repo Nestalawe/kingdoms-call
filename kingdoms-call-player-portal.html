@@ -318,15 +318,22 @@ section{display:none;}.section-active{display:block;}
         <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
           <h2 style="position:sticky;top:0;background:var(--parchment);z-index:2;margin:0;padding:8px 0">⚜ Orders — Turn <span id="orders-turn-num"></span></h2>
           <div id="report-status-pill" style="padding:2px 0 6px"></div>
-          <div id="orders-msg"></div>
           <div id="orders-form" style="flex:1"></div>
-          <div id="orders-submit-wrap" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--parchment);padding:8px 0">
-            <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
-            <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-              Submit Orders to GM
-            </button>
+          <!-- Everything to do with SUBMITTING orders lives in this one sticky block at the foot of
+               the column: the validation message, the buttons it raises ("Submit Anyway" / "Go
+               Back"), Save Draft, Submit, and the draft-saved confirmation. orders-msg used to sit
+               at the TOP of the card, so a failed submit scrolled its buttons away from the Submit
+               button they belonged to. -->
+          <div id="orders-bottom" style="position:sticky;bottom:0;background:var(--parchment);padding:8px 0;margin-top:12px">
+            <div id="orders-msg"></div>
+            <div id="orders-submit-wrap" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
+              <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
+                Submit Orders to GM
+              </button>
+            </div>
+            <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
           </div>
-          <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
         </div><!-- end orders-card -->
       </div><!-- end orders column -->
 
@@ -796,7 +803,7 @@ function buildChronicle(log, chars_for_log){
 
     // ── HELPER: render a single log entry ──
     function renderEntry(e){
-      const rawText=(e.text||'');
+      const rawText=roundReportNumbers(e.text||'');
       const isStat=rawText.startsWith('📊');
       const isBattleHeader=rawText.startsWith('⚔')||rawText.startsWith('⚠');
       const text=rawText.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
@@ -993,13 +1000,7 @@ function returnToCurrentReport(){
   // Restore the correct submit wrap (may have been replaced by success message)
   const submitWrap=document.getElementById('orders-submit-wrap');
   if(submitWrap&&!submitWrap.querySelector('#submit-btn')&&!submitWrap.querySelector('button[onclick*="resubmitOrders"]')){
-    submitWrap.innerHTML=`
-      <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
-      <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-        Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}
-      </button>`;
-    submitWrap.style.display='flex';
-    submitWrap.style.gap='8px';
+    restoreSubmitWrap('Submit');
   }
   submitWrap.style.display='flex';
   // Restore the current-turn map and chronicle
@@ -1265,7 +1266,13 @@ async function openReport(gamePlayerId){
   }
 
   // Province reports
-  const provCharIntel=report.provinceCharIntel||[];
+  // Your own characters are dropped from Province Reports: you already have their full detail in
+  // Your Kingdom and in the Orders column, and repeating them buried the enemy/neutral sightings
+  // this section exists to surface. Provinces left with nothing to report are dropped with them —
+  // otherwise the section header could appear over an empty list.
+  const provCharIntel=(report.provinceCharIntel||[])
+    .map(pr=>({...pr, characters:(pr.characters||[]).filter(c=>c.category!=='own')}))
+    .filter(pr=>pr.characters.length>0);
   const provinceIntel=intel.filter(i=>!i.match(/^Wandering hero|last seen/));
   if(provCharIntel.length>0||provinceIntel.length>0){
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Province Reports</div>`;
@@ -1428,12 +1435,42 @@ const SPELL_HINTS={
   'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 10%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+// ── DISPLAY ROUNDING (report text) ────────────────────────────────────────────
+// Belt-and-braces partner to the GM engine's n0(): the engine now rounds every battle statistic at
+// source, but this catches anything a future edit forgets. Rounds any decimal number in a report
+// line to a whole number — EXCEPT one immediately preceded by '×', because multipliers are the one
+// place a decimal carries meaning ('× tactical ×1.2' rounded to '×1' would say nothing at all).
+// Percentages already arrive as integers from the engine, so they pass through untouched.
+function roundReportNumbers(text){
+  // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
+  // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
+  // '2026.07' inside it. Only a decimal that is not adjacent to another dot or digit is rounded.
+  return String(text||'').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d])/g,(m,mult,whole,frac)=>
+    mult?m:String(Math.round(Number(whole+'.'+frac))));
+}
+
+// Module-level base unit strength, mirroring the GM engine's UNIT_BASE_STR / UNIT_Q_MULT
+// (kingdoms-call-gm-portal.html). The portals are separate files with no shared module, so this is
+// a deliberate duplicate — the same arrangement as PRIMAL_ARMY_SPEEDS below. KEEP THE TWO IN SYNC:
+// if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
+// be shown a number the battle engine does not agree with.
+const UNIT_BASE_STR_P={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':3,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':3,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
+  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
+const UNIT_Q_MULT_P={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
+// A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
+function unitBaseStrengthP(a){ return (UNIT_BASE_STR_P[a&&a.type]||4)*(UNIT_Q_MULT_P[(a&&a.quality)||'Average']||2); }
+
 // Army display helper — shows unit name if known, falls back to plain type+quality
 function armyLabel(a, opts={}){
   const name=a.unitName?`${a.unitName}`:'';
-  const detail=`${a.type}, ${a.quality}`;
   if(opts.short) return name?`${name}`:`${a.quality} ${a.type}`;
-  return name?`${name} (${detail})`:`${a.quality} ${a.type}`;
+  // Race first, then type, quality and the unit's base strength (type × quality tier) — enough to
+  // judge a force at a glance without opening the rules. formatRace() keeps the internal "Primal"
+  // term out of player sight, showing 'Creature (Stone Giant)' / 'Monster (Cave Troll)' instead.
+  const race=a.race?formatRace(a.race):null;
+  const str=unitBaseStrengthP(a);
+  const detail=[race,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
+  return name?`${name} (${detail})`:`${detail}`;
 }
 
 // Item 5: an icon representing the *kind* of unit (land / sea / flying / creature / monster) so
@@ -1543,6 +1580,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         <span style="margin-left:auto;font-size:.7rem;opacity:.75">📍 ${c.locationName||'?'} · Land: ${c.effectiveSpeed||3}/turn${(c.skills?.march||0)>0?` (March ${c.skills.march})`:''}${c.effectiveSeaSpeed?` · Sea: ${c.effectiveSeaSpeed}/turn${(c.skills?.naval||0)>0?` (Naval ${c.skills.naval})`:''}`:''}</span>
       </div>
       <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px;line-height:1.6">
+        <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}</span>
         <span><strong>HP:</strong> ${c.hp||'?'}/${c.maxHp||'?'}</span>
         ${(()=>{
           const skills=c.skills||{};
@@ -1965,6 +2003,9 @@ function refreshEncounterPlan(charId, tactics){
 
 
 function onSpellChange(charId, ph, selectedSpell){
+  // The resurrection order card belongs to a specific spell choice — rebuild/remove it whenever the
+  // spell changes, not just when the corpse does. Deferred so the new secondary select exists first.
+  setTimeout(()=>syncResurrectCard(charId, ph),0);
   // When the player picks a different spell, update the secondary target selector
   // WITHOUT rebuilding the spell select itself (which would reset the selection)
   const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
@@ -2002,7 +2043,7 @@ function onSpellChange(charId, ph, selectedSpell){
       .map(x=>`<option value="${x.id}">${x.name} — ${x.locationName||'?'}</option>`).join('');
     // Control Undead may also be cast on the caster's own province to reveal the dead army units there.
     const cuScan=(selectedSpell==='Control Undead')?`<option value="__scan__">🔍 Cast on THIS province — reveal the dead army units here</option>`:'';
-    secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${selfOpt2}${cuScan}${charOpts}</select>
+    secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${charId}',${ph})"><option value="">— Target character —</option>${selfOpt2}${cuScan}${charOpts}</select>
       <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selectedSpell]||''}</div>`;
   } else {
     secondaryHtml=`<input id="po-extra-${charId}-${ph}" type="hidden" value="">
@@ -2029,6 +2070,147 @@ function onActionChange(charId, ph, charIdx){
   if(action==='Hire Hero'){
     setTimeout(()=>injectHiredHeroOrders(charId, ph, charIdx),100);
   }
+  // Likewise for Resurrect — and this also tears the card down when the action moves away from
+  // Cast Spell, so a stale card can't survive and be submitted.
+  setTimeout(()=>syncResurrectCard(charId, ph),100);
+}
+
+// ── RESURRECTION PRE-ORDERS ───────────────────────────────────────────────────
+// A hero raised by Resurrect in phase PH is alive and under your command for phases PH+1..4, and
+// the engine will act on orders for them (actingThisPhase() tests c.alive at the time each phase
+// runs, not at the start of the turn). Until now there was no way to WRITE those orders: the form
+// only ever renders characters with alive!==false, so a raised hero idled away the rest of the turn.
+// This mirrors the hired-hero card exactly, including the synthetic id, which the GM engine parses.
+//
+// The id encodes the caster and the cast phase because a corpse can be targeted by more than one
+// player in the same turn. The GM holds these as PENDING orders and only honours them inside a
+// SUCCESSFUL white_resurrect cast by this caster, so losing the race to raise a body cannot hand
+// you control of a hero someone else raised.
+function syncResurrectCard(charId, ph){
+  const containerId=`resurrect-orders-${charId}-${ph}`;
+  const existing=document.getElementById(containerId);
+  const action=document.getElementById(`po-action-${charId}-${ph}`)?.value||'';
+  const spell=getOrderTarget(charId, ph);
+  const heroId=document.getElementById(`po-extra-${charId}-${ph}`)?.value||'';
+  const wanted=(action==='Cast Spell'&&spell==='Resurrect'&&heroId);
+  if(!wanted){
+    // Tear down the card AND unregister the placeholder, or a stale entry would linger in
+    // currentReport.characters and be picked up by target dropdowns elsewhere in the form.
+    if(existing){
+      const stale=existing.getAttribute('data-fakeid');
+      if(stale&&currentReport) currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==stale);
+      existing.remove();
+    }
+    return;
+  }
+  injectResurrectOrders(charId, ph, heroId, containerId);
+}
+
+function injectResurrectOrders(charId, ph, heroId, containerId){
+  const report=currentReport||{};
+  // The GM's id grammar is resurrect_<heroId>_via_<casterId>_ph<N>, all numeric. A hero HIRED
+  // earlier this same turn has a synthetic (non-numeric) id of their own, so they cannot be the
+  // caster here. Rare, and pre-ordering for a hero you have not hired yet who then raises a third
+  // hero is a chain too speculative to be worth the ambiguity — the cast still resolves normally,
+  // the raised hero simply defends for the rest of the turn.
+  if(!/^\d+$/.test(String(charId))||!/^\d+$/.test(String(heroId))) return;
+
+  const dead=(report.knownDeadHeroes||report.deadHeroes||[]).find(x=>String(x.id)===String(heroId));
+  if(!dead) return;
+
+  const firstActable=ph+1;
+  if(firstActable>4) return; // raised in Early Winter — no phases left to act in
+
+  document.getElementById(containerId)?.remove();
+  const casterBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
+  if(!casterBlock) return;
+
+  const SEASONS_R=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const fakeId=`resurrect_${heroId}_via_${charId}_ph${ph}`;
+
+  // Register a placeholder so buildTargetField/onActionChange can resolve this id. A raised hero
+  // returns at full health but STRIPPED of items and armies (see white_resurrect), so the card
+  // starts them with neither — order forms that read c.armies must see the truth, not their old kit.
+  const fakeChar={
+    id:fakeId, name:dead.name, isKing:false,
+    race:dead.race||'Unknown', alignment:'Neutral', temper:'Brave',
+    skills:{}, armies:[], items:[], pay:1,
+    locationId:null, locationName:'(raised where they fell)',
+    effectiveSpeed:5, effectiveSeaSpeed:0,
+    hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
+    hp:null, maxHp:null,
+  };
+  if(currentReport){
+    currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==fakeId);
+    currentReport.characters.push(fakeChar);
+  }
+
+  const card=document.createElement('div');
+  card.id=containerId;
+  card.setAttribute('data-fakeid',fakeId);
+  card.className='orders-char-block';
+  card.style.cssText='border:2px dashed #5a3a7a;opacity:0.9;margin-top:8px';
+  card.innerHTML=`
+    <div class="orders-char-head" style="background:#f5eeff;color:#4a4a4a">
+      \u2728 ${dead.name}
+      <span style="color:#5a3a7a;font-size:.7rem;margin-left:6px">(if raised \u2014 can act from ${SEASONS_R[firstActable]||'next turn'})</span>
+    </div>
+    <div style="padding:5px 10px 6px;background:#f5eeff;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
+      <div style="color:#5a3a7a">These orders only take effect if the Resurrect succeeds. If the cast
+      fails, or another kingdom raises ${dead.name} first, they are simply ignored.</div>
+      <div style="color:var(--stone);margin-top:2px">Returns at full health, stripped of all items and armies.</div>
+    </div>
+    <div class="orders-char-body"></div>`;
+  casterBlock.after(card);
+
+  const body=card.querySelector('.orders-char-body');
+  SEASONS_R.forEach((season,phIdx)=>{
+    const row=document.createElement('div');
+    row.className='phase-order';
+    if(phIdx<firstActable){
+      row.style.cssText='opacity:.35;pointer-events:none';
+      row.innerHTML=`<div class="phase-label">${season}</div>
+        <div style="font-size:.76rem;color:var(--stone);font-style:italic;grid-column:2/-1">(still dead)</div>`;
+    } else {
+      row.innerHTML=`
+        <div class="phase-label">${season}</div>
+        <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
+          <option value="">\u2014 Choose \u2014</option>
+          ${ACTIONS.map(a=>`<option value="${a}">${a}</option>`).join('')}
+        </select>
+        <div id="po-target-wrap-${fakeId}-${phIdx}">
+          <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
+        </div>`;
+    }
+    body.appendChild(row);
+  });
+
+  // Encounter plan, matching the hired-hero card.
+  const epDiv=document.createElement('div');
+  epDiv.style.cssText='padding:10px;border-top:1px solid var(--parchment-dark);background:#faf6ff';
+  epDiv.innerHTML=`
+    <div style="font-family:Cinzel,serif;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">\u2694 Encounter Plan</div>
+    <div id="ep-list-${fakeId}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
+      <div style="font-size:.8rem;padding:4px 8px;background:#faf6ff;border:1px solid var(--stone);border-radius:2px">ME \u2014 Melee</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS').map(t=>`<button onclick="addEncounterTactic('${fakeId}','${t.code}')"
+        style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
+        title="${t.label}">+ ${t.code}</button>`).join('')}
+    </div>
+    <input type="hidden" id="ep-tactics-${fakeId}" value="ME">
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cdb8e0">
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#5a3a7a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
+      <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+      </select>
+    </div>
+    <input type="hidden" id="ep-preschool-${fakeId}" value="">
+    <div style="margin-top:6px">
+      <label style="font-size:.72rem">Describe their battlecry:</label>
+      <input type="text" id="ep-notes-${fakeId}" placeholder="e.g. Death held me only briefly." style="font-size:.8rem;margin-top:2px">
+    </div>`;
+  card.appendChild(epDiv);
 }
 
 // After a player selects Hire Hero in phase ph, add an order card for that hero
@@ -2199,9 +2381,19 @@ async function submitOrders(){
     // These use a different charId format: hired_X_via_Y_phZ
   });
   if(missingCount>0){
-    msg.innerHTML=`<div class="msg-warning">⚠ ${missingCount} phase${missingCount!==1?'s':''} still have no action selected. You can submit anyway, and the GM will treat unfilled phases as Defend.</div>
-      <button class="btn btn-crimson" style="margin-top:6px" onclick="doSubmitOrders()">Submit Anyway</button>
-      <button class="btn btn-ghost" style="margin-top:6px;margin-left:8px" onclick="cancelSubmit()">Go Back</button>`;
+    // The warning goes in the bottom block's message slot and its buttons REPLACE the submit
+    // buttons in the wrap directly beneath it, so every control to do with submitting stays in one
+    // place. Previously the buttons were appended to orders-msg at the top of the column while the
+    // real Submit button sat, disabled and still reading "Saving…", at the bottom out of sight.
+    msg.innerHTML=`<div class="msg-warning">⚠ ${missingCount} phase${missingCount!==1?'s':''} still have no action selected. You can submit anyway, and the GM will treat unfilled phases as Defend.</div>`;
+    const w=document.getElementById('orders-submit-wrap');
+    if(w){
+      w.innerHTML=`
+        <button class="btn btn-crimson btn-full" style="flex:1;padding:12px;font-size:.85rem" onclick="doSubmitOrders()">Submit Anyway</button>
+        <button class="btn btn-ghost" style="flex:0 0 auto;padding:10px 16px" onclick="cancelSubmit()">← Go Back</button>`;
+      w.style.display='flex';
+      w.style.gap='8px';
+    }
     return;
   }
   await doSubmitOrders();
@@ -2242,13 +2434,7 @@ async function resubmitOrders(){
   const gp=currentGamePlayer;
   if(!gp) return;
   // Restore the submit wrap with the normal buttons
-  document.getElementById('orders-submit-wrap').innerHTML=`
-    <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
-    <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
-      Resubmit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}
-    </button>`;
-  const sw2=document.getElementById('orders-submit-wrap');
-  sw2.style.display='flex';sw2.style.gap='8px';
+  restoreSubmitWrap('Resubmit');
   document.getElementById('orders-msg').innerHTML='<div class="msg-info">✏ Update your orders below and hit Resubmit — your new orders will replace the previous submission.</div>';
   // Make sure all form inputs are enabled
   document.querySelectorAll('#orders-form select, #orders-form input, #orders-form button').forEach(el=>{
@@ -2328,10 +2514,31 @@ function updateTemperDesc(){
   desc.innerHTML=DESCS[sel.value]||'';
 }
 
+// ── SUBMIT-WRAP MARKUP — ONE SOURCE OF TRUTH ─────────────────────────────────
+// The submit buttons are torn down and rebuilt in four different situations (past-turn view,
+// return-to-current, resubmit, successful submit, failed validation). They used to be written out
+// by hand at each site, which is how the "Submit Anyway / Go Back" pair ended up somewhere else on
+// the page from the button they replace. Everything now routes through these two helpers so the
+// whole submit control stays in the sticky bottom block, together, at all times.
+function normalSubmitWrapHtml(verb){
+  const turn=(currentReport?._liveTurn||currentReport?.turn||1);
+  return`
+    <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
+    <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
+      ${verb||'Submit'} Orders for Turn ${turn}
+    </button>`;
+}
+function restoreSubmitWrap(verb){
+  const w=document.getElementById('orders-submit-wrap');
+  if(!w) return;
+  w.innerHTML=normalSubmitWrapHtml(verb);
+  w.style.display='flex';
+  w.style.gap='8px';
+}
+
 function cancelSubmit(){
   document.getElementById('orders-msg').innerHTML='';
-  const btn=document.getElementById('submit-btn');
-  if(btn){btn.disabled=false;btn.textContent=`Submit Orders for Turn ${(currentReport?._liveTurn||currentReport?.turn||1)}`;}
+  restoreSubmitWrap('Submit');
 }
 
 async function doSaveOrders(){
@@ -2446,6 +2653,23 @@ async function doSubmitOrders(){
       encounterPlans[cid]={tactics:hTacts,
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
         duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+    }
+  });
+  // Resurrection pre-order cards. Same shape as the hired-hero collection above; the GM parses the
+  // synthetic id and holds these as pending until the raise actually succeeds.
+  document.querySelectorAll('[id^="resurrect-orders-"]').forEach(card=>{
+    const sel=card.querySelector('select[id^="po-action-resurrect_"]');
+    if(!sel) return;
+    const rid=sel.id.replace(/^po-action-/,'').replace(/-\d+$/,'');
+    orders[rid]=SEASONS.map((_,ph)=>({
+      action:document.getElementById(`po-action-${rid}-${ph}`)?.value||'Defend',
+      target:getOrderTarget(rid,ph),extra:getOrderExtra(rid,ph),desc:'',
+    }));
+    const rTac=document.getElementById(`ep-tactics-${rid}`);
+    if(rTac){
+      encounterPlans[rid]={tactics:(rTac.value||'ME').split(',').filter(Boolean),
+        notes:document.getElementById(`ep-notes-${rid}`)?.value||'',
+        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'accept'};
     }
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
@@ -2874,7 +3098,7 @@ function buildTargetField(c, ph, saved){
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
         }
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target character —</option>${charOpts}</select>
+        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph})"><option value="">— Target character —</option>${charOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else {
         secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
@@ -2999,7 +3223,12 @@ function buildTargetField(c, ph, saved){
           if(wrap){
             wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
               if(cb.value&&cb.value!=='all'){
-                baseArmies.push({type:cb.value,quality:'Average',unitName:armyLabel({type:cb.value,quality:'Average'})});
+                // No unitName: this unit does not exist yet (it is a Recruit ordered in an earlier
+                // phase of this same turn), so it has no name to show. armyLabel() renders the
+                // unnamed form. It must NOT be pre-filled with armyLabel's own output \u2014 that used to
+                // work when the label was just "Average Shieldwall Levies", but the label now carries
+                // race/quality/strength detail and would end up nested inside its own brackets.
+                baseArmies.push({type:cb.value,quality:'Average'});
               }
             });
           }
@@ -3223,6 +3452,22 @@ function renderMapIntoSvg(svgEl, report){
   const{cols,rows,provinces:provs}=worldMeta;
   if(!provs||provs.length===0) return;
 
+  // ── HORIZONTAL CENTRING ON THE FOUNDING CAPITAL ─────────────────────────────
+  // The world wraps east-west. Drawn at its true column, a kingdom founded near column 0 sits hard
+  // against the left edge with its own western neighbours appearing on the far right, which is
+  // miserable to read. The GM report supplies centreCol (the capital's column, frozen at world gen
+  // and never updated as land changes hands), and every province is drawn at a DISPLAY column
+  // rolled so that column lands in the middle. The wrap seam then falls behind the player instead
+  // of through their territory.
+  //
+  // This is purely a rendering offset: p.col and p.id are untouched, so neighbours, tooltips and
+  // every id-keyed lookup are unaffected. Row parity drives the hex stagger and an integer column
+  // shift preserves it, so the grid geometry is unchanged. Reports snapshotted before centreCol
+  // existed simply have no offset and draw exactly as they did before.
+  const centreCol=(worldMeta.centreCol!=null&&cols>0)?worldMeta.centreCol:null;
+  const colShift=(centreCol==null)?0:(Math.floor(cols/2)-centreCol);
+  function displayCol(col){ return cols>0?(((col+colShift)%cols)+cols)%cols:col; }
+
   const HS=22;
   function hexCentre(col,row){
     return{x:col*HS*1.75+(row%2)*HS*0.875+HS, y:row*HS*1.52+HS};
@@ -3267,7 +3512,7 @@ function renderMapIntoSvg(svgEl, report){
 
   provs.forEach(p=>{
     if(p.row===undefined||p.col===undefined) return;
-    const{x,y}=hexCentre(p.col,p.row);
+    const{x,y}=hexCentre(displayCol(p.col),p.row);
     const pd=provById[p.id]||p;
     // Item 1: visibility tier from the report (owned / live / border / remembered / unknown).
     const tier=pd.tier||(ownedIds.has(p.id)?'owned':'unknown');
@@ -3537,6 +3782,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.23-0946</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.23-1519</div>
 </body>
 </html>
