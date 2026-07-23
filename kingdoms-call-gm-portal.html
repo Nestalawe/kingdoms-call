@@ -2082,6 +2082,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   });
 
   // ── PHASE 3: generate every province ──
+  // Primal land provinces split evenly Creature / Monster. We alternate deterministically (rather
+  // than a per-province coin-flip) so the count comes out exactly half-and-half; parity is seeded
+  // randomly so it isn't always Creature-first. "Primal" stays the internal umbrella — players only
+  // ever see the Creature / Monster label (see formatRace / primalClass in the player portal).
+  let _primalCreatureNext = Math.random()<0.5;
   for(let row=0;row<rows;row++){
     for(let col=0;col<cols;col++){
       const id=row*cols+col;
@@ -2102,42 +2107,46 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         else { terrain=pickLand(); }
       }
       const baseTax = taxOverride!=null ? taxOverride : {plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
-      // ~20% of LAND provinces are Primal (non-humanoid). Sea is never Primal at this stage.
-      const isPrimal=terrain!=='sea'&&Math.random()<0.20;
-      let race;
+      // 40% of LAND provinces are Primal (non-humanoid), split evenly Creature / Monster. Each such
+      // province recruits exactly ONE unit type — a single wild unit makes these provinces special.
+      // Sea is never Primal at this stage (the sea post-pass below assigns sea beasts separately).
+      const isPrimal=terrain!=='sea'&&Math.random()<0.40;
+      let race, primalUnit=null;
       if(terrain==='sea'){
         race=null;
       } else if(isPrimal){
-        // Pick a primal sub-race based on terrain
-        const PRIMAL_BY_TERRAIN={
-          plain:['Titan Warbeast','Manticore','Giant Eagle','Stone Giant'],
-          desert:['Manticore','Basilisk','Giant Eagle','Stone Giant'],
-          forest:['Forest Ent','Cave Troll','Basilisk','Giant Eagle'],
-          jungle:['Forest Ent','Basilisk','Cave Troll','Manticore'],
-          mountain:['Stone Giant','Cave Troll','Elder Dragon','Giant Eagle','Roc'],
+        // Alternate Creature / Monster for an exact half-and-half count across the map.
+        const wantCreature=_primalCreatureNext; _primalCreatureNext=!_primalCreatureNext;
+        // One terrain-appropriate unit per class. Every unit here is classified by the engine's
+        // CREATURE_ARMIES / MONSTER_ARMIES sets (Druidic favours Creatures, Evil favours Monsters).
+        const CREATURE_BY_TERRAIN={
+          plain:['Giant Eagles','Stone Giants'],
+          desert:['Stone Giants','Giant Eagles'],
+          forest:['Forest Ents','Giant Eagles'],
+          jungle:['Forest Ents'],
+          mountain:['Stone Giants','Crimson Rocs','Giant Eagles'],
         };
-        const pool=PRIMAL_BY_TERRAIN[terrain]||['Stone Giant'];
-        race='Primal:'+pool[Math.floor(Math.random()*pool.length)];
+        const MONSTER_BY_TERRAIN={
+          plain:['Titan Warbeasts','Manticore Pride'],
+          desert:['Manticore Pride','Basilisk Brood'],
+          forest:['Cave Trolls','Basilisk Brood'],
+          jungle:['Basilisk Brood','Cave Trolls','Manticore Pride'],
+          mountain:['Cave Trolls','Elder Dragons'],
+        };
+        const pool=(wantCreature?CREATURE_BY_TERRAIN:MONSTER_BY_TERRAIN)[terrain]
+          ||(wantCreature?['Stone Giants']:['Cave Trolls']);
+        primalUnit=pool[Math.floor(Math.random()*pool.length)];
+        // Province race carries the singular sub-race noun (e.g. 'Primal:Stone Giant'); the player
+        // portal maps that to "Creature (Stone Giant)" / "Monster (Cave Troll)" and never shows "Primal".
+        race='Primal:'+(PRIMAL_ARMY_DEFS_P[primalUnit]?.race||primalUnit);
       } else {
         race=RACES_P[Math.floor(Math.random()*4)];
       }
       const population=terrain==='sea'?0:rP(1,6);
-      // Build army pool — primal provinces get special powerful armies
+      // Build army pool — primal provinces recruit their single wild unit; all others use the pool.
       let fullPool;
-      if(race&&race.startsWith('Primal:')){
-        const subRace=race.split(':')[1];
-        const PRIMAL_POOL={
-          'Stone Giant':['Stone Giants','Cave Trolls'],
-          'Cave Troll':['Cave Trolls','Stone Giants'],
-          'Manticore':['Manticore Pride','Giant Eagles'],
-          'Basilisk':['Basilisk Brood','Cave Trolls'],
-          'Forest Ent':['Forest Ents','Cave Trolls'],
-          'Giant Eagle':['Giant Eagles','Crimson Rocs'],
-          'Roc':['Crimson Rocs','Giant Eagles','Elder Dragons'],
-          'Elder Dragon':['Elder Dragons','Crimson Rocs'],
-          'Titan Warbeast':['Titan Warbeasts','Stone Giants'],
-        };
-        fullPool=PRIMAL_POOL[subRace]||['Stone Giants'];
+      if(primalUnit){
+        fullPool=[primalUnit];
       } else if(terrain==='sea'){
         // Sea army pools are decided later by the province's sea TYPE (Primal / Whale / open water),
         // so leave it empty here — the sea post-processing pass sets armyTypes definitively.
@@ -2394,7 +2403,12 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // leading the province's neutral armies (so sea provinces actually fight when entered)
   provinces.filter(p=>p.owner===null && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
     const hid=allChars.length;
-    const hrace=lp.terrain==='sea'?'Primal':RACES_P[Math.floor(Math.random()*4)];
+    // Sea guard heroes have no humanoid race. Label them by their beasts' player-facing class
+    // (Creature / Monster) rather than the internal 'Primal' term, since neutral heroes surface to
+    // players as "wandering heroes" (isWanderer = player===null) with their race shown in intel and
+    // combat narrative. Whale waters are Creatures; Sea Giant / Kraken / Leviathan are Monsters.
+    const _seaSub=(lp.race||'').slice(7);
+    const hrace=lp.terrain==='sea'?(_seaSub==='Whale'?'Creature':'Monster'):RACES_P[Math.floor(Math.random()*4)];
     const hSkills={};
     // Give neutral heroes a spread of combat/leadership skills
     const neutralSkillPool=['melee','archery','tactical','march','explorer'];
@@ -9105,6 +9119,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.22-2252</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.23-0946</div>
 </body>
 </html>

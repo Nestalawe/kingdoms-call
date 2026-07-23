@@ -1325,7 +1325,7 @@ async function openReport(gamePlayerId){
   if(knownFeatures.length>0){
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Known Features</div>`;
     intelHtml+=`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
-      Monster difficulty: 
+      Guardian difficulty: 
       <span style="background:#4a8a4a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🐾 Weak</span> can be handled by a lone hero ·
       <span style="background:#c8922a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">⚔ Moderate</span> needs skill or good tactics ·
       <span style="background:#8a1c1c;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">💀 Powerful</span> very dangerous, prepare carefully ·
@@ -2470,12 +2470,24 @@ async function doSubmitOrders(){
 }
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
-// Present a province/unit race cleanly: humanoid races as-is, 'Primal:Whale' → 'Primal (Whale)',
-// bare 'Primal' as 'Primal', and empty/sea provinces as 'Uninhabited'.
+// Every primal sub-race is either a Creature or a Monster (mirrors the GM engine's CREATURE_ARMIES /
+// MONSTER_ARMIES sets — Druidic favours Creatures, Evil favours Monsters). "Primal" is an internal
+// engine term; players only ever see Creature or Monster.
+const PRIMAL_SUBRACE_CLASS={
+  'Stone Giant':'Creature','Forest Ent':'Creature','Giant Eagle':'Creature','Roc':'Creature','Whale':'Creature',
+  'Cave Troll':'Monster','Manticore':'Monster','Basilisk':'Monster','Dragon':'Monster','Titan':'Monster',
+  'Sea Giant':'Monster','Kraken':'Monster','Leviathan':'Monster',
+};
+// Present a province/unit race cleanly: humanoid races as-is, primal provinces as their player-facing
+// category — 'Primal:Stone Giant' → 'Creature (Stone Giant)', 'Primal:Cave Troll' → 'Monster (Cave
+// Troll)' — and empty/sea provinces as 'Uninhabited'. Never shows the word "Primal".
 function formatRace(race){
   if(!race) return 'Uninhabited';
-  if(race==='Primal') return 'Primal';
-  if(race.startsWith('Primal:')) return 'Primal ('+race.slice(7)+')';
+  if(race.startsWith('Primal')){
+    const sub=race.slice(7).trim(); // '' for bare 'Primal', else the sub-race after 'Primal:'
+    const cls=PRIMAL_SUBRACE_CLASS[sub]||'Creature';
+    return sub?`${cls} (${sub})`:cls;
+  }
   return race;
 }
 
@@ -3525,6 +3537,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.22-2252</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.23-0946</div>
 </body>
 </html>
