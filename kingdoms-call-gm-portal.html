@@ -477,7 +477,7 @@ function missileDamageMult(firer, force, terrain, target){
 // in a battle against province defenders, so it only surfaced in games that actually saw combat.
 // Same trap as FLYING_TYPES and ITEMS_BY_TIER before it: shared lookup tables and the helpers that
 // read them live at module top level, always.
-const UNIT_BASE_STR={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':5,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':5,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':5,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':5,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
+const UNIT_BASE_STR={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
   'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
 const UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 function unitBaseStrength(army){ return (UNIT_BASE_STR[army.type]||4)*(UNIT_Q_MULT[army.quality||'Average']||2); }
@@ -1094,7 +1094,7 @@ async function createGame(){
 // ── GAME DETAIL ───────────────────────────────────────
 // ── LEGACY UNIT-TYPE MIGRATION ────────────────────────────────────────────────
 // Army type is stored as a raw string on every army object, inside the game_state JSON in Supabase.
-// The five Human/Dwarven units below were renamed in v2026.07.24-1530. Any game saved before that
+// The five Human/Dwarven units below were renamed in v2026.07.24-1922. Any game saved before that
 // still carries the old strings, and every lookup table (cost, speed, strength, terrain, druid
 // level, missile/flying/sea sets, name pools) is keyed by the new ones — so an unmigrated save
 // would silently fall back to default stats. This walks a loaded state and rewrites them.
@@ -10446,6 +10446,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.24-1530</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.24-1944</div>
 </body>
 </html>

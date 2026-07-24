@@ -1469,7 +1469,7 @@ function roundReportNumbers(text){
 // a deliberate duplicate — the same arrangement as PRIMAL_ARMY_SPEEDS below. KEEP THE TWO IN SYNC:
 // if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
 // be shown a number the battle engine does not agree with.
-const UNIT_BASE_STR_P={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':5,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':5,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':5,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':5,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
+const UNIT_BASE_STR_P={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
   'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
 const UNIT_Q_MULT_P={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 // A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
@@ -1536,6 +1536,11 @@ const ENCOUNTER_TACTICS=[
 ];
 
 function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
+  // `report` is a LOCAL of openReport, not a global — referencing it here threw a ReferenceError
+  // that aborted the whole form build (and, because renderPlayerMap is called on the next line of
+  // openReport, silently blanked the map too). Use the module-level currentReport, as every other
+  // helper in this file does. Do not reintroduce a bare `report` reference in this function.
+  const report=currentReport||{};
   const el=document.getElementById('orders-form');
   const btn=document.getElementById('submit-btn');
   const msg=document.getElementById('orders-msg');
@@ -3119,7 +3124,7 @@ function buildTargetField(c, ph, saved){
       // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
       // still holds a primal unit (Creature or Monster country).
       const canHunt=(pd?.armyTypes||[]).some(a=>CREATURE_ARMIES_UI.has(a.type)||MONSTER_ARMIES_UI.has(a.type));
-      return`<select id="po-target-${c.id}-${ph}" onchange="markDirty()">
+      return`<select id="po-target-${c.id}-${ph}">
         ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 wild creatures (6g, serve until end of NEXT turn)</option>`:''}
         <option value="Blood Offering" ${target==='Blood Offering'?'selected':''}>\u{1FA78} Blood Offering — sacrifice one unit: heal to full + one unit gains a quality tier</option>
       </select>
@@ -4025,6 +4030,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.24-1530</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.24-1944</div>
 </body>
 </html>
