@@ -354,7 +354,20 @@ const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Pursue','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
-  'Spy','Practice Skill','Defend','Rest'];
+  'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+// Alignment-signature actions: shown only to the kingdom that owns them (and Perform Rite joins
+// the same gating — no more dangling Pagan action in every dropdown). King-only actions are
+// hidden from heroes' dropdowns entirely.
+const ALIGN_ACTIONS={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
+const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker']);
+function actionsFor(c){
+  const align=currentReport?.kingdom?.alignment;
+  return ACTIONS.filter(a=>{
+    if(ALIGN_ACTIONS[a]&&ALIGN_ACTIONS[a]!==align) return false;
+    if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
+    return true;
+  });
+}
 const ALL_ABILITIES = ['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 
 let currentUser = null;
@@ -363,6 +376,7 @@ let joiningGame = null;
 let joinSkills = {};
 let currentGamePlayer = null;
 let currentReport = null;
+let currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing history)
 let viewingReport = null;
 
@@ -1013,6 +1027,7 @@ function returnToCurrentReport(){
 
 // ── TURN REPORT ───────────────────────────────────────
 async function openReport(gamePlayerId){
+  currentGamePlayerId=gamePlayerId;
   show('sec-report');
   document.getElementById('report-title').textContent='Loading…';
 
@@ -1090,13 +1105,13 @@ async function openReport(gamePlayerId){
   const playerAlignment=kingdom.alignment||'Neutral';
 
   const ALIGNMENT_SUMMARIES={
-    Divine:`Your kingdom walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment.`,
-    Good:`Your kingdom is known for honour and fellowship. Heroes of any alignment are willing to march under your banner — wandering heroes cost you the same-race rate regardless of their alignment. Your armies fight with a solid 40% chance of fanaticism, and your reputation makes it easier to unite allied forces in battle (Contingent Unify chance is enhanced).`,
-    Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. In forest and jungle terrain, these armies fight as though they were a full quality tier higher (×1.5 strength). Creature armies also fight with 25% fanaticism bonus under your banner. Your armies fight with a 20% chance of fanaticism.`,
-    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Heroes of any race join your service at the standard 2g rate, regardless of their origins. Mercenary bands cost 1g less to hire than the going rate. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
-    Pagan:`Your kingdom draws on ancient and forgotten powers. Your armies fight with a 15% chance of fanaticism.`,
+    Divine:`Your kingdom walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING himself works the blessing, the province yields a full 100% more. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Consecrate: your king or heroes may sanctify ONE owned province (not the home province or its neighbours — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and your resurrected heroes return there. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
+    Good:`Your kingdom is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever he happens to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
+    Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Creature armies also fight with a +25% fanaticism bonus under your banner. Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
+    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 1g less to hire than the going rate. Broker: your king trades in influence rather than marches — he may hire any wandering hero the kingdom can see without leaving his hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the kingdom has ever seen for 1g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
+    Pagan:`Your kingdom draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering trades one of your units for a full heal and a quality blessing. Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
-    Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty for undead army types, fight with 100% fanaticism in every battle, and cost only 1g upkeep each regardless of type. Battlefield graves in your provinces decay more slowly, preserving more fallen armies for the Skeletal Armies spell. Should enemy heroes fall within reach of your necromancers, they can be raised to serve your cause through the Resurrect spell.`,
+    Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — +30% when the king leads them in person, +20% under any other commander. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
   };
 
   const alignSummary=ALIGNMENT_SUMMARIES[playerAlignment]||'';
@@ -1411,7 +1426,7 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 const SPELL_HINTS={
   'Resurrect':'Target: a hero (yours or an enemy) who fell this turn whose body lies in your province. Revives at full HP under your command, stripped of all items and armies. Kings can\u2019t be raised.',
   'Part Sea':'Target: a sea province you\u2019re in or next to. Becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cancels Flood.',
-  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn. One Bless per province \u2014 does not stack.',
+  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine kingdoms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
   'Charm':'Target: a wandering or armyless enemy hero in your province. Wandering \u2192 joins you free (you still pay upkeep); enemy \u2192 you command them until end of turn. Combat: doubles a later Flee attempt.',
@@ -1454,7 +1469,7 @@ function roundReportNumbers(text){
 // a deliberate duplicate — the same arrangement as PRIMAL_ARMY_SPEEDS below. KEEP THE TWO IN SYNC:
 // if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
 // be shown a number the battle engine does not agree with.
-const UNIT_BASE_STR_P={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':3,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':3,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':3,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':3,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
+const UNIT_BASE_STR_P={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':5,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':5,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':5,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':5,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
   'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
 const UNIT_Q_MULT_P={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 // A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
@@ -1634,7 +1649,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             <div class="phase-label">${season}</div>
             <select id="po-action-${c.id}-${ph}" onchange="onActionChange('${c.id}',${ph},${chars.indexOf(c)})">
               <option value="">— Choose —</option>
-              ${ACTIONS.map(a=>`<option value="${a}" ${saved.action===a?'selected':''}>${a}</option>`).join('')}
+              ${actionsFor(c).map(a=>`<option value="${a}" ${saved.action===a?'selected':''}>${a}</option>`).join('')}
             </select>
             <div id="po-target-wrap-${c.id}-${ph}" style="position:relative">
               ${buildTargetField(c, ph, saved)}
@@ -1698,6 +1713,17 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
               A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
             </div>
           </div>
+          ${report.kingdom?.alignment==='Evil'?`
+          <!-- EVIL — conquest doctrine: Terror (loot + fear) or Enslave (chained garrisons) -->
+          <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
+            <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a1010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
+              ⛓ Conquest doctrine <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— how ${c.name} treats the conquered</span>
+            </div>
+            <select id="ep-evilmode-${c.id}" style="font-size:.8rem;width:100%">
+              <option value="terror" ${(savedEP.evilMode||'terror')==='terror'?'selected':''}>Terror — plunder 50% of the province's tax; decisive wins spread Terror (−10% to the next defenders)</option>
+              <option value="enslave" ${(savedEP.evilMode||'terror')==='enslave'?'selected':''}>Enslave — no plunder; a free Green native garrison unit is pressed into service, but the province pays −1 tax for 3 turns (humanoid provinces only)</option>
+            </select>
+          </div>`:''}
 
           <div style="margin-top:6px">
             <label style="font-size:.72rem">Describe your battlecry:</label>
@@ -2176,7 +2202,7 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
         <div class="phase-label">${season}</div>
         <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
           <option value="">\u2014 Choose \u2014</option>
-          ${ACTIONS.map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(null).map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
         <div id="po-target-wrap-${fakeId}-${phIdx}">
           <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
@@ -2300,7 +2326,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
         <div class="phase-label">${season}</div>
         <select id="${actionSelId}" onchange="onActionChange('${hiredCharId}',${phIdx},99)">
           <option value="">— Choose —</option>
-          ${ACTIONS.map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(null).map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
         <div id="${targetWrapId}">
           <input id="po-target-${hiredCharId}-${phIdx}" type="text" placeholder="Details">
@@ -2425,8 +2451,11 @@ function allocateHeirSkill(charId, skill){
   c._pendingSkillAllocation--;
   // Save to draft orders so it persists
   doSaveOrders();
-  // Re-render the kingdom section
-  renderKingdom();
+  // AUDIT FIX (§28): this called renderKingdom(), which does not exist anywhere in the portal —
+  // the kingdom section is rendered inline by openReport. The allocation itself was applied and
+  // saved, but the click then threw a ReferenceError and the page never refreshed, so the player
+  // saw nothing happen. Re-open the report to redraw with the new skill totals.
+  if(currentGamePlayerId!=null) openReport(currentGamePlayerId);
 }
 
 async function resubmitOrders(){
@@ -2447,13 +2476,13 @@ function updateAlignmentDesc(){
   const desc=document.getElementById('join-alignment-desc');
   if(!sel||!desc) return;
   const DESCS={
-    Divine:'✨ <strong>Divine:</strong> All heroes heal 3× more from Rest (6–15 HP vs 2–5). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives 80% tax bonus.',
-    Good:'⚔ <strong>Good:</strong> Heroes of any alignment join your service at the same-race rate (2g). 40% fanaticism chance. Honourable reputation makes it easier to unite allied forces.',
-    Druidic:'🌿 <strong>Druidic:</strong> Your king starts with Druid +1. Creature armies (Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort, Eagle Riders) need no Druid skill, gain +25% fanaticism, and fight ×1.5 stronger in forest and jungle. 20% fanaticism chance.',
-    Neutral:'⚖ <strong>Neutral:</strong> Province tax income +20% (practical traders). Hire any race of hero at the 2g same-race rate. Mercenaries cost 1g less. Sage discoveries happen twice as often.',
-    Pagan:'🔥 <strong>Pagan:</strong> Ancient rites and fickle gods. 15% fanaticism chance. Features and encounters tend to yield richer rewards for those willing to take risks.',
-    Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are immediately looted for 50% of their tax value.',
-    Undead:'💀 <strong>Undead:</strong> Your king starts with Necromancy +1 and one free unit of Skeletal Shieldwall Levies. Skeletal armies are always 100% fanatical, cost only 1g upkeep, and are exempt from Druid penalties. The Skeletal Armies spell raises fallen armies from battlefield graves.',
+    Divine:'✨ <strong>Divine:</strong> All heroes heal 3× more from Rest (6–15 HP vs 2–5). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king himself casts it. <strong>Consecrate</strong> one province: +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%, resurrections return there. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
+    Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
+    Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, gain +25% fanaticism, and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
+    Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 1g. Mercenaries cost 1g less. Sage discoveries twice as often.',
+    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in Primal country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> trades one unit for a full heal and a quality blessing. <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
+    Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are looted for 50% of their tax value — or, per character, <strong>Enslaved</strong> instead: a free Green native garrison unit, but −1 tax there for 3 turns. Choose each character\'s doctrine in their orders.',
+    Undead:'💀 <strong>Undead:</strong> King starts with Necromancy +1 and a free Skeletal unit. Skeletal armies: always fanatical (+30% king-led, +20% hero-led), 1g upkeep, no Druid penalty. Graves decay at half rate in your provinces. <strong>Harvest the Field</strong>: raise a grave as a skeleton for 2g, no magic needed. <strong>Deathless March</strong>: all-skeletal forces never take flight casualties. Cannot hire Divine heroes; righteous heroes cost extra.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
 }
@@ -2472,7 +2501,7 @@ const UNIT_ABILITIES={
   'Shadow Archers':'Loosed From Cover — cannot be targeted by enemy missile fire.',
   'Eagle Riders':'Skyward Retreat — never suffer the extra casualties of being trapped with no retreat.',
   'Elven Galleys':'Sea Archers — your missile units ignore the land-unit penalty at sea.',
-  'Dwarven Guard':'Hold the Line — if at least half the force are Guard (and it still has a quarter of the enemy\'s strength), it never retreats; the province stays contested instead.',
+  'Dwarven Guard':'Shield Fort — if at least half the force are Guard, a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties.',
   'Ironwood Crossbows':'Punch Through — can soften a target to 45% instead of the usual 30% limit.',
   'Mountain Guns':'Bombardment — fire before all other missile units, and +50% damage against garrisons.',
   'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
@@ -2559,7 +2588,8 @@ async function doSaveOrders(){
       const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
       if(preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined};
     }
   });
   const gp=currentGamePlayer;
@@ -2632,6 +2662,7 @@ async function doSubmitOrders(){
         tactics:tacts,
         notes:notesEl?.value||'',
         duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined,
       };
     }
   });
@@ -2652,7 +2683,8 @@ async function doSubmitOrders(){
       if(hPre) hTacts.push(`CS:${hPre}`);
       encounterPlans[cid]={tactics:hTacts,
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept',
+        evilMode:document.getElementById(`ep-evilmode-${cid}`)?.value||undefined};
     }
   });
   // Resurrection pre-order cards. Same shape as the hired-hero collection above; the GM parses the
@@ -2746,6 +2778,44 @@ function hexDistanceBetween(a, b, cols){
     if(d<best) best=d;
   });
   return best;
+}
+
+// ── Alignment spectrum & hero hire pricing (mirrors the GM engine) ──────────
+const ALIGN_SPECTRUM_PP=['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead'];
+function alignDistPP(a,b){
+  const i=ALIGN_SPECTRUM_PP.indexOf(a), j=ALIGN_SPECTRUM_PP.indexOf(b);
+  if(i<0||j<0) return 0;
+  return Math.abs(i-j);
+}
+function heroHireWagePP(kingdomAlign, heroAlign){
+  const d=alignDistPP(kingdomAlign, heroAlign);
+  if(d>=6) return null;               // Divine <-> Undead: will never serve
+  return 2+Math.floor(d/2);
+}
+
+// Predict each character's item list at the given phase by replaying the Give Item orders of
+// all EARLIER phases exactly as the GM engine resolves them (splice from giver, push to
+// recipient — so item INDICES stay aligned with what the engine will see at resolution time).
+// This lets a character who RECEIVES an item in an earlier phase pass it on in a later one.
+function predictedItems(charId, upToPhaseExclusive){
+  const report=currentReport;
+  if(!report) return [];
+  const cid=typeof charId==='string'?parseInt(charId):charId;
+  const items=new Map();
+  (report.characters||[]).forEach(x=>items.set(x.id,[...(x.items||[])]));
+  for(let p=0;p<upToPhaseExclusive;p++){
+    (report.characters||[]).forEach(x=>{
+      const action=document.getElementById(`po-action-${x.id}-${p}`)?.value||'';
+      if(action!=='Give Item') return;
+      const idx=parseInt(document.getElementById(`po-target-${x.id}-${p}`)?.value);
+      const recip=parseInt(document.getElementById(`po-extra-${x.id}-${p}`)?.value);
+      const arr=items.get(x.id)||[];
+      if(!(idx>=0)||idx>=arr.length||!items.has(recip)) return;
+      const [it]=arr.splice(idx,1);
+      (items.get(recip)||[]).push(it);
+    });
+  }
+  return items.get(cid)||[];
 }
 
 function predictedLocation(charId, upToPhaseExclusive){
@@ -2975,13 +3045,86 @@ function buildTargetField(c, ph, saved){
     // ── USE ITEM (active magic items only) ──
     case 'Use Item':{
       const ACTIVE_ITEM_STATS=new Set(['massPromote']);
-      const active=(c.items||[]).filter(it=>it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
+      // Items received via Give Item in an earlier phase are usable here too.
+      const active=predictedItems(c.id,ph).filter(it=>it&&it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
       if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No usable (active) items — most items are passive" disabled>`;
       const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.name} — ${it.desc}</option>`).join('');
       return `<select id="po-target-${c.id}-${ph}">${opts}</select>`;
     }
 
     // ── CAST SPELL ──
+    // ── DIVINE: CONSECRATE ──
+    case 'Consecrate':{
+      if(report.kingdom?.alignment!=='Divine')
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine kingdoms may consecrate" disabled>`;
+      const loc=predictedLocation(c.id,ph);
+      const ownedHere=loc&&(report.ownedProvinces||[]).some(p=>p.id===loc.id);
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Consecrates ${loc?loc.name:'current province'}${ownedHere?'':' — must be YOURS at this phase!'}" readonly>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%, fallen heroes return here. One per kingdom (a new consecration moves it). Cannot be cast on your home province or its neighbours — the crown's hearth was anointed at the coronation; the gods bid you carry the light outward.</div>`;}
+    // ── GOOD: CALL TO ARMS ──
+    case 'Call to Arms':{
+      if(report.kingdom?.alignment!=='Good')
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good kingdoms may call the folk to arms" disabled>`;
+      if(!c.isKing)
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
+      const human=(report.ownedProvinces||[]).filter(p=>p.terrain!=='sea'&&!(p.race||'').startsWith('Primal'));
+      if(!human.length) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;
+      const ctaOpts=human.map(p=>`<option value="${p.id}" ${target==p.id?'selected':''}>${p.name} — raises a Green ${(p.armyTypes&&p.armyTypes[0]&&(p.armyTypes[0].type||p.armyTypes[0]))||'levy'}</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}">${ctaOpts}</select>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Free Green garrison unit of the province's native type. The king need not be present — the province just has to be yours when the order resolves. Once per turn.</div>`;}
+    // ── NEUTRAL: BROKER ──
+    case 'Broker':{
+      if(report.kingdom?.alignment!=='Neutral')
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral kingdoms keep brokers" disabled>`;
+      if(!c.isKing)
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
+      const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
+        const w=heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment);
+        if(w==null) return '';
+        return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${w}g/turn</option>`;
+      }).filter(Boolean).join('');
+      const spyOpts=((report.worldMeta?.provinces)||[]).filter(p=>p.name&&p.terrain).map(p=>
+        `<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Buy word from ${p.name} (1g — full Spy result)</option>`).join('');
+      if(!hireOpts&&!spyOpts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
+      return`<select id="po-target-${c.id}-${ph}">${hireOpts}${spyOpts}</select>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the kingdom can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the kingdom has seen — 1g.</div>`;}
+    // ── DRUIDIC: AWAKEN THE WILD ──
+    case 'Awaken the Wild':{
+      if(report.kingdom?.alignment!=='Druidic')
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="The wild answers only Druidic crowns" disabled>`;
+      const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+      const dru=(c.skills||{}).druid||0;
+      const wOpts=Object.entries(AWAKEN_TIERS).map(([t,need])=>
+        `<option value="${t}" ${target===t?'selected':''} ${dru<need?'disabled':''}>${t} — Druid ${need}+${dru<need?` (you: ${dru})`:''}</option>`).join('');
+      const loc=predictedLocation(c.id,ph);
+      return`<select id="po-target-${c.id}-${ph}">${wOpts}</select>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Creature out of the land itself (recruit cost +2g offering; joins ${c.name}). Works only while standing in an OWNED forest, jungle, or primal province${loc?` — you will be in ${loc.name}`:''}.</div>`;}
+    // ── UNDEAD: HARVEST THE FIELD ──
+    case 'Harvest the Field':{
+      if(report.kingdom?.alignment!=='Undead')
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead kingdoms keep corpse-carters" disabled>`;
+      const loc=predictedLocation(c.id,ph);
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc?loc.name:'current province'}" readonly>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">No magic required: 2g raises ONE random battlefield grave in the province ${c.name} stands in as a Skeletal unit (keeps its type and quality; 1g upkeep). Needs battlefield dead present — fields where armies have fallen.</div>`;}
+    case 'Perform Rite':{
+      // PAGAN only — rites are performed at a DISCOVERED ritual site (Standing Stones and their
+      // kin) in the province the character will be standing in this phase.
+      if((report.kingdom?.alignment||'Neutral')!=='Pagan')
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan kingdoms keep the old rites" disabled>`;
+      const loc=predictedLocation(c.id,ph);
+      const pd=loc?(report.provinceOrderData||{})[loc.id]:null;
+      const site=(pd?.features||[]).find(f=>f.ritualSite);
+      if(!site)
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No known ritual site in ${loc.name} — Explore to find standing stones`:'Province unknown'}" disabled>`;
+      // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
+      // still holds a primal unit (Creature or Monster country).
+      const canHunt=(pd?.armyTypes||[]).some(a=>CREATURE_ARMIES_UI.has(a.type)||MONSTER_ARMIES_UI.has(a.type));
+      return`<select id="po-target-${c.id}-${ph}" onchange="markDirty()">
+        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 wild creatures (6g, serve until end of NEXT turn)</option>`:''}
+        <option value="Blood Offering" ${target==='Blood Offering'?'selected':''}>\u{1FA78} Blood Offering — sacrifice one unit: heal to full + one unit gains a quality tier</option>
+      </select>
+      <div style="font-size:.68rem;color:#7a4a00;margin-top:3px">At the ${site.name}. The old gods always take payment.</div>`;
+    }
     case 'Cast Spell':{
       const skills=c.skills||{};
       // Only show spells that are usable as phase orders
@@ -3060,36 +3203,71 @@ function buildTargetField(c, ph, saved){
       const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
-        const provOpts=(report.ownedProvinces||[]).concat(report.visitedProvinces||[])
-          .map(p=>`<option value="${p.id}" ${extra==p.id?'selected':''}>${p.name}</option>`).join('');
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
+        // All province spells reach only the province the caster occupies THIS PHASE or one
+        // adjacent to it (the GM engine enforces the same rule at resolution). Part Sea additionally
+        // requires a sea province; Flood a land province; Hide Features a province with features
+        // this player has discovered.
+        const wmProvs=(report.worldMeta?.provinces)||[];
+        const curLoc=predictedLocation(c.id,ph);
+        const curId=curLoc?curLoc.id:c.locationId;
+        const curP=wmProvs.find(p=>p.id===curId);
+        const candIds=[curId,...((curP&&curP.neighbors)||[])];
+        const kfNames=new Set((report.knownFeatures||[]).filter(f=>!f.cleared).map(f=>f.province));
+        const provOpts=candIds.map(pid=>{
+          const p=wmProvs.find(x=>x.id===pid);
+          if(!p) return '';
+          const t=p.terrain; // null for unexplored tiles (and possibly illusory — the map is what you see)
+          if(selSpell==='Part Sea'&&t!=='sea') return '';
+          if(selSpell==='Flood'&&(t==='sea'||t==null)) return '';
+          if(selSpell==='Hide Features'){
+            const hasKnownFeature=((p.features||[]).length>0)||(p.name&&kfNames.has(p.name));
+            if(!hasKnownFeature) return '';
+          }
+          const label=(p.name||`Unknown province (${pid})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'');
+          return `<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
+        }).filter(Boolean).join('');
+        secondaryHtml=provOpts
+          ?`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
+          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`
+          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No sea province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Features'?'No discovered features here or adjacent':'No valid target province in reach'}" disabled>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else if(NEEDS_CHAR.has(selSpell)){
         const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
         let charOpts='';
         if(selSpell==='Resurrect'){
-          // Resurrect shows dead heroes the player has seen
-          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}</option>`).join('');
+          // Resurrect shows dead heroes the player knows of. Kings can never be resurrected, and
+          // the body must lie in the caster's province at cast time — bodies at the caster's
+          // predicted location are marked ✓; others are listed so the player can plan a move there.
+          const casterHereName=(predictedLocation(c.id,ph)||{}).name;
+          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>!x.isKing).map(x=>{
+            const here=casterHereName&&x.locationName===casterHereName;
+            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
+          }).join('');
         } else if(selSpell==='Charm'){
-          // Charm: only wandering or enemy heroes in the SAME province
+          // Charm: a wandering hero, or an ENEMY hero leading NO armies, in the caster's province.
+          // Kings are immune. (The engine enforces all three — this list simply matches it.)
           const targets=(report.visibleChars||[]).filter(x=>
-            x.player!==c.player && (x.locationId===casterLoc));
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔ (enemy)'} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No wandering/enemy heroes in this province</option>';
+            x.locationId===casterLoc && !x.isKing &&
+            (x.player===null || (x.player!==c.player&&(x.armies||0)===0)));
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a wandering hero, or an enemy hero leading no armies, in this province (kings are immune)</option>';
         } else if(selSpell==='Oratory'){
-          // Oratory: self, or own characters in the same province
-          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&x.locationId===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
-        } else if(selSpell==='Phantasmal Armies'){
-          // Phantasmal Armies: self, or a friendly hero in the SAME province this phase.
+          // Oratory: self, or own characters predicted to be in the same province this phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
           const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+        } else if(selSpell==='Phantasmal Armies'){
+          // Phantasmal Armies: self, or a friendly ARMY-LEADING hero in the SAME province this
+          // phase (the engine rejects a target with no armies — phantoms need a real host to march with).
+          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self${(c.armies||[]).length===0?' — needs armies by this phase!':''})</option>`;
+          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&(x.armies||[]).length>0&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         } else if(selSpell==='Clairvoyance'){
-          // Clairvoyance: any character you have seen, anywhere on the map.
-          const seen=(report.visibleChars||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':x.player===c.player?' (yours)':' ⚔ (enemy)'} — ${x.locationName||'?'}</option>`).join('');
+          // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
+          // persistent sighting record (everSeenChars), plus anyone visible right now.
+          const seen=(report.everSeenChars&&report.everSeenChars.length?report.everSeenChars:(report.visibleChars||[]))
+            .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null||x.isWandering?' (wandering)':x.player===c.player?' (yours)':' ⚔ (enemy)'} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>You have not seen any characters yet</option>';
         } else if(selSpell==='Control Undead'){
           // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
@@ -3098,9 +3276,16 @@ function buildTargetField(c, ph, saved){
           const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
           const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
           charOpts=scanOpt+enemyOpts;
+        } else if(selSpell==='Telekinetic Storm'){
+          // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
+          // there is nothing to scatter around a hero marching alone.
+          const targets=(report.visibleChars||[]).filter(x=>
+            x.player!==c.player && x.locationId===casterLoc && (x.armies||0)>0);
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
         } else {
-          // Other character-target spells (Psychic Blast, Telekinetic Storm, Lightning, Curse, etc.)
-          // Target visible enemy/neutral characters in the same province
+          // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
+          // Target visible enemy/neutral characters in the same province.
           const targets=(report.visibleChars||[]).filter(x=>
             x.player!==c.player && x.locationId===casterLoc);
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
@@ -3143,7 +3328,20 @@ function buildTargetField(c, ph, saved){
           \u2694 ${m.unitName||m.type} (${m.quality} ${m.type}, ${m.cost??'?'}g) <span style="color:#8a1c1c;font-size:.72rem">[mercenary]</span>
         </label>`;
       }).join('');
-      const mercWrap=(inner)=>`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:140px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+      // ── Recruit destination ── self (default), a friendly character standing in this province
+      // this phase, or (in a controlled province) straight into the garrison.
+      const _destSaved=((target||'').split(',').map(t=>t.trim()).find(t=>t.startsWith('to:'))||'to:self');
+      const _destAllies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===(loc&&loc.id));
+      const _destRow=(allowGarrison)=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:.75rem">
+          <span style="color:var(--stone)">Muster to:</span>
+          <select class="po-recruit-dest" onchange="updateRecruitTarget('${c.id}',${ph})" style="flex:1;font-size:.75rem;padding:1px 3px">
+            <option value="to:self" ${_destSaved==='to:self'?'selected':''}>${c.name} (this character)</option>
+            ${_destAllies.map(x=>`<option value="to:${x.id}" ${_destSaved==='to:'+x.id?'selected':''}>${x.name} (also here this phase)</option>`).join('')}
+            ${allowGarrison?`<option value="to:garrison" ${_destSaved==='to:garrison'?'selected':''}>Province garrison (defends ${loc?loc.name:'the province'})</option>`:''}
+          </select>
+        </div>`;
+      const mercWrap=(inner)=>`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+        ${_destRow(false)}
         ${inner}
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>`;
@@ -3171,8 +3369,9 @@ function buildTargetField(c, ph, saved){
       // Multi-select: use checkboxes rendered as a scrollable list
       const checkId=`po-recruit-${c.id}-${ph}`;
       const savedSels=(target||'').split(',').filter(Boolean);
-      return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:140px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
+      return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
         ${conditionalRecruit?`<div style="font-size:.68rem;color:#8a4a4a;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet. This recruit only happens if this character <strong>takes control</strong> of the province earlier in the turn.</div>`:''}
+        ${_destRow(!conditionalRecruit)}
         ${mercRows}
         ${(pd.armyTypes||[]).flatMap(at=>{
           const done=alreadyRecruited[at.type]||0;
@@ -3208,21 +3407,27 @@ function buildTargetField(c, ph, saved){
         // Show only highest skill (like intelligence report)
         const skills=Object.entries(h.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
         const topSkill=skills.length>0?`${SKILL_LABELS[skills[0][0]]||skills[0][0]} ${skills[0][1]}`:'no notable skills';
-        // Actual hire cost: same race as king = 2g, different = 3g
-        // Diplomatic Protocols (sd31) waives alignment restriction but cost is race-based
-        const king=(report.characters||[]).find(ch=>ch.isKing);
-        const sameRace=king&&h.race===king.race;
-        const actualCost=sameRace?2:3;
-        const costNote=sameRace?'(same race as king — 2g/turn)':'(different race — 3g/turn)';
-        return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${actualCost}g/turn ${costNote}</option>`;
+        // Alignment-distance pricing (2026-07-24): wage = 2g +1g per 2 spectrum steps between the
+        // hero's alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
+        // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
+        const kAlign=report.kingdom?.alignment||'Neutral';
+        const wage=heroHireWagePP(kAlign,h.alignment);
+        if(wage==null) return`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
+        const d=alignDistPP(kAlign,h.alignment);
+        const costNote=d<=1?'(kindred outlook — base rate)':`(${d} steps from ${kAlign})`;
+        return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
       }).join('');
       return`<select id="po-target-${c.id}-${ph}">${opts}</select>`;}
 
     // ── GIVE ITEM ──
     case 'Give Item':{
-      const items=c.items||[];
-      if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to give" disabled>`;
-      const itemOpts=items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>🔮 ${it.name}</option>`).join('');
+      // Predicted item list: starts from the report, then applies every earlier phase's Give Item
+      // orders — so an item HANDED TO this character in an earlier phase can be given onward here,
+      // and an item already given away no longer appears. Indices match GM resolution order.
+      const items=predictedItems(c.id,ph);
+      const startNames=new Set((c.items||[]).map(it=>it&&it.name));
+      if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to give (none held, or all given away earlier this turn)" disabled>`;
+      const itemOpts=items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>🔮 ${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('');
       // Only show characters in the same province AND controlled by the same player
       const loc4=predictedLocation(c.id,ph);
       const chars=(report.characters||[]).filter(x=>
@@ -3391,6 +3596,9 @@ function updateRecruitTarget(charId, ph){
   const wrap=document.getElementById(`po-target-wrap-inner-${charId}-${ph}`);
   if(!wrap) return;
   const checked=[...wrap.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+  // Destination token: only written when a non-default destination is chosen.
+  const destSel=wrap.querySelector('.po-recruit-dest');
+  if(destSel&&destSel.value&&destSel.value!=='to:self') checked.push(destSel.value);
   const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(hidden) hidden.value=checked.join(',');
 }
@@ -3817,6 +4025,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.23-2204</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.24-1530</div>
 </body>
 </html>
