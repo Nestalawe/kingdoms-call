@@ -379,6 +379,27 @@ let currentReport = null;
 let currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing history)
 let viewingReport = null;
+// Which past turn the player is currently viewing (null = the current/latest turn). Used to tint
+// that turn's nav button a lighter shade of the current-turn colour. See refreshTurnNavHighlight().
+let viewedTurn = null;
+// Restyle the turn-nav buttons: the current turn is full crimson; the past turn currently being
+// viewed (if any) is a LIGHTER crimson; all others are the plain outlined style. Buttons carry
+// their turn number in data-turn and the navigator stores the resolved turn in data-resolved, so
+// this can be re-run on its own whenever the viewed turn changes without rebuilding the buttons.
+function refreshTurnNavHighlight(){
+  const navEl=document.getElementById('turn-nav-btns');
+  if(!navEl) return;
+  const resolved=parseInt(navEl.dataset.resolved??'-1');
+  [...navEl.children].forEach(btn=>{
+    const d=parseInt(btn.dataset.turn);
+    const isCurrent=d===resolved;
+    const isViewed=(viewedTurn!=null)&&(d===viewedTurn)&&!isCurrent;
+    let bg='transparent',border='var(--stone)',color='var(--stone)';
+    if(isCurrent){ bg='var(--crimson)'; border='var(--crimson)'; color='#fff'; }
+    else if(isViewed){ bg='#b34a4a'; border='var(--crimson)'; color='#fff'; } // lighter crimson = the turn on screen
+    btn.style.cssText=`font-size:.68rem;padding:2px 8px;border:1px solid ${border};background:${bg};color:${color};cursor:pointer;border-radius:2px`;
+  });
+}
 
 // ── INIT ─────────────────────────────────────────────
 async function init(){
@@ -647,10 +668,10 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Missile combat. In battle it adds +5% strength per level to your bow/crossbow units (Yeoman Longbows, Elven Bowmen, Ironwood Crossbows, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
+  archery:'Missile combat. In battle it adds +10% strength per level to your bow/crossbow units (Yeoman Longbows, Elven Bowmen, Ironwood Crossbows, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
-  naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles and improves movement across sea provinces. Essential for a maritime power.',
+  naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
   sage:'Scholarship. Each level gives a 5% chance per turn (10% with the Library discovery), when practising Sage, to make a permanent Sage Discovery (kingdom-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — both via the Steal order and by pickpocketing during encounters.',
@@ -815,12 +836,59 @@ function buildChronicle(log, chars_for_log){
       }
     });
 
+    // ── Items 2 & 3: battle-force markers + player-colour map ──────────────────
+    // The engine emits '⚑FORCE⚑{json}' lines for each side of a battle (name, owner colour, neutral
+    // flag, role/verb, army roster). We expand those into icon rows (like "Your Kingdom") and tint
+    // every participant's name in the owner's map colour; neutral names go dark grey.
+    const NEUTRAL_COLOR='#555';
+    const nameColors=new Map(); // name (and bare/kingdom variants) → {color|null, neutral}
+    function _registerName(nm, color, neutral){
+      if(!nm) return;
+      const add=(k)=>{ if(k && !nameColors.has(k)) nameColors.set(k,{color:neutral?null:color, neutral:!!neutral}); };
+      add(nm);
+      add(String(nm).replace(/\s*\(.*?\)\s*$/,'').trim());            // strip trailing "(Kingdom)"
+      const km=String(nm).match(/\(([^)]+)\)\s*$/); if(km) add(km[1]); // the kingdom name itself
+    }
+    log.forEach(e=>{
+      const t=e.text||'';
+      if(t.startsWith('⚑FORCE⚑')){ try{ const f=JSON.parse(t.slice(7)); _registerName(f.name,f.color,f.neutral); }catch(_){} }
+    });
+    // Seed the viewer's own characters with their kingdom colour, in case they never appear in a marker.
+    const _ownColor=(viewingReport&&viewingReport.kingdom&&viewingReport.kingdom.color)||null;
+    if(_ownColor)(chars_for_log||[]).forEach(c=>_registerName(c.name,_ownColor,false));
+    function _escapeRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+    const _nameKeys=[...nameColors.keys()].filter(Boolean).sort((a,b)=>b.length-a.length);
+    function colorizeNames(html){
+      if(!_nameKeys.length) return html;
+      let out=html;
+      _nameKeys.forEach(nm=>{
+        const info=nameColors.get(nm); const col=info.neutral?NEUTRAL_COLOR:info.color; if(!col) return;
+        const re=new RegExp('\\b'+_escapeRe(nm)+'\\b','g');
+        out=out.replace(re, m=>`<span style="color:${col}">${m}</span>`);
+      });
+      return out;
+    }
+    function renderForceBlock(f){
+      const col=f.neutral?NEUTRAL_COLOR:(f.color||NEUTRAL_COLOR);
+      const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
+      const rows=(f.armies||[]).length
+        ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem">${unitEmoji(a.type)} ${armyLabel(a)}</div>`).join('')
+        : `<div style="padding-left:16px;font-size:.82rem;opacity:.7">— no armies —</div>`;
+      return `<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px"><div>${header}</div>${rows}</div>`;
+    }
+
     // ── HELPER: render a single log entry ──
     function renderEntry(e){
-      const rawText=roundReportNumbers(e.text||'');
+      const raw0=e.text||'';
+      if(raw0.startsWith('⚑FORCE⚑')){
+        try{ return renderForceBlock(JSON.parse(raw0.slice(7))); }catch(_){ /* fall through */ }
+      }
+      const rawText=roundReportNumbers(raw0);
       const isStat=rawText.startsWith('📊');
       const isBattleHeader=rawText.startsWith('⚔')||rawText.startsWith('⚠');
-      const text=rawText.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      let text=rawText.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      // Item 3: tint participant names in battle-related lines only.
+      if(isStat||isBattleHeader||e.type==='combat') text=colorizeNames(text);
       if(isStat) return`<div class="log-entry stat">${text}</div>`;
       if(isBattleHeader) return`<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px;font-weight:600">${text}</div>`;
       return`<div class="log-entry ${e.type||''}">${text}</div>`;
@@ -947,6 +1015,8 @@ function buildChronicle(log, chars_for_log){
 } // end buildChronicle
 
 async function loadPastReport(gameId, playerIndex, turn){
+  viewedTurn=turn;
+  refreshTurnNavHighlight();
   const banner=document.getElementById('prev-report-banner');
   banner.style.display='block';
   const pi=playerIndex;
@@ -1008,6 +1078,8 @@ async function loadPastReport(gameId, playerIndex, turn){
 }
 
 function returnToCurrentReport(){
+  viewedTurn=null;
+  refreshTurnNavHighlight();
   document.getElementById('prev-report-banner').style.display='none';
   document.getElementById('orders-card').style.display='block';
   const oc2=document.getElementById('orders-column'); if(oc2) oc2.style.display='flex';
@@ -1060,14 +1132,16 @@ async function openReport(gamePlayerId){
     navEl.innerHTML='';
     if((g.turn||0)>=1){
       for(let d=0;d<=resolvedTurn;d++){
-        const isCurrent=d===resolvedTurn;
         const btn=document.createElement('button');
         btn.textContent=`T${d}`;
+        btn.dataset.turn=d;
         btn.title=d===0?'Founding — your starting position':`Turn ${d} results`;
-        btn.style.cssText=`font-size:.68rem;padding:2px 8px;border:1px solid ${isCurrent?'var(--crimson)':'var(--stone)'};background:${isCurrent?'var(--crimson)':'transparent'};color:${isCurrent?'#fff':'var(--stone)'};cursor:pointer;border-radius:2px`;
         btn.onclick=(()=>{const turn=d;const pi=gp.player_index;const cur=resolvedTurn;return()=>turn===cur?returnToCurrentReport():loadPastReport(gp.game_id,pi,turn);})();
         navEl.appendChild(btn);
       }
+      navEl.dataset.resolved=resolvedTurn;
+      viewedTurn=null;               // the main render always shows the current turn
+      refreshTurnNavHighlight();
     }
   }
   document.getElementById('prev-report-banner').style.display='none';
@@ -1288,7 +1362,19 @@ async function openReport(gamePlayerId){
   const provCharIntel=(report.provinceCharIntel||[])
     .map(pr=>({...pr, characters:(pr.characters||[]).filter(c=>c.category!=='own')}))
     .filter(pr=>pr.characters.length>0);
-  const provinceIntel=intel.filter(i=>!i.match(/^Wandering hero|last seen/));
+  // Provinces already shown in the structured char-intel above. The legacy free-text intel also
+  // carries a "ProvName: <guard> leads: N neutral defenders …" line for every visited province, so
+  // for any province in the structured list that legacy line is a duplicate (item 4). Drop those
+  // neutral-defender duplicates while keeping legacy lines for provinces NOT in the structured list
+  // (e.g. ones visited earlier but with no character present/spied this turn), plus "controlled by"
+  // and spy-result lines.
+  const _structuredProvNames=new Set(provCharIntel.map(pr=>pr.provName));
+  const provinceIntel=intel.filter(i=>{
+    if(i.match(/^Wandering hero|last seen/)) return false;
+    const m=i.match(/^([^:(]+):\s.*neutral defender/);
+    if(m && _structuredProvNames.has(m[1].trim())) return false;
+    return true;
+  });
   if(provCharIntel.length>0||provinceIntel.length>0){
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Province Reports</div>`;
     // Structured per-province character intel: names + army-unit counts, with unit detail only where
@@ -1360,6 +1446,14 @@ async function openReport(gamePlayerId){
       const pIcon=POWER_ICONS[f.monsterPower]||'?';
       const powerBadge=f.monsterPower&&!f.cleared
         ?`<span style="background:${pColor};color:#fff;font-size:.65rem;padding:1px 5px;border-radius:2px;margin-left:4px">${pIcon} ${f.monsterPower}</span>`:'';
+      // Ritual sites have no guardian — they are sacred ground usable only by a Pagan kingdom's
+      // Perform Rite. Show that instead of an empty "Guardian:" line.
+      if(f.ritualSite){
+        return`<div class="intel-entry" style="border-left-color:#5a0a9a">
+          🌙 <strong>${f.name}</strong> — ${f.province}
+          <br><span style="font-size:.78rem;color:#5a0a9a">A sacred site of the old faith — only a Pagan kingdom may Perform Rites here.</span>
+        </div>`;
+      }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
         ${f.cleared?'✓':'⭐'} <strong>${f.name}</strong> — ${f.province}${powerBadge}
         ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}</span>`}
@@ -1435,7 +1529,7 @@ const SPELL_HINTS={
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. Up to your-level units each have a 50% chance to fight one level lower in their next battle this turn (temporary). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Shows a false terrain to enemies; they fight there at 80% strength. An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
-  'Phantasmal Armies':'Target: yourself or an ally in your province who leads armies. Their led armies fight +10% per caster level in battle this turn. Not cumulative.',
+  'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Whatever armies they lead in their next battle this turn fight +10% per caster level (works even if they pick up armies in a later phase). Not cumulative.',
   'Hide Features':'Target: a province you\u2019re in or adjacent to. Hides ALL features you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
   'Invisibility':'Combat: you become twice as hard to hit for the fight, +30% to Flee, and +15% to a following Steal.',
   'Lightning Bolt':'Combat: 2\u20134 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
@@ -2540,10 +2634,10 @@ function updateTemperDesc(){
   // Temper affects how a character behaves in personal encounters, duels and monster fights,
   // and how often they trigger encounters while exploring/searching (AK 2.4).
   const DESCS={
-    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +1 melee damage, 1–5 bonus HP</strong> every fight, and +20% encounter chance while exploring. The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
-    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +4% guard, +10% encounter chance. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
-    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% to hit them</strong> and every melee blow that lands does <strong>1 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus and −5% encounter chance; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
-    Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. The cost is −10% melee to hit and −15% encounter chance, and they break off below 40% health. Poor in a melee, excellent as an archer, thief or spy — and the safest temper for a king you cannot afford to lose.',
+    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +1 melee damage,</strong> and <strong>they shrug off 20% of every melee or archery hit they take</strong> (spells cut straight through). The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
+    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
+    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% to hit them</strong> and every melee blow that lands does <strong>1 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
+    Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. The cost is −10% melee to hit, and they break off below 40% health. Poor in a melee, excellent as an archer, thief or spy — and the safest temper for a king you cannot afford to lose.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
 }
@@ -3062,6 +3156,8 @@ function buildTargetField(c, ph, saved){
     case 'Consecrate':{
       if(report.kingdom?.alignment!=='Divine')
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine kingdoms may consecrate" disabled>`;
+      if(!c.isKing)
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc=predictedLocation(c.id,ph);
       const ownedHere=loc&&(report.ownedProvinces||[]).some(p=>p.id===loc.id);
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Consecrates ${loc?loc.name:'current province'}${ownedHere?'':' — must be YOURS at this phase!'}" readonly>
@@ -3262,10 +3358,11 @@ function buildTargetField(c, ph, saved){
           const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         } else if(selSpell==='Phantasmal Armies'){
-          // Phantasmal Armies: self, or a friendly ARMY-LEADING hero in the SAME province this
-          // phase (the engine rejects a target with no armies — phantoms need a real host to march with).
-          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self${(c.armies||[]).length===0?' — needs armies by this phase!':''})</option>`;
-          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&(x.armies||[]).length>0&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          // Phantasmal Armies: self, or any friendly hero in the SAME province this phase. The buff
+          // no longer requires armies at cast time (item 12) — it sits on the target and is spent by
+          // their next battle, so it still helps if they pick up or recruit armies in a later phase.
+          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         } else if(selSpell==='Clairvoyance'){
           // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
@@ -4030,6 +4127,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.24-1944</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.25-2008</div>
 </body>
 </html>
