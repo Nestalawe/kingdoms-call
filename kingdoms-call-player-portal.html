@@ -1194,7 +1194,7 @@ async function openReport(gamePlayerId){
   const alignBanner=alignSummary?`
     <div style="background:#fdf8ee;border-left:4px solid ${alignColours[playerAlignment]||'#888'};padding:8px 12px;margin-bottom:10px;border-radius:0 3px 3px 0">
       <div style="font-family:'Cinzel',serif;font-size:.72rem;color:${alignColours[playerAlignment]||'#888'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${alignIcons[playerAlignment]||''} ${playerAlignment} Kingdom</div>
-      <div style="font-size:.78rem;color:#444;line-height:1.5">${alignSummary}</div>
+      <div style="font-size:.78rem;color:#444;line-height:1.5">${bulletizeDesc(alignSummary)}</div>
     </div>`:'';
 
   const cmGuide=(playerAlignment==='Druidic'||playerAlignment==='Evil')?`
@@ -2131,8 +2131,20 @@ function onSpellChange(charId, ph, selectedSpell){
   // The resurrection order card belongs to a specific spell choice — rebuild/remove it whenever the
   // spell changes, not just when the corpse does. Deferred so the new secondary select exists first.
   setTimeout(()=>syncResurrectCard(charId, ph),0);
-  // When the player picks a different spell, update the secondary target selector
-  // WITHOUT rebuilding the spell select itself (which would reset the selection)
+  // When the player picks a different spell, rebuild the WHOLE target field via buildTargetField —
+  // exactly as the GM portal's onGMSpellChange does. The old path rebuilt only the secondary field
+  // with a crude fallback (owned+visited provinces / every character), which broke the province
+  // spells: Flood/Earthquake/Bless/etc. must offer the caster's CURRENT province + neighbours (with
+  // the per-spell terrain/feature filters), NOT owned provinces, and the char spells must apply their
+  // proper same-province enemy/seen filters. buildTargetField already has all that logic; reusing it
+  // keeps the on-change list identical to the initial render and preselects the chosen spell.
+  const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
+  if(!wrap) return;
+  const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
+  wrap.innerHTML=buildTargetField(char, ph, {action:'Cast Spell', target:selectedSpell});
+}
+
+function _onSpellChange_DEPRECATED(charId, ph, selectedSpell){
   const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
   if(!wrap) return;
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
@@ -2583,7 +2595,7 @@ function updateAlignmentDesc(){
     Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are looted for 50% of their tax value — or, per character, <strong>Enslaved</strong> instead: a free Green native garrison unit, but −1 tax there for 3 turns. Choose each character\'s doctrine in their orders.',
     Undead:'💀 <strong>Undead:</strong> King starts with Necromancy +1 and a free Skeletal unit. Skeletal armies: always fanatical (+30% king-led, +20% hero-led), 1g upkeep, no Druid penalty. Graves decay at half rate in your provinces. <strong>Harvest the Field</strong>: raise a grave as a skeleton for 2g, no magic needed. <strong>Deathless March</strong>: all-skeletal forces never take flight casualties. Cannot hire Divine heroes; righteous heroes cost extra.',
   };
-  desc.innerHTML=DESCS[sel.value]||'';
+  desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
 
 // Every humanoid unit has one always-on ability. Kept in step with unitAbilityMult /
@@ -3763,13 +3775,29 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
 // "local chieftains"; only masterless heroes are "wandering". The engine bakes ' (wandering)' into
 // the NAME of a guardian once they are beaten off their province, so strip any existing suffix
 // first — otherwise a defeated chieftain rendered as "Name (wandering) (wandering)".
+// Item 11: present a king's alignment description as a scannable bullet list instead of one dense
+// paragraph. Splits on a period followed by whitespace, so decimals (×1.5), ranges (2–5) and
+// mid-clause em-dashes stay intact (their period isn't followed by a space). Curated wording is
+// preserved verbatim; only the presentation changes. Any embedded HTML (e.g. <strong>) is kept.
+function bulletizeDesc(text){
+  if(!text) return '';
+  const raw=String(text).trim();
+  const parts=raw.split(/\.\s+/).map(s=>s.trim()).filter(Boolean);
+  if(parts.length<=1) return text;
+  const lis=parts.map(p=>{
+    const needsDot=!/[.!?]$/.test(p); // last clause keeps its period; earlier ones had theirs stripped
+    return `<li style="margin-bottom:4px">${p}${needsDot?'.':''}</li>`;
+  }).join('');
+  return `<ul style="margin:2px 0 0;padding-left:1.15em;line-height:1.45">${lis}</ul>`;
+}
 function neutralCharLabel(c){
   const base=String(c&&c.name||'').replace(/\s*\(wandering\)/gi,'').trim();
   return `${base} (${c&&c.isNeutralGuard?'local chieftain':'wandering'})`;
 }
-function popupKnownChars(pd){
+function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
-  if(!chars.length) return '';
+  const dead=(deadHeroes||[]).filter(d=>d.locationId===(pd&&pd.id));
+  if(!chars.length && !dead.length) return '';
   const cnt=(c)=>c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'';
   const own=chars.filter(c=>c.isOwn);
   const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer);
@@ -3778,6 +3806,8 @@ function popupKnownChars(pd){
   if(own.length)   s+=own.map(c=>`<br>\u{1F464} ${(c.isKing?'\u265B ':'')}${c.name}${cnt(c)}`).join('');
   if(enemy.length) s+=enemy.map(c=>`<br>\u{1F441} <span style="color:#e05050">${(c.isKing?'\u265B ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`).join('');
   if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:#c8922a">${neutralCharLabel(c)}</span>${cnt(c)}`).join('');
+  // Item 6: dead heroes whose bodies lie here — labelled '(dead)', mirroring the '(wandering)' tag.
+  if(dead.length)  s+=dead.map(d=>`<br>\u{1F480} <span style="color:#8a6fb0">${(d.isKing?'\u265B ':'')}${d.name} (dead)</span>`).join('');
   return s;
 }
 // Single function renders into any SVG element (inline or fullscreen)
@@ -4057,7 +4087,7 @@ function renderMapIntoSvg(svgEl, report){
           if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>{const ab=unitAbilityText(t);return `<br>${unitEmoji(t)} ${t}`+(ab?`<br><span style="font-size:.68rem;color:var(--stone);padding-left:1.1em">${ab}</span>`:'');}).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
-          const _kc=popupKnownChars(pd);
+          const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kc) h+=_kc;
           if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} ${armyLabel(d)}`).join('')}`;
         } else if(isVisited){
@@ -4070,7 +4100,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>{const ab=unitAbilityText(t);return `<br>${unitEmoji(t)} ${t}`+(ab?`<br><span style="font-size:.68rem;color:var(--stone);padding-left:1.1em">${ab}</span>`:'');}).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
-          const _kcV=popupKnownChars(pd);
+          const _kcV=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kcV) h+=_kcV;
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
@@ -4127,6 +4157,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.25-2008</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-0833</div>
 </body>
 </html>

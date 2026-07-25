@@ -2862,7 +2862,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     const king={
       id:kingId,name:sp.kingName||sp.name,isKing:true,player:pi,
       race:sp.race,alignment:sp.alignment,temper:sp.temper,
-      hp:22,maxHp:22,skills:kingSkills,aptitude:{},
+      hp:15,maxHp:15,skills:kingSkills,aptitude:{},
       armies:(()=>{
         const nonGarrison=startArmyPool.filter(t=>!t.toLowerCase().includes('garrison'));
         let pool=nonGarrison.length>0?nonGarrison:startArmyPool;
@@ -2903,7 +2903,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         race:sp.race,  // same race as king
         alignment:heroAlign,
         temper:TEMPERS_P[Math.floor(Math.random()*4)],
-        hp:rP(12,18),maxHp:0,skills:hSkills,aptitude:{},
+        hp:15,maxHp:0,skills:hSkills,aptitude:{},
         armies:[],items:[],location:best.id,alive:true,merits:0,taxBonus:0,
         spellsUsedThisTurn:[],locationName:best.name,
         startingHero:true,  // informational only — wage follows the standard skill formula
@@ -2949,7 +2949,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       id:hid,name:baseName,isKing:false,player:null,
       race:hrace,alignment:wAlign,
       temper:TEMPERS_P[Math.floor(Math.random()*4)],
-      hp:rP(10,18),maxHp:0,skills:hSkills,aptitude:{},
+      hp:15,maxHp:0,skills:hSkills,aptitude:{},
       // Neutral heroes carry the province's neutral armies
       armies:[...(lp.neutralDefenders||[])],
       items:[],location:lp.id,alive:true,merits:0,taxBonus:0,
@@ -3188,7 +3188,9 @@ function buildTurnReport(gameState, playerIndex){
     return seenThisTurn.has(g.id); // only others if witnessed this turn
   }).map(g=>({id:g.id,name:g.name,player:g.player,killedOnTurn:g.killedOnTurn,
     locationName:gameState.world.provinces[g.location]?.name||'unknown',
+    locationId:g.location,
     isOwn:g.player===playerIndex,
+    isKing:!!g.isKing,
     inVisibleProv:visibleProvIds.has(g.location)}));
   // Dead heroes this player has EVER seen (for Resurrect targeting)
   const knownDeadHeroes=(gameState.heroGraveyard||[])
@@ -3765,6 +3767,19 @@ async function runTurn(){
   //  public   — if true, all players who own or have characters in this province see it
   //  redact   — if true, enemy army strength is shown as a rough estimate only
   const turnLog=[];
+  // Which commanders fought in each battle, keyed by provinceId@phase. Every battle line carries a
+  // SINGLE charId — the attacker's (via _logCtx) for a fresh fight, or the ranking live force for a
+  // resumed stalled battle. For the OTHER participating player (the defender, or the dead/leaderless
+  // side of a resume) that id is an enemy's, so the per-player report used to null it and dump the
+  // whole battle into Kingdom Events instead of the participating hero's own Chronicle section. This
+  // map lets that report re-file the fight under THIS player's own commander who fought there.
+  const battleCommanders={};
+  const recordBattleCmdrs=(provId,ph,ids)=>{
+    if(provId==null||ph==null||ph<0||ph>4) return;
+    const k=provId+'@'+ph;
+    const arr=battleCommanders[k]||(battleCommanders[k]=[]);
+    ids.forEach(id=>{ if(id!=null&&!arr.includes(id)) arr.push(id); });
+  };
   // Current character context — set by processOrder so all log calls get charId/phase automatically
   let _logCtx={charId:null,phase:null};
   const log=(type,text,meta={})=>{
@@ -3855,12 +3870,20 @@ async function runTurn(){
     const chance=(base==null?SKILLGAIN_STD:base)*(1-0.10*lvl); // slight easing per level
     if(Math.random()<chance){
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
+      const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
+      const _payAfter=real.pay||0;
       const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience.`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle.
       if(narr&&narr.push) narr.push(line);
       else log('system',line,{actor:real.player,targets:[real.player]});
+      // Item 9: when the higher skill raises the hero's wage, say so in the player's report.
+      if(_payAfter>_payBefore){
+        const wline=`💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
+        if(narr&&narr.push) narr.push(wline);
+        else log('system',wline,{actor:real.player,targets:[real.player]});
+      }
     }
   }
   const HUMANOID_RACES_SG=new Set(['Human','Elven','Dwarven','Orcish']);
@@ -5253,7 +5276,7 @@ const BATTLE_ARMY_SPELLS={
   }
   function pcMeleeDamage(attacker, defender){
     const diff=(attacker.melee||0)-(defender.melee||0);
-    let dmg=Math.max(1, rng(1,6)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
+    let dmg=Math.max(1, rng(2,5)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // A Cautious fighter rolls with the blow rather than taking it square on.
     dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
@@ -5479,7 +5502,7 @@ const BATTLE_ARMY_SPELLS={
   // failed withdrawal consumes the whole Fire action.
   const ARCHERY_VOLLEY_AT=3;   // arrows per Fire action becomes 2 at this skill level
   function pcVolleySize(cbt){ return (cbt.archery||0)>=ARCHERY_VOLLEY_AT ? 2 : 1; }
-  function pcArrowDamage(cbt){ return rng(1,6)+Math.floor((cbt.archery||0)/3); }
+  function pcArrowDamage(cbt){ return rng(2,5)+Math.floor((cbt.archery||0)/3); }
   function pcFireShot(actor, foe, narrative){
     const volley=pcVolleySize(actor);
     if(volley>1) narrative.push(`  ${actor.name} draws and looses a volley of ${volley} arrows (Archery ${actor.archery}).`);
@@ -5859,6 +5882,10 @@ const BATTLE_ARMY_SPELLS={
 
   // Returns {won, narrative:[strings]}
   function combatVsChar(atk, def, prov){
+    // Record both sides' commanders for this province/phase BEFORE any fighting (a duel death or
+    // a nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
+    // real commander's id, so the per-player report can file the battle under either player's hero.
+    recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
     if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._curseHalveStat=null;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._curseHalveStat=null;}
@@ -9105,6 +9132,10 @@ const BATTLE_ARMY_SPELLS={
         let savedIntel=null;
         if(guard){ savedIntel=prov.neutralDefenders; prov.neutralDefenders=[...(guard.armies||[])]; }
         const battle=combatVsNPC(atkCopy,prov,guard||null);
+        // Item 3: this character has now had their one battle for the phase. Pin them (STAGE 1b) so
+        // a Move/Pursue order later this phase can't march them on to START A SECOND BATTLE — even if
+        // this follow-up battle RESOLVED and the province is no longer flagged _battleUnresolved.
+        attacker._foughtStalledBattlePhase=ph;
         // The guard can die in THIS re-fight's pre-battle duel — from that moment their troops
         // are a leaderless garrison living on prov.neutralDefenders, not on the corpse.
         const _guardDiedNow=!!guard&&!guard.alive;
@@ -9186,6 +9217,9 @@ const BATTLE_ARMY_SPELLS={
         const defCopy={...defender,armies:[...(defender.armies||[])]};
         atkCopy._attackedFrom=attacker._attackedFrom; defCopy._attackedFrom=defender._attackedFrom;
         const battle=combatVsChar(atkCopy,defCopy,prov);
+        // Item 3: both sides have now had their battle for the phase — pin them (STAGE 1b) so neither
+        // can march on to start a second battle later this phase, even if this one resolved.
+        attacker._foughtStalledBattlePhase=ph; defender._foughtStalledBattlePhase=ph;
         attacker.armies=(attacker.armies||[]).filter(a=>atkCopy.armies.includes(a));
         defender.armies=(defender.armies||[]).filter(a=>defCopy.armies.includes(a));
         // combatVsChar moves the retreating COPY and updates prov.characters via the shared id;
@@ -10057,7 +10091,7 @@ const BATTLE_ARMY_SPELLS={
     // processed later in the same phase.
     enteredThisPhase={}; // provinces entered during THIS phase only
     G._phaseSkillSnapshot={};
-    (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; });
+    (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; delete c._foughtStalledBattlePhase; });
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     resolveStalledBattles(ph);
     _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
@@ -10085,9 +10119,17 @@ const BATTLE_ARMY_SPELLS={
       if(it.action!=='move'&&it.action!=='pursue') return;
       if(!it.leadsArmy) return;
       const here=G.world.provinces[it.fromId];
-      if(!here||!here._battleUnresolved) return;
+      // Item 3: a character fought their one battle for the phase if EITHER their province is still
+      // contested (unresolved) OR resolveStalledBattles just fought a follow-up battle for them this
+      // phase (win or lose). Both must cancel a Move/Pursue so they can't march on and start a SECOND
+      // battle in the same phase.
+      const _stillContested=!!(here&&here._battleUnresolved);
+      const _foughtFollowUp=(it.c._foughtStalledBattlePhase===ph);
+      if(!_stillContested&&!_foughtFollowUp) return;
       it.cancelled=true; it.cancelReason='battleLocked';
-      log('combat',`${it.c.name} is still locked in the unresolved battle for ${here.name} and cannot march away — the fight must be seen through before they can move on.`,
+      log('combat', _stillContested
+        ?`${it.c.name} is still locked in the unresolved battle for ${here.name} and cannot march away — the fight must be seen through before they can move on.`
+        :`${it.c.name} has already fought a battle this phase and cannot march on to start another — one battle per phase.`,
         {actor:it.player,targets:[it.player],provinceId:it.fromId,public:false,charId:it.id,phase:ph});
     });
 
@@ -10214,7 +10256,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // Also count garrison armies left in provinces
         const garrisonArmies=(G.world.provinces||[]).filter(pv=>pv.owner===p.id).flatMap(pv=>pv.garrisonArmies||[]);
         const allKingdomArmies=[...allArmies,...garrisonArmies];
-        const armyWages=allKingdomArmies.reduce((s,a)=>s+(a._isSkeletal?1:(ARMY_COST[a.type]||2)),0);
+        // Item 8: temporary summons (elementals) are a spell effect that dissolves at turn end —
+        // they draw no wage and are never disbanded for non-payment (see the disband loop below).
+        const armyWages=allKingdomArmies.reduce((s,a)=>s+(a._temporary?0:(a._isSkeletal?1:(ARMY_COST[a.type]||2))),0);
 
         // Hero wages
         const heroes=playerChars.filter(c=>!c.isKing);
@@ -10243,6 +10287,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
             (a._isSkeletal?1:ARMY_COST[a.type]||2)-(b._isSkeletal?1:ARMY_COST[b.type]||2));
           sortedArmies.forEach(army=>{
             if(deficit<=0)return;
+            // Item 8: elementals and other temporary summons are never disbanded for non-payment —
+            // they dissolve on their own at turn's end (and no longer draw a wage above).
+            if(army._temporary)return;
             // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons) still free
             const cost=army._isSkeletal?1:(ARMY_COST[army.type]||2);
             if(cost===0)return; // other free armies never disband for non-payment
@@ -10363,7 +10410,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       const _gone=c.armies.filter(a=>a._temporary);
       c.armies=c.armies.filter(a=>!a._temporary);
       const _names=_gone.map(a=>`${a.unitName||a.type}${a.unitName?` (${a.type})`:''}`).join(', ');
-      log('explore',`\u2728 The binding fails as the season turns — ${_names} ${_gone.length===1?'dissolves':'dissolve'} and ${_gone.length===1?'returns':'return'} to the elemental plane, leaving ${c.name}'s host.`,{actor:c.player,targets:[c.player].filter(x=>x!==null),provinceId:c.location});
+      log('explore',`\u2728 As the season turns, ${_names} ${_gone.length===1?'is':'are'} released from ${_gone.length===1?'its':'their'} bonds and ${_gone.length===1?'returns':'return'} to the Elemental Realm, leaving ${c.name}'s host.`,{actor:c.player,targets:[c.player].filter(x=>x!==null),provinceId:c.location});
     }
     // PAGAN: Wild Hunt bindings outlast elementals by WILD_HUNT_TURNS full turns, then break.
     if((c.armies||[]).some(a=>a._wildHuntUntilTurn!=null&&G.turn>=a._wildHuntUntilTurn)){
@@ -10694,10 +10741,22 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     });
     report.provinceCharIntel=provinceCharIntel;
 
+    // A battle line carries the attacker's (or ranking force's) charId. If that is not one of this
+    // player's own characters but they DID field a commander in that battle, re-file the line under
+    // their own hero so a defended/resumed battle lands in that hero's Chronicle section rather than
+    // in Kingdom Events. Non-participants (line-of-sight viewers) still get null → Kingdom Events.
+    const _reattributeCharId=(e)=>{
+      if(e.charId!=null&&ownCharIds.has(e.charId)) return e.charId;
+      if(e.type==='combat'&&e.provinceId!=null&&e.phase!=null&&e.phase>=0&&e.phase<=4){
+        const cmds=battleCommanders[e.provinceId+'@'+e.phase];
+        if(cmds){ const own=cmds.find(id=>ownCharIds.has(id)); if(own!=null) return own; }
+      }
+      return null;
+    };
     report.lastTurnLog=_filteredLog.map(e=>({
       // Preserve charId and phase so the player portal can group entries correctly
       type:e.type, text:e.text,
-      charId:ownCharIds.has(e.charId)?e.charId:null,
+      charId:_reattributeCharId(e),
       phase:e.phase??null,
     }));
     const {error:rErr}=await sb.from('game_players').update({
@@ -10763,6 +10822,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.25-2008</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-0833</div>
 </body>
 </html>
