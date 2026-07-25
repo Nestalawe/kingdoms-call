@@ -225,6 +225,13 @@ const ARMY_COST_MASTER={
   // ── Orcish ──
   'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
   'Wyvern Riders':4,'Orcish Longships':3,
+  // ── Primal (Druid 4/5) ──
+  // These were previously ABSENT from this table, so every cost lookup fell through to the default
+  // of 2 — a mercenary (or native-recruited) Elder Dragon or Manticore cost just 2g. Costs below
+  // match PRIMAL_ARMY_DEFS_P.cost, so mercenary hire and native recruitment now charge full price.
+  'Stone Giants':5,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':5,
+  'Basilisk Brood':4,'Sea Giants':5,'Kraken Tentacles':6,'Elder Dragons':8,'Crimson Rocs':6,
+  'Titan Warbeasts':7,'Leviathan Pods':8,
 };
 const ARMY_SPEED_MASTER={
   // ── Human ──
@@ -2481,7 +2488,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         // Home / tailored-neighbour cell: terrain (and sometimes tax band) was decided in Phase 2.
         terrain=con.terrain;
         if(con.taxBand==='poor') taxOverride=rP(1,3);
-        else if(con.taxBand==='prosperous') taxOverride=rP(4,7);
+        else if(con.taxBand==='prosperous') taxOverride=rP(4,6); // Prosperous = 3-6; capped at 6 so this band never leaks into the Rich tier (tax>=7)
       } else {
         // General fill: aim for ~40% sea overall, clustering next to existing water so seas form
         // coherent lakes / inland seas / coastlines rather than scattered single hexes.
@@ -2687,8 +2694,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       const chosen=PRIMAL_SEA_TYPES[Math.floor(Math.random()*PRIMAL_SEA_TYPES.length)];
       p.armyTypes=[chosen];
       p.race='Primal:'+chosen.replace(/s$/, '').replace('Kraken Tentacle','Kraken').replace('Leviathan Pod','Leviathan');
-      // Primal seas are Prosperous waters — tax 4-7, same band as prosperous land.
-      p.tax=rP(4,7);
+      // Primal seas are Prosperous waters — tax 4-6, same band as prosperous land. (Capped at 6:
+      // tax 7 displays as "Rich", so the old rP(4,7) was quietly minting rich sea provinces.)
+      p.tax=rP(4,6);
       // Defender count and quality based on tier
       const isTier5=chosen==='Leviathan Pods';
       const defCount=isTier5?rP(1,2):rP(1,3);
@@ -2763,7 +2771,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     const homeLandNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
     if(homeLandNbrs.length>=1 && !homeLandNbrs.some(n=>n.tax>=1&&n.tax<=3)) homeLandNbrs[0].tax=rP(1,3);
     const prospCandidates=homeLandNbrs.filter(n=>!(n.tax>=1&&n.tax<=3));
-    if(prospCandidates.length>=1 && !homeLandNbrs.some(n=>n.tax>=4&&n.tax<=7)) prospCandidates[0].tax=rP(4,7);
+    if(prospCandidates.length>=1 && !homeLandNbrs.some(n=>n.tax>=4&&n.tax<=6)) prospCandidates[0].tax=rP(4,6); // Prosperous neighbour = 4-6 (capped so it never lands in the Rich tier)
 
     // ── Guarantee: at least one land province adjacent to the home is the KING'S OWN RACE ──
     // Without this a king could be ringed entirely by foreign or primal country, so every early
@@ -4003,6 +4011,12 @@ function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='dr
 // and may soften a flyer up to 60% of its strength (vs 30% for ground units). The targeting logic
 // in each missile phase sends every archer at the enemy's flyers first when any are present.
 const MISSILE_PCT_BASE=0.06, MISSILE_PCT_PER_LVL=0.02, MISSILE_CAP_FRACTION=0.30;
+// PRE-BATTLE SOFTENING FLOOR. Archery is capped per-unit at MISSILE_CAP_FRACTION, but pre-battle
+// MAGIC and primal army strikes pour into _tempStrReduction with no cap of their own, so a unit hit
+// by several effects (e.g. Spiritwrack + Fireball + Choking Spores + arrows) could be softened to
+// zero before the real fighting began. This floor guarantees every unit still enters the melee with
+// at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away.
+const PREBATTLE_STR_FLOOR=0.25;
 function applyMissileHit(target, archSkill, firer, opts){
   opts=opts||{};
   // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
@@ -4067,7 +4081,7 @@ function seaPenalty(armyType, terrain){
       str=Math.floor(str*terrainMultFinal);
     }
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
-    if(army._tempStrReduction){str=Math.max(0,str-army._tempStrReduction);} // battle-only; cleared at battle end
+    if(army._tempStrReduction){ const floorStr=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr,str-army._tempStrReduction); } // battle-only; cleared at battle end. Floored so pre-battle softening never zeroes a unit before the melee.
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
     if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
     // Magic-item army bonuses carried by the leading commander.
@@ -6865,7 +6879,14 @@ const BATTLE_ARMY_SPELLS={
           if(!isNaN(id)) toProv=G.world.provinces[id];
         }
         if(!toProv){log('move',`${c.name}: invalid move target.`,{actor:c.player,targets:[c.player]});break;}
-        const sc=seaCap[c.id]||'land';
+        // Recompute sea capability from the LIVE force here rather than trusting the turn-start cache.
+        // The cache (seaCap[c.id]) is only refreshed at a handful of points, so a force that gained or
+        // lost fleets earlier this turn could be judged on a stale composition — the reported symptom
+        // was a force with enough hulls being told "need 3 hulls, but the force has only 4 fleet units.
+        // Move blocked." (the block read a stale 'land' capability while the message counted the live
+        // hulls). Recomputing here keeps the gate and the message in agreement. Cache is refreshed too.
+        const sc=getSeaCapability(c.armies||[]);
+        seaCap[c.id]=sc;
 
         // Determine which move pool to use
         const enteringSea=toProv.terrain==='sea';
@@ -8022,29 +8043,42 @@ const BATTLE_ARMY_SPELLS={
           log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season.${bonusReason?` ${bonusReason}.`:''}`,{actor:c.player,targets:[c.player]});
         }
 
-        // Tactical training: if practising Tactical and leading armies, train them
-        if(skill==='tactical'){
-          const tactLvl=c.skills.tactical||0;
+        // ── Unit drilling: Tactical trains LAND/AIR units, Naval trains SEA units ──
+        // Clean complements: a mixed land+fleet stack now advances its foot & flyers by practising
+        // Tactical and its ships & sea-beasts by practising Naval. (Previously Tactical trained every
+        // unit including fleets, and Naval trained nothing — this splits the two by domain so each
+        // skill improves the troops it actually commands in battle.)
+        // Local set (self-contained to avoid any resolveTurn-scope hazard) — the naval units that
+        // benefit from the Naval skill in a sea battle are exactly the ones Naval practice drills.
+        const NAVAL_DRILL_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+        if(skill==='tactical'||skill==='naval'){
+          const isNaval=skill==='naval';
+          const drillLvl=c.skills[skill]||0;
           const tiers=['Green','Average','Veteran','Crack','Elite'];
-          const TACT_BASE={Green:0.05,Average:0.04,Veteran:0.03,Crack:0.02,Elite:0};
+          const DRILL_BASE={Green:0.05,Average:0.04,Veteran:0.03,Crack:0.02,Elite:0};
+          // Tactical drills land & air units; Naval drills sea units.
+          const trainable=(c.armies||[]).filter(a=>!a._isSkeletal&&(isNaval?NAVAL_DRILL_TYPES.has(a.type):!NAVAL_DRILL_TYPES.has(a.type)));
           let trainedAny=false;
-          (c.armies||[]).forEach(army=>{
-            if(army._isSkeletal) return; // skeletal armies never gain experience/quality
+          trainable.forEach(army=>{
             if(army.quality==='Elite') return;
-            const baseChance=(TACT_BASE[army.quality]||0.03)*tactLvl;
+            const baseChance=(DRILL_BASE[army.quality]||0.03)*drillLvl;
             if(Math.random()<baseChance){
               const idx=tiers.indexOf(army.quality);
               if(idx>=0&&idx<4){
                 army.quality=tiers[idx+1];
-                log('hire',`${c.name}'s training drills: ${(army.unitName||army.type)} (${army.type}) advances to **${army.quality}**!`,{actor:c.player,targets:[c.player]});
+                log('hire',`${c.name}'s ${isNaval?'naval drills':'training drills'}: ${(army.unitName||army.type)} (${army.type}) advances to **${army.quality}**!`,{actor:c.player,targets:[c.player]});
                 trainedAny=true;
               }
             }
           });
-          if(!trainedAny&&(c.armies||[]).length>0){
-            log('system',`${c.name}'s training drills were thorough but no units achieved a breakthrough this season.`,{actor:c.player,targets:[c.player]});
-          } else if((c.armies||[]).length===0){
-            log('system',`${c.name} practises tactical theory alone — training armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
+          if(trainedAny){
+            // at least one promotion already logged above
+          } else if(trainable.length>0){
+            log('system',`${c.name}'s ${isNaval?'naval drills were thorough but no crews':'training drills were thorough but no units'} achieved a breakthrough this season.`,{actor:c.player,targets:[c.player]});
+          } else {
+            log('system',isNaval
+              ?`${c.name} drills naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
+              :`${c.name} practises tactical theory alone — leading land armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
           }
         }
         break;
@@ -10822,6 +10856,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-0833</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-0943</div>
 </body>
 </html>

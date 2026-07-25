@@ -1441,7 +1441,10 @@ async function openReport(gamePlayerId){
     </div>`;
     const POWER_COLORS={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'};
     const POWER_ICONS={Weak:'🐾',Moderate:'⚔',Powerful:'💀',Legendary:'🔥'};
-    intelHtml+=knownFeatures.map(f=>{
+    // Group features by the province they sit in, so a player can see at a glance which province
+    // holds which feature. Provinces are listed alphabetically; each feature drops the redundant
+    // inline province name now that it lives under a province heading.
+    const featureCard=(f)=>{
       const pColor=POWER_COLORS[f.monsterPower]||'#7a5510';
       const pIcon=POWER_ICONS[f.monsterPower]||'?';
       const powerBadge=f.monsterPower&&!f.cleared
@@ -1450,14 +1453,24 @@ async function openReport(gamePlayerId){
       // Perform Rite. Show that instead of an empty "Guardian:" line.
       if(f.ritualSite){
         return`<div class="intel-entry" style="border-left-color:#5a0a9a">
-          🌙 <strong>${f.name}</strong> — ${f.province}
+          🌙 <strong>${f.name}</strong>
           <br><span style="font-size:.78rem;color:#5a0a9a">A sacred site of the old faith — only a Pagan kingdom may Perform Rites here.</span>
         </div>`;
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
-        ${f.cleared?'✓':'⭐'} <strong>${f.name}</strong> — ${f.province}${powerBadge}
+        ${f.cleared?'✓':'⭐'} <strong>${f.name}</strong>${powerBadge}
         ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}</span>`}
       </div>`;
+    };
+    const featuresByProvince={};
+    knownFeatures.forEach(f=>{
+      const key=f.province||'Unknown province';
+      (featuresByProvince[key]=featuresByProvince[key]||[]).push(f);
+    });
+    intelHtml+=Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
+      const feats=featuresByProvince[prov];
+      const cards=feats.map(featureCard).join('');
+      return`<div style="font-family:'Cinzel',serif;font-size:.7rem;color:var(--gold);margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal">(${feats.length} feature${feats.length!==1?'s':''})</span></div>${cards}`;
     }).join('');
   }
 
@@ -2203,13 +2216,33 @@ function onActionChange(charId, ph, charIdx){
   const saved={action};
   wrap.innerHTML=buildTargetField(char, ph, saved);
 
-  // If this is a Hire Hero order, inject a future-order card for the hired hero
-  if(action==='Hire Hero'){
-    setTimeout(()=>injectHiredHeroOrders(charId, ph, charIdx),100);
-  }
+  // Sync the hired-hero future-order card. syncHiredHeroCard injects it when this is a Hire Hero
+  // order with a hero selected, and tears it down (and unregisters the placeholder) the moment the
+  // action moves to anything else — so the prospective hero's order window can't linger after the
+  // player changes their mind.
+  setTimeout(()=>syncHiredHeroCard(charId, ph),100);
   // Likewise for Resurrect — and this also tears the card down when the action moves away from
   // Cast Spell, so a stale card can't survive and be submitted.
   setTimeout(()=>syncResurrectCard(charId, ph),100);
+}
+
+// Inject the hired-hero card when Hire Hero is selected with a target; otherwise remove it and
+// unregister its placeholder character. Mirrors syncResurrectCard.
+function syncHiredHeroCard(charId, ph){
+  const containerId=`hired-hero-orders-${charId}-${ph}`;
+  const existing=document.getElementById(containerId);
+  const action=document.getElementById(`po-action-${charId}-${ph}`)?.value||'';
+  const heroId=getOrderTarget(charId, ph);
+  const wanted=(action==='Hire Hero'&&heroId);
+  if(!wanted){
+    if(existing){
+      const stale=existing.getAttribute('data-fakeid');
+      if(stale&&currentReport) currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==stale);
+      existing.remove();
+    }
+    return;
+  }
+  injectHiredHeroOrders(charId, ph, 99);
 }
 
 // ── RESURRECTION PRE-ORDERS ───────────────────────────────────────────────────
@@ -2395,6 +2428,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   card.id=containerId;
   card.className='orders-char-block';
   card.style.cssText='border:2px dashed #c8922a;opacity:0.9;margin-top:8px';
+  card.setAttribute('data-fakeid', hiredCharId); // lets syncHiredHeroCard unregister the placeholder on teardown
 
   // Build the char summary bar — show only the single highest skill, matching the
   // "Best skill" shown for this hero in the Intelligence report (not the full skill list).
@@ -3531,7 +3565,7 @@ function buildTargetField(c, ph, saved){
         const costNote=d<=1?'(kindred outlook — base rate)':`(${d} steps from ${kAlign})`;
         return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
       }).join('');
-      return`<select id="po-target-${c.id}-${ph}">${opts}</select>`;}
+      return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${opts}</select>`;}
 
     // ── GIVE ITEM ──
     case 'Give Item':{
@@ -4157,6 +4191,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-0833</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-0943</div>
 </body>
 </html>
