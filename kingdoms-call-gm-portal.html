@@ -1408,7 +1408,7 @@ function buildGMProvinceOrderData(gs, playerIndex){
         }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite}));
       })(),
       availableHeroes:(gs.characters||[]).filter(c=>c.player===null&&c.alive&&c.location===p.id&&!c._justDefeated&&!c._isNeutralGuard).map(h=>({
-        id:h.id,name:h.name,race:h.race,alignment:h.alignment,temper:h.temper,skills:h.skills||{},pay:h.pay||1,locationName:p.name,
+        id:h.id,name:h.name,race:h.race,alignment:h.alignment,temper:h.temper,skills:h.skills||{},pay:h.pay||1,locationId:p.id,locationName:p.name,
       })),
       garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality})),
     };
@@ -3210,6 +3210,7 @@ function buildTurnReport(gameState, playerIndex){
   const knownDeadHeroes=(gameState.heroGraveyard||[])
     .filter(g=>g.player===playerIndex||knownEver.has(g.id))
     .map(g=>({id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,race:g.race||null,
+      skills:g.skills||{},alignment:g.alignment||'Neutral',temper:g.temper||'Brave',locationId:g.location,
       locationName:gameState.world.provinces[g.location]?.name||'unknown',
       wasOwnHero:g.player===playerIndex}));
 
@@ -3420,7 +3421,7 @@ function buildTurnReport(gameState, playerIndex){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
         id:h.id, name:h.name, race:h.race, alignment:h.alignment, temper:h.temper,
         skills:h.skills||{}, topSkill:topSkill(h), pay:h.pay||1,
-        locationName:p.name,
+        locationId:p.id, locationName:p.name,
       }));
     }
   });
@@ -4846,7 +4847,11 @@ const BATTLE_ARMY_SPELLS={
 
     // Roll with variance — each side rolls 0 to 90% of the stronger side's strength
     // This gives ~90% win chance when one side is 2× stronger, scales with army size
-    const battleRollRange=Math.max(1, Math.max(atkStr, defStr) * 0.7);
+    // Dice basis unified with the PvP path (item 10): both scale the random swing off the per-unit
+    // effective strength sum (terrain/druid/ability/missile/naval/tactical), NOT the battle-level
+    // multipliers (fanaticism, discoveries, morale, home/defensive bonus, illusory). PvP uses
+    // atkRaw/defRaw; the NPC equivalents are rawAtkStr/rawDefStr.
+    const battleRollRange=Math.max(1, Math.max(rawAtkStr, rawDefStr) * 0.7);
     const atkRoll=Math.random()*battleRollRange;
     const defRoll=Math.random()*battleRollRange;
     // Apply discovery bonuses to final attack str
@@ -10886,6 +10891,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-1437</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-1515</div>
 </body>
 </html>

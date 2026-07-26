@@ -2317,11 +2317,15 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
   // Register a placeholder so buildTargetField/onActionChange can resolve this id. A raised hero
   // returns at full health but STRIPPED of items and armies (see white_resurrect), so the card
   // starts them with neither — order forms that read c.armies must see the truth, not their old kit.
+  // A raised hero returns where the body lies — i.e. where the CASTER is standing when the
+  // Resurrect resolves (the caster must be at the grave to cast it). Give the fake char that
+  // province so its order options (Recruit Armies, Search Feature, …) populate like any other hero.
+  const _casterLoc=predictedLocation(charId, ph);
   const fakeChar={
     id:fakeId, name:dead.name, isKing:false,
-    race:dead.race||'Unknown', alignment:'Neutral', temper:'Brave',
-    skills:{}, armies:[], items:[], pay:1,
-    locationId:null, locationName:'(raised where they fell)',
+    race:dead.race||'Unknown', alignment:dead.alignment||'Neutral', temper:dead.temper||'Brave',
+    skills:dead.skills||{}, armies:[], items:[], pay:1,
+    locationId:(dead.locationId!=null?dead.locationId:(_casterLoc?_casterLoc.id:null)), locationName:(_casterLoc&&_casterLoc.name)?_casterLoc.name:(dead.locationName||'(raised where they fell)'),
     effectiveSpeed:5, effectiveSeaSpeed:0,
     hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
     hp:null, maxHp:null,
@@ -2428,7 +2432,10 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     id:hiredCharId, name:heroData.name, isKing:false,
     race:heroData.race, alignment:heroData.alignment, temper:heroData.temper,
     skills:heroData.skills||{}, armies:[], items:[], pay:heroData.pay,
-    locationId:null, locationName:'(joining after hire)',
+    // A hero hired via Hire Hero stands in the SAME province as the hiring character (the hire
+    // requires it), so the newly-hired hero acts from there. Without a real locationId every
+    // province-dependent order option (Recruit Armies, Search Feature, …) came up empty.
+    locationId:(heroData.locationId!=null?heroData.locationId:null), locationName:heroData.locationName||'(joining after hire)',
     effectiveSpeed:5, effectiveSeaSpeed:0,
     hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
     hp:heroData.hp||14, maxHp:heroData.maxHp||14,
@@ -2670,9 +2677,25 @@ const UNIT_ABILITIES={
   'Warg Riders':'Run Them Down — if at least half your winning force are Wargs, you pursue the beaten commander automatically. Against neutral guards, who cannot be pursued, they end the fight fast instead: half casualties for you on a win.',
   'Orc Berserkers':'Outnumbered and Uncaring — +10% strength for every 25% the enemy outnumbers you (max +30%).',
   'Goblin Horde':'Sheer Numbers — +10% strength per other Goblin Horde in the force (max +30%).',
-  'Wyvern Riders':'Terror From Above — enemy fanaticism chance reduced by 15%. Against neutral guards, who have no fanaticism, they cut the defenders’ bonus by 10% instead.',
+  'Wyvern Riders':'Terror From Above — enemy fanaticism chance reduced by 15%. Against neutral guards, who have no fanaticism, they cut the defenders’ bonus by 10% instead. Acid Spit Volley: a pre-battle strike on one enemy unit (2–5).',
   'Orcish Longships':'Reaver Crews — the whole force fights at +25% in any battle the phase it lands from these ships.',
   'Whale Cohort':'Breach and Swamp — 25% chance each to sink one enemy fleet outright before the battle is fought.',
+  // ── Creature / Monster / primal army abilities ──
+  // Each carries an always-on signature multiplier PLUS a pre-battle strike (fires in the pre-battle
+  // magic phase; its chance rises with the commanding hero’s Druid skill — 20% base, +10% per level).
+  'Noble Griffons':'Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4). Chance rises with the commander’s Druid skill.',
+  'Giant Eagles':'Stoop on the Archers — ×1.25 strength when the enemy fields missile troops. Diving Talons: a pre-battle strike on one enemy unit (4–8).',
+  'Forest Ents':'Rooted Grove — ×1.3 strength in forest and jungle; regenerate in forest, but burn in desert. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each).',
+  'Stone Giants':'Mountain Bulwark — ×1.3 strength in mountains; devastating melee, very slow. Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7).',
+  'Cave Trolls':'Regenerating Hide — ×1.2 strength always, ×1.3 more in mountain or forest; each may shrug off death in a lost battle (30%). Hurled Rubble: a pre-battle strike on one enemy unit (4–7).',
+  'Manticore Pride':'Relentless Hunt — ×1.25 strength when attacking; always pursue a beaten foe. Spine Volley: a pre-battle strike across every enemy unit (2–4 each).',
+  'Basilisk Brood':'Stone Deterrent — ×1.25 strength when defending; their gaze saps the units they face. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
+  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields missile troops; enemy archers fire at −30% against them. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
+  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes the whole enemy front line in fire (3–6 each).',
+  'Titan Warbeasts':'Colossal Bulk — ×1.3 strength always, and they fight from the back line at full front-line effect. World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each).',
+  'Sea Giants':'Tidal Might — ×1.3 strength at sea (may also fight coastal land at −20%). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
+  'Kraken Tentacles':'Deepwater Grasp — ×1.35 strength at sea. Crushing Coils: a pre-battle strike that drags one enemy unit under (5–9).',
+  'Leviathan Pods':'Fleet-Sinker — ×1.4 strength at sea, the strongest naval unit in the game. Abyssal Maelstrom: a pre-battle strike across the whole enemy fleet-line (4–7 each).',
 };
 function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // Item 1: the unit ability descriptions were removed from the map pop-ups; instead they surface as a
@@ -4218,6 +4241,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-1437</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-1515</div>
 </body>
 </html>
