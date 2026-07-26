@@ -860,6 +860,14 @@ function buildChronicle(log, chars_for_log){
     // section, in the colour of the player who controls them. Enemy heroes take their kingdom colour;
     // wandering heroes and neutral-province guardians are dark grey.
     const _chronRep=viewingReport||currentReport||{};
+    // Guardians (the monster defending a feature) are named throughout the Chronicle by their monster
+    // name — tint each by its difficulty tier (Weak → Legendary) instead of the default neutral grey.
+    // Registered BEFORE the neutral sightings below so the difficulty colour wins (the first colour
+    // registered for a name key sticks). Matches the POWER_COLORS used on the Known Features card.
+    const _GUARD_POWER_COLORS={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'};
+    (_chronRep.knownFeatures||[]).forEach(f=>{
+      if(f&&f.monster&&f.monsterPower&&!f.cleared) _registerName(f.monster, _GUARD_POWER_COLORS[f.monsterPower]||null, false);
+    });
     (_chronRep.heroSightings||[]).forEach(s=>{
       if(s.type==='enemy') _registerName(s.name, s.kingdomColor||null, false);
       else _registerName(s.name, null, true); // wandering / neutral_guard
@@ -887,7 +895,7 @@ function buildChronicle(log, chars_for_log){
       const col=f.neutral?NEUTRAL_COLOR:(f.color||NEUTRAL_COLOR);
       const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
       const rows=(f.armies||[]).length
-        ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem">${unitEmoji(a.type)} ${armyLabel(a)}</div>`).join('')
+        ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem">${unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
         : `<div style="padding-left:16px;font-size:.82rem;opacity:.7">— no armies —</div>`;
       return `<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px"><div>${header}</div>${rows}</div>`;
     }
@@ -1270,7 +1278,7 @@ async function openReport(gamePlayerId){
   const CREATURES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
   const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
   const tag=CREATURES.has(a.type)?' [C]':MONSTERS.has(a.type)?' [M]':'';
-  return unitAbilityTip(a.type, unitEmoji(a.type)+' '+armyLabel(a)+tag);
+  return unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>'+tag);
 }).join('<br>')
         :'No armies — Move: 5 hexes/order';
       const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
@@ -1306,8 +1314,8 @@ async function openReport(gamePlayerId){
             ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>f.name).join(', ')}`
             :''}
           <br>Recruitable: ${(p.armyTypes||[]).map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)).join(' · ')||'none'}
-          ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} ${armyLabel(a)}`)).join('')}`:''}
-          ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} ${armyLabel(d)}`)).join('')}`:''}
+          ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${kingdom.color||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
+          ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`)).join('')}`:''}
         </div>
       </div>`).join('')
     :'<div style="color:#999;font-size:.85rem">No provinces owned yet.</div>';
@@ -1406,7 +1414,7 @@ async function openReport(gamePlayerId){
           line+=`<br><span style="font-size:.7rem;padding-left:14px;color:#2d7a2d">🔍 ${Object.entries(c.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}</span>`;
         }
         if(c.armies&&c.armies.length){
-          line+=`<br><span style="font-size:.72rem;padding-left:14px">${c.armies.map(a=>`${unitEmoji(a.type)} ${armyLabel(a)}`).join(', ')}</span>`;
+          line+=`<br><span style="font-size:.72rem;padding-left:14px">${c.armies.map(a=>`${unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span>`).join(', ')}</span>`;
         } else if(c.armies){
           line+=` — <span style="opacity:.75;font-size:.74rem">no armies</span>`;
         } else {
@@ -2441,9 +2449,16 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     hp:heroData.hp||14, maxHp:heroData.maxHp||14,
   };
 
-  // Register in currentReport.characters so buildTargetField and onActionChange can look it up
+  // Register in currentReport.characters so buildTargetField and onActionChange can look it up.
+  // Remove any placeholder previously registered for THIS hire slot (same hiring character + phase),
+  // not merely the same hero — otherwise swapping the chosen hero in a Hire Hero phase leaves the
+  // OLD hero's fake character registered with no card in the DOM, and the submit-time validation
+  // then flags its (now cardless) phases as "no action selected". The card element is already
+  // slot-keyed (containerId above), so only the character registration needed the same treatment.
+  // Slot id suffix: _via_<charId>_ph<ph>.
   if(currentReport){
-    currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==hiredCharId);
+    const slotSuffix=`_via_${charId}_ph${ph}`;
+    currentReport.characters=(currentReport.characters||[]).filter(c=>!(typeof c.id==='string'&&c.id.startsWith('hired_')&&c.id.endsWith(slotSuffix)));
     currentReport.characters.push(fakeChar);
   }
 
@@ -4173,7 +4188,7 @@ function renderMapIntoSvg(svgEl, report){
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kc) h+=_kc;
-          if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} ${armyLabel(d)}`).join('')}`;
+          if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`).join('')}`;
         } else if(isVisited){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
@@ -4241,6 +4256,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-1515</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-1940</div>
 </body>
 </html>

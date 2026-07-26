@@ -4845,22 +4845,24 @@ const BATTLE_ARMY_SPELLS={
     const discArmyBonus=1+discoveryArmyBonus(c.player);
     if(discArmyBonus>1) narrative.push(`Kingdom discoveries grant +${((discArmyBonus-1)*100).toFixed(0)}% army strength.`);;
 
-    // Roll with variance — each side rolls 0 to 90% of the stronger side's strength
-    // This gives ~90% win chance when one side is 2× stronger, scales with army size
-    // Dice basis unified with the PvP path (item 10): both scale the random swing off the per-unit
-    // effective strength sum (terrain/druid/ability/missile/naval/tactical), NOT the battle-level
-    // multipliers (fanaticism, discoveries, morale, home/defensive bonus, illusory). PvP uses
-    // atkRaw/defRaw; the NPC equivalents are rawAtkStr/rawDefStr.
-    const battleRollRange=Math.max(1, Math.max(rawAtkStr, rawDefStr) * 0.7);
-    const atkRoll=Math.random()*battleRollRange;
-    const defRoll=Math.random()*battleRollRange;
     // Apply discovery bonuses to final attack str
     const finalAtkMod=discArmyBonus;
     // DIVINE — Consecrate: an Undead/Evil kingdom assaulting consecrated ground fights at −15%.
     const _consecNPC=prov.owner!=null&&prov.owner!==c.player&&G.players[prov.owner]?.consecratedProvId===prov.id&&(align==='Undead'||align==='Evil');
     if(_consecNPC) narrative.push(`✨ The ground of ${prov.name} is consecrated — ${cName}'s ${align.toLowerCase()} host falters on hallowed earth (−15% strength).`);
-    const finalAtk=atkStr*fanMult*finalAtkMod*(_consecNPC?0.85:1)+atkRoll;
-    const finalDef=defStr+defRoll;
+    // Post-multiplier base strengths — every battle-level multiplier (fanaticism, discoveries,
+    // morale, home/defensive bonus, illusory, consecrate) folded in, BEFORE the dice.
+    const atkBaseStr=atkStr*fanMult*finalAtkMod*(_consecNPC?0.85:1);
+    const defBaseStr=defStr;
+    // Roll with variance — each side rolls 0 to 70% of the stronger side's POST-multiplier strength.
+    // Dice basis unified with the PvP path: both scale the random swing off the FULL effective
+    // strength each force brings to the field (all multipliers applied), so luck is proportional
+    // to what the armies are actually worth in this battle.
+    const battleRollRange=Math.max(1, Math.max(atkBaseStr, defBaseStr) * 0.7);
+    const atkRoll=Math.random()*battleRollRange;
+    const defRoll=Math.random()*battleRollRange;
+    const finalAtk=atkBaseStr+atkRoll;
+    const finalDef=defBaseStr+defRoll;
 
     // (Battle-line width is applied above in the strength calculations, using the
     //  terrain-based front width. No separate cosmetic line needed here.)
@@ -6265,9 +6267,6 @@ const BATTLE_ARMY_SPELLS={
     if(atkDiscBonus>1) narrative.push(`${atkName}'s kingdom discoveries: +${((atkDiscBonus-1)*100).toFixed(0)}% army str.`);
     if(defDiscBonus>1) narrative.push(`${defName}'s kingdom discoveries: +${((defDiscBonus-1)*100).toFixed(0)}% army str.`);
 
-    const battleRollRangePvP=Math.max(1, Math.max(atkRaw, defRaw) * 0.7);
-    const atkDice=Math.random()*battleRollRangePvP;
-    const defDice=Math.random()*battleRollRangePvP;
     // Illusory Terrain: a player fighting here who did not cast the illusion fights at 80%.
     const _illCasterP = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
     const atkIllP = (_illCasterP!=null && atk.player!==_illCasterP) ? 0.8 : 1;
@@ -6278,8 +6277,16 @@ const BATTLE_ARMY_SPELLS={
     // consecrated province).
     const _consecPenalty=(_consecratedHere&&(atkAlign==='Undead'||atkAlign==='Evil'))?0.85:1;
     if(_consecPenalty<1) narrative.push(`✨ The ground of ${prov.name} is consecrated — ${atkName}'s ${atkAlign.toLowerCase()} host falters on hallowed earth (−15% strength).`);
-    const atkStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP*_consecPenalty+atkDice;
-    const defStr=(defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP+defDice;
+    // Post-multiplier base strengths — every battle-level multiplier folded in, BEFORE the dice.
+    const atkBaseStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP*_consecPenalty;
+    const defBaseStr=(defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP;
+    // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
+    // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
+    const battleRollRangePvP=Math.max(1, Math.max(atkBaseStr, defBaseStr) * 0.7);
+    const atkDice=Math.random()*battleRollRangePvP;
+    const defDice=Math.random()*battleRollRangePvP;
+    const atkStr=atkBaseStr+atkDice;
+    const defStr=defBaseStr+defDice;
     // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
     [atk,def].forEach(x=>{ if(!x)return; const rx=G.characters[x.id]; if(rx) delete rx._phantasmalBonus; delete x._phantasmalBonus; });
 
@@ -10891,6 +10898,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-1515</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-1940</div>
 </body>
 </html>
