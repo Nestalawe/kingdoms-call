@@ -2245,6 +2245,9 @@ function rollMagicItem(monsterPower){
 
 
 function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+// Starting neutral defender count by wealth tier — Rich(tax>=8) 3-4 / Prosperous(tax>=4) 2-3 / Poor 1-2.
+// Single source of truth used by every world-gen defender pass (land, sea, primal, home-race conversion).
+function neutralDefCount(tax){return tax>=8?rP(3,4):tax>=4?rP(2,3):rP(1,2);}
 
 // ── Percentage dice (item 8) ─────────────────────────────────────────────────
 // d100() returns an integer 1–100. A percentage check SUCCEEDS when the rolled
@@ -2611,15 +2614,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       let neutralDefenders=[];
       if(terrain!=='sea'){
         const isPrimalProv=race&&race.startsWith('Primal:');
-        // Primal provinces: 2-4 defenders at higher quality; normal: 1-3 Average
-        // Neutral army count based on province wealth — richer provinces are better defended
-        let dcMin=2,dcMax=3; // Poor default
-        if(!isPrimalProv){
-          if(baseTax>=8) {dcMin=4;dcMax=5;}       // Rich
-          else if(baseTax>=4) {dcMin=3;dcMax=4;}  // Prosperous
-          else {dcMin=2;dcMax=3;}                  // Poor
-        }
-        const dc=isPrimalProv?rP(2,4):rP(dcMin,dcMax);
+        // Neutral army count by wealth tier — Rich 3-4 / Prosperous 2-3 / Poor 1-2.
+        // Applies to humanoid AND primal land alike; primal quality still leans Veteran below.
+        const dc=neutralDefCount(baseTax);
         const defQuality=isPrimalProv?(Math.random()<0.5?'Veteran':'Average'):'Average';
         // Starting neutral defenders draw only from NON-Garrison army types (garrisons stay in
         // armyTypes so they remain recruitable once the province is owned, but no neutral army
@@ -2714,7 +2711,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       p.tax=rP(4,6);
       // Defender count and quality based on tier
       const isTier5=chosen==='Leviathan Pods';
-      const defCount=isTier5?rP(1,2):rP(1,3);
+      const defCount=neutralDefCount(p.tax); // p.tax set to 4-6 above -> Prosperous 2-3
       const defQuality=isTier5?'Veteran':Math.random()<0.4?'Veteran':'Average';
       const unitName=PRIMAL_UNIT_NAMES[chosen]?.[Math.floor(Math.random()*5)]||'the Ancient';
       p.neutralDefenders=Array.from({length:defCount},()=>({type:chosen,quality:defQuality,race:'Primal',unitName:armyUnitName(chosen)}));
@@ -2734,10 +2731,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       // Whale Cohort waters — Poor (tax 1-3)
       p.armyTypes=['Whale Cohort'];
       p.race='Primal:Whale';
-      const defCount=rP(1,2);
+      p.tax=rP(1,3); // Poor waters — set before count so the wealth helper reads it
+      const defCount=neutralDefCount(p.tax);
       p.neutralDefenders=Array.from({length:defCount},()=>({type:'Whale Cohort',quality:'Average',race:'Primal',unitName:armyUnitName('Whale Cohort')}));
       p.npcArmies=defCount;
-      p.tax=rP(1,3);
     } else {
       // Open water — no armies, no defenders, tax exactly 1.
       p.armyTypes=[];
@@ -2823,7 +2820,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         // pass, so the hero picks up the corrected armies; province wealth still sets the count.
         const cDrawPool=conv.armyTypes.filter(t=>!t.toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t));
         const cPool=cDrawPool.length>0?cDrawPool:conv.armyTypes;
-        const cCount=conv.tax>=8?rP(4,5):conv.tax>=4?rP(3,4):rP(2,3);
+        const cCount=neutralDefCount(conv.tax);
         conv.neutralDefenders=Array.from({length:cCount},()=>{
           const dt=cPool[Math.floor(Math.random()*cPool.length)];
           return{type:dt,quality:'Average',race:sp.race,unitName:armyUnitName(dt)};
@@ -10992,6 +10989,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.30-1937</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.30-1950</div>
 </body>
 </html>
