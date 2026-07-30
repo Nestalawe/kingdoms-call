@@ -704,6 +704,15 @@ function getAlreadyRecruitedThisTurn(charId,upToPhaseExclusive){
   return recruited;
 }
 
+// Effective magic-skill level = base skill + magic-item bonuses to that school, clamped 0..5.
+// buildTargetField runs at module top level and CANNOT see runTurn's effStat(), so this mirrors it
+// for the order-form spell dropdown (an item like Death's Finger Ring must let a 0-skill hero cast).
+function _gmEffMagicLvl(c,school){
+  const base=((c&&c.skills)||{})[school]||0;
+  const bonus=((c&&c.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school)?(it.effect.bonus||0):0),0);
+  return Math.max(0,Math.min(5,base+bonus));
+}
+
 function buildTargetField(c,ph,saved){
   const action=saved.action||'';
   const target=saved.target||'';
@@ -725,9 +734,9 @@ function buildTargetField(c,ph,saved){
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features here" disabled>`;}
     case 'Cast Spell':{
       const skills=c.skills||{};
-      const spellList=Object.entries(SPELLS_BY_SCHOOL).filter(([school])=>(skills[school]||0)>=1)
+      const spellList=Object.entries(SPELLS_BY_SCHOOL).filter(([school])=>_gmEffMagicLvl(c,school)>=1)
         .flatMap(([school,list])=>list.map(sp=>({sp,school})));
-      const spells=spellList.map(({sp,school})=>`<option value="${sp}" ${target===sp?'selected':''}>${sp} (${SKILL_LABELS[school]} Lv${skills[school]})</option>`).join('');
+      const spells=spellList.map(({sp,school})=>`<option value="${sp}" ${target===sp?'selected':''}>${sp} (${SKILL_LABELS[school]} Lv${_gmEffMagicLvl(c,school)})</option>`).join('');
       if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known" disabled>`;
       // ── Secondary target — same rules as the player portal / GM engine ──
       const selSpell=target||spellList[0]?.sp||'';
@@ -761,7 +770,7 @@ function buildTargetField(c,ph,saved){
           // Charm / Psychic Blast / Telekinetic Storm / Curse / Control Undead
           const others=(report.gmOtherChars||[]).filter(x=>{
             if(x.locationId!==casterLocG) return false;
-            if(selSpell==='Charm') return !x.isKing&&(x.player===null||(x.armies||0)===0);
+            if(selSpell==='Charm') return !x.isKing&&(x.armies||0)===0&&(x.player===null||x.player!==c.player);
             if(selSpell==='Telekinetic Storm') return (x.armies||0)>0;
             return true;
           });
@@ -2691,12 +2700,12 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   });
   // Sea provinces: only non-humanoid sea armies — no Fleet/Corsair/Galleys/Longships
   // Sea provinces get non-humanoid sea armies only (no player fleets). Their army pool and tax are
-  // decided purely by type: 40% Primal (Prosperous, tax 4-7), 20% Whale Cohort (Poor, tax 1-3),
-  // 40% open water (no armies, tax 1).
+  // decided purely by type: 20% Primal (Prosperous, tax 4-6), 20% Whale Cohort (Poor, tax 1-3),
+  // 60% open water (no armies, tax 1).
   const PRIMAL_SEA_TYPES=['Sea Giants','Kraken Tentacles','Leviathan Pods'];
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
     const r=Math.random();
-    if(r<0.40){
+    if(r<0.20){
       const chosen=PRIMAL_SEA_TYPES[Math.floor(Math.random()*PRIMAL_SEA_TYPES.length)];
       p.armyTypes=[chosen];
       p.race='Primal:'+chosen.replace(/s$/, '').replace('Kraken Tentacle','Kraken').replace('Leviathan Pod','Leviathan');
@@ -2721,7 +2730,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         const sfMonster={...(seaMonsters.length>0?seaMonsters:MONSTERS_P)[Math.floor(Math.random()*(seaMonsters.length||MONSTERS_P.length))]};
         p.features=[{name:sfName,discovered:false,cleared:false,treasure:Math.max(1,rP(sfMonster.minG,sfMonster.maxG)),monster:{...sfMonster}}];
       }
-    } else if(r<0.60){
+    } else if(r<0.40){
       // Whale Cohort waters — Poor (tax 1-3)
       p.armyTypes=['Whale Cohort'];
       p.race='Primal:Whale';
@@ -3119,6 +3128,14 @@ function buildTurnReport(gameState, playerIndex){
     id:c.id,name:c.name,locationId:c.location,locationName:gameState.world.provinces[c.location]?.name||'?',
     isKing:c.isKing,race:c.race,alignment:c.alignment,armies:(c.armies||[]).length,
     player:c.player, isWandering:c.player===null,
+    // Wandering heroes are unowned and public (like a hireable hero), so it is safe to surface their
+    // full detail — the player portal needs it to build a Charm order card if this hero is charmed
+    // into their service. Owned enemy heroes get NONE of this (no intel leak).
+    // Charm-eligible heroes (unowned OR enemy) leading NO armies are surfaced in full so the player
+    // portal can build a Charm order card for them. They're standing unarmed in a province where you
+    // have a character — close enough for your hero to take their measure. A hero leading troops isn't
+    // charmable, so gets none of this (no intel leak on a fielded commander).
+    ...((!c.isKing&&(c.armies||[]).length===0)?{skills:{...(c.skills||{})},temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
   }));
 
   // ── Persistent "ever seen" character intel (Clairvoyance targeting) ──
@@ -3729,6 +3746,22 @@ async function runTurn(){
         G.turnOrders[realHeroId]=existing;
         return;
       }
+      // Handle synthetic CHARM IDs: 'charm_HEROID_via_CASTERID_phPH'. A player who orders Charm on a
+      // wandering hero may pre-write orders for the hero they intend to sway, exactly as for a hire or
+      // a resurrect. Held as PENDING and only written into turnOrders inside the successful psychic_charm
+      // branch — never here — so a failed cast (or a rival charming the same hero first) leaves no trace.
+      const charmMatch=charId.match(/^charm_(\d+)_via_(\d+)_ph(\d+)$/);
+      if(charmMatch){
+        if(!G._pendingCharmOrders) G._pendingCharmOrders=[];
+        G._pendingCharmOrders.push({
+          heroId:parseInt(charmMatch[1]),
+          casterId:parseInt(charmMatch[2]),
+          castPhase:parseInt(charmMatch[3]),
+          player:gp.player_index,
+          orders:phaseOrders,
+        });
+        return;
+      }
       G.turnOrders[charId]=phaseOrders;
     });
     // Apply encounter plans to characters.
@@ -3737,7 +3770,7 @@ async function runTurn(){
     // hired — and now a raised — hero used to be collected by the portal and then silently dropped
     // here, leaving them fighting on the default ME plan.
     Object.entries(epObj).forEach(([charId,plan])=>{
-      const syn=String(charId).match(/^(?:hired|resurrect)_(\d+)_via_\d+_ph\d+$/);
+      const syn=String(charId).match(/^(?:hired|resurrect|charm)_(\d+)_via_\d+_ph\d+$/);
       const realId=syn?parseInt(syn[1]):parseInt(charId);
       const ch=G.characters.find(c=>c.id===realId);
       if(ch&&plan) ch.encounterPlan=plan;
@@ -4447,7 +4480,7 @@ const BATTLE_ARMY_SPELLS={
         const castRoll=d100();
         narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
-          trySkillGain(c, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
+          trySkillGain(c, school, SKILLGAIN_STD, narrative); // magic school gain on a successful battle cast (single roll — see below)
           if(spellName==='Fireball'){
             // The strongest enemy unit has its base strength halved for the battle.
             if(defenders.length>0){ const d=defenders.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b); const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5)); d._tempStrReduction=(d._tempStrReduction||0)+cut; narrative.push(`  🔥 Fireball engulfs the enemy's strongest unit, ${d.unitName||d.type} — its strength is halved this battle (−${cut}).`); }
@@ -4485,8 +4518,10 @@ const BATTLE_ARMY_SPELLS={
             if(missileDefs.length>0){ missileDefs.forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*0.5);}); narrative.push(`  Spiritwrack unstrings the enemy's bows — ${missileDefs.length} missile unit${missileDefs.length!==1?'s':''} fight at half strength.`); }
             else narrative.push(`  Spiritwrack howls, but the enemy fields no missile troops.`);
           }
-          // Small chance to improve the spell school skill
-          if(Math.random()<0.05&&spellLvl<5){c.skills[school]=(c.skills[school]||0)+1;narrative.push(`  ${cName}'s ${school} skill improves to ${c.skills[school]}!`);}
+          // NOTE: the magic-school skill-up is handled ONCE by trySkillGain(c, school, …, narrative)
+          // above. A second inline roll used to live here and double-dipped: combatVsNPC fights on a
+          // shallow atkCopy={...attacker}, so c.skills is the SAME object as the real hero's, and both
+          // rolls mutated it — a single successful cast could raise the school twice in one phase.
         } else {
           narrative.push(`  The spell fizzles — no pre-battle magical effect.`);
         }
@@ -5501,7 +5536,7 @@ const BATTLE_ARMY_SPELLS={
   function pcMeleeStrike(actor, foe, narrative){
     const hit=pcHitChance(actor,foe,50);
     const roll=Math.random()*100;
-    narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}%${roll<hit?' ✓':' ✗'})`);
+    narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}% to hit [roll ${Math.floor(roll)}]${roll<hit?' ✓':' ✗'})`);
     if(roll<hit){
       actor._didMelee=true;
       const dmg=pcMeleeDamage(actor,foe);
@@ -5603,12 +5638,12 @@ const BATTLE_ARMY_SPELLS={
         // move succeeds — closing the gap, or breaking back out of a melee the foe is holding.
         if(state.range==='spell'){
           const ch=pcMoveCheck(actor,foe,'advance'), roll=Math.random()*100;
-          narrative.push(`  ${actor.name} moves up to firing range (${ch.toFixed(0)}%${roll<ch?' ✓':' ✗'})`);
+          narrative.push(`  ${actor.name} moves up to firing range (${ch.toFixed(0)}% [roll ${Math.floor(roll)}]${roll<ch?' ✓':' ✗'})`);
           if(roll>=ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
           state.range='bow';
         } else if(state.range==='melee'){
           const ch=pcMoveCheck(actor,foe,'withdraw'), roll=Math.random()*100;
-          narrative.push(`  ${actor.name} tries to break away to firing range (${ch.toFixed(0)}%${roll<ch?' ✓':' ✗'})`);
+          narrative.push(`  ${actor.name} tries to break away to firing range (${ch.toFixed(0)}% [roll ${Math.floor(roll)}]${roll<ch?' ✓':' ✗'})`);
           if(roll>=ch){ narrative.push(`  ${foe.name} stays right on top of ${actor.name} — no room to draw.`); break; }
           state.range='bow';
           narrative.push(`  ${actor.name} disengages to bow range.`);
@@ -5645,7 +5680,7 @@ const BATTLE_ARMY_SPELLS={
         let chance=Math.max(5,Math.min(95, base+temperOf(actor.temper).fleeMod+(actor.status.fleeBonus||0)-(actor.status.fleePenalty||0)));
         if(actor.status.fleeDoubled){ chance=Math.min(95, chance*2); } // Charm combat effect
         const roll=Math.random()*100;
-        narrative.push(`  ${actor.name} attempts to flee (${chance.toFixed(0)}%${roll<chance?' ✓':' ✗'})`);
+        narrative.push(`  ${actor.name} attempts to flee (${chance.toFixed(0)}% [roll ${Math.floor(roll)}]${roll<chance?' ✓':' ✗'})`);
         if(roll<chance){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
         else { const d=rng(1,4); const dealt=pcTakeHit(actor,d,narrative,foe.name,'parting blow'); narrative.push(`  ${actor.name} fails to escape and is struck for ${dealt} damage. (HP ${Math.max(0,Math.round(actor.hp))})`); }
         break;
@@ -6084,7 +6119,7 @@ const BATTLE_ARMY_SPELLS={
       const castRoll=d100();
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
-      trySkillGain(caster, school, SKILLGAIN_STD); // magic school gain on a successful battle cast
+      trySkillGain(caster, school, SKILLGAIN_STD, narr); // magic school gain on a successful battle cast
       if(spellName==='Fireball'){
         if(targets.length>0){const d=targets.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b);const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;narr.push(`  🔥 Fireball halves the enemy's strongest unit, ${d.unitName||d.type} (−${cut}).`);}
       } else if(spellName==='Telekinetic Storm'){
@@ -8637,8 +8672,25 @@ const BATTLE_ARMY_SPELLS={
           if(!t||t.location!==c.location){log('system',`Charm: no valid target hero stands in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(t.player===c.player){log('system',`Charm cannot be used on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           if(t.isKing){log('system',`Charm cannot sway a king.`,{actor:c.player,targets:[c.player]});break;}
+          // Charm sways only a LONE hero — one leading no armies (wandering OR enemy alike). A hero at
+          // the head of a column is beyond a single enchanter's reach.
+          if((t.armies||[]).length>0){log('system',`${c.name}'s Charm cannot grip ${t.name} — a hero leading troops is beyond its reach.`,{actor:c.player,targets:[c.player]});break;}
+          // Apply this player's pre-written orders for the swayed hero to phases AFTER the cast, then
+          // default any remaining post-cast phase to Defend. Matched on caster+hero+player so a rival's
+          // pre-orders for the same hero are ignored. Shared by both charm outcomes.
+          const _applyCharmOrders=(hero)=>{
+            const pend=(G._pendingCharmOrders||[]).find(x=>x.heroId===hero.id&&x.casterId===c.id&&x.player===c.player);
+            const slots=G.turnOrders[hero.id]||[null,null,null,null,null];
+            let applied=0;
+            if(pend&&Array.isArray(pend.orders)){
+              pend.orders.forEach((o,pi2)=>{ if(pi2>ph&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){ slots[pi2]=o; applied++; } });
+            }
+            for(let pz=0;pz<5;pz++){ if(pz>ph&&!slots[pz]) slots[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
+            G.turnOrders[hero.id]=slots;
+            return applied;
+          };
           if(t.player===null){
-            // Wandering hero — enters your service for free (you still pay upkeep).
+            // Wandering hero — enters your service permanently for free (you still pay upkeep).
             // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
             const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'));
             if(_chWage==null){
@@ -8646,14 +8698,31 @@ const BATTLE_ARMY_SPELLS={
               break;
             }
             t.pay=_chWage;
-            t.player=c.player; t.hiredInPhase=ph;
+            t.player=c.player; t.hiredInPhase=ph;    // hiredInPhase gates acting to ph+1 (permanent join)
+            delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
             if(typeof setMovePool==='function') setMovePool(t);
             log('hire',`✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            const applied=_applyCharmOrders(t);
+            if(applied>0) log('system',`${t.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player]});
           } else {
-            // Enemy hero — only one leading NO armies can have their command seized for the turn.
-            if((t.armies||[]).length>0){log('system',`Charm can only seize command of an enemy hero leading no armies — ${t.name} still commands troops.`,{actor:c.player,targets:[c.player]});break;}
-            t._charmedByPlayer=c.player; t._charmedForPhase=ph; t._charmOriginalPlayer=t.player;
-            log('hire',`✨ ${c.name}'s Charm grips ${t.name} — you command them for the rest of this turn; they return to their own lord at turn's end.`,{actor:c.player,targets:[c.player,t.player].filter(x=>x!=null),provinceId:prov.id});
+            // Enemy hero leading no armies — command seized for the REST OF THE TURN. Implemented as a
+            // temporary player-swap: they act on YOUR orders and fight under your banner from the next
+            // phase (actingThisPhase() gates them via _charmControlFrom). At Early Winter's turn-end
+            // economy they revert to their own lord, who pays their wages — see the charm-revert pass
+            // in the ph===4 block. A charmable enemy hero leads no armies (checked above), so this
+            // never transfers a column or triggers an invasion by itself.
+            const _origOwner=t.player;
+            t._charmOriginalPlayer=_origOwner;
+            t._charmedByPlayer=c.player;
+            t._charmedForPhase=ph;
+            t._charmTempControl=true;
+            t._charmControlFrom=ph;
+            t.player=c.player;
+            delete t._defend; delete t._pursuit; delete t._defendReactedPhase; // drop any watch/chase set under their old lord
+            if(typeof setMovePool==='function') setMovePool(t);
+            const applied=_applyCharmOrders(t);
+            log('hire',`✨ ${c.name}'s Charm grips ${t.name} — they fall under ${player.name}'s command until the season turns, when they return to their own lord (who still pays their wages).${applied>0?` ${applied} phase${applied!==1?'s':''} of orders await them.`:''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`⚠ ${t.name} is ensorcelled by an enemy Charm and slips your command until the season turns.`,{actor:_origOwner,targets:[_origOwner]});
           }
         }
         else if(fn==='psychic_oratory'){
@@ -9687,6 +9756,9 @@ const BATTLE_ARMY_SPELLS={
     return (G.characters||[]).filter(c=>{
       if(c.player===null||!c.alive) return false;
       if(c.hiredInPhase!=null&&c.hiredInPhase>=0&&ph<=c.hiredInPhase) return false;
+      // A charmed ENEMY hero is under your banner (c.player already swapped) but must not act on your
+      // orders until the phase AFTER the cast — mirrors the hiredInPhase gate for a sworn wanderer.
+      if(c._charmTempControl&&c._charmControlFrom!=null&&ph<=c._charmControlFrom) return false;
       return true;
     });
   }
@@ -9779,14 +9851,21 @@ const BATTLE_ARMY_SPELLS={
     return edges;
   }
 
-  // Initiative comparator — AK [3.0]: highest total ability first (March ×3), Defend orders always
-  // last, ties broken by lowest character number.
+  // Initiative comparator — AK [3.0]: highest total ability first (March ×3), ties broken by lowest
+  // character number. Actions resolve in tiers: all non-relocating orders (cast, recruit, give,
+  // search, spy, …) settle FIRST while everyone is still in their start-of-phase positions, THEN
+  // Move/Pursue relocate and any battles they start are fought, and Defend orders always come last.
+  // So a fast general can no longer march out and start a fight before a co-located caster gets to
+  // act. Dependency edges (buildPhaseIntents → phaseDependencies, e.g. a hero marching in to receive
+  // an item) still override this tiering through Kahn's topological sort, so the AK [3.0] exceptions
+  // that require a specific move-before/after ordering are preserved.
+  function _phaseActionTier(d){ return d==='defend'?2:(d==='move'||d==='pursue')?1:0; }
   function phaseInitCompare(ph){
     return (a,b)=>{
       const aD=normaliseAction((G.turnOrders[a.id]||[])[ph]);
       const bD=normaliseAction((G.turnOrders[b.id]||[])[ph]);
-      if(aD==='defend'&&bD!=='defend') return 1;
-      if(bD==='defend'&&aD!=='defend') return -1;
+      const at=_phaseActionTier(aD), bt=_phaseActionTier(bD);
+      if(at!==bt) return at-bt;                 // non-move → move/pursue → defend
       const d=totalInit(b)-totalInit(a);
       if(d!==0) return d;
       return a.id-b.id;
@@ -10282,6 +10361,21 @@ const BATTLE_ARMY_SPELLS={
 
     // Hero pay and army wages at Early Winter
     if(ph===4){
+      // ── Charm revert ── A hero whose command was seized by an enemy Charm returns to their own lord
+      // as the season turns. This happens BEFORE tax and wages so the original owner (not the charmer)
+      // pays their upkeep, per the spell's terms. Order/battle control has already run for the turn.
+      (G.characters||[]).forEach(hc=>{
+        if(hc&&hc._charmTempControl&&hc._charmOriginalPlayer!=null){
+          const back=hc._charmOriginalPlayer;
+          if(hc.player!==back){
+            hc.player=back;
+            if(typeof setMovePool==='function') setMovePool(hc);
+          }
+          delete hc._charmTempControl; delete hc._charmControlFrom;
+          delete hc._charmedByPlayer; delete hc._charmedForPhase; delete hc._charmOriginalPlayer;
+          if(hc.alive) log('system',`As the season turns, the enchantment on ${hc.name} fades and they return to their own lord.`,{actor:back,targets:[back]});
+        }
+      });
 const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       // Army cost lookup (matches ARMY_TYPES cost values in game.js)
       
@@ -10898,6 +10992,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.26-1940</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.30-1445</div>
 </body>
 </html>

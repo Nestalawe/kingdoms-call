@@ -100,6 +100,48 @@ section{display:none;}.section-active{display:block;}
 .phase-order select,.phase-order input{margin-bottom:0;font-size:.85rem;padding:5px 7px;}
 .detail-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
 .detail-header h2{margin:0;border:none;padding:0;flex:1;}
+
+/* ─── MOBILE (≤820px): show ONE of Map / Report / Orders at a time, switched by a fixed bottom
+   tab bar. Desktop (>820px) is completely unaffected — the tab bar is hidden and all three columns
+   render side by side exactly as before. Pure CSS + a tiny setMobileView() toggle; no engine touch. */
+#mobile-tabbar{display:none;}
+@media (max-width:820px){
+  #rp-layout{flex-direction:column!important;width:100vw!important;min-height:0!important;overflow-x:hidden!important;}
+  #rp-layout>.rp-spacer{display:none!important;}
+  #rp-map-col,#rp-report-col,#orders-column{
+    width:100vw!important;min-width:0!important;max-width:100vw!important;
+    position:static!important;height:auto!important;border-right:none!important;
+    box-sizing:border-box;padding-bottom:66px!important;         /* clear the fixed tab bar */
+  }
+  /* Show only the column matching the active view */
+  #rp-layout.mv-map    #rp-report-col,
+  #rp-layout.mv-map    #orders-column,
+  #rp-layout.mv-report #rp-map-col,
+  #rp-layout.mv-report #orders-column,
+  #rp-layout.mv-orders #rp-map-col,
+  #rp-layout.mv-orders #rp-report-col{display:none!important;}
+  /* Map panel: scroll & pan inside the panel; the SVG is drawn large enough to read. The ⛶ Fullscreen
+     button remains for a bigger view, and native browser pinch-zoom is left enabled. */
+  #rp-map-col{background:#0e0a04;}
+  #report-map-container{height:60vh!important;overflow:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
+  #report-map-svg{width:700px!important;height:auto!important;max-width:none!important;}
+  /* Orders: stack each phase row's fields full-width; 16px inputs stop iOS auto-zoom on focus. */
+  .phase-order{grid-template-columns:1fr!important;gap:4px!important;}
+  .phase-order select,.phase-order input{font-size:16px!important;padding:9px 8px!important;}
+  #orders-bottom{position:static!important;}   /* don't overlap the tab bar with a sticky footer */
+  /* Fixed bottom tab bar */
+  #mobile-tabbar{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;height:58px;
+    background:#1a1208;border-top:2px solid #c8922a;
+  }
+  #mobile-tabbar button{
+    flex:1;background:transparent;border:none;color:#c8922a;font-family:'Cinzel',serif;
+    font-size:.7rem;letter-spacing:.04em;cursor:pointer;padding:6px 2px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  }
+  #mobile-tabbar button .mt-ico{font-size:1.25rem;line-height:1;}
+  #mobile-tabbar button.active{color:#f0c96a;background:#2a1c0c;}
+}
 </style>
 </head>
 <body>
@@ -236,10 +278,10 @@ section{display:none;}.section-active{display:block;}
     </div>
 
     <!-- Three-column layout: map + report content + orders (each independently scrollable) -->
-    <div style="display:flex;gap:0;align-items:flex-start;min-height:calc(100vh - 120px);width:100vw;overflow-x:hidden;box-sizing:border-box">
+    <div id="rp-layout" style="display:flex;gap:0;align-items:flex-start;min-height:calc(100vh - 120px);width:100vw;overflow-x:hidden;box-sizing:border-box">
 
       <!-- LEFT: Map column (sticky, fills viewport height) -->
-      <div style="width:52%;min-width:0;position:sticky;top:0;height:calc(100vh - 120px);display:flex;flex-direction:column;background:#0e0a04;border-right:2px solid #333">
+      <div id="rp-map-col" style="width:52%;min-width:0;position:sticky;top:0;height:calc(100vh - 120px);display:flex;flex-direction:column;background:#0e0a04;border-right:2px solid #333">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#1a1208;border-bottom:1px solid #333">
           <span style="font-family:'Cinzel',serif;font-size:.75rem;color:#c8922a;letter-spacing:.06em">🗺 Known World</span>
           <button onclick="showFullscreenMap()" class="btn btn-ghost" style="font-size:.65rem;padding:3px 9px">⛶ Fullscreen</button>
@@ -271,7 +313,7 @@ section{display:none;}.section-active{display:block;}
       </div>
 
       <!-- MIDDLE: Report content column (scrollable) -->
-      <div style="width:24%;min-width:240px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);border-right:2px solid var(--stone)">
+      <div id="rp-report-col" style="width:24%;min-width:240px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);border-right:2px solid var(--stone)">
 
         <!-- Previous turns navigator -->
         <div style="padding:8px 10px;background:var(--parchment-dark);border-bottom:1px solid var(--stone);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -311,7 +353,7 @@ section{display:none;}.section-active{display:block;}
       </div><!-- end middle report column -->
 
       <!-- Spacer between turn info and orders -->
-      <div style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
+      <div class="rp-spacer" style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
 
       <!-- RIGHT: Orders column (independently scrollable) -->
       <div id="orders-column" style="width:22%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
@@ -338,9 +380,17 @@ section{display:none;}.section-active{display:block;}
       </div><!-- end orders column -->
 
       <!-- Right-edge spacer -->
-      <div style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
+      <div class="rp-spacer" style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
 
     </div><!-- end three-column layout -->
+
+    <!-- MOBILE bottom tab bar — only visible ≤820px (see @media block). Switches which of the three
+         columns above is shown. On desktop this is display:none and has no effect. -->
+    <nav id="mobile-tabbar" aria-label="Section switcher">
+      <button type="button" data-mv="map"    onclick="setMobileView('map')"><span class="mt-ico">🗺</span>Map</button>
+      <button type="button" data-mv="report" onclick="setMobileView('report')"><span class="mt-ico">📜</span>Report</button>
+      <button type="button" data-mv="orders" onclick="setMobileView('orders')"><span class="mt-ico">✍</span>Orders</button>
+    </nav>
   </section>
 </div>
 
@@ -419,6 +469,25 @@ async function init(){
 function show(id){
   document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
+  // On a phone, default the report screen to the Report view the first time it's shown.
+  if(id==='sec-report') ensureMobileDefault();
+}
+
+// ── MOBILE VIEW SWITCHER ─────────────────────────────
+// On narrow screens (see the @media block) the Map / Report / Orders columns are shown one at a time,
+// chosen by the fixed bottom tab bar. This toggles a single class on #rp-layout; on desktop the class
+// is inert (all three columns show regardless). No effect on the engine or on saved data.
+function setMobileView(view){
+  const lay=document.getElementById('rp-layout');
+  if(!lay) return;
+  lay.classList.remove('mv-map','mv-report','mv-orders');
+  lay.classList.add('mv-'+view);
+  document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-mv')===view));
+  try{ window.scrollTo(0,0); }catch(e){}   // start each view at its head
+}
+function ensureMobileDefault(){
+  const lay=document.getElementById('rp-layout');
+  if(lay && !/\bmv-(map|report|orders)\b/.test(lay.className)) setMobileView('report');
 }
 
 // ── AUTH ─────────────────────────────────────────────
@@ -1547,6 +1616,17 @@ const ENCOUNTER_ONLY_SPELLS=new Set(['Mirror Image']);
 const SPELL_TO_SCHOOL={};
 Object.entries(SPELLS_BY_SCHOOL).forEach(([school,list])=>list.forEach(s=>{SPELL_TO_SCHOOL[s]=school;}));
 
+// Effective magic-skill level for a character = base skill + any magic-item bonuses to that school,
+// clamped 0..5. Mirrors the GM engine's effStat() for the spell schools, so an item that grants a
+// magic-skill bonus (e.g. Death's Finger Ring → Necromancy +1) lets a hero with 0 base skill cast at
+// the item's effective level. The engine already casts off effStat; this keeps the ORDER-ENTRY spell
+// dropdowns in step so those spells can actually be selected.
+function effMagicLvl(charObj, school){
+  const base=((charObj&&charObj.skills)||{})[school]||0;
+  const bonus=((charObj&&charObj.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school)?(it.effect.bonus||0):0),0);
+  return Math.max(0,Math.min(5,base+bonus));
+}
+
 // Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
 function actionSpellLimit(level){ return level>=4?3:level>=3?2:1; }
 
@@ -1560,7 +1640,7 @@ const SPELL_HINTS={
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine kingdoms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
-  'Charm':'Target: a wandering or armyless enemy hero in your province. Wandering \u2192 joins you free (you still pay upkeep); enemy \u2192 you command them until end of turn. Combat: doubles a later Flee attempt.',
+  'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord. Kings and army-leaders are immune. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any character you\u2019ve ever seen, anywhere. You learn all that happens to them this turn and see their full skills. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
@@ -1994,9 +2074,9 @@ function addEncounterTactic(charId, code){
     });
 
     const availSpells=Object.entries(ENCOUNTER_VALID)
-      .filter(([school])=>(skills[school]||0)>=1 || practisingSchoolsEP.has(school))
+      .filter(([school])=>effMagicLvl(char,school)>=1 || practisingSchoolsEP.has(school))
       .flatMap(([school,spells])=>spells.map(s=>{
-        const lvl=skills[school]||0;
+        const lvl=effMagicLvl(char,school);
         // A character practising this school this turn will end the turn one level higher.
         // Their *effective* level for the combat-spell limit is therefore lvl+1 (min 1).
         // "practising" (for the label) means they don't know the school yet (unlocking it).
@@ -2217,7 +2297,7 @@ function _onSpellChange_DEPRECATED(charId, ph, selectedSpell){
       .map(x=>`<option value="${x.id}">${x.name} — ${x.locationName||'?'}</option>`).join('');
     // Control Undead may also be cast on the caster's own province to reveal the dead army units there.
     const cuScan=(selectedSpell==='Control Undead')?`<option value="__scan__">🔍 Cast on THIS province — reveal the dead army units here</option>`:'';
-    secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${charId}',${ph})"><option value="">— Target character —</option>${selfOpt2}${cuScan}${charOpts}</select>
+    secondaryHtml=`<select id="po-extra-${charId}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${charId}',${ph});syncCharmCard('${charId}',${ph})"><option value="">— Target character —</option>${selfOpt2}${cuScan}${charOpts}</select>
       <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selectedSpell]||''}</div>`;
   } else {
     secondaryHtml=`<input id="po-extra-${charId}-${ph}" type="hidden" value="">
@@ -2248,6 +2328,9 @@ function onActionChange(charId, ph, charIdx){
   // Likewise for Resurrect — and this also tears the card down when the action moves away from
   // Cast Spell, so a stale card can't survive and be submitted.
   setTimeout(()=>syncResurrectCard(charId, ph),100);
+  // Likewise for Charm — pops an order window for a charmed wandering hero (they join your service),
+  // and tears it down when the action or spell moves away.
+  setTimeout(()=>syncCharmCard(charId, ph),100);
 }
 
 // Inject the hired-hero card when Hire Hero is selected with a target; otherwise remove it and
@@ -2407,6 +2490,147 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
     <div style="margin-top:6px">
       <label style="font-size:.72rem">Describe their battlecry:</label>
       <input type="text" id="ep-notes-${fakeId}" placeholder="e.g. Death held me only briefly." style="font-size:.8rem;margin-top:2px">
+    </div>`;
+  card.appendChild(epDiv);
+}
+
+// ── CHARM PRE-ORDERS ──────────────────────────────────────────────────────────
+// Charming a WANDERING hero brings them into your service for the rest of the game (exactly like a
+// hire — see psychic_charm), so from the phase after the cast they act on YOUR orders. This card
+// lets you pre-write those orders, mirroring the resurrect card: a synthetic id the GM parses and
+// holds PENDING until the Charm actually lands, so a failed cast (or a rival charming the hero first)
+// simply drops them. Only offered for a wandering target; commanding an ENEMY hero is not modelled.
+function syncCharmCard(charId, ph){
+  const containerId=`charm-orders-${charId}-${ph}`;
+  const existing=document.getElementById(containerId);
+  const action=document.getElementById(`po-action-${charId}-${ph}`)?.value||'';
+  const spell=getOrderTarget(charId, ph);
+  const heroId=document.getElementById(`po-extra-${charId}-${ph}`)?.value||'';
+  const report=currentReport||{};
+  const tgt=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId));
+  // A charm target is any non-king hero leading NO armies — wandering (joins you) or an enemy
+  // (their command is seized for the rest of the turn). Either way you write their orders here.
+  const wanted=(action==='Cast Spell'&&spell==='Charm'&&heroId&&tgt&&!tgt.isKing&&(tgt.armies||0)===0);
+  if(!wanted){
+    if(existing){
+      const stale=existing.getAttribute('data-fakeid');
+      if(stale&&currentReport) currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==stale);
+      existing.remove();
+    }
+    return;
+  }
+  injectCharmOrders(charId, ph, heroId, containerId);
+}
+
+function injectCharmOrders(charId, ph, heroId, containerId){
+  const report=currentReport||{};
+  // The GM id grammar is charm_<heroId>_via_<casterId>_ph<N>, all numeric — a caster who is themselves
+  // a synthetic (hired/raised/charmed) hero this same turn can't anchor a charm pre-order chain.
+  if(!/^\d+$/.test(String(charId))||!/^\d+$/.test(String(heroId))) return;
+  const wanderer=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId)&&!x.isKing&&(x.armies||0)===0);
+  if(!wanderer) return;
+  const isEnemy=(wanderer.player!=null);   // enemy → command seized for the turn; else → joins you
+
+  const firstActable=ph+1;
+  if(firstActable>4) return; // charmed in Early Winter — no phases left to act in
+
+  document.getElementById(containerId)?.remove();
+  const casterBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
+  if(!casterBlock) return;
+
+  const SEASONS_C=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const fakeId=`charm_${heroId}_via_${charId}_ph${ph}`;
+
+  // Register a placeholder so buildTargetField/onActionChange can resolve this id. A charmed wanderer
+  // keeps whatever they command, but the order form only needs their skills/location to populate;
+  // the engine applies their real armies at resolution. armies:[] keeps the card in step with the
+  // hired/resurrect cards (order ENTRY, not a claim about their host).
+  const fakeChar={
+    id:fakeId, name:wanderer.name, isKing:false,
+    race:wanderer.race||'Unknown', alignment:wanderer.alignment||'Neutral', temper:wanderer.temper||'Brave',
+    skills:wanderer.skills||{}, armies:[], items:[], pay:wanderer.pay||1,
+    locationId:(wanderer.locationId!=null?wanderer.locationId:null), locationName:wanderer.locationName||'(in your province)',
+    effectiveSpeed:5, effectiveSeaSpeed:0,
+    hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
+    hp:(wanderer.hp!=null?wanderer.hp:null), maxHp:(wanderer.maxHp!=null?wanderer.maxHp:null),
+  };
+  if(currentReport){
+    // Remove ANY charm placeholder previously registered for THIS slot (same caster + phase), not
+    // merely the same hero — swapping the charm target within a phase would otherwise orphan the old
+    // hero's placeholder (no card, but still registered), which submit-time validation then flags as
+    // a phase with no action. The card element is slot-keyed (containerId), so only the character
+    // registration needs this. Mirrors the hired-hero §45.2 fix.
+    const slotSuffix=`_via_${charId}_ph${ph}`;
+    currentReport.characters=(currentReport.characters||[]).filter(c=>!(typeof c.id==='string'&&c.id.startsWith('charm_')&&c.id.endsWith(slotSuffix)));
+    currentReport.characters.push(fakeChar);
+  }
+
+  const card=document.createElement('div');
+  card.id=containerId;
+  card.setAttribute('data-fakeid',fakeId);
+  card.className='orders-char-block';
+  card.style.cssText='border:2px dashed #2a7a8a;opacity:0.9;margin-top:8px';
+  card.innerHTML=`
+    <div class="orders-char-head" style="background:#eaf6f8;color:#4a4a4a">
+      \u2728 ${wanderer.name}
+      <span style="color:#2a7a8a;font-size:.7rem;margin-left:6px">(if charmed \u2014 can act from ${SEASONS_C[firstActable]||'next turn'})</span>
+    </div>
+    <div style="padding:5px 10px 6px;background:#eaf6f8;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
+      <div style="color:#2a7a8a">These orders only take effect if the Charm succeeds. If the cast fails,
+      or another kingdom charms ${wanderer.name} first, they are simply ignored.</div>
+      <div style="color:var(--stone);margin-top:2px">${isEnemy
+        ? 'Their command is seized for the rest of this turn; at the season\u2019s end they return to their own lord (who still pays their wages).'
+        : 'Joins your service at no hiring cost (you still pay their upkeep).'}</div>
+    </div>
+    <div class="orders-char-body"></div>`;
+  casterBlock.after(card);
+
+  const body=card.querySelector('.orders-char-body');
+  SEASONS_C.forEach((season,phIdx)=>{
+    const row=document.createElement('div');
+    row.className='phase-order';
+    if(phIdx<firstActable){
+      row.style.cssText='opacity:.35;pointer-events:none';
+      row.innerHTML=`<div class="phase-label">${season}</div>
+        <div style="font-size:.76rem;color:var(--stone);font-style:italic;grid-column:2/-1">(not yet charmed)</div>`;
+    } else {
+      row.innerHTML=`
+        <div class="phase-label">${season}</div>
+        <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
+          <option value="">\u2014 Choose \u2014</option>
+          ${actionsFor(null).map(a=>`<option value="${a}">${a}</option>`).join('')}
+        </select>
+        <div id="po-target-wrap-${fakeId}-${phIdx}">
+          <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
+        </div>`;
+    }
+    body.appendChild(row);
+  });
+
+  // Encounter plan, matching the hired-hero / resurrect cards.
+  const epDiv=document.createElement('div');
+  epDiv.style.cssText='padding:10px;border-top:1px solid var(--parchment-dark);background:#f2fafb';
+  epDiv.innerHTML=`
+    <div style="font-family:Cinzel,serif;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">\u2694 Encounter Plan</div>
+    <div id="ep-list-${fakeId}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px">
+      <div style="font-size:.8rem;padding:4px 8px;background:#f2fafb;border:1px solid var(--stone);border-radius:2px">ME \u2014 Melee</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS').map(t=>`<button onclick="addEncounterTactic('${fakeId}','${t.code}')"
+        style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px"
+        title="${t.label}">+ ${t.code}</button>`).join('')}
+    </div>
+    <input type="hidden" id="ep-tactics-${fakeId}" value="ME">
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #b8dde0">
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#2a7a8a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
+      <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+      </select>
+    </div>
+    <input type="hidden" id="ep-preschool-${fakeId}" value="">
+    <div style="margin-top:6px">
+      <label style="font-size:.72rem">Describe their battlecry:</label>
+      <input type="text" id="ep-notes-${fakeId}" placeholder="e.g. Your cause is mine now." style="font-size:.8rem;margin-top:2px">
     </div>`;
   card.appendChild(epDiv);
 }
@@ -2911,6 +3135,23 @@ async function doSubmitOrders(){
         duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'accept'};
     }
   });
+  // Charm pre-order cards — same shape as the resurrect collection above; the GM parses the synthetic
+  // 'charm_…' id and holds these pending until the Charm actually lands on the wandering hero.
+  document.querySelectorAll('[id^="charm-orders-"]').forEach(card=>{
+    const sel=card.querySelector('select[id^="po-action-charm_"]');
+    if(!sel) return;
+    const cid=sel.id.replace(/^po-action-/,'').replace(/-\d+$/,'');
+    orders[cid]=SEASONS.map((_,ph)=>({
+      action:document.getElementById(`po-action-${cid}-${ph}`)?.value||'Defend',
+      target:getOrderTarget(cid,ph),extra:getOrderExtra(cid,ph),desc:'',
+    }));
+    const cTac=document.getElementById(`ep-tactics-${cid}`);
+    if(cTac){
+      encounterPlans[cid]={tactics:(cTac.value||'ME').split(',').filter(Boolean),
+        notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+    }
+  });
   // Collect royal-succession skill allocations for any newly-crowned heir.
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
@@ -2930,6 +3171,8 @@ async function doSubmitOrders(){
       <button class="btn btn-ghost" style="padding:8px 16px;font-size:.8rem" onclick="resubmitOrders()">↺ Resubmit Orders</button>
     </div>`;
   document.getElementById('report-status-pill').innerHTML='<span class="pill pill-blue">✓ Orders submitted</span>';
+  // On mobile, drop the player back to the Turn Report now their orders are in.
+  setMobileView('report');
 }
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
@@ -3368,10 +3611,10 @@ function buildTargetField(c, ph, saved){
       }
 
       const spells=Object.entries(SPELLS_BY_SCHOOL)
-        .filter(([school])=>(skills[school]||0)>=1 || practisingSchools.has(school))
+        .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school))
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s))
           .map(s=>{
-            const currentLvl=skills[school]||0;
+            const currentLvl=effMagicLvl(c,school);
             const isPractising=practisingSchools.has(school)&&currentLvl===0;
             const limit=actionSpellLimit(currentLvl);
             const used=schoolCastCount[school]||0;
@@ -3391,10 +3634,10 @@ function buildTargetField(c, ph, saved){
       // Check if ALL spells from known AND practising schools are at limit
       // Note: [].every() returns true in JS (vacuous truth) — guard against empty set
       const knownOrPractisingSchools=Object.entries(SPELLS_BY_SCHOOL)
-        .filter(([school])=>(skills[school]||0)>=1 || practisingSchools.has(school));
+        .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school));
       const allAtLimit=knownOrPractisingSchools.length>0&&knownOrPractisingSchools
         .every(([school])=>{
-          const lvl=skills[school]||0;
+          const lvl=effMagicLvl(c,school);
           if(lvl===0) return false; // practising but no skill yet — never at limit
           return (schoolCastCount[school]||0)>=actionSpellLimit(lvl);
         });
@@ -3405,7 +3648,7 @@ function buildTargetField(c, ph, saved){
       // Determine secondary target based on selected spell
       // Default to the first spell in the list if nothing selected yet
       const firstSpell=Object.entries(SPELLS_BY_SCHOOL)
-        .filter(([school])=>(skills[school]||0)>=1||practisingSchools.has(school))
+        .filter(([school])=>effMagicLvl(c,school)>=1||practisingSchools.has(school))
         .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
       const selSpell=target||firstSpell;
       const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Features','Earthquake','Flood','Plague']);
@@ -3453,13 +3696,14 @@ function buildTargetField(c, ph, saved){
             return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
           }).join('');
         } else if(selSpell==='Charm'){
-          // Charm: a wandering hero, or an ENEMY hero leading NO armies, in the caster's province.
-          // Kings are immune. (The engine enforces all three — this list simply matches it.)
+          // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
+          // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
+          // (The engine enforces all of this — this list simply matches it.)
           const targets=(report.visibleChars||[]).filter(x=>
-            x.locationId===casterLoc && !x.isKing &&
-            (x.player===null || (x.player!==c.player&&(x.armies||0)===0)));
+            x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 &&
+            (x.player===null || x.player!==c.player));
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a wandering hero, or an enemy hero leading no armies, in this province (kings are immune)</option>';
+          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune)</option>';
         } else if(selSpell==='Oratory'){
           // Oratory: self, or own characters predicted to be in the same province this phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
@@ -3501,7 +3745,7 @@ function buildTargetField(c, ph, saved){
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
         }
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph})"><option value="">— Target character —</option>${charOpts}</select>
+        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph});syncCharmCard('${c.id}',${ph})"><option value="">— Target character —</option>${charOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else {
         secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
@@ -4256,6 +4500,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.26-1940</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.30-1445</div>
 </body>
 </html>
