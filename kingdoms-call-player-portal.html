@@ -351,6 +351,16 @@ section{display:none;}.section-active{display:block;}
           <div id="report-intel"><em style="color:#999;font-size:.85rem">No intelligence gathered yet.</em></div>
         </div>
 
+        <div class="card" id="diplomacy-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🤝 Diplomacy</h2>
+          <div id="report-diplomacy"><em style="color:#999;font-size:.85rem">No kingdoms encountered yet.</em></div>
+        </div>
+
+        <div class="card" id="titles-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🏆 Titles &amp; Victory</h2>
+          <div id="report-titles"><em style="color:#999;font-size:.85rem">The Imperial Titles are contested in secret until Turn 5.</em></div>
+        </div>
+
         <div class="card" id="discoveries-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>💡 Sage Discoveries</h2>
           <div id="report-discoveries"><em style="color:#999;font-size:.85rem">No discoveries yet.</em></div>
@@ -410,17 +420,36 @@ const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Pursue','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
-  'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+  'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
+  'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
+  'Blockade','Research Breakthrough','Assassinate','Vanish',
+  'Defend','Rest'];
 // Alignment-signature actions: shown only to the kingdom that owns them (and Perform Rite joins
 // the same gating — no more dangling Pagan action in every dropdown). King-only actions are
 // hidden from heroes' dropdowns entirely.
 const ALIGN_ACTIONS={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
 const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker']);
+// L7/L9 mastery ORDERS — gated by the hero's RAW skill level (past-5 comes from experience only).
+// target: 'none' (self/current province), 'province' (a seen province), or 'character' (an enemy hero here).
+const L79_ORDERS={
+  'Sabotage':{skill:'spy',lvl:7,target:'province',provKind:'enemy',hint:'Spy 7: wreck an enemy province you can see — it yields no tax next turn and loses a garrison unit.'},
+  'Forced March':{skill:'march',lvl:7,target:'none',hint:'March 7: drive your column onward — your land movement is doubled for the rest of this turn. (Uses this phase.)'},
+  'Grand Heist':{skill:'thief',lvl:7,target:'character',hint:'Thief 7: rob an enemy hero in your province of a large sum of gold (and perhaps a magic item).'},
+  'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
+  'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
+  'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden feature or treasure site, if any remain.'},
+  'Blockade':{skill:'naval',lvl:7,target:'province',provKind:'sea_adjacent',hint:'Naval 7: seal a sea province you are in or adjacent to — enemy fleets may not cross it this turn.'},
+  'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your kingdom).'},
+  'Assassinate':{skill:'spy',lvl:9,target:'character',hint:'Spy 9: attempt to slay an enemy hero in the province you stand in — a spy-level chance to kill.'},
+  'Vanish':{skill:'thief',lvl:9,target:'none',hint:'Thief 9: melt into the shadows — any enemy pursuit of you fails for the rest of this turn.'},
+};
+const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 function actionsFor(c){
   const align=currentReport?.kingdom?.alignment;
   return ACTIONS.filter(a=>{
     if(ALIGN_ACTIONS[a]&&ALIGN_ACTIONS[a]!==align) return false;
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
+    if(L79_ORDERS[a]&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     return true;
   });
 }
@@ -432,6 +461,11 @@ let joiningGame = null;
 let joinSkills = {};
 let currentGamePlayer = null;
 let currentReport = null;
+// Diplomacy (alliance system): pending declarations for THIS turn, keyed by rival kingdom index →
+// 'treat' (propose alliance/peace) | 'enemy' (declare war). Submitted with orders; applied at end of turn.
+let diploChoices = {};
+// Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant). Submitted with orders.
+let reckoningCall = false;
 let currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing history)
 let viewingReport = null;
@@ -1214,6 +1248,8 @@ async function openReport(gamePlayerId){
   const report=typeof gp.turn_report==='string'?JSON.parse(gp.turn_report):gp.turn_report||{};
   currentReport=report;
   currentReport._liveTurn=g.turn||1; // ensure submit uses live turn not report turn
+  diploChoices={}; // fresh pending diplomacy each time a report opens (restored from any saved draft below)
+  reckoningCall=false;
   viewingReport=report;              // map/history starts on the current report
 
   // Turn numbering, player-facing:
@@ -1603,17 +1639,142 @@ async function openReport(gamePlayerId){
   // Orders form
   currentGamePlayer=gp;
   buildOrdersForm(chars, gp.orders_submitted, gp.orders, g.turn);
+  renderDiplomacy(report);
+  renderTitles(report);
   renderPlayerMap(report);
 }
+
+// ── DIPLOMACY PANEL (alliance system) ─────────────────
+// Renders the kingdoms this player has encountered with the current relation and the declarations
+// available. A pending choice is stored in diploChoices and submitted with the turn's orders.
+function renderDiplomacy(report){
+  const el=document.getElementById('report-diplomacy'); if(!el) return;
+  const known=(report&&report.diplomacy&&report.diplomacy.known)||[];
+  const alliancesAllowed=!report||!report.diplomacy||report.diplomacy.alliancesAllowed!==false;
+  if(!known.length){
+    el.innerHTML='<em style="color:#999;font-size:.85rem">You have not yet encountered another kingdom. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
+    return;
+  }
+  const relBadge=(r)=> r==='allied'
+      ? '<span class="pill" style="background:#dff0d8;color:#2d6a2d">🤝 Allied</span>'
+      : r==='enemy'
+      ? '<span class="pill" style="background:#f7d7d7;color:#8a1c1c">⚔ At war</span>'
+      : '<span class="pill" style="background:#efe6cc;color:#6b5a42">🕊 Neutral</span>';
+  const btn=(idx,val,label,bg)=>`<button onclick="setDiploChoice(${idx},'${val}')" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
+  const pendingLabel=(k)=>{
+    const p=diploChoices[k.index];
+    if(p==='enemy') return 'Declare War';
+    if(p==='treat') return k.relation==='enemy'?'Propose Peace':'Propose Alliance';
+    return '';
+  };
+  el.innerHTML = known.map(k=>{
+    const pending=diploChoices[k.index];
+    let controls;
+    if(pending){
+      controls=`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;`
+        +`<button onclick="setDiploChoice(${k.index},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
+    } else if(k.relation==='neutral'){
+      controls=(alliancesAllowed?btn(k.index,'treat','Propose Alliance','#2d6a2d')+' ':'')+btn(k.index,'enemy','Declare War','#8a1c1c');
+    } else if(k.relation==='enemy'){
+      controls=btn(k.index,'treat','Propose Peace','#2d6a2d');
+    } else { // allied
+      controls=btn(k.index,'enemy','Declare War','#8a1c1c');
+    }
+    return `<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <strong style="color:${k.color||'#333'}">${k.name}</strong>
+        <span style="font-size:.72rem;color:#888">${k.alignment||''}</span>
+        ${relBadge(k.relation)}
+      </div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
+    </div>`;
+  }).join('')
+   + `<div style="font-size:.72rem;color:#999;margin-top:6px">${alliancesAllowed
+       ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> kingdoms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
+       : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn. Submit your orders to lodge these declarations.</div>`;
+}
+function setDiploChoice(idx, val){
+  if(val==null||val==='null') delete diploChoices[idx]; else diploChoices[idx]=val;
+  if(currentReport) renderDiplomacy(currentReport);
+}
+
+// ── TITLES & VICTORY (Reckoning) ──────────────────────
+const _TITLE_ORDER=[['throne','The Throne',20],['vault','The Vaultkeeper',10],['marshal','The Grand Marshal',10],['sea','The Sea Lord',10],['monster','The Monster-Bane',10],['lore','The Loremaster',10],['arch','The Archmage',10],['hiero','The Hierophant',10]];
+function renderTitles(report){
+  const el=document.getElementById('report-titles'); if(!el) return;
+  const t=(report&&report.titles)||{};
+  // Game over → final result.
+  if(t.gameOver){
+    const go=t.gameOver;
+    const board=(go.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
+      `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#777">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
+    el.innerHTML=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':'is judged supreme at the Reckoning'}!</div></div>
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#888;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Kingdom</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
+    return;
+  }
+  if(!t.public){
+    el.innerHTML=`<em style="color:#999;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5}. Standings appear then.</em>`;
+    return;
+  }
+  // Reckoning status banner
+  let banner='';
+  if(t.reckoning){
+    banner=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:.85rem">
+      👑 <strong>The Reckoning has been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of <strong>Turn ${t.reckoning.resolveAtTurn}</strong> unless the claim is broken. ${t.reckoning.mine?'This is your claim — hold your dominance.':'Drive the claimant\'s bloc below the threshold to shatter it.'}</div>`;
+  }
+  // Who holds each title
+  const holders=t.holders||{};
+  const rows=_TITLE_ORDER.map(([k,name,prize])=>{
+    const h=holders[k]||{};
+    return `<tr><td style="padding:2px 8px">${name}</td><td style="padding:2px 8px;text-align:right;color:#999">${prize}</td><td style="padding:2px 8px;${h.mine?'font-weight:700;color:var(--forest)':''}">${h.holderName||'—'}</td></tr>`;
+  }).join('');
+  // Standings
+  const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
+    `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
+  // Call the Reckoning control
+  let callCtrl='';
+  const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
+  if(t.canCallReckoning){
+    callCtrl = reckoningCall
+      ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
+      : `<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
+        <div style="font-size:.72rem;color:#777;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
+  } else if(!t.reckoning){
+    callCtrl=`<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
+  }
+  el.innerHTML = banner
+    + `<div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px"><div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
+          <table style="width:100%;border-collapse:collapse;font-size:.85rem"><tbody>${board}</tbody></table></div>
+        <div style="flex:1;min-width:220px"><div style="font-size:.75rem;color:#888;margin-bottom:3px">Titles &amp; who holds them</div>
+          <table style="width:100%;border-collapse:collapse;font-size:.82rem"><tbody>${rows}</tbody></table></div>
+      </div>` + callCtrl + renderMinorTitles(t);
+}
+function renderMinorTitles(t){
+  const m=t&&t.minor; if(!m) return '';
+  const mine=(m.mine||[]);
+  const mineHtml = mine.length
+    ? `<div style="margin-top:4px">${mine.map(x=>`<span class="pill" style="background:#eef3e6;color:#3a5a2a;margin:2px 3px 2px 0;display:inline-block">🎖 ${x.name} — <span style="color:#555">${x.perk}</span></span>`).join('')}</div>`
+    : `<div style="font-size:.78rem;color:#999;margin-top:4px">Your characters hold no minor titles yet.</div>`;
+  const all=(m.all||[]).map(x=>`<tr><td style="padding:1px 8px">${x.name}</td><td style="padding:1px 8px;${x.mine?'font-weight:700;color:var(--forest)':'color:#666'}">${x.holderName||'—'}</td><td style="padding:1px 8px;font-size:.72rem;color:#999">${x.perk}</td></tr>`).join('');
+  return `<div style="margin-top:14px;border-top:1px dashed var(--parchment-dark);padding-top:8px">
+    <div style="font-size:.8rem;color:#888;margin-bottom:2px">🎖 Minor titles <span style="font-size:.72rem">(honorary — they grant a perk but never count toward victory)</span></div>
+    ${mineHtml}
+    <details style="margin-top:6px"><summary style="cursor:pointer;font-size:.75rem;color:#777">All 20 minor titles &amp; who holds them</summary>
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:4px"><tbody>${all}</tbody></table></details>
+  </div>`;
+}
+function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(currentReport); }
 
 // ── ORDERS FORM ───────────────────────────────────────
 // ── SPELLS LIST ───────────────────────────────────────
 const SPELLS_BY_SCHOOL={
-  white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack'],
-  psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm'],
-  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image'],  // Invisibility & Mirror Image are encounter-only (filtered from action orders by PHASE_SPELLS)
-  elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon'],
-  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague'],
+  white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack','Sanctuary','Divine Judgment'],
+  psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm','Mass Confusion','Dominate'],
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image','Phantom Host','Veil'],
+  elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon','Chain Lightning','Cataclysm'],
+  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague','Raise Wraiths',"Death's Dominion"],
 };
 // Encounter-only (CA tactic): Mirror Image
 const ENCOUNTER_ONLY_SPELLS=new Set(['Mirror Image']);
@@ -1621,6 +1782,9 @@ const ENCOUNTER_ONLY_SPELLS=new Set(['Mirror Image']);
 // Reverse lookup: spell name → school
 const SPELL_TO_SCHOOL={};
 Object.entries(SPELLS_BY_SCHOOL).forEach(([school,list])=>list.forEach(s=>{SPELL_TO_SCHOOL[s]=school;}));
+// L7/L9 mastery spells require the caster's RAW school level (past-5 comes from experience only).
+const SPELL_REQ_LEVEL={'Sanctuary':7,'Divine Judgment':9,'Mass Confusion':7,'Dominate':9,'Phantom Host':7,'Veil':9,'Chain Lightning':7,'Cataclysm':9,'Raise Wraiths':7,"Death's Dominion":9};
+const rawMagicLvl=(charObj,school)=>((charObj&&charObj.skills)||{})[school]||0;
 
 // Effective magic-skill level for a character = base skill + any magic-item bonuses to that school,
 // clamped 0..5. Mirrors the GM engine's effStat() for the spell schools, so an item that grants a
@@ -1797,6 +1961,9 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   try{rawSaved=typeof existingOrders==='string'?JSON.parse(existingOrders||'{}'):existingOrders||{};}catch(e){rawSaved={};}
   const savedOrders=rawSaved.orders||rawSaved; // unwrap {orders:{...}, encounterPlans:{...}}
   const savedEncounterPlans=rawSaved.encounterPlans||{};
+  // Restore any diplomacy declarations saved in this turn's draft so they survive a re-render.
+  if(rawSaved.diplomacy && typeof rawSaved.diplomacy==='object') diploChoices={...rawSaved.diplomacy};
+  if(rawSaved.callReckoning===true) reckoningCall=true;
 
   el.innerHTML=chars.filter(c=>c.alive!==false).map(c=>{
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
@@ -2273,8 +2440,8 @@ function _onSpellChange_DEPRECATED(charId, ph, selectedSpell){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
   const report=currentReport||{};
 
-  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Features','Earthquake','Flood','Plague']);
-  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
+  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Features','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
+  const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory','Divine Judgment','Mass Confusion','Dominate','Chain Lightning']);
 
   // Remove any existing secondary selector/hint, keep the spell select
   const spellSelect=document.getElementById(`po-target-${charId}-${ph}`);
@@ -3038,7 +3205,7 @@ async function doSaveOrders(){
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
   const {error:saveErr}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall}),
     orders_submitted:false
   }).eq('id',gp.id);
   if(saveErr){console.error('Save draft error:',saveErr.message);return;}
@@ -3162,7 +3329,7 @@ async function doSubmitOrders(){
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,forTurn:expectedTurn}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -3363,6 +3530,40 @@ function buildTargetField(c, ph, saved){
   const extra=saved.extra||'';
   const report=currentReport||{};
   const provOrderData=report.provinceOrderData||{};
+
+  // ── L7/L9 MASTERY ORDERS — generic target field by declared target type ──
+  if(L79_ORDERS[action]){
+    const cfg=L79_ORDERS[action];
+    const hintHtml=`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${cfg.hint}</div>`;
+    if(cfg.target==='none'){
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${action} — no target needed" readonly>${hintHtml}`;
+    }
+    if(cfg.target==='province'){
+      const wmProvs=(report.worldMeta?.provinces)||[];
+      if(cfg.provKind==='sea_adjacent'){
+        const curLoc=predictedLocation(c.id,ph); const curId=curLoc?curLoc.id:c.locationId;
+        const curP=wmProvs.find(p=>p.id===curId);
+        const candIds=[curId,...((curP&&curP.neighbors)||[])];
+        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p||p.terrain!=='sea') return ''; return `<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Sea ('+pid+')')}${pid===curId?' (here)':''}</option>`;}).filter(Boolean).join('');
+        return opts
+          ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+          :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No sea province here or adjacent to seal" disabled>${hintHtml}`;
+      }
+      const seen=wmProvs.filter(p=>p.name&&p.terrain&&p.terrain!=='sea'&&p.owner!=null&&p.owner!==c.player);
+      const opts=seen.map(p=>`<option value="${p.id}" ${target==p.id?'selected':''}>${p.name}${p.ownerName?` — ${p.ownerName}`:''}</option>`).join('');
+      return opts
+        ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy province in view to strike" disabled>${hintHtml}`;
+    }
+    if(cfg.target==='character'){
+      const here=predictedLocation(c.id,ph)?.id??c.locationId;
+      const foes=(report.visibleChars||[]).filter(x=>x.locationId===here&&(x.player===null||x.player!==c.player));
+      const opts=foes.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+      return opts
+        ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy hero in your province this phase" disabled>${hintHtml}`;
+    }
+  }
 
   // Build direction options with adjacent province names where known
   const HEX_DIRS_BUILD=['NW','NE','W','E','SW','SE'];
@@ -3590,7 +3791,8 @@ function buildTargetField(c, ph, saved){
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
         'Illusory Terrain','Phantasmal Armies','Hide Features',
         'Earthquake','Flood','Elemental Summon',
-        'Control Undead','Skeletal Armies','Curse','Plague']);
+        'Control Undead','Skeletal Armies','Curse','Plague',
+        'Sanctuary','Divine Judgment','Mass Confusion','Dominate','Phantom Host','Veil','Chain Lightning','Cataclysm','Raise Wraiths',"Death's Dominion"]);
 
       // Also include schools being practised in an earlier phase this turn.
       // The practice may or may not succeed, but the player should be able to
@@ -3618,7 +3820,7 @@ function buildTargetField(c, ph, saved){
 
       const spells=Object.entries(SPELLS_BY_SCHOOL)
         .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school))
-        .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s))
+        .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s]))
           .map(s=>{
             const currentLvl=effMagicLvl(c,school);
             const isPractising=practisingSchools.has(school)&&currentLvl===0;
@@ -3655,10 +3857,10 @@ function buildTargetField(c, ph, saved){
       // Default to the first spell in the list if nothing selected yet
       const firstSpell=Object.entries(SPELLS_BY_SCHOOL)
         .filter(([school])=>effMagicLvl(c,school)>=1||practisingSchools.has(school))
-        .flatMap(([,list])=>list.filter(s=>PHASE_SPELLS.has(s)))[0]||'';
+        .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s])))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Features','Earthquake','Flood','Plague']);
-      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Features','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
+      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory','Divine Judgment','Mass Confusion','Dominate','Chain Lightning']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
         // All province spells reach only the province the caster occupies THIS PHASE or one
@@ -4506,6 +4708,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.07.30-1950</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.01-0918</div>
 </body>
 </html>

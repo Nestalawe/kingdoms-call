@@ -550,11 +550,11 @@ function actionsForG(ch){
 
 // ── SHARED ORDER ENTRY HELPERS (mirrored from player portal) ──
 const SPELLS_BY_SCHOOL={
-  white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack'],
-  psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm'],
-  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image'],
-  elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon'],
-  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy'],
+  white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack','Sanctuary','Divine Judgment'],
+  psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm','Mass Confusion','Dominate'],
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image','Phantom Host','Veil'],
+  elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon','Chain Lightning','Cataclysm'],
+  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy','Raise Wraiths',"Death's Dominion"],
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
@@ -2227,6 +2227,12 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Philosopher\'s Stone',desc:'Once per game: instantly promote all armies one quality tier',effect:{stat:'massPromote',bonus:1},tier:3},
   {name:'Cloak of Many Faces',desc:'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter Character orders',effect:{stat:'hidden',bonus:1},tier:3},
   {name:'Crown of Command',desc:'All characters in the same province gain +1 to all skills for the duration of the turn',effect:{stat:'aura',bonus:1},tier:3},
+  // ── Three added legendaries (2026-07 — brings the Legendary tier to 10 "named relics", one per
+  //    Legacy point in the Titles/Reckoning scoring. Each reuses an already-wired effect stat so
+  //    none is a dead item: melee (effStat), taxBonus (tax collection), armyBonus (armStr). ──
+  {name:'Sword of the First Emperor',desc:'The blade that founded the old Empire. Melee +2.',effect:{stat:'melee',bonus:2},tier:3},
+  {name:'Imperial Regalia',desc:'The crown, orb and sceptre of the vanished throne. +5g collected each tax season.',effect:{stat:'taxBonus',bonus:5},tier:3},
+  {name:'Standard of the Nine Legions',desc:'The war-banner under which the Empire was won. All armies you lead: strength +3 each.',effect:{stat:'armyBonus',bonus:3},tier:3},
 ];
 // ── Item-tier pools (built after the item list so they can reference it) ──
 const ITEMS_BY_TIER={1:[],2:[],3:[]};
@@ -2940,7 +2946,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // homeProvinceId is the founding capital and is written ONCE, here. It is deliberately separate
     // from provinces[0], which shifts as land is won and lost — the player map is centred on this
     // province for the whole game, so it must never move under them mid-campaign.
-    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0};
+    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,color:['#c0392b','#2980b9','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
+      // ── Diplomacy (KC alliance system) ── players this king has ENCOUNTERED (seen a character or
+      // province of). Only encountered players may be treated with. Accumulated in updateProvinceMemory.
+      _encountered:[]};
   });
 
   // Neutral heroes — one per non-home land province, and per sea province that has defenders,
@@ -3001,6 +3010,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
 
   return{world:{provinces,cols,rows},players,characters:allChars,
     mercenaries:[],
+    // ── Diplomacy (KC alliance system) ── relations between players, keyed "minIdx-maxIdx" →
+    // 'enemy' | 'allied'. Any pair absent from the map is NEUTRAL (the default). All players begin
+    // Neutral to one another; relations only change at end of turn via mutual Treat / a war declaration.
+    relations:{},
     heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0};
 }
 
@@ -3021,6 +3034,154 @@ function hexDistP(a,b,cols){
 }
 
 // ── BUILD PLAYER TURN REPORT ──────────────────────────
+// ══ VICTORY & TITLES (KC Reckoning system) — see KC-design-victory-and-titles.md ══════════════
+// Per-character merit accumulators, ensured lazily so existing saves upgrade cleanly.
+function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,featuresFound:0,discoveries:0}; return c.tm; }
+
+const TITLE_DEFS=[
+  {key:'throne',  name:'The Throne',        prize:20, kingdomLevel:true},
+  {key:'vault',   name:'The Vaultkeeper',   prize:10, kingdomLevel:true},
+  {key:'marshal', name:'The Grand Marshal', prize:10},
+  {key:'sea',     name:'The Sea Lord',      prize:10},
+  {key:'monster', name:'The Monster-Bane',  prize:10},
+  {key:'lore',    name:'The Loremaster',    prize:10},
+  {key:'arch',    name:'The Archmage',      prize:10},
+  {key:'hiero',   name:'The Hierophant',    prize:10},
+];
+const RELIC_PRIZE_EACH=1;                 // 10 legendary items × 1 = 10 points → 100-pt spread
+const TITLES_PUBLIC_FROM_TURN=5;          // standings hidden turns 1–4 (clarification #10)
+const TITLE_PERKS_ENABLED=true;           // live perks while a Title is held (from turn 5)
+
+// Dominance threshold (share of world tax base) to Call the Reckoning — scales with player count (#1).
+function reckoningThreshold(nPlayers){
+  return ({2:0.60,3:0.50,4:0.45,5:0.42})[nPlayers] || 0.40;
+}
+// Alignment signature merit multiplier — each alignment's natural title lane costs less to win (#6).
+const ALIGN_TITLE_BOOST={
+  Divine:{hiero:1.25}, Good:{marshal:1.25}, Druidic:{monster:1.25},
+  Neutral:{vault:1.25, lore:1.25}, Pagan:{lore:1.25}, Evil:{marshal:1.25}, Undead:{marshal:1.25},
+};
+const _MAGIC_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
+function _skillItem(c,stat){
+  const base=((c&&c.skills)||{})[stat]||0;
+  const bonus=((c&&c.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===stat)?(it.effect.bonus||0):0),0);
+  return Math.max(0,Math.min(9,base+bonus));   // TITLES count skill levels up to 9 (benefits still cap at 5 via effStat)
+}
+// Skill LEVEL (base proficiency, 0–9) for perk unlocks; perkTier = levels past 5 (0–4).
+function skillLevel(c,stat){ return Math.max(0,Math.min(9,((c&&c.skills)||{})[stat]||0)); }
+function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
+function _legendaryNames(){ return new Set((ITEMS_BY_TIER[3]||[]).map(it=>it.name)); }
+// Per-character raw merit for the six non-kingdom titles (before alignment boost).
+function _charTitleMerit(c){
+  const tm=c.tm||{};
+  const magic=_MAGIC_SCHOOLS.reduce((s,sc)=>s+_skillItem(c,sc),0);
+  const spellItems=(c.items||[]).filter(it=>it.effect&&_MAGIC_SCHOOLS.includes(it.effect.stat)).length;
+  return {
+    marshal:(tm.marshal||0),
+    sea:(tm.sea||0)+_skillItem(c,'naval'),
+    monster:(tm.monster||0),
+    lore:_skillItem(c,'explorer')+_skillItem(c,'spy')+_skillItem(c,'sage')+(tm.featuresFound||0)*2+(tm.discoveries||0)*2,
+    arch:magic+spellItems,
+    hiero:_skillItem(c,'white')+_skillItem(c,'druid')+(tm.holyCasts||0),
+  };
+}
+// Allied bloc = connected component under 'allied' relations (bloc-aware Reckoning trigger).
+function alliedBloc(state, pi){
+  const rel=state.relations||{}, np=(state.players||[]).length;
+  const key=(a,b)=>a<b?a+'-'+b:b+'-'+a;
+  const seen=new Set([pi]), stack=[pi];
+  while(stack.length){ const x=stack.pop(); for(let y=0;y<np;y++){ if(!seen.has(y)&&rel[key(x,y)]==='allied'){ seen.add(y); stack.push(y); } } }
+  return [...seen];
+}
+// Main scoring — pure function over a game state. Returns titles, relics, per-kingdom standings, tax.
+function computeStandings(state){
+  const players=state.players||[];
+  const chars=(state.characters||[]).filter(c=>c&&c.player!=null&&c.alive);
+  const taxByPlayer=players.map((p,pi)=>((state.world&&state.world.provinces)||[]).reduce((s,pv)=>s+((pv&&pv.owner===pi)?(pv.tax||0):0),0));
+  const worldTax=taxByPlayer.reduce((a,b)=>a+b,0);
+  const goldByPlayer=players.map(p=>(p&&p.gold)||0);
+  const perChar={};
+  chars.forEach(c=>{ const raw=_charTitleMerit(c); const boost=ALIGN_TITLE_BOOST[players[c.player]&&players[c.player].alignment]||{}; const m={}; for(const k in raw) m[k]=raw[k]*(boost[k]||1); perChar[c.id]=m; });
+  const titles={};
+  TITLE_DEFS.forEach(t=>{
+    if(t.key==='throne'||t.key==='vault'){
+      const metric=t.key==='throne'?taxByPlayer:goldByPlayer;
+      let best=-1,bi=-1; metric.forEach((v,pi)=>{ if(v>best){best=v;bi=pi;} });
+      const king=chars.find(c=>c.isKing&&c.player===bi);
+      titles[t.key]={playerIndex:(bi>=0&&best>0)?bi:null,charId:king?king.id:null,merit:best,prize:t.prize,name:t.name};
+    } else {
+      let best=-Infinity,bc=null;
+      chars.forEach(c=>{ const v=perChar[c.id][t.key]||0; if(v>best){best=v;bc=c;} });
+      titles[t.key]={playerIndex:(bc&&best>0)?bc.player:null,charId:bc?bc.id:null,merit:best>-Infinity?best:0,prize:t.prize,name:t.name};
+    }
+  });
+  const legNames=_legendaryNames(), relics=[];
+  chars.forEach(c=>(c.items||[]).forEach(it=>{ if(it&&legNames.has(it.name)) relics.push({item:it.name,charId:c.id,playerIndex:c.player}); }));
+  const standings=players.map((p,pi)=>({index:pi,name:(p&&p.name)||('Kingdom '+(pi+1)),color:(p&&p.color)||null,alignment:(p&&p.alignment)||null,score:0,titles:[],relics:0}));
+  TITLE_DEFS.forEach(t=>{ const h=titles[t.key]; if(h&&h.playerIndex!=null){ standings[h.playerIndex].score+=t.prize; standings[h.playerIndex].titles.push(t.key); } });
+  relics.forEach(r=>{ if(r.playerIndex!=null){ standings[r.playerIndex].score+=RELIC_PRIZE_EACH; standings[r.playerIndex].relics++; } });
+  return {titles,relics,standings,taxByPlayer,worldTax,goldByPlayer,threshold:reckoningThreshold(players.length),perChar};
+}
+// Winner at a Reckoning: highest standing, ties broken by tax base then treasury.
+function reckoningWinner(state){
+  const s=computeStandings(state);
+  let best=null;
+  s.standings.forEach(st=>{
+    if(!best){ best=st; return; }
+    const a=[st.score,s.taxByPlayer[st.index],s.goldByPlayer[st.index]];
+    const b=[best.score,s.taxByPlayer[best.index],s.goldByPlayer[best.index]];
+    if(a[0]>b[0]||(a[0]===b[0]&&(a[1]>b[1]||(a[1]===b[1]&&a[2]>b[2])))) best=st;
+  });
+  return {winner:best,standings:s};
+}
+// Share of world tax base held by a player's allied bloc (bloc-aware Reckoning threshold).
+function reckoningBlocShare(state, pi){
+  const s=computeStandings(state);
+  const bloc=alliedBloc(state, pi);
+  const blocTax=bloc.reduce((sum,b)=>sum+(s.taxByPlayer[b]||0),0);
+  return s.worldTax>0 ? blocTax/s.worldTax : 0;
+}
+const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant'};
+
+// ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
+// character a small perk. Each is awarded every turn to the single best living character by its
+// metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
+const MINOR_CAV=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']);
+const MINOR_HEAVY=new Set(['Mountain Guns','Dwarf Ironclads','Galleon Fleet','Corsair Fleet','Elven Galleys','Orcish Longships','Whale Cohort','Siege Towers']);
+const _BEST_SCHOOL=c=>Math.max(0,...['white','psychic','illusory','elemental','necromancy'].map(s=>skillLevel(c,s)));
+const MINOR_TITLES=[
+  {key:'duelist',    name:'The Duelist',            perk:'+1 melee in personal combat',        metric:c=>skillLevel(c,'melee')},
+  {key:'marksman',   name:'The Marksman',           perk:'+1 archery in personal combat',      metric:c=>skillLevel(c,'archery')},
+  {key:'strategist', name:'The Strategist',         perk:'+1 Tactical command in battle',      metric:c=>skillLevel(c,'tactical')},
+  {key:'swift',      name:'The Swift',              perk:'+1 land movement point',             metric:c=>skillLevel(c,'march')},
+  {key:'seawolf',    name:'The Sea-Wolf',           perk:'+1 sea movement point',              metric:c=>skillLevel(c,'naval')},
+  {key:'shadow',     name:'The Shadow',             perk:'your spies are never detected',      metric:c=>skillLevel(c,'spy')},
+  {key:'cutpurse',   name:'The Cutpurse',           perk:'+2g personal stipend each turn',     metric:c=>skillLevel(c,'thief')},
+  {key:'naturalist', name:'The Naturalist',         perk:'primal armies you lead +5%',         metric:c=>skillLevel(c,'druid')},
+  {key:'loreseeker', name:'The Loreseeker',         perk:'+5% Sage discovery chance',          metric:c=>skillLevel(c,'sage')},
+  {key:'trailblazer',name:'The Trailblazer',        perk:'+5% exploration',                    metric:c=>skillLevel(c,'explorer')},
+  {key:'colossus',   name:'The Colossus',           perk:'+2 HP recovered when resting',       metric:c=>c.maxHp||20},
+  {key:'widowmaker', name:'The Widowmaker',         perk:'+1 melee & +1 archery in combat',    metric:c=>(c.tm&&c.tm.duelKills)||0},
+  {key:'champion',   name:'Champion of the People', perk:'+2g personal stipend each turn',     metric:c=>c.merits||0},
+  {key:'hostleader', name:'The Host-Leader',        perk:'army wages −1 per unit (min 1)',     metric:c=>(c.armies||[]).length},
+  {key:'cavalier',   name:'The Cavalier',           perk:'cavalry you lead +5%',               metric:c=>(c.armies||[]).filter(a=>MINOR_CAV.has(a.type)).length},
+  {key:'beastmaster',name:'The Beastmaster',        perk:'primal armies you lead +5%',         metric:c=>(c.armies||[]).filter(a=>CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)).length},
+  {key:'ironclad',   name:'The Ironclad',           perk:'heavy & fleet units you lead +5%',   metric:c=>(c.armies||[]).filter(a=>MINOR_HEAVY.has(a.type)).length},
+  {key:'relichunter',name:'The Relic-Hunter',       perk:'+1 melee & +1 archery in combat',    metric:c=>(c.items||[]).length},
+  {key:'castellan',  name:'The Castellan',          perk:'+1g per turn for every 5 provinces held', metric:(c,st)=>c.isKing?(((st.world&&st.world.provinces)||[]).filter(pv=>pv.owner===c.player).length):0},
+  {key:'warlock',    name:'The Warlock',            perk:'+1 spell of your best school/turn',  metric:c=>_BEST_SCHOOL(c)},
+];
+function computeMinorTitles(state){
+  const chars=(state.characters||[]).filter(c=>c&&c.player!=null&&c.alive);
+  const out={};
+  MINOR_TITLES.forEach(t=>{
+    let best=0,bc=null;
+    chars.forEach(c=>{ const v=t.metric(c,state)||0; if(v>best){best=v;bc=c;} });
+    if(bc) out[t.key]={charId:bc.id,playerIndex:bc.player,name:t.name,perk:t.perk};
+  });
+  return out;
+}
+
 function buildTurnReport(gameState, playerIndex){
   const player=gameState.players[playerIndex];
   const chars=gameState.characters.filter(c=>c.player===playerIndex&&(c.alive||c.killedThisTurn));
@@ -3487,6 +3648,47 @@ function buildTurnReport(gameState, playerIndex){
     mercIntel,
     visibleDeadHeroes,
     knownDeadHeroes,
+    // ── DIPLOMACY (KC alliance system) ── kingdoms this player has encountered, with the current
+    // relation. The portal renders Treat / Declare War controls against this list (king-only).
+    diplomacy:(()=>{
+      const rels=gameState.relations||{};
+      const relOf=(o)=>{ if(o===playerIndex) return 'self'; const k=playerIndex<o?playerIndex+'-'+o:o+'-'+playerIndex; return rels[k]||'neutral'; };
+      const enc=(player._encountered||[]);
+      return { alliancesAllowed:(gameState.players||[]).length>3, known: enc.filter(o=>o!==playerIndex&&gameState.players[o]).map(o=>({
+        index:o,
+        name:gameState.players[o]?.name||('Kingdom '+(o+1)),
+        color:gameState.players[o]?.color||null,
+        alignment:gameState.players[o]?.alignment||null,
+        relation:relOf(o)
+      })) };
+    })(),
+    // ── VICTORY & TITLES ── standings board (public from turn 5), Reckoning status, and whether
+    // this player may Call the Reckoning right now.
+    titles:(()=>{
+      const turn=gameState.turn||1;
+      const st=computeStandings(gameState);
+      const myShare=reckoningBlocShare(gameState, playerIndex);
+      const kingAlive=(gameState.characters||[]).some(c=>c.alive&&c.isKing&&c.player===playerIndex);
+      const rk=gameState.reckoning||null, over=gameState.gameOver||null;
+      const isPublic=turn>=TITLES_PUBLIC_FROM_TURN || !!over;
+      return {
+        publicFromTurn:TITLES_PUBLIC_FROM_TURN,
+        public:isPublic,
+        threshold:st.threshold,
+        myShare,
+        canCallReckoning: isPublic && kingAlive && !rk && !over && myShare>=st.threshold,
+        reckoning: rk?{byName:gameState.players[rk.by]?.name||null, calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
+        gameOver: over?{winner:over.winner, winnerName:over.winner!=null?(gameState.players[over.winner]?.name||null):null, byElimination:!!over.byElimination, standings:(over.standings||[]).map(s=>({...s,titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)}))}:null,
+        standings: isPublic?st.standings.map(s=>({...s, titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)})):null,
+        holders: isPublic?Object.fromEntries(TITLE_DEFS.map(t=>{ const h=st.titles[t.key]; return [t.key,{name:t.name,prize:t.prize,holderIndex:h.playerIndex,holderName:h.playerIndex!=null?(gameState.players[h.playerIndex]?.name||null):null,mine:h.playerIndex===playerIndex}]; })):null,
+        minor: isPublic?(()=>{
+          const mh=computeMinorTitles(gameState);
+          const chById=id=>(gameState.characters||[]).find(c=>c.id===id);
+          const all=MINOR_TITLES.map(t=>{ const h=mh[t.key]; const holder=h?chById(h.charId):null; return {key:t.key,name:t.name,perk:t.perk,holderName:holder?holder.name:null,holderIndex:h?h.playerIndex:null,mine:!!(h&&h.playerIndex===playerIndex)}; });
+          return { all, mine: all.filter(x=>x.mine) };
+        })():null,
+      };
+    })(),
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. ${player.name} stands ready.`}],
   };
 }
@@ -3635,6 +3837,38 @@ const SPELL_DEFS_P={
   'Plague':         {school:'necromancy',target:'province',encounter:false,phase:true,
     desc:'Action: in your province or an adjacent one, each humanoid army unit has a (10% + 10%/level) chance to drop an experience level; survivors are immunised (half chance thereafter). The plague then spreads to adjacent provinces (15% each per phase) until turn\'s end. Not cumulative.',
     fn:'necromancy_plague'},
+
+  // ══ LEVEL 7 & 9 MASTERY SPELLS (unlocked by school level 7 / 9; experience only) ══
+  'Sanctuary':        {school:'white',target:'province',encounter:false,phase:true,reqLevel:7,
+    desc:'Action (White 7): ward a province you are in or adjacent to. Enemy armies fighting there this turn do so at −25% strength.',
+    fn:'white_sanctuary'},
+  'Divine Judgment':  {school:'white',target:'character',encounter:false,phase:true,reqLevel:9,
+    desc:'Action (White 9): smite an enemy hero in your province — heavy holy damage to them, and several of the units they lead are destroyed.',
+    fn:'white_judgment'},
+  'Mass Confusion':   {school:'psychic',target:'character',encounter:false,phase:true,reqLevel:7,
+    desc:'Action (Psychic 7): an enemy hero in your province loses all Tactical command in their next battle this turn.',
+    fn:'psychic_massconfusion'},
+  'Dominate':         {school:'psychic',target:'character',encounter:false,phase:true,reqLevel:9,
+    desc:'Action (Psychic 9): seize the mind of an enemy hero in your province — up to half the armies they lead defect to you.',
+    fn:'psychic_dominate'},
+  'Phantom Host':     {school:'illusory',target:'none',encounter:false,phase:true,reqLevel:7,
+    desc:'Action (Illusory 7): conjure a phantom army under your banner. It fights like real troops but dissolves at the end of the turn.',
+    fn:'illusory_phantomhost'},
+  'Veil':             {school:'illusory',target:'none',encounter:false,phase:true,reqLevel:9,
+    desc:'Action (Illusory 9): you and your host vanish from all enemy sight until the end of the turn.',
+    fn:'illusory_veil'},
+  'Chain Lightning':  {school:'elemental',target:'character',encounter:false,phase:true,reqLevel:7,
+    desc:'Action (Elemental 7): arcing lightning strikes an enemy hero in your province, destroying several of the units they lead.',
+    fn:'elemental_chainlightning'},
+  'Cataclysm':        {school:'elemental',target:'province',encounter:false,phase:true,reqLevel:9,
+    desc:'Action (Elemental 9): devastate a province you are in or adjacent to — every enemy force there loses units, and the land yields no tax this turn.',
+    fn:'elemental_cataclysm'},
+  'Raise Wraiths':    {school:'necromancy',target:'none',encounter:false,phase:true,reqLevel:7,
+    desc:'Action (Necromancy 7): raise an elite Wraith unit from the battlefield dead of your province.',
+    fn:'necromancy_wraiths'},
+  "Death's Dominion": {school:'necromancy',target:'none',encounter:false,phase:true,reqLevel:9,
+    desc:'Action (Necromancy 9): the fallen of your province rise en masse — raise several skeletal units at once from its battlefield graves.',
+    fn:'necromancy_dominion'},
 };
 
 // Spells available in encounters as CA tactic (subset of above)
@@ -3688,6 +3922,11 @@ async function runTurn(){
   // here — the new submissions below overwrite only the characters whose orders include a plan.
   // Collect warnings about rejected stale orders (logged once log() is ready)
   const staleOrderWarnings=[];
+  // Diplomacy declarations submitted this turn, keyed by player index → { targetPlayerIndex: 'treat'|'enemy' }.
+  // Recorded here, applied at end of turn (relations change "at the start of the next turn").
+  const diploDeclarations={};
+  // Victory: players who Called the Reckoning this turn (king-only, one per kingdom).
+  const reckoningCalls=new Set();
   freshPlayers.filter(p=>p.user_id&&p.orders).forEach(gp=>{
     let raw=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
     // Detect new format: {orders:{charId:[phases]}, encounterPlans:{}, forTurn:N}
@@ -3701,6 +3940,10 @@ async function runTurn(){
       epObj=raw.encounterPlans||{};
       kingSkillsObj=raw.kingSkills||{};
       forTurn=raw.forTurn??null;
+      // Diplomacy declarations (king-only, one stance per target). Validated at resolution time
+      // against the encountered set; stored raw here.
+      if(raw.diplomacy && typeof raw.diplomacy==='object') diploDeclarations[gp.player_index]=raw.diplomacy;
+      if(raw.callReckoning===true) reckoningCalls.add(gp.player_index);
     }
     // CRITICAL: reject orders that were stamped for a different turn (stale submissions)
     if(forTurn!==null&&forTurn!==expectedTurnToRun){
@@ -3842,6 +4085,45 @@ async function runTurn(){
     console.log(`[${type}] ${text}`);
   };
 
+  // ── DIPLOMACY (KC alliance system) ─────────────────────────────────────────
+  // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
+  // entry is NEUTRAL (the default). These helpers are the single source of truth consulted by the
+  // movement border gate, every PvP battle site, and isHostileInvasion (pinning + Defend).
+  if(!G.relations) G.relations={};
+  function relKeyOf(a,b){ return a<b ? a+'-'+b : b+'-'+a; }
+  function relationBetween(a,b){
+    if(a==null||b==null) return 'neutral';
+    if(a===b) return 'self';
+    return G.relations[relKeyOf(a,b)] || 'neutral';
+  }
+  function areEnemies(a,b){ return relationBetween(a,b)==='enemy'; }
+  function areAllied(a,b){ return relationBetween(a,b)==='allied'; }
+
+  // ── TITLE MERIT: battles ── Grand Marshal (land) / Sea Lord (sea): the winner gains +1 per enemy
+  // unit destroyed; the loser loses 1 per own unit lost. Counted from the pooled battle copies, which
+  // still carry _died flags at the call site. Only credited for real player-vs-player battles.
+  function creditBattle(atkChar, defChar, battle, atkArmiesCopy, defArmiesCopy, prov){
+    if(!atkChar||!defChar||atkChar.player==null||defChar.player==null||!battle) return;
+    const bucket=(prov&&prov.terrain==='sea')?'sea':'marshal';
+    const atkLost=(atkArmiesCopy||[]).filter(a=>a&&a._died).length;
+    const defLost=(defArmiesCopy||[]).filter(a=>a&&a._died).length;
+    if(battle.won){ TM(atkChar)[bucket]+=defLost; TM(defChar)[bucket]-=defLost; }
+    else          { TM(defChar)[bucket]+=atkLost; TM(atkChar)[bucket]-=atkLost; }
+  }
+
+  // ── LIVE TITLE PERKS + MINOR TITLES ── Determine who holds each Title going into this turn (once,
+  // so a perk applies all turn). Function declarations (hoisted) + an EARLY computation so even the
+  // turn-start pursuit resolution reads valid holders without a temporal-dead-zone. Active only from
+  // the turn Titles go public (#10); before that the maps are empty and every check returns false.
+  G._titleHolders={}; G._minorHolders={};
+  if(TITLE_PERKS_ENABLED && (G.turn||1)>=TITLES_PUBLIC_FROM_TURN){
+    try{ G._titleHolders=computeStandings(G).titles||{}; }catch(e){ G._titleHolders={}; }
+    try{ G._minorHolders=computeMinorTitles(G); }catch(e){ G._minorHolders={}; }
+  }
+  function charHoldsTitle(c,key){ return !!(c&&G._titleHolders&&G._titleHolders[key]&&G._titleHolders[key].charId!=null&&G._titleHolders[key].charId===c.id); }
+  function playerHoldsTitle(pi,key){ return !!(G._titleHolders&&G._titleHolders[key]&&G._titleHolders[key].playerIndex===pi); }
+  function charMinor(c,key){ return !!(c&&G._minorHolders&&G._minorHolders[key]&&G._minorHolders[key].charId===c.id); }
+
   // Flush any stale-order warnings collected during the merge phase
   if(staleOrderWarnings.length>0){
     staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true}));
@@ -3889,7 +4171,7 @@ async function runTurn(){
   }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
   // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character.
-  function isHiddenChar(ch){ return !!(ch&&(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden')); }
+  function isHiddenChar(ch){ return !!(ch&&((ch._veiledTurn===G.turn)||(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden'))); } // ILLUSORY L9 Veil = turn-stamped hidden
 
   // A hero's wage is a function of their skills, so it must be recomputed EVERYWHERE skills
   // change — not just in the Practice order. Experience-driven gains (trySkillGain) previously
@@ -3911,7 +4193,7 @@ async function runTurn(){
     const real=(char.id!=null && G.characters[char.id]) ? G.characters[char.id] : char;
     if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
     const lvl=(real.skills||{})[skill]||0;
-    if(lvl>=5) return;
+    if(lvl>=9) return; // SKILL CAP raised to 9 — but only EXPERIENCE (this path) may pass level 5.
     const chance=(base==null?SKILLGAIN_STD:base)*(1-0.10*lvl); // slight easing per level
     if(Math.random()<chance){
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
@@ -4143,6 +4425,23 @@ function seaPenalty(armyType, terrain){
     // DRUIDIC — Home of the Wild: Creature armies of a Druidic kingdom fight ×1.5 in forest and
     // jungle (the long-advertised bonus, previously described but never implemented).
     if(playerAlignment==='Druidic'&&(terrain==='forest'||terrain==='jungle')&&CREATURE_ARMIES.has(army.type)) str=Math.round(str*1.5);
+    // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies +5%.
+    if(heroChar){
+      if(terrain==='sea'){ if(charHoldsTitle(heroChar,'sea')) str=Math.round(str*1.05); }
+      else if(charHoldsTitle(heroChar,'marshal')) str=Math.round(str*1.05);
+    }
+    // ── LEVEL 6+ SKILL PERK ── Archdruid: primal (Creature/Monster) armies the character leads gain
+    // +5% strength for each Druid level past 5.
+    if(heroChar && (CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){
+      const dPerk=perkTier(heroChar,'druid'); if(dPerk>0) str=Math.round(str*(1+0.05*dPerk));
+    }
+    // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%; Ironclad: heavy & fleet +5%.
+    if(heroChar){
+      const _prim=CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type);
+      if(_prim && (charMinor(heroChar,'naturalist')||charMinor(heroChar,'beastmaster'))) str=Math.round(str*1.05);
+      if(charMinor(heroChar,'cavalier') && MINOR_CAV.has(army.type)) str=Math.round(str*1.05);
+      if(charMinor(heroChar,'ironclad') && MINOR_HEAVY.has(army.type)) str=Math.round(str*1.05);
+    }
     // Evil Terror: province was terrorised last turn — defending armies -10%
     // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
     return str;
@@ -4385,7 +4684,7 @@ const BATTLE_ARMY_SPELLS={
   function combatVsNPC(c, prov, neutralGuardHero){
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
-    if(c){c._druidNegated=false;c._tacticalNegated=false;c._tacticalHalved=false;c._tacticalMult=1;c._curseHalveStat=null;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;neutralGuardHero._tacticalHalved=false;neutralGuardHero._tacticalMult=1;neutralGuardHero._curseHalveStat=null;}
+    if(c){c._druidNegated=false;c._tacticalNegated=false;c._tacticalHalved=false;c._tacticalMult=1;c._curseHalveStat=null; if(c._massConfusedTurn===G.turn)c._tacticalNegated=true;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;neutralGuardHero._tacticalHalved=false;neutralGuardHero._tacticalMult=1;neutralGuardHero._curseHalveStat=null;}
     const armies=c.armies||[];
     const defenders=prov.neutralDefenders||[];
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
@@ -4422,7 +4721,7 @@ const BATTLE_ARMY_SPELLS={
     // A slain commander's skills die with them: the stand-in provides no Tactical, Archery,
     // Naval, Druid or spellcraft for the rest of this battle.
     const defHero=defCmdrSlain?null:(neutralGuardHero||null);
-    let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:effStat(c,'tactical'); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2);
+    let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:(effStat(c,'tactical')+perkTier(c,'tactical')+(charMinor(c,'strategist')?1:0)); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2); // LEVEL 6+ PERK — Grand Tactician
     const tactBonus=1+tactSkill*0.2;
     // Tactical only applies to land armies (not flying or naval) per AK 4.1.1
     // Tactical only applies in land provinces AND to land units
@@ -4559,7 +4858,7 @@ const BATTLE_ARMY_SPELLS={
     });
 
     // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr below)
-    let defTactLvl=defHero?(defHero._tacticalNegated?0:effStat(defHero,'tactical')):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2);
+    let defTactLvl=defHero?(defHero._tacticalNegated?0:(effStat(defHero,'tactical')+perkTier(defHero,'tactical')+(charMinor(defHero,'strategist')?1:0))):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2); // LEVEL 6+ PERK — Grand Tactician
     const defTactBonus=defTactLvl>0?1+defTactLvl*0.2:1;
     // Army / defender counts (needed by archery and battle lines)
     const atkCount=armies.length; const defCount=(prov.neutralDefenders||[]).length;
@@ -5268,7 +5567,9 @@ const BATTLE_ARMY_SPELLS={
     return {
       kind:'character', ref:ch, name:ch.name, player:ch.player,
       hp:(ch.hp!=null?ch.hp:maxHp)+rageHp, maxHp:maxHp+rageHp,
-      melee:effStat(ch,'melee'), archery:effStat(ch,'archery'),
+      // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
+      melee:effStat(ch,'melee')+perkTier(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
+      archery:effStat(ch,'archery')+perkTier(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
       temper:ch.temper||'Brave', alignment:ch.alignment,
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
               elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
@@ -5950,11 +6251,11 @@ const BATTLE_ARMY_SPELLS={
     recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
-    if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._tacticalHalved=false;atk._tacticalMult=1;atk._curseHalveStat=null;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._tacticalHalved=false;def._tacticalMult=1;def._curseHalveStat=null;}
+    if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._tacticalHalved=false;atk._tacticalMult=1;atk._curseHalveStat=null; if(atk._massConfusedTurn===G.turn)atk._tacticalNegated=true;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._tacticalHalved=false;def._tacticalMult=1;def._curseHalveStat=null; if(def._massConfusedTurn===G.turn)def._tacticalNegated=true;}
     const atkArmies=atk.armies||[];
     const defArmies=def.armies||[];
-    let atkTact=atk._tacticalNegated?0:effStat(atk,'tactical'); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2);
-    let defTact=def._tacticalNegated?0:effStat(def,'tactical'); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2);
+    let atkTact=atk._tacticalNegated?0:(effStat(atk,'tactical')+perkTier(atk,'tactical')+(charMinor(atk,'strategist')?1:0)); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2); // LEVEL 6+ PERK — Grand Tactician
+    let defTact=def._tacticalNegated?0:(effStat(def,'tactical')+perkTier(def,'tactical')+(charMinor(def,'strategist')?1:0)); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2); // LEVEL 6+ PERK — Grand Tactician
     // Tactical bonus only applies in land provinces
     const isPvPSea=prov.terrain==='sea';
     let atkTactBonus=isPvPSea?1:1+atkTact*0.2;
@@ -6305,13 +6606,19 @@ const BATTLE_ARMY_SPELLS={
     const defIllP = (_illCasterP!=null && def.player!==_illCasterP) ? 0.8 : 1;
     if(atkIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${atkName}'s forces — they fight at 80% strength.`);
     if(defIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${defName}'s forces — they fight at 80% strength.`);
+    // WHITE L7 — Sanctuary: enemies of the warding caster fight at −25% in the warded province this turn.
+    const _sanctBy = (prov&&prov._sanctuaryTurn===G.turn) ? prov._sanctuaryBy : null;
+    const atkSanct = (_sanctBy!=null && atk.player!==_sanctBy) ? 0.75 : 1;
+    const defSanct = (_sanctBy!=null && def.player!==_sanctBy) ? 0.75 : 1;
+    if(atkSanct<1) narrative.push(`  ✨ The sanctuary wards of ${prov.name} sap ${atkName}'s attackers (−25% strength).`);
+    if(defSanct<1) narrative.push(`  ✨ The sanctuary wards of ${prov.name} sap ${defName}'s attackers (−25% strength).`);
     // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
     // consecrated province).
     const _consecPenalty=(_consecratedHere&&(atkAlign==='Undead'||atkAlign==='Evil'))?0.85:1;
     if(_consecPenalty<1) narrative.push(`✨ The ground of ${prov.name} is consecrated — ${atkName}'s ${atkAlign.toLowerCase()} host falters on hallowed earth (−15% strength).`);
     // Post-multiplier base strengths — every battle-level multiplier folded in, BEFORE the dice.
-    const atkBaseStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP*_consecPenalty;
-    const defBaseStr=(defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP;
+    const atkBaseStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP*_consecPenalty*atkSanct;
+    const defBaseStr=(defRaw*defTactBonus*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP*defSanct;
     // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
     // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
     const battleRollRangePvP=Math.max(1, Math.max(atkBaseStr, defBaseStr) * 0.7);
@@ -6820,6 +7127,10 @@ const BATTLE_ARMY_SPELLS={
   function handleHeroDeath(deadChar, killerChar, opts){
     if(!deadChar) return;
     opts=opts||{};
+    if(killerChar&&killerChar.player!=null&&deadChar.player!=null&&deadChar.player!==killerChar.player){ const _tm=TM(killerChar); _tm.duelKills=(_tm.duelKills||0)+1; } // MINOR TITLE — The Widowmaker
+    // VICTORY (#3): a fallen character loses 25% of accumulated Title merit — killing a rival's
+    // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
+    if(deadChar.tm){ for(const k in deadChar.tm){ deadChar.tm[k]=Math.round((deadChar.tm[k]||0)*0.75); } }
     const prov=G.world.provinces[deadChar.location];
 
     // 1. Armies. Normally dispersed at once; a pre-battle-duel death defers this (keepArmies)
@@ -6902,6 +7213,16 @@ const BATTLE_ARMY_SPELLS={
     'use_item':'use_item','use item':'use_item','use magic item':'use_item',
     'pursue':'pursue','pursue character':'pursue',
     'rite':'rite','perform rite':'rite',
+    'sabotage':'sabotage',
+    'forced march':'forced_march','forced_march':'forced_march',
+    'grand heist':'grand_heist','grand_heist':'grand_heist',
+    'awaken grove':'awaken_grove','awaken_grove':'awaken_grove',
+    'chart the unknown':'chart_unknown','chart_unknown':'chart_unknown',
+    'discover lost ruin':'discover_ruin','discover_ruin':'discover_ruin',
+    'blockade':'blockade',
+    'research breakthrough':'research_breakthrough','research_breakthrough':'research_breakthrough',
+    'assassinate':'assassinate',
+    'vanish':'vanish',
   };
 
   function processOrder(c,o,ph){
@@ -6939,6 +7260,16 @@ const BATTLE_ARMY_SPELLS={
           if(!isNaN(id)) toProv=G.world.provinces[id];
         }
         if(!toProv){log('move',`${c.name}: invalid move target.`,{actor:c.player,targets:[c.player]});break;}
+        // ── DIPLOMACY BORDER (KC alliance system) ──────────────────────────────────
+        // A character LEADING ARMIES may not cross into a province owned by a player we are merely
+        // NEUTRAL with — the column is turned back at the frontier (no move, no movement spent). Only
+        // an ALLIANCE (free passage) or a state of WAR (invasion) opens a foreign border to armies.
+        // Unarmed characters pass freely either way (AK code of honour: no capture without an army).
+        if(toProv.owner!=null && toProv.owner!==c.player && (c.armies||[]).length>0
+           && relationBetween(c.player,toProv.owner)==='neutral'){
+          log('move',`${c.name}'s column is turned back at the border of ${toProv.name} — ${player.name} and ${G.players[toProv.owner]?.name||'that realm'} are at peace. Neither may march an army across the other's frontier without a treaty of alliance or a declaration of war.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+          break;
+        }
         // Recompute sea capability from the LIVE force here rather than trusting the turn-start cache.
         // The cache (seaCap[c.id]) is only refreshed at a handful of points, so a force that gained or
         // lost fleets earlier this turn could be judged on a stale composition — the reported symptom
@@ -6960,6 +7291,10 @@ const BATTLE_ARMY_SPELLS={
         // can only move to an ADJACENT SEA province (land→sea). To reach another coast it must sail
         // through the sea. (Mixed land+naval stacks still march overland on their land armies.)
         const moveArmies=c.armies||[];
+        // NAVAL L7 Blockade: an enemy-sealed sea province cannot be crossed this turn.
+        if(toProv&&toProv._blockadeTurn===G.turn&&toProv._blockadeBy!=null&&toProv._blockadeBy!==c.player&&areEnemies(c.player,toProv._blockadeBy)){
+          log('move',`${c.name} finds the waters of ${toProv.name} sealed by an enemy blockade — the crossing is barred this turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+        }
 
         if(false){
           // (coastal-hop path retired)
@@ -7061,7 +7396,7 @@ const BATTLE_ARMY_SPELLS={
           // skill level of the moving character — applied on EVERY move in, not just the first.
           if(!toProv.exploredBy) toProv.exploredBy={};
           const explLvlMove=effStat(c,'explorer');
-          const explGainMove=10+5*explLvlMove;
+          const explGainMove=(10+5*explLvlMove)+(charHoldsTitle(c,'lore')?5:0); // LIVE TITLE PERK — Loremaster
           const prevExp=toProv.exploredBy[c.player]||0;
           toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove);
           toProv.explored=toProv.exploredBy[c.player];
@@ -7071,8 +7406,8 @@ const BATTLE_ARMY_SPELLS={
             const thresh=100/totalF;
             const _spotted=[];
             toProv.features.forEach((f,idx)=>{
-              if(!featDiscovered(f,c.player)&&!f._hidden&&toProv.explored>=(thresh*(idx+1))){
-                discoverFeat(f,c.player);
+              if(!featDiscovered(f,c.player)&&!f._hidden&&(toProv.explored>=(thresh*(idx+1))||perkTier(c,'explorer')>0)){ // LEVEL 6+ PERK — Pathfinder: auto-spot on entry
+                discoverFeat(f,c.player); TM(c).featuresFound+=1; // TITLE MERIT: Loremaster
                 _spotted.push(f.name);
               }
             });
@@ -7254,7 +7589,10 @@ const BATTLE_ARMY_SPELLS={
             toProv.characters=toProv.characters.filter(id=>id!==c.id);
             prov.characters.push(c.id);c.location=prov.id;if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
           }
-        } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0){
+        } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0&&areEnemies(c.player,toProv.owner)){
+          // ENEMY-owned province → invasion/battle (below). ALLIED-owned falls through to the final
+          // else and is treated as a peaceful entry (allies grant free passage and never fight here);
+          // NEUTRAL-owned was already turned back at the border above.
           c._attackedFrom=prov.id; // track for retreat
           const defChar=G.characters.find(d=>d.alive&&d.player===toProv.owner&&d.location===toProv.id&&(d.armies||[]).length>0);
           if(!defChar){
@@ -7319,6 +7657,7 @@ const BATTLE_ARMY_SPELLS={
             const combinedAtk={...c,armies:[...(c.armies||[]),...pvpReinforcements.flatMap(a=>a.armies||[])]};
             const combinedDef={...defChar,armies:[...(defChar.armies||[]),...defReinforcements.flatMap(d=>d.armies||[]),..._rallied]};
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
+            creditBattle(c,defChar,battle,combinedAtk.armies,combinedDef.armies,toProv);
             const targets=[c.player,defChar.player];
             battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets,provinceId:toProv.id,public:true}));
             // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
@@ -7545,7 +7884,8 @@ const BATTLE_ARMY_SPELLS={
         const explorerSkill=Math.min(5,effStat(c,'explorer')+(hasDisc(c.player,'sd24')?1:0));
         // sd10 Scouts & Rangers: +20% explore bonus
         const scoutBonus=hasDisc(c.player,'sd10')?1.20:1;
-        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus));
+        const loreMult=(charHoldsTitle(c,'lore')?1.05:1)*(charMinor(c,'trailblazer')?1.05:1); // Loremaster title + Trailblazer minor: +5% exploration each
+        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult));
         if(!prov.exploredBy) prov.exploredBy={};
         const before=prov.exploredBy[c.player]||0;
         prov.exploredBy[c.player]=Math.min(100,before+gain);
@@ -7558,7 +7898,7 @@ const BATTLE_ARMY_SPELLS={
           const threshold=100/totalFeatures; // % per feature
           prov.features.forEach((f,idx)=>{
             if(!featDiscovered(f,c.player)&&prov.explored>=(threshold*(idx+1))){
-              discoverFeat(f,c.player);c.merits=(c.merits||0)+1;
+              discoverFeat(f,c.player);c.merits=(c.merits||0)+1; TM(c).featuresFound+=1; // TITLE MERIT: Loremaster
               newlyDiscovered.push(f);
             }
           });
@@ -7645,7 +7985,7 @@ const BATTLE_ARMY_SPELLS={
           const isPagan=G.players[c.player]?.alignment==='Pagan';
           log('explore',`${c.name} walks the ${f.name} of ${prov.name}. The old stones hum with something older than kingdoms${isPagan?' — a Pagan may Perform Rites here':', but they do not answer'}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         if(f.cleared){log('explore',`${c.name} revisits the cleared ${f.name} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        if(!featDiscovered(f,c.player)){discoverFeat(f,c.player);}
+        if(!featDiscovered(f,c.player)){discoverFeat(f,c.player); TM(c).featuresFound+=1;} // TITLE MERIT: Loremaster
         const plan=c.encounterPlan||{tactics:['ME']};
         const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],effStat,rng,player);
         encounter.narrative.forEach(line=>{log('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
@@ -7678,6 +8018,8 @@ const BATTLE_ARMY_SPELLS={
           }
         } else if(encounter.won){
           f.cleared=true;
+          // TITLE MERIT: Monster-Bane — HP of the beast overcome (half credit if pacified/parleyed).
+          if(f.monster) TM(c).monster += Math.round((f.monster.hp||0)*(encounter.pacified?0.5:1));
           const tier=f.monster?.power||'Weak';
           // Reward ladder — tougher monsters are meaningfully more worthwhile (gold + item odds + HP).
           const T=({Weak:{gold:[3,8],hp:[1,3],itemChance:0.25,bonusItem:0},
@@ -7686,10 +8028,14 @@ const BATTLE_ARMY_SPELLS={
                     Legendary:{gold:[40,70],hp:[5,9],itemChance:1.0,bonusItem:0.50}})[tier]
                     ||{gold:[1,5],hp:[1,3],itemChance:0.25,bonusItem:0};
           const gold=rng(T.gold[0],T.gold[1]);
-          player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
+          // ── LIVE TITLE PERK ── Monster-Bane: the great slayer profits more from the hunt — +50%
+          // hoard gold and +1 extra permanent max-HP from every beast overcome.
+          const _mbane=charHoldsTitle(c,'monster');
+          const goldFinal=_mbane?Math.round(gold*1.5):gold;
+          player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           // Permanent max-HP growth (the main power curve alongside magic items).
           const preHpMax=c.maxHp||20;
-          const hpGain=rng(T.hp[0],T.hp[1]);
+          const hpGain=rng(T.hp[0],T.hp[1])+(_mbane?1:0);
           c.maxHp=preHpMax+hpGain;
           const postHp=(encounter.heroHpAfter!=null?encounter.heroHpAfter:c.hp);
           const hpLost=Math.max(0,preHpMax-postHp);
@@ -7866,7 +8212,10 @@ const BATTLE_ARMY_SPELLS={
         // sd19 Cipher Scripts: if target province owner has it, -25% to our spy
         const targetProvForSpy=G.world.provinces[parseInt(target)];
         const cipherPenalty=(targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player&&hasDisc(targetProvForSpy.owner,'sd19'))?0.25:0;
-        const success=hasCrystalOrb||Math.random()<0.2+effStat(c,'spy')*0.2+spyBonus-cipherPenalty;
+        // LEVEL 6+ SKILL PERK — Master Spy: at Spy 6+, espionage never fails (as the Crystal Orb).
+        const masterSpy=perkTier(c,'spy')>0;
+        if(charMinor(c,'shadow')) c._spyDisguised=true; // MINOR TITLE — The Shadow: spies never detected
+        const success=hasCrystalOrb||masterSpy||Math.random()<0.2+effStat(c,'spy')*0.2+spyBonus-cipherPenalty;
         // sd23 Disguise Techniques: this spy cannot be detected by intrusion notifications
         if(success&&hasDisc(c.player,'sd23')) c._spyDisguised=true;
         if(success){
@@ -7893,6 +8242,7 @@ const BATTLE_ARMY_SPELLS={
           if(oldP) log('system',`The consecration of ${oldP.name} lapses as the divine favour moves on.`,{actor:c.player,targets:[c.player],provinceId:oldP.id});
         }
         player.consecratedProvId=prov.id;
+        TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
         log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and fallen heroes return HERE when divine grace restores them. (One consecrated province per kingdom — consecrating another moves the blessing.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         break;
       }
@@ -8029,7 +8379,7 @@ const BATTLE_ARMY_SPELLS={
           // Library (sd30): 10% per Sage level instead of 5%. This discovery defined an effect
           // (`sageDiscoveryBonus`) that nothing ever read — the rate was hard-coded at 5%.
           const perLevel=hasDisc(c.player,'sd30')?10:5;
-          const discoveryChance=sageLevel*perLevel+neutralSageBonus;
+          const discoveryChance=sageLevel*perLevel+neutralSageBonus+perkTier(c,'sage')*perLevel+(charMinor(c,'loreseeker')?perLevel:0); // Master Scholar + Loreseeker minor
           const dRoll=d100();
           log('system',`📊 Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${perLevel===10?', Library ×2':''}${neutralSageBonus>0?', Neutral ×2':''}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
           if(dRoll<=discoveryChance){
@@ -8039,7 +8389,7 @@ const BATTLE_ARMY_SPELLS={
             const available=SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id));
             if(available.length>0){
               const disc=available[Math.floor(Math.random()*available.length)];
-              player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn});
+              player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1; // TITLE MERIT: Loremaster
               log('explore',`💡 ${c.name}'s scholarly pursuits bear fruit! **${disc.name}** (${disc.category}) discovered. ${disc.desc}`,{actor:c.player,targets:[c.player]});
               trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
             } else {
@@ -8050,7 +8400,7 @@ const BATTLE_ARMY_SPELLS={
           }
         }
         // Mastery: no further levels to gain, but the discovery roll above has already happened.
-        if(current>=5){log('system',`${c.name} has already mastered ${SKILL_LABELS[skill]||skill} (level 5 — maximum).`,{actor:c.player,targets:[c.player]});break;}
+        if(current>=5){log('system',`${c.name} has trained ${SKILL_LABELS[skill]||skill} as far as drilling can take them (level 5). Higher mastery (levels 6–9) is won only through experience in the field, never the practice ground.`,{actor:c.player,targets:[c.player]});break;}
 
         // Group training bonus: find all other characters in the same province
         // who are also practising the same skill in this same phase
@@ -8173,7 +8523,9 @@ const BATTLE_ARMY_SPELLS={
         const isDivineKingdom=G.players[c.player]?.alignment==='Divine';
         const healRange=hasDisc(c.player,'sd28')?[3,7]:[2,5];
         const baseHeal=rng(healRange[0],healRange[1]);
-        const heal=isDivineKingdom?baseHeal*3:baseHeal;
+        let heal=isDivineKingdom?baseHeal*3:baseHeal;
+        if(charHoldsTitle(c,'hiero')) heal=Math.round(heal*1.5); // LIVE TITLE PERK — Hierophant: +50% rest healing
+        if(charMinor(c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
         c.hp=Math.min(c.maxHp||20,c.hp+heal);
         log('system',`${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom?' — Divine blessing triples healing':''}).`,{actor:c.player,targets:[c.player]});
         break;
@@ -8527,7 +8879,7 @@ const BATTLE_ARMY_SPELLS={
         {
           const _school=spellDef.school;
           const _lvl=effStat(c,_school);
-          const _limit=_lvl>=4?3:_lvl>=3?2:1;
+          const _limit=(_lvl>=4?3:_lvl>=3?2:1)+(charHoldsTitle(c,'arch')?1:0)+(perkTier(c,_school)>0?1:0)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Archmage title + school mastery + Warlock minor
           const _castsSoFar=(G.turnOrders[c.id]||[]).slice(0,ph).filter(o=>{
             if(!o||o.action!=='cast_spell') return false;
             return SPELL_DEFS_P[o.target]?.school===_school;
@@ -8543,6 +8895,11 @@ const BATTLE_ARMY_SPELLS={
           // Check if they were trying to cast after a practice order this turn
           // (the practice didn't raise the skill, so the cast fails gracefully)
           log('system',`${c.name} attempts to cast ${spellName} but lacks the required ${SKILL_LABELS[school]||school} skill — the practice order earlier this turn did not result in a skill gain. The spell fails.`,{actor:c.player,targets:[c.player]});
+          break;
+        }
+        // L7/L9 mastery spells require the RAW school level (past-5 comes from experience only).
+        if(spellDef.reqLevel && skillLevel(c,school) < spellDef.reqLevel){
+          log('system',`${c.name} cannot yet wield ${spellName} — it demands ${SKILL_LABELS[school]||school} level ${spellDef.reqLevel}, and they have reached only ${skillLevel(c,school)}.`,{actor:c.player,targets:[c.player]});
           break;
         }
 
@@ -8593,6 +8950,7 @@ const BATTLE_ARMY_SPELLS={
           // Revive — the hero now serves the player whose character raised them, at full health,
           // but WITHOUT any possessions they carried in life.
           deadHero.alive=true;
+          TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           deadHero.hp=deadHero.maxHp||20;
           deadHero.location=c.location;
           deadHero.player=c.player; // comes under the caster's control
@@ -8653,6 +9011,7 @@ const BATTLE_ARMY_SPELLS={
             log('system',`${c.name}: ${targetProv.name} is already blessed this turn — a second Bless has no further effect (they do not stack).`,{actor:c.player,targets:[c.player]});break;
           }
           targetProv._blessedTurn=G.turn;
+          TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           // DIVINE: a Divine kingdom's casters bless at +80% (the long-advertised alignment bonus,
           // previously described but never implemented — engine now honours it), and the Divine
           // KING himself blesses at +100% — the gods answer their anointed in full.
@@ -8933,14 +9292,229 @@ const BATTLE_ARMY_SPELLS={
           log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true});
         }
 
+        // ══ LEVEL 7 & 9 MASTERY SPELLS ══════════════════════════════════════════════
+        // WHITE
+        else if(fn==='white_sanctuary'){
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Sanctuary must ward your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
+          targetProv._sanctuaryTurn=G.turn; targetProv._sanctuaryBy=c.player;
+          log('explore',`✨ ${c.name} raises a Sanctuary over ${targetProv.name} — hostile armies that give battle here fight at −25% strength this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
+        }
+        else if(fn==='white_judgment'){
+          if(!targetChar||targetChar.location!==c.location){log('system',`Divine Judgment: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Divine Judgment cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          const dmg=10+spellLevel*3;
+          targetChar.hp=Math.max(1,(targetChar.hp||20)-dmg);
+          const src=targetChar.armies||[]; const kills=Math.min(src.length,2+Math.floor(spellLevel/2));
+          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,kills).sort((a,b)=>b-a);
+          idxs.forEach(i=>src.splice(i,1));
+          log('combat',`⚡ ${c.name} calls down Divine Judgment on ${targetChar.name} — ${dmg} holy damage${kills>0?`, and ${kills} of their unit${kills!==1?'s':''} are smitten to ash`:''}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+        }
+        // PSYCHIC
+        else if(fn==='psychic_massconfusion'){
+          if(!targetChar||targetChar.location!==c.location){log('system',`Mass Confusion: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Mass Confusion cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          targetChar._massConfusedTurn=G.turn;
+          log('combat',`✨ ${c.name} sows Mass Confusion through ${targetChar.name}'s ranks — their commander's Tactical genius deserts them in their next battle this turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+        }
+        else if(fn==='psychic_dominate'){
+          if(!targetChar||targetChar.location!==c.location){log('system',`Dominate: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Dominate cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          const src=targetChar.armies||[];
+          if(src.length===0){log('combat',`✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          const take=Math.max(1,Math.floor(src.length/2));
+          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,take).sort((a,b)=>b-a);
+          const seized=idxs.map(i=>src.splice(i,1)[0]);
+          c.armies=(c.armies||[]).concat(seized);
+          log('hire',`✨ ${c.name} Dominates ${targetChar.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          resolveUnitGainInProvince(c, prov, ph);
+        }
+        // ILLUSORY
+        else if(fn==='illusory_phantomhost'){
+          const phantom={type:'Phantom Legion',quality:'Elite',race:'Illusion',unitName:'a Phantom Legion',_temporary:true,_expiresAfterPhase:-1,_illusory:true};
+          c.armies=(c.armies||[]);c.armies.push(phantom);
+          log('explore',`✨ ${c.name} conjures a Phantom Host — spectral legions form under your banner and fight as real troops until they dissolve at turn's end.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          resolveUnitGainInProvince(c, prov, ph);
+        }
+        else if(fn==='illusory_veil'){
+          c._veiledTurn=G.turn;
+          log('explore',`✨ ${c.name} draws a Veil of illusion over their host — they vanish from all enemy sight until the end of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        }
+        // ELEMENTAL
+        else if(fn==='elemental_chainlightning'){
+          if(!targetChar||targetChar.location!==c.location){log('system',`Chain Lightning: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetChar.player===c.player){log('system',`Chain Lightning cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
+          const src=targetChar.armies||[];
+          if(src.length===0){log('combat',`✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          const hits=Math.min(src.length,1+Math.floor(spellLevel/2));
+          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,hits).sort((a,b)=>b-a);
+          idxs.forEach(i=>src.splice(i,1));
+          log('combat',`⚡ ${c.name}'s Chain Lightning leaps through ${targetChar.name}'s ranks — ${hits} unit${hits!==1?'s':''} are blasted apart!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+        }
+        else if(fn==='elemental_cataclysm'){
+          const casterProv=G.world.provinces[c.location];
+          const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Cataclysm must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
+          targetProv._earthquakeNoTax=G.turn;
+          let totalDestroyed=0;
+          (G.characters||[]).filter(ch=>ch.alive&&ch.location===targetProv.id&&ch.player!==c.player&&(ch.armies||[]).length>0).forEach(ch=>{
+            const n=Math.min(ch.armies.length,1+Math.floor(spellLevel/2));
+            const idxs=ch.armies.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,n).sort((a,b)=>b-a);
+            idxs.forEach(i=>ch.armies.splice(i,1)); totalDestroyed+=n;
+          });
+          log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the ruined land yields no tax this turn.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true});
+        }
+        // NECROMANCY
+        else if(fn==='necromancy_wraiths'){
+          const graves=prov.battleGraves||[];
+          if(graves.length===0){log('explore',`${c.name}'s call for Wraiths finds no battlefield dead in ${prov.name} to answer.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const g=prov.battleGraves.splice(Math.floor(Math.random()*prov.battleGraves.length),1)[0];
+          const wraith={type:g.type,quality:'Elite',race:'Undead',_isSkeletal:true,unitName:`Wraiths (${armyUnitName(g.type)})`};
+          c.armies=(c.armies||[]);c.armies.push(wraith);
+          log('explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn; ${prov.battleGraves.length} grave${prov.battleGraves.length!==1?'s':''} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          resolveUnitGainInProvince(c, prov, ph);
+        }
+        else if(fn==='necromancy_dominion'){
+          const graves=prov.battleGraves||[];
+          if(graves.length===0){log('explore',`${c.name}'s Death's Dominion finds no fallen army in ${prov.name} to raise.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const n=Math.min(graves.length,spellLevel); let raised=0;
+          for(let k=0;k<n;k++){ if(prov.battleGraves.length===0)break; const g=prov.battleGraves.splice(Math.floor(Math.random()*prov.battleGraves.length),1)[0]; c.armies=(c.armies||[]); c.armies.push({type:g.type,quality:g.quality,race:'Undead',_isSkeletal:true,unitName:`${g.unitName||armyUnitName(g.type)} (Skeletal)`}); raised++; }
+          log('explore',`💀 ${c.name} unleashes Death's Dominion over ${prov.name} — ${raised} skeletal unit${raised!==1?'s':''} claw up from the graves to serve! (${prov.battleGraves.length} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          resolveUnitGainInProvince(c, prov, ph);
+        }
+
         // Magic school skill gain on a successful action cast
         trySkillGain(c, school, SKILLGAIN_STD);
         break;
       }
 
 
+      // ══ L7/L9 MASTERY ORDERS (batch 2a) ══════════════════════════════════════════
+      case 'sabotage':{
+        if(skillLevel(c,'spy')<7){log('system',`${c.name} lacks the Spy mastery (7) to attempt Sabotage.`,{actor:c.player,targets:[c.player]});break;}
+        const tp=G.world.provinces[parseInt(target)];
+        if(!tp||tp.owner==null||tp.owner===c.player){log('system',`${c.name}: Sabotage needs a valid enemy province you have seen.`,{actor:c.player,targets:[c.player]});break;}
+        if(!areEnemies(c.player,tp.owner)){log('system',`${c.name}: you are not at war with the owner of ${tp.name} — Sabotage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        tp._sabotagedForTurn=G.turn;
+        let disbanded='';
+        if((tp.garrisonArmies||[]).length>0){ const u=tp.garrisonArmies.splice(Math.floor(Math.random()*tp.garrisonArmies.length),1)[0]; disbanded=u?` A ${u.quality||''} ${u.type} of its garrison is put to the torch.`:''; }
+        log('spy',`🕵 ${c.name}'s agents sabotage ${tp.name} — its coffers yield nothing this turn.${disbanded}`,{actor:c.player,targets:[c.player,tp.owner].filter(x=>x!=null),provinceId:tp.id});
+        trySkillGain(c,'spy',SKILLGAIN_STD);
+        break;
+      }
+      case 'forced_march':{
+        if(skillLevel(c,'march')<7){log('system',`${c.name} lacks the March mastery (7) for a Forced March.`,{actor:c.player,targets:[c.player]});break;}
+        c._forcedMarchTurn=G.turn;
+        log('move',`⚡ ${c.name} calls a Forced March — the column drives on through the day, its land movement doubled for the rest of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        trySkillGain(c,'march',SKILLGAIN_STD);
+        break;
+      }
+      case 'grand_heist':{
+        if(skillLevel(c,'thief')<7){log('system',`${c.name} lacks the Thief mastery (7) for a Grand Heist.`,{actor:c.player,targets:[c.player]});break;}
+        const victim=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
+        if(!victim){log('system',`${c.name} finds no enemy hero to rob in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+        if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        const vp=victim.player;
+        const purse=(vp!=null)?(G.players[vp]?.gold||0):0;
+        const take=Math.max(5, Math.floor(purse*0.4));
+        let msg='';
+        if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; msg=`${take}g spirited away`; }
+        // Chance to also lift a magic item.
+        if((victim.items||[]).length>0 && Math.random()<0.5){ const it=victim.items.splice(Math.floor(Math.random()*victim.items.length),1)[0]; c.items=(c.items||[]); c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,(c.hp||20)+it.effect.bonus);} msg=(msg?msg+' — and ':'')+`the ${it.name} lifted`; }
+        c.merits=(c.merits||0)+2;
+        log('hire',`💰 ${c.name} pulls off a Grand Heist against ${victim.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player,vp].filter(x=>x!=null),provinceId:prov.id});
+        if(vp!=null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) robbed ${victim.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
+        trySkillGain(c,'thief',SKILLGAIN_STD);
+        break;
+      }
+      case 'awaken_grove':{
+        if(skillLevel(c,'druid')<7){log('system',`${c.name} lacks the Druid mastery (7) to Awaken a Grove.`,{actor:c.player,targets:[c.player]});break;}
+        const okTerrain=(prov.terrain==='forest'||prov.terrain==='jungle')||String(prov.race||'').startsWith('Primal');
+        if(prov.owner!==c.player||!okTerrain){log('system',`${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or primal province.`,{actor:c.player,targets:[c.player]});break;}
+        const grove={type:'Forest Ents',quality:'Veteran',race:'Forest Ent',unitName:'an awakened Grove',_temporary:true,_expiresAfterPhase:-1};
+        c.armies=(c.armies||[]);c.armies.push(grove);
+        log('explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        resolveUnitGainInProvince(c, prov, ph);
+        trySkillGain(c,'druid',SKILLGAIN_STD);
+        break;
+      }
+      case 'chart_unknown':{
+        if(skillLevel(c,'explorer')<7){log('system',`${c.name} lacks the Explorer mastery (7) to Chart the Unknown.`,{actor:c.player,targets:[c.player]});break;}
+        if(!prov.exploredBy) prov.exploredBy={};
+        prov.exploredBy[c.player]=100; prov.explored=100;
+        (prov.features||[]).forEach(f=>{ if(!featDiscovered(f,c.player)){ discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1; } });
+        // Reveal neighbours at a glance (partial sighting).
+        const nbrs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(Boolean);
+        let revealed=0;
+        nbrs.forEach(nb=>{ if(!nb.exploredBy) nb.exploredBy={}; if((nb.exploredBy[c.player]||0)<25){ nb.exploredBy[c.player]=25; nb.explored=Math.max(nb.explored||0,nb.exploredBy[c.player]); revealed++; } });
+        log('explore',`🧭 ${c.name} charts ${prov.name} in full and scouts its ${nbrs.length} neighbour${nbrs.length!==1?'s':''}${revealed?` (${revealed} newly glimpsed)`:''}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        trySkillGain(c,'explorer',SKILLGAIN_STD);
+        break;
+      }
+      case 'discover_ruin':{
+        if(skillLevel(c,'explorer')<9){log('system',`${c.name} lacks the Explorer mastery (9) to Discover a Lost Ruin.`,{actor:c.player,targets:[c.player]});break;}
+        const hidden=(prov.features||[]).filter(f=>!featDiscovered(f,c.player));
+        if(hidden.length===0){log('explore',`${c.name} combs ${prov.name} for lost ruins, but every secret here is already laid bare.`,{actor:c.player,targets:[c.player],provinceId:prov.id});trySkillGain(c,'explorer',SKILLGAIN_STD);break;}
+        const f=hidden[Math.floor(Math.random()*hidden.length)];
+        discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1;
+        if(!prov.exploredBy) prov.exploredBy={};
+        log('explore',`🏛 ${c.name} uncovers a lost site in ${prov.name} — ${f.name||'a hidden feature'} is revealed!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
+        trySkillGain(c,'explorer',SKILLGAIN_STD);
+        break;
+      }
+
+      // ══ L7/L9 MASTERY ORDERS (batch 2b) ══════════════════════════════════════════
+      case 'blockade':{
+        if(skillLevel(c,'naval')<7){log('system',`${c.name} lacks the Naval mastery (7) to raise a Blockade.`,{actor:c.player,targets:[c.player]});break;}
+        const sp=G.world.provinces[parseInt(target)];
+        if(!sp||sp.terrain!=='sea'){log('system',`${c.name}: Blockade must target a sea province.`,{actor:c.player,targets:[c.player]});break;}
+        const adj=new Set(getNeighborsP(G.world.provinces[c.location],G.world.cols,G.world.rows,G.world.provinces).map(p=>p&&p.id).filter(x=>x!=null));
+        if(sp.id!==c.location&&!adj.has(sp.id)){log('system',`${c.name}: Blockade must seal a sea province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
+        sp._blockadeTurn=G.turn; sp._blockadeBy=c.player;
+        log('move',`⚓ ${c.name} throws a Blockade across ${sp.name} — enemy fleets may not cross these waters this turn.`,{actor:c.player,targets:[c.player],provinceId:sp.id,public:true});
+        trySkillGain(c,'naval',SKILLGAIN_STD);
+        break;
+      }
+      case 'research_breakthrough':{
+        if(skillLevel(c,'sage')<7){log('system',`${c.name} lacks the Sage mastery (7) for a Research Breakthrough.`,{actor:c.player,targets:[c.player]});break;}
+        const player=G.players[c.player];
+        if(!player.discoveries) player.discoveries=[];
+        const known=new Set(player.discoveries.map(d=>d.id));
+        const available=SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id));
+        if(available.length===0){log('explore',`${c.name}'s Research Breakthrough succeeds, but your scholars have already unlocked every known discovery.`,{actor:c.player,targets:[c.player]});trySkillGain(c,'sage',SKILLGAIN_STD);break;}
+        const disc=available[Math.floor(Math.random()*available.length)];
+        player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
+        log('explore',`💡 ${c.name} drives a Research Breakthrough — **${disc.name}** (${disc.category}) discovered! ${disc.desc}`,{actor:c.player,targets:[c.player]});
+        trySkillGain(c,'sage',SKILLGAIN_STD);
+        break;
+      }
+      case 'assassinate':{
+        if(skillLevel(c,'spy')<9){log('system',`${c.name} lacks the Spy mastery (9) to Assassinate.`,{actor:c.player,targets:[c.player]});break;}
+        const victim=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
+        if(!victim){log('system',`${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+        if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
+        const roll=d100();
+        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
+        if(roll<=chance){
+          log('combat',`🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          handleHeroDeath(victim, c); awardKillXP(c, victim); c.merits=(c.merits||0)+2;
+        } else {
+          log('spy',`${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
+        }
+        trySkillGain(c,'spy',SKILLGAIN_STD);
+        break;
+      }
+      case 'vanish':{
+        if(skillLevel(c,'thief')<9){log('system',`${c.name} lacks the Thief mastery (9) to Vanish.`,{actor:c.player,targets:[c.player]});break;}
+        c._vanishTurn=G.turn;
+        log('move',`🌫 ${c.name} melts into the shadows — no pursuit will run them down for the rest of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        trySkillGain(c,'thief',SKILLGAIN_STD);
+        break;
+      }
+
       default:
-        log('system',`${c.name} performs ${action} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
     }
   }
 
@@ -9033,6 +9607,7 @@ const BATTLE_ARMY_SPELLS={
           return base+(base<=2?MB_SLOW[Math.min(marchLevel,5)]:MB_FAST[Math.min(marchLevel,5)]);
         });
         movePoints[c.id]=Math.min(...landSpeeds);
+        if(c._forcedMarchTurn===G.turn) movePoints[c.id]*=2; // MARCH L7 Forced March: doubled land movement this turn
       } else {
         // Only sea armies: land move points = 0 (can't traverse land directly)
         movePoints[c.id]=0;
@@ -9057,6 +9632,10 @@ const BATTLE_ARMY_SPELLS={
         seaMoveActive[c.id]=false;
       }
     }
+    // ── LEVEL 6+ SKILL PERK ── Forced March (march) / Master Mariner (naval): extra movement past
+    // level 5 — +1 point at levels 6–7, +2 at levels 8–9 (only when a pool actually exists).
+    { const mE=perkTier(c,'march'); if((mE>0||charMinor(c,'swift')) && (movePoints[c.id]||0)>0) movePoints[c.id]+=(mE>=3?2:1)+(charMinor(c,'swift')?1:0);
+      const nE=perkTier(c,'naval'); if((nE>0||charMinor(c,'seawolf')) && (seaMovePoints[c.id]||0)>0) seaMovePoints[c.id]+=(nE>=3?2:1)+(charMinor(c,'seawolf')?1:0); }
     seaCap[c.id]=getSeaCapability(armies);
   }
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(setMovePool);
@@ -9343,6 +9922,14 @@ const BATTLE_ARMY_SPELLS={
         if(defender){ attacker=ranked.find(f=>f.player!==prov.owner&&f.player!==defender.player); }
         else { attacker=ranked[0]; defender=ranked.find(f=>f.player!==attacker.player); }
         if(!attacker||!defender) return;
+        // DIPLOMACY: a contested battle only persists between players still at WAR. If the two sides
+        // made peace at the turn boundary (mutual Treat, Enemy→Neutral), the contest lapses and they
+        // disengage rather than fighting on. (NPC contests — player==null on a side — are unaffected.)
+        if(attacker.player!=null&&defender.player!=null&&!areEnemies(attacker.player,defender.player)){
+          delete prov._battleUnresolved;
+          log('combat',`The contest for ${prov.name} lapses — ${G.players[attacker.player]?.name||'one side'} and ${G.players[defender.player]?.name||'the other'} are no longer at war, and the two hosts stand down.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
+          return;
+        }
         // AK [7.6]: "If the attackers still have at least 1 movement point for each army, they will
         // be used to force another battle in the next phase. If not, both armies will encamp."
         const atkSea=prov.terrain==='sea';
@@ -9359,6 +9946,7 @@ const BATTLE_ARMY_SPELLS={
         const defCopy={...defender,armies:[...(defender.armies||[])]};
         atkCopy._attackedFrom=attacker._attackedFrom; defCopy._attackedFrom=defender._attackedFrom;
         const battle=combatVsChar(atkCopy,defCopy,prov);
+        creditBattle(attacker,defender,battle,atkCopy.armies,defCopy.armies,prov);
         // Item 3: both sides have now had their battle for the phase — pin them (STAGE 1b) so neither
         // can march on to start a second battle later this phase, even if this one resolved.
         attacker._foughtStalledBattlePhase=ph; defender._foughtStalledBattlePhase=ph;
@@ -9503,6 +10091,13 @@ const BATTLE_ARMY_SPELLS={
           ownerColor:pv.owner!=null?G.players[pv.owner]?.color:null,
         };
       });
+      // ── DIPLOMACY ENCOUNTER TRACKING ── Seeing another player's PROVINCE (any observed province they
+      // own) or CHARACTER (recorded in seenCharIntel this phase) counts as encountering that kingdom.
+      // Only encountered kingdoms may be treated with. The set is persistent (part of G) and grows.
+      if(!pl._encountered) pl._encountered=[];
+      const _meet=(otherPi)=>{ if(otherPi!=null&&otherPi!==pi&&!pl._encountered.includes(otherPi)) pl._encountered.push(otherPi); };
+      observed.forEach(pid=>{ const pv=G.world.provinces[pid]; if(pv&&pv.owner!=null) _meet(pv.owner); });
+      Object.values(pl.seenCharIntel||{}).forEach(ci=>{ if(ci&&ci.player!=null) _meet(ci.player); });
     });
   }
 
@@ -9514,8 +10109,11 @@ const BATTLE_ARMY_SPELLS={
     if(!c||!prov||c.player==null) return false;
     if(prov.owner===c.player) return false;      // already ours — nothing to contest
     if((c.armies||[]).length===0) return false;  // no force present to fight or hold
+    // DIPLOMACY: a force raised inside an ally's or a neutral's province cannot seize it or start a
+    // war — it simply stands there. Only enemy-owned (or unowned) ground can be contested this way.
+    if(prov.owner!=null&&prov.owner!==c.player&&!areEnemies(c.player,prov.owner)) return false;
     const player=G.players[c.player];
-    const enemyChar=G.characters.find(d=>d.alive&&d.id!==c.id&&d.location===prov.id&&d.player!=null&&d.player!==c.player&&(d.armies||[]).length>0);
+    const enemyChar=G.characters.find(d=>d.alive&&d.id!==c.id&&d.location===prov.id&&d.player!=null&&d.player!==c.player&&areEnemies(c.player,d.player)&&(d.armies||[]).length>0);
     const neutralGuard=G.characters.find(d=>d.alive&&d.player===null&&d.location===prov.id&&(d.armies||[]).length>0&&!d._justDefeated);
     const garrison=(prov.owner!=null&&prov.owner!==c.player)?(prov.garrisonArmies||[]):[];
     // A guard slain in an earlier pre-battle duel leaves his surviving troops as a LEADERLESS
@@ -9542,6 +10140,7 @@ const BATTLE_ARMY_SPELLS={
       const defReinf=G.characters.filter(d=>d.alive&&d.id!==enemyChar.id&&d.player===enemyChar.player&&d.location===prov.id&&(d.armies||[]).length>0);
       const combinedDef={...enemyChar,armies:[...(enemyChar.armies||[]),...defReinf.flatMap(d=>d.armies||[])]};
       battle=combatVsChar(c, combinedDef, prov);
+      creditBattle(c,enemyChar,battle,c.armies,combinedDef.armies,prov);
       battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id,public:true}));
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
@@ -9783,10 +10382,13 @@ const BATTLE_ARMY_SPELLS={
   function isHostileInvasion(it){
     if(!it||it.cancelled||it.action!=='move'||!it.leadsArmy||!it.dest) return false;
     const d=it.dest;
-    if(d.owner!=null&&d.owner!==it.player) return true;
-    // An armed enemy force standing in the province is an invasion even if the land is unowned.
+    // DIPLOMACY: an invasion is hostile only if the mover is at WAR with the province's owner.
+    // Marching into an ally's land (free passage) or a neutral's (turned back at the border) is not
+    // an invasion — it must not pin defenders or trigger Defend reactions.
+    if(d.owner!=null&&d.owner!==it.player&&areEnemies(it.player,d.owner)) return true;
+    // An armed ENEMY force standing in the province is an invasion even if the land is unowned.
     return (G.characters||[]).some(o=>o.alive&&o.location===d.id&&(o.armies||[]).length>0
-      &&o.player!=null&&o.player!==it.player);
+      &&o.player!=null&&o.player!==it.player&&areEnemies(it.player,o.player));
   }
 
   // ── Dependency ordering (AK [3.0] exceptions) ─────────────────────────────
@@ -10129,6 +10731,10 @@ const BATTLE_ARMY_SPELLS={
       log('move',`${c.name} follows the trail of ${quarry.name} into ${here?here.name:'the wilds'} and loses it utterly — the man seems to leave no track at all.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       endPursuit(c); return;
     }
+    if(quarry._vanishTurn===G.turn&&quarry.player!==c.player){
+      log('move',`${c.name} presses the chase after ${quarry.name}, but the quarry melts into the shadows and is gone. (Vanish)`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
+      endPursuit(c); return;
+    }
 
     // Not yet co-located: close one province along a legal route.
     if(c.location!==quarry.location){
@@ -10177,6 +10783,12 @@ const BATTLE_ARMY_SPELLS={
       log('move',`${c.name} catches up with ${quarry.name} in ${prov.name} and the two columns join company.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
       endPursuit(c); return;
     }
+    // DIPLOMACY: a quarry belonging to a player we are NOT at war with (allied or neutral) is not
+    // run down — the pursuit ends in a meeting, not a battle. Only enemy (or NPC) quarry are fought.
+    if(quarry.player!=null&&!areEnemies(c.player,quarry.player)){
+      log('move',`${c.name} overtakes ${quarry.name} in ${prov.name}, but ${G.players[quarry.player]?.name||'their kingdom'} is not at war with ${G.players[c.player]?.name||'us'} — the two columns pass without bloodshed.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+      endPursuit(c); return;
+    }
 
     if(meArmed&&themArmed){
       // Both lead armies: "the pursuing character will attempt to run him down and defeat him in
@@ -10187,6 +10799,7 @@ const BATTLE_ARMY_SPELLS={
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
       log('combat',`⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
+      creditBattle(c,quarry,battle,combinedAtk.armies,combinedDef.armies,prov);
       battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}));
       // Write casualties back from the pooled copies to the real characters.
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
@@ -10225,6 +10838,9 @@ const BATTLE_ARMY_SPELLS={
     }
     endPursuit(c);
   }
+
+  // ── LIVE TITLE PERKS ── (holder computation + helpers moved earlier in runTurn to avoid a
+  // temporal-dead-zone when the turn-start pursuit resolution reads them — see near the relation helpers.)
 
   for(let ph=0;ph<5;ph++){
     log('system',`— ${SEASONS[ph]} —`);
@@ -10391,6 +11007,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           const pv=G.world.provinces[id];if(!pv) return s;
           let t=pv.tax||0;
           if(pv._earthquakeNoTax===G.turn) t=0; // Earthquake: no revenue this turn
+          if(pv._sabotagedForTurn===G.turn) t=0; // SPY L7 Sabotage: wrecked province yields no tax this turn
           if(pv._blessedTurn===G.turn) t=Math.round(t*(pv._blessedMult||1.6)); // Bless Province: +60% (or +100% from a Divine king)
           if(p.consecratedProvId===pv.id) t=Math.round(t*1.5); // DIVINE — Consecrate: hallowed ground prospers (+50%)
           if(pv._enslavedUntil!=null&&pv._enslavedUntil>=G.turn) t=Math.max(0,t-1); // EVIL — Enslave: resentment (−1 tax while it lasts)
@@ -10412,8 +11029,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const interestBonus=hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0;
         const neutralTradeMult=p.alignment==='Neutral'?1.20:1.0;
         const neutralTradeBonus=p.alignment==='Neutral'?Math.floor(income*(neutralTradeMult-1)):0;
-        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus;
-        if(income>0||perProvBonus>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus}g in taxes${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}.`,{actor:p.id,targets:[p.id]});
+        // ── LIVE TITLE PERKS (economy) ── Throne: imperial revenues +3g. Vaultkeeper: interest =
+        // 10% of treasury (capped 5g). Applied to the title-holding kingdom.
+        let titlePerkGold=0, titlePerkNote='';
+        if(playerHoldsTitle(pi,'throne')){ titlePerkGold+=3; titlePerkNote+=` (+3g the Throne)`; }
+        pChars.forEach(pc=>{ if(charMinor(pc,'cutpurse')){ titlePerkGold+=2; titlePerkNote+=` (+2g the Cutpurse)`; } if(charMinor(pc,'champion')){ titlePerkGold+=2; titlePerkNote+=` (+2g Champion of the People)`; } if(charMinor(pc,'castellan')){ const cg=Math.floor((G.world.provinces||[]).filter(pv=>pv.owner===pi).length/5); if(cg>0){ titlePerkGold+=cg; titlePerkNote+=` (+${cg}g the Castellan)`; } } });
+        if(playerHoldsTitle(pi,'vault')){ const vi=Math.min(5,Math.floor((p.gold||0)*0.10)); if(vi>0){ titlePerkGold+=vi; titlePerkNote+=` (+${vi}g the Vaultkeeper's interest)`; } }
+        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold;
+        if(income>0||perProvBonus>0||titlePerkGold>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold}g in taxes${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}${titlePerkNote}.`,{actor:p.id,targets:[p.id]});
       });
       log('system','═ Army wages & hero wages ═');
       G.players.forEach(p=>{
@@ -10425,7 +11048,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const allKingdomArmies=[...allArmies,...garrisonArmies];
         // Item 8: temporary summons (elementals) are a spell effect that dissolves at turn end —
         // they draw no wage and are never disbanded for non-payment (see the disband loop below).
-        const armyWages=allKingdomArmies.reduce((s,a)=>s+(a._temporary?0:(a._isSkeletal?1:(ARMY_COST[a.type]||2))),0);
+        let armyWages=allKingdomArmies.reduce((s,a)=>s+(a._temporary?0:(a._isSkeletal?1:(ARMY_COST[a.type]||2))),0);
+        // MINOR TITLE — The Host-Leader: this kingdom's greatest general pays 1g less per unit he leads (min 1/unit).
+        { const hl=playerChars.find(c=>charMinor(c,'hostleader')); if(hl){ const led=(hl.armies||[]).filter(a=>!a._temporary).length; armyWages=Math.max(0,armyWages-led); } }
 
         // Hero wages
         const heroes=playerChars.filter(c=>!c.isKing);
@@ -10519,6 +11144,117 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const p=G.world.provinces[c.location];
     if(p)c.locationName=p.name;
   });
+
+  // 6d. DIPLOMACY RESOLUTION (KC alliance system) — the declarations players submitted with THIS
+  // turn's orders take effect now, so the new relations are already in force for next turn and the
+  // change is announced in this turn's Chronicle ("at the start of the next turn" from the players'
+  // point of view). Rules: mutual Treat improves one step (Enemy→Neutral→Allied); ANY war
+  // declaration by either side makes both Enemies, overriding a Treat. A one-sided Treat does nothing.
+  {
+    const np=(G.players||[]).length;
+    const validDecl=(from,to)=>{
+      const d=diploDeclarations[from]&&diploDeclarations[from][to];
+      if(d!=='treat'&&d!=='enemy') return null;
+      if(!((G.players[from]&&G.players[from]._encountered)||[]).includes(to)) return null; // must have met them
+      return d;
+    };
+    for(let a=0;a<np;a++){
+      for(let b=a+1;b<np;b++){
+        const da=validDecl(a,b), db=validDecl(b,a);
+        if(!da&&!db) continue;
+        const key=relKeyOf(a,b);
+        const cur=G.relations[key]||'neutral';
+        // No ALLIANCES in small games (≤3 players): players still start Neutral and may make peace,
+        // but the Neutral→Allied step cannot be taken.
+        const noAlliances=G.players.length<=3;
+        let next=cur, blockedAlliance=false;
+        if(da==='enemy'||db==='enemy'){ next='enemy'; }
+        else if(da==='treat'&&db==='treat'){
+          const wouldBe = cur==='enemy'?'neutral' : cur==='neutral'?'allied' : 'allied';
+          if(wouldBe==='allied' && noAlliances){ blockedAlliance=true; next=cur; }
+          else next=wouldBe;
+        }
+        const na=G.players[a]?.name||('Kingdom '+(a+1)), nb=G.players[b]?.name||('Kingdom '+(b+1));
+        if(blockedAlliance){
+          log('system',`${na} and ${nb} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[a],system:true});
+          log('system',`${nb} and ${na} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[b],system:true});
+          continue;
+        }
+        if(next===cur){
+          // Unreciprocated overture: let the offerer(s) know nothing changed.
+          if(da==='treat') log('system',`${na}'s overture of ${cur==='enemy'?'peace':'alliance'} to ${nb} went unanswered this year — relations are unchanged.`,{actor:null,targets:[a],system:true});
+          if(db==='treat') log('system',`${nb}'s overture of ${cur==='enemy'?'peace':'alliance'} to ${na} went unanswered this year — relations are unchanged.`,{actor:null,targets:[b],system:true});
+          continue;
+        }
+        if(next==='neutral') delete G.relations[key]; else G.relations[key]=next;
+        let mA,mB;
+        if(next==='enemy'){ mA=mB=`⚔ War now stands between ${na} and ${nb}. Their armies may cross the frontier and give battle.`; }
+        else if(next==='allied'){ mA=`🤝 ${na} and ${nb} are now ALLIED — your armies may pass freely through one another's lands and will never come to blows.`; mB=`🤝 ${nb} and ${na} are now ALLIED — your armies may pass freely through one another's lands and will never come to blows.`; }
+        else { mA=mB=`🕊 ${na} and ${nb} have made peace and are now NEUTRAL — neither may march an army across the other's border.`; }
+        log('system',mA,{actor:null,targets:[a],system:true});
+        log('system',mB,{actor:null,targets:[b],system:true});
+      }
+    }
+  }
+
+  // 6e. VICTORY — THE RECKONING (KC end-game). Process new claims, grace-period lapse, resolution.
+  {
+    if(!G.reckoning && reckoningCalls.size>0 && G.turn>=TITLES_PUBLIC_FROM_TURN){
+      const thr=reckoningThreshold(G.players.length);
+      for(const pi of reckoningCalls){
+        const kingAlive=(G.characters||[]).some(c=>c.alive&&c.isKing&&c.player===pi);
+        if(!kingAlive){ log('system',`Only a king may call the Reckoning.`,{actor:null,targets:[pi],system:true}); continue; }
+        const share=reckoningBlocShare(G, pi);
+        if(share>=thr){
+          const bloc=alliedBloc(G, pi);
+          G.reckoning={by:pi, bloc, calledTurn:G.turn, resolveAtTurn:G.turn+2};
+          const nm=G.players[pi]?.name||('Kingdom '+(pi+1));
+          const allies=bloc.filter(b=>b!==pi).map(b=>G.players[b]?.name).filter(Boolean);
+          const blocNm=allies.length?` and their allies (${allies.join(', ')})`:'';
+          log('system',`👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${Math.round(share*100)}% of the world. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${Math.round(thr*100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,{actor:null,targets:[],system:true,public:true});
+          break;
+        } else {
+          log('system',`${G.players[pi]?.name||'A king'} calls for the Reckoning, but commands only ${Math.round(share*100)}% of the world — short of the ${Math.round(thr*100)}% needed to press the claim.`,{actor:null,targets:[pi],system:true});
+        }
+      }
+    }
+    if(G.reckoning){
+      const thr=reckoningThreshold(G.players.length);
+      const share=reckoningBlocShare(G, G.reckoning.by);
+      const claimantAlive=((G.players[G.reckoning.by]?.provinces)||[]).length>0 || (G.characters||[]).some(c=>c.alive&&c.player===G.reckoning.by);
+      if(!claimantAlive || share<thr){
+        log('system',`The claim to the throne collapses — ${G.players[G.reckoning.by]?.name||'the claimant'}'s bloc no longer commands the world (${Math.round(share*100)}% < ${Math.round(thr*100)}%). The Reckoning is called off; the war goes on.`,{actor:null,targets:[],system:true,public:true});
+        delete G.reckoning;
+      } else if(G.turn>=G.reckoning.resolveAtTurn){
+        const rw=reckoningWinner(G);
+        G.gameOver={winner:rw.winner?rw.winner.index:null, byReckoning:true, turn:G.turn, standings:rw.standings.standings};
+        delete G.reckoning;
+      }
+    }
+  }
+
+  // 6f. VICTORY — elimination. If only one kingdom still holds land or a living character, they win.
+  if(!G.gameOver && G.players.length>1){
+    const live=G.players.map((p,pi)=>({pi, alive:((p.provinces)||[]).length>0||(G.characters||[]).some(c=>c.alive&&c.player===pi)})).filter(x=>x.alive);
+    if(live.length===1){
+      const rw=reckoningWinner(G);
+      G.gameOver={winner:live[0].pi, byElimination:true, turn:G.turn, standings:rw.standings.standings};
+    }
+  }
+
+  // 6g. VICTORY — announce the result once.
+  if(G.gameOver && !G.gameOver._announced){
+    G.gameOver._announced=true;
+    const wi=G.gameOver.winner;
+    const wn=wi!=null?(G.players[wi]?.name||('Kingdom '+(wi+1))):'No-one';
+    const how=G.gameOver.byElimination?'the last realm standing in a world of ruins':'judged supreme at the Reckoning';
+    log('system',`🏆 THE GAME IS DECIDED — ${wn} is ${how}!`,{actor:null,targets:[],system:true,public:true});
+    (G.gameOver.standings||[]).slice().sort((a,b)=>b.score-a.score).forEach((st,i)=>{
+      const tHeld=(st.titles||[]).map(k=>_TITLE_LABEL[k]||k).join(', ');
+      const relicTxt=st.relics?`${st.titles&&st.titles.length?', ':''}${st.relics} relic${st.relics!==1?'s':''}`:'';
+      log('system',`   ${i+1}. ${st.name} — ${st.score} Legacy${(tHeld||relicTxt)?` (${tHeld}${relicTxt})`:''}`,{actor:null,targets:[],system:true,public:true});
+    });
+  }
 
   // 7. Advance turn counter
   G.turn=(G.turn||1)+1;
@@ -10773,7 +11509,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   const {error:saveErr}=await sb.from('games').update({
     game_state:JSON.stringify(G),
     turn:G.turn,
-    status:G.turn>(G.maxTurns||12)?'complete':'active'
+    // Victory (#7): no turn limit. The game is complete only when decided by the Reckoning or by
+    // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
+    status:(G.gameOver || (G.maxTurns&&G.maxTurns>0&&G.turn>G.maxTurns&&G.maxTurnsHardStop))?'complete':'active'
   }).eq('id',currentGame.id);
   if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
 
@@ -10989,6 +11727,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.07.30-1950</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.01-0918</div>
 </body>
 </html>
