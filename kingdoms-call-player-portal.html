@@ -94,6 +94,17 @@ section{display:none;}.section-active{display:block;}
 /* Orders */
 .orders-char-block{border:1px solid var(--stone);border-radius:3px;margin-bottom:14px;overflow:hidden;}
 .orders-char-head{background:var(--ink-light);color:var(--parchment);padding:9px 14px;font-family:'Cinzel',serif;font-size:.8rem;display:flex;align-items:center;gap:8px;}
+/* Collapsible sections (Item 5) — report-column cards & per-hero order blocks */
+.sec-toggle{background:transparent;border:1px solid currentColor;color:inherit;cursor:pointer;font-size:.7rem;line-height:1;padding:1px 6px;border-radius:3px;font-family:'Cinzel',serif;opacity:.75;flex:0 0 auto;}
+.sec-toggle:hover{opacity:1;}
+#rp-report-col .card>h2{display:flex;align-items:center;gap:8px;}
+#rp-report-col .card>h2 .sec-toggle{margin-left:auto;color:var(--stone);}
+#rp-report-col .card.sec-collapsed{padding-top:14px;padding-bottom:14px;}
+#rp-report-col .card.sec-collapsed>h2{margin-bottom:0;border-bottom:none;}
+#rp-report-col .card.sec-collapsed>:not(h2){display:none!important;}
+.orders-char-block.sec-collapsed>:not(.orders-char-head){display:none!important;}
+.secall-btn{background:transparent;border:1px solid var(--stone);color:var(--stone);cursor:pointer;font-size:.62rem;padding:2px 6px;border-radius:2px;font-family:'Cinzel',serif;letter-spacing:.03em;}
+.secall-btn:hover{border-color:var(--gold);color:var(--gold);}
 .orders-char-body{padding:12px;}
 .phase-order{display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;margin-bottom:7px;align-items:center;}
 .phase-label{font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em;}
@@ -325,6 +336,10 @@ section{display:none;}.section-active{display:block;}
         <div style="padding:8px 10px;background:var(--parchment-dark);border-bottom:1px solid var(--stone);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.06em">Turn:</span>
           <div id="turn-nav-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+          <span style="margin-left:auto;display:flex;gap:4px">
+            <button class="secall-btn" onclick="collapseAllSections('#rp-report-col',true)" title="Minimise all sections">&#9656; all</button>
+            <button class="secall-btn" onclick="collapseAllSections('#rp-report-col',false)" title="Expand all sections">&#9662; all</button>
+          </span>
         </div>
         <div id="prev-report-banner" style="display:none;padding:6px 10px;background:#f5e6c8;border-bottom:1px solid #c8922a;font-size:.75rem;color:#7a5510;font-style:italic">
           Viewing past turn — read only.
@@ -374,7 +389,12 @@ section{display:none;}.section-active{display:block;}
       <!-- RIGHT: Orders column (independently scrollable) -->
       <div id="orders-column" style="width:22%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
         <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
-          <h2 style="position:sticky;top:0;background:var(--parchment);z-index:2;margin:0;padding:8px 0">⚜ Orders — Turn <span id="orders-turn-num"></span></h2>
+          <h2 style="position:sticky;top:0;background:var(--parchment);z-index:2;margin:0;padding:8px 0;display:flex;align-items:center;gap:8px">⚜ Orders — Turn <span id="orders-turn-num"></span>
+            <span style="margin-left:auto;display:flex;gap:4px">
+              <button class="secall-btn" onclick="collapseAllSections('#orders-column',true)" title="Minimise every hero">&#9656; all</button>
+              <button class="secall-btn" onclick="collapseAllSections('#orders-column',false)" title="Expand every hero">&#9662; all</button>
+            </span>
+          </h2>
           <div id="report-status-pill" style="padding:2px 0 6px"></div>
           <div id="orders-form" style="flex:1"></div>
           <!-- Everything to do with SUBMITTING orders lives in this one sticky block at the foot of
@@ -423,6 +443,9 @@ const ACTIONS = ['Move','Pursue','Explore','Search Feature','Recruit Armies','Hi
   'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
+  'Challenge','Rampage','Rain of Arrows',"Sniper's Mark",
+  'Feigned Retreat','Grand Stratagem','Lightning Advance','Raid the Coast',
+  'Wild Calling','Grand Design',
   'Defend','Rest'];
 // Alignment-signature actions: shown only to the kingdom that owns them (and Perform Rite joins
 // the same gating — no more dangling Pagan action in every dropdown). King-only actions are
@@ -442,6 +465,16 @@ const L79_ORDERS={
   'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your kingdom).'},
   'Assassinate':{skill:'spy',lvl:9,target:'character',hint:'Spy 9: attempt to slay an enemy hero in the province you stand in — a spy-level chance to kill.'},
   'Vanish':{skill:'thief',lvl:9,target:'none',hint:'Thief 9: melt into the shadows — any enemy pursuit of you fails for the rest of this turn.'},
+  'Challenge':{skill:'melee',lvl:7,target:'character',hint:'Melee 7: call out a LONE enemy hero in your province to single combat — the loser is wounded, or slain.'},
+  'Rampage':{skill:'melee',lvl:9,target:'character',hint:'Melee 9: hurl yourself at an enemy force in your province — cut down several of its units and wound its commander.'},
+  'Rain of Arrows':{skill:'archery',lvl:7,target:'character',hint:'Archery 7: loose a volley on an enemy force in your province, felling several of its units.'},
+  "Sniper's Mark":{skill:'archery',lvl:9,target:'character',hint:'Archery 9: mark an enemy commander in your province — a telling shot that wounds, and may slay.'},
+  'Feigned Retreat':{skill:'tactical',lvl:7,target:'none',hint:'Tactical 7: bait your attacker — if you are attacked this turn, your defence counters at +25% strength.'},
+  'Grand Stratagem':{skill:'tactical',lvl:9,target:'none',hint:'Tactical 9: dictate the terms of battle — your next battle this turn is fought at +20% strength.'},
+  'Lightning Advance':{skill:'march',lvl:9,target:'none',hint:'March 9: strike before they can set — enemies you attack this turn lose their defensive footing (−20%).'},
+  'Raid the Coast':{skill:'naval',lvl:9,target:'none',hint:'Naval 9: an amphibious assault — when you attack a coastal province this turn, you hit at +25% strength.'},
+  'Wild Calling':{skill:'druid',lvl:9,target:'none',hint:'Druid 9: while standing in a primal province, call its wild host to your banner — several of its beasts defect to you.'},
+  'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your kingdom\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
 };
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 function actionsFor(c){
@@ -960,7 +993,16 @@ function buildChronicle(log, chars_for_log){
     }
     log.forEach(e=>{
       const t=e.text||'';
-      if(t.startsWith('⚑FORCE⚑')){ try{ const f=JSON.parse(t.slice(7)); _registerName(f.name,f.color,f.neutral); }catch(_){} }
+      if(t.startsWith('⚑FORCE⚑')){ try{ const f=JSON.parse(t.slice(7));
+        _registerName(f.name,f.color,f.neutral);
+        // Item 5: tint every custom-NAMED unit in the force too, so battle lines that reference a
+        // unit by its name (archery, pre-battle magic, casualties, pursuit…) show whose it is.
+        // Generic type names (e.g. "Elven Bowmen") can belong to either side and stay untinted.
+        (f.armies||[]).forEach(a=>{
+          const un=a&&a.unitName;
+          if(un && un!==a.type && !String(un).startsWith('undefined')) _registerName(un, f.color, f.neutral);
+        });
+      }catch(_){} }
     });
     // Seed the viewer's own characters with their kingdom colour, in case they never appear in a marker.
     const _ownColor=(viewingReport&&viewingReport.kingdom&&viewingReport.kingdom.color)||null;
@@ -1317,7 +1359,7 @@ async function openReport(gamePlayerId){
     Divine:`Your kingdom walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING himself works the blessing, the province yields a full 100% more. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Consecrate: your king or heroes may sanctify ONE owned province (not the home province or its neighbours — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and your resurrected heroes return there. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
     Good:`Your kingdom is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever he happens to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
     Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Creature armies also fight with a +25% fanaticism bonus under your banner. Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
-    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 1g less to hire than the going rate. Broker: your king trades in influence rather than marches — he may hire any wandering hero the kingdom can see without leaving his hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the kingdom has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
+    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — he may hire any wandering hero the kingdom can see without leaving his hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the kingdom has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
     Pagan:`Your kingdom draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering trades one of your units for a full heal and a quality blessing. Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
     Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — +30% when the king leads them in person, +20% under any other commander. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
@@ -1374,7 +1416,21 @@ async function openReport(gamePlayerId){
         if((kingdom.taxBonus||0)>0) parts.push(`+${kingdom.taxBonus}g tax bonus`);
         if((kingdom.perProvBonus||0)>0) parts.push(`+${kingdom.perProvBonus}g Merchant's Ledger`);
         if((kingdom.interestBonus||0)>0) parts.push(`+${kingdom.interestBonus}g interest`);
-        return parts.length?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">incl. ${parts.join(', ')}</div>`:'';
+        // Item 3: Sage discoveries that lift province tax income, itemised by name.
+        if((kingdom.sdAgri||0)>0) parts.push(`+${kingdom.sdAgri}g Advanced Agriculture`);
+        if((kingdom.sdMining||0)>0) parts.push(`+${kingdom.sdMining}g Mining Techniques`);
+        if((kingdom.sdAqueduct||0)>0) parts.push(`+${kingdom.sdAqueduct}g Aqueducts`);
+        if((kingdom.sdGrand||0)>0) parts.push(`+${kingdom.sdGrand}g Grand Design`);
+        // Item 3: Imperial Title / minor-title perks that add tax-season gold.
+        if((kingdom.throneG||0)>0) parts.push(`+${kingdom.throneG}g the Throne`);
+        if((kingdom.vaultG||0)>0) parts.push(`+${kingdom.vaultG}g Vaultkeeper interest`);
+        if((kingdom.cutpurseG||0)>0) parts.push(`+${kingdom.cutpurseG}g the Cutpurse`);
+        if((kingdom.championG||0)>0) parts.push(`+${kingdom.championG}g Champion of the People`);
+        if((kingdom.castellanG||0)>0) parts.push(`+${kingdom.castellanG}g the Castellan`);
+        const incl=parts.length?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">incl. ${parts.join(', ')}</div>`:'';
+        const eq=(kingdom.earthquakeReduction||0);
+        const eqLine=eq>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${eq}g lost to earthquake damage</div>`:'';
+        return incl+eqLine;
       })()}</div>
       <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div></div>
@@ -1386,10 +1442,8 @@ async function openReport(gamePlayerId){
       const skillTags=Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="skill-tag">${k} ${v}</span>`).join('');
       const armies=(c.armies||[]).length>0
         ?c.armies.map(a=>{
-  const CREATURES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-  const MONSTERS=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
-  const tag=CREATURES.has(a.type)?' [C]':MONSTERS.has(a.type)?' [M]':'';
-  return unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>'+tag);
+  // Item 2: the Creature/Monster classification now leads the armyLabel detail — no [C]/[M] suffix.
+  return unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>');
 }).join('<br>')
         :'No armies — Move: 5 hexes/order';
       const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
@@ -1407,6 +1461,13 @@ async function openReport(gamePlayerId){
           ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.desc?` (${i.desc})`:''}`).join('')}
           <br>${armies}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
+          ${(()=>{
+            const maj=c.titlesHeld||[], min=c.minorHeld||[];
+            if(!maj.length && !min.length) return '';
+            const majH=maj.map(tt=>`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#7a5510">🏆 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
+            const minH=min.map(tt=>`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
+            return `<div style="margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
+          })()}
         </div>
       </div>`;
     }).join('')}`;
@@ -1641,6 +1702,7 @@ async function openReport(gamePlayerId){
   buildOrdersForm(chars, gp.orders_submitted, gp.orders, g.turn);
   renderDiplomacy(report);
   renderTitles(report);
+  initReportCollapsers();
   renderPlayerMap(report);
 }
 
@@ -1698,6 +1760,38 @@ function setDiploChoice(idx, val){
   if(currentReport) renderDiplomacy(currentReport);
 }
 
+// ── COLLAPSIBLE SECTIONS (Item 5) ─────────────────────
+// Minimise/maximise the report-column cards and the per-hero order blocks so a player can navigate
+// without scrolling. Purely presentational — no engine/data effect.
+function _setSecCollapsed(sec, collapse){
+  sec.classList.toggle('sec-collapsed', collapse);
+  const b=sec.querySelector('.sec-toggle');
+  if(b){ b.innerHTML=collapse?'&#9656;':'&#9662;'; b.setAttribute('aria-expanded', collapse?'false':'true'); }
+}
+function toggleSection(btn){
+  const sec=btn.closest('.card, .orders-char-block'); if(!sec) return;
+  _setSecCollapsed(sec, !sec.classList.contains('sec-collapsed'));
+}
+function collapseAllSections(scopeSel, collapse){
+  const scope=document.querySelector(scopeSel); if(!scope) return;
+  scope.querySelectorAll('.card, .orders-char-block').forEach(sec=>{
+    if(sec.id==='orders-card') return;   // the orders card wraps the per-hero blocks — collapse those, not it
+    _setSecCollapsed(sec, collapse);
+  });
+}
+// The report-column cards are static markup, so inject a toggle into each card's <h2> once.
+function initReportCollapsers(){
+  const col=document.getElementById('rp-report-col'); if(!col) return;
+  col.querySelectorAll('.card').forEach(card=>{
+    const h=card.querySelector('h2'); if(!h || h.querySelector('.sec-toggle')) return;
+    const b=document.createElement('button');
+    b.className='sec-toggle'; b.type='button'; b.innerHTML='&#9662;';
+    b.setAttribute('aria-expanded','true'); b.title='Minimise / maximise this section';
+    b.addEventListener('click', ()=>toggleSection(b));
+    h.appendChild(b);
+  });
+}
+
 // ── TITLES & VICTORY (Reckoning) ──────────────────────
 const _TITLE_ORDER=[['throne','The Throne',20],['vault','The Vaultkeeper',10],['marshal','The Grand Marshal',10],['sea','The Sea Lord',10],['monster','The Monster-Bane',10],['lore','The Loremaster',10],['arch','The Archmage',10],['hiero','The Hierophant',10]];
 function renderTitles(report){
@@ -1717,24 +1811,83 @@ function renderTitles(report){
     el.innerHTML=`<em style="color:#999;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5}. Standings appear then.</em>`;
     return;
   }
-  // Reckoning status banner
+  const nPlayers=(t.standings||[]).length||2;
+  const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
+
+  // ── Item 2: titles newly WON this turn (character or kingdom), with how + effect ──
+  let gainsHtml='';
+  const gains=t.gains||[];
+  if(gains.length){
+    // On the turn titles first go public every held title is announced as the player's initial standing
+    // (g.initial); on later turns only titles that change hands appear (freshly won).
+    const initial=gains.some(g=>g.initial);
+    const header=initial
+      ? `🏅 The Imperial Titles are now public — title${gains.length!==1?'s':''} you hold`
+      : `🎉 New title${gains.length!==1?'s':''} won this turn`;
+    const verb=initial?'Earned by':'Won by';
+    gainsHtml=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">${header}</div>
+      ${gains.map(g=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
+        <strong>${g.scope==='minor'?'🎖':'🏆'} ${g.name}</strong> — ${g.charName?`${g.charName} of `:''}<span style="color:var(--forest)">${g.kingdomName||'your kingdom'}</span>.
+        <br><span style="color:#666">${verb}: ${g.req||''}</span>
+        <br><span style="color:#2d6a2d">Effect: ${g.perk||''}</span></div>`).join('')}</div>`;
+  }
+
+  // ── Item 4: titles LOST this turn — the old holder is told a rival took it, or it fell vacant. ──
+  let lossesHtml='';
+  const losses=t.losses||[];
+  if(losses.length){
+    lossesHtml=`<div style="background:#f6e0e0;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">⚔ Title${losses.length!==1?'s':''} lost this turn</div>
+      ${losses.map(l=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
+        <strong>${l.scope==='minor'?'🎖':'🏆'} ${l.name}</strong> — ${l.vacant
+          ? 'now stands <span style="color:#999">vacant</span>.'
+          : `claimed by ${l.newCharName?`${l.newCharName} of `:''}<span style="color:var(--crimson)">${l.newHolderName||'a rival'}</span>.`}</div>`).join('')}</div>`;
+  }
+
+  // ── Reckoning status banner (once called) ──
   let banner='';
   if(t.reckoning){
     banner=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:.85rem">
       👑 <strong>The Reckoning has been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of <strong>Turn ${t.reckoning.resolveAtTurn}</strong> unless the claim is broken. ${t.reckoning.mine?'This is your claim — hold your dominance.':'Drive the claimant\'s bloc below the threshold to shatter it.'}</div>`;
   }
-  // Who holds each title
-  const holders=t.holders||{};
-  const rows=_TITLE_ORDER.map(([k,name,prize])=>{
-    const h=holders[k]||{};
-    return `<tr><td style="padding:2px 8px">${name}</td><td style="padding:2px 8px;text-align:right;color:#999">${prize}</td><td style="padding:2px 8px;${h.mine?'font-weight:700;color:var(--forest)':''}">${h.holderName||'—'}</td></tr>`;
-  }).join('');
-  // Standings
+
+  // ── Standings board ──
   const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
     `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
-  // Call the Reckoning control
+
+  // ── Item 3: the eight Imperial Titles — holder (character + kingdom), how earned, perk while held ──
+  const holders=t.holders||{};
+  const majorHtml=_TITLE_ORDER.map(([k,name,prize])=>{
+    const h=holders[k]||{};
+    const who = h.holderName
+      ? (h.kingdomLevel
+          ? `${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
+          : `${h.charName||'—'} <span style="color:${h.mine?'var(--forest)':'#777'};font-weight:${h.mine?'700':'400'}">(${h.holderName})</span>`)
+      : '<span style="color:#999">— vacant —</span>';
+    return `<div style="border-bottom:1px solid var(--parchment-dark);padding:5px 0">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <strong style="font-size:.82rem">🏆 ${name}</strong>
+        <span style="color:#999;font-size:.72rem;white-space:nowrap">${prize} pts</span>
+      </div>
+      <div style="font-size:.78rem;margin:1px 0">Held by: ${who}</div>
+      <div style="font-size:.7rem;color:#777;line-height:1.4">Earn: ${h.req||''}<br><span style="color:#2d6a2d">While held: ${h.perk||''}</span></div>
+    </div>`;
+  }).join('');
+
+  // ── Item 4: how to Call the Reckoning (always shown while titles are public) ──
+  const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#555;line-height:1.5">
+    <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Calling the Reckoning</div>
+    There is no turn limit — the game ends only when one kingdom is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
+    <ul style="margin:4px 0 4px 16px;padding:0">
+      <li>your <strong>King must be alive</strong> — it is a King-only act; and</li>
+      <li>your kingdom, <strong>or your mutually-allied bloc</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base (the bar for a ${nPlayers}-kingdom game — fewer kingdoms need a higher share).</li>
+    </ul>
+    Calling it announces the claim to every realm and begins a <strong>2-turn grace period</strong>. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
+  </div>`;
+
+  // ── Call the Reckoning control ──
   let callCtrl='';
-  const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
   if(t.canCallReckoning){
     callCtrl = reckoningCall
       ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
@@ -1743,26 +1896,28 @@ function renderTitles(report){
   } else if(!t.reckoning){
     callCtrl=`<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
   }
-  el.innerHTML = banner
-    + `<div style="display:flex;gap:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:220px"><div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
-          <table style="width:100%;border-collapse:collapse;font-size:.85rem"><tbody>${board}</tbody></table></div>
-        <div style="flex:1;min-width:220px"><div style="font-size:.75rem;color:#888;margin-bottom:3px">Titles &amp; who holds them</div>
-          <table style="width:100%;border-collapse:collapse;font-size:.82rem"><tbody>${rows}</tbody></table></div>
-      </div>` + callCtrl + renderMinorTitles(t);
+
+  el.innerHTML = gainsHtml + lossesHtml + banner
+    + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
+       <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:12px"><tbody>${board}</tbody></table>
+       <div style="font-size:.75rem;color:#888;margin-bottom:2px">The eight Imperial Titles — who holds them &amp; how they are won</div>
+       ${majorHtml}`
+    + callCtrl + reckoningInfo + renderMinorTitles(t);
 }
 function renderMinorTitles(t){
   const m=t&&t.minor; if(!m) return '';
+  // Item 3: list ONLY the minor titles held by this player's own characters.
   const mine=(m.mine||[]);
   const mineHtml = mine.length
-    ? `<div style="margin-top:4px">${mine.map(x=>`<span class="pill" style="background:#eef3e6;color:#3a5a2a;margin:2px 3px 2px 0;display:inline-block">🎖 ${x.name} — <span style="color:#555">${x.perk}</span></span>`).join('')}</div>`
-    : `<div style="font-size:.78rem;color:#999;margin-top:4px">Your characters hold no minor titles yet.</div>`;
-  const all=(m.all||[]).map(x=>`<tr><td style="padding:1px 8px">${x.name}</td><td style="padding:1px 8px;${x.mine?'font-weight:700;color:var(--forest)':'color:#666'}">${x.holderName||'—'}</td><td style="padding:1px 8px;font-size:.72rem;color:#999">${x.perk}</td></tr>`).join('');
+    ? mine.map(x=>`<div style="border-bottom:1px dotted var(--parchment-dark);padding:4px 0;font-size:.76rem">
+        <span class="pill" style="background:#eef3e6;color:#3a5a2a;margin:0">🎖 ${x.name}</span>
+        <span style="color:#555"> — ${x.holderName||''}</span>
+        <div style="font-size:.68rem;color:#777;line-height:1.4">Earn: ${x.req||''}<br><span style="color:#2d6a2d">Perk: ${x.perk||''}</span></div>
+      </div>`).join('')
+    : `<div style="font-size:.78rem;color:#999;margin-top:4px">Your characters hold no minor titles yet. Each is awarded to the single best character in the world by its measure — win one and it appears here.</div>`;
   return `<div style="margin-top:14px;border-top:1px dashed var(--parchment-dark);padding-top:8px">
-    <div style="font-size:.8rem;color:#888;margin-bottom:2px">🎖 Minor titles <span style="font-size:.72rem">(honorary — they grant a perk but never count toward victory)</span></div>
+    <div style="font-size:.8rem;color:#888;margin-bottom:4px">🎖 Your minor titles <span style="font-size:.72rem">(honorary — each grants a perk but never counts toward victory)</span></div>
     ${mineHtml}
-    <details style="margin-top:6px"><summary style="cursor:pointer;font-size:.75rem;color:#777">All 20 minor titles &amp; who holds them</summary>
-      <table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:4px"><tbody>${all}</tbody></table></details>
   </div>`;
 }
 function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(currentReport); }
@@ -1860,12 +2015,15 @@ function unitBaseStrengthP(a){ return (UNIT_BASE_STR_P[a&&a.type]||4)*(UNIT_Q_MU
 function armyLabel(a, opts={}){
   const name=a.unitName?`${a.unitName}`:'';
   if(opts.short) return name?`${name}`:`${a.quality} ${a.type}`;
-  // Race first, then type, quality and the unit's base strength (type × quality tier) — enough to
-  // judge a force at a glance without opening the rules. formatRace() keeps the internal "Primal"
-  // term out of player sight, showing 'Creature (Stone Giant)' / 'Monster (Cave Troll)' instead.
+  // Classification first, then type, quality and the unit's base strength (type × quality tier) —
+  // enough to judge a force at a glance without opening the rules. Item 2: primal armies always lead
+  // with the full word 'Creature' or 'Monster' (derived from the unit TYPE, so it shows even when the
+  // army carries no race field — e.g. awakened/recruited beasts), and no separate [C]/[M] tag is used.
+  const primalWord=CREATURE_ARMIES_UI.has(a.type)?'Creature':MONSTER_ARMIES_UI.has(a.type)?'Monster':null;
   const race=a.race?formatRace(a.race,a.type):null;
+  const lead=primalWord||race; // humanoid keeps its race name; primal shows Creature/Monster
   const str=unitBaseStrengthP(a);
-  const detail=[race,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
+  const detail=[lead,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
   return name?`${name} (${detail})`:`${detail}`;
 }
 
@@ -1979,6 +2137,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     return`
     <div class="orders-char-block">
       <div class="orders-char-head">
+        <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
         ${c.isKing?'👑':'⚔'} ${c.name}
         ${hiredPh>=0?`<span style="background:#c8922a;color:#1a1208;font-size:.65rem;padding:1px 6px;border-radius:2px;margin-left:6px">Hired ${SEASONS[hiredPh]} — acts from ${SEASONS[hiredPh+1]||'next turn'}</span>`:''}
         <span style="margin-left:auto;font-size:.7rem;opacity:.75">📍 ${c.locationName||'?'} · Land: ${c.effectiveSpeed||3}/turn${(c.skills?.march||0)>0?` (March ${c.skills.march})`:''}${c.effectiveSeaSpeed?` · Sea: ${c.effectiveSeaSpeed}/turn${(c.skills?.naval||0)>0?` (Naval ${c.skills.naval})`:''}`:''}</span>
@@ -2606,6 +2765,7 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
   card.style.cssText='border:2px dashed #5a3a7a;opacity:0.9;margin-top:8px';
   card.innerHTML=`
     <div class="orders-char-head" style="background:#f5eeff;color:#4a4a4a">
+      <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${dead.name}
       <span style="color:#5a3a7a;font-size:.7rem;margin-left:6px">(if raised \u2014 can act from ${SEASONS_R[firstActable]||'next turn'})</span>
     </div>
@@ -2745,6 +2905,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   card.style.cssText='border:2px dashed #2a7a8a;opacity:0.9;margin-top:8px';
   card.innerHTML=`
     <div class="orders-char-head" style="background:#eaf6f8;color:#4a4a4a">
+      <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${wanderer.name}
       <span style="color:#2a7a8a;font-size:.7rem;margin-left:6px">(if charmed \u2014 can act from ${SEASONS_C[firstActable]||'next turn'})</span>
     </div>
@@ -3059,7 +3220,7 @@ function updateAlignmentDesc(){
     Divine:'✨ <strong>Divine:</strong> All heroes heal 3× more from Rest (6–15 HP vs 2–5). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king himself casts it. <strong>Consecrate</strong> one province: +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%, resurrections return there. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
     Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
     Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, gain +25% fanaticism, and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
-    Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 1g less. Sage discoveries twice as often.',
+    Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 2g less. Sage discoveries twice as often.',
     Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in Primal country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> trades one unit for a full heal and a quality blessing. <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
     Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are looted for 50% of their tax value — or, per character, <strong>Enslaved</strong> instead: a free Green native garrison unit, but −1 tax there for 3 turns. Choose each character\'s doctrine in their orders.',
     Undead:'💀 <strong>Undead:</strong> King starts with Necromancy +1 and a free Skeletal unit. Skeletal armies: always fanatical (+30% king-led, +20% hero-led), 1g upkeep, no Druid penalty. Graves decay at half rate in your provinces. <strong>Harvest the Field</strong>: raise a grave as a skeleton for 2g, no magic needed. <strong>Deathless March</strong>: all-skeletal forces never take flight casualties. Cannot hire Divine heroes; righteous heroes cost extra.',
@@ -3694,7 +3855,7 @@ function buildTargetField(c, ph, saved){
       // and list every feature known there — including ones discovered by another of your characters.
       const loc=predictedLocation(c.id,ph);
       const pd=(loc?provOrderData[loc.id]:null)||provOrderData[c.locationId]||null;
-      const feats=(pd?.features||[]).map(f=>`<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}</option>`).join('');
+      const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');return `<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}${diff?` (${diff})`:''}</option>`;}).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features in current province" disabled>`;}
@@ -4342,6 +4503,17 @@ function neutralCharLabel(c){
   const base=String(c&&c.name||'').replace(/\s*\(wandering\)/gi,'').trim();
   return `${base} (${c&&c.isNeutralGuard?'local chieftain':'wandering'})`;
 }
+// Item 6: the map tooltip has a very dark background, so a dark kingdom colour (e.g. navy) would be
+// hard to read. Lighten only low-luminance colours (mix toward white); bright ones pass through.
+function _tintForDarkTooltip(hex){
+  if(!hex||typeof hex!=='string'||hex[0]!=='#'||hex.length!==7) return hex;
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  if([r,g,b].some(isNaN)) return hex;
+  const lum=0.299*r+0.587*g+0.114*b;
+  if(lum>=110) return hex;
+  const mix=c=>Math.round(c+(255-c)*0.45), h2=c=>c.toString(16).padStart(2,'0');
+  return '#'+h2(mix(r))+h2(mix(g))+h2(mix(b));
+}
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
   const dead=(deadHeroes||[]).filter(d=>d.locationId===(pd&&pd.id));
@@ -4351,9 +4523,12 @@ function popupKnownChars(pd, deadHeroes){
   const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer);
   const wand=chars.filter(c=>c.isWanderer);
   let s='';
-  if(own.length)   s+=own.map(c=>`<br>\u{1F464} ${(c.isKing?'\u265B ':'')}${c.name}${cnt(c)}`).join('');
-  if(enemy.length) s+=enemy.map(c=>`<br>\u{1F441} <span style="color:#e05050">${(c.isKing?'\u265B ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`).join('');
-  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:#c8922a">${neutralCharLabel(c)}</span>${cnt(c)}`).join('');
+  // Item 6: colour character names by owner — own & enemy in their kingdom colour (lightened if
+  // needed for the dark tooltip), wandering heroes and local chieftains (neutral) in grey.
+  const NEUTRAL_GREY='#9a9a9a';
+  if(own.length)   s+=own.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#f2e8d0';return `<br>\u{1F464} <span style="color:${col}">${(c.isKing?'\u265B ':'')}${c.name}</span>${cnt(c)}`;}).join('');
+  if(enemy.length) s+=enemy.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#e05050';return `<br>\u{1F441} <span style="color:${col}">${(c.isKing?'\u265B ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`;}).join('');
+  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:${NEUTRAL_GREY}">${neutralCharLabel(c)}</span>${cnt(c)}`).join('');
   // Item 6: dead heroes whose bodies lie here — labelled '(dead)', mirroring the '(wandering)' tag.
   if(dead.length)  s+=dead.map(d=>`<br>\u{1F480} <span style="color:#8a6fb0">${(d.isKing?'\u265B ':'')}${d.name} (dead)</span>`).join('');
   return s;
@@ -4708,6 +4883,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.01-0918</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.02-0902</div>
 </body>
 </html>
