@@ -150,12 +150,6 @@ section{display:none;}.section-active{display:block;}
       </select>
       <label>Maximum Players</label>
       <select id="new-game-maxplayers"><!-- filled from map size by updateMaxPlayersForMap() --></select>
-      <label>Game Length</label>
-      <select id="new-game-turns">
-        <option value="8">Short — 8 turns</option>
-        <option value="12" selected>Standard — 12 turns</option>
-        <option value="16">Long — 16 turns</option>
-      </select>
       <div class="msg-info" style="margin-top:4px">Once you create the game, players can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports.</div>
       <button class="btn btn-crimson btn-full" style="margin-top:8px" onclick="createGame()">Create Game</button>
     </div>
@@ -1081,7 +1075,7 @@ async function loadGames(){
     return`<div class="game-card" onclick="openGame('${g.id}')">
       <div>
         <div class="gc-name">${g.name}${pill}</div>
-        <div class="gc-meta">${maxP} player slots · ${g.max_turns||12} turns · Created ${new Date(g.created_at).toLocaleDateString()}</div>
+        <div class="gc-meta">${maxP} player slots · Created ${new Date(g.created_at).toLocaleDateString()}</div>
       </div>
       <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
     </div>`;
@@ -1118,7 +1112,7 @@ async function createGame(){
   const mapSize=document.getElementById('new-game-mapsize').value;
   const cap=MAP_MAX_PLAYERS[mapSize]||5;
   const maxP=Math.min(Math.max(2,parseInt(document.getElementById('new-game-maxplayers').value)||2),cap);
-  const maxTurns=parseInt(document.getElementById('new-game-turns').value);
+  const maxTurns=0; // no turn limit — the game ends only at the Reckoning or by elimination (0 = unlimited)
   const msg=document.getElementById('new-game-msg');
   if(!name){msg.innerHTML='<div class="msg-error">Please enter a game name.</div>';return;}
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
@@ -3123,7 +3117,16 @@ function computeStandings(state){
   const players=state.players||[];
   const chars=(state.characters||[]).filter(c=>c&&c.player!=null&&c.alive);
   const taxByPlayer=players.map((p,pi)=>((state.world&&state.world.provinces)||[]).reduce((s,pv)=>s+((pv&&pv.owner===pi)?(pv.tax||0):0),0));
-  const worldTax=taxByPlayer.reduce((a,b)=>a+b,0);
+  // Reckoning denominator = the ENTIRE world's tax base, not just the slice players already hold.
+  // Include every province that can be part of a kingdom's tax base: all owned provinces (land or
+  // owned sea) PLUS all neutral LAND provinces still out there to be conquered. Only unclaimed open
+  // water (owner==null && terrain==='sea') is excluded — it can never appear in anyone's numerator,
+  // so counting it would permanently inflate the denominator and make the threshold unreachable.
+  const worldTax=((state.world&&state.world.provinces)||[]).reduce((s,pv)=>{
+    if(!pv) return s;
+    if(pv.owner==null && pv.terrain==='sea') return s; // open sea isn't a claimable tax base
+    return s+(pv.tax||0);
+  },0);
   const goldByPlayer=players.map(p=>(p&&p.gold)||0);
   const perChar={};
   chars.forEach(c=>{ const raw=_charTitleMerit(c); const boost=ALIGN_TITLE_BOOST[players[c.player]&&players[c.player].alignment]||{}; const m={}; for(const k in raw) m[k]=raw[k]*(boost[k]||1); perChar[c.id]=m; });
@@ -3460,15 +3463,23 @@ function buildTurnReport(gameState, playerIndex){
     const spiedSkillStr=spiedSkills?fmtSkills(spiedSkills):null;
     const skillDisplay=spiedSkillStr?`known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}`:topStr;
     if(c.player===null){
-      // Wandering/neutral hero
+      // Wandering/neutral hero.
+      // Item 9a: the hire cost is the alignment-distance wage for THIS kingdom (2g base +1g per two
+      // steps of alignment distance) — the same figure the hire order actually charges — NOT the
+      // hero's stale internal `pay` field (which is a spawn artefact and always reads ~1g). A null
+      // wage means the Divine<->Undead gulf: they will not serve this crown (the sd31 waiver, if the
+      // kingdom holds it, is applied at the real hire). Guards keep their beast label; a defeated
+      // guard now wandering (player===null, not a guard) shows a proper race (see runTurn normaliser).
+      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment);
+      const _wHireTxt=c._isNeutralGuard?'':(_wWage!=null?` Available to hire for ${_wWage}g/turn.`:' Will not serve your crown — the alignment gulf is too wide.');
       heroSightings.push({
         type:c._isNeutralGuard?'neutral_guard':'wandering',
         name:c.name,race:c.race,alignment:c.alignment,temper:c.temper,
         locationName:prov.name,locationId:c.location,
-        topSkill:ts,pay:c.pay||1,
+        topSkill:ts,pay:_wWage,
         spiedSkills:spiedSkills||null, spiedTurn:spyRec?spyRec.turn:null,
         inOwnedProvince:inOwned,
-        text:`Wandering hero ${c.name} (${c.race}, ${c.alignment}) is in ${prov.name}. ${skillDisplay}. Available to hire for ${c.pay||1}g/turn.`,
+        text:`Wandering hero ${c.name} (${c.race}, ${c.alignment}) is in ${prov.name}. ${skillDisplay}.${_wHireTxt}`,
       });
     } else {
       // Enemy hero
@@ -3967,6 +3978,19 @@ async function runTurn(){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
 
+  // Item 9b: a defeated sea neutral-guard becomes a plain wandering hero (player===null, no longer
+  // _isNeutralGuard) but keeps the 'Creature'/'Monster' pseudo-race it wore to label the beasts it
+  // once commanded — which then reads absurdly in the Wandering Heroes list ("Mira the Nomad
+  // (Monster, Neutral) — hire for …"). Heroes are people; the monster class belongs to the ARMIES.
+  // Normalise any such lone wanderer to a stable humanoid race here (deterministic by id, so it
+  // never flickers turn to turn). Active guards keep their beast label — they are excluded by the
+  // _isNeutralGuard check — preserving the intended sea-guard flavour while they hold their waters.
+  (G.characters||[]).forEach(c=>{
+    if(c && c.player===null && !c._isNeutralGuard && (c.race==='Monster'||c.race==='Creature')){
+      c.race=RACES_P[((c.id||0)%RACES_P.length+RACES_P.length)%RACES_P.length];
+    }
+  });
+
   // 2. Merge all player orders into G.turnOrders + apply encounter plans
   // CRITICAL: reset turnOrders completely first — stale orders from a previous turn
   // must NEVER carry over. Every character starts this turn with a clean slate (Defend).
@@ -4137,6 +4161,7 @@ async function runTurn(){
       armyEstimate: meta.armyEstimate??null,
       charId: meta.charId??_logCtx.charId,   // which character's action this is
       phase: meta.phase??_logCtx.phase,       // which phase (0–4)
+      pinNotice: meta.pinNotice??false,       // Item 4: hoist to the top of the char's phase report
     });
     console.log(`[${type}] ${text}`);
   };
@@ -8351,7 +8376,11 @@ const BATTLE_ARMY_SPELLS={
           if(ho&&ho.desc!=='(not yet hired)') processOrder(h,ho,ph);
         }
         const _aDist=alignDistP(kingdomAlign,h.alignment);
-        log('hire',`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. They may act from ${SEASONS[ph+1]||'next turn'} onwards.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
+        log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        // Item 7: also file the same line under the HIRED hero's own Chronicle section, at the hire
+        // phase, so their section opens by explaining when and how they entered service.
+        log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id,charId:h.id,phase:ph});
         break;
       }
       case 'spy':{
@@ -8445,7 +8474,10 @@ const BATTLE_ARMY_SPELLS={
           if(!G.turnOrders[bh.id])G.turnOrders[bh.id]=[null,null,null,null,null];
           for(let p2=0;p2<=ph;p2++) G.turnOrders[bh.id][p2]=G.turnOrders[bh.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
           setMovePool(bh);
-          log('hire',`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`,{actor:c.player,targets:[c.player],provinceId:bhProv.id});
+          const _brokerLine=`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
+          log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id});
+          // Item 7: mirror into the brokered hero's own Chronicle section at the hire phase.
+          log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id,charId:bh.id,phase:ph});
         } else if(_bk[0]==='spy'){
           const sp2=G.world.provinces[parseInt(_bk[1])];
           const _seen=sp2&&(sp2.owner===c.player||(sp2.visitedBy||[]).includes(c.player)||(((sp2.exploredBy||{})[c.player])||0)>0);
@@ -8799,6 +8831,20 @@ const BATTLE_ARMY_SPELLS={
           while(garr.length>0){ c.armies.push(garr.pop()); }
           prov.garrisonArmies=[];
           log('hire',`${c.name} takes command of all ${n} garrisoned unit${n!==1?'s':''} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        } else if(String(target||'').trim().toLowerCase().startsWith('merc:')){
+          // Item 8: take a mercenary band standing in THIS province into service. Charged the
+          // standard mercenary fee (Neutral kingdoms −2g, min 1g), exactly like recruiting it —
+          // Pick Up Army is simply a location-natural second entry point for the band beneath one's feet.
+          const _mId=String(target).trim().slice(5);
+          const merc=(G.mercenaries||[]).find(m=>String(m.id)===_mId&&m.location===c.location);
+          if(!merc){log('system',`${c.name} finds no such mercenary band in ${prov.name} to take up.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const mCost=Math.max(1,(ARMY_COST_MASTER[merc.type]||2)-(G.players[c.player]?.alignment==='Neutral'?2:0));
+          if((player.gold||0)<mCost){log('hire',`${c.name}: cannot afford to take up the ${merc.unitName||merc.type} mercenaries (${mCost}g needed, treasury has ${player.gold}g).`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          player.gold-=mCost;
+          G.mercenaries=(G.mercenaries||[]).filter(m=>m.id!==merc.id);
+          c.armies=(c.armies||[]);
+          c.armies.push({type:merc.type,quality:merc.quality,race:merc.race||'Human',unitName:merc.unitName||armyUnitName(merc.type)});
+          log('hire',`${c.name} takes the ${merc.unitName||merc.type} (${merc.quality} ${merc.type}) mercenaries into service in ${prov.name} for ${mCost}g. Treasury: ${player.gold}g remaining.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
         const srcId=parseInt(target);
         if(srcId>=0){
@@ -9177,6 +9223,10 @@ const BATTLE_ARMY_SPELLS={
           if(!t||t.location!==c.location){log('system',`Charm: no valid target hero stands in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(t.player===c.player){log('system',`Charm cannot be used on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           if(t.isKing){log('system',`Charm cannot sway a king.`,{actor:c.player,targets:[c.player]});break;}
+          // Charm cannot reach the dead. (targetChar is already alive-filtered at resolution, so a
+          // hero who fell earlier this turn never arrives here — this makes the rule explicit and
+          // guards any future path that might resolve a target without the alive check.)
+          if(t.alive===false){log('system',`${c.name}'s Charm reaches for ${t.name}, but there is no living mind left to sway.`,{actor:c.player,targets:[c.player]});break;}
           // Charm sways only a LONE hero — one leading no armies (wandering OR enemy alike). A hero at
           // the head of a column is beyond a single enchanter's reach.
           if((t.armies||[]).length>0){log('system',`${c.name}'s Charm cannot grip ${t.name} — a hero leading troops is beyond its reach.`,{actor:c.player,targets:[c.player]});break;}
@@ -11160,7 +11210,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat', _stillContested
         ?`${it.c.name} is still locked in the unresolved battle for ${here.name} and cannot march away — the fight must be seen through before they can move on.`
         :`${it.c.name} has already fought a battle this phase and cannot march on to start another — one battle per phase.`,
-        {actor:it.player,targets:[it.player],provinceId:it.fromId,public:false,charId:it.id,phase:ph});
+        {actor:it.player,targets:[it.player],provinceId:it.fromId,public:false,charId:it.id,phase:ph,pinNotice:true});
     });
 
     // ── STAGE 2a: movement interlocks — pin generals whose province is invaded before they leave ──
@@ -12032,7 +12082,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     msg.innerHTML=`<div class="msg-success">
       ✅ Turn ${G.turn-1} resolved! New turn reports pushed to ${activePlayers.length} players.<br>
       <strong>Turn ${G.turn} is now open for orders.</strong> 
-      ${G.turn>(G.maxTurns||12)?'<strong>Game is complete!</strong>':''}
+      ${G.gameOver?'<strong>Game is complete!</strong>':''}
     </div>`;
   }
 
@@ -12050,7 +12100,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // Refresh UI
   currentGame.turn=G.turn;
-  currentGame.status=G.turn>(G.maxTurns||12)?'complete':'active';
+  currentGame.status=G.gameOver?'complete':'active';
   setTimeout(()=>openGame(currentGame.id),2000);
 }
 
@@ -12060,6 +12110,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.02-0902</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.02-1414</div>
 </body>
 </html>

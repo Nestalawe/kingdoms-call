@@ -1107,8 +1107,13 @@ function buildChronicle(log, chars_for_log){
       ce.phases.forEach((entries,ph)=>{
         if(!entries.length)return;
         hasContent=true;
+        // Item 4: a battle-lock pin notice ("… is still locked in the unresolved battle … cannot
+        // march away") is hoisted to the TOP of the phase, so the reader learns WHY this character
+        // is fighting-not-marching before the battle narrative that follows. Stable sort keeps every
+        // other line in its original order.
+        const ordered=[...entries].sort((a,b)=>((b.pinNotice?1:0)-(a.pinNotice?1:0)));
         html+=phaseHeader(ph,PHASE_COLORS[ph]);
-        entries.forEach(e=>{html+=renderEntry(e);});
+        ordered.forEach(e=>{html+=renderEntry(e);});
       });
 
       if(!hasContent) html+=`<em style="color:#aaa;font-size:.8rem;padding:4px 8px;display:block">No activity this turn.</em>`;
@@ -1531,7 +1536,7 @@ async function openReport(gamePlayerId){
           : `Best skill: ${topStr}`;
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine} · Hire for <strong>${s.pay}g/turn</strong>${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -1586,7 +1591,7 @@ async function openReport(gamePlayerId){
           line+=`<br><span style="font-size:.7rem;padding-left:14px;color:#2d7a2d">🔍 ${Object.entries(c.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}</span>`;
         }
         if(c.armies&&c.armies.length){
-          line+=`<br><span style="font-size:.72rem;padding-left:14px">${c.armies.map(a=>`${unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span>`).join(', ')}</span>`;
+          line+=c.armies.map(a=>`<div style="padding-left:14px;font-size:.72rem">${unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('');
         } else if(c.armies){
           line+=` — <span style="opacity:.75;font-size:.74rem">no armies</span>`;
         } else {
@@ -3392,18 +3397,18 @@ async function reviseOrders(){
 async function doSubmitOrders(){
   const chars=currentReport?.characters||[];
   const btn=document.getElementById('submit-btn');
-  btn.disabled=true;btn.textContent='Saving…';
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
 
   // Safety: verify the turn hasn't advanced since the player loaded the form
   const {data:freshGame}=await sb.from('games').select('turn').eq('id',currentGamePlayer?.game_id).single();
   const expectedTurn=currentReport?._liveTurn||currentReport?.turn||1;
   if(freshGame&&freshGame.turn!==expectedTurn){
     document.getElementById('orders-msg').innerHTML=`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`;
-    btn.disabled=false;btn.textContent='Submit Orders';return;
+    restoreSubmitWrap('Submit');return; // Item 5: rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
   if(!currentGamePlayer?.id){
     document.getElementById('orders-msg').innerHTML='<div class="msg-error">Session error — please reload the page.</div>';
-    btn.disabled=false;btn.textContent='Submit Orders';return;
+    restoreSubmitWrap('Submit');return; // Item 5: rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
 
   const orders={};
@@ -3496,7 +3501,7 @@ async function doSubmitOrders(){
   }).eq('id',currentGamePlayer.id);
   if(error){
     document.getElementById('orders-msg').innerHTML=`<div class="msg-error">Error: ${error.message}</div>`;
-    btn.disabled=false;btn.textContent='Submit Orders';return;
+    restoreSubmitWrap('Submit');return; // Item 5: rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
   document.getElementById('orders-msg').innerHTML='';
   document.getElementById('orders-submit-wrap').innerHTML=`
@@ -4069,7 +4074,7 @@ function buildTargetField(c, ph, saved){
           // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
           // (The engine enforces all of this — this list simply matches it.)
           const targets=(report.visibleChars||[]).filter(x=>
-            x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 &&
+            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 &&
             (x.player===null || x.player!==c.player));
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune)</option>';
@@ -4381,15 +4386,19 @@ function buildTargetField(c, ph, saved){
       const loc2=predictedLocation(c.id,ph);
       const pd2=loc2?provOrderData[loc2.id]:null;
       const garrArr=(pd2?.garrisonArmies||[]);
-      const garrisons=garrArr.map((a,i)=>`<option value="-1:${i}">${armyLabel(a)} — garrison</option>`).join('');
+      const garrisons=garrArr.map((a,i)=>`<option value="-1:${i}" ${target===`-1:${i}`?'selected':''}>${armyLabel(a)} — garrison</option>`).join('');
       // 'All' sweeps up every unled (garrison) army in the province at once.
-      const allOpt=garrArr.length>0?`<option value="all">⚑ All garrison armies (${garrArr.length})</option>`:'';
-      const othersHere=(report.characters||[]).filter(x=>x.id!==c.id&&(x.armies||[]).length>0);
-      const heroArmyOpts=othersHere.flatMap(x=>(x.armies||[]).map((a,i)=>`<option value="${x.id}:${i}">${armyLabel(a)} from ${x.name}</option>`)).join('');
-      const all=allOpt+garrisons+heroArmyOpts;
+      const allOpt=garrArr.length>0?`<option value="all" ${target==='all'?'selected':''}>⚑ All garrison armies (${garrArr.length})</option>`:'';
+      // Item 8: the only pickable armies are unled ones STANDING in this province — the garrison
+      // (above) and any mercenary bands here. Taking a mercenary band into service costs its standard
+      // hire fee (shown below), exactly like recruiting it. Armies led by another of your characters
+      // are NOT shown — moving troops between your own heroes is done with Leave/Transfer Army.
+      const mercsHere=(report.mercIntel||[]).filter(m=>loc2&&m.locationId===loc2.id);
+      const mercOpts=mercsHere.map(m=>`<option value="merc:${m.id}" ${target===`merc:${m.id}`?'selected':''}>⚔ ${m.unitName||m.type} (${m.quality} ${m.type}, ${m.cost}g) — mercenary</option>`).join('');
+      const all=allOpt+garrisons+mercOpts;
       return all
         ?`<select id="po-target-${c.id}-${ph}">${all}</select>`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies available to pick up" disabled>`;}
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison or mercenary armies here to pick up" disabled>`;}
 
     default:
       return`<input id="po-target-${c.id}-${ph}" type="text" value="${target||''}" placeholder="Details / notes">`;
@@ -4883,6 +4892,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.02-0902</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.02-1414</div>
 </body>
 </html>
