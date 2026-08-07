@@ -731,11 +731,20 @@ async function loadOpenGames(){
     let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
     return { gm: gmNameById[g.gm_user_id]||'the Game Master', size: SIZE_LABEL[cfg.mapSize]||'Medium (12×8)' };
   };
+  // Human-joinable capacity = max players minus GM bot kingdoms (bots stay hidden from players).
+  // An all-bot game has capacity 0 and never appears as joinable.
+  const humanCapOf=g=>{
+    let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
+    const maxP=g.max_players||4;
+    if(cfg.allBot===true) return 0;
+    const bots=Math.max(0,Math.min(parseInt(cfg.botCount)||0,maxP));
+    return Math.max(0,maxP-bots);
+  };
 
   const openGames=games.filter(g=>{
     if(myGameIds.has(g.id)) return false;
     const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
-    return joined<(g.max_players||4);
+    return joined<humanCapOf(g);
   });
 
   if(openGames.length===0){
@@ -744,7 +753,7 @@ async function loadOpenGames(){
   }
   el.innerHTML=openGames.map(g=>{
     const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
-    const maxP=g.max_players||4;
+    const maxP=humanCapOf(g); // human-facing capacity; reserved bot slots stay hidden
     const info=gameInfo(g);
     const gmEsc=info.gm.replace(/'/g,"\\'");
     return`<div class="game-card clickable" onclick="showJoinGame('${g.id}','${g.name.replace(/'/g,"\\'")}',${maxP},${joined},'${gmEsc}','${info.size}')">
@@ -4892,6 +4901,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.02-1851</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.07-1856</div>
 </body>
 </html>
