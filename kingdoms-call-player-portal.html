@@ -1304,6 +1304,29 @@ async function openReport(gamePlayerId){
   const report=typeof gp.turn_report==='string'?JSON.parse(gp.turn_report):gp.turn_report||{};
   currentReport=report;
   currentReport._liveTurn=g.turn||1; // ensure submit uses live turn not report turn
+  // Royal succession: re-apply any saved heir skill allocation from this turn's DRAFT onto the heir
+  // characters BEFORE the kingdom + orders sections render. This makes the allocation (a) survive a
+  // re-render (openReport re-fetches the pristine turn_report, which would otherwise wipe it) and
+  // (b) take effect immediately this turn — the order forms read c.skills, so newly-bought magic
+  // surfaces its spells straight away. Also snapshot each heir's crowned skills as _heirBase so the
+  // ± allocator knows the floor it may not reduce below.
+  try{
+    const _draft=typeof gp.orders==='string'?JSON.parse(gp.orders||'{}'):(gp.orders||{});
+    const _ks=_draft&&_draft.kingSkills;
+    (currentReport.characters||[]).forEach(c=>{
+      if(!c._isHeir) return;
+      const a=_ks&&_ks[c.id];
+      if(a){
+        if(a.base) c._heirBase={...a.base};
+        if(a.skills) c.skills={...a.skills};
+        if(typeof a.pending==='number') c._pendingSkillAllocation=a.pending;
+        if(a.name) c.name=a.name;
+        if(a.temper) c.temper=a.temper;
+      }
+      // First sighting (or a draft with no base recorded yet): the current skills ARE the base.
+      if(!c._heirBase) c._heirBase={...(c.skills||{})};
+    });
+  }catch(e){/* no draft yet — heir shows freshly-crowned base skills */}
   diploChoices={}; // fresh pending diplomacy each time a report opens (restored from any saved draft below)
   reckoningCall=false;
   viewingReport=report;              // map/history starts on the current report
@@ -1395,33 +1418,9 @@ async function openReport(gamePlayerId){
       <br><span style="color:#2d7a2d;font-weight:600">[C] Creatures:</span> Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort, Eagle Riders
       ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods':''}
     </div>`:'';
-  // Show heir skill allocation banner if applicable
-  const heirChar=chars.find(c=>c._isHeir);
-  const HEIR_TEMPERS=['Berserk','Brave','Cautious','Cowardly'];
-  const heirBanner=heirChar?`<div style="background:#fff8e8;border:2px solid var(--gold);border-radius:3px;padding:8px 12px;margin-bottom:10px">
-    <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Name, Temper and Skills</div>
-    <div style="font-size:.78rem;color:#444;margin-bottom:6px">A new monarch has risen. Choose their name and temper, and assign their ${heirChar._pendingSkillAllocation||0} remaining skill point${(heirChar._pendingSkillAllocation||0)!==1?'s':''} before submitting orders.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
-      <label style="font-size:.74rem;color:#555">Name
-        <input id="heir-name" value="${(heirChar.name||'').replace(/"/g,'&quot;')}" maxlength="40" oninput="setHeirName(${heirChar.id},this.value)"
-          style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px;width:200px">
-      </label>
-      <label style="font-size:.74rem;color:#555">Temper
-        <select id="heir-temper" onchange="setHeirTemper(${heirChar.id},this.value)"
-          style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px">
-          ${HEIR_TEMPERS.map(t=>`<option value="${t}"${heirChar.temper===t?' selected':''}>${t}</option>`).join('')}
-        </select>
-      </label>
-    </div>
-    ${(heirChar._pendingSkillAllocation||0)>0?`<div style="display:flex;flex-wrap:wrap;gap:4px">
-      ${['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'].map(sk=>
-        `<button onclick="allocateHeirSkill(${heirChar.id},'${sk}')" style="font-size:.7rem;padding:2px 6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;cursor:pointer">${SKILL_LABELS[sk]||sk} (${heirChar.skills?.[sk]||0})</button>`
-      ).join('')}
-    </div>
-    <div style="font-size:.72rem;color:#888;margin-top:4px">Points remaining: <strong>${heirChar._pendingSkillAllocation}</strong></div>`
-    :`<div style="font-size:.72rem;color:#888">All skill points allocated.</div>`}
-  </div>`:'';
-  document.getElementById('report-kingdom').innerHTML=alignBanner+heirBanner+cmGuide+`
+  // Royal-succession skill allocation is rendered at the TOP of the orders column now
+  // (see heirSelectorHTML in buildOrdersForm), not here in the kingdom section.
+  document.getElementById('report-kingdom').innerHTML=alignBanner+cmGuide+`
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
       <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div>${(()=>{
@@ -2088,12 +2087,70 @@ const ENCOUNTER_TACTICS=[
   {code:'SC',label:'Scout — scout the feature for secrets and special functions'},
 ];
 
+// ── Royal succession skill allocation ─────────────────────────────────────────
+// The crowned heir keeps their base skills; the player spends 4 points on top of that,
+// max +2 into any single skill — exactly the join-screen rule (join skills add on top of
+// the king's base {melee:2,archery:1,sage:1}). _heirBase is the untouchable floor.
+const HEIR_TEMPERS_LIST=['Berserk','Brave','Cautious','Cowardly'];
+function heirBaseSkills(c){ return (c&&c._heirBase)||(c&&c.skills)||{}; }
+function heirAddedTo(c,skill){ const b=heirBaseSkills(c); return ((c.skills||{})[skill]||0)-(b[skill]||0); }
+function heirTotalAdded(c){
+  const b=heirBaseSkills(c), s=c.skills||{}, keys=new Set([...Object.keys(s),...Object.keys(b)]);
+  let t=0; keys.forEach(k=>{ t+=Math.max(0,(s[k]||0)-(b[k]||0)); }); return t;
+}
+function heirPointsRemaining(c){ return 4-heirTotalAdded(c); }
+
+// Build the succession panel (name + temper + skill pips, styled like the join screen).
+// Returns '' when the player has no heir awaiting setup.
+function heirSelectorHTML(chars){
+  const heir=(chars||[]).find(c=>c._isHeir);
+  if(!heir) return '';
+  const remaining=heirPointsRemaining(heir);
+  const pip=skill=>{
+    const lvl=(heir.skills||{})[skill]||0;               // resulting level (base + allocated)
+    const added=heirAddedTo(heir,skill);
+    const displayName=SKILL_LABELS[skill]||skill;
+    const minusOff=added<=0;                              // may not reduce below the crowned base
+    const plusOff=remaining<=0||added>=2;                 // 4-point budget, +2-per-skill cap
+    return`<div class="skill-pip">
+      <button onclick="allocateHeirSkill(${heir.id},'${skill}',-1)" ${minusOff?'disabled':''}>−</button>
+      <span class="sk-name" onmousemove="showSkillTip(event,'${skill}')" onmouseleave="hideSkillTip()">${displayName}</span>
+      <span class="sk-val">${lvl}</span>
+      <button onclick="allocateHeirSkill(${heir.id},'${skill}',1)" ${plusOff?'disabled':''}>+</button>
+    </div>`;
+  };
+  const grid=`<div class="skill-cols">`+SKILL_COLUMNS.map(col=>
+    `<div class="skill-col"><div class="skill-col-head">${col.head}</div>${col.skills.map(pip).join('')}</div>`
+  ).join('')+`</div>`;
+  return`<div style="background:#fff8e8;border:2px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:14px">
+    <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Name, Temper &amp; Skills</div>
+    <div style="font-size:.76rem;color:#444;margin-bottom:8px">A new monarch has risen. Name them, choose their Temper, and spend their <strong>${remaining}</strong> remaining skill point${remaining!==1?'s':''} before submitting orders. New skills take effect this turn — buy a magic school and you can cast from it right away.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+      <label style="font-size:.74rem;color:#555">Name
+        <input id="heir-name" value="${(heir.name||'').replace(/"/g,'&quot;')}" maxlength="40" oninput="setHeirName(${heir.id},this.value)"
+          style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px;width:200px">
+      </label>
+      <label style="font-size:.74rem;color:#555">Temper
+        <select id="heir-temper" onchange="setHeirTemper(${heir.id},this.value)"
+          style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px">
+          ${HEIR_TEMPERS_LIST.map(t=>`<option value="${t}"${heir.temper===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+      </label>
+      <span class="pts-remaining" style="margin-left:auto">${remaining} point${remaining!==1?'s':''} remaining</span>
+    </div>
+    ${grid}
+  </div>`;
+}
+
 function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // `report` is a LOCAL of openReport, not a global — referencing it here threw a ReferenceError
   // that aborted the whole form build (and, because renderPlayerMap is called on the next line of
   // openReport, silently blanked the map too). Use the module-level currentReport, as every other
   // helper in this file does. Do not reintroduce a bare `report` reference in this function.
   const report=currentReport||{};
+  // The King (or a newly-crowned heir) always sits at the TOP of the orders column. Array.sort is
+  // stable in modern engines, so every other character keeps its original report order.
+  chars=[...chars].sort((a,b)=>((a.isKing||a._isHeir)?0:1)-((b.isKing||b._isHeir)?0:1));
   const el=document.getElementById('orders-form');
   const btn=document.getElementById('submit-btn');
   const msg=document.getElementById('orders-msg');
@@ -2137,7 +2194,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   if(rawSaved.diplomacy && typeof rawSaved.diplomacy==='object') diploChoices={...rawSaved.diplomacy};
   if(rawSaved.callReckoning===true) reckoningCall=true;
 
-  el.innerHTML=chars.filter(c=>c.alive!==false).map(c=>{
+  el.innerHTML=heirSelectorHTML(chars)+chars.filter(c=>c.alive!==false).map(c=>{
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
     const currentTactics=savedEP.tactics||['ME'];
@@ -2681,12 +2738,17 @@ function onActionChange(charId, ph, charIdx){
 
 // Inject the hired-hero card when Hire Hero is selected with a target; otherwise remove it and
 // unregister its placeholder character. Mirrors syncResurrectCard.
+// Item 4 (this session): the Neutral king's Broker action ALSO hires a hero (a remote hire, target
+// 'hire:<id>'), so it must pop the same future-orders window. A Broker 'spy:<provId>' target is not
+// a hire and gets no card.
 function syncHiredHeroCard(charId, ph){
   const containerId=`hired-hero-orders-${charId}-${ph}`;
   const existing=document.getElementById(containerId);
   const action=document.getElementById(`po-action-${charId}-${ph}`)?.value||'';
-  const heroId=getOrderTarget(charId, ph);
-  const wanted=(action==='Hire Hero'&&heroId);
+  const rawTarget=getOrderTarget(charId, ph);
+  const isHire=(action==='Hire Hero'&&rawTarget);
+  const isBrokerHire=(action==='Broker'&&typeof rawTarget==='string'&&rawTarget.startsWith('hire:'));
+  const wanted=isHire||isBrokerHire;
   if(!wanted){
     if(existing){
       const stale=existing.getAttribute('data-fakeid');
@@ -2986,11 +3048,18 @@ function injectCharmOrders(charId, ph, heroId, containerId){
 // After a player selects Hire Hero in phase ph, add an order card for that hero
 // covering phases ph+1 to 4 (they can't act in ph or earlier)
 function injectHiredHeroOrders(charId, ph, charIdx){
-  const heroId=getOrderTarget(charId, ph);
+  let heroId=getOrderTarget(charId, ph);
   if(!heroId) return;
+  // Item 4: the Broker action encodes its hire target as 'hire:<id>' (and 'spy:<provId>' for a paid
+  // spy, which is NOT a hire). Strip the 'hire:' prefix; bail on anything else non-numeric.
+  if(typeof heroId==='string'&&heroId.startsWith('hire:')) heroId=heroId.slice(5);
+  if(!/^\d+$/.test(String(heroId))) return;
 
   const report=currentReport||{};
-  const immH=(report.discoveries||[]).some(d=>d.id==='sd34'); // Mounted Couriers: act from hire phase
+  // Mounted Couriers (sd34) lets a HIRED hero act from the hire phase — but the engine's Broker path
+  // does not wire that immediate action, so a BROKERED hero always acts from ph+1.
+  const _isBroker=(document.getElementById(`po-action-${charId}-${ph}`)?.value==='Broker');
+  const immH=!_isBroker&&(report.discoveries||[]).some(d=>d.id==='sd34'); // Mounted Couriers: act from hire phase
   const firstActable=immH?ph:ph+1;
   let heroData=null;
   Object.values(report.provinceOrderData||{}).forEach(pd=>{
@@ -3192,25 +3261,35 @@ function setHeirTemper(charId, value){
   if(!currentReport) return;
   const c=currentReport.characters.find(x=>x.id===charId);
   if(!c||!c._isHeir) return;
-  if(!['Berserk','Brave','Cautious','Cowardly'].includes(value)) return;
+  if(!HEIR_TEMPERS_LIST.includes(value)) return;
   c.temper=value;
-  doSaveOrders();
+  doSaveOrders(); // temper doesn't change order options, so no rebuild needed
 }
 
-function allocateHeirSkill(charId, skill){
+// Spend or refund a succession skill point. delta is +1 or −1. Caps mirror the join screen:
+// a 4-point budget, at most +2 into any single skill, never reducing a skill below its crowned base.
+async function allocateHeirSkill(charId, skill, delta){
   if(!currentReport) return;
   const c=currentReport.characters.find(x=>x.id===charId);
-  if(!c||!c._pendingSkillAllocation||c._pendingSkillAllocation<=0) return;
+  if(!c||!c._isHeir) return;
   c.skills=c.skills||{};
-  c.skills[skill]=(c.skills[skill]||0)+1;
-  c._pendingSkillAllocation--;
-  // Save to draft orders so it persists
-  doSaveOrders();
-  // AUDIT FIX (§28): this called renderKingdom(), which does not exist anywhere in the portal —
-  // the kingdom section is rendered inline by openReport. The allocation itself was applied and
-  // saved, but the click then threw a ReferenceError and the page never refreshed, so the player
-  // saw nothing happen. Re-open the report to redraw with the new skill totals.
-  if(currentGamePlayerId!=null) openReport(currentGamePlayerId);
+  const cur=c.skills[skill]||0;
+  const added=heirAddedTo(c,skill);
+  if((delta||0)>0){
+    if(heirTotalAdded(c)>=4) return;   // no points left to spend
+    if(added>=2) return;               // +2-per-skill cap
+    c.skills[skill]=cur+1;
+  }else{
+    if(added<=0) return;               // can't dip below the crowned base
+    c.skills[skill]=cur-1;
+    if(c.skills[skill]===0) delete c.skills[skill];
+  }
+  c._pendingSkillAllocation=heirPointsRemaining(c); // keep the banner/payload count in sync
+  await doSaveOrders();                             // persist first (also refreshes currentGamePlayer.orders)
+  // Rebuild ONLY the orders form from the freshly-saved draft. This redraws the pips + points AND
+  // re-reads c.skills for every character's spell controls, so a magic school just purchased offers
+  // its spells immediately — all without a full report re-fetch (which would blank the map/titles).
+  buildOrdersForm(currentReport.characters, false, currentGamePlayer?.orders, currentReport?._liveTurn||currentReport?.turn||1);
 }
 
 async function resubmitOrders(){
@@ -3378,12 +3457,14 @@ async function doSaveOrders(){
     console.warn('doSaveOrders: blocked — viewing past turn report');return;
   }
   const kingSkills={};
-  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
+  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
+  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall});
   const {error:saveErr}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall}),
+    orders:_payload,
     orders_submitted:false
   }).eq('id',gp.id);
   if(saveErr){console.error('Save draft error:',saveErr.message);return;}
+  if(currentGamePlayer) currentGamePlayer.orders=_payload; // keep the in-memory draft fresh for light re-renders
   const msg=document.getElementById('save-msg');
   if(msg){msg.style.display='block';setTimeout(()=>{msg.style.display='none';},3000);}
 }
@@ -3502,7 +3583,7 @@ async function doSubmitOrders(){
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
   const kingSkills={};
-  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||''}; });
+  chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
   const {error}=await sb.from('game_players').update({
     orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,forTurn:expectedTurn}),
     orders_submitted:true,
@@ -3790,8 +3871,34 @@ function buildTargetField(c, ph, saved){
       return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>${edgeNote}`;
     }
 
-    // ── EXPLORE / SPY / REST ──
-    case 'Explore':
+    // ── EXPLORE ── show how much of the province this order will map (item 3b)
+    case 'Explore':{
+      const loc=predictedLocation(c.id,ph);
+      const pd=loc?provOrderData[loc.id]:null;
+      const terr=(pd&&pd.terrain)||null;
+      // Mirror of the GM engine's explore formula (see 'case explore'): terrainBase × (Explorer+1)
+      // × Scouts&Rangers × Loremaster/Trailblazer, capped at 100. Explorer-boosting ITEMS aren't
+      // visible on this side, so a rare item hero may map a little more than shown — hence "about".
+      const BASIC_EXPLORE_P={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
+      const basicRate=BASIC_EXPLORE_P[terr]||15;
+      const disc=(report.discoveries||[]);
+      const hasSD=(id)=>disc.some(d=>d.id===id);
+      const explorerSkill=Math.min(5,((c.skills||{}).explorer||0)+(hasSD('sd24')?1:0));
+      const scoutBonus=hasSD('sd10')?1.20:1;
+      const hasLore=(c.titlesHeld||[]).some(t=>/Loremaster/i.test(t.name||''));
+      const hasTrail=(c.minorHeld||[]).some(t=>/Trailblazer/i.test(t.name||''));
+      const loreMult=(hasLore?1.05:1)*(hasTrail?1.05:1);
+      const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult));
+      const before=pd?Math.min(100,pd.explored||0):0;
+      const after=Math.min(100,before+gain);
+      const note=terr
+        ? `🧭 Maps about <strong>+${gain}%</strong> of ${loc.name} (${capitalise(terr)}, ${before}% → ${after}%${after>=100?' — fully explored':''}).`
+        : `🧭 Explores the province ${c.name} stands in.`;
+      return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+        <div style="font-size:.72rem;color:var(--forest)">${note}</div>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Higher Explorer skill and better terrain reveal more each time; features surface as the map fills.</div>`;}
+
+    // ── SPY / REST ──
     case 'Spy':
     case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
@@ -3804,20 +3911,11 @@ function buildTargetField(c, ph, saved){
       if((c.armies||[]).length===0){
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(holds position — only a general leading troops can guard a province)" disabled>`;
       }
-      if(!curProv_){
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(guards current province)" disabled>`;
-      }
-      const within2=wProvs.filter(p=>{
-        if(!p||!p.name) return false;
-        return hexDistanceBetween(p,curProv_,wCols)<=2;
-      }).sort((a,b)=>hexDistanceBetween(a,curProv_,wCols)-hexDistanceBetween(b,curProv_,wCols)||String(a.name).localeCompare(String(b.name)));
-      const opts=within2.map(p=>{
-        const d=hexDistanceBetween(p,curProv_,wCols);
-        const tag=d===0?' — where he stands':(p.owner===c.player?' — your land':'');
-        return`<option value="${p.id}" ${String(target)===String(p.id)?'selected':''}>${p.name}${tag}</option>`;
-      }).join('');
-      return`<select id="po-target-${c.id}-${ph}"><option value="">— Guard the province he stands in —</option>${opts}</select>
-        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn. He rides to any province invaded that is next to <em>both</em> where he stands and the area he guards. Cancelled by a later Move or Pursue order, or by losing a battle.</div>`;
+      // Defend no longer takes a target — it always guards the province the character stands in.
+      // The engine reads no target for Defend; a hidden field keeps the order shape consistent.
+      return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+        <div style="font-size:.72rem;color:var(--forest)">🛡 Guards ${curProv_?curProv_.name:'the province he stands in'} and its neighbours.</div>
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn. He rides out to meet <em>any</em> incursion into an adjacent province — however strong — to force the battle. Cancelled by a later Move or Pursue order, or by losing a battle.</div>`;
     }
 
     // ── PURSUE (AK [3.16]) ──
@@ -4208,7 +4306,10 @@ function buildTargetField(c, ph, saved){
       const savedSels=(target||'').split(',').filter(Boolean);
       return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
         ${conditionalRecruit?`<div style="font-size:.68rem;color:#8a4a4a;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet. This recruit only happens if this character <strong>takes control</strong> of the province earlier in the turn.</div>`:''}
-        ${_destRow(!conditionalRecruit)}
+        ${/* Item 10 (this session): once you conquer a province earlier in the turn it is yours when the
+             recruit resolves, so the garrison is a valid muster target — offer it here too. The engine
+             re-checks ownership at resolution (prov.owner===player) before mustering into the garrison. */''}
+        ${_destRow(true)}
         ${mercRows}
         ${(pd.armyTypes||[]).flatMap(at=>{
           const done=alreadyRecruited[at.type]||0;
@@ -4368,7 +4469,31 @@ function buildTargetField(c, ph, saved){
 
     // ── DISBAND ARMY ──
     case 'Disband Army':{
-      const armies=c.armies||[];
+      // Item 7 (this session): a character can Disband armies they PICKED UP (from a garrison) or
+      // RECRUITED in an EARLIER phase of this same turn — not just the host they started the turn
+      // with. Project those onto the list so they can be selected. The engine disbands from c.armies
+      // at resolution (matching by type / unitName), by which point the pickup/recruit has resolved.
+      const armies=[...(c.armies||[])];
+      for(let prevPh=0;prevPh<ph;prevPh++){
+        const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
+        if(prevAction==='Pick Up Army'){
+          const prevTarget=document.getElementById(`po-target-${c.id}-${prevPh}`)?.value||'';
+          const ploc=predictedLocation(c.id,prevPh);
+          const pgarr=(ploc?provOrderData[ploc.id]:null)?.garrisonArmies||[];
+          if(prevTarget==='all'){ pgarr.forEach(a=>armies.push({type:a.type,quality:a.quality})); }
+          else if(prevTarget.startsWith('-1:')){ const gi=parseInt(prevTarget.slice(3)); if(pgarr[gi]) armies.push({type:pgarr[gi].type,quality:pgarr[gi].quality}); }
+        } else if(prevAction==='Recruit Armies'){
+          const wrap=document.getElementById(`po-target-wrap-${c.id}-${prevPh}`);
+          if(wrap){
+            wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
+              const v=cb.value||'';
+              if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
+              const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
+              for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
+            });
+          }
+        }
+      }
       if(armies.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to disband" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
       const checkboxes=armies.map((a,i)=>{
@@ -4398,16 +4523,14 @@ function buildTargetField(c, ph, saved){
       const garrisons=garrArr.map((a,i)=>`<option value="-1:${i}" ${target===`-1:${i}`?'selected':''}>${armyLabel(a)} — garrison</option>`).join('');
       // 'All' sweeps up every unled (garrison) army in the province at once.
       const allOpt=garrArr.length>0?`<option value="all" ${target==='all'?'selected':''}>⚑ All garrison armies (${garrArr.length})</option>`:'';
-      // Item 8: the only pickable armies are unled ones STANDING in this province — the garrison
-      // (above) and any mercenary bands here. Taking a mercenary band into service costs its standard
-      // hire fee (shown below), exactly like recruiting it. Armies led by another of your characters
-      // are NOT shown — moving troops between your own heroes is done with Leave/Transfer Army.
-      const mercsHere=(report.mercIntel||[]).filter(m=>loc2&&m.locationId===loc2.id);
-      const mercOpts=mercsHere.map(m=>`<option value="merc:${m.id}" ${target===`merc:${m.id}`?'selected':''}>⚔ ${m.unitName||m.type} (${m.quality} ${m.type}, ${m.cost}g) — mercenary</option>`).join('');
-      const all=allOpt+garrisons+mercOpts;
+      // Item 2 (this session): the only pickable armies are UNLED GARRISON units standing in this
+      // province. Mercenaries are no longer picked up here — they answer to gold and are taken into
+      // service through Recruit Armies (where they still appear). Armies led by another of your
+      // characters are also not shown — move troops between your heroes with Leave/Transfer Army.
+      const all=allOpt+garrisons;
       return all
         ?`<select id="po-target-${c.id}-${ph}">${all}</select>`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison or mercenary armies here to pick up" disabled>`;}
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;}
 
     default:
       return`<input id="po-target-${c.id}-${ph}" type="text" value="${target||''}" placeholder="Details / notes">`;
@@ -4901,6 +5024,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.07-1856</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.08-1027</div>
 </body>
 </html>
