@@ -1482,6 +1482,8 @@ function buildGMProvinceOrderData(gs, playerIndex){
     data[p.id]={
       name:p.name,terrain:p.terrain,race:p.race,tax:p.tax,
       isOwned, isVisited, isHome,
+      explored:(p.exploredBy&&p.exploredBy[playerIndex])||0, // item 3b: lets the Explore order form show current→projected %
+
       // Recruit native armies only in provinces you control (mercenaries are handled separately)
       canRecruit:isOwned,
       armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({type:at,cost:ARMY_COST_GM[at]||2,maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1})),
@@ -7915,8 +7917,17 @@ const BATTLE_ARMY_SPELLS={
   function disperseDeadCharArmies(deadChar){
     if(!deadChar) return;
     const prov=G.world.provinces[deadChar.location];
-    const deadArmies=(deadChar.armies||[]).filter(a=>!a._isSkeletal);
-    const skelArmies=(deadChar.armies||[]).filter(a=>a._isSkeletal);
+    // Item 8 (this session): a summoned elemental / phantom / awakened grove is magic BOUND TO THE
+    // SUMMONER. When the summoner dies it dissolves at once — it must NOT be handed off to a
+    // garrison, a neighbour, or the mercenary pool (where the end-of-turn expiry sweep, which only
+    // scans living characters' armies, would never find it and it would linger forever).
+    const tempArmies=(deadChar.armies||[]).filter(a=>a._temporary);
+    if(tempArmies.length>0){
+      const _tn=tempArmies.map(a=>`${a.unitName||a.type}${a.unitName?` (${a.type})`:''}`).join(', ');
+      log('explore',`✨ With ${deadChar.name} fallen, the binding fails and ${_tn} ${tempArmies.length===1?'dissolves':'dissolve'} back into the ${tempArmies.length===1?'realm that':'realms that'} spawned ${tempArmies.length===1?'it':'them'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[],provinceId:prov?.id,public:true});
+    }
+    const deadArmies=(deadChar.armies||[]).filter(a=>!a._isSkeletal&&!a._temporary);
+    const skelArmies=(deadChar.armies||[]).filter(a=>a._isSkeletal&&!a._temporary);
     // Skeletal armies crumble — record to graves
     if(skelArmies.length>0&&prov) recordBattleGraves(prov,skelArmies);
     if(deadArmies.length>0&&prov){
@@ -9509,19 +9520,12 @@ const BATTLE_ARMY_SPELLS={
           prov.garrisonArmies=[];
           log('hire',`${c.name} takes command of all ${n} garrisoned unit${n!==1?'s':''} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(String(target||'').trim().toLowerCase().startsWith('merc:')){
-          // Item 8: take a mercenary band standing in THIS province into service. Charged the
-          // standard mercenary fee (Neutral kingdoms −2g, min 1g), exactly like recruiting it —
-          // Pick Up Army is simply a location-natural second entry point for the band beneath one's feet.
-          const _mId=String(target).trim().slice(5);
-          const merc=(G.mercenaries||[]).find(m=>String(m.id)===_mId&&m.location===c.location);
-          if(!merc){log('system',`${c.name} finds no such mercenary band in ${prov.name} to take up.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-          const mCost=Math.max(1,(ARMY_COST_MASTER[merc.type]||2)-(G.players[c.player]?.alignment==='Neutral'?2:0));
-          if((player.gold||0)<mCost){log('hire',`${c.name}: cannot afford to take up the ${merc.unitName||merc.type} mercenaries (${mCost}g needed, treasury has ${player.gold}g).`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-          player.gold-=mCost;
-          G.mercenaries=(G.mercenaries||[]).filter(m=>m.id!==merc.id);
-          c.armies=(c.armies||[]);
-          c.armies.push({type:merc.type,quality:merc.quality,race:merc.race||'Human',unitName:merc.unitName||armyUnitName(merc.type)});
-          log('hire',`${c.name} takes the ${merc.unitName||merc.type} (${merc.quality} ${merc.type}) mercenaries into service in ${prov.name} for ${mCost}g. Treasury: ${player.gold}g remaining.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Item 2 (this session): mercenaries are NO LONGER pickable via Pick Up Army — they answer
+          // to gold, not to the ground, and are taken into service through Recruit Armies. The order
+          // form no longer offers them; this branch only catches a stale saved order and declines it
+          // rather than silently spending the treasury on a band the player can no longer see.
+          log('system',`${c.name} cannot simply take up a mercenary band with a Pick Up order — mercenaries are hired through Recruit Armies. (Pick Up Army takes only unled garrison units.)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          break;
         } else {
         const srcId=parseInt(target);
         if(srcId>=0){
@@ -9691,16 +9695,11 @@ const BATTLE_ARMY_SPELLS={
         // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
         // interlock already logged a much better line, so don't tack a bland one on top of it.
         if(o._pinned) break;
-        // AK [3.15]: Defend sets up a standing watch over a 7-province area centred on any province
-        // up to two away, and it persists for the rest of the turn.
-        let centreProv=prov;
-        const centreId=parseInt(target);
-        if(!isNaN(centreId)&&G.world.provinces[centreId]){
-          const cand=G.world.provinces[centreId];
-          const dist=provDistance(prov.id,cand.id);
-          if(dist<=2) centreProv=cand;
-          else log('move',`${c.name} cannot keep watch over ${cand.name} — it lies too far from ${prov.name} to answer a call for aid.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        }
+        // Toby's rule: Defend needs no target — it always guards the province the character stands
+        // in. The watch covers that province plus its immediate neighbours (see inDefendZone), and
+        // he rides out to meet any incursion into an adjacent province. Any target still supplied by
+        // an older saved order is ignored. Persists for the rest of the turn.
+        const centreProv=prov;
         c._defend={centre:centreProv.id,active:true,setPhase:ph};
         delete c._defendReactedPhase;
         if((c.armies||[]).length===0){
@@ -10828,6 +10827,13 @@ const BATTLE_ARMY_SPELLS={
         ||(armyTotalStr(b,prov)-armyTotalStr(a,prov));
       const _ctxCharId=[...playerForces].sort(_rankForce)[0].id;
       _logCtx={charId:_ctxCharId, phase:ph};
+      // Item 9 (this session): a commander (king or hero) who fell in an earlier-phase battle duel
+      // keeps his host on the field for the rest of the battle (_leaderlessHost) — but he is DEAD.
+      // The resume/secure narration must never speak of him as if he still rides; name the host that
+      // carries his banner instead, matching the "stand-in captain" wording combatVsChar already uses
+      // below the duel. combatVsNPC/combatVsChar handle the fine-grained battle text; this covers the
+      // top-level lines resolveStalledBattles writes itself.
+      const forceLabel=(f)=> (f&&(f._leaderlessHost||f.alive===false)) ? `${f.name}'s leaderless host` : (f?f.name:'the host');
 
       // CASE A — neutral defenders still hold an unowned province with an enemy force present.
       // Two forms: a live guard commander (fights with skills, may duel), or a LEADERLESS garrison
@@ -10837,7 +10843,7 @@ const BATTLE_ARMY_SPELLS={
       const _leaderless=!guard && prov.owner===null && prov._leaderlessDefenders && (prov.neutralDefenders||[]).length>0;
       if((guard||_leaderless)&&prov.owner===null){
         const attacker=[...playerForces].sort(_rankForce)[0];
-        log('combat',`⚔ The unfinished battle for ${prov.name} resumes — ${attacker.name} presses the attack on ${guard?guard.name.replace(' (wandering)',''):'the leaderless garrison'}.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id,public:true});
+        log('combat',`⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} presses the attack on ${guard?guard.name.replace(' (wandering)',''):'the leaderless garrison'}.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id,public:true});
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         let savedIntel=null;
         if(guard){ savedIntel=prov.neutralDefenders; prov.neutralDefenders=[...(guard.armies||[])]; }
@@ -10878,7 +10884,7 @@ const BATTLE_ARMY_SPELLS={
             const pl=G.players[attacker.player];
             if(pl){ pl.merits=(pl.merits||0)+(prov.tax||0); if(!pl.provinces.includes(prov.id)) pl.provinces.push(prov.id); }
             attacker.merits=(attacker.merits||0)+(prov.tax||0);
-            log('combat',`${attacker.name} finally overcomes the defenders and claims ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true});
+            log('combat',`${forceLabel(attacker)} finally overcomes the defenders and claims ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true});
           }
         } else {
           if(!liveGuard) prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
@@ -10925,12 +10931,12 @@ const BATTLE_ARMY_SPELLS={
         const atkPool=atkSea?seaMovePoints:movePoints;
         if((atkPool[attacker.id]??0)<=0){
           prov._battleUnresolved=true; // still contested — try again next phase
-          log('combat',`Neither ${attacker.name} nor ${defender.name} can bring the other to battle in ${prov.name} — the attackers are too spent to force the issue, and both sides encamp within sight of one another.`,
+          log('combat',`Neither ${forceLabel(attacker)} nor ${forceLabel(defender)} can bring the other to battle in ${prov.name} — the attackers are too spent to force the issue, and both sides encamp within sight of one another.`,
             {charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
           return;
         }
         atkPool[attacker.id]=Math.max(0,(atkPool[attacker.id]??0)-1);
-        log('combat',`⚔ The unfinished battle for ${prov.name} resumes — ${attacker.name} and ${defender.name} clash again.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
+        log('combat',`⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} and ${forceLabel(defender)} clash again.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         const defCopy={...defender,armies:[...(defender.armies||[])]};
         atkCopy._attackedFrom=attacker._attackedFrom; defCopy._attackedFrom=defender._attackedFrom;
@@ -10952,7 +10958,7 @@ const BATTLE_ARMY_SPELLS={
           G.players.forEach((p,pi)=>{if(pi!==winner.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
           prov.owner=winner.player; const wp=G.players[winner.player];
           if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
-          log('combat',`${winner.name} secures ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
+          log('combat',`${forceLabel(winner)} secures ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
         }
         // Safety net: the flag was cleared at the top of this function and combatVsChar only re-sets
         // it for its own stalemate cases (dug in / trapped). If two players' armed forces are STILL
@@ -10971,7 +10977,7 @@ const BATTLE_ARMY_SPELLS={
         G.players.forEach((p,pi)=>{if(pi!==lone.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
         prov.owner=lone.player; prov.neutralDefenders=[]; prov.npcArmies=0;
         const lp=G.players[lone.player]; if(lp&&!lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
-        log('combat',`${lone.name} holds ${prov.name} unopposed and secures it.`,{charId:_ctxCharId,phase:ph,actor:lone.player,targets:[],provinceId:prov.id,public:true});
+        log('combat',`${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`,{charId:_ctxCharId,phase:ph,actor:lone.player,targets:[],provinceId:prov.id,public:true});
       }
     });
   }
@@ -11551,17 +11557,15 @@ const BATTLE_ARMY_SPELLS={
   // Is province P inside this general's assigned reaction zone? AK: he only reacts to an invasion
   // of a province adjacent to BOTH his current province and the province he was told to Defend.
   function inDefendZone(c,P){
+    // Toby's rule: the watch guards the province the character stands in plus its immediate
+    // neighbours — he rides out to any incursion adjacent to where he is now. (The old 7-province
+    // centre-up-to-two-away zone is gone; Defend no longer takes a target.)
     const d=c._defend;
     if(!d||!d.active||!P) return false;
     if(P.id===c.location) return true; // already standing on it — nothing to react to
     const here=G.world.provinces[c.location];
     if(!here) return false;
-    const adjHere=getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===P.id);
-    if(!adjHere) return false;
-    if(P.id===d.centre) return true;
-    const centre=G.world.provinces[d.centre];
-    if(!centre) return false;
-    return getNeighborsP(centre,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===P.id);
+    return getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===P.id);
   }
 
   function runDefendReactions(ph,intents){
@@ -11606,16 +11610,13 @@ const BATTLE_ARMY_SPELLS={
       });
       if(!cands.length) return;
 
-      // AK: he aids a neighbour "if he is strong enough"; otherwise he stays put. He answers the
-      // heaviest threat he can realistically meet.
+      // Toby's rule (overrides AK's "if he is strong enough"): a general on Defend rides out to
+      // meet ANY incursion in his watch, however heavy — a player may want to force a battle purely
+      // to slow an opponent down. He answers the heaviest threat within reach; myStr is no longer a
+      // gate (kept only for the sort tie-break flavour where several threats are equal).
       cands.sort((a,b)=>b.str-a.str);
-      const target=cands.find(t=>myStr>=t.str);
-      if(!target){
-        const worst=cands[0];
-        log('move',`${c.name} judges the force descending on ${worst.prov.name} too strong to meet in the open, and keeps his own position in ${here.name}.`,
-          {actor:c.player,targets:[c.player],provinceId:here.id});
-        return;
-      }
+      const target=cands[0];
+      if(!target) return;
 
       // March to the aid of the invaded province.
       const P=target.prov;
@@ -12323,7 +12324,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       id:G.characters.length,name:heirName,isKing:true,player:pi,
       race:p.race||'Human',alignment:p.alignment||'Neutral',
       temper:TEMPERS_P[Math.floor(Math.random()*TEMPERS_P.length)], // provisional — the player may rename and re-temper their heir
-      hp:22,maxHp:22,skills:heirSkills,aptitude:{},
+      hp:15,maxHp:15,skills:heirSkills,aptitude:{}, // a new king rises at full royal vigour — 15 HP, same as a founding king
       armies:[],items:[],location:heirProv.id,alive:true,merits:0,taxBonus:0,
       pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
       _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills, and may set name + temper, before ordering
@@ -12337,6 +12338,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   });
 
   // 7c. Expire temporary summons and reset hire phase flags
+  // Item 8 (this session): first, a catch-all for any _temporary summon that got ORPHANED off a
+  // character — e.g. a summoner who died mid-battle whose leaderless host (elemental included) was
+  // later folded into a province garrison, or a temp unit that somehow reached the mercenary pool.
+  // The per-character sweep below only sees living characters' armies, so these would linger forever.
+  (G.world.provinces||[]).forEach(p=>{
+    if(p&&(p.garrisonArmies||[]).some(a=>a&&a._temporary)) p.garrisonArmies=p.garrisonArmies.filter(a=>!(a&&a._temporary));
+  });
+  if((G.mercenaries||[]).some(m=>m&&m._temporary)) G.mercenaries=G.mercenaries.filter(m=>!(m&&m._temporary));
   G.characters.forEach(c=>{
     // Reset hiredInPhase so they act from all phases next turn
     if(c.hiredInPhase!=null&&c.hiredInPhase>=0){
@@ -12822,6 +12831,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.07-1856</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.08-1027</div>
 </body>
 </html>
