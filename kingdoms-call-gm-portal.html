@@ -149,8 +149,20 @@ section{display:none;}.section-active{display:block;}
         <option value="huge">Huge (20×12) — up to 10 players</option>
       </select>
       <label>Maximum Players</label>
-      <select id="new-game-maxplayers"><!-- filled from map size by updateMaxPlayersForMap() --></select>
-      <div class="msg-info" style="margin-top:4px">Once you create the game, players can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports.</div>
+      <select id="new-game-maxplayers" onchange="updateBotHint()"><!-- filled from map size by updateMaxPlayersForMap() --></select>
+      <label style="margin-top:10px">Bot Kingdoms <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(GM-controlled — optional)</span></label>
+      <input type="number" id="new-game-botcount" min="0" value="0" onchange="updateBotHint()">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:8px;cursor:pointer">
+        <input type="checkbox" id="new-game-allbot" onchange="updateBotHint()"> All-bot game (no human players — for testing &amp; balancing)
+      </label>
+      <label style="margin-top:10px">Bot Difficulty <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(applies to all GM-controlled kingdoms)</span></label>
+      <select id="new-game-botdifficulty">
+        <option value="easy">Easy — cautious, lightly armed (more beatable)</option>
+        <option value="normal" selected>Normal — the tuned default challenge</option>
+        <option value="hard">Hard — bold, well armed (a genuine challenge)</option>
+      </select>
+      <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
+      <div class="msg-info" style="margin-top:4px">Once you create the game, players can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports (bot kingdoms are generated at Turn 0).</div>
       <button class="btn btn-crimson btn-full" style="margin-top:8px" onclick="createGame()">Create Game</button>
     </div>
   </section>
@@ -1068,9 +1080,13 @@ async function loadGames(){
     const joined=g.game_players?.filter(p=>p.user_id).length||0;
     const submitted=g.game_players?.filter(p=>p.orders_submitted).length||0;
     const maxP=g.max_players||4;
+    const {botCount:_bc, allBot:_ab}=botConfigFor(g);
+    const _plannedBots=_ab?maxP:_bc;
+    const _humanCap=_ab?0:(maxP-_plannedBots);
+    const _botTag=_plannedBots?` +${_plannedBots}🤖`:'';
     let pill='';
-    if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${maxP} joined</span>`;
-    else if(g.status==='active') pill=`<span class="pill pill-blue">Turn ${g.turn} — ${submitted}/${joined} orders in</span>`;
+    if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
+    else if(g.status==='active') pill=`<span class="pill pill-blue">Turn ${g.turn} — ${submitted}/${joined} orders in${_botTag}</span>`;
     else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
     return`<div class="game-card" onclick="openGame('${g.id}')">
       <div>
@@ -1105,6 +1121,33 @@ function updateMaxPlayersForMap(){
     sel.appendChild(opt);
   }
   sel.value=String(Math.min(Math.max(2,prev),max));
+  updateBotHint();
+}
+
+// Bot kingdoms (Phase 1): validate the bot count against map capacity and show the GM the
+// resulting human/bot split. Bots consume the same kingdom capacity as humans.
+function updateBotHint(){
+  const maxEl=document.getElementById('new-game-maxplayers');
+  const botEl=document.getElementById('new-game-botcount');
+  const allEl=document.getElementById('new-game-allbot');
+  const hint=document.getElementById('new-game-bot-hint');
+  if(!maxEl||!botEl||!hint) return;
+  const maxP=parseInt(maxEl.value)||2;
+  const allBot=!!(allEl&&allEl.checked);
+  // All-bot fills every slot; disable & clamp the bot-count field in that mode.
+  botEl.disabled=allBot;
+  let bots=allBot?maxP:Math.max(0,Math.min(parseInt(botEl.value)||0,maxP));
+  if(!allBot && String(bots)!==botEl.value) botEl.value=String(bots);
+  if(!allBot && bots===0){ hint.style.display='none'; return; }
+  const humans=allBot?0:(maxP-bots);
+  hint.style.display='block';
+  if(allBot){
+    hint.innerHTML=`🤖 <strong>All-bot game:</strong> all ${maxP} kingdoms will be GM-controlled bots. No humans can join. Needs at least 2.`;
+  }else if(humans<=0){
+    hint.innerHTML=`🤖 <strong>${bots} bots</strong>, no room for human players (bots fill all ${maxP} slots). Tick “All-bot game”, or lower the bot count to leave human slots.`;
+  }else{
+    hint.innerHTML=`🤖 <strong>${bots} bot${bots!==1?'s':''}</strong> + up to <strong>${humans} human${humans!==1?'s':''}</strong> = ${maxP} kingdoms. Bots are generated when you run Turn 0.`;
+  }
 }
 
 async function createGame(){
@@ -1113,14 +1156,22 @@ async function createGame(){
   const cap=MAP_MAX_PLAYERS[mapSize]||5;
   const maxP=Math.min(Math.max(2,parseInt(document.getElementById('new-game-maxplayers').value)||2),cap);
   const maxTurns=0; // no turn limit — the game ends only at the Reckoning or by elimination (0 = unlimited)
+  // ── Bot kingdoms (Phase 1) ──
+  const allBot=!!document.getElementById('new-game-allbot')?.checked;
+  let botCount=allBot?maxP:Math.max(0,Math.min(parseInt(document.getElementById('new-game-botcount')?.value)||0,maxP));
   const msg=document.getElementById('new-game-msg');
   if(!name){msg.innerHTML='<div class="msg-error">Please enter a game name.</div>';return;}
+  if(allBot && maxP<2){msg.innerHTML='<div class="msg-error">An all-bot game needs at least 2 kingdoms — raise Maximum Players.</div>';return;}
+  if(!allBot && botCount>=maxP && maxP>=2){
+    // Bots fill every slot but the GM didn't tick all-bot — treat as all-bot rather than lock humans out silently.
+    if(!confirm(`You've set ${botCount} bots with no room for human players. Create this as an all-bot game?`)) return;
+  }
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
   const {data:game,error}=await sb.from('games').insert({
     name, gm_user_id:currentUser.id,
     status:'setup', turn:0,
     max_players:maxP, max_turns:maxTurns,
-    game_state:JSON.stringify({mapSize,maxTurns,maxPlayers:maxP})
+    game_state:JSON.stringify({mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)})
   }).select().single();
   if(error){
     const isRLS=error.message?.includes('row-level security')||error.code==='42501';
@@ -1195,32 +1246,51 @@ async function openGame(gameId){
 
   document.getElementById('detail-game-name').textContent=game.name;
   const maxP=game.max_players||4;
+  // ── Bot-aware counts (Phase 1) ──
+  const {botCount, allBot}=botConfigFor(game);
+  const plannedBots=allBot?maxP:botCount;                 // intended bot count
   const joined=currentGamePlayers.filter(p=>p.user_id).length;
+  const existingBots=currentGamePlayers.filter(isBotRow).length; // 0 in setup, filled after Turn 0
+  const reservedBots=game.status==='setup'?Math.max(0,plannedBots-existingBots):0;
+  const humanCap=allBot?0:(maxP-plannedBots);
   const statusLabel=game.status==='setup'?'Setup':game.status==='active'?`Turn ${game.turn}`:'Complete';
   document.getElementById('detail-status-pill').innerHTML=`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>`;
-  document.getElementById('detail-player-count').textContent=`${joined}/${maxP} joined`;
+  document.getElementById('detail-player-count').textContent=game.status==='setup'
+    ? `${joined}/${humanCap} human${humanCap!==1?'s':''}${plannedBots?` · ${plannedBots} bot${plannedBots!==1?'s':''}`:''}`
+    : `${joined} human${joined!==1?'s':''}${existingBots?` · ${existingBots} bot${existingBots!==1?'s':''}`:''} / ${maxP}`;
 
-  // Player slots
-  const slotsHtml=currentGamePlayers.map(p=>`
+  // Player slots (bots labelled for the GM; they stay hidden from players elsewhere)
+  const slotsHtml=currentGamePlayers.map(p=>{
+    const bot=isBotRow(p);
+    const statusPill=bot?'<span class="pill pill-green">🤖 Bot</span>'
+      :(p.user_id?'<span class="pill pill-green">Joined</span>':'<span class="pill pill-amber">Waiting</span>');
+    return `
     <div class="player-slot">
-      <div class="slot-name">${p.display_name||'(slot open)'}</div>
-      <div class="slot-status">${p.user_id?'<span class="pill pill-green">Joined</span>':'<span class="pill pill-amber">Waiting</span>'}</div>
-      ${p.orders_submitted?'<span class="pill pill-blue">Orders in</span>':''}
-      ${!p.user_id&&p.invite_code?`<div class="slot-code">Invite: ${p.invite_code}</div>`:''}
+      <div class="slot-name">${bot?'🤖 ':''}${p.display_name||'(slot open)'}</div>
+      <div class="slot-status">${statusPill}</div>
+      ${(p.orders_submitted&&!bot)?'<span class="pill pill-blue">Orders in</span>':''}
+      ${!p.user_id&&!bot&&p.invite_code?`<div class="slot-code">Invite: ${p.invite_code}</div>`:''}
+    </div>`;}).join('');
+
+  // Reserved bot slots (setup only — the actual bot rows are created when Turn 0 runs)
+  const reservedBotHtml=Array(reservedBots).fill(0).map(()=>`
+    <div class="player-slot" style="opacity:.7">
+      <div class="slot-name">🤖 Bot kingdom</div>
+      <div class="slot-status"><span class="pill pill-amber">Generated at Turn 0</span></div>
     </div>`).join('');
 
-  // Empty slots up to maxP
-  const emptySlots=maxP-currentGamePlayers.length;
-  const emptySlotsHtml=Array(emptySlots).fill(0).map(()=>`
+  // Open human slots (setup only)
+  const openHuman=game.status==='setup'?Math.max(0,humanCap-joined):0;
+  const emptySlotsHtml=Array(openHuman).fill(0).map(()=>`
     <div class="player-slot" style="opacity:.5">
       <div class="slot-name">(open slot)</div>
       <div class="slot-status">Waiting for player</div>
     </div>`).join('');
 
-  document.getElementById('detail-players-list').innerHTML=slotsHtml+emptySlotsHtml;
+  document.getElementById('detail-players-list').innerHTML=slotsHtml+reservedBotHtml+emptySlotsHtml;
 
-  // Turn 0: show run button when enough players joined
-  if(game.status==='setup' && joined>=2){
+  // Turn 0: show run button when enough kingdoms (humans + planned bots) exist
+  if(game.status==='setup' && (joined + plannedBots) >= 2){
     document.getElementById('detail-run-turn0-wrap').style.display='block';
   }
 
@@ -1239,8 +1309,12 @@ async function openGame(gameId){
 
 function renderOrdersStatus(game){
   const players=currentGamePlayers.filter(p=>p.user_id);
+  const bots=currentGamePlayers.filter(isBotRow);
   const submitted=players.filter(p=>p.orders_submitted).length;
-  const allIn=submitted===players.length&&players.length>0;
+  // Bots are auto-satisfied (Phase 1: they submit no orders and default to Defend). The run button
+  // shows once every HUMAN has submitted — and in an all-bot game (0 humans) it shows immediately.
+  const humansAllIn=players.length===0||submitted===players.length;
+  const allIn=humansAllIn&&(players.length+bots.length)>0;
 
   document.getElementById('detail-orders-status').innerHTML=`
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
@@ -1248,6 +1322,10 @@ function renderOrdersStatus(game){
         background:${p.orders_submitted?'#d4edda':'#fff3cd'};
         border:1px solid ${p.orders_submitted?'#28a745':'#ffc107'}">
         ${p.display_name}: ${p.orders_submitted?'✓ Orders submitted':'⏳ Awaiting orders'}
+      </div>`).join('')}
+      ${bots.map(b=>`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
+        background:#eae3d2;border:1px solid #c9bd9e">
+        🤖 ${b.display_name}: auto
       </div>`).join('')}
     </div>`;
 
@@ -1689,14 +1767,17 @@ async function deleteGame(gameId){
 // ── TURN 0 — FULL INLINE MAP GENERATION ──────────────
 // Embeds the core map/character generation from kingdoms-call-gm.html
 // so the GM portal is fully self-contained.
+// Holds the prepared Turn-0 plan (human + bot setups) between the roster preview and confirmation.
+let _pendingTurn0=null;
+
 async function runTurn0(){
   const msg=document.getElementById('detail-msg');
-  msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
+  msg.innerHTML='<div class="msg-info">⏳ Preparing world setup…</div>';
 
   // Reload player list fresh
   const {data:players,error:pErr}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
-  if(pErr||!players||players.length===0){
-    msg.innerHTML=`<div class="msg-error">Could not load players: ${pErr?.message||'No players found'}</div>`;return;
+  if(pErr){
+    msg.innerHTML=`<div class="msg-error">Could not load players: ${pErr.message}</div>`;return;
   }
 
   // Read game config from game_state
@@ -1706,17 +1787,18 @@ async function runTurn0(){
   const maxTurns=cfg.maxTurns||12;
   const sizemap={small:{cols:8,rows:6},medium:{cols:12,rows:8},large:{cols:16,rows:10},huge:{cols:20,rows:12}};
   const sz=sizemap[mapSize]||sizemap.medium;
+  const {botCount, allBot}=botConfigFor(currentGame);
 
-  // Build player setup from their turn_reports (which store playerSetup from join)
-  const setupPlayers=players.map(p=>{
+  // Human setups from joined rows (exclude any leftover bot rows from a prior aborted Turn 0).
+  const humanRows=(players||[]).filter(p=>!isBotRow(p));
+  const humanSetups=humanRows.map(p=>{
     let setup={};
     try{const r=typeof p.turn_report==='string'?JSON.parse(p.turn_report):p.turn_report||{};setup=r.playerSetup||{};}catch(e){}
     return{
       id:p.player_index,
       gamePlayerId:p.id,
+      isBot:false,
       name:p.display_name||`Player ${p.player_index+1}`,
-      // King's name and Kingdom's name are now separate (older games only stored one combined
-      // name in display_name; fall back to it for those).
       kingName:setup.kingName||p.display_name||`King ${p.player_index+1}`,
       kingdomName:setup.kingdomName||p.display_name||`Realm ${p.player_index+1}`,
       race:setup.race||'Human',
@@ -1726,51 +1808,132 @@ async function runTurn0(){
     };
   }).sort((a,b)=>a.id-b.id);
 
-  // Generate the game — calls back to the main game engine via postMessage
-  // We load a hidden iframe with kingdoms-call-gm.html and ask it to generate
-  // Actually — we'll do the generation inline using the same algorithms
-  // (replicated here to keep the portal self-contained)
+  // How many bots to generate. All-bot fills every slot; otherwise the configured count.
+  const plannedBots=allBot?(currentGame.max_players||0):botCount;
+  const totalKingdoms=humanSetups.length+plannedBots;
+  if(totalKingdoms<2){
+    msg.innerHTML=`<div class="msg-error">Need at least 2 kingdoms to start (currently ${humanSetups.length} human${humanSetups.length!==1?'s':''} + ${plannedBots} bot${plannedBots!==1?'s':''}). ${allBot?'Raise Maximum Players.':'Wait for another player to join, or add bots at game creation.'}</div>`;
+    return;
+  }
+
+  // Bots take the indices immediately AFTER the humans, kept contiguous so generateNewGame's
+  // array-position player id == game_players.player_index (reports route by index).
+  const startIndex=humanSetups.length;
+  const botSetups=plannedBots>0?generateBotSetups(humanSetups, plannedBots, startIndex):[];
+
+  _pendingTurn0={humanSetups, botSetups, sz, maxTurns, mapSize};
+
+  if(botSetups.length>0){
+    renderTurn0Preview();      // GM confirms the generated roster before we commit anything
+  }else{
+    commitTurn0();             // no bots → straight to generation (unchanged behaviour)
+  }
+}
+
+// Render the Turn-0 roster (humans + generated bots) for GM sanity-check before committing.
+function renderTurn0Preview(){
+  const msg=document.getElementById('detail-msg');
+  if(!_pendingTurn0){ msg.innerHTML=''; return; }
+  const {humanSetups, botSetups}=_pendingTurn0;
+  const skillStr=s=>Object.entries(s||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'—';
+  const row=(sp)=>`
+    <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:7px 10px;border:1px solid #d8cbb0;border-radius:3px;margin-bottom:6px;background:${sp.isBot?'#f4efe4':'#fff'}">
+      <strong style="min-width:150px">${sp.isBot?'🤖 ':''}${sp.kingdomName}</strong>
+      <span style="color:var(--stone);font-size:.82rem">${sp.kingName} · ${sp.alignment} · ${sp.race} · ${sp.temper}</span>
+      <span style="font-size:.78rem;opacity:.85;margin-left:auto">Skills: ${skillStr(sp.skills)}</span>
+    </div>`;
+  const humansHtml=humanSetups.length?`<div style="font-size:.8rem;color:var(--stone);margin:2px 0 4px">Human players (${humanSetups.length})</div>${humanSetups.map(row).join('')}`:'';
+  const botsHtml=`<div style="font-size:.8rem;color:var(--stone);margin:8px 0 4px">🤖 Bot kingdoms (${botSetups.length})</div>${botSetups.map(row).join('')}`;
+  msg.innerHTML=`
+    <div class="card" style="border-color:var(--crimson)">
+      <h3 style="margin-top:0">Confirm the starting roster</h3>
+      <div class="msg-info" style="margin-bottom:8px">Review the generated bot kingdoms below. Generate the world to lock them in, or re-roll the bots.</div>
+      ${humansHtml}
+      ${botsHtml}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-crimson" onclick="commitTurn0()">⚡ Generate World &amp; Start</button>
+        <button class="btn btn-gold" onclick="runTurn0()">🎲 Re-roll Bots</button>
+        <button class="btn btn-ghost" onclick="_pendingTurn0=null;document.getElementById('detail-msg').innerHTML=''">Cancel</button>
+      </div>
+    </div>`;
+}
+
+// Commit the prepared Turn-0 plan: persist bot rows, generate the world, push reports.
+async function commitTurn0(){
+  const msg=document.getElementById('detail-msg');
+  if(!_pendingTurn0){ msg.innerHTML='<div class="msg-error">No pending setup — press Run Turn 0 again.</div>'; return; }
+  const {humanSetups, botSetups, sz, maxTurns}=_pendingTurn0;
+  msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
+
   try{
+    // 1. Persist bot rows first (clean slate: remove any leftover bot rows from an aborted run).
+    //    Bots are the only rows with a null user_id, so this only ever deletes bots.
+    if(botSetups.length>0){
+      await sb.from('game_players').delete().eq('game_id',currentGame.id).is('user_id',null);
+      for(const b of botSetups){
+        const {data:brow,error:bErr}=await sb.from('game_players').insert({
+          game_id:currentGame.id,
+          user_id:null,
+          player_index:b.id,
+          display_name:b.kingdomName,
+          orders_submitted:false,
+          // isBot marker lives in the JSON (no DB column needed); playerSetup mirrors a human join.
+          turn_report:JSON.stringify({isBot:true, playerSetup:{
+            kingName:b.kingName, kingdomName:b.kingdomName, race:b.race,
+            alignment:b.alignment, temper:b.temper, skills:b.skills
+          }, status:'bot', waitingForTurn0:true})
+        }).select().single();
+        if(bErr){ msg.innerHTML=`<div class="msg-error">Could not create bot kingdom: ${bErr.message}</div>`; return; }
+        b.gamePlayerId=brow.id;
+      }
+    }
+
+    // 2. Combined, index-sorted setup list — humans then bots, contiguous indices.
+    const setupPlayers=[...humanSetups, ...botSetups].map(sp=>({
+      id:sp.id, gamePlayerId:sp.gamePlayerId, isBot:!!sp.isBot,
+      name:sp.kingdomName, kingName:sp.kingName, kingdomName:sp.kingdomName,
+      race:sp.race, alignment:sp.alignment, temper:sp.temper, skills:sp.skills,
+    })).sort((a,b)=>a.id-b.id);
+
+    // 3. Generate the world.
     const gameState=await generateNewGame(setupPlayers,sz,maxTurns);
+    gameState.botDifficulty=(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // Phase 6 difficulty tier
     seedUsedArmyNames(gameState); seedUsedHeroNames(gameState);
-    // Save to Supabase
     const {error:saveErr}=await sb.from('games').update({
       status:'active',turn:1,
       game_state:JSON.stringify(gameState)
     }).eq('id',currentGame.id);
     if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving game: ${saveErr.message}</div>`;return;}
 
-    // Push turn reports to each player
+    // 4. Push turn reports to every kingdom (humans and bots alike — a bot report is harmless and
+    //    lets the GM inspect a bot's starting position).
     let reportErrors=[];
     for(const sp of setupPlayers){
       const report=buildTurnReport(gameState,sp.id);
       const {error:rErr}=await sb.from('game_players').update({
-        turn_report:JSON.stringify(report),
+        turn_report:sp.isBot
+          ? JSON.stringify({isBot:true, report, playerSetup:{kingName:sp.kingName,kingdomName:sp.kingdomName,race:sp.race,alignment:sp.alignment,temper:sp.temper,skills:sp.skills}})
+          : JSON.stringify(report),
         orders:null,
         orders_submitted:false
       }).eq('id',sp.gamePlayerId);
       if(rErr) reportErrors.push(rErr.message);
-      // Founding snapshot (display "Turn 0") so players can revisit their starting map/report.
       try{
-        await sb.from('turn_logs').insert({
-          game_id:currentGame.id,
-          player_index:sp.id,
-          turn:0,
-          entries:report
-        });
+        await sb.from('turn_logs').insert({ game_id:currentGame.id, player_index:sp.id, turn:0, entries:report });
       }catch(snapErr){ /* best-effort */ }
     }
 
+    const botN=setupPlayers.filter(s=>s.isBot).length, humN=setupPlayers.length-botN;
     if(reportErrors.length>0){
       msg.innerHTML=`<div class="msg-error">Game created but some reports failed: ${reportErrors.join(', ')}</div>`;
     } else {
-      msg.innerHTML=`<div class="msg-success">✅ Turn 0 complete! Map generated, ${setupPlayers.length} starting turn reports pushed to players. Players can now log in and see their kingdoms.</div>`;
+      msg.innerHTML=`<div class="msg-success">✅ Turn 0 complete! Map generated for ${humN} human${humN!==1?'s':''}${botN?` + ${botN} bot${botN!==1?'s':''}`:''}. Players can now log in and see their kingdoms.</div>`;
     }
+    _pendingTurn0=null;
     currentGame.status='active';currentGame.turn=1;
     document.getElementById('detail-run-turn0-wrap').style.display='none';
     document.getElementById('detail-orders-card').style.display='block';
     document.getElementById('detail-log-card').style.display='none';
-    // Refresh game object
     const {data:refreshed}=await sb.from('games').select('*, game_players(*)').eq('id',currentGame.id).single();
     if(refreshed){currentGame=refreshed;currentGamePlayers=refreshed.game_players||[];}
     renderOrdersStatus(currentGame);
@@ -1873,7 +2036,6 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   if(heroChar&&heroChar._isNeutralGuard) return 1.0;
   const armyType=army.type;
   const heroRace=heroChar.race;
-  const heroAlignment=heroChar.alignment||playerAlignment||'Neutral';
 
   const armyRace=army.race;
   // ── SAME-RACE RULE ──
@@ -1884,9 +2046,16 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   // of another race count as that race and are led cross-race unless the commander shares it.)
   const sameRace=!!(armyRace&&armyRace===heroRace);
 
-  // Druidic alignment: no Druid penalty for Creature armies (they follow willingly)
+  // Druidic alignment: no Druid penalty for Creature armies (they follow willingly).
+  // Keyed on the KINGDOM's alignment (playerAlignment) — NOT the commander's personal alignment —
+  // so EVERY character of a Druidic kingdom (king and heroes alike) leads Creatures freely, even
+  // though a Druidic king's heroes are seeded with a randomised personal alignment near his own
+  // (Good/Druidic/Neutral) and so are usually NOT personally Druidic. A personally-Druidic
+  // wandering hero (player===null, so no kingdom alignment is passed) also qualifies via the
+  // second clause. (druIdPenaltyMult is module-level; the runTurn-local G is out of scope here, so
+  // we rely on the caller passing the kingdom alignment — which every combat call site does.)
   const CREATURE_ARMIES_D=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-  if(CREATURE_ARMIES_D.has(armyType)&&heroAlignment==='Druidic') return 1.0;
+  if(CREATURE_ARMIES_D.has(armyType)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic')) return 1.0;
 
   const required=getDruidLevel(armyType);
   if(required===0) return 1.0;
@@ -2375,6 +2544,472 @@ function seedUsedArmyNames(gameState){
     (p.garrisonArmies||[]).forEach(a=>{if(a.unitName) _usedArmyUnitNames.add(a.unitName);});
   });
   (gameState.mercenaries||[]).forEach(m=>{if(m.unitName) _usedArmyUnitNames.add(m.unitName);});
+}
+
+// ══ BOT PLAYERS — Phase 1: existence & identity ══════════════════════════════
+// GM-controlled bot kingdoms. Phase 1 generates a bot's identity and persists its row; bots do NOT
+// act yet (they submit no orders, so runTurn defaults their characters to Defend). A bot is marked
+// by an `isBot:true` flag INSIDE its game_players.turn_report JSON — no Supabase column is required
+// (an unknown insert column would be rejected). Bot rows have user_id === null.
+function isBotRow(p){
+  if(!p||p.user_id) return false;
+  try{ const r=typeof p.turn_report==='string'?JSON.parse(p.turn_report):p.turn_report; if(r&&r.isBot===true) return true; }catch(e){}
+  return false;
+}
+// Read {botCount, allBot} from a game's setup-phase config (stored in game_state at creation).
+function botConfigFor(game){
+  let cfg={}; try{ cfg=typeof game.game_state==='string'?JSON.parse(game.game_state):game.game_state||{}; }catch(e){}
+  const maxP=game.max_players||0;
+  const allBot=cfg.allBot===true;
+  const botCount=allBot?maxP:Math.max(0,Math.min(parseInt(cfg.botCount)||0,maxP));
+  return {botCount, allBot};
+}
+// Alignment → four starting skill points, drawn from each alignment's Title signature lane
+// (see KC-design-victory-and-titles.md §5). Real engine skills only (SKILL_LABELS). Each totals 4.
+const BOT_SKILL_BUILD={
+  Divine:  {white:2, druid:1, melee:1},
+  Good:    {melee:1, tactical:1, march:1, white:1},
+  Druidic: {druid:2, tactical:1, archery:1},
+  Neutral: {sage:2, spy:1, thief:1},
+  Pagan:   {explorer:2, elemental:1, melee:1},
+  Evil:    {melee:2, tactical:1, necromancy:1},
+  Undead:  {necromancy:2, melee:1, tactical:1},
+};
+// Divine & Undead are one-per-game — mirrors the human join rule (player portal UNIQUE_ALIGNS_CHECK).
+const BOT_UNIQUE_ALIGNS=['Divine','Undead'];
+// Race → a signature unit whose faction-name pool (ARMY_UNIT_NAMES) we borrow for kingdom names.
+// This reuses existing themed pools rather than inventing new name content (the engine has no
+// kingdom-name generator: human players type theirs).
+const BOT_KINGDOM_NAME_UNIT={Human:'Free Lances', Elven:'Elven Bowmen', Dwarven:'Dwarven Guard', Orcish:'Orc Berserkers'};
+const _usedBotKingdomNames=new Set();
+function _capRealm(s){ return String(s).replace(/^the\b/,'The'); }
+function botKingdomName(race){
+  const unit=BOT_KINGDOM_NAME_UNIT[race]||'Free Lances';
+  const pool=(typeof ARMY_UNIT_NAMES!=='undefined'&&ARMY_UNIT_NAMES[unit])||['the Free Company'];
+  for(let att=0;att<400;att++){
+    const nm=pool[Math.floor(Math.random()*pool.length)];
+    if(!_usedBotKingdomNames.has(nm)){ _usedBotKingdomNames.add(nm); return _capRealm(nm); }
+  }
+  const base=pool[Math.floor(Math.random()*pool.length)];
+  let n=2,nm; do{ nm=`${base} ${_toRoman(n)}`; n++; }while(_usedBotKingdomNames.has(nm));
+  _usedBotKingdomNames.add(nm); return _capRealm(nm);
+}
+// Pick a bot alignment: spread across the field, never duplicate a unique alignment already taken.
+function pickBotAlignment(takenCounts){
+  const used=new Set(Object.keys(takenCounts).filter(a=>takenCounts[a]>0));
+  const legal=ALIGNMENTS_P.filter(a=> !(BOT_UNIQUE_ALIGNS.includes(a)&&used.has(a)) );
+  const unused=legal.filter(a=>!used.has(a));
+  const pool=unused.length?unused:legal.filter(a=>!BOT_UNIQUE_ALIGNS.includes(a));
+  const safePool=pool.length?pool:['Neutral'];
+  let bestN=Infinity; safePool.forEach(a=>{ const n=takenCounts[a]||0; if(n<bestN)bestN=n; });
+  const ties=safePool.filter(a=>(takenCounts[a]||0)===bestN);
+  return ties[Math.floor(Math.random()*ties.length)];
+}
+// Generate `count` bot setup objects, indexed startIndex..startIndex+count-1 (kept CONTIGUOUS with
+// the human indices so generateNewGame's array-position player id matches game_players.player_index).
+// humanSetups seed the alignment spread + uniqueness so bots avoid clustering on the humans' choices.
+function generateBotSetups(humanSetups, count, startIndex){
+  const takenCounts={};
+  (humanSetups||[]).forEach(s=>{ if(s.alignment) takenCounts[s.alignment]=(takenCounts[s.alignment]||0)+1; });
+  const bots=[];
+  for(let i=0;i<count;i++){
+    const alignment=pickBotAlignment(takenCounts);
+    takenCounts[alignment]=(takenCounts[alignment]||0)+1;
+    const race=RACES_P[Math.floor(Math.random()*RACES_P.length)];
+    const temper=TEMPERS_P[Math.floor(Math.random()*TEMPERS_P.length)];
+    const skills={...(BOT_SKILL_BUILD[alignment]||BOT_SKILL_BUILD.Neutral)};
+    bots.push({
+      id:startIndex+i, isBot:true,
+      kingName:nextHeroName(alignment),
+      kingdomName:botKingdomName(race),
+      race, alignment, temper, skills,
+    });
+  }
+  return bots;
+}
+
+// ══ BOT PLAYERS — Phase 3a: core movement AI (expansion) ═════════════════════
+// Self-contained, module-top-level so it can run at order-merge time in runTurn with no dependency
+// on runTurn-local consts (avoids the HEX_DIRS/neighborInDir TDZ trap). Bots do not act beyond
+// movement yet: economy, character actions, spells (3b/3c) and enemy-target selection / battle AI
+// (Phase 4) are staged. This slice makes bots EXPAND — each armed bot character claims the best
+// winnable unowned land province on its own border, growing the bot's tax base turn by turn.
+//
+// INFO BOUNDARY (no cheating): a bot only ever considers provinces ADJACENT to a province one of its
+// own characters occupies — i.e. its immediate frontier, which a human likewise sees in their turn
+// report (buildTurnReport surfaces neutralDefenders intel for observed provinces). So reading an
+// adjacent guard's strength is intel parity, not omniscience. Beyond-border planning (via _provMemory)
+// arrives with Phase 4.
+// ══ BOT TUNING ═══════════════════════════════════════════════════════════════════════════════════
+// The utility weights that govern bot competence, centralised in one place so a single edit re-tunes
+// behaviour and — later — a scalar difficulty knob can multiply them without touching any decision code
+// (BOT_PLAYERS_DESIGN §2 #7 / §8.2). v1 keeps a single fixed strength; these are those fixed values.
+const BOT_TUNING={
+  kingAttackMargin: 1.5,   // force ratio a bot KING needs before attacking (kings play safer — a king's death is costly)
+  heroAttackMargin: 1.2,  // force ratio a bot HERO needs before attacking
+  assaultMargin:    1.4,   // combined force ratio needed to launch a concentrated assault (buffers the contingent-unify roll)
+  valuableTax:      7,     // tax at/above which a province is "valuable" to hold/reinforce (home capital always is)
+  rivalBias:        8,     // target-score bonus for pressing an at-war rival's province over neutral expansion
+  taxScoreWeight:   10,    // how strongly a target province's tax pulls target selection
+  upkeepCapFrac:    0.9,   // recruitment never lets total upkeep exceed this fraction of tax income (solvency guard)
+  goldReserve:      3,     // gold kept in hand before any recruiting
+  coalitionTriggerFrac: 0.8, // a front-runner at ≥ this fraction of the Reckoning threshold triggers an anti-leader coalition
+};
+// ── DIFFICULTY TIERS ── a per-game scalar knob (G.botDifficulty ∈ 'easy'|'normal'|'hard') that reshapes
+// the BOT_TUNING weights without touching any decision code (the scalar-ready design of §2 #7). Normal is
+// the tuned v1 strength; Easy makes bots timid and lightly-armed (weaker, more beatable); Hard makes them
+// bolder and bigger-armied (a genuine challenge). Only DECISION weights move — no combat-resolution edits.
+const BOT_DIFFICULTY={
+  easy:   { attackMarginMult:1.15, assaultMarginMult:1.15, rivalBias:3,  upkeepCapFrac:0.72 },
+  normal: { attackMarginMult:1.0,  assaultMarginMult:1.0,  rivalBias:8,  upkeepCapFrac:0.90 },
+  hard:   { attackMarginMult:0.92, assaultMarginMult:0.9,  rivalBias:12, upkeepCapFrac:0.97 },
+};
+// Effective weights for this game's difficulty. Bot decision functions read these instead of BOT_TUNING
+// directly, so one setting re-scales the whole roster. Difficulty-neutral weights pass straight through.
+function botTuning(G){
+  const d=BOT_DIFFICULTY[(G&&G.botDifficulty)||'normal']||BOT_DIFFICULTY.normal;
+  return {
+    kingAttackMargin: BOT_TUNING.kingAttackMargin*d.attackMarginMult,
+    heroAttackMargin: BOT_TUNING.heroAttackMargin*d.attackMarginMult,
+    assaultMargin:    BOT_TUNING.assaultMargin*d.assaultMarginMult,
+    valuableTax:      BOT_TUNING.valuableTax,
+    rivalBias:        d.rivalBias,
+    taxScoreWeight:   BOT_TUNING.taxScoreWeight,
+    upkeepCapFrac:    d.upkeepCapFrac,
+    goldReserve:      BOT_TUNING.goldReserve,
+    coalitionTriggerFrac: BOT_TUNING.coalitionTriggerFrac,
+  };
+}
+const BOT_HEX_DIRS=['NW','NE','W','E','SW','SE'];              // MUST match the engine's HEX_DIRS order
+const BOT_OFF_EVEN=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]]; // and its even/odd hex offsets
+const BOT_OFF_ODD =[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+function botNeighbourProv(G,prov,i){
+  const cols=G.world.cols,rows=G.world.rows;
+  const off=(prov.row%2===0?BOT_OFF_EVEN:BOT_OFF_ODD)[i];
+  const nr=prov.row+off[0]; if(nr<0||nr>=rows) return null;
+  const nc=((prov.col+off[1])%cols+cols)%cols;
+  return G.world.provinces[nr*cols+nc];
+}
+function botForceStrength(armies){ return (armies||[]).reduce((s,a)=>s+unitBaseStrength(a),0); }
+function botRelationRaw(G,a,b){ if(a==null||b==null||a===b) return 'neutral'; const k=a<b?a+'-'+b:b+'-'+a; return ((G.relations||{})[k])||'neutral'; }
+// Strength of the neutral guard holding an UNOWNED province (its guard hero's live force, else the
+// province's neutralDefenders list). Only meaningful for owner==null land.
+function botGuardStrength(G,prov){
+  const guard=(prov.characters||[]).map(id=>(G.characters||[]).find(c=>c&&c.id===id)).find(c=>c&&c.player===null&&(c.armies||[]).length);
+  return botForceStrength(guard?guard.armies:(prov.neutralDefenders||[]));
+}
+// Defending strength of an ENEMY PLAYER's province (Phase 4): the owner's characters standing there
+// (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
+function botEnemyDefence(G,prov,ownerPi){
+  let s=0;
+  (prov.characters||[]).forEach(id=>{ const c=(G.characters||[]).find(x=>x&&x.id===id); if(c&&c.alive&&c.player===ownerPi) s+=botForceStrength(c.armies); });
+  (prov.garrisonArmies||[]).forEach(a=>{ s+=unitBaseStrength(a); });
+  return s;
+}
+// A province worth defending: the bot's home capital, or Rich land (tax ≥ 7). Marginal frontier
+// provinces are not worth freezing a field army over — they can be lost and retaken.
+function botIsValuable(G, prov, pi){
+  if(!prov) return false;
+  const home=(G.players[pi]||{}).homeProvinceId;
+  return prov.id===home || (prov.tax||0)>=BOT_TUNING.valuableTax;
+}
+// How under-defended an owned province is RIGHT NOW: (strongest at-war enemy force adjacent to it)
+// minus (its own defenders + garrison). >0 means an enemy on its border could take it as it stands —
+// a candidate to reinforce. 0 means adequately held (or unthreatened).
+function botDefenceNeed(G, prov, pi){
+  if(!prov || prov.owner!==pi) return 0;
+  let threat=0;
+  for(let i=0;i<6;i++){
+    const N=botNeighbourProv(G,prov,i); if(!N) continue;
+    let s=0;
+    (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') s+=botForceStrength(e.armies); });
+    if(s>threat) threat=s;
+  }
+  if(threat<=0) return 0;
+  let def=0;
+  (prov.characters||[]).forEach(id=>{ const f=(G.characters||[]).find(x=>x&&x.id===id); if(f&&f.alive&&f.player===pi) def+=botForceStrength(f.armies); });
+  (prov.garrisonArmies||[]).forEach(a=>{ def+=unitBaseStrength(a); });
+  return Math.max(0, threat-def);
+}
+// Phase 4b — CONCENTRATED ASSAULT planning. A strong enemy province no single character can crack is
+// left alone by the solo attack logic. Here we gang up: if ≥2 of a bot's FREE characters are each
+// adjacent to the same at-war enemy province, none can win alone, but their COMBINED force clears it
+// with a comfortable margin, we order them all to march on it THIS phase. Orders use the numeric
+// province id (not a dir: string) because the engine only unifies co-attackers whose move target equals
+// the province id (contingent-unify roll, driven by the lead's March skill). "Free" excludes characters
+// pinned to hold their own threatened capital or needed to reinforce a threatened valuable neighbour —
+// defence outranks a gang-up. Assigned character ids are added to `assigned` so the per-character pass
+// skips them.
+function botPlanAssaults(G, pi, chars, assigned){
+  const T=botTuning(G);
+  const ASSAULT_MARGIN=T.assaultMargin;              // combined edge needed (buffers the unify roll)
+  const isPinnedOrNeeded=(c,P)=>{
+    if(!(P.owner===pi && botIsValuable(G,P,pi))) { /* not on valuable ground */ }
+    else {
+      // would P fall if c left?
+      let remaining=0;
+      (P.characters||[]).forEach(id=>{ if(id===c.id) return; const f=(G.characters||[]).find(x=>x&&x.id===id); if(f&&f.alive&&f.player===pi) remaining+=botForceStrength(f.armies); });
+      (P.garrisonArmies||[]).forEach(a=>{ remaining+=unitBaseStrength(a); });
+      let maxAdj=0;
+      for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N) continue; let s=0; (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') s+=botForceStrength(e.armies); }); if(s>maxAdj) maxAdj=s; }
+      if(maxAdj>=remaining) return true;              // pinned to hold this province
+    }
+    // needed to reinforce a threatened valuable neighbour?
+    for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N&&N.owner===pi&&botIsValuable(G,N,pi)&&botDefenceNeed(G,N,pi)>0) return true; }
+    return false;
+  };
+  // enemy province id → [{c, dirIdx}] of our FREE characters adjacent to it
+  const byTarget={};
+  chars.forEach(c=>{
+    if(assigned.has(c.id)) return;
+    const P=G.world.provinces[c.location]; if(!P) return;
+    if(isPinnedOrNeeded(c,P)) return;                 // defence first
+    for(let i=0;i<6;i++){
+      const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea') continue;
+      if(N.owner==null||N.owner===pi) continue;
+      if(botRelationRaw(G,pi,N.owner)!=='enemy') continue;
+      (byTarget[N.id]||(byTarget[N.id]=[])).push({c,dirIdx:i});
+    }
+  });
+  // Rank candidate targets (richest / weakest first) and commit greedily.
+  const cands=Object.keys(byTarget).map(tid=>{
+    const X=G.world.provinces[+tid], list=byTarget[tid], def=botEnemyDefence(G,X,X.owner);
+    return {X,list,def,score:(X.tax||0)*10-def};
+  }).filter(o=>o.list.length>=2).sort((a,b)=>b.score-a.score);
+  cands.forEach(({X,list,def})=>{
+    const free=list.filter(({c})=>!assigned.has(c.id));
+    if(free.length<2) return;
+    const soloWinner=free.some(({c})=>botForceStrength(c.armies)>=def*(c.isKing?T.kingAttackMargin:T.heroAttackMargin));
+    if(soloWinner) return;                            // a single character can take it — let the solo pass do it
+    const combined=free.reduce((s,{c})=>s+botForceStrength(c.armies),0);
+    if(combined < def*ASSAULT_MARGIN) return;         // not worth throwing armies at
+    free.forEach(({c})=>{
+      const orders=[{action:'move',target:String(X.id),extra:'',desc:'Assault'}]; // numeric id → engine can unify
+      for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
+      G.turnOrders[c.id]=orders;
+      assigned.add(c.id);
+    });
+  });
+}
+// Write movement orders for every bot's armed characters. Called from runTurn after human orders are
+// merged into G.turnOrders and before the default-to-Defend pass.
+function runBotMovement(G, botIdxSet){
+  const T=botTuning(G);
+  if(!botIdxSet||!botIdxSet.size||!G.world) return;
+  G.turnOrders=G.turnOrders||{};
+  botIdxSet.forEach(pi=>{
+    const chars=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&(c.armies||[]).length>0);
+    const assigned=new Set();
+    botPlanAssaults(G, pi, chars, assigned);          // Phase 4b: concentrated assaults (gang up on strong provinces)
+    chars.forEach(c=>{
+      if(assigned.has(c.id)) return;                  // already committed to a coordinated assault
+      const P=G.world.provinces[c.location]; if(!P) return;
+      const myStr=botForceStrength(c.armies);
+      const margin=c.isKing?T.kingAttackMargin:T.heroAttackMargin; // king needs a clearer advantage before risking a fight
+      let best=null;
+      let reinforce=null;                             // Phase 4b: an adjacent friendly province about to fall
+      let maxThreat=0, threatDir=-1;                  // Phase 4b: strongest at-war enemy force on our doorstep
+      for(let i=0;i<6;i++){
+        const N=botNeighbourProv(G,P,i); if(!N) continue;
+        // THREAT scan: an at-war enemy force STANDING in N menaces P, whoever owns N.
+        let enemyForceInN=0;
+        (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botForceStrength(e.armies); });
+        if(enemyForceInN>maxThreat){ maxThreat=enemyForceInN; threatDir=i; }
+        // TARGET scan (attack / expand):
+        if(N.terrain==='sea') continue;                // land-only in v1
+        if(N.owner===pi){
+          // REINFORCE candidate: an owned valuable neighbour an enemy could take as it stands. Pick the
+          // one in the most trouble; moving there adds this character's force to its defence next battle.
+          if(botIsValuable(G,N,pi)){
+            const need=botDefenceNeed(G,N,pi);
+            if(need>0 && (!reinforce||need>reinforce.need)) reinforce={dirIdx:i,need};
+          }
+          continue;                                    // already ours — not an attack/expand target
+        }
+        let targetStr, enemyTarget=false;
+        if(N.owner==null){
+          targetStr=botGuardStrength(G,N);             // unowned land — clear the neutral guard (Phase 3a)
+        } else {
+          // Owned by another player. Phase 4: press a rival we are AT WAR with; a player we're not at
+          // war with (neutral relation) has a closed border, so skip. (Bots never ally in v1.)
+          if(botRelationRaw(G,pi,N.owner)!=='enemy') continue;
+          targetStr=botEnemyDefence(G,N,N.owner);      // the enemy's defenders in that province
+          enemyTarget=true;
+        }
+        if(targetStr>0 && myStr < targetStr*margin) continue;   // not confidently winnable — don't march in
+        const score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0); // slight bias toward pressing a rival
+        if(!best||score>best.score) best={dirIdx:i,score};
+      }
+      // Phase 4b — DEFENCE: don't abandon a threatened capital or Rich province to raid elsewhere. If an
+      // at-war enemy on our doorstep could take THIS province once we leave, and our chosen move isn't the
+      // counter-attack that destroys that force, we stay and Defend instead. Scoped to home/Rich land so a
+      // lone scout can't pin a whole army on worthless dirt, and the remaining-defence check lets a surplus
+      // defender still sortie while enough force stays behind to hold.
+      if(P.owner===pi && botIsValuable(G,P,pi) && maxThreat>0){
+        let remaining=0;                               // defence that would REMAIN if this character left
+        (P.characters||[]).forEach(id=>{ if(id===c.id) return; const f=(G.characters||[]).find(x=>x&&x.id===id); if(f&&f.alive&&f.player===pi) remaining+=botForceStrength(f.armies); });
+        (P.garrisonArmies||[]).forEach(a=>{ remaining+=unitBaseStrength(a); });
+        const provinceWouldFall=maxThreat>=remaining;              // enemy could walk in behind us
+        const bestAttacksTheThreat=best && best.dirIdx===threatDir; // our move destroys that very force
+        if(provinceWouldFall && !bestAttacksTheThreat){ return; }   // hold & defend (leave to default-Defend)
+      }
+      // Phase 4b — REINFORCE: our own province is safe enough to leave, but an adjacent valuable province
+      // is about to fall. March to its aid (unless a winnable counter-attack on the doorstep threat is the
+      // better move — destroying the attacking force defends everything at once).
+      if(reinforce){
+        const counterAttackAvailable = best && best.dirIdx===threatDir && maxThreat>0;
+        if(!counterAttackAvailable){
+          const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[reinforce.dirIdx],extra:'',desc:'Reinforce'}];
+          for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
+          G.turnOrders[c.id]=orders;
+          return;
+        }
+      }
+      if(best){
+        const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[best.dirIdx],extra:'',desc:'Advance'}];
+        for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
+        G.turnOrders[c.id]=orders;                     // overrides the Defend default for this mover
+      }
+      // else: no confident target — leave to the default-to-Defend pass (the character holds).
+    });
+  });
+}
+
+// ══ BOT PLAYERS — Phase 3b: economy (recruit / hire) ═════════════════════════
+// Runs AFTER runBotMovement: any bot character still HOLDING (no movement order) in an owned province
+// spends the treasury on reinforcements. Tax income is PASSIVE in this engine (applied automatically
+// each turn ~line 11672), so there is no "tax" order — expanding already grows a bot's income.
+//
+// SOLVENCY BY CONSTRUCTION: a unit's recruit cost is ALSO its per-turn upkeep/wage (see the note above
+// ARMY_COST_MASTER). So recruitment is gated on BOTH an upfront gold reserve AND an upkeep cap (total
+// wages kept ≤ 90% of the bot's tax income). This ties army size to economic base — a bot recruits
+// more only as it expands — and prevents a wage spiral that would bankrupt it.
+const BOT_NAVAL_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+function botRecruitableTypes(prov){
+  return (prov.armyTypes||[])
+    .filter(t=>t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t))   // land field units only (v1)
+    .sort((a,b)=>(UNIT_BASE_STR[b]||4)-(UNIT_BASE_STR[a]||4));         // strongest first
+}
+function botUpkeep(G, pi){
+  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ w+=(ARMY_COST_MASTER[a.type]||2); }); }); return w;
+}
+function botTaxIncome(G, pi){
+  let inc=0; (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi) inc+=(p.tax||0); }); return inc;
+}
+function runBotEconomy(G, botIdxSet){
+  if(!botIdxSet||!botIdxSet.size||!G.world) return;
+  const T=botTuning(G);
+  G.turnOrders=G.turnOrders||{};
+  const RESERVE=T.goldReserve;                                // keep this much gold on hand
+  botIdxSet.forEach(pi=>{
+    const player=G.players[pi]; if(!player) return;
+    const upkeepCap=Math.floor(botTaxIncome(G,pi)*T.upkeepCapFrac); // never let wages exceed this fraction of income
+    let upkeep=botUpkeep(G,pi);
+    let budget=(player.gold||0)-RESERVE;                      // shared across this bot's recruiters
+    if(budget<1 || upkeep>=upkeepCap) return;                 // broke or already fully committed
+    const recruitedByProv={};                                // provId → Set(types) issued this turn
+    // A holder is a bot character not doing anything yet. NOTE: runTurn pre-populates G.turnOrders[c.id]
+    // with an all-null array before the bot passes, and runBotMovement overwrites movers with a move in
+    // phase 0 — so "idle" means every phase is still null (or a plain Defend), never a real action.
+    const isIdle=c=>{ const o=G.turnOrders[c.id]; return !o || o.every(x=>x==null || x.action==='defend'); };
+    const holders=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isIdle(c));
+    holders.forEach(c=>{
+      if(budget<1||upkeep>=upkeepCap) return;
+      const prov=G.world.provinces[c.location];
+      if(!prov||prov.owner!==pi) return;                      // must control the province to raise troops
+      const orders=[null,null,null,null,null]; let ph=0;
+      // Opportunistic hire of a co-located wandering (non-guard) hero — adds a commander.
+      const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated);
+      if(hh){
+        const wage=heroHireWage(player.alignment||'Neutral', hh.alignment, false);
+        if(wage!=null && budget>=wage && (upkeep+wage)<=upkeepCap){
+          orders[ph++]={action:'hire',target:String(hh.id),extra:'',desc:'Hire '+hh.name};
+          budget-=wage; upkeep+=wage;
+        }
+      }
+      // Recruit the strongest affordable & sustainable field units — one distinct type per phase.
+      const doneSet=recruitedByProv[prov.id]||(recruitedByProv[prov.id]=new Set());
+      for(const t of botRecruitableTypes(prov)){
+        if(ph>=5||budget<1||upkeep>=upkeepCap) break;
+        if(doneSet.has(t)) continue;                          // avoid a duplicate the engine would block
+        const cost=ARMY_COST_MASTER[t]||2;
+        if(budget<cost || upkeep+cost>upkeepCap) continue;    // try a cheaper type
+        orders[ph++]={action:'recruit',target:`${t}|1`,extra:'',desc:'Recruit '+t};
+        doneSet.add(t); budget-=cost; upkeep+=cost;
+      }
+      if(orders.some(o=>o)){
+        for(let p=0;p<5;p++) if(!orders[p]) orders[p]={action:'defend',target:'',extra:'',desc:'Hold'};
+        G.turnOrders[c.id]=orders;
+      }
+    });
+  });
+}
+
+// ══ BOT PLAYERS — Phase 3c: character actions (Practice / Rest / Explore) ═════
+// Runs AFTER movement (3a) and economy (3b): any bot character STILL idle — no move, no recruit — is
+// given something useful instead of a bare Defend. All three actions are self-contained and zero-risk
+// (a character that is attacked still fights, whatever its order), so this is purely additive.
+//   • wounded (hp < 60% max)      → Rest (heal)
+//   • otherwise, a skill to raise → Practice it (permanent growth toward the drill cap of 5)
+//   • otherwise, province unmapped → Explore (reveal fog / find feature sites)
+//   • otherwise                    → leave to the default-to-Defend pass
+// STAGED (not wired here): Search (fights a feature's guardian monster — a hero can DIE; needs a
+// monster-strength gate like the guard gate, so it belongs with Phase 4 combat assessment) and
+// action-phase spells / battle magic (school knowledge, per-turn limits, fizzle, and summon-before-
+// battle timing that ties into Phase 4 — deferred to a dedicated spell pass).
+function botPracticeSkill(c){
+  const sk=c.skills||{};
+  // Prefer the highest skill still below the drill cap (push a strength toward its level-5 perks).
+  let best=null,bestLvl=-1;
+  for(const k of Object.keys(sk)){ const v=sk[k]||0; if(v<5 && v>bestLvl){ best=k; bestLvl=v; } }
+  if(best!=null) return best;
+  // No trainable existing skill — train a core combat/command skill from scratch, if any is unmaxed.
+  for(const k of ['melee','tactical','march']){ if((sk[k]||0)<5) return k; }
+  return null; // everything relevant already at the drill cap
+}
+// Phase 4b — ACTION-PHASE CASTING for idle bot casters. Returns a cast_spell order (or null) for a
+// beneficial spell the caster can cast with no combat timing required, so an otherwise-idle mage does
+// something useful. Two solid always-worth-it casts:
+//   • white → Bless Province on an owned province (per-turn +tax; skip if already blessed this turn).
+//   • necromancy → Skeletal Armies where battlefield dead lie (raises a PERMANENT skeletal unit).
+// Combat-timed casts (Elemental Summon, Oratory, Phantasmal Armies) need a cast-then-fight pass and are
+// deliberately left out here. The engine's cast_spell handler still validates skill/level/limit/chance,
+// so an uncastable pick simply no-ops; these gates just avoid wasting the phase on a guaranteed miss.
+function botActionCast(G, c){
+  const sk=c.skills||{}; const prov=G.world.provinces[c.location]; if(!prov) return null;
+  if((sk.white||0)>=1 && prov.owner===c.player && prov._blessedTurn!==G.turn){
+    return {action:'cast_spell', target:'Bless Province', extra:String(c.location), desc:'Cast Bless Province'};
+  }
+  if((sk.necromancy||0)>=1 && (prov.battleGraves||[]).length>0){
+    return {action:'cast_spell', target:'Skeletal Armies', extra:'', desc:'Cast Skeletal Armies'};
+  }
+  return null;
+}
+function runBotActions(G, botIdxSet){
+  if(!botIdxSet||!botIdxSet.size||!G.world) return;
+  G.turnOrders=G.turnOrders||{};
+  const isIdle=c=>{ const o=G.turnOrders[c.id]; return !o || o.every(x=>x==null || x.action==='defend'); };
+  const fill=(cid,order)=>{ G.turnOrders[cid]=[0,1,2,3,4].map(()=>({...order})); };
+  botIdxSet.forEach(pi=>{
+    (G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isIdle(c)).forEach(c=>{
+      const maxHp=c.maxHp||20, hp=(c.hp!=null?c.hp:maxHp);
+      if(hp < maxHp*0.6){ fill(c.id,{action:'rest',target:'',extra:'',desc:'Rest & heal'}); return; }
+      // Action-phase spell: cast once in phase 0, then practise (grow the school) or hold the rest.
+      const castOrder=botActionCast(G,c);
+      if(castOrder){
+        const sk=botPracticeSkill(c);
+        const tail=sk?{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)}:{action:'defend',target:'',extra:'',desc:'Hold'};
+        G.turnOrders[c.id]=[castOrder,{...tail},{...tail},{...tail},{...tail}];
+        return;
+      }
+      const skill=botPracticeSkill(c);
+      if(skill){ fill(c.id,{action:'practice',target:skill,extra:'',desc:'Practice '+(SKILL_LABELS[skill]||skill)}); return; }
+      const prov=G.world.provinces[c.location];
+      const mapped=(prov&&prov.exploredBy)?(prov.exploredBy[pi]||0):0;
+      if(prov && mapped<100){ fill(c.id,{action:'explore',target:'',extra:'',desc:'Explore'}); return; }
+      // else: nothing worthwhile — leave the character to the default-to-Defend pass.
+    });
+  });
 }
 
 function generateNewGame(setupPlayers, sz, maxTurns){
@@ -3168,6 +3803,22 @@ function reckoningBlocShare(state, pi){
   const bloc=alliedBloc(state, pi);
   const blocTax=bloc.reduce((sum,b)=>sum+(s.taxByPlayer[b]||0),0);
   return s.worldTax>0 ? blocTax/s.worldTax : 0;
+}
+// Phase 5 — a bot KING calls the Reckoning when it dominates the world, so bots actually END (and win)
+// games instead of expanding forever. Bots never ally, so this is always a single-kingdom claim. The
+// engine (12151) re-checks share ≥ threshold at resolution, so this only needs to add eligible bot kings
+// to the reckoningCalls set built from human orders. During a rival's active Reckoning a trailing bot
+// keeps warring/expanding as usual, which naturally pressures the claimant (focused anti-leader targeting
+// is a later tuning pass).
+function runBotReckoning(G, botIdxSet, reckoningCalls){
+  if(!botIdxSet||!botIdxSet.size||!reckoningCalls) return;
+  if(G.reckoning || G.gameOver) return;                       // a claim is already live / game already decided
+  if((G.turn||0) < TITLES_PUBLIC_FROM_TURN) return;           // standings (and the call) unlock at turn 5
+  const thr=reckoningThreshold((G.players||[]).length);
+  botIdxSet.forEach(pi=>{
+    const kingAlive=(G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===pi);
+    if(kingAlive && reckoningBlocShare(G, pi) >= thr) reckoningCalls.add(pi);
+  });
 }
 const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant'};
 
@@ -3978,6 +4629,15 @@ async function runTurn(){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
 
+  // ── BOT DIPLOMACY (Phase 2) — turn-start snapshot ──
+  // Snapshot each bot's identified-rivals set (_encountered, driven by fog-of-war) as it stands at
+  // the START of the turn. A bot then declares war (below, just before diplomacy resolution) on the
+  // same cadence a human would: it reacts to what it knew going into the turn, the declaration is
+  // applied at end of turn, and war stands next turn — reusing the existing human war tempo.
+  const _botPlayerIdx=new Set((freshPlayers||[]).filter(isBotRow).map(p=>p.player_index));
+  const _botEncounteredAtStart={};
+  _botPlayerIdx.forEach(idx=>{ _botEncounteredAtStart[idx]=[...(((G.players||[])[idx]||{})._encountered||[])]; });
+
   // Item 9b: a defeated sea neutral-guard becomes a plain wandering hero (player===null, no longer
   // _isNeutralGuard) but keeps the 'Creature'/'Monster' pseudo-race it wore to label the beasts it
   // once commanded — which then reads absurdly in the Wandering Heroes list ("Mira the Nomad
@@ -4115,6 +4775,21 @@ async function runTurn(){
   msg.innerHTML=`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   // Clear orders from DB now — restored below if resolution fails
   await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',currentGame.id);
+
+  // 2c. BOT DECISIONS (Phase 3a) — bots write their own movement orders into G.turnOrders, using the
+  // start-of-turn world state, before the default-to-Defend pass fills the rest. Bots submit no orders
+  // through the portal, so this is where their turn is decided. Movement only for now (expansion);
+  // economy/actions/spells and enemy-target/battle AI are staged (3b/3c/4).
+  runBotMovement(G, _botPlayerIdx);
+  // Phase 3b — economy: holders (characters not moving) in owned provinces spend the treasury on
+  // sustainable reinforcements (and opportunistic hires). Must run AFTER movement so movers are skipped.
+  runBotEconomy(G, _botPlayerIdx);
+  // Phase 3c — character actions: any bot character still idle (didn't move or recruit) trains,
+  // heals, or explores instead of sitting on Defend. Must run AFTER movement + economy.
+  runBotActions(G, _botPlayerIdx);
+
+  // Phase 5 — a dominant bot king Calls the Reckoning (adds itself to the calls processed below).
+  runBotReckoning(G, _botPlayerIdx, reckoningCalls);
 
   // 3. Default any missing orders to Defend
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
@@ -4476,12 +5151,9 @@ function seaPenalty(armyType, terrain){
       if(sp<1 && terrain==='sea' && ctx && (ctx.force||[]).some(a=>a&&a.type==='Elven Galleys')
          && MISSILE_ARMIES_MASTER.has(army.type)) sp=1.0;
       let terrainMultFinal=terrainMod(army.type,terrain)*sp;
-      // Druidic alignment: Creature armies fight as one quality tier higher in forest/jungle
-      if(heroChar&&(heroChar.alignment||'Neutral')==='Druidic'&&
-         (terrain==='forest'||terrain==='jungle')&&
-         new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']).has(army.type)){
-        terrainMultFinal*=1.5; // roughly one quality tier improvement
-      }
+      // (Home-of-the-Wild forest/jungle ×1.5 for Creatures is applied ONCE, below, keyed on the
+      // kingdom — a duplicate copy that lived here caused a ×2.25 double-dip for Druidic-aligned
+      // commanders and has been removed.)
       str=Math.floor(str*terrainMultFinal);
     }
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
@@ -4509,7 +5181,7 @@ function seaPenalty(armyType, terrain){
     if(abilityM!==1) str=Math.round(str*abilityM);
     // DRUIDIC — Home of the Wild: Creature armies of a Druidic kingdom fight ×1.5 in forest and
     // jungle (the long-advertised bonus, previously described but never implemented).
-    if(playerAlignment==='Druidic'&&(terrain==='forest'||terrain==='jungle')&&CREATURE_ARMIES.has(army.type)) str=Math.round(str*1.5);
+    if((playerAlignment==='Druidic'||(heroChar&&heroChar.alignment==='Druidic'))&&(terrain==='forest'||terrain==='jungle')&&CREATURE_ARMIES.has(army.type)) str=Math.round(str*1.5);
     // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies +5%.
     if(heroChar){
       if(terrain==='sea'){ if(charHoldsTitle(heroChar,'sea')) str=Math.round(str*1.05); }
@@ -4850,6 +5522,7 @@ const BATTLE_ARMY_SPELLS={
     // that is relevant to army combat (hits provinces/armies)
     // ══════════════════════════════════════════════════════
     const BATTLE_MAGIC_SPELLS=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
+    if(c) ensureEncounterPlan(c); // bots/NPCs get an auto battle-magic plan so they cast when attacking
     const heroTactics=(c.encounterPlan?.tactics)||[];
     const heroPick=pickBattleSpell(heroTactics, c, defHero, defenders);
     if(heroPick&&!atkCmdrSlain){
@@ -5656,7 +6329,10 @@ const BATTLE_ARMY_SPELLS={
   function ensureEncounterPlan(ch){
     if(!ch) return null;
     const t=ch.encounterPlan&&ch.encounterPlan.tactics;
-    if(ch.player===null && (!Array.isArray(t)||t.length===0)){
+    // Auto-plan NEUTRAL characters (NPCs) — and BOT-controlled ones, which never submit a plan through
+    // the portal. Without this a bot commander casts no battle magic and fights duels with no tactics.
+    const isBotCh=(ch.player!=null && _botPlayerIdx && _botPlayerIdx.has(ch.player));
+    if((ch.player===null || isBotCh) && (!Array.isArray(t)||t.length===0)){
       ch.encounterPlan={tactics:autoEncounterPlan(ch), notes:'', _auto:true,
         duelStance:NPC_DUEL_STANCE_BY_TEMPER[ch.temper]||'accept'};
     }
@@ -6391,6 +7067,7 @@ const BATTLE_ARMY_SPELLS={
 
   // Returns {won, narrative:[strings]}
   function combatVsChar(atk, def, prov){
+    ensureEncounterPlan(atk); ensureEncounterPlan(def); // bots/NPCs get auto battle-magic + duel tactics
     // Record both sides' commanders for this province/phase BEFORE any fighting (a duel death or
     // a nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
     // real commander's id, so the per-player report can file the battle under either player's hero.
@@ -11468,6 +12145,41 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(p)c.locationName=p.name;
   });
 
+  // ── BOT DIPLOMACY (Phase 2 + coalition) — declarations ──
+  // Default: war-on-contact (declare war on every rival identified at the START of the turn, not already
+  // at war). COALITION (Phase 6+ diplomacy): when a front-runner threatens to win — near the Reckoning
+  // threshold, or holding a live claim — the trailing bots turn on the leader together: they WAR the
+  // leader and TREAT fellow non-leaders (Enemy→Neutral→Allied, one step per turn; mutual by construction
+  // since every trailing bot treats the others in this same pass) so they can ally and gang up. A human
+  // trailing kingdom can join simply by treating back. Bots never treat toward the leader.
+  {
+    const _kingAliveIdx=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.isKing&&c.player!=null).map(c=>c.player));
+    const _hasLand=idx=>(((G.players||[])[idx]||{}).provinces||[]).length>0;
+    const nP=(G.players||[]).length, thr=reckoningThreshold(nP);
+    // Find the dominant leader (highest bloc share); a live Reckoning claim names the leader outright.
+    let leader=-1, leaderShare=0;
+    for(let pi=0; pi<nP; pi++){ if(!_kingAliveIdx.has(pi)) continue; let sh=0; try{ sh=reckoningBlocShare(G,pi); }catch(e){} if(sh>leaderShare){ leaderShare=sh; leader=pi; } }
+    const claimBy=(G.reckoning && G.reckoning.by!=null)?G.reckoning.by:-1;
+    const coalitionLeader = claimBy>=0 ? claimBy
+                          : (leader>=0 && nP>=3 && leaderShare>=botTuning(G).coalitionTriggerFrac*thr) ? leader : -1;
+    _botPlayerIdx.forEach(idx=>{
+      // A bot joins the coalition if it isn't the leader (and isn't already the leader's ally).
+      const inCoalition = coalitionLeader>=0 && idx!==coalitionLeader && !areAllied(idx,coalitionLeader);
+      (_botEncounteredAtStart[idx]||[]).forEach(rival=>{
+        if(rival==null||rival===idx) return;
+        if(!(G.players||[])[rival]) return;
+        if(!_kingAliveIdx.has(rival)&&!_hasLand(rival)) return;  // skip already-defeated kingdoms
+        if(inCoalition && rival!==coalitionLeader){
+          // Fellow trailing kingdom: offer peace/alliance instead of warring, so we can unite on the leader.
+          if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
+        } else {
+          // The leader (or ordinary war-on-contact when no coalition): declare war if not already at war.
+          if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+        }
+      });
+    });
+  }
+
   // 6d. DIPLOMACY RESOLUTION (KC alliance system) — the declarations players submitted with THIS
   // turn's orders take effect now, so the new relations are already in force for next turn and the
   // change is announced in this turn's Chronicle ("at the start of the next turn" from the players'
@@ -12110,6 +12822,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.02-1851</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.07-1856</div>
 </body>
 </html>
