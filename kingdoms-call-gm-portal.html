@@ -5016,15 +5016,17 @@ async function runTurn(){
     if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
     const lvl=(real.skills||{})[skill]||0;
     if(lvl>=9) return; // SKILL CAP raised to 9 — but only EXPERIENCE (this path) may pass level 5.
-    // Item 3 (this session): the STANDARD experience chance now RAMPS from 20% at level 0 down to 10%
-    // at level 8 (linear) — skills get off the ground faster, and mastery still slows toward the top.
-    // Frequent-action bases (SKILLGAIN_COMMON — moves, explore, pursuit, which roll several times a
-    // turn) keep their gentler original curve, so they don't over-train (honouring the earlier
-    // "fast enough" note). Levels above 8 never reach here (level 9 is capped out above).
+    // Item 3: skill-gain chances ramp DOWN with level so skills get off the ground fast and mastery
+    // slows toward the top. Two curves:
+    //   • STANDARD experience (SKILLGAIN_STD): 20% @ L0 → 10% @ L8 (linear).
+    //   • FREQUENT actions (SKILLGAIN_COMMON — moves, explore, pursuit, which roll several times a
+    //     turn): now LIFTED to its own ramp of 10% @ L0 → 5% @ L8 — half the standard curve, so these
+    //     train meaningfully faster than before (was 4% → 0.8%) while staying throttled below STD.
+    // Levels above 8 never reach here (level 9 is capped out above).
     const _b=(base==null?SKILLGAIN_STD:base);
-    const chance=(_b===SKILLGAIN_STD)
-      ? Math.max(0.10, 0.20 - 0.0125*lvl)   // 20% @ L0 → 10% @ L8
-      : _b*(1-0.10*lvl);                    // frequent-action bases: unchanged gentle easing
+    const chance=(_b===SKILLGAIN_COMMON)
+      ? Math.max(0.05, 0.10 - 0.00625*lvl)  // frequent actions: 10% @ L0 → 5% @ L8
+      : Math.max(0.10, 0.20 - 0.0125*lvl);  // standard experience: 20% @ L0 → 10% @ L8
     if(Math.random()<chance){
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
       const _payBefore=real.pay||0;
@@ -13074,6 +13076,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.09-0323</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.09-1120</div>
 </body>
 </html>
