@@ -103,6 +103,11 @@ section{display:none;}.section-active{display:block;}
 #rp-report-col .card.sec-collapsed>h2{margin-bottom:0;border-bottom:none;}
 #rp-report-col .card.sec-collapsed>:not(h2){display:none!important;}
 .orders-char-block.sec-collapsed>:not(.orders-char-head){display:none!important;}
+/* Item 6: each Chronicle character/event block folds to just its coloured header bar. */
+.char-chronicle.sec-collapsed{margin-bottom:8px!important;}
+.char-chronicle.sec-collapsed>:not(.cc-head){display:none!important;}
+.cc-toggle{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;cursor:pointer;font-size:.7rem;line-height:1;padding:1px 5px;border-radius:2px;margin-left:auto;}
+.cc-toggle:hover{border-color:#fff;}
 .secall-btn{background:transparent;border:1px solid var(--stone);color:var(--stone);cursor:pointer;font-size:.62rem;padding:2px 6px;border-radius:2px;font-family:'Cinzel',serif;letter-spacing:.03em;}
 .secall-btn:hover{border-color:var(--gold);color:var(--gold);}
 .orders-char-body{padding:12px;}
@@ -347,7 +352,12 @@ section{display:none;}.section-active{display:block;}
         </div>
 
         <div class="card" id="report-chronicle-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
-          <h2>📜 Chronicle</h2>
+          <h2 style="display:flex;align-items:center;gap:8px">📜 Chronicle
+            <span style="margin-left:auto;display:flex;gap:4px">
+              <button class="secall-btn" onclick="collapseAllChronicle(true)" title="Minimise every character &amp; event">&#9656; all</button>
+              <button class="secall-btn" onclick="collapseAllChronicle(false)" title="Expand every character &amp; event">&#9662; all</button>
+            </span>
+          </h2>
           <div id="report-log"><em style="color:#999;font-size:.85rem">No events yet.</em></div>
         </div>
 
@@ -374,6 +384,11 @@ section{display:none;}.section-active{display:block;}
         <div class="card" id="titles-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🏆 Titles &amp; Victory</h2>
           <div id="report-titles"><em style="color:#999;font-size:.85rem">The Imperial Titles are contested in secret until Turn 5.</em></div>
+        </div>
+
+        <div class="card" id="mastery-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none;display:none">
+          <h2>🎓 Skill Mastery (level 6+)</h2>
+          <div id="report-mastery"></div>
         </div>
 
         <div class="card" id="discoveries-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
@@ -477,6 +492,27 @@ const L79_ORDERS={
   'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your kingdom\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
 };
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
+// Item 7 (this session): dropdown display order — most-used orders near the top, and any
+// alignment-signature order (Broker, Consecrate, Call to Arms, Perform Rite, Awaken the Wild,
+// Harvest the Field) pinned to the VERY TOP (each is only shown to its own kingdom, so this simply
+// puts a kingdom's special order first when it appears). Mastery (L7/L9) orders sink to the bottom
+// as rare, situational picks. Adjust freely — this array is the single source of the ordering.
+const ACTION_DISPLAY_ORDER=[
+  // Alignment-signature orders — very top
+  'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
+  // Everyday orders, most-used first
+  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Feature','Encounter Character',
+  'Pursue','Spy','Steal','Practice Skill',
+  // Occasional logistics
+  'Use Item','Give Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
+  // Mastery (L7/L9) orders — rare & situational, kept at the bottom
+  'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
+  'Blockade','Research Breakthrough','Assassinate','Vanish',
+  'Challenge','Rampage','Rain of Arrows',"Sniper's Mark",
+  'Feigned Retreat','Grand Stratagem','Lightning Advance','Raid the Coast',
+  'Wild Calling','Grand Design',
+];
+const _actionRank=(a)=>{ const i=ACTION_DISPLAY_ORDER.indexOf(a); return i<0?ACTION_DISPLAY_ORDER.length:i; };
 function actionsFor(c){
   const align=currentReport?.kingdom?.alignment;
   return ACTIONS.filter(a=>{
@@ -484,7 +520,7 @@ function actionsFor(c){
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
     if(L79_ORDERS[a]&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     return true;
-  });
+  }).sort((a,b)=>_actionRank(a)-_actionRank(b));
 }
 const ALL_ABILITIES = ['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 
@@ -692,7 +728,7 @@ async function loadMyGames(){
       <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span></div>
       <div class="gc-meta">
         Your kingdom: <strong>${slot.display_name||'(joining…)'}</strong> ·
-        Turn ${g.turn||0} of ${g.max_turns||12}
+        Turn ${g.turn||0}
       </div>
     </div>`;
   }).join('');
@@ -953,8 +989,30 @@ function buildChronicle(log, chars_for_log){
   const PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
   const PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a'];
 
+  // ── Item 9 (this session): the Reckoning / endgame notice is pinned to the VERY TOP of the
+  // Chronicle for EVERY player, above all phase events — it is the most consequential thing that can
+  // happen in a turn, and all endgame updates belong in this one prominent place.
+  const _reckoningBanner=(()=>{
+    const t=(currentReport&&currentReport.titles)||{};
+    if(t.gameOver){
+      const go=t.gameOver;
+      return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
+        <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 The Reckoning is complete — ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':'is judged supreme'}!</div>
+        <div style="font-size:.76rem;color:#555;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>
+      </div>`;
+    }
+    if(t.reckoning){
+      const r=t.reckoning;
+      return `<div style="background:#fdeaea;border:2px solid var(--crimson);border-radius:3px;padding:9px 12px;margin-bottom:12px">
+        <div style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--crimson)">👑 The Reckoning has been called${r.byName?` by ${r.byName}`:''}!</div>
+        <div style="font-size:.78rem;color:#444;margin-top:3px;line-height:1.5">The world will be judged at the end of <strong>Turn ${r.resolveAtTurn}</strong> unless the claim is broken before then. ${r.mine?'<strong>This is your claim — hold your dominance to the end.</strong>':'Drive the claimant\u2019s bloc below the threshold to shatter it and play on.'}</div>
+      </div>`;
+    }
+    return '';
+  })();
+
   if(!log.length){
-    document.getElementById('report-log').innerHTML='<em style="color:#999;font-size:.85rem">No events yet.</em>';
+    document.getElementById('report-log').innerHTML=_reckoningBanner+'<em style="color:#999;font-size:.85rem">No events yet.</em>';
   } else {
     // ── SORT ENTRIES INTO STRUCTURE ──────────────────────────────────────────
     // charEntries: charId → { name, isKing, phases: [ [], [], [], [], [] ] }
@@ -972,6 +1030,10 @@ function buildChronicle(log, chars_for_log){
     });
 
     log.forEach(e=>{
+      // Item 8: environmental province events (earthquake / flood / plague / blessing / part-sea /
+      // consecrate) are shown in their own Province Reports section, so keep them OUT of the
+      // Chronicle character blocks and Kingdom Events here.
+      if(e.env) return;
       const ph=(e.phase!=null&&e.phase>=0&&e.phase<=4)?e.phase:99;
       const isIntel=(e.text||'').startsWith('[Intelligence]');
       const hasChar=e.charId!=null&&(e.charId in charEntries);
@@ -1103,12 +1165,13 @@ function buildChronicle(log, chars_for_log){
 
       const accentColor=c.isKing?'var(--crimson)':'var(--forest)';
       html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid ${c.isKing?'var(--crimson)':'var(--stone)'};border-radius:3px;overflow:hidden">
-        <div style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
+        <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:${accentColor};
           display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">${c.isKing?'👑':'⚔'}</span>
           <span style="font-weight:600">${c.name}</span>
           ${c.isKing?'<span style="font-size:.68rem;opacity:.8;margin-left:auto">King</span>':''}
+          <button type="button" class="cc-toggle" title="Minimise / maximise this character" aria-expanded="true" onclick="toggleSection(this)" style="${c.isKing?'margin-left:8px':''}">&#9662;</button>
         </div>
         <div style="padding:6px 8px">`;
 
@@ -1134,11 +1197,12 @@ function buildChronicle(log, chars_for_log){
     const hasSystemEvents=Object.values(systemByPhase).some(a=>a.length>0);
     if(hasSystemEvents){
       html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
-        <div style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
+        <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:var(--stone);display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">⚙</span>
           <span style="font-weight:600">Kingdom Events</span>
           <span style="font-size:.7rem;opacity:.7;margin-left:auto">Battles · Conquests · Tax &amp; Wages</span>
+          <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)" style="margin-left:8px">&#9662;</button>
         </div>
         <div style="padding:6px 8px">`;
 
@@ -1169,10 +1233,11 @@ function buildChronicle(log, chars_for_log){
     const hasIntel=Object.values(intelByPhase).some(a=>a.length>0);
     if(hasIntel){
       html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
-        <div style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
+        <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:#c8922a;display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">👁</span>
           <span style="font-weight:600">Intelligence Reports</span>
+          <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)">&#9662;</button>
         </div>
         <div style="padding:6px 8px">`;
 
@@ -1199,7 +1264,7 @@ function buildChronicle(log, chars_for_log){
       html+=`</div></div>`;
     }
 
-      document.getElementById('report-log').innerHTML=html||'<em style="color:#999;font-size:.85rem">No events yet.</em>';
+      document.getElementById('report-log').innerHTML=_reckoningBanner+(html||'<em style="color:#999;font-size:.85rem">No events yet.</em>');
   } // end else (log.length > 0)
 } // end buildChronicle
 
@@ -1486,7 +1551,8 @@ async function openReport(gamePlayerId){
     }).join('')}`;
 
   // Provinces
-  const provs=report.ownedProvinces||[];
+  // Item 5: list your provinces alphabetically by name (a copy — never sort the report array in place).
+  const provs=[...(report.ownedProvinces||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   document.getElementById('report-provinces').innerHTML=provs.length
     ?provs.map(p=>`<div class="prov-entry">
         <div class="prov-name">${p.name} <span style="font-size:.7rem;color:var(--stone);font-family:serif">${capitalise(p.terrain)}</span></div>
@@ -1544,7 +1610,7 @@ async function openReport(gamePlayerId){
           : `Best skill: ${topStr}`;
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -1557,63 +1623,38 @@ async function openReport(gamePlayerId){
           : `Best skill: ${topStr}`;
         return`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom} — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
         </div>`;
       }).join('');
     }
   }
 
-  // Province reports
-  // Your own characters are dropped from Province Reports: you already have their full detail in
-  // Your Kingdom and in the Orders column, and repeating them buried the enemy/neutral sightings
-  // this section exists to surface. Provinces left with nothing to report are dropped with them —
-  // otherwise the section header could appear over an empty list.
-  const provCharIntel=(report.provinceCharIntel||[])
-    .map(pr=>({...pr, characters:(pr.characters||[]).filter(c=>c.category!=='own')}))
-    .filter(pr=>pr.characters.length>0);
-  // Provinces already shown in the structured char-intel above. The legacy free-text intel also
-  // carries a "ProvName: <guard> leads: N neutral defenders …" line for every visited province, so
-  // for any province in the structured list that legacy line is a duplicate (item 4). Drop those
-  // neutral-defender duplicates while keeping legacy lines for provinces NOT in the structured list
-  // (e.g. ones visited earlier but with no character present/spied this turn), plus "controlled by"
-  // and spy-result lines.
-  const _structuredProvNames=new Set(provCharIntel.map(pr=>pr.provName));
-  const provinceIntel=intel.filter(i=>{
-    if(i.match(/^Wandering hero|last seen/)) return false;
-    const m=i.match(/^([^:(]+):\s.*neutral defender/);
-    if(m && _structuredProvNames.has(m[1].trim())) return false;
-    return true;
-  });
-  if(provCharIntel.length>0||provinceIntel.length>0){
+  // Province reports (item 8): ONLY unusual or uncommon events that struck provinces you control or
+  // could see this turn — earthquakes, blessings, plagues, part-seas, floods, consecrations and the
+  // like. The hero listings that used to live here duplicated the Wandering Heroes and Enemy Heroes
+  // Sighted sections above, so they have been removed; those sections remain the home for who-is-where
+  // intelligence. Events are grouped by province and ordered by the phase they happened in.
+  const provinceEvents=report.provinceEvents||[];
+  if(provinceEvents.length>0){
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Province Reports</div>`;
-    // Structured per-province character intel: names + army-unit counts, with unit detail only where
-    // one of your characters spied the province this turn.
-    provCharIntel.forEach(pr=>{
-      const rows=pr.characters.map(c=>{
-        const icon=c.category==='own'?'\u{1F464}':c.category==='enemy'?'\u{1F441}':'\u2694';
-        const km=c.isKing?'\u265B ':'';
-        const who=(c.category==='enemy'&&c.kingdom)?`${c.name} of ${c.kingdom}`:(c.category==='neutral'?neutralCharLabel(c):c.name);
-        const col=c.category==='enemy'?'#c05050':c.category==='neutral'?'#b07d2a':'var(--ink)';
-        let line=`${icon} <strong style="color:${col}">${km}${who}</strong>`;
-        if(c.spiedSkills&&Object.keys(c.spiedSkills).some(k=>c.spiedSkills[k]>0)){
-          line+=`<br><span style="font-size:.7rem;padding-left:14px;color:#2d7a2d">🔍 ${Object.entries(c.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}</span>`;
-        }
-        if(c.armies&&c.armies.length){
-          line+=c.armies.map(a=>`<div style="padding-left:14px;font-size:.72rem">${unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('');
-        } else if(c.armies){
-          line+=` — <span style="opacity:.75;font-size:.74rem">no armies</span>`;
-        } else {
-          line+=` — <span style="opacity:.85;font-size:.74rem">${c.armyCount} army unit${c.armyCount!==1?'s':''}${c.armyCount>0?' (strength unknown — spy to reveal)':''}</span>`;
-        }
-        return `<div style="padding:1px 0">${line}</div>`;
+    const SEASONS_E=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+    const _evByProv=new Map();
+    provinceEvents.forEach(ev=>{
+      const key=ev.provName||'Unknown province';
+      if(!_evByProv.has(key)) _evByProv.set(key,[]);
+      _evByProv.get(key).push(ev);
+    });
+    [..._evByProv.keys()].sort((a,b)=>a.localeCompare(b)).forEach(prov=>{
+      const evs=_evByProv.get(prov).slice().sort((a,b)=>((a.phase??99)-(b.phase??99)));
+      const rows=evs.map(ev=>{
+        const phLbl=(ev.phase!=null&&ev.phase>=0&&ev.phase<=4)?SEASONS_E[ev.phase]:null;
+        return `<div style="padding:1px 0;font-size:.76rem">${phLbl?`<span style="color:var(--stone);font-size:.66rem">${phLbl}: </span>`:''}${ev.text}</div>`;
       }).join('');
-      intelHtml+=`<div class="intel-entry"${pr.spied?' style="border-left-color:#c8922a"':''}>
-        <strong style="font-family:'Cinzel',serif;font-size:.76rem">${pr.provName}</strong>${pr.spied?' <span style="color:#c8922a;font-size:.66rem">\u{1F50D} spied this turn</span>':''}
+      intelHtml+=`<div class="intel-entry" style="border-left-color:#7a4fa0">
+        <strong style="font-family:'Cinzel',serif;font-size:.76rem">${prov}</strong>
         ${rows}
       </div>`;
     });
-    // Legacy free-text province intel (spy result lines etc.)
-    intelHtml+=provinceIntel.map(i=>`<div class="intel-entry">${i}</div>`).join('');
   }
 
   // [Intelligence] log entries broken down by phase
@@ -1715,6 +1756,7 @@ async function openReport(gamePlayerId){
   buildOrdersForm(chars, gp.orders_submitted, gp.orders, g.turn);
   renderDiplomacy(report);
   renderTitles(report);
+  renderMastery(report);
   initReportCollapsers();
   renderPlayerMap(report);
 }
@@ -1778,19 +1820,23 @@ function setDiploChoice(idx, val){
 // without scrolling. Purely presentational — no engine/data effect.
 function _setSecCollapsed(sec, collapse){
   sec.classList.toggle('sec-collapsed', collapse);
-  const b=sec.querySelector('.sec-toggle');
+  const b=sec.querySelector('.sec-toggle, .cc-toggle');
   if(b){ b.innerHTML=collapse?'&#9656;':'&#9662;'; b.setAttribute('aria-expanded', collapse?'false':'true'); }
 }
 function toggleSection(btn){
-  const sec=btn.closest('.card, .orders-char-block'); if(!sec) return;
+  const sec=btn.closest('.card, .orders-char-block, .char-chronicle'); if(!sec) return;
   _setSecCollapsed(sec, !sec.classList.contains('sec-collapsed'));
 }
 function collapseAllSections(scopeSel, collapse){
   const scope=document.querySelector(scopeSel); if(!scope) return;
-  scope.querySelectorAll('.card, .orders-char-block').forEach(sec=>{
+  scope.querySelectorAll('.card, .orders-char-block, .char-chronicle').forEach(sec=>{
     if(sec.id==='orders-card') return;   // the orders card wraps the per-hero blocks — collapse those, not it
     _setSecCollapsed(sec, collapse);
   });
+}
+// Item 6: fold/unfold every Chronicle character & event block (scoped to the Chronicle log).
+function collapseAllChronicle(collapse){
+  document.querySelectorAll('#report-log .char-chronicle').forEach(sec=>_setSecCollapsed(sec, collapse));
 }
 // The report-column cards are static markup, so inject a toggle into each card's <h2> once.
 function initReportCollapsers(){
@@ -1803,6 +1849,59 @@ function initReportCollapsers(){
     b.addEventListener('click', ()=>toggleSection(b));
     h.appendChild(b);
   });
+}
+
+// ── Item 1 (this session): SKILL MASTERY reference ───────────────────────────
+// A permanent, always-available reference: for every one of your characters who has pushed a skill
+// to level 6 or beyond (reachable only through hard experience), list what that mastery grants — the
+// passives that deepen and any new orders/spells unlocked — cumulatively from level 6 up to their
+// current level. Mirror of the GM engine's MASTERY_UNLOCKS (display-only; keep the two in step).
+const MASTERY_EFFECTS={
+  melee:{6:'+1 to your melee in personal combat for each level past 5.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Your personal-combat melee bonus deepens (now +3).',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
+  archery:{6:'+1 to your archery in personal combat for each level past 5.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Your personal-combat archery bonus deepens (now +3).',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
+  tactical:{6:'+1 Tactical command in battle for each level past 5.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Your Tactical command bonus deepens (now +3).',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
+  march:{6:'+1 land movement point.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'+2 land movement points.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
+  naval:{6:'+1 sea movement point.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'+2 sea movement points.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
+  sage:{6:'Your Sage discovery chance keeps climbing past level 5.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Your mastery of lore deepens — discoveries come more readily still.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
+  spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
+  thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
+  druid:{6:'Primal armies you lead fight +5% stronger for each level past 5.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Your bond with primal armies deepens further (+strength per level).',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
+  explorer:{6:'You now automatically spot every feature on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden feature or treasure site.'},
+  white:{6:'+1 White Magic casting each turn.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'Your White Magic mastery deepens.',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
+  psychic:{6:'+1 Psychic Magic casting each turn.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'Your Psychic mastery deepens.',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
+  illusory:{6:'+1 Illusory Magic casting each turn.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'Your Illusory mastery deepens.',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
+  elemental:{6:'+1 Elemental Magic casting each turn.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'Your Elemental mastery deepens.',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
+  necromancy:{6:'+1 Necromancy casting each turn.',7:"New spell — Raise Wraiths: raise an elite undead unit from the province's battlefield dead.",8:'Your Necromancy mastery deepens.',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
+};
+function renderMastery(report){
+  const card=document.getElementById('mastery-card');
+  const el=document.getElementById('report-mastery');
+  if(!card||!el) return;
+  const chars=(report.characters||[]).filter(c=>c&&(c.alive!==false));
+  // Collect, per character, the skills at level 6+ and the cumulative effect lines.
+  const rows=[];
+  chars.forEach(c=>{
+    const sk=c.skills||{};
+    const mastered=Object.keys(sk).filter(k=>sk[k]>=6&&MASTERY_EFFECTS[k]).sort((a,b)=>sk[b]-sk[a]||a.localeCompare(b));
+    if(mastered.length===0) return;
+    const skillBlocks=mastered.map(k=>{
+      const lvl=sk[k];
+      const effs=[];
+      for(let L=6;L<=lvl;L++){ const d=MASTERY_EFFECTS[k][L]; if(d) effs.push({L,d}); }
+      const lines=effs.map(e=>`<div style="font-size:.76rem;padding:1px 0 1px 10px"><span style="color:var(--gold);font-family:Cinzel,serif;font-size:.68rem">L${e.L}</span> ${e.d}</div>`).join('');
+      return `<div style="margin:3px 0 5px">
+        <div style="font-size:.8rem"><strong>${SKILL_LABELS[k]||k} ${lvl}</strong></div>
+        ${lines}
+      </div>`;
+    }).join('');
+    rows.push(`<div class="intel-entry" style="border-left-color:#8a6a1a">
+      <div style="font-family:'Cinzel',serif;font-size:.82rem;color:#6a4a10">${c.isKing?'👑':'⚔'} ${c.name}</div>
+      ${skillBlocks}
+    </div>`);
+  });
+  if(rows.length===0){ card.style.display='none'; el.innerHTML=''; return; }
+  card.style.display='';
+  el.innerHTML=`<div style="font-size:.72rem;color:#888;margin-bottom:6px">A standing reference to the mastery each of your characters has earned — consult it whenever you plan their orders.</div>`+rows.join('');
 }
 
 // ── TITLES & VICTORY (Reckoning) ──────────────────────
@@ -1910,7 +2009,15 @@ function renderTitles(report){
     callCtrl=`<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
   }
 
-  el.innerHTML = gainsHtml + lossesHtml + banner
+  // ── Item 14 (this session): always show the realm's share of the world's LAND-tax base and the
+  // Reckoning threshold, so the leader (and everyone) can gauge how close they are to calling it.
+  // The Throne holder — who by definition commands the largest tax base — is called out by name.
+  const throneMine=!!(t.holders&&t.holders.throne&&t.holders.throne.mine);
+  const _gap=thr-pct;
+  const shareLine=`<div style="background:#f0f4ea;border:1px solid #cdd8bf;border-radius:3px;padding:7px 10px;margin-bottom:10px;font-size:.78rem;color:#3a4a2a;line-height:1.5">
+    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's land-tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#777">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>'}
+  </div>`;
+  el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
     + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
        <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:12px"><tbody>${board}</tbody></table>
        <div style="font-size:.75rem;color:#888;margin-bottom:2px">The eight Imperial Titles — who holds them &amp; how they are won</div>
@@ -2734,6 +2841,29 @@ function onActionChange(charId, ph, charIdx){
   // Likewise for Charm — pops an order window for a charmed wandering hero (they join your service),
   // and tears it down when the action or spell moves away.
   setTimeout(()=>syncCharmCard(charId, ph),100);
+}
+
+// Item 6 (this session): when a Move order is (re)picked, every LATER phase's starting province may
+// change, so re-render this character's later MOVE orders — their direction dropdowns relabel to the
+// new predicted path — and flag each later move with an "update me" note so the player re-checks it.
+// Re-picking a flagged later move clears its own note and cascades to the moves after it.
+function onMoveEdited(charId, ph){
+  const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId)); if(!char) return;
+  // The player just addressed THIS move — clear its own flag.
+  const ownNote=document.getElementById(`po-move-note-${charId}-${ph}`);
+  if(ownNote){ ownNote.style.display='none'; ownNote.innerHTML=''; }
+  for(let later=ph+1;later<=4;later++){
+    const laterAction=document.getElementById(`po-action-${charId}-${later}`)?.value||'';
+    if(laterAction!=='Move') continue;               // scoped to move orders (item 6)
+    const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`);
+    if(!wrap) continue;
+    const savedT=getOrderTarget(charId,later);
+    wrap.innerHTML=buildTargetField(char, later, {action:'Move', target:savedT});
+    if(savedT){
+      const note=document.getElementById(`po-move-note-${charId}-${later}`);
+      if(note){ note.style.display='block'; note.innerHTML='⚠ <strong>Update me</strong> — an earlier move changed, so this order now sets out from a different province. Re-check its direction.'; }
+    }
+  }
 }
 
 // Inject the hired-hero card when Hire Hero is selected with a target; otherwise remove it and
@@ -3686,15 +3816,70 @@ function predictedItems(charId, upToPhaseExclusive){
     (report.characters||[]).forEach(x=>{
       const action=document.getElementById(`po-action-${x.id}-${p}`)?.value||'';
       if(action!=='Give Item') return;
-      const idx=parseInt(document.getElementById(`po-target-${x.id}-${p}`)?.value);
+      // Item 9: a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
+      // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
       const recip=parseInt(document.getElementById(`po-extra-${x.id}-${p}`)?.value);
       const arr=items.get(x.id)||[];
-      if(!(idx>=0)||idx>=arr.length||!items.has(recip)) return;
-      const [it]=arr.splice(idx,1);
-      (items.get(recip)||[]).push(it);
+      if(!items.has(recip)) return;
+      const rawT=(document.getElementById(`po-target-${x.id}-${p}`)?.value||'').trim();
+      let idxs;
+      if(rawT.toLowerCase()==='all') idxs=arr.map((_,i)=>i);
+      else idxs=rawT.split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<arr.length);
+      const uniq=[...new Set(idxs)].sort((a,b)=>b-a);
+      uniq.forEach(i=>{ const [it]=arr.splice(i,1); (items.get(recip)||[]).push(it); });
     });
   }
   return items.get(cid)||[];
+}
+
+// Item 11: the army list a character is LEADING at the start of a given phase, projected from the
+// report by replaying every earlier-phase order that adds or removes armies — Recruit and Pick Up
+// (add), Leave/Transfer and Disband (remove). This is what the Leave/Transfer and Disband forms show,
+// so an army handed off or disbanded in an earlier phase no longer appears, and one recruited or
+// picked up earlier does. (predictedLocation already accounts for earlier moves / conquests, so the
+// recipient and garrison-eligibility lists reflect where the character will actually be.)
+// Known limitation: armies TRANSFERRED to this character by ANOTHER character earlier this turn are
+// not yet projected in — the GM still resolves the transfer correctly, it just isn't previewed here.
+function projectedLedArmies(charId, upToPhaseExclusive){
+  const report=currentReport||{};
+  const char=(report.characters||[]).find(x=>x.id===charId);
+  if(!char) return [];
+  let armies=(char.armies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName,race:a.race,_isSkeletal:a._isSkeletal}));
+  const provOrderData=report.provinceOrderData||{};
+  for(let prevPh=0;prevPh<upToPhaseExclusive;prevPh++){
+    const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
+    const prevTarget=document.getElementById(`po-target-${charId}-${prevPh}`)?.value||'';
+    if(prevAction==='Recruit Armies'){
+      const wrap=document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
+      if(wrap){
+        wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
+          const v=cb.value||'';
+          if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
+          const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
+          for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
+        });
+      }
+    } else if(prevAction==='Pick Up Army'){
+      const ploc=predictedLocation(charId,prevPh);
+      const pgarr=(ploc?provOrderData[ploc.id]:null)?.garrisonArmies||[];
+      if(prevTarget==='all'){ pgarr.forEach(a=>armies.push({type:a.type,quality:a.quality,unitName:a.unitName})); }
+      else prevTarget.split(',').filter(Boolean).forEach(sel=>{
+        sel=sel.trim();
+        let gi=null;
+        if(sel.startsWith('g:')) gi=parseInt(sel.slice(2));
+        else if(sel.startsWith('-1:')) gi=parseInt(sel.slice(3)); // legacy form
+        if(gi!=null&&pgarr[gi]) armies.push({type:pgarr[gi].type,quality:pgarr[gi].quality,unitName:pgarr[gi].unitName});
+      });
+    } else if(prevAction==='Leave/Transfer Army'||prevAction==='Disband Army'){
+      if(prevTarget==='all'){ armies=[]; }
+      else prevTarget.split(',').filter(Boolean).forEach(val=>{
+        val=val.trim();
+        const idx=armies.findIndex(a=>(a.unitName||a.type)===val);
+        if(idx>=0) armies.splice(idx,1);
+      });
+    }
+  }
+  return armies;
 }
 
 function predictedLocation(charId, upToPhaseExclusive){
@@ -3868,7 +4053,11 @@ function buildTargetField(c, ph, saved){
       const edgeNote=(blockedNorth||blockedSouth)
         ? `<div style="font-size:.72rem;color:var(--stone);margin-top:3px">\u2744 The impassable icy wastelands to the ${blockedNorth&&blockedSouth?'north and south':blockedNorth?'north':'south'} bar any further movement in that direction — the world does not extend beyond them.</div>`
         : '';
-      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>${edgeNote}`;
+      // Item 6 (this session): editing THIS move changes where the character stands for every later
+      // phase, so onMoveEdited re-renders the character's later Move orders (their direction labels
+      // update relative to the new path) and flags each with an "update me" note to re-check.
+      return`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited('${c.id}',${ph})">${dirOpts}</select>${edgeNote}
+        <div id="po-move-note-${c.id}-${ph}" style="display:none;font-size:.72rem;color:#8a4a00;background:#fff3e0;border:1px solid #e0b070;border-radius:2px;padding:3px 6px;margin-top:3px"></div>`;
     }
 
     // ── EXPLORE ── show how much of the province this order will map (item 3b)
@@ -4362,10 +4551,29 @@ function buildTargetField(c, ph, saved){
       // Predicted item list: starts from the report, then applies every earlier phase's Give Item
       // orders — so an item HANDED TO this character in an earlier phase can be given onward here,
       // and an item already given away no longer appears. Indices match GM resolution order.
+      // Item 9 (this session): hand over MORE THAN ONE item at once — tick each item (or "All items")
+      // and choose a single recipient. Item ticks write "all" or a comma-separated list of item
+      // indices to the hidden po-target field (reusing the shared checkbox helpers).
       const items=predictedItems(c.id,ph);
       const startNames=new Set((c.items||[]).map(it=>it&&it.name));
       if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to give (none held, or all given away earlier this turn)" disabled>`;
-      const itemOpts=items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>🔮 ${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('');
+      const _giSaved=(target||'').split(',').filter(Boolean);
+      const _giAll=_giSaved.includes('all');
+      const _giBoxes=items.map((it,i)=>{
+        const chk=(_giAll||_giSaved.includes(String(i)))?'checked':'';
+        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" value="${i}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+          🔮 ${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}
+        </label>`;
+      }).join('');
+      const _giWrap=`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
+        <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
+          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${_giAll?'checked':''} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+          <strong>All items (${items.length})</strong>
+        </label>
+        ${_giBoxes}
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+      </div>`;
       // Only show characters in the same province AND controlled by the same player
       const loc4=predictedLocation(c.id,ph);
       const chars=(report.characters||[]).filter(x=>
@@ -4373,45 +4581,18 @@ function buildTargetField(c, ph, saved){
         x.player===c.player &&
         predictedLocation(x.id,ph)?.id===loc4?.id
       );
-      if(chars.length===0) return`<select id="po-target-${c.id}-${ph}">${itemOpts}</select>
+      if(chars.length===0) return`${_giWrap}
         <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No allies in same province" disabled>`;
       const recipOpts=chars.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}">${itemOpts}</select>
+      return`${_giWrap}
         <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
 
     // ── LEAVE / TRANSFER ARMY ──
     case 'Leave/Transfer Army':{
-      // Build army list: start with report armies, then add any gained in earlier phases
-      const baseArmies=[...(c.armies||[])];
-      const RECRUIT_TYPES=new Set(Object.keys(report.provinceOrderData||{}).flatMap(pid=>(report.provinceOrderData[pid]?.armyTypes||[])));
-      // Scan earlier phases for Recruit Armies orders that would add armies to this character
-      for(let prevPh=0;prevPh<ph;prevPh++){
-        const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
-        if(prevAction==='Recruit Armies'){
-          // Get what was recruited - read checked values from the recruit checkboxes
-          const wrap=document.getElementById(`po-target-wrap-${c.id}-${prevPh}`);
-          if(wrap){
-            wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
-              if(cb.value&&cb.value!=='all'){
-                // No unitName: this unit does not exist yet (it is a Recruit ordered in an earlier
-                // phase of this same turn), so it has no name to show. armyLabel() renders the
-                // unnamed form. It must NOT be pre-filled with armyLabel's own output \u2014 that used to
-                // work when the label was just "Average Shieldwall Levies", but the label now carries
-                // race/quality/strength detail and would end up nested inside its own brackets.
-                baseArmies.push({type:cb.value,quality:'Average'});
-              }
-            });
-          }
-        }
-        // Pick Up Army orders also add armies
-        if(prevAction==='Pick Up Army'){
-          const prevTarget=document.getElementById(`po-target-${c.id}-${prevPh}`)?.value||'';
-          if(prevTarget){
-            baseArmies.push({type:'(picked up army)',quality:'Average',unitName:'Picked-up army'});
-          }
-        }
-      }
-
+      // Item 11: the list of armies this character LEADS at this phase — projected from earlier-phase
+      // Recruit / Pick Up (added) and Leave/Transfer / Disband (removed) orders, so an army handed off
+      // or disbanded earlier no longer shows, and one gained earlier does.
+      const baseArmies=projectedLedArmies(c.id, ph);
       const savedTgts=(target||'').split(',').filter(Boolean);
       // Where is this character predicted to be at this phase (accounting for earlier-phase moves)?
       const cLoc=predictedLocation(c.id,ph);
@@ -4469,31 +4650,9 @@ function buildTargetField(c, ph, saved){
 
     // ── DISBAND ARMY ──
     case 'Disband Army':{
-      // Item 7 (this session): a character can Disband armies they PICKED UP (from a garrison) or
-      // RECRUITED in an EARLIER phase of this same turn — not just the host they started the turn
-      // with. Project those onto the list so they can be selected. The engine disbands from c.armies
-      // at resolution (matching by type / unitName), by which point the pickup/recruit has resolved.
-      const armies=[...(c.armies||[])];
-      for(let prevPh=0;prevPh<ph;prevPh++){
-        const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
-        if(prevAction==='Pick Up Army'){
-          const prevTarget=document.getElementById(`po-target-${c.id}-${prevPh}`)?.value||'';
-          const ploc=predictedLocation(c.id,prevPh);
-          const pgarr=(ploc?provOrderData[ploc.id]:null)?.garrisonArmies||[];
-          if(prevTarget==='all'){ pgarr.forEach(a=>armies.push({type:a.type,quality:a.quality})); }
-          else if(prevTarget.startsWith('-1:')){ const gi=parseInt(prevTarget.slice(3)); if(pgarr[gi]) armies.push({type:pgarr[gi].type,quality:pgarr[gi].quality}); }
-        } else if(prevAction==='Recruit Armies'){
-          const wrap=document.getElementById(`po-target-wrap-${c.id}-${prevPh}`);
-          if(wrap){
-            wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
-              const v=cb.value||'';
-              if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
-              const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
-              for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
-            });
-          }
-        }
-      }
+      // Item 7/11: the armies this character LEADS at this phase — including any PICKED UP or
+      // RECRUITED earlier this turn, and minus any handed off or disbanded earlier this turn.
+      const armies=projectedLedArmies(c.id, ph);
       if(armies.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to disband" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
       const checkboxes=armies.map((a,i)=>{
@@ -4517,20 +4676,34 @@ function buildTargetField(c, ph, saved){
 
     // ── PICK UP ARMY ──
     case 'Pick Up Army':{
+      // Item 1 (this session): pick up unled GARRISON units the same way Leave/Transfer lists armies —
+      // tick "All", or tick a selection. The hidden field carries "all" or a comma-separated list of
+      // garrison indices (g:0,g:2,…). Reuses updateLeaveTarget / leaveToggleAll (shared checkbox
+      // helpers) via the same po-leave-all-… id. Mercenaries are still hired through Recruit Armies;
+      // armies led by another of your characters move via Leave/Transfer Army.
       const loc2=predictedLocation(c.id,ph);
       const pd2=loc2?provOrderData[loc2.id]:null;
       const garrArr=(pd2?.garrisonArmies||[]);
-      const garrisons=garrArr.map((a,i)=>`<option value="-1:${i}" ${target===`-1:${i}`?'selected':''}>${armyLabel(a)} — garrison</option>`).join('');
-      // 'All' sweeps up every unled (garrison) army in the province at once.
-      const allOpt=garrArr.length>0?`<option value="all" ${target==='all'?'selected':''}>⚑ All garrison armies (${garrArr.length})</option>`:'';
-      // Item 2 (this session): the only pickable armies are UNLED GARRISON units standing in this
-      // province. Mercenaries are no longer picked up here — they answer to gold and are taken into
-      // service through Recruit Armies (where they still appear). Armies led by another of your
-      // characters are also not shown — move troops between your heroes with Leave/Transfer Army.
-      const all=allOpt+garrisons;
-      return all
-        ?`<select id="po-target-${c.id}-${ph}">${all}</select>`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;}
+      if(garrArr.length===0)
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;
+      const savedTgts=(target||'').split(',').filter(Boolean);
+      const allSel=savedTgts.includes('all');
+      const checkboxes=garrArr.map((a,i)=>{
+        const val=`g:${i}`;
+        const chk=(allSel||savedTgts.includes(val))?'checked':'';
+        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
+          <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+          ${armyLabel(a)} — garrison
+        </label>`;
+      }).join('');
+      return`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
+        <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
+          <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allSel?'checked':''} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
+          <strong>All garrison armies (${garrArr.length})</strong>
+        </label>
+        ${checkboxes}
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+      </div>`;}
 
     default:
       return`<input id="po-target-${c.id}-${ph}" type="text" value="${target||''}" placeholder="Details / notes">`;
@@ -5024,6 +5197,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.08-1027</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.09-0323</div>
 </body>
 </html>
