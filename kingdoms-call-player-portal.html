@@ -325,7 +325,9 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#888" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" fill="#fff">?</text></svg> Wandering hero</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Feature</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚑</span> Your army in the field</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Lair</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🛡</span> Defenders</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#FFD700;border:2px solid #FFA500;box-shadow:0 0 3px #FFD700"></span> Rich</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
@@ -453,7 +455,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
-const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
+const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
   'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
@@ -475,7 +477,7 @@ const L79_ORDERS={
   'Grand Heist':{skill:'thief',lvl:7,target:'character',hint:'Thief 7: rob an enemy hero in your province of a large sum of gold (and perhaps a magic item).'},
   'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
   'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
-  'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden feature or treasure site, if any remain.'},
+  'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden lair or treasure site, if any remain.'},
   'Blockade':{skill:'naval',lvl:7,target:'province',provKind:'sea_adjacent',hint:'Naval 7: seal a sea province you are in or adjacent to — enemy fleets may not cross it this turn.'},
   'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your kingdom).'},
   'Assassinate':{skill:'spy',lvl:9,target:'character',hint:'Spy 9: attempt to slay an enemy hero in the province you stand in — a spy-level chance to kill.'},
@@ -501,7 +503,7 @@ const ACTION_DISPLAY_ORDER=[
   // Alignment-signature orders — very top
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
   // Everyday orders, most-used first
-  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Feature','Encounter Character',
+  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
   'Spy','Steal','Practice Skill',
   // Occasional logistics
   'Use Item','Give Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
@@ -863,10 +865,10 @@ const SKILL_INFO={
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — both via the Steal order and by pickpocketing during encounters.',
   druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. Higher Druid unlocks the most powerful primal beasts.',
-  explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden features and terrain sooner so you can search and settle faster.',
+  explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
   white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine kingdoms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
-  illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Features. Confuse enemy intelligence and battles.',
+  illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Lairs. Confuse enemy intelligence and battles.',
   elemental:'Elemental Magic — destruction spells: Lightning Bolt, Fireball, Earthquake, Flood and Elemental Summon. Raw offensive power against armies and provinces.',
   necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Kill Enemy (Undead kingdoms start with Necromancy 1).',
 };
@@ -1298,10 +1300,10 @@ async function loadPastReport(gameId, playerIndex, turn){
     +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#7a5510;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 
   if(snapshot){
-    // Historical map + chronicle straight from the snapshot.
+    // Whole report body straight from the snapshot — map, chronicle, AND every other section revert
+    // to this turn. (Order forms stay hidden; renderReportView only paints the read-only view.)
     viewingReport=snapshot;
-    renderPlayerMap(snapshot);
-    buildChronicle(snapshot.lastTurnLog||[], snapshot.characters||[]);
+    renderReportView(snapshot);
     return;
   }
 
@@ -1445,6 +1447,21 @@ async function openReport(gamePlayerId){
   document.getElementById('orders-card').style.display='block';
   const oc4=document.getElementById('orders-column'); if(oc4) oc4.style.display='flex';
 
+  // Orders form (current turn only). Built here, before the shared read-only view renders; it lives in
+  // its own container (orders-column), so building it first is harmless. Past-turn views hide that
+  // container and never reach this line.
+  currentGamePlayer=gp;
+  buildOrdersForm(report.characters||[], gp.orders_submitted, gp.orders, g.turn);
+
+  // Render the whole read-only report body from THIS report object. Shared with past-turn viewing so
+  // that opening an old turn reverts every section (not just the map + chronicle) to that turn.
+  renderReportView(report);
+}
+
+// Renders the full read-only report body (chronicle, kingdom, provinces, intel, discoveries,
+// diplomacy, titles, mastery, and the map) from whatever report object it is handed — the live
+// turn_report for the current turn, or a per-turn snapshot when viewing history.
+function renderReportView(report){
   // Render chronicle
   buildChronicle(report.lastTurnLog||[], report.characters||[]);
 
@@ -1559,8 +1576,8 @@ async function openReport(gamePlayerId){
         <div class="prov-detail">
           Tax: ${p.tax}g/turn · ${formatRace(p.race)} · Explored: ${p.explored||0}%<br>
           ${(p.features||[]).filter(f=>f.discovered&&!f.cleared).length>0
-            ?`Known features: ${p.features.filter(f=>f.discovered&&!f.cleared).map(f=>f.name).join(', ')}`
-            :'No features discovered yet'}
+            ?`Known lairs: ${p.features.filter(f=>f.discovered&&!f.cleared).map(f=>f.name).join(', ')}`
+            :'No lairs discovered yet'}
           ${(p.features||[]).filter(f=>f.cleared).length>0
             ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>f.name).join(', ')}`
             :''}
@@ -1728,7 +1745,7 @@ async function openReport(gamePlayerId){
 
   // Known features
   if(knownFeatures.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Known Features</div>`;
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Known Lairs</div>`;
     intelHtml+=`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
       Guardian difficulty: 
       <span style="background:#4a8a4a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🐾 Weak</span> can be handled by a lone hero ·
@@ -1767,7 +1784,7 @@ async function openReport(gamePlayerId){
     intelHtml+=Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
       const feats=featuresByProvince[prov];
       const cards=feats.map(featureCard).join('');
-      return`<div style="font-family:'Cinzel',serif;font-size:.7rem;color:var(--gold);margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal">(${feats.length} feature${feats.length!==1?'s':''})</span></div>${cards}`;
+      return`<div style="font-family:'Cinzel',serif;font-size:.7rem;color:var(--gold);margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal">(${feats.length} lair${feats.length!==1?'s':''})</span></div>${cards}`;
     }).join('');
   }
 
@@ -1798,14 +1815,19 @@ async function openReport(gamePlayerId){
     }
   }
 
-  // Orders form
-  currentGamePlayer=gp;
-  buildOrdersForm(chars, gp.orders_submitted, gp.orders, g.turn);
   renderDiplomacy(report);
   renderTitles(report);
   renderMastery(report);
   initReportCollapsers();
   renderPlayerMap(report);
+  // Item 5: guarantee the map paints fresh whenever a player opens their game to view the current
+  // turn. openReport already fetches the latest turn_report from Supabase and renders once above, but
+  // that first render can run before the just-shown report section has finished its layout, leaving a
+  // blank/mis-sized map until the player interacts. Re-render after layout settles (double rAF) so the
+  // current-turn map always appears immediately on click. Falls back to a timeout if rAF is absent.
+  const _repaintMap=()=>{ try{ renderPlayerMap(report); }catch(e){} };
+  if(typeof requestAnimationFrame==='function'){ requestAnimationFrame(()=>requestAnimationFrame(_repaintMap)); }
+  else { setTimeout(_repaintMap,0); }
 }
 
 // ── DIPLOMACY PANEL (alliance system) ─────────────────
@@ -1913,7 +1935,7 @@ const MASTERY_EFFECTS={
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Primal armies you lead fight +5% stronger for each level past 5.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Your bond with primal armies deepens further (+strength per level).',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
-  explorer:{6:'You now automatically spot every feature on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden feature or treasure site.'},
+  explorer:{6:'You now automatically spot every lair on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'+1 White Magic casting each turn.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'Your White Magic mastery deepens.',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'+1 Psychic Magic casting each turn.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'Your Psychic mastery deepens.',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
   illusory:{6:'+1 Illusory Magic casting each turn.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'Your Illusory mastery deepens.',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
@@ -2094,7 +2116,7 @@ function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(
 const SPELLS_BY_SCHOOL={
   white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack','Sanctuary','Divine Judgment'],
   psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm','Mass Confusion','Dominate'],
-  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image','Phantom Host','Veil'],
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Mirror Image','Phantom Host','Veil'],
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon','Chain Lightning','Cataclysm'],
   necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague','Raise Wraiths',"Death's Dominion"],
 };
@@ -2127,7 +2149,7 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 
 // Spell hints shown below the order form
 const SPELL_HINTS={
-  'Resurrect':'Target: a hero (yours or an enemy) who fell this turn whose body lies in your province. Revives at full HP under your command, stripped of all items and armies. Kings can\u2019t be raised.',
+  'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — his body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your kingdom. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':'Target: a sea province you\u2019re in or next to. Becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cancels Flood.',
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine kingdoms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
@@ -2137,9 +2159,9 @@ const SPELL_HINTS={
   'Clairvoyance':'Target: any character you\u2019ve ever seen, anywhere. You learn all that happens to them this turn and see their full skills. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. Up to your-level units each have a 50% chance to fight one level lower in their next battle this turn (temporary). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
-  'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Shows a false terrain to enemies; they fight there at 80% strength. An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
+  'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
   'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Whatever armies they lead in their next battle this turn fight +10% per caster level (works even if they pick up armies in a later phase). Not cumulative.',
-  'Hide Features':'Target: a province you\u2019re in or adjacent to. Hides ALL features you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
+  'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides ALL lairs you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
   'Invisibility':'Combat: you become twice as hard to hit for the fight, +30% to Flee, and +15% to a following Steal.',
   'Lightning Bolt':'Combat: 2\u20134 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
   'Fireball':'Combat: burns the target for 10% of its health each round for 3 rounds. Battle: a random enemy unit\u2019s strength is halved.',
@@ -2150,7 +2172,7 @@ const SPELL_HINTS={
   'Skeletal Armies':'Raises one random battlefield-grave unit in your province as a Skeletal (Undead) unit under your command (1g upkeep). Needs fallen armies present.',
   'Curse':'Target: an enemy/neutral hero here. Their highest skill is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
   'Hand of Death':'Combat: 10% per Necromancy level to deal damage equal to 50% of the target\u2019s max HP.',
-  'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 10%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
+  'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 // ── DISPLAY ROUNDING (report text) ────────────────────────────────────────────
@@ -2238,7 +2260,7 @@ const ENCOUNTER_TACTICS=[
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter (does not affect duels; see Duel stance)'},
-  {code:'SC',label:'Scout — scout the feature for secrets and special functions'},
+  {code:'SC',label:'Scout — scout the lair for secrets and special functions'},
 ];
 
 // ── Royal succession skill allocation ─────────────────────────────────────────
@@ -2433,7 +2455,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         <!-- Encounter Plan -->
         <div style="margin-top:10px;padding:8px;background:#fdf5e0;border:1px solid #c8922a;border-radius:2px">
           <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a5a10;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">
-            ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#999">— used when searching features or in random encounters</span>
+            ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#999">— used when searching lairs or in random encounters</span>
           </div>
           <div style="font-size:.78rem;color:var(--stone);margin-bottom:6px">
             Drag to reorder tactics. The plan is executed in order until the encounter ends. If you run out of tactics, Melee is used.
@@ -2824,7 +2846,7 @@ function _onSpellChange_DEPRECATED(charId, ph, selectedSpell){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
   const report=currentReport||{};
 
-  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Features','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
+  const NEEDS_PROV=new Set(['Bless Province','Illusory Terrain','Hide Lairs','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
   const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory','Divine Judgment','Mass Confusion','Dominate','Chain Lightning']);
 
   // Remove any existing secondary selector/hint, keep the spell select
@@ -2995,7 +3017,7 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
   // starts them with neither — order forms that read c.armies must see the truth, not their old kit.
   // A raised hero returns where the body lies — i.e. where the CASTER is standing when the
   // Resurrect resolves (the caster must be at the grave to cast it). Give the fake char that
-  // province so its order options (Recruit Armies, Search Feature, …) populate like any other hero.
+  // province so its order options (Recruit Armies, Search Lair, …) populate like any other hero.
   const _casterLoc=predictedLocation(charId, ph);
   const fakeChar={
     id:fakeId, name:dead.name, isKing:false,
@@ -3260,7 +3282,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     skills:heroData.skills||{}, armies:[], items:[], pay:heroData.pay,
     // A hero hired via Hire Hero stands in the SAME province as the hiring character (the hire
     // requires it), so the newly-hired hero acts from there. Without a real locationId every
-    // province-dependent order option (Recruit Armies, Search Feature, …) came up empty.
+    // province-dependent order option (Recruit Armies, Search Lair, …) came up empty.
     locationId:(heroData.locationId!=null?heroData.locationId:null), locationName:heroData.locationName||'(joining after hire)',
     effectiveSpeed:5, effectiveSeaSpeed:0,
     hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
@@ -4141,7 +4163,7 @@ function buildTargetField(c, ph, saved){
         : `🧭 Explores the province ${c.name} stands in.`;
       return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
         <div style="font-size:.72rem;color:var(--forest)">${note}</div>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Higher Explorer skill and better terrain reveal more each time; features surface as the map fills.</div>`;}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Higher Explorer skill and better terrain reveal more each time; lairs surface as the map fills.</div>`;}
 
     // ── SPY / REST ──
     case 'Spy':
@@ -4193,7 +4215,8 @@ function buildTargetField(c, ph, saved){
     }
 
     // ── SEARCH FEATURE ──
-    case 'Search Feature':{
+    case 'Search Feature': // legacy label (pre-Lair rename) — falls through
+    case 'Search Lair':{
       // Use the character's projected province for THIS phase (accounting for earlier-phase moves),
       // and list every feature known there — including ones discovered by another of your characters.
       const loc=predictedLocation(c.id,ph);
@@ -4201,7 +4224,7 @@ function buildTargetField(c, ph, saved){
       const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');return `<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}${diff?` (${diff})`:''}</option>`;}).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features in current province" disabled>`;}
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
 
     // ── USE ITEM (active magic items only) ──
     case 'Use Item':{
@@ -4293,7 +4316,7 @@ function buildTargetField(c, ph, saved){
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
-        'Illusory Terrain','Phantasmal Armies','Hide Features',
+        'Illusory Terrain','Phantasmal Armies','Hide Lairs',
         'Earthquake','Flood','Elemental Summon',
         'Control Undead','Skeletal Armies','Curse','Plague',
         'Sanctuary','Divine Judgment','Mass Confusion','Dominate','Phantom Host','Veil','Chain Lightning','Cataclysm','Raise Wraiths',"Death's Dominion"]);
@@ -4363,7 +4386,7 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>effMagicLvl(c,school)>=1||practisingSchools.has(school))
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s])))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Features','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Lairs','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
       const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory','Divine Judgment','Mass Confusion','Dominate','Chain Lightning']);
       let secondaryHtml='';
       if(NEEDS_PROV.has(selSpell)){
@@ -4383,7 +4406,7 @@ function buildTargetField(c, ph, saved){
           const t=p.terrain; // null for unexplored tiles (and possibly illusory — the map is what you see)
           if(selSpell==='Part Sea'&&t!=='sea') return '';
           if(selSpell==='Flood'&&(t==='sea'||t==null)) return '';
-          if(selSpell==='Hide Features'){
+          if(selSpell==='Hide Lairs'){
             const hasKnownFeature=((p.features||[]).length>0)||(p.name&&kfNames.has(p.name));
             if(!hasKnownFeature) return '';
           }
@@ -4393,7 +4416,7 @@ function buildTargetField(c, ph, saved){
         secondaryHtml=provOpts
           ?`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`
-          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No sea province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Features'?'No discovered features here or adjacent':'No valid target province in reach'}" disabled>
+          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No sea province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else if(NEEDS_CHAR.has(selSpell)){
         const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
@@ -4403,9 +4426,10 @@ function buildTargetField(c, ph, saved){
           // the body must lie in the caster's province at cast time — bodies at the caster's
           // predicted location are marked ✓; others are listed so the player can plan a move there.
           const casterHereName=(predictedLocation(c.id,ph)||{}).name;
-          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>!x.isKing).map(x=>{
+          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>!x.isKing||x.isMonarch).map(x=>{
             const here=casterHereName&&x.locationName===casterHereName;
-            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔ (enemy hero)'} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
+            const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':' ⚔ (enemy hero)');
+            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
           }).join('');
         } else if(selSpell==='Charm'){
           // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
@@ -4941,6 +4965,7 @@ function renderMapIntoSvg(svgEl, report){
 
   // Visibility sets
   const playerColor=report.kingdom?.color||'#c0392b';
+  const _isPagan=((report.kingdom&&report.kingdom.alignment)||(report.playerSetup&&report.playerSetup.alignment))==='Pagan';
   const ownedIds=new Set((report.ownedProvinces||[]).map(p=>p.id));
   const visitedIds=new Set([...(report.visitedProvinceIds||[]),...ownedIds]);
   const adjacentIds=new Set();
@@ -5070,7 +5095,7 @@ function renderMapIntoSvg(svgEl, report){
       if(ownChars.length>0){
         const mx=markerX,my=y-HS+9;
         const mg=document.createElementNS(svgNS,'g');
-        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.5) translate(${-mx} ${-my})`); // half size
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
         const circ=document.createElementNS(svgNS,'circle');
         circ.setAttribute('cx',mx);circ.setAttribute('cy',my);circ.setAttribute('r','5');
         circ.setAttribute('fill',playerColor);circ.setAttribute('stroke','#fff');circ.setAttribute('stroke-width','1');
@@ -5099,7 +5124,7 @@ function renderMapIntoSvg(svgEl, report){
       if(enemyChars.length>0){
         const mx=markerX,my=y-HS+9;
         const mg=document.createElementNS(svgNS,'g');
-        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.5) translate(${-mx} ${-my})`); // half size
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
         const ec=document.createElementNS(svgNS,'circle');
         // Use enemy's colour if available
         const enemyCol=enemyChars[0].ownerColor||'#7a1c1c';
@@ -5129,7 +5154,7 @@ function renderMapIntoSvg(svgEl, report){
       if(wanderers.length>0){
         const mx=markerX,my=y-HS+9;
         const mg=document.createElementNS(svgNS,'g');
-        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.5) translate(${-mx} ${-my})`); // half size
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
         const wc=document.createElementNS(svgNS,'circle');
         wc.setAttribute('cx',mx);wc.setAttribute('cy',my);wc.setAttribute('r','4.5');
         wc.setAttribute('fill','#888');wc.setAttribute('stroke','#fff');wc.setAttribute('stroke-width','1');
@@ -5144,16 +5169,44 @@ function renderMapIntoSvg(svgEl, report){
       }
     }
 
-    // Battle icon — show sword crossed if there was a battle in this province this turn
+    // Battle icon — crossed swords at the TOP-MIDDLE of any hex where a battle was fought this turn.
     if(pd.hadBattle){
-      const bx=x,by=y+HS-8;
+      const bx=x,by=y-HS+9;
       const btxt=document.createElementNS(svgNS,'text');
       btxt.setAttribute('x',bx);btxt.setAttribute('y',by);
-      btxt.setAttribute('text-anchor','middle');btxt.setAttribute('font-size','6');
+      btxt.setAttribute('text-anchor','middle');btxt.setAttribute('font-size','9'); // ×1.5 of prior 6
       btxt.setAttribute('fill','#ff4444');btxt.setAttribute('pointer-events','none');
       btxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
       btxt.textContent='⚔';
       g.appendChild(btxt);
+    }
+
+    // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
+    // where this player has a character with troops under their command. Pagan ritual-site moons sit
+    // just to its right so the two never collide.
+    if((pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0)){
+      const lx=x-HS+7,ly=y+HS-6;
+      const ltxt=document.createElementNS(svgNS,'text');
+      ltxt.setAttribute('x',lx);ltxt.setAttribute('y',ly);
+      ltxt.setAttribute('text-anchor','middle');ltxt.setAttribute('font-size','9');
+      ltxt.setAttribute('fill','#f2e8d0');ltxt.setAttribute('pointer-events','none');
+      ltxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
+      ltxt.textContent='⚑';
+      g.appendChild(ltxt);
+    }
+
+    // Pagan ritual sites (item): the same 🌙 the report uses, drawn at the bottom-left of hexes where a
+    // Pagan kingdom has discovered a ritual site, so its standing stones are easy to find on the map.
+    if(_isPagan && (pd.features||[]).some(f=>f.ritualSite)){
+      const hasFlag=(pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
+      const mnx=x-HS+(hasFlag?17:7),mny=y+HS-6;
+      const mtxt=document.createElementNS(svgNS,'text');
+      mtxt.setAttribute('x',mnx);mtxt.setAttribute('y',mny);
+      mtxt.setAttribute('text-anchor','middle');mtxt.setAttribute('font-size','9');
+      mtxt.setAttribute('pointer-events','none');
+      mtxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
+      mtxt.textContent='🌙';
+      g.appendChild(mtxt);
     }
 
     // Tooltip
@@ -5239,6 +5292,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.13-1614</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.14-1022</div>
 </body>
 </html>
