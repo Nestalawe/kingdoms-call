@@ -453,7 +453,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
-const ACTIONS = ['Move','Pursue','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
+const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
   'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
@@ -502,7 +502,7 @@ const ACTION_DISPLAY_ORDER=[
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
   // Everyday orders, most-used first
   'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Feature','Encounter Character',
-  'Pursue','Spy','Steal','Practice Skill',
+  'Spy','Steal','Practice Skill',
   // Occasional logistics
   'Use Item','Give Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
   // Mastery (L7/L9) orders — rare & situational, kept at the bottom
@@ -1657,6 +1657,53 @@ async function openReport(gamePlayerId){
     });
   }
 
+  // ── Item 1: Spied Provinces — every province you SPIED this turn, and the characters standing
+  // there at END of turn (even if your agent has since moved on). Only non-your characters shown.
+  const spiedProvIntel=(report.provinceCharIntel||[]).filter(p=>p.spied);
+  if(spiedProvIntel.length>0){
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d7a2d;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">🔍 Spied Provinces</div>`;
+    spiedProvIntel.forEach(pc=>{
+      const others=(pc.characters||[]).filter(ch=>ch.category!=='own');
+      const roster=others.length>0
+        ? others.map(ch=>{
+            const who=ch.category==='enemy'
+              ? `<strong${ch.color?` style="color:${ch.color}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
+              : `<strong>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
+            const force=(ch.armies&&ch.armies.length>0)
+              ? ` — ${ch.armies.map(a=>a.unitName?`${a.unitName} (${a.quality})`:`${a.quality} ${a.type}`).join(', ')}`
+              : (ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:'');
+            const sk=(ch.spiedSkills&&Object.keys(ch.spiedSkills).some(k=>ch.spiedSkills[k]>0))
+              ? `<br><span style="font-size:.72rem;color:#2d7a2d">🔍 Skills:</span> ${Object.entries(ch.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+              : '';
+            return `<div style="padding:1px 0;font-size:.78rem">${who}${force}${sk}</div>`;
+          }).join('')
+        : `<div style="padding:1px 0;font-size:.76rem;color:#777">No other characters present at turn's end.</div>`;
+      intelHtml+=`<div class="intel-entry" style="border-left-color:#2d7a2d;background:#f2faf2">
+        <strong style="font-family:'Cinzel',serif;font-size:.76rem">${pc.provName}</strong>
+        ${roster}
+      </div>`;
+    });
+  }
+
+  // ── Item 2: Spy Activity Reports — what other kingdoms' characters DID in a province you spied,
+  // in the phases after your agent arrived (the spy's lingering line of sight).
+  const spyActivity=report.spyActivity||[];
+  if(spyActivity.length>0){
+    const SEASONS_SA=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d6a7a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">🔍 Spy Activity Reports</div>`;
+    spyActivity.forEach(sa=>{
+      const rows=(sa.lines||[]).map(l=>{
+        const phLbl=(l.phase!=null&&l.phase>=0&&l.phase<=4)?SEASONS_SA[l.phase]:null;
+        return `<div style="padding:1px 0;font-size:.76rem">${phLbl?`<span style="color:var(--stone);font-size:.66rem">${phLbl}: </span>`:''}${l.text}</div>`;
+      }).join('');
+      intelHtml+=`<div class="intel-entry" style="border-left-color:#2d6a7a;background:#f2f8fa">
+        <strong style="font-family:'Cinzel',serif;font-size:.76rem">${sa.provName}</strong>
+        <div style="font-size:.68rem;color:#777;margin-bottom:2px">Watched by your agent from ${SEASONS_SA[sa.sincePhase]||'later that turn'} onward:</div>
+        ${rows}
+      </div>`;
+    });
+  }
+
   // [Intelligence] log entries broken down by phase
   const intelLog=(report.lastTurnLog||[]).filter(e=>(e.text||'').startsWith('[Intelligence]'));
   if(intelLog.length>0){
@@ -2009,13 +2056,13 @@ function renderTitles(report){
     callCtrl=`<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
   }
 
-  // ── Item 14 (this session): always show the realm's share of the world's LAND-tax base and the
+  // ── Always show the realm's share of the world's total tax base (land AND sea) and the
   // Reckoning threshold, so the leader (and everyone) can gauge how close they are to calling it.
   // The Throne holder — who by definition commands the largest tax base — is called out by name.
   const throneMine=!!(t.holders&&t.holders.throne&&t.holders.throne.mine);
   const _gap=thr-pct;
   const shareLine=`<div style="background:#f0f4ea;border:1px solid #cdd8bf;border-radius:3px;padding:7px 10px;margin-bottom:10px;font-size:.78rem;color:#3a4a2a;line-height:1.5">
-    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's land-tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#777">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>'}
+    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#777">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>'}
   </div>`;
   el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
     + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
@@ -3852,12 +3899,21 @@ function projectedLedArmies(charId, upToPhaseExclusive){
     if(prevAction==='Recruit Armies'){
       const wrap=document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
       if(wrap){
-        wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
-          const v=cb.value||'';
-          if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
-          const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
-          for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
-        });
+        // Item 5 (this session): the default muster destination is still THIS character, but recruits
+        // sent to the province garrison ("to:garrison") or handed to a friendly hero ("to:<id>") do NOT
+        // join this character — so they must not show in this hero's projected led-army preview (that
+        // stale display was what made garrison-bound units look as though they marched off with the hero).
+        const destSel=wrap.querySelector('.po-recruit-dest');
+        const destTok=destSel?destSel.value:'to:self';
+        const goesToThisHero=!(destTok==='to:garrison'||(destTok&&destTok.startsWith('to:')&&destTok!=='to:self'));
+        if(goesToThisHero){
+          wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
+            const v=cb.value||'';
+            if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
+            const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
+            for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
+          });
+        }
       }
     } else if(prevAction==='Pick Up Army'){
       const ploc=predictedLocation(charId,prevPh);
@@ -4108,30 +4164,16 @@ function buildTargetField(c, ph, saved){
     }
 
     // ── PURSUE (AK [3.16]) ──
-    case 'Pursue':{
-      const seen=(report.visibleChars||[]).filter(x=>x.id!==c.id);
-      const sightings=(report.heroSightings||[]).filter(x=>x.id!==c.id);
-      const merged=[];
-      const push=(x,note)=>{ if(!merged.some(m=>String(m.id)===String(x.id))) merged.push({id:x.id,label:`${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'whereabouts uncertain'}${note}`}); };
-      seen.forEach(x=>push(x,''));
-      sightings.forEach(x=>push(x,' (last known)'));
-      if(merged.length===0){
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No characters known well enough to hunt" disabled>`;
-      }
-      const opts=merged.map(x=>`<option value="${x.id}" ${String(target)===String(x.id)?'selected':''}>${x.label}</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose the man to hunt —</option>${opts}</select>
-        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">He rides after this man for the rest of the turn, and his later orders wait until the chase is done. Both of you must be leading armies, or neither — otherwise the chase is called off.</div>`;
-    }
-
-    // ── ENCOUNTER CHARACTER ──
+    // ── ENCOUNTER CHARACTER ── (Item 2: now also does the chasing the old Pursue order did)
     case 'Encounter Character':{
-      // Only target visible enemy characters (not own, not wandering neutrals)
-      const visibleEnemies=(report.visibleChars||[]).filter(x=>x.player!==null&&x.player!==c.player);
-      const allTargets=visibleEnemies.map(x=>({id:x.id,label:`${x.name}${x.isKing?' ⚔ (king)':' — enemy hero'} (${x.locationName||'?'})`}));
-      if(allTargets.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No characters visible in your province" disabled>`;
-      const opts=allTargets.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.label}</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character —</option>${opts}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Character must be in the same province when this phase resolves. Note: Talk/Steal/Scout tactics are disabled in character encounters — only combat tactics apply.</div>`;
+      // Target any enemy character you can SEE — one standing in a province you own, a province where
+      // you have a character, or a province you spied. Your hero then CHASES them wherever they go and
+      // forces the meeting when he catches them (report.encounterTargets carries exactly these).
+      const targets=(report.encounterTargets||[]).filter(x=>x.id!==c.id);
+      if(targets.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
+      const opts=targets.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if he runs out of movement). When he catches them: two columns give battle; otherwise it is a personal duel (a quarry leading troops won't break ranks for one). Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
     }
 
     // ── STEAL ──
@@ -5197,6 +5239,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.09-1120</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.13-1614</div>
 </body>
 </html>
