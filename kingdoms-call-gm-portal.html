@@ -556,7 +556,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Feature','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
 // Alignment-signature actions and king-only actions — mirrored from the player portal.
 const ALIGN_ACTIONS_G={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
 const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker']);
@@ -564,7 +564,7 @@ const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker']);
 // then most-used first. (This GM mirror lists a subset of orders; the sort tolerates that.)
 const ACTION_DISPLAY_ORDER_G=[
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
-  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Feature','Encounter Character',
+  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
   'Spy','Steal','Practice Skill',
   'Use Item','Give Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
 ];
@@ -582,7 +582,7 @@ function actionsForG(ch){
 const SPELLS_BY_SCHOOL={
   white:['Resurrect','Part Sea','Bless Province','Holy Symbol','Spiritwrack','Sanctuary','Divine Judgment'],
   psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm','Mass Confusion','Dominate'],
-  illusory:['Illusory Terrain','Phantasmal Armies','Hide Features','Invisibility','Mirror Image','Phantom Host','Veil'],
+  illusory:['Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Mirror Image','Phantom Host','Veil'],
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon','Chain Lightning','Cataclysm'],
   necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy','Raise Wraiths',"Death's Dominion"],
 };
@@ -603,7 +603,7 @@ const MASTERY_UNLOCKS={
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Primal armies you lead fight +5% stronger for each level past 5.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Your bond with primal armies deepens further (+strength per level).',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
-  explorer:{6:'You now automatically spot every feature on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden feature or treasure site.'},
+  explorer:{6:'You now automatically spot every lair on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'+1 White Magic casting each turn.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'Your White Magic mastery deepens.',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'+1 Psychic Magic casting each turn.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'Your Psychic mastery deepens.',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
   illusory:{6:'+1 Illusory Magic casting each turn.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'Your Illusory mastery deepens.',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
@@ -618,7 +618,7 @@ const ENCOUNTER_TACTICS=[
   {code:'TA',label:'Talk — attempt to negotiate or parley'},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter'},
-  {code:'SC',label:'Scout — scout the feature for secrets'},
+  {code:'SC',label:'Scout — scout the lair for secrets'},
 ];
 
 // currentReport is used by buildTargetField — GM portal sets it to a stub before calling
@@ -780,13 +780,14 @@ function buildTargetField(c,ph,saved){
       return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
     case 'Explore':case 'Spy':case 'Defend':case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(current province)" disabled>`;
-    case 'Search Feature':{
+    case 'Search Feature': // legacy label (pre-Lair rename) — falls through
+    case 'Search Lair':{
       const loc=predictedLocation(c.id,ph);
       const pd=loc?provOrderData[loc.id]:null;
       const feats=(pd?.features||[]).map(f=>`<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}</option>`).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
-        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known features here" disabled>`;}
+        :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs here" disabled>`;}
     case 'Cast Spell':{
       const skills=c.skills||{};
       const spellList=Object.entries(SPELLS_BY_SCHOOL).filter(([school])=>_gmEffMagicLvl(c,school)>=1)
@@ -795,7 +796,7 @@ function buildTargetField(c,ph,saved){
       if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known" disabled>`;
       // ── Secondary target — same rules as the player portal / GM engine ──
       const selSpell=target||spellList[0]?.sp||'';
-      const NEEDS_PROV_G=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Features','Earthquake','Flood','Plague']);
+      const NEEDS_PROV_G=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Lairs','Earthquake','Flood','Plague']);
       const NEEDS_CHAR_G=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory']);
       let secG='';
       const casterLocG=(predictedLocation(c.id,ph)||{}).id??c.locationId;
@@ -813,7 +814,7 @@ function buildTargetField(c,ph,saved){
       } else if(NEEDS_CHAR_G.has(selSpell)){
         let chOpts='';
         if(selSpell==='Resurrect'){
-          chOpts=(report.knownDeadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.wasOwnHero?'':' ⚔'} — body in ${x.locationName||'?'} (t${x.killedOnTurn||'?'})</option>`).join('');
+          chOpts=(report.knownDeadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${x.isMonarch?' (your fallen monarch)':(x.wasOwnHero?'':' ⚔')} — body in ${x.locationName||'?'} (t${x.killedOnTurn||'?'})</option>`).join('');
         } else if(selSpell==='Clairvoyance'){
           chOpts=(report.everSeenChars||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — last seen ${x.lastLocName||'?'}</option>`).join('');
         } else if(selSpell==='Oratory'||selSpell==='Phantasmal Armies'){
@@ -1470,10 +1471,15 @@ function renderGMCharOrders(player, char, existingOrders){
     })),
     knownDeadHeroes:(()=>{
       const known=new Set(((gs.players||[])[char.player]||{}).knownDeadHeroIds||[]);
-      return (gs.heroGraveyard||[]).filter(g=>known.has(g.id)&&!g.isKing).map(g=>({
-        id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,
-        locationName:(gs.world?.provinces||[])[g.location]?.name||'?',
-        wasOwnHero:g.player===char.player}));
+      const _resMon=((gs.players||[])[char.player]||{})._resurrectableMonarchId;
+      return (gs.heroGraveyard||[]).filter(g=>known.has(g.id)&&(!g.isKing || (g._monarch&&g.player===char.player&&g.id===_resMon))).map(g=>{
+        const restId=g._monarch?monarchRestProvId(gs,g.player):null;
+        const locId=(restId!=null)?restId:g.location;
+        return {id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,
+        locationName:(gs.world?.provinces||[])[locId]?.name||'?',
+        isMonarch:g._monarch===true,
+        wasOwnHero:g.player===char.player};
+      });
     })(),
     everSeenChars:Object.values((((gs.players||[])[char.player]||{}).seenCharIntel)||{})
       .filter(x=>{const l=(gs.characters||[]).find(ch=>ch.id===x.id);return l&&l.alive;}),
@@ -1589,6 +1595,18 @@ function homeProvinceIdFor(gs, playerIndex){
   }
   if(fallback!=null) pl.homeProvinceId=fallback; // freeze it from now on
   return fallback;
+}
+
+// Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
+// is borne home: it lies in the player's home province while they still hold it, else in their
+// wealthiest remaining province. Returns null only if the dynasty holds no land at all (extinct).
+function monarchRestProvId(gs, playerIndex){
+  const pl=(gs&&gs.players||[])[playerIndex]; if(!pl) return null;
+  const owned=(pl.provinces||[]).map(id=>(gs.world&&gs.world.provinces||[])[id]).filter(Boolean);
+  if(!owned.length) return null;
+  const home=homeProvinceIdFor(gs, playerIndex);
+  if(home!=null && (pl.provinces||[]).includes(home)) return home;
+  return owned.reduce((best,pv)=>(pv.tax>=(best?(best.tax||0):0)?pv:best), owned[0]).id;
 }
 // The column the map should be rolled around, or null to leave the map unshifted.
 function mapCentreColFor(gs, playerIndex){
@@ -2492,7 +2510,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Sea Chart of the Deep',desc:'Naval +1, may enter any sea province freely',effect:{stat:'naval',bonus:1},tier:1},
   // ── Sage ──
   {name:'Sage\'s Crown',desc:'Sage +2',effect:{stat:'sage',bonus:2},tier:2},
-  {name:'Philosopher\'s Lens',desc:'Sage +1, reveals one random feature when exploring',effect:{stat:'sage',bonus:1},tier:1},
+  {name:'Philosopher\'s Lens',desc:'Sage +1, reveals one random lair when exploring',effect:{stat:'sage',bonus:1},tier:1},
   // ── Spy ──
   {name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2},tier:2},
   {name:'Crystal Orb',desc:'Spy always succeeds — no roll needed',effect:{stat:'oracle',bonus:1},tier:3},
@@ -2505,7 +2523,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Green Stone of Speaking',desc:'Druid +1, and Talk can pacify even creatures that would normally never parley',effect:{stat:'druid',bonus:1},tier:1},
   // ── Explorer ──
   {name:'Ring of the Explorer',desc:'Explorer +2',effect:{stat:'explorer',bonus:2},tier:2},
-  {name:'Compass of the Wanderer',desc:'Explorer +1, first visit to a province reveals all features',effect:{stat:'explorer',bonus:1},tier:1},
+  {name:'Compass of the Wanderer',desc:'Explorer +1, first visit to a province reveals all lairs',effect:{stat:'explorer',bonus:1},tier:1},
   // ── White Magic ──
   {name:'Holy Reliquary',desc:'White Magic +2',effect:{stat:'white',bonus:2},tier:2},
   {name:'Chalice of Dawn',desc:'White Magic +1, Divine armies +15% str',effect:{stat:'white',bonus:1},tier:1},
@@ -3388,7 +3406,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       // (The king's home province gets its full racial pool restored separately.)
       let armyPool;
       if(HUMANOID_RACES_GEN.has(race)){
-        const hp=buildHumanoidPool(terrain, race, rP(2,3), Math.random);
+        const hp=buildHumanoidPool(terrain, race, 2, Math.random); // item: non-home humanoid provinces offer exactly TWO recruitable land types (home restores its full roster separately)
         armyPool=[...hp.types,...hp.garrison];
       } else {
         // Primal (single wild unit) and sea provinces keep whatever their pool already holds.
@@ -3897,8 +3915,8 @@ const TITLE_DEFS=[
   {key:'vault',   name:'The Vaultkeeper',   prize:10, kingdomLevel:true, req:'Hold the largest treasury (most gold) in the world.', perk:'Interest of 10% of your treasury each turn (capped +5g).'},
   {key:'marshal', name:'The Grand Marshal', prize:10, req:'Amass the most land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost).', perk:'Armies you lead fight at +5% strength.'},
   {key:'sea',     name:'The Sea Lord',      prize:10, req:'Amass the most sea-battle merit, plus rich sea provinces held and Naval skill levels.', perk:'Fleets you lead fight at +5% strength at sea.'},
-  {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of feature guardians (half credit for beasts pacified).', perk:'+50% hoard gold and +1 extra max-HP from every beast overcome.'},
-  {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus features first discovered and Sage discoveries.', perk:'+5% exploration on each Explore order.'},
+  {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (half credit for beasts pacified).', perk:'+50% hoard gold and +1 extra max-HP from every beast overcome.'},
+  {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'+5% exploration on each Explore order.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'+1 spell of every school each turn.'},
   {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'+50% HP recovered when resting.'},
 ];
@@ -4281,11 +4299,17 @@ function buildTurnReport(gameState, playerIndex){
     inVisibleProv:visibleProvIds.has(g.location)}));
   // Dead heroes this player has EVER seen (for Resurrect targeting)
   const knownDeadHeroes=(gameState.heroGraveyard||[])
-    .filter(g=>g.player===playerIndex||knownEver.has(g.id))
-    .map(g=>({id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,race:g.race||null,
-      skills:g.skills||{},alignment:g.alignment||'Neutral',temper:g.temper||'Brave',locationId:g.location,
-      locationName:gameState.world.provinces[g.location]?.name||'unknown',
-      wasOwnHero:g.player===playerIndex}));
+    // Own resurrectable monarch is always shown to the player; other players' monarchs never leak.
+    .filter(g=>(g._monarch ? (g.player===playerIndex && ((gameState.players[playerIndex]||{})._resurrectableMonarchId===g.id)) : (g.player===playerIndex||knownEver.has(g.id))))
+    .map(g=>{
+      const restId=g._monarch?(monarchRestProvId(gameState,g.player)):null;
+      const locId=(restId!=null)?restId:g.location;
+      return {id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,race:g.race||null,
+      skills:g.skills||{},alignment:g.alignment||'Neutral',temper:g.temper||'Brave',locationId:locId,
+      locationName:gameState.world.provinces[locId]?.name||'unknown',
+      isMonarch:g._monarch===true,
+      wasOwnHero:g.player===playerIndex};
+    });
 
   // Mercenary sightings — visible if in owned province or where player has a character
   const mercIntel=[];
@@ -4433,6 +4457,7 @@ function buildTurnReport(gameState, playerIndex){
           hadBattle:!!p._hadBattleThisTurn,
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,
+          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
           characters:liveChars(),
         };
       } else if(isLive){
@@ -4441,7 +4466,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn,
-          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared})),
+          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
           characters:liveChars(),
         };
       } else if(isBorder){
@@ -4450,7 +4475,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn,
-          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared})),
+          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
           characters:[],
         };
       } else if(memo){
@@ -4504,6 +4529,7 @@ function buildTurnReport(gameState, playerIndex){
   // live holders without runTurn's G-scoped helpers. Each perk is tracked separately for itemisation.
   let throneG=0,vaultG=0,cutpurseG=0,championG=0,castellanG=0;
   try{
+    if(!_titlesPublic) throw 'titles-hidden'; // Item: title perks (incl. their tax gold) take effect only once Titles are revealed at turn 5 — matching the gated end-of-turn collection.
     const _std=(computeStandings(gameState).titles)||{};
     const _min=(computeMinorTitles(gameState))||{};
     const _holdsTitle=(key)=>!!(_std[key]&&_std[key].playerIndex===playerIndex);
@@ -4583,7 +4609,7 @@ function buildTurnReport(gameState, playerIndex){
     discoveries:(player.discoveries||[]).map(d=>({id:d.id,name:d.name,category:d.category,desc:d.desc,turnDiscovered:d.turnDiscovered})),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting
     // Any dead hero visible to this player can be resurrected — own or enemy
-    deadHeroes:(gameState.heroGraveyard||[]).filter(g=>visibleProvIds.has(g.location)||g.player===playerIndex).map(g=>({id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,wasOwnHero:g.player===playerIndex})),
+    deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const restId=g._monarch?monarchRestProvId(gameState,g.player):null;const locId=(restId!=null)?restId:g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
     characters:charReports,ownedProvinces,intel,
     visitedProvinceIds:[...visitedProvIds],
     worldMeta, availableHeroesByProv, provinceOrderData,
@@ -4673,7 +4699,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd23',name:'Disguise Techniques',category:'Espionage',desc:'Heroes you send on Spy orders cannot be detected by enemy intrusion notifications.',effect:{type:'spyDisguise'}},
   // ── Magic & Scholarship ──
   {id:'sd24',name:'The Compass',category:'Scholarship',desc:'Explorer ability of all your characters treated as 1 level higher.',effect:{type:'skillBonus',skill:'explorer',bonus:1}},
-  {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'+10% chance of finding a magic item in any feature your characters clear.',effect:{type:'itemChanceBonus',pct:0.10}},
+  {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'+10% chance of finding a magic item in any lair your characters clear.',effect:{type:'itemChanceBonus',pct:0.10}},
   {id:'sd26',name:'Astronomical Tables',category:'Scholarship',desc:'All Practice orders for your characters have +5% success chance.',effect:{type:'practiceBonus',pct:0.05}},
   {id:'sd27',name:'Arcane Codex',category:'Scholarship',desc:'All spell casting chances for your characters increased by +10%.',effect:{type:'spellBonus',pct:0.10}},
   {id:'sd28',name:'Medical Arts',category:'Scholarship',desc:'Rest orders heal 3–7 HP instead of 2–5 HP.',effect:{type:'healBonus',min:3,max:7}},
@@ -4689,7 +4715,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters\' Melee and Archery treated as 1 level higher in personal combat.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
   {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'Hero desertion chance on unpaid wages reduced by 20%.',effect:{type:'reduceDesertion',pct:0.20}},
   // ── Special ──
-  {id:'sd39',name:'Arcane Observatory',category:'Special',desc:'Once per game: reveal the full map (all provinces, owners, and features) for one turn.',effect:{type:'fullMapReveal'}},
+  {id:'sd39',name:'Arcane Observatory',category:'Special',desc:'Once per game: reveal the full map (all provinces, owners, and lairs) for one turn.',effect:{type:'fullMapReveal'}},
   {id:'sd40',name:'Dragon Taming',category:'Special',desc:'Your characters may lead Eagle Riders and other flying units without Druidic ability.',effect:{type:'flyingNoDruid'}},
 ];
 
@@ -4735,13 +4761,13 @@ const SPELL_DEFS_P={
 
   // ══ ILLUSORY MAGIC ══
   'Illusory Terrain':{school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Action: a province you are in or adjacent to appears as a different random terrain on enemy maps (sea may look like land or vice-versa). Enemies who fight there do so at 80% strength. An enemy hero who enters dispels it at the end of that turn; otherwise 20% chance to fade each turn.',
+    desc:'Action: a province you are in or adjacent to shows enemies a false, ever-shifting terrain on their maps. Any enemy who fights there is disoriented — each of their units fights as if caught in the worst terrain for its kind, always at least a 15% strength reduction. An enemy hero who enters dispels it at the end of that turn; otherwise 20% chance to fade each turn.',
     fn:'illusory_terrain'},
   'Phantasmal Armies':{school:'illusory',target:'character',encounter:false,phase:true,
     desc:'Action: illusory soldiers march with a friendly army-leading hero (you or an adjacent ally) for the rest of the turn, adding +10% per caster level to the strength of the armies they directly lead in battle. Not cumulative.',
     fn:'illusory_phantasmal'},
-  'Hide Features':  {school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Action: all features you have discovered in a province you are in or adjacent to become invisible to explorers. 10% chance to fade each turn.',
+  'Hide Lairs':  {school:'illusory',target:'province',encounter:false,phase:true,
+    desc:'Action: all lairs you have discovered in a province you are in or adjacent to become invisible to explorers. 10% chance to fade each turn.',
     fn:'illusory_hide_feature'},
   'Invisibility':   {school:'illusory',target:'none',encounter:true,phase:false,
     desc:'Combat: the caster becomes twice as hard to hit for the fight, gains +15% to a following Steal and +30% to Flee.',
@@ -4781,7 +4807,7 @@ const SPELL_DEFS_P={
     desc:'Combat: 10% per Necromancy level to deal damage equal to 50% of the enemy\'s maximum health.',
     fn:'necromancy_hand'},
   'Plague':         {school:'necromancy',target:'province',encounter:false,phase:true,
-    desc:'Action: in your province or an adjacent one, each humanoid army unit has a (10% + 10%/level) chance to drop an experience level; survivors are immunised (half chance thereafter). The plague then spreads to adjacent provinces (15% each per phase) until turn\'s end. Not cumulative.',
+    desc:'Action: in your province or an adjacent one, each humanoid army unit has a (10% + 5%/level) chance to drop an experience level; survivors are immunised (half chance thereafter). The plague then spreads to adjacent provinces (15% each per phase) until turn\'s end. Not cumulative.',
     fn:'necromancy_plague'},
 
   // ══ LEVEL 7 & 9 MASTERY SPELLS (unlocked by school level 7 / 9; experience only) ══
@@ -5110,6 +5136,29 @@ async function runTurn(){
   function playerHoldsTitle(pi,key){ return !!(G._titleHolders&&G._titleHolders[key]&&G._titleHolders[key].playerIndex===pi); }
   function charMinor(c,key){ return !!(c&&G._minorHolders&&G._minorHolders[key]&&G._minorHolders[key].charId===c.id); }
 
+  // ── EVIL conquest doctrine (loot OR enslave) ── applied whenever an Evil character CONQUERS a
+  // province by force. Previously this lived inline at only the neutral-guard conquest path, so
+  // taking an enemy province, a garrison, or leaderless defenders silently skipped it (Enslave
+  // "did nothing"). Now every conquest site calls this. Runs once per province per turn.
+  function applyEvilConquest(cc, prov, pl){
+    if(!cc||!prov||!pl) return;
+    if(G.players[cc.player]?.alignment!=='Evil') return;
+    if(prov._evilConqTurn===G.turn) return; prov._evilConqTurn=G.turn;
+    const mode=(cc.encounterPlan?.evilMode)||'terror';
+    const humanoid=prov.terrain!=='sea' && !String(prov.race||'').startsWith('Primal');
+    if(mode==='enslave' && humanoid){
+      const enType=(prov.armyTypes&&prov.armyTypes[0])||'Shieldwall Levies';
+      prov.garrisonArmies=prov.garrisonArmies||[];
+      prov.garrisonArmies.push({type:enType,quality:'Green',race:prov.race||'Human',unitName:armyUnitName(enType)});
+      prov._enslavedUntil=G.turn+3;
+      log('combat',`⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,{actor:cc.player,targets:[cc.player],provinceId:prov.id,public:true});
+    } else {
+      if(mode==='enslave' && !humanoid) log('combat',`⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,{actor:cc.player,targets:[cc.player],provinceId:prov.id});
+      const loot=Math.floor((prov.tax||0)*0.5);
+      if(loot>0){ pl.gold=(pl.gold||0)+loot; log('combat',`⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`,{actor:cc.player,targets:[cc.player],provinceId:prov.id}); }
+    }
+  }
+
   // Flush any stale-order warnings collected during the merge phase
   if(staleOrderWarnings.length>0){
     staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true}));
@@ -5326,6 +5375,21 @@ function terrainMod(armyType, terrain){
   const t=TERRAIN_MODS[terrain];
   if(!t) return 1.0;
   return t[armyType]??1.0;
+}
+
+// ── ILLUSORY TERRAIN (per-unit) ────────────────────────────────────────────────────────────────
+// A non-caster force fighting in a province cloaked by Illusory Terrain is disoriented: every unit
+// fights as though caught in the WORST possible ground for its kind, but always at LEAST a 15%
+// reduction. Returns the per-unit multiplier (≤0.85). Worst is taken over the land terrains only —
+// 'sea' is excluded (its land-army penalty is applied separately via seaPenalty, and it would
+// otherwise wrongly floor naval/flying units). Flyers are terrain-immune (worst stays 1.0) but the
+// illusion still confuses them down to the 0.85 floor. Stacks on top of the real terrain penalty,
+// exactly as the old flat 20% did.
+const ILLUSORY_TERRAIN_KEYS=['plain','desert','forest','jungle','mountain'];
+function illusoryTerrainMult(armyType){
+  let worst=1.0;
+  for(const t of ILLUSORY_TERRAIN_KEYS){ const m=terrainMod(armyType,t); if(m<worst) worst=m; }
+  return Math.min(0.85, worst);
 }
 
 // Module-level base unit strength (type × quality), independent of terrain/druid/temporary reductions.
@@ -5744,7 +5808,7 @@ const BATTLE_ARMY_SPELLS={
     // Item 5: frame HOW the battle began — who advanced, into whose ground — so the report doesn't
     // jump straight into combat with no context.
     const _npcHeldBy=neutralGuardHero?`${neutralGuardHero.name.replace(' (wandering)','')} and the local defenders`:`its neutral defenders`;
-    narrative.push(`➡️ ${c.name} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`);
+    if(!c._resumeBattle) narrative.push(`➡️ ${c.name} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     narrative.push(forceMarker(c.name, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`));
     if(neutralGuardHero){
@@ -6122,11 +6186,17 @@ const BATTLE_ARMY_SPELLS={
     const terrainFront=TERRAIN_FRONT_WIDTH[prov.terrain]??6;
     // Each side fields up to terrainFront units in the front row (flyers always count as front)
     const lineWidth=terrainFront;
+    // Illusory Terrain: if this province is cloaked by an enemy's illusion, the attacker is
+    // disoriented — each unit fights as though caught in the worst ground for its kind (min −15%).
+    const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
+    const _atkIllActive = (_illCasterN!=null && c.player!==_illCasterN);
+    if(_atkIllActive) narrative.push(`  🌫 The ever-shifting illusory ground of ${prov.name} throws ${cName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`);
     const armiesWithStr=armies.map(a=>{
       let base=armStr(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault});
       if(MISSILE_ARMIES.has(a.type)) base*=archMissileBonus;
       if(SEA_TYPES.has(a.type)){base*=(isLandBattle?1:navalFleetBonus);}
       else if(!FLYING_TYPES.has(a.type)){base*=tacMulted(effectiveTactBonus,c);}
+      if(_atkIllActive) base*=illusoryTerrainMult(a.type);
       return{a,base,fly:FLYING_TYPES.has(a.type)};
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base); // flying first, then strongest
 
@@ -6200,10 +6270,7 @@ const BATTLE_ARMY_SPELLS={
       const defFlankCount=groundDef.length-defLineWidth;
       narrative.push(`📊 Defenders: front row (${defLineWidth} units) — ${groundDef.slice(0,defLineWidth).map(x=>x.a.unitName||x.a.type).join(', ')}. Rear (${defFlankCount} units at ×0.5) — ${groundDef.slice(defLineWidth).map(x=>x.a.unitName||x.a.type).join(', ')}.`);
     }
-    // Illusory Terrain: any player fighting here who did not cast the illusion fights at 80%.
-    const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
-    const atkIllMult = (_illCasterN!=null && c.player!==_illCasterN) ? 0.8 : 1;
-    if(atkIllMult<1) narrative.push(`  🌫 The illusory terrain of ${prov.name} disorients ${cName}'s forces — they fight at 80% strength.`);
+    // (Illusory Terrain is applied per-unit above, folded into each attacker's strength.)
     // L7/L9 MASTERY ORDER battle modifiers vs an NPC garrison (c is always the attacker here;
     // Feigned Retreat is purely defensive and correctly has no place on an attack).
     let atkOrdN=1, defOrdN=1;
@@ -6213,7 +6280,7 @@ const BATTLE_ARMY_SPELLS={
       const _coastalN=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.terrain==='sea');
       if(_coastalN){ atkOrdN*=1.25; narrative.push(`  ⚓ ${cName} storms ashore in a Raid the Coast — +25% strength.`); }
     }
-    const atkStr=rawAtkStr*atkIllMult*_npcAtkMorale*atkOrdN;
+    const atkStr=rawAtkStr*_npcAtkMorale*atkOrdN;
     const defStr=rawDefStr*defBonus*homeBonus*_npcDefMorale*defOrdN;
     // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
     { const _rc=G.characters[c.id]; if(_rc) delete _rc._phantasmalBonus; if(c) delete c._phantasmalBonus; }
@@ -6273,7 +6340,7 @@ const BATTLE_ARMY_SPELLS={
     if(effectiveTactBonus>1) _atkInc.push(`tactical ×${tactBonus.toFixed(1)}`);
     if(fanMult>1) _atkInc.push(`fanaticism ×${fanMult.toFixed(2)}`);
     if(finalAtkMod>1) _atkInc.push(`discoveries ×${finalAtkMod.toFixed(2)}`);
-    if(atkIllMult<1) _atkInc.push('illusion ×0.80');
+    if(_atkIllActive) _atkInc.push('illusory terrain (worst-terrain, min −15%)');
     if(_npcAtkMorale!==1) _atkInc.push(`morale ×${_npcAtkMorale.toFixed(2)}`);
     if(_consecNPC) _atkInc.push('consecrated ×0.85');
     if(atkOrdN!==1) _atkInc.push(`orders ×${atkOrdN.toFixed(2)}`);
@@ -7280,6 +7347,18 @@ const BATTLE_ARMY_SPELLS={
         if(Math.random()*100<mercy){
           cbt.hp=1; if(cbt.ref)cbt.ref.hp=1; cbt._begged=true; state.fledBy=cbt;
           narrative.push(`  🙏 ${cbt.name} falls, but begs for mercy — and ${foe.name} grants it. ${cbt.name} flees the field with their life.`);
+          // Consequences of a spared coward (design update): they are broken for the rest of the turn
+          // (all remaining actions lost), slink back to their home province by next turn, and yield a
+          // random magic item to the victor as the price of their life.
+          if(cbt.ref){
+            cbt.ref._mercyFledTurn=G.turn;                 // out of action this turn; relocated home at end of turn
+            if(foe && foe.kind==='character' && foe.ref && Array.isArray(cbt.ref.items) && cbt.ref.items.length>0){
+              const _idx=Math.floor(Math.random()*cbt.ref.items.length);
+              const _lost=cbt.ref.items.splice(_idx,1)[0];
+              foe.ref.items=foe.ref.items||[]; foe.ref.items.push(_lost);
+              narrative.push(`  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
+            }
+          }
         }
       }
     }
@@ -7406,7 +7485,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Item 5: frame how the battle began for PvP too — who advanced, into whose province.
     const _pvpHeldBy=(prov.owner!=null&&G.players[prov.owner])?`${G.players[prov.owner].name}`:`${G.players[def.player]?.name||def.name}`;
-    narrative.push(`➡️ ${atk.name} (${G.players[atk.player]?.name}) moves into ${prov.name}, held by ${_pvpHeldBy} — a battle is initiated.`);
+    if(!atk._resumeBattle) narrative.push(`➡️ ${atk.name} (${G.players[atk.player]?.name}) moves into ${prov.name}, held by ${_pvpHeldBy} — a battle is initiated.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''}, with`));
     narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''}, with`));
@@ -7700,10 +7779,15 @@ const BATTLE_ARMY_SPELLS={
     const pvpFront=PVP_TERRAIN_FRONT[pvpTerrain]??6;
     const pvpAtkCt=atkArmies.length; const pvpDefCt=defArmies.length;
 
+    // Illusory Terrain (per-unit): a side that did NOT cast the illusion is disoriented — each unit
+    // fights as though caught in the worst terrain for its kind (min −15%), folded into its strength.
+    const _illCasterP = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
+    const _atkIllActiveP = (_illCasterP!=null && atk.player!==_illCasterP);
+    const _defIllActiveP = (_illCasterP!=null && def.player!==_illCasterP);
     // PvP battle lines: sort by strength desc (flying first), strongest in front row
     const pvpFlankMult=hasDisc(atk.player,'sd09')?0.75:0.50;
-    const atkSorted=[...atkArmies].map(a=>({a,s:pvpArmStr(a,atk,atkAlign2,atkTactBonus),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
-    const defSorted=[...defArmies].map(a=>({a,s:pvpArmStr(a,def,defAlign2,defTactBonus),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
+    const atkSorted=[...atkArmies].map(a=>({a,s:pvpArmStr(a,atk,atkAlign2,atkTactBonus)*(_atkIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
+    const defSorted=[...defArmies].map(a=>({a,s:pvpArmStr(a,def,defAlign2,defTactBonus)*(_defIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     // Ground units fill the terrain-limited front; flyers always front; overflow flanks at reduced effect
     const pvpLineStr=(sorted)=>{
       let total=0,nonFly=0;
@@ -7743,12 +7827,9 @@ const BATTLE_ARMY_SPELLS={
     if(atkDiscBonus>1) narrative.push(`${atkName}'s kingdom discoveries: +${((atkDiscBonus-1)*100).toFixed(0)}% army str.`);
     if(defDiscBonus>1) narrative.push(`${defName}'s kingdom discoveries: +${((defDiscBonus-1)*100).toFixed(0)}% army str.`);
 
-    // Illusory Terrain: a player fighting here who did not cast the illusion fights at 80%.
-    const _illCasterP = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
-    const atkIllP = (_illCasterP!=null && atk.player!==_illCasterP) ? 0.8 : 1;
-    const defIllP = (_illCasterP!=null && def.player!==_illCasterP) ? 0.8 : 1;
-    if(atkIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${atkName}'s forces — they fight at 80% strength.`);
-    if(defIllP<1) narrative.push(`  🌫 Illusory terrain disorients ${defName}'s forces — they fight at 80% strength.`);
+    // (Illusory Terrain is applied per-unit above, folded into each side's strength.)
+    if(_atkIllActiveP) narrative.push(`  🌫 The ever-shifting illusory ground of ${prov.name} throws ${atkName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`);
+    if(_defIllActiveP) narrative.push(`  🌫 The ever-shifting illusory ground of ${prov.name} throws ${defName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`);
     // WHITE L7 — Sanctuary: enemies of the warding caster fight at −25% in the warded province this turn.
     const _sanctBy = (prov&&prov._sanctuaryTurn===G.turn) ? prov._sanctuaryBy : null;
     const atkSanct = (_sanctBy!=null && atk.player!==_sanctBy) ? 0.75 : 1;
@@ -7775,8 +7856,8 @@ const BATTLE_ARMY_SPELLS={
     // as an explicit ×defTactBonus here. The attacker only gets it once (no ×atkTactBonus below), so
     // this over-strengthened every PvP land defender with Tactical skill (×1.44 at Tac 2 up to ×4.0
     // at Tac 5). defRaw already carries it; drop the duplicate so both sides are symmetric.
-    const atkBaseStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*atkIllP*_consecPenalty*atkSanct*atkOrd;
-    const defBaseStr=(defRaw*defFanMult*defBonus*defMorale*defDiscBonus)*defIllP*defSanct*defOrd;
+    const atkBaseStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*_consecPenalty*atkSanct*atkOrd;
+    const defBaseStr=(defRaw*defFanMult*defBonus*defMorale*defDiscBonus)*defSanct*defOrd;
     // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
     // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
     const battleRollRangePvP=Math.max(1, Math.max(atkBaseStr, defBaseStr) * 0.7);
@@ -7796,7 +7877,7 @@ const BATTLE_ARMY_SPELLS={
     if(atkFanMult>1) _pAtkInc.push(`fanaticism ×${atkFanMult.toFixed(2)}`);
     if(atkDiscBonus>1) _pAtkInc.push(`discoveries ×${atkDiscBonus.toFixed(2)}`);
     if(atkMorale<1) _pAtkInc.push(`duel morale ×${atkMorale.toFixed(2)}`);
-    if(atkIllP<1) _pAtkInc.push('illusion ×0.80');
+    if(_atkIllActiveP) _pAtkInc.push('illusory terrain (worst-terrain, min −15%)');
     if(_consecPenalty<1) _pAtkInc.push('consecrated ×0.85');
     if(atkSanct<1) _pAtkInc.push('sanctuary ×0.75');
     if(atkOrd!==1) _pAtkInc.push(`orders ×${atkOrd.toFixed(2)}`);
@@ -7806,7 +7887,7 @@ const BATTLE_ARMY_SPELLS={
     if(defBonus>1) _pDefInc.push(`defender ×${defBonus.toFixed(2)}`);
     if(defDiscBonus>1) _pDefInc.push(`discoveries ×${defDiscBonus.toFixed(2)}`);
     if(defMorale<1) _pDefInc.push(`duel morale ×${defMorale.toFixed(2)}`);
-    if(defIllP<1) _pDefInc.push('illusion ×0.80');
+    if(_defIllActiveP) _pDefInc.push('illusory terrain (worst-terrain, min −15%)');
     if(defSanct<1) _pDefInc.push('sanctuary ×0.75');
     if(defOrd!==1) _pDefInc.push(`orders ×${defOrd.toFixed(2)}`);
     narrative.push(`📊 **Battle stats:**`);
@@ -8397,6 +8478,33 @@ const BATTLE_ARMY_SPELLS={
           if(!p.knownDeadHeroIds.includes(deadChar.id)) p.knownDeadHeroIds.push(deadChar.id);
         }
       });
+    } else {
+      // MONARCH death (item: dead kings resurrectable). Record the fallen king to the graveyard so
+      // the player who controlled them — and ONLY that player — may recall them with Resurrect. The
+      // body is borne home (home province, or wealthiest owned if home has been lost). Only the MOST
+      // RECENTLY fallen monarch of a dynasty is resurrectable: when a new monarch falls, the one they
+      // replaced is lost forever (its grave is purged), and so on down the line of succession.
+      const pKing=(deadChar.player!=null)?G.players[deadChar.player]:null;
+      if(pKing){
+        // The previously-resurrectable monarch (whom this king's line replaced) passes beyond recall.
+        if(pKing._resurrectableMonarchId!=null && pKing._resurrectableMonarchId!==deadChar.id){
+          G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==pKing._resurrectableMonarchId);
+        }
+        recordHeroGrave(deadChar);
+        const grec=(G.heroGraveyard||[]).find(g=>g.id===deadChar.id);
+        if(grec){
+          grec.isKing=true; grec._monarch=true;
+          grec.skills={...(deadChar.skills||{})}; grec.maxHp=deadChar.maxHp||15;
+          const restId=monarchRestProvId(G, deadChar.player);
+          grec.location=(restId!=null)?restId:deadChar.location;
+        }
+        pKing._resurrectableMonarchId=deadChar.id;
+        // The controlling player always knows their own monarch has fallen and where the body lies.
+        if(!Array.isArray(pKing.seenDeadHeroIds)) pKing.seenDeadHeroIds=[];
+        if(!pKing.seenDeadHeroIds.includes(deadChar.id)) pKing.seenDeadHeroIds.push(deadChar.id);
+        if(!Array.isArray(pKing.knownDeadHeroIds)) pKing.knownDeadHeroIds=[];
+        if(!pKing.knownDeadHeroIds.includes(deadChar.id)) pKing.knownDeadHeroIds.push(deadChar.id);
+      }
     }
     deadChar.alive=false;deadChar.killedThisTurn=true;
   }
@@ -8405,7 +8513,7 @@ const BATTLE_ARMY_SPELLS={
   // (buildPhaseIntents / phaseDependencies) so both always agree on what a character is doing.
   const PHASE_ACTION_MAP={
     'move':'move','explore':'explore','explore province':'explore',
-    'search':'search','search feature':'search',
+    'search':'search','search lair':'search','search feature':'search', // 'search feature' kept as a backward-compat alias for orders written before the Lair rename
     'recruit':'recruit','recruit armies':'recruit',
     'hire':'hire','hire hero':'hire',
     'leave_army':'leave_army','leave/transfer army':'leave_army','leave army':'leave_army','transfer army':'leave_army',
@@ -8640,14 +8748,22 @@ const BATTLE_ARMY_SPELLS={
             toProv.features.forEach((f,idx)=>{
               if(!featDiscovered(f,c.player)&&!f._hidden&&(toProv.explored>=(thresh*(idx+1))||perkTier(c,'explorer')>0)){ // LEVEL 6+ PERK — Pathfinder: auto-spot on entry
                 discoverFeat(f,c.player); TM(c).featuresFound+=1; // TITLE MERIT: Loremaster
-                _spotted.push(f.name);
+                _spotted.push(f);
               }
             });
+            // Item: report a spotted-on-entry lair in the SAME style as an Explore discovery, and note
+            // when a lair the character stumbles into has already been cleared (no guardian remains).
+            const _artM=(n)=>{ if(!n) return 'a creature'; if(/s$/.test(n)) return n; return (/^[aeiou]/i.test(n)?'an ':'a ')+n; };
             if(_spotted.length===1){
-              _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} notices the ${_spotted[0]}!`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
+              const f=_spotted[0];
+              const tail=f.cleared
+                ? `Its guardian has already been slain — the lair lies cleared.`
+                : `Legend says it is guarded by ${_artM(f.monster?.name)}.`;
+              _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} discovers the ${f.name}! ${tail}`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
             } else if(_spotted.length>1){
-              const list=_spotted.slice(0,-1).map(n=>'the '+n).join(', ')+' and the '+_spotted[_spotted.length-1];
-              _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} notices ${list}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
+              const frags=_spotted.map(f=>`the ${f.name}${f.cleared?' (already cleared)':` (guarded by ${_artM(f.monster?.name)})`}`);
+              const list=frags.slice(0,-1).join(', ')+' and '+frags[frags.length-1];
+              _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} discovers ${list}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
             }
           }
         }
@@ -8785,25 +8901,7 @@ const BATTLE_ARMY_SPELLS={
             if(defSurvivors.length===0){
             toProv.owner=c.player;toProv.neutralDefenders=[];
             player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
-            // Evil alignment: instant looting — gain 50% of province tax immediately
-            if(G.players[c.player]?.alignment==='Evil'){
-              const _evilMode=(c.encounterPlan?.evilMode)||'terror';
-              const _humanoidConq=toProv.terrain!=='sea'&&!(toProv.race||'').startsWith('Primal');
-              if(_evilMode==='enslave'&&_humanoidConq){
-                // ENSLAVE — press the beaten province: a free Green garrison unit of the native
-                // type, but the resentful populace pays −1 tax for the next 3 turns. Replaces the
-                // 50% plunder (chains, not coin) and never spreads Terror.
-                const _enType=(toProv.armyTypes&&toProv.armyTypes[0])||'Shieldwall Levies';
-                toProv.garrisonArmies=toProv.garrisonArmies||[];
-                toProv.garrisonArmies.push({type:_enType,quality:'Green',race:toProv.race||'Human',unitName:armyUnitName(_enType)});
-                toProv._enslavedUntil=G.turn+3;
-                log('combat',`⛓ Enslavement: ${c.name} presses the beaten folk of ${toProv.name} into service — a Green ${_enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
-              } else {
-                if(_evilMode==='enslave'&&!_humanoidConq) log('combat',`⛓ ${c.name} would enslave ${toProv.name}, but there are no humanoid folk here to press — the forces plunder instead.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
-                const loot=Math.floor((toProv.tax||0)*0.5);
-                if(loot>0){player.gold=(player.gold||0)+loot;log('combat',`⚔ Evil looting: ${c.name}'s forces plunder ${toProv.name} — ${loot}g seized immediately!`,{actor:c.player,targets:[c.player],provinceId:toProv.id});}
-              }
-            }
+            applyEvilConquest(c, toProv, player); // Evil doctrine: loot or enslave
             toProv._hadBattleThisTurn=true;
           log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
@@ -8967,6 +9065,7 @@ const BATTLE_ARMY_SPELLS={
                 G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
                 toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                 log('combat',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+                applyEvilConquest(c, toProv, player);
               }
             } else {
               // Attacker repelled. combatVsChar fights on COPIES and decides the attacker's fate on
@@ -9030,6 +9129,7 @@ const BATTLE_ARMY_SPELLS={
                     G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
                     toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                     log('combat',`${c.name} takes ${toProv.name} as its garrison withdraws!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+                    applyEvilConquest(c, toProv, player);
                   } else {
                     // Beaten but not broken — the province is still held and still contested.
                     toProv._battleUnresolved=true;
@@ -9039,6 +9139,7 @@ const BATTLE_ARMY_SPELLS={
                   G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
                   toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                   log('combat',`${c.name} breaks through the last of the garrison and seizes ${toProv.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+                  applyEvilConquest(c, toProv, player);
                 }
               } else {
                 // Repelled. combatVsNPC has already decided the attacker's fate on the real
@@ -9058,6 +9159,7 @@ const BATTLE_ARMY_SPELLS={
               toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
               log('move',`${c.name} seizes the undefended province of ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+              applyEvilConquest(c, toProv, player);
             }
           }
         } else {
@@ -9085,6 +9187,7 @@ const BATTLE_ARMY_SPELLS={
                 player.merits+=toProv.tax; c.merits=(c.merits||0)+toProv.tax;
                 if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                 log('combat',`${c.name} overcomes the last of the leaderless defenders and claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+                applyEvilConquest(c, toProv, player);
               }
             } else {
               // Repelled by a garrison with no commander — back the way they came.
@@ -9859,6 +9962,20 @@ const BATTLE_ARMY_SPELLS={
         }
         if(removed.length===0){log('system',`${c.name}: could not find specified armies to transfer.`,{actor:c.player,targets:[c.player]});break;}
 
+        // Bug fix (partial transfer): the sea-move pool is built ONCE at turn start. A force that was
+        // MIXED then (a flyer riding alongside a land army) had its sea pool zeroed, because it was not
+        // all-flying. Once the land army is peeled off (into the garrison or to another hero) the
+        // REMAINING force may be all-flying and can cross sea (e.g. a flooded province) — but the stale
+        // zeroed pool wrongly reported "no sea movement points". Un-stick it here. This only ever LIFTS
+        // a zeroed pool up to the current land allowance (never refreshes a pool already spent at sea).
+        const _refreshSeaState=(ch)=>{
+          if(!ch) return;
+          seaCap[ch.id]=getSeaCapability(ch.armies||[]);
+          if((ch.armies||[]).length>0 && (ch.armies||[]).every(a=>AERIAL_TYPES.has(a.type)) && (seaMovePoints[ch.id]??0)<=0){
+            seaMovePoints[ch.id]=movePoints[ch.id]??0; seaMoveActive[ch.id]=true;
+          }
+        };
+
         // Skeletal armies refuse to follow non-Undead commanders
         const recipIsUndead2=!recip2||(recip2.alignment==='Undead')||(recip2.player!==null&&G.players[recip2.player]?.alignment==='Undead');
         const skelTransfer=removed.filter(a=>a._isSkeletal);
@@ -9870,7 +9987,9 @@ const BATTLE_ARMY_SPELLS={
 
         if(recip2){
           recip2.armies=(recip2.armies||[]).concat(removed);
-          log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+          log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          _refreshSeaState(c); _refreshSeaState(recip2);
+          break;
         }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(removed);
         log('hire',`${c.name} garrisons ${removed.map(a=>a.type).join(', ')} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -9881,6 +10000,8 @@ const BATTLE_ARMY_SPELLS={
           seaMovePoints[c.id]=5; // no fleet to command — flat 5, Naval skill does not apply
           seaMoveActive[c.id]=true;
           log('move',`${c.name} left all armies behind in ${prov.name} — land move points reset to 5, sea move points to 5.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        } else {
+          _refreshSeaState(c);
         }
         break;
       }
@@ -10168,29 +10289,57 @@ const BATTLE_ARMY_SPELLS={
           // them earlier this turn. (We use the caster's current province as the resting place.)
           if(!G.heroGraveyard) G.heroGraveyard=[];
           if(!G._resurrectedThisTurn) G._resurrectedThisTurn=[];
+          // A fallen MONARCH's body is borne home — keep every monarch grave's resting place current
+          // (home while held, else wealthiest owned) so a mage knows where to stand and the match below
+          // works even if the old resting province has since been lost.
+          (G.heroGraveyard||[]).forEach(g=>{ if(g&&g._monarch&&g.player!=null){ const r=monarchRestProvId(G,g.player); if(r!=null) g.location=r; } });
           const knownIds=new Set(G.players[c.player]?.knownDeadHeroIds||[]);
-          // Resolve which grave: an explicitly targeted dead hero, else the most recent known body here.
-          const grave=(targetChar&&!targetChar.alive)
-            ? G.heroGraveyard.find(g=>g.id===targetChar.id&&g.location===c.location&&knownIds.has(g.id))
+          // Resolve which grave: honour the EXPLICITLY chosen body (needed so a player can name their
+          // fallen king rather than whatever corpse is freshest), else the most recent known body here.
+          // (targetChar only matches LIVE characters, so a dead target never bound here before — the
+          // selection silently fell through to "most recent". Match the graveyard by id directly.)
+          const _explicitGraveId=(extra!=null&&String(extra).trim()!=='')?parseInt(extra):NaN;
+          const grave=Number.isInteger(_explicitGraveId)
+            ? G.heroGraveyard.find(g=>g.id===_explicitGraveId&&g.location===c.location&&knownIds.has(g.id))
             : G.heroGraveyard.filter(g=>g.location===c.location&&knownIds.has(g.id)).sort((a,b)=>b.killedOnTurn-a.killedOnTurn)[0];
           if(!grave){
             log('system',`${c.name} casts Resurrect, but no fallen hero you know of lies in ${prov.name} — perhaps another raised them first.`,{actor:c.player,targets:[c.player]});break;
           }
-          if(grave.isKing){ log('system',`${c.name}: ${grave.name} was a king — kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break; }
+          // MONARCH grave: only the kingdom that the king ruled may recall him, and only the MOST
+          // RECENTLY fallen monarch of that line — earlier kings have passed beyond recall.
+          if(grave._monarch){
+            if(grave.player!==c.player){ log('system',`${c.name}: the fallen crown of ${grave.name} answers only to its own kingdom — no rival's prayer will restore it.`,{actor:c.player,targets:[c.player]});break; }
+            if(G.players[c.player]?._resurrectableMonarchId!==grave.id){ log('system',`${c.name}: the spirit of ${grave.name} has passed beyond recall — only your most recently fallen monarch may be restored.`,{actor:c.player,targets:[c.player]});break; }
+          } else if(grave.isKing){
+            log('system',`${c.name}: ${grave.name} was a king — kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break;
+          }
           if(G._resurrectedThisTurn.includes(grave.id)){ log('system',`${c.name}: ${grave.name} has already been raised this turn.`,{actor:c.player,targets:[c.player]});break; }
           const deadHero=G.characters.find(ch=>ch.id===grave.id);
           if(!deadHero){log('system',`${c.name}: the spirit of ${grave.name} cannot be found.`,{actor:c.player,targets:[c.player]});break;}
-          if(deadHero.isKing){ log('system',`${c.name}: kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break; }
-          // Revive — the hero now serves the player whose character raised them, at full health,
-          // but WITHOUT any possessions they carried in life.
+          if(!grave._monarch && deadHero.isKing){ log('system',`${c.name}: kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break; }
+          // Revive — at full health, WITHOUT any possessions carried in life.
           deadHero.alive=true;
           TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           deadHero.hp=deadHero.maxHp||20;
           deadHero.location=c.location;
-          deadHero.player=c.player; // comes under the caster's control
-          deadHero.isKing=false; // a raised hero is no longer a king even if they once were (kings can't be raised anyway)
-          deadHero.items=[]; deadHero.armies=[]; // raised without possessions
           deadHero.killedThisTurn=false; deadHero._justDefeated=false;
+          deadHero.items=[]; deadHero.armies=[]; // raised without possessions
+          if(grave._monarch){
+            // The rightful king returns to his own throne. The body was borne home, so he is raised
+            // ONLY by his own kingdom (guarded above) and reclaims the crown. Any reigning king or
+            // freshly-crowned heir steps down to serve as a normal hero of the realm.
+            deadHero.player=grave.player;
+            const curMonarch=G.characters.find(k=>k.isKing&&k.player===grave.player&&k.alive&&k.id!==deadHero.id);
+            if(curMonarch){
+              curMonarch.isKing=false; curMonarch._isHeir=false; curMonarch._pendingSkillAllocation=0;
+              log('system',`👑 ${curMonarch.name} steps down from the throne as ${deadHero.name} is restored to life — the former regent now serves the realm as a hero.`,{actor:grave.player,targets:[grave.player],provinceId:prov.id,public:true});
+            }
+            deadHero.isKing=true; deadHero._isHeir=false; deadHero._pendingSkillAllocation=0;
+            if(G.players[grave.player]) G.players[grave.player]._resurrectableMonarchId=null; // slot spent — he lives again
+          } else {
+            deadHero.player=c.player; // an ordinary raised hero serves the caster's kingdom
+            deadHero.isKing=false;
+          }
           if(!prov.characters.includes(deadHero.id)) prov.characters.push(deadHero.id);
           G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==grave.id);
           G._resurrectedThisTurn.push(grave.id);
@@ -10217,7 +10366,11 @@ const BATTLE_ARMY_SPELLS={
             G.turnOrders[deadHero.id]=fin;
           }
           const wasEnemy=(grave.player!=null&&grave.player!==c.player);
-          log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy?' The fallen foe is bound to a new master.':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          if(grave._monarch){
+            log('explore',`✨👑 ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health and reclaims the throne of ${player.name}! The rightful king walks again, stripped of all possessions but restored in spirit and skill.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          } else {
+            log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy?' The fallen foe is bound to a new master.':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          }
         }
         else if(fn==='white_part_sea'){
           // A sea province the caster is in or adjacent to becomes plains for the rest of the turn.
@@ -10403,7 +10556,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.terrain==='sea'){ fake=Math.random()<0.5?LANDS[Math.floor(Math.random()*LANDS.length)]:'sea'; }
           else { fake=Math.random()<0.5?'sea':(LANDS.filter(t=>t!==targetProv.terrain)[Math.floor(Math.random()*3)]); }
           targetProv._illusoryTerrain={caster:c.player, fake, appliedTurn:G.turn};
-          log('explore',`✨ ${c.name} cloaks ${targetProv.name} in illusion — to your enemies it now appears as ${fake==='sea'?'open sea':fake+' land'}. Enemies who fight there do so at 80% strength.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
+          log('explore',`✨ ${c.name} cloaks ${targetProv.name} in shifting illusion — to enemy eyes the ground blurs and rearranges into ever-changing, confusing terrain. Any enemy who gives battle here is disoriented, each of their units fighting as though caught in the worst possible ground for its kind (at least −15% strength).`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
         }
         else if(fn==='illusory_phantasmal'){
           // Target: the caster themselves, or any friendly hero in the SAME province. No longer
@@ -10420,11 +10573,11 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='illusory_hide_feature'){
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
-          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Hide Features must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
+          if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Hide Lairs must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
           const disc=(targetProv.features||[]).filter(f=>featDiscovered(f,c.player)&&!f._hidden);
-          if(disc.length===0){log('system',`${c.name}: no discovered feature to hide in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});break;}
+          if(disc.length===0){log('system',`${c.name}: no discovered lair to hide in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});break;}
           disc.forEach(f=>{f._hidden=true; f._hiddenBy=c.player;});
-          log('explore',`✨ ${c.name} veils ${disc.length>1?disc.length+' features':'the '+(disc[0].name||'feature')} in ${targetProv.name} from the eyes of explorers.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
+          log('explore',`✨ ${c.name} veils ${disc.length>1?disc.length+' lairs':'the '+(disc[0].name||'lair')} in ${targetProv.name} from the eyes of explorers.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
         }
 
         // ── ELEMENTAL ──
@@ -10697,7 +10850,7 @@ const BATTLE_ARMY_SPELLS={
         const f=hidden[Math.floor(Math.random()*hidden.length)];
         discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1;
         if(!prov.exploredBy) prov.exploredBy={};
-        log('explore',`🏛 ${c.name} uncovers a lost site in ${prov.name} — ${f.name||'a hidden feature'} is revealed!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
+        log('explore',`🏛 ${c.name} uncovers a lost site in ${prov.name} — ${f.name||'a hidden lair'} is revealed!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
         trySkillGain(c,'explorer',SKILLGAIN_STD);
         break;
       }
@@ -11088,7 +11241,7 @@ const BATTLE_ARMY_SPELLS={
   const _PLAGUE_QDOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
   function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
   function applyPlague(prov, level, ph){
-    const chance=0.10+0.10*(level||0);
+    const chance=0.10+0.05*(level||0);
     // Build the pool WITH provenance so affected units can be reported to the right player: units
     // LED by a present character (→ that character's Chronicle), the owner's unled GARRISON
     // (→ Kingdom Events), and neutral/leaderless defenders (no player to notify).
@@ -11240,6 +11393,7 @@ const BATTLE_ARMY_SPELLS={
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         let savedIntel=null;
         if(guard){ savedIntel=prov.neutralDefenders; prov.neutralDefenders=[...(guard.armies||[])]; }
+        atkCopy._resumeBattle=true; // already in the province — suppress the "moves into" line
         const battle=combatVsNPC(atkCopy,prov,guard||null);
         // Item 3: this character has now had their one battle for the phase. Pin them (STAGE 1b) so
         // a Move/Pursue order later this phase can't march them on to START A SECOND BATTLE — even if
@@ -11335,6 +11489,7 @@ const BATTLE_ARMY_SPELLS={
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         const defCopy={...defender,armies:[...(defender.armies||[])]};
         atkCopy._attackedFrom=attacker._attackedFrom; defCopy._attackedFrom=defender._attackedFrom;
+        atkCopy._resumeBattle=true; // already in the province — suppress the "moves into" line
         const battle=combatVsChar(atkCopy,defCopy,prov);
         creditBattle(attacker,defender,battle,atkCopy.armies,defCopy.armies,prov);
         // Item 3: both sides have now had their battle for the phase — pin them (STAGE 1b) so neither
@@ -12338,6 +12493,8 @@ const BATTLE_ARMY_SPELLS={
         _logCtx={charId:null,phase:null};
         return;
       }
+      // A coward who begged for mercy this turn is broken and out of action — skip all remaining orders.
+      if(c._mercyFledTurn===G.turn){ _logCtx={charId:null,phase:null}; return; }
       const o=(G.turnOrders[c.id]||[])[ph];
       if(o)processOrder(c,o,ph);
       _logCtx={charId:null,phase:null}; // reset after each character
@@ -12555,6 +12712,20 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // Wounded feature guardians recover over the year between turns.
   healFeatureMonsters();
+
+  // ── Spared cowards slink home ── A Cowardly commander who begged for mercy this turn abandons the
+  // field; by next turn they have made their way back to their king's seat (home province, or the
+  // wealthiest province still held if home has fallen). Done after all phases so it reads the final
+  // ownership map. Characters with no land left (dynasty landless) simply stay where they fled.
+  (G.characters||[]).forEach(c=>{
+    if(c._mercyFledTurn!==G.turn || !c.alive) return;
+    const dest=monarchRestProvId(G, c.player);
+    if(dest!=null && dest!==c.location){
+      c.location=dest;
+      log('system',`🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name||'safety'}.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:dest});
+    }
+  });
+  reconcileProvinceCharacters(); // rebuild province.characters after any mercy relocations
 
   // 6. Update location names for all characters
   (G.characters||[]).forEach(c=>{
@@ -12873,7 +13044,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // killedOnTurn+2 means the hero is skipped on the N->N+1 pass (out of action for turn N+1) and
   // only rises on the N+1->N+2 pass — i.e. they return at the START of the second turn after death.
   if(!G.heroGraveyard) G.heroGraveyard=[];
-  G.heroGraveyard.filter(g=>g.player!==null&&G.players[g.player]?.alignment==='Divine').forEach(grave=>{
+  G.heroGraveyard.filter(g=>g.player!==null&&!g._monarch&&G.players[g.player]?.alignment==='Divine').forEach(grave=>{
     if(G.turn < ((grave.killedOnTurn||0)+2)) return; // still serving their turn in death
     const hero=G.characters.find(h=>h.id===grave.id);
     if(!hero) return;
@@ -12936,8 +13107,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // to full HP. A guard driven from home limps away bloodied from the battle; by the time they take
   // up the wanderer's life again they are hale, and hire as a fresh, fully-healed commander.
   (G.characters||[]).filter(c=>c.player===null&&c.alive&&!c._isNeutralGuard).forEach(c=>{ c.hp=c.maxHp||c.hp; });
-  // Clear per-turn battle flags on provinces
-  G.world.provinces.forEach(p=>{delete p._hadBattleThisTurn;});
+  // (Per-turn battle flags are cleared AFTER the report loop — see below — so buildTurnReport and the
+  // hadBattle map-marker derivation can still read which provinces saw fighting this turn.)
   // Clear per-turn seen-dead-heroes tracking (knownDeadHeroIds persists across turns)
   G.players.forEach(p=>{p.seenDeadHeroIds=[];});
   (G.characters||[]).filter(c=>c.player===null&&c.alive&&!c._isNeutralGuard).forEach(c=>{
@@ -13259,6 +13430,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     }catch(snapErr){ /* snapshot is best-effort — never block the turn on it */ }
   }
 
+  // Clear per-turn battle flags now that every player's report (and its hadBattle markers) is built.
+  G.world.provinces.forEach(p=>{delete p._hadBattleThisTurn;});
+
   // 11. Save full log to turn_logs table
   await sb.from('turn_logs').insert({
     game_id:currentGame.id,
@@ -13303,6 +13477,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.13-1614</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.14-1022</div>
 </body>
 </html>
