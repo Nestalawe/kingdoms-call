@@ -378,6 +378,16 @@ section{display:none;}.section-active{display:block;}
           <div id="report-intel"><em style="color:#999;font-size:.85rem">No intelligence gathered yet.</em></div>
         </div>
 
+        <div class="card" id="other-forces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>⚔ Other Armies &amp; Heroes</h2>
+          <div id="report-other-forces"><em style="color:#999;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em></div>
+        </div>
+
+        <div class="card" id="lairs-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+          <h2>🐉 Known Lairs</h2>
+          <div id="report-lairs"><em style="color:#999;font-size:.85rem">No lairs discovered yet.</em></div>
+        </div>
+
         <div class="card" id="diplomacy-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🤝 Diplomacy</h2>
           <div id="report-diplomacy"><em style="color:#999;font-size:.85rem">No kingdoms encountered yet.</em></div>
@@ -1439,6 +1449,7 @@ async function openReport(gamePlayerId){
     document.getElementById('report-kingdom').innerHTML='<div class="msg-info">The GM is setting up the game world. Check back soon — your turn report will appear here once Turn 0 has been run.</div>';
     document.getElementById('report-provinces').innerHTML='';
     document.getElementById('report-intel').innerHTML='';
+    { const _of=document.getElementById('report-other-forces'); if(_of)_of.innerHTML=''; const _lr=document.getElementById('report-lairs'); if(_lr)_lr.innerHTML=''; }
     document.getElementById('orders-card').style.display='none';
     const oc3=document.getElementById('orders-column'); if(oc3) oc3.style.display='none';
     return;
@@ -1535,12 +1546,6 @@ function renderReportView(report){
     ${chars.filter(c=>c.alive!==false).map(c=>{
       const hpPct=Math.round((c.hp/c.maxHp)*100)||0;
       const skillTags=Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="skill-tag">${k} ${v}</span>`).join('');
-      const armies=(c.armies||[]).length>0
-        ?c.armies.map(a=>{
-  // Item 2: the Creature/Monster classification now leads the armyLabel detail — no [C]/[M] suffix.
-  return unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>');
-}).join('<br>')
-        :'No armies — Move: 5 hexes/order';
       const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
       return`<div class="char-card">
         <div class="char-card-head">
@@ -1554,7 +1559,6 @@ function renderReportView(report){
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
           ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.desc?` (${i.desc})`:''}`).join('')}
-          <br>${armies}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -1562,6 +1566,36 @@ function renderReportView(report){
             const majH=maj.map(tt=>`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#7a5510">🏆 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
             const minH=min.map(tt=>`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
             return `<div style="margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
+          })()}
+          ${(()=>{
+            // Item: Armies Leading — the force under this character, with a summary of total strength,
+            // move rate, upkeep, and which units need Druid skill to command.
+            const arr=c.armies||[];
+            const head=`<div style="margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
+            if(arr.length===0) return head+`<div style="font-size:.75rem;color:#999">No armies led — moves 5 provinces/turn on its own.</div></div>`;
+            const druLevel=(c.skills||{}).druid||0;
+            const isDruidic=((kingdom.alignment)==='Druidic');
+            const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Noble Griffons':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
+            let totalStr=0,totalCost=0,druidUnits=0,druidShort=0;
+            const lines=arr.map(a=>{
+              const bs=unitBaseStrengthP(a); totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
+              const creature=CREATURE_ARMIES_UI.has(a.type), monster=MONSTER_ARMIES_UI.has(a.type);
+              let req=DRUID_REQ[a.type]||0;
+              if(a.skeletal) req=0;              // skeletons are exempt from the Druid penalty
+              if(isDruidic&&creature) req=0;      // Druidic kingdoms lead Creatures with no Druid
+              if(req>0) druidUnits++;
+              const sameRace=!!(a.race&&a.race===c.race);
+              const effDru=sameRace?Math.max(1,druLevel):druLevel;
+              const shortfall=Math.max(0,req-effDru);
+              if(shortfall>0) druidShort++;
+              const pen=shortfall>0?` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
+              const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
+              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${pen}</div>`;
+            }).join('');
+            const effSpd2=Math.min(...arr.map(a=>a.speed||3));
+            const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#2d7a2d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
+            const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}</div>`;
+            return head+lines+summary+`</div>`;
           })()}
         </div>
       </div>`;
@@ -1594,6 +1628,8 @@ function renderReportView(report){
   const knownFeatures=report.knownFeatures||[];
   const mercs=report.mercIntel||[];
   let intelHtml='';
+  let otherForcesHtml=''; // item: mercenary bands + wandering heroes + enemy heroes sighted → own card
+  let lairsHtml='';       // item: known lairs → own card
 
   // Dead heroes visible to this player
   const visDeadHeroes=report.visibleDeadHeroes||[];
@@ -1607,10 +1643,10 @@ function renderReportView(report){
     </div>`).join('');
   }
 
-  // Mercenary bands visible in accessible provinces
+  // Mercenary bands visible in accessible provinces → Other Armies & Heroes card
   if(mercs.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a1c1c;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">⚔ Mercenary Bands</div>`;
-    intelHtml+=mercs.map(m=>`<div class="intel-entry" style="border-left-color:#8a1c1c;background:#fff8f8">
+    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a1c1c;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">⚔ Mercenary Bands</div>`;
+    otherForcesHtml+=mercs.map(m=>`<div class="intel-entry" style="border-left-color:#8a1c1c;background:#fff8f8">
       <strong>${m.unitName||m.type}</strong> (${m.quality} ${m.type}) — ${m.location}<br>
       <span style="font-size:.72rem;color:#8a4a4a">Available for hire — use Recruit Armies in ${m.location}.</span>
     </div>`).join('');
@@ -1619,8 +1655,8 @@ function renderReportView(report){
     const wanderers=sightings.filter(s=>s.type==='wandering');
     const enemies=sightings.filter(s=>s.type==='enemy');
     if(wanderers.length>0){
-      intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Wandering Heroes</div>`;
-      intelHtml+=wanderers.map(s=>{
+      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Wandering Heroes</div>`;
+      otherForcesHtml+=wanderers.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
@@ -1632,8 +1668,8 @@ function renderReportView(report){
       }).join('');
     }
     if(enemies.length>0){
-      intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Enemy Heroes Sighted</div>`;
-      intelHtml+=enemies.map(s=>{
+      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Enemy Heroes Sighted</div>`;
+      otherForcesHtml+=enemies.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
@@ -1721,32 +1757,13 @@ function renderReportView(report){
     });
   }
 
-  // [Intelligence] log entries broken down by phase
-  const intelLog=(report.lastTurnLog||[]).filter(e=>(e.text||'').startsWith('[Intelligence]'));
-  if(intelLog.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Turn Intelligence — by Phase</div>`;
-    const SEASONS_I=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
-    // Group by phase (entries carry a .phase field if available, else group all together)
-    const byPhase={};
-    intelLog.forEach(e=>{
-      const ph=e.phase!=null?e.phase:99;
-      if(!byPhase[ph]) byPhase[ph]=[];
-      byPhase[ph].push(e);
-    });
-    Object.entries(byPhase).sort((a,b)=>a[0]-b[0]).forEach(([ph,entries])=>{
-      const label=ph<5?SEASONS_I[ph]:'General';
-      intelHtml+=`<div style="font-size:.7rem;color:var(--stone);font-family:Cinzel,serif;margin:4px 0 2px;padding-left:4px">${label}:</div>`;
-      intelHtml+=entries.map(e=>{
-        const text=(e.text||'').replace('[Intelligence]','<span style="color:#c8922a;font-size:.7rem">[Intelligence]</span>');
-        return`<div class="intel-entry" style="border-left-color:#c8922a">${text}</div>`;
-      }).join('');
-    });
-  }
+  // (Removed) The "Turn Intelligence — by Phase" block duplicated the earlier Intelligence Reports
+  // section, so it no longer renders here.
 
   // Known features
   if(knownFeatures.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Known Lairs</div>`;
-    intelHtml+=`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
+    lairsHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Known Lairs</div>`;
+    lairsHtml+=`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
       Guardian difficulty: 
       <span style="background:#4a8a4a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🐾 Weak</span> can be handled by a lone hero ·
       <span style="background:#c8922a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">⚔ Moderate</span> needs skill or good tactics ·
@@ -1781,7 +1798,7 @@ function renderReportView(report){
       const key=f.province||'Unknown province';
       (featuresByProvince[key]=featuresByProvince[key]||[]).push(f);
     });
-    intelHtml+=Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
+    lairsHtml+=Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
       const feats=featuresByProvince[prov];
       const cards=feats.map(featureCard).join('');
       return`<div style="font-family:'Cinzel',serif;font-size:.7rem;color:var(--gold);margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal">(${feats.length} lair${feats.length!==1?'s':''})</span></div>${cards}`;
@@ -1790,6 +1807,12 @@ function renderReportView(report){
 
   document.getElementById('report-intel').innerHTML=intelHtml||
     '<em style="color:#999;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>';
+  const _ofEl=document.getElementById('report-other-forces');
+  if(_ofEl) _ofEl.innerHTML=otherForcesHtml||
+    '<em style="color:#999;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em>';
+  const _lrEl=document.getElementById('report-lairs');
+  if(_lrEl) _lrEl.innerHTML=lairsHtml||
+    '<em style="color:#999;font-size:.85rem">No lairs discovered yet. Explore or scout provinces to find them.</em>';
 
   // ── Sage Discoveries ──
   const discoveries=report.discoveries||[];
@@ -5292,6 +5315,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.14-1022</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.14-1514</div>
 </body>
 </html>
