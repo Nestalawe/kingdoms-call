@@ -4143,7 +4143,7 @@ function buildTurnReport(gameState, playerIndex){
 
   const charReports=chars.map(c=>{
     const prov=gameState.world.provinces[c.location];
-    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName}));
+    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName,race:a.race||null,cost:(a._temporary?0:(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2))),skeletal:!!a._isSkeletal,temporary:!!a._temporary}));
     const marchLvl=(c.skills?.march)||0;
     const navalLvl=(c.skills?.naval)||0;
     const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
@@ -5807,14 +5807,17 @@ const BATTLE_ARMY_SPELLS={
     // in the pre-battle duel is not narrated "standing firm" after they have already fallen.
     // Item 5: frame HOW the battle began — who advanced, into whose ground — so the report doesn't
     // jump straight into combat with no context.
-    const _npcHeldBy=neutralGuardHero?`${neutralGuardHero.name.replace(' (wandering)','')} and the local defenders`:`its neutral defenders`;
+    // Item: an enemy-OWNED province defended only by its garrison (no commander) must not read like a
+    // neutral fight — name the crown that holds it and colour its garrison as theirs.
+    const _npcOwnerName=(prov.owner!=null&&G.players[prov.owner])?(G.players[prov.owner].name||null):null;
+    const _npcHeldBy=neutralGuardHero?`${neutralGuardHero.name.replace(' (wandering)','')} and the local defenders`:(_npcOwnerName?`${_npcOwnerName}'s garrison`:`its neutral defenders`);
     if(!c._resumeBattle) narrative.push(`➡️ ${c.name} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     narrative.push(forceMarker(c.name, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`));
     if(neutralGuardHero){
       narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
     } else {
-      narrative.push(forceMarker(`The defenders of ${prov.name}`, null, 'defender', defenders, `${DEF_VERBS[1]} the ground — ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
+      narrative.push(forceMarker(_npcOwnerName?`${_npcOwnerName}'s garrison at ${prov.name}`:`The defenders of ${prov.name}`, (prov.owner!=null?prov.owner:null), 'defender', defenders, `${DEF_VERBS[1]} the ground — ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
     }
 
     // ── Duel before battle ── Only when the province has a commander to answer for it; leaderless
@@ -9155,10 +9158,12 @@ const BATTLE_ARMY_SPELLS={
                 if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
               }
             } else {
+              const _prevOwnerIdx=(toProv.owner!=null&&toProv.owner!==c.player)?toProv.owner:null; // capture before ownership transfers
+              const _prevOwnerName=_prevOwnerIdx!=null?(G.players[_prevOwnerIdx]?.name||null):null;
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
               toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-              log('move',`${c.name} seizes the undefended province of ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+              log('move',`${c.name} seizes the undefended province of ${toProv.name}${_prevOwnerName?` from ${_prevOwnerName}`:''} for ${player.name}!`,{actor:c.player,targets:_prevOwnerIdx!=null?[_prevOwnerIdx]:[],provinceId:toProv.id,public:true});
               applyEvilConquest(c, toProv, player);
             }
           }
@@ -10398,6 +10403,10 @@ const BATTLE_ARMY_SPELLS={
             log('system',`${c.name}: ${targetProv.name} is already blessed this turn — a second Bless has no further effect (they do not stack).`,{actor:c.player,targets:[c.player]});break;
           }
           targetProv._blessedTurn=G.turn;
+          // Item: the blessing also WARDS the province — a chance to turn aside a later enemy Flood /
+          // Earthquake / Plague. Base 10% + 10% per point of the caster's White skill (capped at 100%).
+          targetProv._blessWardTurn=G.turn; targetProv._blessWardBy=c.player;
+          targetProv._blessWardPct=Math.min(100, 10+10*effStat(c,'white'));
           TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           // DIVINE: a Divine kingdom's casters bless at +80% (the long-advertised alignment bonus,
           // previously described but never implemented — engine now honours it), and the Divine
@@ -10406,7 +10415,7 @@ const BATTLE_ARMY_SPELLS={
           const _divineKingBless=c.isKing&&_divineKingdom;
           targetProv._blessedMult=_divineKingBless?2.0:(_divineKingdom?1.8:1.6);
           const _blessPct=_divineKingBless?'+100% tax (a Divine king\'s blessing — the gods answer their anointed in full)':(_divineKingdom?'+80% tax (Divine blessing)':'+60% tax');
-          log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
+          log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake or Plague cast here this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
         }
 
         // ── PSYCHIC ──
@@ -10586,8 +10595,9 @@ const BATTLE_ARMY_SPELLS={
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Earthquake must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
+          if(blessWardNegates(targetProv, c, 'Earthquake')) break;
           targetProv._earthquakeNoTax=G.turn;
-          log('combat',`✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true,env:true});
+          log('combat',`✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
         }
         else if(fn==='elemental_flood'){
           const casterProv=G.world.provinces[c.location];
@@ -10595,10 +10605,11 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Flood must target a land province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
           if(targetProv.terrain==='sea'){log('system',`${c.name}: Flood can only be cast on a land province.`,{actor:c.player,targets:[c.player]});break;}
           // Cancel Part Sea if present, then submerge the province for the rest of the turn.
+          if(blessWardNegates(targetProv, c, 'Flood')) break;
           if(targetProv._partSea){ delete targetProv._partSea; }
           targetProv._flood={orig:targetProv.terrain, turn:G.turn};
           targetProv.terrain='sea';
-          log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets may pass.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true,env:true});
+          log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets may pass.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
         }
         else if(fn==='elemental_summon'){
           if(c._elementalSummonedThisTurn){log('system',`${c.name} has already summoned an elemental this turn.`,{actor:c.player,targets:[c.player]});break;}
@@ -10678,9 +10689,10 @@ const BATTLE_ARMY_SPELLS={
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Plague must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
           if(targetProv._plaguedTurn===G.turn){log('system',`${targetProv.name} is already stricken with plague this turn — a second casting adds nothing (not cumulative).`,{actor:c.player,targets:[c.player]});break;}
+          if(blessWardNegates(targetProv, c, 'Plague')) break;
           targetProv._plaguedTurn=G.turn; targetProv._plagueLevel=spellLevel; targetProv._plagueCaster=c.player;
           const res=applyPlague(targetProv, spellLevel, ph);
-          log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true,env:true});
+          log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
         }
 
         // ══ LEVEL 7 & 9 MASTERY SPELLS ══════════════════════════════════════════════
@@ -10749,12 +10761,15 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Cataclysm must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
           targetProv._earthquakeNoTax=G.turn;
           let totalDestroyed=0;
+          const _ccVictims=new Set();
           (G.characters||[]).filter(ch=>ch.alive&&ch.location===targetProv.id&&ch.player!==c.player&&(ch.armies||[]).length>0).forEach(ch=>{
             const n=Math.min(ch.armies.length,1+Math.floor(spellLevel/2));
             const idxs=ch.armies.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,n).sort((a,b)=>b-a);
             idxs.forEach(i=>ch.armies.splice(i,1)); totalDestroyed+=n;
+            if(ch.player!=null) _ccVictims.add(ch.player);
           });
-          log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the ruined land yields no tax this turn.`,{actor:c.player,targets:[],provinceId:targetProv.id,public:true});
+          if(targetProv.owner!=null&&targetProv.owner!==c.player) _ccVictims.add(targetProv.owner);
+          log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the ruined land yields no tax this turn.`,{actor:c.player,targets:[..._ccVictims],provinceId:targetProv.id,public:true});
         }
         // NECROMANCY
         else if(fn==='necromancy_wraiths'){
@@ -11240,6 +11255,17 @@ const BATTLE_ARMY_SPELLS={
   // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
   const _PLAGUE_QDOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
   function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
+  // ── Bless ward (item) ── A province blessed this turn can shrug off a later ENEMY negative spell
+  // (Flood / Earthquake / Plague). Chance = 10% + 10% × the blesser's White skill. Returns true (and
+  // logs) when the ward turns the spell aside, so the caller skips the effect. Rolls per incoming spell.
+  function blessWardNegates(prov, caster, spellName){
+    if(!prov || prov._blessWardTurn!==G.turn) return false;
+    if(prov._blessWardBy==null || (caster && prov._blessWardBy===caster.player)) return false; // your own ward never blocks your own spell
+    if(Math.random()*100 >= (prov._blessWardPct||0)) return false;
+    const _who=caster?caster.name:'a hostile mage';
+    log('combat',`✨ A blessing lies over ${prov.name} — ${_who}'s ${spellName} washes over the sacred ground and does no harm.`,{actor:caster?caster.player:null,targets:(prov._blessWardBy!=null?[prov._blessWardBy]:[]),provinceId:prov.id,public:true,env:true});
+    return true;
+  }
   function applyPlague(prov, level, ph){
     const chance=0.10+0.05*(level||0);
     // Build the pool WITH provenance so affected units can be reported to the right player: units
@@ -11289,10 +11315,11 @@ const BATTLE_ARMY_SPELLS={
     sources.forEach(p=>{
       getNeighborsP(p,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{
         if(!nb||nb._plaguedTurn===G.turn) return;
+        if(nb._blessWardTurn===G.turn && nb._blessWardBy!=null && nb._blessWardBy!==p._plagueCaster && Math.random()*100<(nb._blessWardPct||0)) return; // blessed ground resists the spreading plague
         if(Math.random()<0.15){
           nb._plaguedTurn=G.turn; nb._plagueLevel=p._plagueLevel||0; nb._plagueCaster=p._plagueCaster;
           const res=applyPlague(nb, nb._plagueLevel, ph);
-          log('combat',`☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested!==1?'s':''} sicken.`,{actor:null,targets:[],provinceId:nb.id,public:true,env:true});
+          log('combat',`☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested!==1?'s':''} sicken.`,{actor:null,targets:(nb.owner!=null?[nb.owner]:[]).concat(p._plagueCaster!=null?[p._plagueCaster]:[]),provinceId:nb.id,public:true,env:true});
         }
       });
     });
@@ -13477,6 +13504,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.14-1022</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.14-1514</div>
 </body>
 </html>
