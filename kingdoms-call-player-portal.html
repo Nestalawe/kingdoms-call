@@ -1578,19 +1578,30 @@ function renderReportView(report){
             const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Noble Griffons':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
             let totalStr=0,totalCost=0,druidUnits=0,druidShort=0;
             const lines=arr.map(a=>{
-              const bs=unitBaseStrengthP(a); totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
+              // Item 1: humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
+              // led by a character of the same race gets +20% (they STACK → +44% when both apply). Same
+              // base-strength boost the engine applies; a character's race is always humanoid, so Creatures/
+              // Monsters/skeletons never match. Shown before terrain/tactics, like everything else here.
+              const rawBs=unitBaseStrengthP(a);
+              const kingRaceMatch=!!(a.race&&kingdom.race&&a.race===kingdom.race);
+              const leadRaceMatch=!!(a.race&&a.race===c.race);
+              let bs=rawBs;
+              if(kingRaceMatch) bs=Math.round(bs*1.2);
+              if(leadRaceMatch) bs=Math.round(bs*1.2);
+              totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
               const creature=CREATURE_ARMIES_UI.has(a.type), monster=MONSTER_ARMIES_UI.has(a.type);
               let req=DRUID_REQ[a.type]||0;
               if(a.skeletal) req=0;              // skeletons are exempt from the Druid penalty
               if(isDruidic&&creature) req=0;      // Druidic kingdoms lead Creatures with no Druid
               if(req>0) druidUnits++;
-              const sameRace=!!(a.race&&a.race===c.race);
+              const sameRace=leadRaceMatch;
               const effDru=sameRace?Math.max(1,druLevel):druLevel;
               const shortfall=Math.max(0,req-effDru);
               if(shortfall>0) druidShort++;
               const pen=shortfall>0?` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
+              const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#2d7a2d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
               const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
-              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${pen}</div>`;
+              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${pen}</div>`;
             }).join('');
             const effSpd2=Math.min(...arr.map(a=>a.speed||3));
             const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#2d7a2d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
@@ -2711,7 +2722,17 @@ function addEncounterTactic(charId, code){
     const picker=document.createElement('div');
     picker.id=`ep-spell-picker-${charId}`;
     picker.style.cssText='background:#fff8e8;border:1px solid #c8922a;border-radius:3px;padding:8px 10px;margin:4px 0';
-    picker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a combat spell (${availSpells.filter(x=>!x.blocked).length} available):</div>
+    // Per-school casts tally: how many combat spells of each school this character may cast in one
+    // encounter (the limit, from their level) and how many are already in the plan (used). used/limit
+    // is tracked INDEPENDENTLY per school, so exhausting one school never affects another.
+    const _epTally={};
+    availSpells.forEach(x=>{ if(!_epTally[x.school]) _epTally[x.school]={limit:x.limit,used:x.used}; });
+    const _epTallyHtml=Object.entries(_epTally).map(([sch,t])=>{
+      const full=t.used>=t.limit;
+      return `<span style="font-size:.62rem;padding:1px 6px;border-radius:2px;background:${full?'#f2dede':'#e8f0e0'};color:${full?'#a33':'#3a5a2a'};border:1px solid ${full?'#d8a0a0':'#b8c9a8'}">${SKILL_LABELS[sch]||sch} ${t.used}/${t.limit}${full?' — full':''}</span>`;
+    }).join(' ');
+    picker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:4px">Choose a combat spell — casts used this encounter, per school:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">${_epTallyHtml}</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
         ${availSpells.map(({school,spell,level,practising,blocked,reason,used,limit})=>{
           const limitNote=` ${used}/${limit}`;
@@ -2759,18 +2780,20 @@ function confirmEPSpell(charId, spell, school, level){
   const hidden=document.getElementById(`ep-tactics-${charId}`);
   if(!hidden)return;
   const current=hidden.value?hidden.value.split(',').filter(Boolean):[];
-  if(current.length>=8){alert('Maximum 8 tactics in an encounter plan.');return;}
+  if(current.length>=6){alert('Maximum 6 tactics in an encounter plan.');return;}
 
   // Enforce: same spell not twice
   if(current.includes(`CA:${spell}`)){
     alert(`${spell} is already in your encounter plan. The same combat spell cannot be cast more than once per encounter.`);return;
   }
 
-  // Enforce: per-school combat spell limit (1 at level 1, 2 at level 2+)
+  // Enforce: per-school combat spell limit (1 at level 1, 2 at level 2+). A school being PRACTISED
+  // this turn (raw level 0) ends the turn at level 1, so it still gets a limit of 1 — the guard must
+  // fire at used>=limit for it too, hence no "level>0" escape hatch.
   const limit=combatSpellLimit(level);
   const used=current.filter(t=>t.startsWith('CA:')&&SPELL_TO_SCHOOL[t.slice(3)]===school).length;
-  if(used>=limit&&level>0){
-    alert(`${SKILL_LABELS[school]||school} Lv${level}: you can cast at most ${limit} combat spell${limit!==1?'s':''} per encounter. Remove one first.`);return;
+  if(used>=limit){
+    alert(`${SKILL_LABELS[school]||school}${level>0?` Lv${level}`:''}: you can cast at most ${limit} combat spell${limit!==1?'s':''} of this school per encounter. Remove one first.`);return;
   }
 
   current.push(`CA:${spell}`);
@@ -5012,6 +5035,13 @@ function renderMapIntoSvg(svgEl, report){
     document.body.appendChild(tt);
   }
 
+  // Item: all map SYMBOLS (prosperity dots, character markers, battle swords, army banners, ritual
+  // moons) are collected into a single layer appended AFTER every province's fill and coloured border,
+  // so a neighbouring hex drawn later can never paint over them. pointer-events:none lets hover fall
+  // through to the province beneath.
+  const symbolLayer=document.createElementNS(svgNS,'g');
+  symbolLayer.setAttribute('pointer-events','none');
+
   provs.forEach(p=>{
     if(p.row===undefined||p.col===undefined) return;
     const{x,y}=hexCentre(displayCol(p.col),p.row);
@@ -5101,7 +5131,7 @@ function renderMapIntoSvg(svgEl, report){
       dot.setAttribute('stroke',ws.stroke);dot.setAttribute('stroke-width','0.5');
       if(ws.glow) dot.setAttribute('filter',ws.glow);
       dot.setAttribute('pointer-events','none');
-      g.appendChild(dot);
+      symbolLayer.appendChild(dot);
     }
 
     // Character markers — own (player color), enemy (their color), wanderer (grey-gold)
@@ -5140,7 +5170,7 @@ function renderMapIntoSvg(svgEl, report){
           sh.setAttribute('fill','#fff');sh.setAttribute('pointer-events','none');
           mg.appendChild(hd);mg.appendChild(sh);
         }
-        g.appendChild(mg);
+        symbolLayer.appendChild(mg);
         markerX-=8;
       }
       // Enemy characters
@@ -5170,7 +5200,7 @@ function renderMapIntoSvg(svgEl, report){
           esh.setAttribute('fill','#fff');esh.setAttribute('pointer-events','none');
           mg.appendChild(ehd);mg.appendChild(esh);
         }
-        g.appendChild(mg);
+        symbolLayer.appendChild(mg);
         markerX-=8;
       }
       // Wandering heroes
@@ -5188,7 +5218,7 @@ function renderMapIntoSvg(svgEl, report){
         wlbl.setAttribute('fill','#fff');wlbl.setAttribute('pointer-events','none');
         wlbl.textContent='?';
         mg.appendChild(wc);mg.appendChild(wlbl);
-        g.appendChild(mg);
+        symbolLayer.appendChild(mg);
       }
     }
 
@@ -5201,7 +5231,7 @@ function renderMapIntoSvg(svgEl, report){
       btxt.setAttribute('fill','#ff4444');btxt.setAttribute('pointer-events','none');
       btxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
       btxt.textContent='⚔';
-      g.appendChild(btxt);
+      symbolLayer.appendChild(btxt);
     }
 
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
@@ -5212,10 +5242,10 @@ function renderMapIntoSvg(svgEl, report){
       const ltxt=document.createElementNS(svgNS,'text');
       ltxt.setAttribute('x',lx);ltxt.setAttribute('y',ly);
       ltxt.setAttribute('text-anchor','middle');ltxt.setAttribute('font-size','9');
-      ltxt.setAttribute('fill','#f2e8d0');ltxt.setAttribute('pointer-events','none');
+      ltxt.setAttribute('fill',playerColor);ltxt.setAttribute('pointer-events','none'); // item: army banner in the player's colour
       ltxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
       ltxt.textContent='⚑';
-      g.appendChild(ltxt);
+      symbolLayer.appendChild(ltxt);
     }
 
     // Pagan ritual sites (item): the same 🌙 the report uses, drawn at the bottom-left of hexes where a
@@ -5229,7 +5259,7 @@ function renderMapIntoSvg(svgEl, report){
       mtxt.setAttribute('pointer-events','none');
       mtxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
       mtxt.textContent='🌙';
-      g.appendChild(mtxt);
+      symbolLayer.appendChild(mtxt);
     }
 
     // Tooltip
@@ -5276,6 +5306,8 @@ function renderMapIntoSvg(svgEl, report){
 
     svgEl.appendChild(g);
   });
+  svgEl.appendChild(symbolLayer); // symbols on top of every province fill/border
+
 }
 
 // ── INLINE MAP ─────────────────────────────────────────
@@ -5315,6 +5347,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.14-1514</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.15-0146</div>
 </body>
 </html>
