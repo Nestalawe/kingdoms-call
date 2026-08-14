@@ -2577,19 +2577,93 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Imperial Regalia',desc:'The crown, orb and sceptre of the vanished throne. +5g collected each tax season.',effect:{stat:'taxBonus',bonus:5},tier:3},
   {name:'Standard of the Nine Legions',desc:'The war-banner under which the Empire was won. All armies you lead: strength +3 each.',effect:{stat:'armyBonus',bonus:3},tier:3},
 ];
+// ── Item 2 (this session): triple the tier-1 and tier-2 relics ──────────────────────────────────
+// Each tier-1 / tier-2 item now exists in THREE differently-named versions with IDENTICAL effects,
+// so the finite treasury is deep enough that strict per-name uniqueness (rollMagicItem never awards
+// a name already found — see below) holds even on the largest maps. The original entry stays as
+// version 1; the two curated alternates below are cloned in. Tier-3 legendaries stay one-of-a-kind.
+const _ITEM_NAME_ALTS={
+  // ── tier 2 ──
+  'Blade of Fury':['Sword of Wrath','Reaver\'s Edge'],
+  'Elven Longbow':['Bow of the Silver Wood','Greatbow of the Marches'],
+  'Tome of Tactics':['Codex of War','The Marshal\'s Treatise'],
+  'Boots of the Wind':['Striders of the Gale','Seven-League Boots'],
+  'Admiral\'s Spyglass':['Tide-Lord\'s Glass','The Deepwater Lens'],
+  'Sage\'s Crown':['Circlet of Lore','Diadem of the Learned'],
+  'Shadowcloak':['Mantle of Whispers','Nightshroud'],
+  'Gloves of the Nightcrawler':['Fingers of the Fox','Gauntlets of the Silent Hand'],
+  'Staff of the Wildwood':['Rod of the Green Deep','Branch of the Elder Grove'],
+  'Ring of the Explorer':['Band of the Farstrider','Signet of the Uncharted'],
+  'Holy Reliquary':['Ark of the Saints','Sanctified Coffer'],
+  'Mind\'s Eye Amulet':['Pendant of the Third Sight','Amulet of the Open Mind'],
+  'Veil of Illusions':['Shroud of Mirages','Gossamer of Deceit'],
+  'Orb of the Storm':['Sphere of Tempests','The Thunderheart'],
+  'Skull of the Undying':['Cranium of the Deathless','The Grinning Relic'],
+  'Amulet of Fortitude':['Talisman of the Ox','Heartstone of Vigour'],
+  'Banner of the Realm':['Standard of the Homeland','Ensign of the Hearth'],
+  'Tide-Caller\'s Horn':['Conch of the Open Sea','Horn of the Salt Roads'],
+  'Siege Master\'s Ring':['Ring of the Breach','Sapper\'s Signet'],
+  // ── tier 1 ──
+  'Warbringer Gauntlets':['Bracers of the Berserker','Ironfist Gauntlets'],
+  'Quiver of the Hawk':['Falcon\'s Quiver','Quiver of Swift Flights'],
+  'War Drum of the Ancients':['Drum of the Old Kings','Thunder-Drum of the Host'],
+  'Traveller\'s Cloak':['Wayfarer\'s Mantle','Cloak of the Long Road'],
+  'Sea Chart of the Deep':['Portolan of the Abyss','Chart of the Hidden Currents'],
+  'Philosopher\'s Lens':['Scholar\'s Loupe','Lens of Revelation'],
+  'Whispering Mirror':['Glass of Murmurs','Mirror of Faint Voices'],
+  'Lock-Pick of Legends':['Skeleton Key of Ages','The Master Pick'],
+  'Green Stone of Speaking':['Whisper-Stone of the Wild','The Speaking Emerald'],
+  'Compass of the Wanderer':['Lodestone of the Wanderer','Needle of the Trailblazer'],
+  'Chalice of Dawn':['Grail of First Light','Cup of the Morning'],
+  'Dreamstone':['Slumber Gem','Stone of Reverie'],
+  'Mirror Shard':['Splinter of the False Glass','Shard of Reflections'],
+  'Ember Rune':['Cinder Glyph','Rune of Kindling'],
+  'Death\'s Finger Ring':['Bone Signet','Ring of the Pale Hand'],
+  'Iron Heart Talisman':['Amulet of the Stalwart','Charm of the Iron Vein'],
+  'Golden Spur':['Spur of the Charge','Silver Rowel'],
+  'War-Horn of the Plains':['Horn of the Wild Ride','Clarion of the Plains'],
+  'Legionnaire\'s Mark':['Centurion\'s Sigil','Mark of the Legion'],
+  'Shield-Wall Rune':['Rune of the Unbroken Line','Glyph of the Steadfast'],
+  'Quiver of Many Arrows':['Endless Quiver','Quiver of the Ceaseless Volley'],
+  'Eagle-Eye Pendant':['Hawk-Eye Charm','Pendant of the Keen Shot'],
+  'Engineer\'s Blueprint':['Master Smith\'s Schematic','The Bombardier\'s Plans'],
+  'Black Sceptre':['Rod of the Grave','Sceptre of Bone'],
+  'Ring of Wealth':['Band of Plenty','Coin-Ring of the Hoard'],
+  'Merchant\'s Ledger':['Trader\'s Tally-Book','The Gilded Ledger'],
+};
+(function _tripleLowerTierItems(){
+  const extra=[];
+  ALL_MAGIC_ITEMS_P.forEach(it=>{
+    if(it.tier!==1&&it.tier!==2) return;
+    (_ITEM_NAME_ALTS[it.name]||[]).forEach(nm=>{
+      extra.push({...it, effect:{...it.effect}, name:nm}); // same effect/desc/tier, new name
+    });
+  });
+  extra.forEach(it=>ALL_MAGIC_ITEMS_P.push(it));
+})();
+
 // ── Item-tier pools (built after the item list so they can reference it) ──
 const ITEMS_BY_TIER={1:[],2:[],3:[]};
 ALL_MAGIC_ITEMS_P.forEach(it=>{(ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1]).push(it);});
 // Loot quality climbs with the monster's tier: tougher foes yield rarer (higher-tier) items.
-function rollMagicItem(monsterPower){
+// Item 2 (this session): UNIQUENESS. `taken` is a Set of item names already found this game; the roll
+// never returns one already claimed. It prefers the tier the monster's power rolled; if that tier is
+// exhausted it falls back to any remaining untaken item (any tier); if the whole treasury has been
+// claimed it returns null (the lair then yields gold only). With every tier-1/2 item now existing in
+// three named versions, exhaustion is rare even on the biggest maps.
+function rollMagicItem(monsterPower, taken){
+  taken=taken||new Set();
   const r=Math.random();
   let t;
   if(monsterPower==='Legendary') t=r<0.5?3:2;
   else if(monsterPower==='Powerful') t=r<0.15?3:2;
   else if(monsterPower==='Moderate') t=r<0.25?2:1;
   else t=1; // Weak
-  const pool=(ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P;
-  return pool[Math.floor(Math.random()*pool.length)];
+  const inTier=((ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P)
+    .filter(it=>!taken.has(it.name));
+  if(inTier.length) return inTier[Math.floor(Math.random()*inTier.length)];
+  const anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name));
+  return anyLeft.length ? anyLeft[Math.floor(Math.random()*anyLeft.length)] : null;
 }
 
 
@@ -3886,7 +3960,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // 'enemy' | 'allied'. Any pair absent from the map is NEUTRAL (the default). All players begin
     // Neutral to one another; relations only change at end of turn via mutual Treat / a war declaration.
     relations:{},
-    heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0};
+    heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
 }
 
 function getNeighborsP(prov,cols,rows,provinces){
@@ -4569,7 +4643,7 @@ function buildTurnReport(gameState, playerIndex){
   // Item 1 (this session): also expose provinces ADJACENT to owned/visited ones — the map already
   // shows these neighbours and their recruitable units, so a player may queue a conditional recruit
   // that only fires if they capture the province this turn. canRecruit stays false until owned.
-  gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)||visitedProvIds.has(p.id)||adjacentProvIds.has(p.id)).forEach(p=>{
+  gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)||visitedProvIds.has(p.id)||adjacentProvIds.has(p.id)||playerCharLocations.has(p.id)).forEach(p=>{
     const ARMY_COST_OD=ARMY_COST_MASTER; // alias → master table at top of script
     const isOwned=ownedProvIds.has(p.id);
     const isVisited=visitedProvIds.has(p.id);
@@ -5079,6 +5153,11 @@ async function runTurn(){
   };
   // Current character context — set by processOrder so all log calls get charId/phase automatically
   let _logCtx={charId:null,phase:null};
+  // Item 6 (this session): the phase currently being resolved. _logCtx is cleared to null between
+  // characters and after resolveStalledBattles, so a skill-rise earned in a phase-pipeline STAGE
+  // (force-march reinforcement, defend-reaction, pursuit movement) — outside processOrder — would
+  // otherwise be deferred with phase null and land under END OF TURN. This is the reliable fallback.
+  let _currentPhase=null;
   const log=(type,text,meta={})=>{
     turnLog.push({type,text,
       actor: meta.actor??null,
@@ -5255,7 +5334,7 @@ async function runTurn(){
       // Item 2 (this session): the deferred (non-battle) skill-rise carries the character's id and the
       // phase it happened in, so it is reported inside THAT character's Chronicle section at the end of
       // the phase — not adrift in Kingdom Events. (_logCtx holds the acting character + phase here.)
-      const _skCharId=real.id, _skPhase=_logCtx.phase;
+      const _skCharId=real.id, _skPhase=(_logCtx.phase!=null?_logCtx.phase:_currentPhase);
       if(narr&&narr.push) narr.push(line);
       else _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       // Item 10 (this session): crossing a mastery threshold (6/7/8/9) earns a congratulation that
@@ -5460,6 +5539,22 @@ function seaPenalty(armyType, terrain){
     if(heroChar){
       const penalty=druIdPenaltyMult(heroChar,army,playerAlignment);
       if(penalty<1) str=Math.floor(str*penalty);
+    }
+    // ── HUMANOID RACE AFFINITY (item 1) ── Two INDEPENDENT, STACKING ×1.2 boosts to base strength:
+    //   • King's race: units of the same race as the OWNING PLAYER'S KING (the player's chosen race).
+    //   • Leader's race: units led by a character (king or hero) of the SAME race as the units.
+    // Both are humanoid-only in effect: a character's race is always Human/Elven/Dwarven/Orcish, so
+    // the equality tests never fire for Primal creatures, skeletons, monsters or sea beasts. A king
+    // personally leading his own-race troops fields them at ×1.44 (both boosts apply). The owner race
+    // comes from ctx.ownerRace when supplied (leaderless owned garrison), else from the leader's player.
+    {
+      const _unitRace=army.race||null;
+      if(_unitRace){
+        const _ownerRace=(ctx&&ctx.ownerRace!=null)?ctx.ownerRace
+                        :(heroChar&&heroChar.player!=null?(G.players[heroChar.player]?.race):null);
+        if(_ownerRace&&_unitRace===_ownerRace) str=Math.round(str*1.2);            // king's-race affinity
+        if(heroChar&&heroChar.race&&_unitRace===heroChar.race) str=Math.round(str*1.2); // leader's-race affinity
+      }
     }
     // Apply terrain modifier
     if(terrain){
@@ -6250,7 +6345,7 @@ const BATTLE_ARMY_SPELLS={
     const defArchMissileBonus=1+(archSkillDef*0.10);
     const defLineWidth=terrainFront;
     const defsWithStr=(prov.neutralDefenders||[]).map(a=>{
-      let base=armStr(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false});
+      let base=armStr(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null)});
       if(MISSILE_ARMIES.has(a.type)) base*=defArchMissileBonus;
       return{a,base,fly:FLYING_TYPES.has(a.type)};
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
@@ -9405,12 +9500,17 @@ const BATTLE_ARMY_SPELLS={
           c.hp=Math.min(c.maxHp, postHp+healAmt);
           log('explore',`⚔ ${c.name} grows hardened — max HP +${hpGain} (now ${c.maxHp}), and catches their breath to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           // Item drops — chance/quantity scale with tier, and item QUALITY scales with tier too.
+          // Item 2 (this session): uniqueness. `_taken` seeds from the game-wide roll of items already
+          // found (G._awardedItems) and grows as each drop is chosen, so no lair — this one or any
+          // other — can ever hand out a duplicate. A null means the treasury is exhausted (gold only).
           const drops=[];
-          const rollItem=()=>{const base=rollMagicItem(tier);const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;return {...base,id:itemId};};
-          if(Math.random()<T.itemChance) drops.push(rollItem());
-          if(Math.random()<T.bonusItem) drops.push(rollItem());
+          if(!Array.isArray(G._awardedItems)) G._awardedItems=[];
+          const _taken=new Set(G._awardedItems);
+          const rollItem=()=>{const base=rollMagicItem(tier,_taken);if(!base) return null;_taken.add(base.name);G._awardedItems.push(base.name);const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;return {...base,id:itemId};};
+          if(Math.random()<T.itemChance){ const it=rollItem(); if(it) drops.push(it); }
+          if(Math.random()<T.bonusItem){ const it=rollItem(); if(it) drops.push(it); }
           // sd25 Alchemical Theory: 10% chance of an extra find.
-          if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
+          if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
           c.items=(c.items||[]);
           drops.forEach(it=>{ c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+it.effect.bonus);} });
           if(drops.length>0) log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and recovers ${drops.map(d=>'the '+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -11706,6 +11806,11 @@ const BATTLE_ARMY_SPELLS={
       return false;
     }
 
+    // Item 5 (this session): the character is ALREADY standing in this province (they raised/received
+    // troops here — they did not march in), so any battle that breaks out must NOT print the
+    // "➡ … moves into … a battle is initiated" line. combatVsNPC/combatVsChar honour _resumeBattle
+    // to suppress it; set it for the duration of this battle and clear it immediately after.
+    c._resumeBattle=true;
     let battle=null, targets=[c.player];
     if(enemyChar){
       targets=[c.player, enemyChar.player];
@@ -11759,6 +11864,7 @@ const BATTLE_ARMY_SPELLS={
       battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player,prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true}));
       if(battle.won){ garrison.forEach(a=>recordBattleGraves(prov,[a])); prov.garrisonArmies=[]; }
     }
+    delete c._resumeBattle; // Item 5: clear the already-here flag — a genuine march later still prints its moves-into line
     prov._hadBattleThisTurn=true;
     if(battle&&battle.won){
       // Neutral defenders are no longer annihilated on a loss — survivors hold the ground and the
@@ -12431,6 +12537,7 @@ const BATTLE_ARMY_SPELLS={
   // temporal-dead-zone when the turn-start pursuit resolution reads them — see near the relation helpers.)
 
   for(let ph=0;ph<5;ph++){
+    _currentPhase=ph; // Item 6: reliable phase for skill-rises earned outside processOrder
     log('system',`— ${SEASONS[ph]} —`);
     // Snapshot presence at phase start (before this phase's moves/battles).
     presenceByPhase[ph]=new Map();
@@ -12718,6 +12825,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       });
     }
   }
+
+  _currentPhase=null; // Item 6: the phase loop is over — any later gain belongs to END OF TURN
 
   // Item 12 safety net: flush any incidental skill-rises that were earned after the last in-phase
   // flush (none expected today, but this guarantees no such line is ever silently dropped).
@@ -13427,6 +13536,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       type:e.type, text:e.text,
       charId:_reattributeCharId(e),
       phase:e.phase??null,
+      pinNotice:!!e.pinNotice, // Item 4: battle-lock notice — the player portal hoists this to the top of its phase
       env:!!e.env, // Item 8: routed to Province Reports, kept OUT of Chronicle / Kingdom Events
     }));
     // Item 8: environmental province events (earthquake / flood / plague / blessing / part-sea /
@@ -13504,6 +13614,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.14-1514</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.15-0146</div>
 </body>
 </html>
