@@ -1585,9 +1585,13 @@ function renderReportView(report){
               const rawBs=unitBaseStrengthP(a);
               const kingRaceMatch=!!(a.race&&kingdom.race&&a.race===kingdom.race);
               const leadRaceMatch=!!(a.race&&a.race===c.race);
+              // Racial animosity (this session): Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin commander.
+              const _RIVAL_RACE_UI={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+              const feudLed=!!(a.race&&c.race&&_RIVAL_RACE_UI[a.race]===c.race);
               let bs=rawBs;
               if(kingRaceMatch) bs=Math.round(bs*1.2);
               if(leadRaceMatch) bs=Math.round(bs*1.2);
+              if(feudLed) bs=Math.round(bs*0.8);
               totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
               const creature=CREATURE_ARMIES_UI.has(a.type), monster=MONSTER_ARMIES_UI.has(a.type);
               let req=DRUID_REQ[a.type]||0;
@@ -1600,8 +1604,9 @@ function renderReportView(report){
               if(shortfall>0) druidShort++;
               const pen=shortfall>0?` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
               const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#2d7a2d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
+              const feudTag=feudLed?` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
               const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
-              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${pen}</div>`;
+              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
             }).join('');
             const effSpd2=Math.min(...arr.map(a=>a.speed||3));
             const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#2d7a2d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
@@ -5347,6 +5352,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.15-0146</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.15-1950</div>
 </body>
 </html>
