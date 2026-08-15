@@ -2666,6 +2666,40 @@ function rollMagicItem(monsterPower, taken){
   return anyLeft.length ? anyLeft[Math.floor(Math.random()*anyLeft.length)] : null;
 }
 
+// ── MITHRIL ARMOUR (this session, item 3) ── A GRANTED (never lair-rolled) relic worn by Dwarven
+// characters of a Dwarven kingdom. Kept out of ALL_MAGIC_ITEMS_P so rollMagicItem never awards it and
+// every qualifying dwarf can hold their own copy. Effect stat 'mithrilArmour' reduces melee damage
+// dealt to the wearer by 2 (applied per-hit in pcMeleeDamage; non-stacking — one suit is enough).
+const MITHRIL_ARMOUR={name:'Mithril Armour',desc:'Melee attacks against the wearer deal 2 less damage',effect:{stat:'mithrilArmour',bonus:2},tier:1};
+function grantMithrilTo(ch, gs){
+  if(!ch||ch.alive===false) return;
+  ch.items=ch.items||[];
+  if(ch.items.some(it=>it.effect&&it.effect.stat==='mithrilArmour')) return; // already suited
+  const id=(gs.nextItemId||0); gs.nextItemId=(gs.nextItemId||0)+1;
+  ch.items.push({...MITHRIL_ARMOUR, effect:{...MITHRIL_ARMOUR.effect}, id});
+}
+function grantMithrilToDwarves(gs){
+  if(!gs||!gs.characters||!gs.players) return;
+  gs.characters.forEach(ch=>{
+    if(ch&&ch.alive!==false&&ch.race==='Dwarven'&&ch.player!=null&&gs.players[ch.player]&&gs.players[ch.player].race==='Dwarven') grantMithrilTo(ch, gs);
+  });
+}
+
+// ── ORC WAR-SPOILS (this session, item 4) ── Flag the Orcish units of an Orcish kingdom that just
+// won a battle as part of an ATTACKING force. The wage pass at end of turn halves that turn's upkeep
+// for any unit stamped with the current turn (stale stamps from earlier turns are simply ignored).
+function markOrcAttackWin(ch, gs){
+  if(!ch||ch.player==null||!gs.players[ch.player]||gs.players[ch.player].race!=='Orcish') return;
+  (ch.armies||[]).forEach(a=>{ if(a&&a.race==='Orcish') a._orcAtkWinTurn=gs.turn; });
+}
+
+// ── HUMAN DRILLMASTERS (this session, item 5) ── Human army units of a Human kingdom improve their
+// experience level twice as readily — from a leading character's drills and from surviving battle.
+// Returns the multiplier applied to their promotion CHANCE (2× for qualifying units, else 1×).
+function humanXPMult(a, ownerPi, gs){
+  return (a&&a.race==='Human'&&ownerPi!=null&&gs.players[ownerPi]&&gs.players[ownerPi].race==='Human')?2:1;
+}
+
 
 function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 // Starting neutral defender count by wealth tier — Rich(tax>=8) 3-4 / Prosperous(tax>=4) 2-3 / Poor 1-2.
@@ -3024,6 +3058,43 @@ function botPlanAssaults(G, pi, chars, assigned){
     });
   });
 }
+// Item 7 — HUNT ENEMY LEADERS. At-war enemy player-characters standing in a province: their pooled
+// force (folded into winnability) and a hunt-score bonus so bots chase down heroes and especially KINGS
+// (a king's death triggers succession and can swing the game). hasKing also earns a slimmer attack
+// margin — bots take a little more risk to land an assassination.
+function botEnemyChars(G, prov, pi){
+  let force=0, value=0, hasKing=false;
+  (prov.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id);
+    if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy'){
+      force+=botForceStrength(e.armies); value+=(e.isKing?50:15); if(e.isKing)hasKing=true;
+    }});
+  return {force, value, hasKing};
+}
+// Items 3 & 4 — ALWAYS EXPAND / SCOUT. An interior character with nothing winnable on its doorstep
+// advances through friendly land toward the frontier (an owned neighbour that itself borders unowned or
+// at-war-enemy territory), massing force at the edge for the next conquest and revealing fog en route.
+// A character already ON the frontier stays put (it would have attacked if it could) and builds instead.
+function botFrontierDir(G, P, pi){
+  const isEdge=prov=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(!N||N.terrain==='sea')continue;
+    if(N.owner==null || (N.owner!==pi && botRelationRaw(G,pi,N.owner)==='enemy')) return true; } return false; };
+  if(isEdge(P)) return -1;                            // already at the edge — hold/build, don't wander
+  let bestDir=-1, bestOpen=0;
+  for(let i=0;i<6;i++){ const M=botNeighbourProv(G,P,i); if(!M||M.owner!==pi||M.terrain==='sea')continue;
+    let open=0;
+    for(let j=0;j<6;j++){ const K=botNeighbourProv(G,M,j); if(!K||K.terrain==='sea')continue;
+      if(K.owner==null || (K.owner!==pi && botRelationRaw(G,pi,K.owner)==='enemy')) open++; }
+    if(open>bestOpen){ bestOpen=open; bestDir=i; }
+  }
+  return bestDir;
+}
+// Item 8 (movement) — seek out a beatable, uncleared lair in our OWN adjacent land (safe to enter) so
+// heroes actively go clear hoards rather than only searching lairs they happen to stand on.
+function botLairDir(G, P, c, pi){
+  for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea'||N.owner!==pi) continue;
+    if((N.features||[]).some(f=>f&&!f.cleared&&!f.ritualSite&&botCanBeatGuardian(c,f.monster))) return i;
+  }
+  return -1;
+}
 // Write movement orders for every bot's armed characters. Called from runTurn after human orders are
 // merged into G.turnOrders and before the default-to-Defend pass.
 function runBotMovement(G, botIdxSet){
@@ -3060,17 +3131,19 @@ function runBotMovement(G, botIdxSet){
           continue;                                    // already ours — not an attack/expand target
         }
         let targetStr, enemyTarget=false;
+        const ec=botEnemyChars(G,N,pi);                // item 7: enemy leaders standing here
         if(N.owner==null){
-          targetStr=botGuardStrength(G,N);             // unowned land — clear the neutral guard (Phase 3a)
+          targetStr=botGuardStrength(G,N)+ec.force;     // unowned land — the neutral guard (+ any enemy leader passing through)
         } else {
           // Owned by another player. Phase 4: press a rival we are AT WAR with; a player we're not at
           // war with (neutral relation) has a closed border, so skip. (Bots never ally in v1.)
           if(botRelationRaw(G,pi,N.owner)!=='enemy') continue;
-          targetStr=botEnemyDefence(G,N,N.owner);      // the enemy's defenders in that province
+          targetStr=botEnemyDefence(G,N,N.owner);      // the enemy's defenders in that province (already counts their characters)
           enemyTarget=true;
         }
-        if(targetStr>0 && myStr < targetStr*margin) continue;   // not confidently winnable — don't march in
-        const score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0); // slight bias toward pressing a rival
+        const effMargin=ec.hasKing?margin*0.9:margin;  // take a little more risk to assassinate a king
+        if(targetStr>0 && myStr < targetStr*effMargin) continue;   // not confidently winnable — don't march in
+        const score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value; // + hunt bonus
         if(!best||score>best.score) best={dirIdx:i,score};
       }
       // Phase 4b — DEFENCE: don't abandon a threatened capital or Rich province to raid elsewhere. If an
@@ -3102,8 +3175,25 @@ function runBotMovement(G, botIdxSet){
         const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[best.dirIdx],extra:'',desc:'Advance'}];
         for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
         G.turnOrders[c.id]=orders;                     // overrides the Defend default for this mover
+        return;
       }
-      // else: no confident target — leave to the default-to-Defend pass (the character holds).
+      // Items 3 & 4 — no winnable target on the doorstep: an interior character advances toward the
+      // frontier (keeps expanding, scouts fog); a character already at the edge holds and builds.
+      // Item 8: first, if a beatable lair sits in our own adjacent land, go clear it (hoard + strength).
+      const ld=botLairDir(G,P,c,pi);
+      if(ld>=0){
+        const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[ld],extra:'',desc:'Raid lair'}];
+        for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
+        G.turnOrders[c.id]=orders;
+        return;
+      }
+      const fd=botFrontierDir(G,P,pi);
+      if(fd>=0){
+        const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[fd],extra:'',desc:'Advance'}];
+        for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
+        G.turnOrders[c.id]=orders;
+      }
+      // else: at the frontier with nothing winnable — leave to the default-to-Defend pass (hold & build).
     });
   });
 }
@@ -3160,15 +3250,25 @@ function runBotEconomy(G, botIdxSet){
           budget-=wage; upkeep+=wage;
         }
       }
-      // Recruit the strongest affordable & sustainable field units — one distinct type per phase.
-      const doneSet=recruitedByProv[prov.id]||(recruitedByProv[prov.id]=new Set());
-      for(const t of botRecruitableTypes(prov)){
-        if(ph>=5||budget<1||upkeep>=upkeepCap) break;
-        if(doneSet.has(t)) continue;                          // avoid a duplicate the engine would block
-        const cost=ARMY_COST_MASTER[t]||2;
-        if(budget<cost || upkeep+cost>upkeepCap) continue;    // try a cheaper type
-        orders[ph++]={action:'recruit',target:`${t}|1`,extra:'',desc:'Recruit '+t};
-        doneSet.add(t); budget-=cost; upkeep+=cost;
+      // Recruit the strongest affordable & sustainable field units in a SINGLE order (item 6): pack
+      // several types — and 2 of a type where the per-type turn limit allows (tax≥10) — into one Recruit
+      // order instead of dribbling one unit per phase. Musters faster when flush and frees other phases.
+      if(!recruitedByProv[prov.id] && prov.armyTypes){
+        const doneProv=recruitedByProv[prov.id]=new Set();
+        const perTypeLimit=(prov.tax>=10?2:1);
+        const tokens=[];
+        for(const t of botRecruitableTypes(prov)){
+          if(ph>=5||budget<1||upkeep>=upkeepCap) break;
+          if(doneProv.has(t)) continue;
+          const cost=ARMY_COST_MASTER[t]||2;
+          let q=0;
+          while(q<perTypeLimit && budget>=cost && upkeep+cost<=upkeepCap){ q++; budget-=cost; upkeep+=cost; }
+          if(q>0){ tokens.push(`${t}|${q}`); doneProv.add(t); }
+        }
+        if(tokens.length && ph<5){
+          const nUnits=tokens.reduce((s,tk)=>s+parseInt(tk.split('|')[1]||1),0);
+          orders[ph++]={action:'recruit',target:tokens.join(','),extra:'',desc:'Recruit '+nUnits+' unit'+(nUnits>1?'s':'')};
+        }
       }
       if(orders.some(o=>o)){
         for(let p=0;p<5;p++) if(!orders[p]) orders[p]={action:'defend',target:'',extra:'',desc:'Hold'};
@@ -3210,6 +3310,24 @@ function botPracticeSkill(c){
 // so an uncastable pick simply no-ops; these gates just avoid wasting the phase on a guaranteed miss.
 function botActionCast(G, c){
   const sk=c.skills||{}; const prov=G.world.provinces[c.location]; if(!prov) return null;
+  // Item 5 — AGGRESSIVE OFFENSIVE CASTS. If an at-war enemy is in reach (co-located or adjacent), hex it
+  // before helping ourselves: Curse / Psychic Blast cripple an enemy commander; Earthquake / Plague
+  // wreck an enemy province's economy and armies. Targets are kept in range ("in or adjacent") and
+  // prefer the juiciest enemy (a king). The engine still rolls skill/limit/chance — an out-of-reach or
+  // over-limit cast simply no-ops, so these gates only avoid an obviously wasted phase.
+  const enemyCharNear=()=>{
+    let best=null;
+    const scan=pv=>{ if(!pv) return; (pv.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id);
+      if(e&&e.alive&&e.player!=null&&e.player!==c.player&&botRelationRaw(G,c.player,e.player)==='enemy'){ const s=botForceStrength(e.armies)+(e.isKing?100:0); if(!best||s>best.s)best={e,s}; } }); };
+    scan(prov); for(let i=0;i<6;i++) scan(botNeighbourProv(G,prov,i));
+    return best?best.e:null;
+  };
+  const enemyProvAdj=needArmies=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i);
+    if(N&&N.owner!=null&&N.owner!==c.player&&botRelationRaw(G,c.player,N.owner)==='enemy'&&(!needArmies||botEnemyDefence(G,N,N.owner)>0)) return N; } return null; };
+  if((sk.necromancy||0)>=1){ const t=enemyCharNear(); if(t) return {action:'cast_spell', target:'Curse', extra:String(t.id), desc:'Cast Curse on '+t.name}; }
+  if((sk.psychic||0)>=1){ const t=enemyCharNear(); if(t) return {action:'cast_spell', target:'Psychic Blast', extra:String(t.id), desc:'Cast Psychic Blast on '+t.name}; }
+  if((sk.elemental||0)>=1){ const N=enemyProvAdj(false); if(N) return {action:'cast_spell', target:'Earthquake', extra:String(N.id), desc:'Cast Earthquake on '+N.name}; }
+  if((sk.necromancy||0)>=1){ const N=enemyProvAdj(true); if(N) return {action:'cast_spell', target:'Plague', extra:String(N.id), desc:'Cast Plague on '+N.name}; }
   if((sk.white||0)>=1 && prov.owner===c.player && prov._blessedTurn!==G.turn){
     return {action:'cast_spell', target:'Bless Province', extra:String(c.location), desc:'Cast Bless Province'};
   }
@@ -3217,6 +3335,90 @@ function botActionCast(G, c){
     return {action:'cast_spell', target:'Skeletal Armies', extra:'', desc:'Cast Skeletal Armies'};
   }
   return null;
+}
+// Item 1 — CROSS-TRAINING. Co-located allies drill faster together: the engine gives a character a
+// GUARANTEED skill gain when a higher-level co-trainer practises the same skill (mentor rule), and a
+// group bonus among equals. So instead of each bot character grinding its own skill alone, a cluster
+// converges on one "mentor skill" — the strongest teachable skill present — and the laggards (including
+// freshly-hired heroes standing with the king) level up quickly. Deterministic from skills, so every
+// member of the cluster independently picks the same focus and they all co-train.
+function botCrossTrainSkill(G, c, pi){
+  const partners=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&x.location===c.location&&x.id!==c.id
+    && (()=>{const o=G.turnOrders[x.id]; return !o||o.every(y=>y==null||y.action==='defend'||y.action==='practice');})());
+  if(partners.length===0) return null;                       // need a training partner
+  const group=[c,...partners];
+  const SKILLS=['melee','tactical','march','archery','naval','white','psychic','illusory','elemental','necromancy','spy','thief','sage','druid','explorer'];
+  let bestSkill=null,bestLvl=0;
+  for(const sk of SKILLS){
+    let mx=0,mn=99;
+    group.forEach(x=>{ const l=(x.skills||{})[sk]||0; if(l>mx)mx=l; if(l<mn)mn=l; });
+    // A worthwhile focus: someone can teach it (mx≥1) and someone below can still learn (mn<mx, mn<5).
+    if(mx>=1 && mn<mx && mn<5 && mx>bestLvl){ bestLvl=mx; bestSkill=sk; }
+  }
+  return bestSkill;
+}
+// Item 2 — TITLE STRATEGY. The throne (winning) is pursued by runBotReckoning; on top of that each bot
+// picks 2-3 MAIN titles to chase, drawn from its roster's aptitudes, and biases which skills it drills
+// toward them. Most of the merit already flows from the aggressive play elsewhere (fighting → Grand
+// Marshal, lair-raiding → Monster-Bane, exploring → Loremaster, casting → Archmage); this just points a
+// bot's *training* at its chosen prizes so it leans into them. Decided once and cached for stability.
+function botTargetTitles(G, pi){
+  const p=G.players[pi]; if(!p) return [];
+  if(p._botTitles) return p._botTitles;
+  let magic=0, combat=0, explore=0, naval=0;
+  (G.characters||[]).filter(c=>c&&c.player===pi).forEach(c=>{ const s=c.skills||{};
+    magic+=(s.white||0)+(s.psychic||0)+(s.illusory||0)+(s.elemental||0)+(s.necromancy||0);
+    combat+=(s.melee||0)+(s.tactical||0)+(s.march||0)+(s.archery||0);
+    explore+=(s.explorer||0)+(s.sage||0); naval+=(s.naval||0);
+  });
+  const cand=[['marshal',combat+5],['monster',combat+2],['arch',magic*2],['lore',explore*2],['sea',naval*2]];
+  cand.sort((a,b)=>b[1]-a[1]);
+  const picks=cand.filter(x=>x[1]>0).slice(0,3).map(x=>x[0]);
+  p._botTitles = picks.length?picks:['marshal','monster'];
+  return p._botTitles;
+}
+function botTitleFocusSkill(c, titles){
+  const sk=c.skills||{};
+  // Re-bias among skills the character ALREADY has (≥1, still trainable) toward a target title — never
+  // starts a new skill from scratch (that stays with botPracticeSkill's own fallback), so a maxed or
+  // non-matching character simply returns null and the normal practice/explore order is preserved.
+  const pickHighest=list=>{ let best=null,bl=0; list.forEach(k=>{const v=sk[k]||0; if(v>=1&&v<5&&v>bl){bl=v;best=k;}}); return best; };
+  for(const t of (titles||[])){
+    if(t==='arch'){ const m=pickHighest(['elemental','necromancy','psychic','white','illusory']); if(m)return m; }
+    if(t==='marshal'||t==='monster'){ const m=pickHighest(['melee','tactical','march','archery']); if(m)return m; }
+    if(t==='lore'){ const m=pickHighest(['explorer','sage']); if(m)return m; }
+    if(t==='sea'){ const m=pickHighest(['naval']); if(m)return m; }
+  }
+  return null;
+}
+// Item 8 — LAIR RAIDING. A lair's guardian is a personal-combat monster ({hp, power}); clearing it
+// yields its gold hoard and Monster-Bane merit and toughens the hero — but a hero can DIE, so bots need
+// a real winnability gate (prior sessions staged Search for exactly this reason). botCanBeatGuardian
+// rates the hero (max HP + combat skills) against the guardian (HP + a power-tier surcharge) and demands
+// a clear 1.5× edge. This encodes "know the difficulty of lairs" and ties to item 1: as a hero cross-
+// trains up, ever-tougher guardians come within reach. botBeatableLair returns the richest beatable,
+// uncleared, non-ritual lair standing in the hero's own province.
+function botCanBeatGuardian(c, m){
+  if(!m) return true;                                  // no guardian → trivially clearable
+  const sk=c.skills||{};
+  const combatSkill=(sk.melee||0)+(sk.archery||0);
+  const battleMagic=(sk.elemental||0)+(sk.necromancy||0)+(sk.psychic||0); // can blast the monster in the encounter
+  if(combatSkill<1 && battleMagic<1) return false;     // a non-fighter (e.g. a pure white caster) can't hurt it — don't send it to die
+  const POWER={'':0,'Weak':0,'Moderate':8,'Powerful':16,'Legendary':24};
+  const monRating=(m.hp||10)+(POWER[m.power]||0);
+  const charRating=(c.maxHp||20)+(sk.melee||0)*6+(sk.tactical||0)*3+(sk.archery||0)*2+battleMagic*4;
+  return charRating >= monRating*1.5;                  // conservative — demand a clear edge (deaths are permanent)
+}
+function botBeatableLair(G, c){
+  const prov=G.world.provinces[c.location]; if(!prov||!prov.features) return -1;
+  let bestIdx=-1, bestTreasure=-1;
+  prov.features.forEach((f,idx)=>{
+    if(!f||f.cleared||f.ritualSite) return;
+    if(!botCanBeatGuardian(c, f.monster)) return;      // too dangerous for this hero right now
+    const tr=f.treasure||0;
+    if(tr>bestTreasure){ bestTreasure=tr; bestIdx=idx; }
+  });
+  return bestIdx;
 }
 function runBotActions(G, botIdxSet){
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
@@ -3229,13 +3431,26 @@ function runBotActions(G, botIdxSet){
       if(hp < maxHp*0.6){ fill(c.id,{action:'rest',target:'',extra:'',desc:'Rest & heal'}); return; }
       // Action-phase spell: cast once in phase 0, then practise (grow the school) or hold the rest.
       const castOrder=botActionCast(G,c);
+      const OFFENSIVE_CAST=new Set(['Curse','Psychic Blast','Earthquake','Plague']);
+      const practiceTail=()=>{ const sk=botCrossTrainSkill(G,c,pi)||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
+        return sk?{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)}:{action:'defend',target:'',extra:'',desc:'Hold'}; };
+      // Offensive casts fire first (item 5) — hexing a nearby enemy beats anything peaceful.
+      if(castOrder && OFFENSIVE_CAST.has(castOrder.target)){
+        const tail=practiceTail(); G.turnOrders[c.id]=[castOrder,{...tail},{...tail},{...tail},{...tail}]; return;
+      }
+      // Item 8 — raid a beatable lair standing here (hoard + permanent strength) before low-value self-buffs.
+      const li=botBeatableLair(G,c);
+      if(li>=0){
+        const tail=practiceTail();
+        G.turnOrders[c.id]=[{action:'search',target:String(li),extra:'',desc:'Search Lair'},{...tail},{...tail},{...tail},{...tail}];
+        return;
+      }
       if(castOrder){
-        const sk=botPracticeSkill(c);
-        const tail=sk?{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)}:{action:'defend',target:'',extra:'',desc:'Hold'};
+        const tail=practiceTail();
         G.turnOrders[c.id]=[castOrder,{...tail},{...tail},{...tail},{...tail}];
         return;
       }
-      const skill=botPracticeSkill(c);
+      const skill=botCrossTrainSkill(G,c,pi)||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
       if(skill){ fill(c.id,{action:'practice',target:skill,extra:'',desc:'Practice '+(SKILL_LABELS[skill]||skill)}); return; }
       const prov=G.world.provinces[c.location];
       const mapped=(prov&&prov.exploredBy)?(prov.exploredBy[pi]||0):0;
@@ -3954,13 +4169,15 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   const turnOrders={};
   allChars.filter(c=>c.player!==null&&c.alive).forEach(c=>{turnOrders[c.id]=[null,null,null,null,null];});
 
-  return{world:{provinces,cols,rows},players,characters:allChars,
+  const _newGameState={world:{provinces,cols,rows},players,characters:allChars,
     mercenaries:[],
     // ── Diplomacy (KC alliance system) ── relations between players, keyed "minIdx-maxIdx" →
     // 'enemy' | 'allied'. Any pair absent from the map is NEUTRAL (the default). All players begin
     // Neutral to one another; relations only change at end of turn via mutual Treat / a war declaration.
     relations:{},
     heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
+  grantMithrilToDwarves(_newGameState); // Item 3: dwarf characters of a dwarf kingdom start suited in mithril
+  return _newGameState;
 }
 
 function getNeighborsP(prov,cols,rows,provinces){
@@ -5323,7 +5540,10 @@ async function runTurn(){
     const chance=(_b===SKILLGAIN_COMMON)
       ? Math.max(0.05, 0.10 - 0.00625*lvl)  // frequent actions: 10% @ L0 → 5% @ L8
       : Math.max(0.10, 0.20 - 0.0125*lvl);  // standard experience: 20% @ L0 → 10% @ L8
-    if(Math.random()<chance){
+    // Item 5 (this session): a Human character of a Human kingdom learns 50% faster — every skill, and
+    // every chance-based path (practice, experience, moves…) flows through here, so all are covered.
+    const _humanLearn=(real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1;
+    if(Math.random()<Math.min(1,chance*_humanLearn)){
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
       const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
@@ -5540,21 +5760,26 @@ function seaPenalty(armyType, terrain){
       const penalty=druIdPenaltyMult(heroChar,army,playerAlignment);
       if(penalty<1) str=Math.floor(str*penalty);
     }
-    // ── HUMANOID RACE AFFINITY (item 1) ── Two INDEPENDENT, STACKING ×1.2 boosts to base strength:
-    //   • King's race: units of the same race as the OWNING PLAYER'S KING (the player's chosen race).
-    //   • Leader's race: units led by a character (king or hero) of the SAME race as the units.
-    // Both are humanoid-only in effect: a character's race is always Human/Elven/Dwarven/Orcish, so
-    // the equality tests never fire for Primal creatures, skeletons, monsters or sea beasts. A king
-    // personally leading his own-race troops fields them at ×1.44 (both boosts apply). The owner race
-    // comes from ctx.ownerRace when supplied (leaderless owned garrison), else from the leader's player.
-    {
-      const _unitRace=army.race||null;
-      if(_unitRace){
-        const _ownerRace=(ctx&&ctx.ownerRace!=null)?ctx.ownerRace
-                        :(heroChar&&heroChar.player!=null?(G.players[heroChar.player]?.race):null);
-        if(_ownerRace&&_unitRace===_ownerRace) str=Math.round(str*1.2);            // king's-race affinity
-        if(heroChar&&heroChar.race&&_unitRace===heroChar.race) str=Math.round(str*1.2); // leader's-race affinity
-      }
+    // ── RACE CONTEXT (computed once for all race modifiers) ──
+    // _unitRace: the army's kin. _ownerRace: the race of the OWNING PLAYER'S KING (their chosen race),
+    // from ctx.ownerRace when supplied (leaderless owned garrison) else the leader's player. _leaderRace:
+    // the leading character's kin. All humanoid; the equality tests never fire for Primal/skeleton/monster.
+    const _unitRace=army.race||null;
+    const _ownerRace=(ctx&&ctx.ownerRace!=null)?ctx.ownerRace
+                    :(heroChar&&heroChar.player!=null?(G.players[heroChar.player]?.race):null);
+    const _leaderRace=(heroChar&&heroChar.race)||null;
+    // ── HUMANOID RACE AFFINITY (item 1, prior) ── Two INDEPENDENT, STACKING ×1.2 base-strength boosts:
+    //   • King's race: units of the same race as the owning player's king.  • Leader's race: units led by
+    // a character (king or hero) of the same race. A king personally leading his own-race troops → ×1.44.
+    if(_unitRace){
+      if(_ownerRace&&_unitRace===_ownerRace) str=Math.round(str*1.2);       // king's-race affinity
+      if(_leaderRace&&_unitRace===_leaderRace) str=Math.round(str*1.2);     // leader's-race affinity
+    }
+    // ── RACIAL ANIMOSITY (this session, item 1) ── Elves & Dwarves, and Humans & Orcs, bear an ancient
+    // grudge: an army led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
+    if(_unitRace&&_leaderRace){
+      const _RIVAL_RACE={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+      if(_RIVAL_RACE[_unitRace]===_leaderRace) str=Math.round(str*0.8);
     }
     // Apply terrain modifier
     if(terrain){
@@ -5569,6 +5794,12 @@ function seaPenalty(armyType, terrain){
       // commanders and has been removed.)
       str=Math.floor(str*terrainMultFinal);
     }
+    // ── ELVEN WOODLAND MASTERY (this session, item 2) ── Elven armies of an Elven kingdom fight +20%
+    // in forest and jungle — their home ground.
+    if(_unitRace==='Elven'&&_ownerRace==='Elven'&&(terrain==='forest'||terrain==='jungle')) str=Math.round(str*1.2);
+    // ── DWARVEN BULWARK (this session, item 3) ── Dwarven armies of a Dwarven kingdom defend at ×1.5
+    // in any battle (per-unit; applies only on the defending side).
+    if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false) str=Math.round(str*1.5);
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
     if(army._tempStrReduction){ const floorStr=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr,str-army._tempStrReduction); } // battle-only; cleared at battle end. Floored so pre-battle softening never zeroes a unit before the melee.
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
@@ -6537,7 +6768,7 @@ const BATTLE_ARMY_SPELLS={
         if(roll<winDeathChance*steelMult*(_npcWargs?0.5:1)){
           narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} suffered heavily and were destroyed in the fighting.`);
           a._died=true; winEvents++;
-        } else if(roll<winDeathChance*steelMult+xpChance(winXPChance*milMult,a.quality)){
+        } else if(roll<winDeathChance*steelMult+xpChance(winXPChance*milMult,a.quality)*humanXPMult(a,c.player,G)){
           if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} distinguished themselves and are promoted to ${a.quality}!`);winEvents++;}
           else winSurv++;
         } else {
@@ -6624,7 +6855,7 @@ const BATTLE_ARMY_SPELLS={
           if(roll2<loseDemoteChance){
             if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
             else {a._notable=true;narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} lost heart in defeat, reduced to ${a.quality}.`);}
-          } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)){
+          } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G)){
             if(idx>=0&&idx<4){a.quality=tiers[idx+1];a._notable=true;narrative.push(`— Though beaten, ${a.unitName?a.unitName+' ('+a.type+')':a.type} learned from the engagement and improved to ${a.quality}!`);}
           }
         }
@@ -6844,6 +7075,7 @@ const BATTLE_ARMY_SPELLS={
       tactics:((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME']).slice(),
       tacIdx:0, planExhausted:false, neverFlees:false,
       speedBonus:ch._speedBonus||0, specials:[],
+      mithril:(ch.items||[]).some(it=>it.effect&&it.effect.stat==='mithrilArmour'), // Item 3: −2 melee damage taken
       status:pcNewStatus(),
       castSpells:[], castSchool:{}, // per-combat spell limits
       isUndead:(ch.alignment==='Undead'),
@@ -6911,6 +7143,8 @@ const BATTLE_ARMY_SPELLS={
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // A Cautious fighter rolls with the blow rather than taking it square on.
     dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
+    // Item 3 (this session): Mithril Armour turns aside 2 points of any melee blow (min 1 damage still lands).
+    if(defender.mithril) dmg=Math.max(1, dmg-2);
     return dmg;
   }
   // Which damage channel a hit belongs to, so a monster's vulnerabilities/resistances
@@ -8078,7 +8312,7 @@ const BATTLE_ARMY_SPELLS={
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathPvP*atkSteelMult){a._died=true;narrative.push(`— ${atkName}'s ${a.unitName||a.type} were destroyed in the fighting.`);}
-        else if(roll<winDeathPvP*atkSteelMult+xpChancePvP(winXPPvP*atkMilMult,a.quality)){
+        else if(roll<winDeathPvP*atkSteelMult+xpChancePvP(winXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){
           if(i<4){a.quality=tiers[i+1];narrative.push(`— ${atkName}'s ${a.unitName||a.type} earn promotion to ${a.quality}!`);}
         }
       });
@@ -8095,7 +8329,7 @@ const BATTLE_ARMY_SPELLS={
         else {
           const roll2=Math.random();
           if(roll2<loseDemotePvP){ if(_sfDef){ narrative.push(`— ${defName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${defName}'s ${a.unitName||a.type} are reduced to ${a.quality} in defeat.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${defName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${defName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
         }
       });
       recordBattleGraves(prov, atkArmies.filter(a=>a._died));
@@ -8163,7 +8397,7 @@ const BATTLE_ARMY_SPELLS={
         else {
           const roll2=Math.random();
           if(roll2<loseDemotePvP){ if(_sfAtk){ narrative.push(`— ${atkName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${atkName}'s ${a.unitName||a.type} suffer in retreat, demoted to ${a.quality}.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Through adversity, ${atkName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Through adversity, ${atkName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
         }
       });
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
@@ -8173,7 +8407,7 @@ const BATTLE_ARMY_SPELLS={
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathPvP*defSteelMult){a._died=true;narrative.push(`— ${defName}'s ${a.unitName||a.type} were lost defending ${prov.name}.`);}
-        else if(roll<winDeathPvP*defSteelMult+xpChancePvP(winXPPvP*defMilMult,a.quality)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${defName}'s ${a.unitName||a.type} are hardened by victory to ${a.quality}!`);}}
+        else if(roll<winDeathPvP*defSteelMult+xpChancePvP(winXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${defName}'s ${a.unitName||a.type} are hardened by victory to ${a.quality}!`);}}
       });
       recordBattleGraves(prov, atkArmies.filter(a=>a._died));
       recordBattleGraves(prov, defArmies.filter(a=>a._died));
@@ -8835,8 +9069,10 @@ const BATTLE_ARMY_SPELLS={
           if(!toProv.exploredBy) toProv.exploredBy={};
           const explLvlMove=effStat(c,'explorer');
           const explGainMove=(10+5*explLvlMove)+(charHoldsTitle(c,'lore')?5:0); // LIVE TITLE PERK — Loremaster
+          // Item 2 (this session): an Elven character of an Elven kingdom maps forest & jungle twice as fast.
+          const _elfWoodMove=(c.race==='Elven'&&G.players[c.player]?.race==='Elven'&&(toProv.terrain==='forest'||toProv.terrain==='jungle'))?2:1;
           const prevExp=toProv.exploredBy[c.player]||0;
-          toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove);
+          toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove*_elfWoodMove);
           toProv.explored=toProv.exploredBy[c.player];
           // Check if any features are now discoverable
           const totalF=(toProv.features||[]).length;
@@ -8946,6 +9182,7 @@ const BATTLE_ARMY_SPELLS={
           if(battleAttacker.location!==c.location) c.location=battleAttacker.location;
           battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id,public:true}));
           if(battle.won){
+            markOrcAttackWin(c, G); // Item 4: orc war-spoils — this attacking force won
             if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
             // ── Fate of the guard's SURVIVORS ──
             // combatVsNPC has already applied the casualty rolls — identical to a beaten player,
@@ -9146,6 +9383,7 @@ const BATTLE_ARMY_SPELLS={
               if(_absorb.length>0) toProv.garrisonArmies=(toProv.garrisonArmies||[]).concat(_absorb);
             }
             if(battle.won){
+              markOrcAttackWin(c, G); // Item 4: orc war-spoils — this attacking force won
               // Winning the battle is not the same as taking the ground. A dug-in or trapped defence
               // (a trapped Dwarven Shield Fort / nowhere to retreat) leaves enemy armies still standing here,
               // and so does a third party's force that was never part of this fight. Claiming the
@@ -9210,6 +9448,7 @@ const BATTLE_ARMY_SPELLS={
               toProv._hadBattleThisTurn=true;
               garBattle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:toProv.id,public:true}));
               if(garBattle.won){
+                markOrcAttackWin(c, G); // Item 4: orc war-spoils — this attacking force won
                 movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
                 if(garSurvivors.length>0){
                   // Item 3 (this session): a beaten garrison RETREATS if it has somewhere to go —
@@ -9339,7 +9578,9 @@ const BATTLE_ARMY_SPELLS={
         // sd10 Scouts & Rangers: +20% explore bonus
         const scoutBonus=hasDisc(c.player,'sd10')?1.20:1;
         const loreMult=(charHoldsTitle(c,'lore')?1.05:1)*(charMinor(c,'trailblazer')?1.05:1); // Loremaster title + Trailblazer minor: +5% exploration each
-        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult));
+        // Item 2 (this session): Elven character of an Elven kingdom explores forest/jungle twice as fast.
+        const _elfWoodExpl=(c.race==='Elven'&&G.players[c.player]?.race==='Elven'&&(prov.terrain==='forest'||prov.terrain==='jungle'))?2:1;
+        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*_elfWoodExpl));
         if(!prov.exploredBy) prov.exploredBy={};
         const before=prov.exploredBy[c.player]||0;
         prov.exploredBy[c.player]=Math.min(100,before+gain);
@@ -9658,6 +9899,7 @@ const BATTLE_ARMY_SPELLS={
         if((player.gold||0)<hireWage){log('hire',`${c.name} cannot afford to hire ${h.name} — needs ${hireWage}g/turn, treasury has only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
         h.pay=hireWage;
         player.gold-=hireWage;h.player=c.player;h.name=h.name.replace(' (wandering)','');
+        if(h.race==='Dwarven'&&G.players[c.player]?.race==='Dwarven') grantMithrilTo(h, G); // Item 3: mithril on hire into a dwarf kingdom
         player.heroes=(player.heroes||[]);player.heroes.push(h.id);
         // Hero can receive orders starting the phase AFTER they were hired (AK 3.5)
         // We mark the hire phase so the turn report knows which phases they can act in
@@ -9960,7 +10202,7 @@ const BATTLE_ARMY_SPELLS={
           let trainedAny=false;
           trainable.forEach(army=>{
             if(army.quality==='Elite') return;
-            const baseChance=(DRILL_BASE[army.quality]||0.03)*drillLvl;
+            const baseChance=(DRILL_BASE[army.quality]||0.03)*drillLvl*humanXPMult(army,c.player,G);
             if(Math.random()<baseChance){
               const idx=tiers.indexOf(army.quality);
               if(idx>=0&&idx<4){
@@ -12536,6 +12778,11 @@ const BATTLE_ARMY_SPELLS={
   // ── LIVE TITLE PERKS ── (holder computation + helpers moved earlier in runTurn to avoid a
   // temporal-dead-zone when the turn-start pursuit resolution reads them — see near the relation helpers.)
 
+  // ── MITHRIL SWEEP (this session, item 3) ── Before any battle this turn, ensure every Dwarven
+  // character serving a Dwarven kingdom is suited in mithril — a self-healing catch-all covering
+  // heroes hired last turn, resurrected dwarves, charm-reverts, and any path the inline grants miss.
+  grantMithrilToDwarves(G);
+
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // Item 6: reliable phase for skill-rises earned outside processOrder
     log('system',`— ${SEASONS[ph]} —`);
@@ -12752,7 +12999,16 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const allKingdomArmies=[...allArmies,...garrisonArmies];
         // Item 8: temporary summons (elementals) are a spell effect that dissolves at turn end —
         // they draw no wage and are never disbanded for non-payment (see the disband loop below).
-        let armyWages=allKingdomArmies.reduce((s,a)=>s+(a._temporary?0:(a._isSkeletal?1:(ARMY_COST[a.type]||2))),0);
+        // Item 4 (this session): ORC WAR-SPOILS — an Orcish unit of an Orcish kingdom that won a battle
+        // as part of an attacking force THIS turn pays only half upkeep for this turn (min 1g).
+        const _orcKingdom=(p.race==='Orcish');
+        let armyWages=allKingdomArmies.reduce((s,a)=>{
+          if(a._temporary) return s;
+          if(a._isSkeletal) return s+1;
+          let w=ARMY_COST[a.type]||2;
+          if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn) w=Math.max(1,Math.round(w*0.5));
+          return s+w;
+        },0);
         // MINOR TITLE — The Host-Leader: this kingdom's greatest general pays 1g less per unit he leads (min 1/unit).
         { const hl=playerChars.find(c=>charMinor(c,'hostleader')); if(hl){ const led=(hl.armies||[]).filter(a=>!a._temporary).length; armyWages=Math.max(0,armyWages-led); } }
 
@@ -12848,6 +13104,15 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // Wounded feature guardians recover over the year between turns.
   healFeatureMonsters();
+
+  // ── ORC VIGOUR (this session, item 4) ── Orcish characters of an Orcish kingdom grow tougher with
+  // every year of war: their MAXIMUM hp rises by 2-3 each turn. This is growth, not healing — current
+  // hp is left untouched (the extra headroom is filled by Rest or other healing).
+  (G.characters||[]).forEach(ch=>{
+    if(ch&&ch.alive&&ch.race==='Orcish'&&ch.player!=null&&G.players[ch.player]&&G.players[ch.player].race==='Orcish'){
+      ch.maxHp=(ch.maxHp||20)+rP(2,3);
+    }
+  });
 
   // ── Spared cowards slink home ── A Cowardly commander who begged for mercy this turn abandons the
   // field; by next turn they have made their way back to their king's seat (home province, or the
@@ -13614,6 +13879,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.15-0146</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.15-1950</div>
 </body>
 </html>
