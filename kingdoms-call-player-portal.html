@@ -5239,6 +5239,19 @@ function renderMapIntoSvg(svgEl, report){
       symbolLayer.appendChild(btxt);
     }
 
+    // DIVINE — Consecrate: a ✨ at the TOP-RIGHT marks the kingdom's holy ground so the player can
+    // confirm at a glance that the blessing is active (+50% tax, doubly-fanatical defenders, −15% to
+    // Undead/Evil attackers, and resurrection anchor all key off this province).
+    if(pd.consecrated){
+      const ctxt=document.createElementNS(svgNS,'text');
+      ctxt.setAttribute('x',x+HS*0.55);ctxt.setAttribute('y',y-HS*0.35);
+      ctxt.setAttribute('text-anchor','middle');ctxt.setAttribute('font-size','8');
+      ctxt.setAttribute('pointer-events','none');
+      ctxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
+      ctxt.textContent='✨';
+      symbolLayer.appendChild(ctxt);
+    }
+
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
     // where this player has a character with troops under their command. Pagan ritual-site moons sit
     // just to its right so the two never collide.
@@ -5274,6 +5287,7 @@ function renderMapIntoSvg(svgEl, report){
         let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
         if(isOwned){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
+          if(pd.consecrated) h+=`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`;
           h+=`<br>\u{1F6C2} ${formatRace(pd.race)}`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
@@ -5352,6 +5366,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.15-1950</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.16-1232</div>
 </body>
 </html>
