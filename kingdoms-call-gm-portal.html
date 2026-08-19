@@ -556,7 +556,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
 // Alignment-signature actions and king-only actions — mirrored from the player portal.
 const ALIGN_ACTIONS_G={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
 const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker']);
@@ -566,7 +566,7 @@ const ACTION_DISPLAY_ORDER_G=[
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
   'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
   'Spy','Steal','Practice Skill',
-  'Use Item','Give Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
+  'Use Item','Send Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
 ];
 const _actionRankG=(a)=>{ const i=ACTION_DISPLAY_ORDER_G.indexOf(a); return i<0?ACTION_DISPLAY_ORDER_G.length:i; };
 function actionsForG(ch){
@@ -594,15 +594,15 @@ const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'M
 // new mastery ORDER (non-magic skills) or SPELL (magic schools) they can now use. L7/L9 unlocks are
 // fully wired and gated; L6/L8 describe the wired passive that deepens at that level.
 const MASTERY_UNLOCKS={
-  melee:{6:'+1 to your melee in personal combat for each level past 5.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Your personal-combat melee bonus deepens (now +3).',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
-  archery:{6:'+1 to your archery in personal combat for each level past 5.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Your personal-combat archery bonus deepens (now +3).',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
-  tactical:{6:'+1 Tactical command in battle for each level past 5.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Your Tactical command bonus deepens (now +3).',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
+  melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
+  archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\'s Mark orders.',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
+  tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Grandmaster tactician — no further command bonus (capped at 5); mastery is in your Feigned Retreat and Grand Stratagem orders.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'+1 land movement point.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'+2 land movement points.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
   naval:{6:'+1 sea movement point.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'+2 sea movement points.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
   sage:{6:'Your Sage discovery chance keeps climbing past level 5.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Your mastery of lore deepens — discoveries come more readily still.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
-  druid:{6:'Primal armies you lead fight +5% stronger for each level past 5.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Your bond with primal armies deepens further (+strength per level).',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
+  druid:{6:'Archdruid — your primal-army strength benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Grand Archdruid — no further primal-strength bonus (capped at 5); mastery is in your Awaken Grove and Wild Calling orders.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'You now automatically spot every lair on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'+1 White Magic casting each turn.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'Your White Magic mastery deepens.',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'+1 Psychic Magic casting each turn.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'Your Psychic mastery deepens.',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
@@ -732,7 +732,7 @@ function predictedItems(charId,upToPhaseExclusive){
   for(let p=0;p<upToPhaseExclusive;p++){
     (report.characters||[]).forEach(x=>{
       const actionEl=getActionEl(x.id,p);
-      if(!actionEl||actionEl.value!=='Give Item') return;
+      if(!actionEl||(actionEl.value!=='Send Item'&&actionEl.value!=='Give Item')) return;
       const recip=parseInt(getOrderExtra(x.id,p));
       const arr=items.get(x.id)||[];
       if(!items.has(recip)) return;
@@ -741,7 +741,9 @@ function predictedItems(charId,upToPhaseExclusive){
       let idxs;
       if(rawT.toLowerCase()==='all') idxs=arr.map((_,i)=>i);
       else idxs=rawT.split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<arr.length);
-      [...new Set(idxs)].sort((a,b)=>b-a).forEach(i=>{ const [it]=arr.splice(i,1); (items.get(recip)||[]).push(it); });
+      // Item 8: cross-province sends leave the giver now but reach the recipient only at turn's end.
+      const _same=(predictedLocation(x.id,p)?.id)===(predictedLocation(recip,p)?.id);
+      [...new Set(idxs)].sort((a,b)=>b-a).forEach(i=>{ const [it]=arr.splice(i,1); if(_same) (items.get(recip)||[]).push(it); });
     });
   }
   return items.get(cid)||[];
@@ -949,12 +951,12 @@ function buildTargetField(c,ph,saved){
         if(wageG==null) return`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve your crown (Divine/Undead gulf)</option>`;
         return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — ${sk} — ${wageG}g/turn</option>`;
       }).join('')}</select>`;}
-    case 'Give Item':{
-      // Predicted list: items received via earlier-phase Give Item orders can be handed onward;
+    case 'Send Item': case 'Give Item':{
+      // Predicted list: items received via earlier-phase Send Item orders can be handed onward;
       // items already given away vanish. Indices match GM engine resolution.
       const items=predictedItems(c.id,ph);
       const startNames=new Set((c.items||[]).map(it=>it&&it.name));
-      if(!items.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to give (none held, or all given away earlier this turn)" disabled>`;
+      if(!items.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to send (none held, or all sent away earlier this turn)" disabled>`;
       const others=(report.characters||[]).filter(x=>x.id!==c.id);
       return`<select id="po-target-${c.id}-${ph}">${items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('')}</select>
         <select id="po-extra-${c.id}-${ph}" style="margin-top:3px">${others.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('')}</select>`;}
@@ -5376,6 +5378,10 @@ async function runTurn(){
   // (force-march reinforcement, defend-reaction, pursuit movement) — outside processOrder — would
   // otherwise be deferred with phase null and land under END OF TURN. This is the reliable fallback.
   let _currentPhase=null;
+  // Item 3: while a battle (or its carry-on series) is resolving, this holds the contested province's
+  // id so trySkillGain can cap a combat skill to ONE gain per province-battle-series (carry-on battles
+  // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between fights.
+  let _combatSkillProv=null;
   const log=(type,text,meta={})=>{
     turnLog.push({type,text,
       actor: meta.actor??null,
@@ -5393,6 +5399,18 @@ async function runTurn(){
     });
     console.log(`[${type}] ${text}`);
   };
+
+  // ── Item 9: TARGET NOTIFICATIONS ───────────────────────────────────────────
+  // When something happens TO a character that they'd know about — receiving items, armies mustered
+  // to them, a spell cast on them (friendly or hostile) — file a line in THAT character's own
+  // Chronicle section for the phase it happened. charId routes it into their section; targets makes
+  // sure their player sees it even when the actor was an enemy. This never leaks to anyone else.
+  function notifyTarget(targetChar, text, ph, type){
+    if(!targetChar) return;
+    const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
+    log(type||'system', text, {actor:null, targets:(targetChar.player!=null?[targetChar.player]:[]),
+      charId:targetChar.id, phase:_ph, provinceId:(targetChar.location!=null?targetChar.location:null)});
+  }
 
   // ── DIPLOMACY (KC alliance system) ─────────────────────────────────────────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
@@ -5530,6 +5548,19 @@ async function runTurn(){
     if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
     const lvl=(real.skills||{})[skill]||0;
     if(lvl>=9) return; // SKILL CAP raised to 9 — but only EXPERIENCE (this path) may pass level 5.
+    // ── Item 3: RAISE-ONCE GUARDS ──────────────────────────────────────────────
+    // A character may raise a given skill AT MOST once per phase, and at most once per series of
+    // ongoing battles in a province (the opening battle + every carry-on — which can span phases).
+    // We test BEFORE rolling and only stamp on a real gain, so failed rolls don't burn the allowance
+    // and a single success closes it. The log is keyed to the current turn and reset each turn.
+    const _sgPh=(_logCtx.phase!=null?_logCtx.phase:_currentPhase);
+    if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}};
+    if(real._sgLog.phaseNo!==_sgPh){ real._sgLog.phaseNo=_sgPh; real._sgLog.phaseSkills={}; }
+    if(real._sgLog.phaseSkills[skill]) return;                       // already raised this skill this phase
+    if(_combatSkillProv!=null){
+      const _ps=real._sgLog.provSkills[_combatSkillProv]||(real._sgLog.provSkills[_combatSkillProv]={});
+      if(_ps[skill]) return;                                         // already raised it in this province's battle series
+    }
     // Item 3: skill-gain chances ramp DOWN with level so skills get off the ground fast and mastery
     // slows toward the top. Two curves:
     //   • STANDARD experience (SKILLGAIN_STD): 20% @ L0 → 10% @ L8 (linear).
@@ -5546,6 +5577,10 @@ async function runTurn(){
     const _humanLearn=(real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1;
     if(Math.random()<Math.min(1,chance*_humanLearn)){
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
+      // Item 3: record the raise so this skill can't rise again this phase, nor again in this
+      // province's ongoing battle series (carry-on battles span phases).
+      real._sgLog.phaseSkills[skill]=true;
+      if(_combatSkillProv!=null){ (real._sgLog.provSkills[_combatSkillProv]||(real._sgLog.provSkills[_combatSkillProv]={}))[skill]=true; }
       const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
       const _payAfter=real.pay||0;
@@ -5832,11 +5867,8 @@ function seaPenalty(armyType, terrain){
       if(terrain==='sea'){ if(charHoldsTitle(heroChar,'sea')) str=Math.round(str*1.05); }
       else if(charHoldsTitle(heroChar,'marshal')) str=Math.round(str*1.05);
     }
-    // ── LEVEL 6+ SKILL PERK ── Archdruid: primal (Creature/Monster) armies the character leads gain
-    // +5% strength for each Druid level past 5.
-    if(heroChar && (CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){
-      const dPerk=perkTier(heroChar,'druid'); if(dPerk>0) str=Math.round(str*(1+0.05*dPerk));
-    }
+    // ── Druid creature-leading ── the strength benefit CAPS at level 5 (via effStat elsewhere);
+    // levels 6+ grant the Druid's distinct L7/L9 orders, not further strength scaling. (item 6)
     // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%; Ironclad: heavy & fleet +5%.
     if(heroChar){
       const _prim=CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type);
@@ -6122,6 +6154,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   function combatVsNPC(c, prov, neutralGuardHero){
+    _combatSkillProv=(prov&&prov.id!=null)?prov.id:null; // item 3: battle-series key (cleared at each loop boundary)
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
     if(c){c._druidNegated=false;c._tacticalNegated=false;c._tacticalHalved=false;c._tacticalMult=1;c._curseHalveStat=null; if(c._massConfusedTurn===G.turn)c._tacticalNegated=true;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;neutralGuardHero._tacticalHalved=false;neutralGuardHero._tacticalMult=1;neutralGuardHero._curseHalveStat=null;}
@@ -6164,7 +6197,7 @@ const BATTLE_ARMY_SPELLS={
     // A slain commander's skills die with them: the stand-in provides no Tactical, Archery,
     // Naval, Druid or spellcraft for the rest of this battle.
     const defHero=defCmdrSlain?null:(neutralGuardHero||null);
-    let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:(effStat(c,'tactical')+perkTier(c,'tactical')+(charMinor(c,'strategist')?1:0)); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2); // LEVEL 6+ PERK — Grand Tactician
+    let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:(effStat(c,'tactical')+(charMinor(c,'strategist')?1:0)); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2); // LEVEL 6+ PERK — Grand Tactician
     const tactBonus=1+tactSkill*0.2;
     // Tactical only applies to land armies (not flying or naval) per AK 4.1.1
     // Tactical only applies in land provinces AND to land units
@@ -6302,7 +6335,7 @@ const BATTLE_ARMY_SPELLS={
     });
 
     // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr below)
-    let defTactLvl=defHero?(defHero._tacticalNegated?0:(effStat(defHero,'tactical')+perkTier(defHero,'tactical')+(charMinor(defHero,'strategist')?1:0))):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2); // LEVEL 6+ PERK — Grand Tactician
+    let defTactLvl=defHero?(defHero._tacticalNegated?0:(effStat(defHero,'tactical')+(charMinor(defHero,'strategist')?1:0))):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2); // LEVEL 6+ PERK — Grand Tactician
     const defTactBonus=defTactLvl>0?1+defTactLvl*0.2:1;
     // Army / defender counts (needed by archery and battle lines)
     const atkCount=armies.length; const defCount=(prov.neutralDefenders||[]).length;
@@ -7068,8 +7101,8 @@ const BATTLE_ARMY_SPELLS={
       kind:'character', ref:ch, name:ch.name, player:ch.player,
       hp:(ch.hp!=null?ch.hp:maxHp)+rageHp, maxHp:maxHp+rageHp,
       // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
-      melee:effStat(ch,'melee')+perkTier(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
-      archery:effStat(ch,'archery')+perkTier(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
+      melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
+      archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
       temper:ch.temper||'Brave', alignment:ch.alignment,
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
               elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
@@ -7136,7 +7169,7 @@ const BATTLE_ARMY_SPELLS={
     chance -= temperOf(defender.temper).defence;
     chance -= (attacker.status.hitPenalty||0);
     chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
-    return Math.max(5, Math.min(95, chance));
+    return Math.max(40, Math.min(95, chance));
   }
   function pcMeleeDamage(attacker, defender){
     const diff=(attacker.melee||0)-(defender.melee||0);
@@ -7799,6 +7832,7 @@ const BATTLE_ARMY_SPELLS={
 
   // Returns {won, narrative:[strings]}
   function combatVsChar(atk, def, prov){
+    _combatSkillProv=(prov&&prov.id!=null)?prov.id:null; // item 3: battle-series key (cleared at each loop boundary)
     ensureEncounterPlan(atk); ensureEncounterPlan(def); // bots/NPCs get auto battle-magic + duel tactics
     // Record both sides' commanders for this province/phase BEFORE any fighting (a duel death or
     // a nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
@@ -7809,8 +7843,8 @@ const BATTLE_ARMY_SPELLS={
     if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._tacticalHalved=false;atk._tacticalMult=1;atk._curseHalveStat=null; if(atk._massConfusedTurn===G.turn)atk._tacticalNegated=true;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._tacticalHalved=false;def._tacticalMult=1;def._curseHalveStat=null; if(def._massConfusedTurn===G.turn)def._tacticalNegated=true;}
     const atkArmies=atk.armies||[];
     const defArmies=def.armies||[];
-    let atkTact=atk._tacticalNegated?0:(effStat(atk,'tactical')+perkTier(atk,'tactical')+(charMinor(atk,'strategist')?1:0)); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2); // LEVEL 6+ PERK — Grand Tactician
-    let defTact=def._tacticalNegated?0:(effStat(def,'tactical')+perkTier(def,'tactical')+(charMinor(def,'strategist')?1:0)); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2); // LEVEL 6+ PERK — Grand Tactician
+    let atkTact=atk._tacticalNegated?0:(effStat(atk,'tactical')+(charMinor(atk,'strategist')?1:0)); if(atk._curseHalveStat==='tactical') atkTact=Math.floor(atkTact/2); // LEVEL 6+ PERK — Grand Tactician
+    let defTact=def._tacticalNegated?0:(effStat(def,'tactical')+(charMinor(def,'strategist')?1:0)); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2); // LEVEL 6+ PERK — Grand Tactician
     // Tactical bonus only applies in land provinces
     const isPvPSea=prov.terrain==='sea';
     let atkTactBonus=isPvPSea?1:1+atkTact*0.2;
@@ -8854,6 +8888,7 @@ const BATTLE_ARMY_SPELLS={
     'disband_army':'disband_army','disband army':'disband_army','disband':'disband_army',
     'pickup_army':'pickup_army','pick up army':'pickup_army','pick_up_army':'pickup_army',
     'give_item':'give_item','give item':'give_item','give magic item':'give_item',
+    'send_item':'give_item','send item':'give_item','send magic item':'give_item', // Item 8: Give Item renamed Send Item (old label kept for back-compat)
     'cast_spell':'cast_spell','cast spell':'cast_spell',
     'spy':'spy','practice':'practice','practice skill':'practice','practice ability':'practice',
     'defend':'defend','rest':'rest','rest & heal':'rest','rest and heal':'rest',
@@ -9877,6 +9912,8 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} recruits ${recruited.join(', ')} in ${prov.name}${_destNote}. Cost: ${totalCost}g. Treasury: ${player.gold}g remaining.`+
             (blocked.length>0?` (Blocked: ${blocked.join('; ')}.)`:''),
             {actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Item 9: if the muster went to ANOTHER of the player's characters, notify them in their section.
+          if(!_destGarrison && _destChar && _destChar.id!==c.id) notifyTarget(_destChar,`⚔ ${recruited.join(', ')} muster to ${_destChar.name}'s banner in ${prov.name}, raised by ${c.name}.`,ph,'hire');
         } else {
           log('system',`${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,{actor:c.player,targets:[c.player]});
         }
@@ -10260,26 +10297,44 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'give_item':{
-        // Item 9 (this session): a character can hand over MORE THAN ONE item at once. The player
-        // form offers checkboxes and emits a comma-separated list of item indices (or "all"); all the
-        // chosen items go to the single recipient. Splice from the highest index down so earlier
-        // removals don't shift the indices still to be given.
+        // Item 8 (this session): SEND ITEM (was Give Item). A character can hand over MORE THAN ONE
+        // item at once (comma-separated indices, or "all"; splice high→low so indices stay aligned) to
+        // ANY of the player's own living characters, wherever they stand:
+        //   • SAME province → delivered at once, usable later this turn (as before);
+        //   • DIFFERENT province → the items leave the sender NOW but travel by courier and ARRIVE with
+        //     the recipient at the END of the turn (queued on G._itemDeliveries), ready to use next turn.
+        // Item 9 (this session): the recipient is notified in THEIR own Chronicle section, this phase.
         const recipId=parseInt(extra);
         const recip=G.characters[recipId];
-        if(!recip||recip.location!==c.location){log('item',`${c.name}: cannot give item.`);break;}
-        if(recip.player!==c.player||!recip.alive){log('item',`${c.name}: items can only be handed to one of your own living characters standing in the same province.`,{actor:c.player,targets:[c.player]});break;}
+        if(!recip){log('item',`${c.name}: cannot send item — no such recipient.`,{actor:c.player,targets:[c.player]});break;}
+        if(recip.player!==c.player||!recip.alive){log('item',`${c.name}: items can only be sent to one of your own living characters.`,{actor:c.player,targets:[c.player]});break;}
+        if(recip.id===c.id){log('item',`${c.name}: cannot send items to themselves.`,{actor:c.player,targets:[c.player]});break;}
         const _held=(c.items||[]);
         let idxs;
         if(String(target||'').trim().toLowerCase()==='all'){ idxs=_held.map((_,i)=>i); }
         else{ idxs=String(target||'').split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<_held.length); }
         const uniq=[...new Set(idxs)].sort((a,b)=>b-a);
-        if(uniq.length===0){log('item',`${c.name}: cannot give item.`);break;}
+        if(uniq.length===0){log('item',`${c.name}: cannot send item.`,{actor:c.player,targets:[c.player]});break;}
         const given=[];
         uniq.forEach(i=>{ given.push(...c.items.splice(i,1)); });
-        recip.items=(recip.items||[]);
-        given.forEach(item=>{ recip.items.push(item); if(item.effect?.stat==='maxHp'){recip.maxHp=(recip.maxHp||20)+item.effect.bonus;} });
         const _names=given.map(it=>it.name).join(', ');
-        log('hire',`${c.name} hands ${_names} to ${recip.name}.`,{actor:c.player,targets:[c.player]});
+        const _sameProv=(recip.location===c.location);
+        if(_sameProv){
+          // Hand over now.
+          recip.items=(recip.items||[]);
+          given.forEach(item=>{ recip.items.push(item); if(item.effect?.stat==='maxHp'){recip.maxHp=(recip.maxHp||20)+item.effect.bonus;} });
+          log('hire',`${c.name} hands ${_names} to ${recip.name}.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
+          // Item 9 — tell the recipient, in their own section.
+          notifyTarget(recip,`📦 ${recip.name} receives ${_names} from ${c.name}.`,ph);
+        } else {
+          // Dispatch by courier — arrives at end of turn (see the end-of-turn delivery flush).
+          G._itemDeliveries=G._itemDeliveries||[];
+          G._itemDeliveries.push({toId:recip.id, items:given, fromName:c.name});
+          const _rProv=G.world.provinces[recip.location];
+          log('hire',`${c.name} dispatches ${_names} by courier to ${recip.name} in ${_rProv?_rProv.name:'a distant province'} — it will arrive by turn's end.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
+          // Item 9 — tell the recipient a courier is on the way.
+          notifyTarget(recip,`📦 A courier from ${c.name} is bringing ${recip.name} ${_names} — it arrives by the end of this turn, ready to use next turn.`,ph);
+        }
         break;
       }
       case 'leave_army':{
@@ -10337,6 +10392,8 @@ const BATTLE_ARMY_SPELLS={
         if(recip2){
           recip2.armies=(recip2.armies||[]).concat(removed);
           log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Item 9: notify the receiving commander in their own section.
+          notifyTarget(recip2,`⚔ ${recip2.name} takes command of ${removed.map(a=>a.unitName||a.type).join(', ')}, handed over by ${c.name} in ${prov.name}.`,ph,'hire');
           _refreshSeaState(c); _refreshSeaState(recip2);
           break;
         }
@@ -10874,6 +10931,7 @@ const BATTLE_ARMY_SPELLS={
           const sk=owned[Math.floor(Math.random()*owned.length)];
           targetChar.skills[sk]=Math.max(0,(targetChar.skills[sk]||0)-1);
           log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s ${SKILL_LABELS[sk]||sk} skill is seared down to level ${targetChar.skills[sk]}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears their ${SKILL_LABELS[sk]||sk} down to level ${targetChar.skills[sk]}.`,ph,'combat');
         }
         else if(fn==='psychic_storm'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Telekinetic Storm: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
@@ -10896,6 +10954,7 @@ const BATTLE_ARMY_SPELLS={
             }
           });
           log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} tested, ${demoted} will fight as if a level lower in their next battle this turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`🌀 ${c.name}'s Telekinetic Storm scatters ${targetChar.name}'s formations — ${demoted} unit${demoted!==1?'s':''} will fight a level lower in their next battle.`,ph,'combat');
         }
 
         // ── ILLUSORY ──
@@ -11025,6 +11084,7 @@ const BATTLE_ARMY_SPELLS={
           targetChar._curses=targetChar._curses||{};
           targetChar._curses[sk]=(targetChar._curses[sk]||0)+reduce;
           log('combat',`✨ ${c.name}'s Curse settles over ${targetChar.name} — their ${SKILL_LABELS[sk]||sk} is halved (${val}→${Math.floor(val/2)}) for the rest of the turn!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`☠ A Curse from ${c.name} settles over ${targetChar.name} — their ${SKILL_LABELS[sk]||sk} is halved (${val}→${Math.floor(val/2)}) for the rest of the turn.`,ph,'combat');
         }
         // (Hand of Death is a combat-only spell — no action-phase form.)
         else if(fn==='necromancy_plague'){
@@ -11057,6 +11117,7 @@ const BATTLE_ARMY_SPELLS={
           const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,kills).sort((a,b)=>b-a);
           idxs.forEach(i=>src.splice(i,1));
           log('combat',`⚡ ${c.name} calls down Divine Judgment on ${targetChar.name} — ${dmg} holy damage${kills>0?`, and ${kills} of their unit${kills!==1?'s':''} are smitten to ash`:''}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`⚡ Divine Judgment falls on ${targetChar.name} from ${c.name} — ${dmg} holy damage${kills>0?`, ${kills} unit${kills!==1?'s':''} smitten`:''}.`,ph,'combat');
         }
         // PSYCHIC
         else if(fn==='psychic_massconfusion'){
@@ -11064,6 +11125,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetChar.player===c.player){log('system',`Mass Confusion cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           targetChar._massConfusedTurn=G.turn;
           log('combat',`✨ ${c.name} sows Mass Confusion through ${targetChar.name}'s ranks — their commander's Tactical genius deserts them in their next battle this turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`✨ Mass Confusion from ${c.name} grips ${targetChar.name} — their Tactical command deserts them in their next battle.`,ph,'combat');
         }
         else if(fn==='psychic_dominate'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Dominate: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
@@ -11075,6 +11137,7 @@ const BATTLE_ARMY_SPELLS={
           const seized=idxs.map(i=>src.splice(i,1)[0]);
           c.armies=(c.armies||[]).concat(seized);
           log('hire',`✨ ${c.name} Dominates ${targetChar.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`✨ ${c.name} Dominates ${targetChar.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and desert to the enemy.`,ph,'hire');
           resolveUnitGainInProvince(c, prov, ph);
         }
         // ILLUSORY
@@ -11098,6 +11161,7 @@ const BATTLE_ARMY_SPELLS={
           const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,hits).sort((a,b)=>b-a);
           idxs.forEach(i=>src.splice(i,1));
           log('combat',`⚡ ${c.name}'s Chain Lightning leaps through ${targetChar.name}'s ranks — ${hits} unit${hits!==1?'s':''} are blasted apart!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`⚡ ${c.name}'s Chain Lightning tears through ${targetChar.name}'s ranks — ${hits} unit${hits!==1?'s':''} blasted apart.`,ph,'combat');
         }
         else if(fn==='elemental_cataclysm'){
           const casterProv=G.world.provinces[c.location];
@@ -11720,6 +11784,7 @@ const BATTLE_ARMY_SPELLS={
 
   function resolveStalledBattles(ph){
     (G.world.provinces||[]).forEach(prov=>{
+      _combatSkillProv=null; // item 3: reset before each province; combatVs* re-sets it to this prov
       if(!prov||!prov._battleUnresolved) return;
       prov._battleUnresolved=false; // clear — a fresh stall this phase will set it again
       // `ch.alive||ch._leaderlessHost` — a commander killed while pinned here keeps his host for
@@ -12561,6 +12626,86 @@ const BATTLE_ARMY_SPELLS={
     });
   }
 
+  // ── Item 5: DEFEND vs a force that MATERIALISES in the watch zone ──────────
+  // runDefendReactions (above) only answers MOVE invasions, resolved in the pre-phase pass. But an
+  // enemy force can APPEAR inside a defender's watch this phase without marching in — raised skeletons,
+  // a summoned elemental, Dominated-in-place troops, an Awakened grove, a Phantom Host. This pass runs
+  // AFTER every order in the phase has resolved (so every such force now exists) and lets a general on
+  // Defend ride out to give battle, exactly as if the enemy had invaded. A defender who already reacted
+  // this phase, or who has no move left, holds. Mirrors the both-armed pursuit battle so casualties,
+  // routs and conquest all resolve through the one combat path.
+  function runDefendMaterializedReactions(ph){
+    (G.characters||[]).forEach(c=>{
+      if(!c.alive||c.player==null||!c._defend||!c._defend.active) return;
+      if((c.armies||[]).length===0) return;                  // only generals ride out
+      if(c._defendReactedPhase===ph) return;                 // one reaction per phase
+      if((movePoints[c.id]??0)<=0 && (seaMovePoints[c.id]??0)<=0) return;
+      const here=G.world.provinces[c.location];
+      if(!here) return;
+      const sc=seaCap[c.id]||'land';
+      // Watch zone: the province he stands on plus its immediate neighbours.
+      const zone=[here, ...getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces)].filter(Boolean);
+      // Find the heaviest enemy force (a character leading armies) standing anywhere in the zone.
+      let best=null;
+      for(const P of zone){
+        if(P._battleUnresolved) continue; // already contested — that battle series is tracked and resumes next phase
+        const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(c.player,e.player)
+          &&e.location===P.id&&(e.armies||[]).length>0);
+        if(!foes.length) continue;
+        if(P.id!==c.location && !canEnterTerrain(c,P.terrain,sc)) continue; // a fleet can't march inland, etc.
+        const str=foes.reduce((s,e)=>s+armyTotalStr(e,P),0);
+        if(!best||str>best.str) best={P,foes,str};
+      }
+      if(!best) return;
+      const prov=best.P;
+      // March to meet them if they are in a neighbour (costs one movement point of the right kind).
+      if(prov.id!==c.location){
+        const toSea=prov.terrain==='sea';
+        if(toSea){ if((seaMovePoints[c.id]??0)<=0) return; seaMovePoints[c.id]--; }
+        else { if((movePoints[c.id]??0)<=0) return; movePoints[c.id]--; }
+        here.characters=(here.characters||[]).filter(id=>id!==c.id);
+        prov.characters=prov.characters||[]; if(!prov.characters.includes(c.id)) prov.characters.push(c.id);
+        c.location=prov.id; c.locationName=prov.name; c._attackedFrom=here.id;
+        if(!prov.visitedBy) prov.visitedBy=[];
+        if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
+        log('move',`🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. He breaks camp and marches to meet it.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        trySkillGain(c,'march',SKILLGAIN_COMMON);
+      } else {
+        log('move',`🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — he forms his line to give battle.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+      }
+      c._defendReactedPhase=ph;
+      // Force the battle: c attacks the heaviest enemy force here; the rest unify behind it (as in any
+      // battle / the both-armed pursuit). Fight on pooled copies, then write casualties + routs back.
+      const quarry=best.foes.slice().sort((a,b)=>armyTotalStr(b,prov)-armyTotalStr(a,prov))[0];
+      const defReinf=best.foes.filter(d=>d.id!==quarry.id);
+      const combinedAtk={...c,armies:[...(c.armies||[])]};
+      const combinedDef={...quarry,armies:[...(quarry.armies||[]),...defReinf.flatMap(d=>d.armies||[])]};
+      const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
+      log('combat',`⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+      const battle=combatVsChar(combinedAtk,combinedDef,prov);
+      creditBattle(c,quarry,battle,combinedAtk.armies,combinedDef.armies,prov);
+      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}));
+      c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
+      [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
+      if(combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; }
+      if(combinedDef.location!==quarry.location){
+        const np=G.world.provinces[combinedDef.location];
+        quarry.location=combinedDef.location; if(np) quarry.locationName=np.name;
+        if(np){
+          if(!np.characters) np.characters=[];
+          defReinf.forEach(d=>{
+            prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
+            if(!np.characters.includes(d.id)) np.characters.push(d.id);
+            d.location=np.id; d.locationName=np.name;
+            movePoints[d.id]=0; seaMovePoints[d.id]=0;
+          });
+        }
+      }
+      prov._hadBattleThisTurn=true;
+      _combatSkillProv=null; // item 3: this reaction's battle series is closed
+    });
+  }
+
   // ── REINFORCEMENT ARRIVALS (AK [7.0]) ─────────────────────────────────────
   // "Battles are fought at the end of the phase, after all characters have taken their actions."
   // Orders here still resolve one at a time, so a defender who was ordered into his own threatened
@@ -12807,6 +12952,7 @@ const BATTLE_ARMY_SPELLS={
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     resolveStalledBattles(ph);
     _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
+    _combatSkillProv=null; // item 3: stalled battles done — no series context until the next fight
     spreadPlagues(ph);
 
     // Heroes hired this phase can't act yet, but should still be told so.
@@ -12869,6 +13015,7 @@ const BATTLE_ARMY_SPELLS={
     // ── STAGE 3: resolve orders, in initiative order adjusted for AK's [3.0] exceptions ──
     const sorted=orderPhaseActors(ph,intents);
     sorted.forEach(c=>{
+      _combatSkillProv=null; // item 3: between independent actors, no battle-series context is active
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
         _logCtx={charId:c.id,phase:ph};
@@ -12882,6 +13029,12 @@ const BATTLE_ARMY_SPELLS={
       if(o)processOrder(c,o,ph);
       _logCtx={charId:null,phase:null}; // reset after each character
     });
+
+    // Item 5: every order this phase has resolved, so any enemy force RAISED or SUMMONED into a
+    // defender's watch zone now exists — let generals on Defend ride out and give it battle.
+    _combatSkillProv=null;
+    runDefendMaterializedReactions(ph);
+    _combatSkillProv=null;
 
     // Item 12: all this phase's actions have resolved — now report any incidental skill-rises they
     // earned (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each
@@ -13086,6 +13239,29 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }
 
   _currentPhase=null; // Item 6: the phase loop is over — any later gain belongs to END OF TURN
+
+  // ── Item 8: COURIER DELIVERIES ── Cross-province Send Item arrivals reach their recipient now, as
+  // the season closes, so the items are in hand from the START of next turn (not usable this turn).
+  // If the recipient fell this turn the parcel routes to their king (if one lives), else it is lost.
+  if(Array.isArray(G._itemDeliveries) && G._itemDeliveries.length){
+    G._itemDeliveries.forEach(d=>{
+      let dest=(G.characters||[]).find(ch=>ch&&ch.id===d.toId&&ch.alive);
+      if(!dest){
+        const _orig=(G.characters||[]).find(ch=>ch&&ch.id===d.toId);
+        const pi=_orig?_orig.player:null;
+        dest=(pi!=null)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.player===pi&&ch.isKing):null;
+      }
+      const nm=(d.items||[]).map(it=>it.name).join(', ');
+      if(!dest){
+        if(nm) log('hire',`📦 A courier bearing ${nm}${d.fromName?` from ${d.fromName}`:''} finds no one left to receive it — the parcel is lost.`,{actor:null,targets:[],phase:99});
+        return;
+      }
+      dest.items=dest.items||[];
+      (d.items||[]).forEach(item=>{ dest.items.push(item); if(item.effect?.stat==='maxHp'){dest.maxHp=(dest.maxHp||20)+item.effect.bonus;} });
+      log('hire',`📦 A courier reaches ${dest.name} with ${nm}${d.fromName?` from ${d.fromName}`:''} — delivered as the season closes, ready to use next turn.`,{actor:dest.player,targets:[dest.player],charId:dest.id,phase:99});
+    });
+    G._itemDeliveries=[];
+  }
 
   // Item 12 safety net: flush any incidental skill-rises that were earned after the last in-phase
   // flush (none expected today, but this guarantees no such line is ever silently dropped).
@@ -13882,6 +14058,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.16-1232</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-0223</div>
 </body>
 </html>

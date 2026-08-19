@@ -466,7 +466,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
-  'Leave/Transfer Army','Pick Up Army','Give Item','Cast Spell','Use Item',
+  'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item',
   'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
@@ -516,7 +516,7 @@ const ACTION_DISPLAY_ORDER=[
   'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
   'Spy','Steal','Practice Skill',
   // Occasional logistics
-  'Use Item','Give Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
+  'Use Item','Send Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
   // Mastery (L7/L9) orders — rare & situational, kept at the bottom
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
@@ -1647,12 +1647,14 @@ function renderReportView(report){
   let otherForcesHtml=''; // item: mercenary bands + wandering heroes + enemy heroes sighted → own card
   let lairsHtml='';       // item: known lairs → own card
 
-  // Dead heroes visible to this player
+  // Dead heroes visible to this player — Item 10: listed here in the Other Armies & Heroes card (a
+  // dead character whose body-province you can see, plus any you witnessed fall this turn). They also
+  // get a "(dead)" marker on the map (see renderPlayerMap).
   const visDeadHeroes=report.visibleDeadHeroes||[];
   if(visDeadHeroes.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">💀 Fallen Heroes</div>`;
-    intelHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
-      <strong>${h.name}</strong>${h.isOwn?' (your hero)':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
+    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">💀 Fallen Heroes</div>`;
+    otherForcesHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
+      <strong>${h.name}</strong> <span style="color:#8a1c1c">(dead)</span>${h.isOwn?' — your hero':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
       ${h.inVisibleProv
         ?'<span style="font-size:.72rem;color:#5a3a7a">💀 A hero with the Resurrect spell can raise them from this province.</span>'
         :'<span style="font-size:.72rem;color:#888">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
@@ -1965,15 +1967,15 @@ function initReportCollapsers(){
 // passives that deepen and any new orders/spells unlocked — cumulatively from level 6 up to their
 // current level. Mirror of the GM engine's MASTERY_UNLOCKS (display-only; keep the two in step).
 const MASTERY_EFFECTS={
-  melee:{6:'+1 to your melee in personal combat for each level past 5.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Your personal-combat melee bonus deepens (now +3).',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
-  archery:{6:'+1 to your archery in personal combat for each level past 5.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Your personal-combat archery bonus deepens (now +3).',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
-  tactical:{6:'+1 Tactical command in battle for each level past 5.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Your Tactical command bonus deepens (now +3).',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
+  melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
+  archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\'s Mark orders.',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
+  tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Grandmaster tactician — no further command bonus (capped at 5); mastery is in your Feigned Retreat and Grand Stratagem orders.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'+1 land movement point.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'+2 land movement points.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
   naval:{6:'+1 sea movement point.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'+2 sea movement points.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
   sage:{6:'Your Sage discovery chance keeps climbing past level 5.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Your mastery of lore deepens — discoveries come more readily still.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
-  druid:{6:'Primal armies you lead fight +5% stronger for each level past 5.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Your bond with primal armies deepens further (+strength per level).',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
+  druid:{6:'Archdruid — your primal-army strength benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Grand Archdruid — no further primal-strength bonus (capped at 5); mastery is in your Awaken Grove and Wild Calling orders.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'You now automatically spot every lair on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'+1 White Magic casting each turn.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'Your White Magic mastery deepens.',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'+1 Psychic Magic casting each turn.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'Your Psychic mastery deepens.',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
@@ -3935,7 +3937,7 @@ function predictedItems(charId, upToPhaseExclusive){
   for(let p=0;p<upToPhaseExclusive;p++){
     (report.characters||[]).forEach(x=>{
       const action=document.getElementById(`po-action-${x.id}-${p}`)?.value||'';
-      if(action!=='Give Item') return;
+      if(action!=='Send Item'&&action!=='Give Item') return;
       // Item 9: a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
       // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
       const recip=parseInt(document.getElementById(`po-extra-${x.id}-${p}`)?.value);
@@ -3946,7 +3948,10 @@ function predictedItems(charId, upToPhaseExclusive){
       if(rawT.toLowerCase()==='all') idxs=arr.map((_,i)=>i);
       else idxs=rawT.split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<arr.length);
       const uniq=[...new Set(idxs)].sort((a,b)=>b-a);
-      uniq.forEach(i=>{ const [it]=arr.splice(i,1); (items.get(recip)||[]).push(it); });
+      // Item 8: only DELIVER into the recipient's list this turn if they are co-located this phase;
+      // a cross-province send leaves the giver now but arrives with the recipient only at turn's end.
+      const _same=(predictedLocation(x.id,p)?.id)===(predictedLocation(recip,p)?.id);
+      uniq.forEach(i=>{ const [it]=arr.splice(i,1); if(_same) (items.get(recip)||[]).push(it); });
     });
   }
   return items.get(cid)||[];
@@ -4557,7 +4562,12 @@ function buildTargetField(c, ph, saved){
       // moved in with an army during an earlier phase — potentially seizing control — then offer the
       // recruit here. The GM engine still enforces that you actually took control before the recruit
       // resolves; if you didn't, the order is skipped at resolution.
-      const conditionalRecruit=!!(pd && !pd.canRecruit && (pd.armyTypes||[]).length>0 && loc && movedInWithArmyBy(c.id, loc.id, ph));
+      // Item 11: a recruit order can be ENTERED for any seen-but-not-yet-owned province whose
+      // recruitable units you already know (owned/visited/adjacent), so you can PLAN a muster you
+      // intend to take. No longer gated on a pre-planned move-in — the GM engine re-checks that you
+      // actually control the province (prov.owner===player) when the order resolves; if you don't,
+      // the recruit is simply skipped. A ⚑ notice makes the conditional nature clear.
+      const conditionalRecruit=!!(pd && !pd.canRecruit && (pd.armyTypes||[]).length>0 && loc);
       // Mercenary bands answer to gold, not to borders: they can be hired in ANY province this
       // character occupies, owned or not, and are never subject to the native per-turn recruit cap.
       // They are therefore listed independently of every gate below.
@@ -4611,7 +4621,7 @@ function buildTargetField(c, ph, saved){
       const checkId=`po-recruit-${c.id}-${ph}`;
       const savedSels=(target||'').split(',').filter(Boolean);
       return`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
-        ${conditionalRecruit?`<div style="font-size:.68rem;color:#8a4a4a;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet. This recruit only happens if this character <strong>takes control</strong> of the province earlier in the turn.</div>`:''}
+        ${conditionalRecruit?`<div style="font-size:.68rem;color:#8a4a4a;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet — plan freely. This recruit only takes effect if you <strong>control the province</strong> when the order resolves (e.g. this character seizes it in an earlier phase); otherwise it is skipped.</div>`:''}
         ${/* Item 10 (this session): once you conquer a province earlier in the turn it is yours when the
              recruit resolves, so the garrison is a valid muster target — offer it here too. The engine
              re-checks ownership at resolution (prov.owner===player) before mustering into the garrison. */''}
@@ -4664,7 +4674,7 @@ function buildTargetField(c, ph, saved){
       return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${opts}</select>`;}
 
     // ── GIVE ITEM ──
-    case 'Give Item':{
+    case 'Send Item': case 'Give Item':{
       // Predicted item list: starts from the report, then applies every earlier phase's Give Item
       // orders — so an item HANDED TO this character in an earlier phase can be given onward here,
       // and an item already given away no longer appears. Indices match GM resolution order.
@@ -4691,16 +4701,18 @@ function buildTargetField(c, ph, saved){
         ${_giBoxes}
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>`;
-      // Only show characters in the same province AND controlled by the same player
+      // Item 8: Send Item can now reach ANY of your living characters, wherever they stand. A
+      // recipient in the SAME province gets the item at once (usable later this turn); one ELSEWHERE
+      // receives it at the END of the turn — a courier carries it — ready to use from next turn.
       const loc4=predictedLocation(c.id,ph);
-      const chars=(report.characters||[]).filter(x=>
-        x.id!==c.id &&
-        x.player===c.player &&
-        predictedLocation(x.id,ph)?.id===loc4?.id
-      );
+      const chars=(report.characters||[]).filter(x=> x.id!==c.id && x.player===c.player );
       if(chars.length===0) return`${_giWrap}
-        <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No allies in same province" disabled>`;
-      const recipOpts=chars.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('');
+        <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`;
+      const recipOpts=chars.map(x=>{
+        const _same=(predictedLocation(x.id,ph)?.id)===(loc4?.id);
+        const _where=_same?'here now':'elsewhere — arrives end of turn';
+        return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_where})</option>`;
+      }).join('');
       return`${_giWrap}
         <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
 
@@ -5227,6 +5239,24 @@ function renderMapIntoSvg(svgEl, report){
       }
     }
 
+    // Item 10: a "(dead)" marker for any fallen hero whose body lies in a province this player can see.
+    // The name-with-"(dead)" shows in the hex tooltip (popupKnownChars); this skull makes it visible on
+    // the map at a glance. Drawn even when no living characters stand here.
+    if(isOwned||isVisited){
+      const deadHere=(report.visibleDeadHeroes||[]).filter(d=>d.locationId===pd.id);
+      if(deadHere.length>0){
+        const dx=x-HS+9, dy=y-HS+9;
+        const dg=document.createElementNS(svgNS,'g');
+        dg.setAttribute('transform',`translate(${dx} ${dy}) scale(0.75) translate(${-dx} ${-dy})`);
+        const dt=document.createElementNS(svgNS,'text');
+        dt.setAttribute('x',dx);dt.setAttribute('y',dy+2.5);
+        dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','7');
+        dt.setAttribute('pointer-events','none');
+        dt.textContent='\u2620'; // ☠
+        dg.appendChild(dt);
+        symbolLayer.appendChild(dg);
+      }
+    }
     // Battle icon — crossed swords at the TOP-MIDDLE of any hex where a battle was fought this turn.
     if(pd.hadBattle){
       const bx=x,by=y-HS+9;
@@ -5366,6 +5396,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.16-1232</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-0223</div>
 </body>
 </html>
