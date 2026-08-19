@@ -329,6 +329,8 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Lair</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🛡</span> Defenders</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#2c3e6a">🛡️</span> Garrison held (bottom-right)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#7a1f1f">☠</span> Fallen hero (top-left)</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#FFD700;border:2px solid #FFA500;box-shadow:0 0 3px #FFD700"></span> Rich</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#CD7F32;border:2px solid #A0522D"></span> Poor</span>
@@ -1558,7 +1560,7 @@ function renderReportView(report){
           ${c.race} · ${c.alignment} · ${c.temper} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.desc?` (${i.desc})`:''}`).join('')}
+          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${i.desc?` (${i.desc})`:''}`).join('')}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -2466,7 +2468,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -3374,6 +3376,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
 
   card.innerHTML=`
     <div class="orders-char-head" style="background:#fdf5e0;color:#4a4a4a">
+      <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
       ⚔ ${heroData.name}
       <span style="color:#c8922a;font-size:.7rem;margin-left:6px">(newly hired — can act from ${SEASONS_H[firstActable]||'next turn'})</span>
     </div>
@@ -4288,7 +4291,7 @@ function buildTargetField(c, ph, saved){
       // Items received via Give Item in an earlier phase are usable here too.
       const active=predictedItems(c.id,ph).filter(it=>it&&it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
       if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No usable (active) items — most items are passive" disabled>`;
-      const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.name} — ${it.desc}</option>`).join('');
+      const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.tier===3?'✦ Legendary — ':''}${it.name} — ${it.desc}</option>`).join('');
       return `<select id="po-target-${c.id}-${ph}">${opts}</select>`;
     }
 
@@ -4690,7 +4693,7 @@ function buildTargetField(c, ph, saved){
         const chk=(_giAll||_giSaved.includes(String(i)))?'checked':'';
         return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
           <input type="checkbox" value="${i}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
-          🔮 ${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}
+          🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${startNames.has(it.name)?'':' (received earlier this turn)'}
         </label>`;
       }).join('');
       const _giWrap=`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
@@ -5239,24 +5242,43 @@ function renderMapIntoSvg(svgEl, report){
       }
     }
 
-    // Item 10: a "(dead)" marker for any fallen hero whose body lies in a province this player can see.
-    // The name-with-"(dead)" shows in the hex tooltip (popupKnownChars); this skull makes it visible on
-    // the map at a glance. Drawn even when no living characters stand here.
+    // Item 5/10: a distinct "(dead)" skull marker for any fallen hero whose body lies in a province
+    // this player can see. Sits TOP-LEFT (the bottom-right corner is reserved for the garrison symbol,
+    // item 9). The name-with-"(dead)" shows in the hex tooltip (popupKnownChars). Drawn even when no
+    // living characters stand here, and never the same glyph as a living commander.
     if(isOwned||isVisited){
       const deadHere=(report.visibleDeadHeroes||[]).filter(d=>d.locationId===pd.id);
       if(deadHere.length>0){
-        const dx=x-HS+9, dy=y-HS+9;
-        const dg=document.createElementNS(svgNS,'g');
-        dg.setAttribute('transform',`translate(${dx} ${dy}) scale(0.75) translate(${-dx} ${-dy})`);
+        const dx=x-HS+9, dy=y-HS+10;
         const dt=document.createElementNS(svgNS,'text');
-        dt.setAttribute('x',dx);dt.setAttribute('y',dy+2.5);
-        dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','7');
+        dt.setAttribute('x',dx);dt.setAttribute('y',dy);
+        dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','12');
+        dt.setAttribute('fill','#7a1f1f');dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.5');
         dt.setAttribute('pointer-events','none');
-        dt.textContent='\u2620'; // ☠
-        dg.appendChild(dt);
-        symbolLayer.appendChild(dg);
+        dt.textContent='\u2620'; // ☠ — fallen hero
+        symbolLayer.appendChild(dt);
       }
     }
+    // Item 9 (this session): a shield at the BOTTOM-RIGHT of any owned hex where the player holds
+    // GARRISONED (unled) units — a glance tells them which provinces are actually held by a standing
+    // garrison rather than just owned on paper. Keyed on pd.garrisonArmies (only populated for owned
+    // provinces); the bottom-right corner is kept clear of the dead-hero (top-left), battle (top-mid)
+    // and consecrate (top-right) markers.
+    if(isOwned && (pd.garrisonArmies||[]).length>0){
+      const gx=x+HS-9, gy=y+HS-6;
+      const gtxt=document.createElementNS(svgNS,'text');
+      gtxt.setAttribute('x',gx);gtxt.setAttribute('y',gy);
+      gtxt.setAttribute('text-anchor','middle');gtxt.setAttribute('font-size','11');
+      gtxt.setAttribute('fill','#2c3e6a');gtxt.setAttribute('stroke','#f4ead8');gtxt.setAttribute('stroke-width','0.5');
+      gtxt.setAttribute('pointer-events','none');
+      const _gn=(pd.garrisonArmies||[]).length;
+      const _tt=document.createElementNS(svgNS,'title'); _tt.textContent=`Garrison: ${_gn} unit${_gn!==1?'s':''} holding this province`;
+      gtxt.setAttribute('pointer-events','auto');
+      gtxt.appendChild(_tt);
+      gtxt.textContent='\u{1F6E1}'; // 🛡 garrison
+      symbolLayer.appendChild(gtxt);
+    }
+
     // Battle icon — crossed swords at the TOP-MIDDLE of any hex where a battle was fought this turn.
     if(pd.hadBattle){
       const bx=x,by=y-HS+9;
@@ -5396,6 +5418,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-0223</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-0823</div>
 </body>
 </html>

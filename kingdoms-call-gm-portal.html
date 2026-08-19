@@ -958,7 +958,7 @@ function buildTargetField(c,ph,saved){
       const startNames=new Set((c.items||[]).map(it=>it&&it.name));
       if(!items.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to send (none held, or all sent away earlier this turn)" disabled>`;
       const others=(report.characters||[]).filter(x=>x.id!==c.id);
-      return`<select id="po-target-${c.id}-${ph}">${items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('')}</select>
+      return`<select id="po-target-${c.id}-${ph}">${items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>${it.tier===3?'✦ Legendary — ':''}${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('')}</select>
         <select id="po-extra-${c.id}-${ph}" style="margin-top:3px">${others.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('')}</select>`;}
     case 'Leave/Transfer Army':{
       const armies=c.armies||[];
@@ -4107,12 +4107,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   const _garrethProvId=_garrethPool.length?_garrethPool[Math.floor(Math.random()*_garrethPool.length)].id:null; // name reserved at top of generateNewGame
   provinces.filter(p=>p.owner===null && (p.terrain!=='sea' || (p.neutralDefenders||[]).length>0)).forEach(lp=>{
     const hid=allChars.length;
-    // Sea guard heroes have no humanoid race. Label them by their beasts' player-facing class
-    // (Creature / Monster) rather than the internal 'Primal' term, since neutral heroes surface to
-    // players as "wandering heroes" (isWanderer = player===null) with their race shown in intel and
-    // combat narrative. Whale waters are Creatures; Sea Giant / Kraken / Leviathan are Monsters.
-    const _seaSub=(lp.race||'').slice(7);
-    const hrace=lp.terrain==='sea'?(_seaSub==='Whale'?'Creature':'Monster'):RACES_P[Math.floor(Math.random()*4)];
+    // Item 8: a neutral hero is a PERSON — their race is always humanoid, even when they guard a
+    // sea or primal (Creature/Monster) province. The monster class belongs to the ARMIES they lead,
+    // never to the hero. (Previously sea guards wore a 'Creature'/'Monster' pseudo-race, which then
+    // read absurdly once they wandered onto land — "Marigold the True (Creature, Good)".)
+    const hrace=RACES_P[Math.floor(Math.random()*RACES_P.length)];
     const hSkills={};
     // Item 7: deal one level-2 skill and one level-1 skill, round-robin from the pool. The two
     // cursors are offset (and the offset itself rotates each full pass) so that, across all neutral
@@ -4583,7 +4582,11 @@ function buildTurnReport(gameState, playerIndex){
   const knownEver=new Set(gameState.players[playerIndex]?.knownDeadHeroIds||[]);
   const visibleDeadHeroes=(gameState.heroGraveyard||[]).filter(g=>{
     if(g.player===playerIndex) return true; // always see own dead heroes
-    return seenThisTurn.has(g.id); // only others if witnessed this turn
+    if(seenThisTurn.has(g.id)) return true;  // witnessed the fall this turn
+    // Item 5 (this session): also list a fallen hero whose body lies in a province this player can see
+    // right now — you know they are there because you have eyes on the ground.
+    if(g.location!=null && visibleProvIds.has(g.location)) return true;
+    return false;
   }).map(g=>({id:g.id,name:g.name,player:g.player,killedOnTurn:g.killedOnTurn,
     locationName:gameState.world.provinces[g.location]?.name||'unknown',
     locationId:g.location,
@@ -5193,8 +5196,12 @@ async function runTurn(){
   // Normalise any such lone wanderer to a stable humanoid race here (deterministic by id, so it
   // never flickers turn to turn). Active guards keep their beast label — they are excluded by the
   // _isNeutralGuard check — preserving the intended sea-guard flavour while they hold their waters.
+  // Legacy-save safety net (item 8): world-gen now gives every neutral hero a humanoid race, but a
+  // save created before that fix may still hold neutral heroes — active guards included — wearing a
+  // 'Creature'/'Monster' pseudo-race. Normalise ALL of them to a stable humanoid race (deterministic
+  // by id so it never flickers). The monster class stays on the ARMIES they lead.
   (G.characters||[]).forEach(c=>{
-    if(c && c.player===null && !c._isNeutralGuard && (c.race==='Monster'||c.race==='Creature')){
+    if(c && c.player===null && (c.race==='Monster'||c.race==='Creature')){
       c.race=RACES_P[((c.id||0)%RACES_P.length+RACES_P.length)%RACES_P.length];
     }
   });
@@ -5382,6 +5389,10 @@ async function runTurn(){
   // id so trySkillGain can cap a combat skill to ONE gain per province-battle-series (carry-on battles
   // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between fights.
   let _combatSkillProv=null;
+  // Item 3: a battle that carries on round after round in the same province grows deadlier for BOTH
+  // sides. prov._carryOnRounds counts the carry-ons (0 for the opening clash); death chances scale by
+  // 1 + CARRYON_DEATH_STEP per round, capped at CARRYON_DEATH_CAP×.
+  const CARRYON_DEATH_STEP=0.35, CARRYON_DEATH_CAP=2.5;
   const log=(type,text,meta={})=>{
     turnLog.push({type,text,
       actor: meta.actor??null,
@@ -6155,13 +6166,13 @@ const BATTLE_ARMY_SPELLS={
 
   function combatVsNPC(c, prov, neutralGuardHero){
     _combatSkillProv=(prov&&prov.id!=null)?prov.id:null; // item 3: battle-series key (cleared at each loop boundary)
+    // Item 3: a resumed battle is another carry-on round (deadlier); a fresh clash resets the count.
+    if(prov){ if(c&&c._resumeBattle) prov._carryOnRounds=(prov._carryOnRounds||0)+1; else prov._carryOnRounds=0; }
     const narrative=[];
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
     if(c){c._druidNegated=false;c._tacticalNegated=false;c._tacticalHalved=false;c._tacticalMult=1;c._curseHalveStat=null; if(c._massConfusedTurn===G.turn)c._tacticalNegated=true;} if(neutralGuardHero){neutralGuardHero._druidNegated=false;neutralGuardHero._tacticalNegated=false;neutralGuardHero._tacticalHalved=false;neutralGuardHero._tacticalMult=1;neutralGuardHero._curseHalveStat=null;}
     const armies=c.armies||[];
     const defenders=prov.neutralDefenders||[];
-    // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
-    consumeTerror(prov, defenders, narrative);
 
     // Setup — the deployment is described BEFORE the challenge is issued, so a commander slain
     // in the pre-battle duel is not narrated "standing firm" after they have already fallen.
@@ -6171,7 +6182,11 @@ const BATTLE_ARMY_SPELLS={
     // neutral fight — name the crown that holds it and colour its garrison as theirs.
     const _npcOwnerName=(prov.owner!=null&&G.players[prov.owner])?(G.players[prov.owner].name||null):null;
     const _npcHeldBy=neutralGuardHero?`${neutralGuardHero.name.replace(' (wandering)','')} and the local defenders`:(_npcOwnerName?`${_npcOwnerName}'s garrison`:`its neutral defenders`);
+    // Items 6 & 11: the "moves into … a battle is initiated" line is ALWAYS the first line of a battle
+    // report — before terror, flak or any other pre-battle note.
     if(!c._resumeBattle) narrative.push(`➡️ ${c.name} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`);
+    // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
+    consumeTerror(prov, defenders, narrative);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     narrative.push(forceMarker(c.name, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`));
     if(neutralGuardHero){
@@ -6193,7 +6208,7 @@ const BATTLE_ARMY_SPELLS={
     if(atkCmdrSlain) narrative.push(`⚑ With ${c.name} cut down before the lines were even joined, the eldest captain of the host takes command — the attack goes in regardless, though without their fallen leader's guiding hand.`);
     // Item 5: below the duel, an attacker slain in single combat is spoken of as the stand-in who
     // took command, not the fallen leader — the setup lines and the death notice above keep the name.
-    const cName=atkCmdrSlain?`${c.name}'s stand-in captain`:c.name;
+    const cName=atkCmdrSlain?`${c.name}'s leaderless host`:c.name; // item 12: slain → the host acts, not the dead commander
     // A slain commander's skills die with them: the stand-in provides no Tactical, Archery,
     // Naval, Druid or spellcraft for the rest of this battle.
     const defHero=defCmdrSlain?null:(neutralGuardHero||null);
@@ -6744,9 +6759,12 @@ const BATTLE_ARMY_SPELLS={
       return baseChance*(xpMult[i]??0);
     }
 
-    // Death chances scale with margin
-    const winDeathChance=isNarrow?0.12:isDecisive?0.01:0.05;
-    const loseDeathChance=isNarrow?0.12:isDecisive?0.35:0.18;
+    // Death chances scale with margin — and with how long the fight has ground on (item 3).
+    // A battle that carries on from phase to phase (or a chain of assaults on the same province) grows
+    // bloodier each round for BOTH sides: _carryMult climbs +35% per carry-on round, capped at 2.5×.
+    const _carryMult=Math.min(CARRYON_DEATH_CAP, 1+CARRYON_DEATH_STEP*(prov._carryOnRounds||0));
+    const winDeathChance=(isNarrow?0.12:isDecisive?0.01:0.05)*_carryMult;
+    const loseDeathChance=(isNarrow?0.12:isDecisive?0.35:0.18)*_carryMult;
     // XP gain chances
     const winXPChance=isNarrow?0.50:isDecisive?0.15:0.30;
     const loseXPChance=isNarrow?0.12:isDecisive?0.02:0.06;
@@ -6936,7 +6954,8 @@ const BATTLE_ARMY_SPELLS={
         // Retreat to the province they attacked from if possible, else closest friendly
         if(_sfNPC) narrative.push(`🛡 Shield Fort — ${cName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[c._attackedFrom];
-        const retreatTo=fromProv&&fromProv.owner===c.player?fromProv:friendlyAdj[0];
+        // Item 7: never retreat INTO the contested province (stale _attackedFrom guard).
+        const retreatTo=(fromProv&&fromProv.owner===c.player&&fromProv.id!==prov.id)?fromProv:(friendlyAdj.find(p2=>p2.id!==prov.id)||friendlyAdj[0]);
         narrative.push(`${cName}'s forces retreat to ${retreatTo.name}.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         retreatTo.characters=(retreatTo.characters||[]);
@@ -7257,7 +7276,7 @@ const BATTLE_ARMY_SPELLS={
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvl*10*(holy?2:1); target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
       case 'Spiritwrack':{ target.status.silenceRounds=Math.max(target.status.silenceRounds,3); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,3); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for 3 phases it cannot cast or use archery, and its melee is halved.`); break; }
-      case 'Psychic Blast':{ target.status.stun=(target.status.stun||0)+1; caster.status.freeAttacksForFoe=0; caster._freeAttacks=(caster._freeAttacks||0)+3; narrative.push(`  🧠 Psychic Blast stuns ${target.name} — ${caster.name} gains 3 free attacks.`); break; }
+      case 'Psychic Blast':{ target.status.stun=(target.status.stun||0)+3; narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — their next 3 actions (melee, archery or spell) are cancelled.`); break; }
       case 'Telekinetic Storm':{ const d=Math.max(1,Math.round(target.maxHp*0.25)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
       case 'Mirror Image':{
         if(!state){ narrative.push(`  ${caster.name} conjures a Mirror Image.`); break; }
@@ -7833,6 +7852,8 @@ const BATTLE_ARMY_SPELLS={
   // Returns {won, narrative:[strings]}
   function combatVsChar(atk, def, prov){
     _combatSkillProv=(prov&&prov.id!=null)?prov.id:null; // item 3: battle-series key (cleared at each loop boundary)
+    // Item 3: a resumed battle is another carry-on round (deadlier); a fresh clash resets the count.
+    if(prov){ if(atk&&atk._resumeBattle) prov._carryOnRounds=(prov._carryOnRounds||0)+1; else prov._carryOnRounds=0; }
     ensureEncounterPlan(atk); ensureEncounterPlan(def); // bots/NPCs get auto battle-magic + duel tactics
     // Record both sides' commanders for this province/phase BEFORE any fighting (a duel death or
     // a nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
@@ -7894,8 +7915,8 @@ const BATTLE_ARMY_SPELLS={
     // speaking of "their" forces — the host now answers to the stand-in who took up the banner.
     // These display names are used everywhere below the duel; before the duel (deployment, the duel
     // itself, the death notice) the real names still stand.
-    const atkName=atkCmdrSlain?`${atk.name}'s stand-in captain`:atk.name;
-    const defName=defCmdrSlain?`${def.name}'s stand-in captain`:def.name;
+    const atkName=atkCmdrSlain?`${atk.name}'s leaderless host`:atk.name; // item 12
+    const defName=defCmdrSlain?`${def.name}'s leaderless host`:def.name; // item 12
 
     // No challenge issued: nobody is shamed and no duel is fought, whatever the stances were.
 
@@ -8287,8 +8308,9 @@ const BATTLE_ARMY_SPELLS={
     function xpChancePvP(base,quality){return base*(xpMultPvP[tiers.indexOf(quality)]??0);}
 
     // Margin-based chances
-    const winDeathPvP=isNarrowPvP?0.12:isDecisivePvP?0.01:0.05;
-    const loseDeathPvP=isNarrowPvP?0.12:isDecisivePvP?0.35:0.18;
+    const _carryMultPvP=Math.min(CARRYON_DEATH_CAP, 1+CARRYON_DEATH_STEP*(prov._carryOnRounds||0)); // item 3
+    const winDeathPvP=(isNarrowPvP?0.12:isDecisivePvP?0.01:0.05)*_carryMultPvP;
+    const loseDeathPvP=(isNarrowPvP?0.12:isDecisivePvP?0.35:0.18)*_carryMultPvP;
     const winXPPvP=isNarrowPvP?0.50:isDecisivePvP?0.15:0.30;
     const loseXPPvP=isNarrowPvP?0.12:isDecisivePvP?0.02:0.06;
     const loseDemotePvP=isNarrowPvP?0.10:isDecisivePvP?0.30:0.20;
@@ -8409,7 +8431,8 @@ const BATTLE_ARMY_SPELLS={
       } else {
         if(_sfDef&&def.armies.length>0) narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const defFromProv=G.world.provinces[def._attackedFrom];
-        const defRetreatTo=defFromProv&&defFromProv.owner===def.player?defFromProv:defFriendlyAdj[0];
+        // Item 7: never retreat INTO the contested province (stale _attackedFrom guard).
+        const defRetreatTo=(defFromProv&&defFromProv.owner===def.player&&defFromProv.id!==prov.id)?defFromProv:(defFriendlyAdj.find(p2=>p2.id!==prov.id)||defFriendlyAdj[0]);
         narrative.push(`${defName} retreats to ${defRetreatTo.name}.`);
         const defSurvivors2=def.armies||[];
         if(defSurvivors2.length>0) narrative.push(`📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
@@ -8484,7 +8507,8 @@ const BATTLE_ARMY_SPELLS={
       } else {
         if(_sfAtk&&atk.armies.length>0) narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[atk._attackedFrom];
-        const retreatTo=fromProv&&fromProv.owner===atk.player?fromProv:atkFriendlyAdj[0];
+        // Item 7: never retreat INTO the contested province (stale _attackedFrom guard).
+        const retreatTo=(fromProv&&fromProv.owner===atk.player&&fromProv.id!==prov.id)?fromProv:(atkFriendlyAdj.find(p2=>p2.id!==prov.id)||atkFriendlyAdj[0]);
         narrative.push(`${atkName} retreats to ${retreatTo.name}.`);
         // Summarise surviving attacker armies
         const atkSurvivors=atk.armies||[];
@@ -9726,6 +9750,16 @@ const BATTLE_ARMY_SPELLS={
         // Hero killed by monster?
         if(encounter.heroKilled){
           log('combat',`💀 ${c.name} has been slain by the ${f.monster?.name||'creature'}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          // Item 4: a character who falls to a lair guardian leaves ALL their magic items among the
+          // bones — they become extra treasure for whoever finally slays the guardian. (Mithril Armour
+          // is a personal granted relic that re-issues each turn, so it is not left behind.) Clearing
+          // c.items before handleHeroDeath stops the possessions passing to the king/heir instead.
+          const _lairLeft=(c.items||[]).filter(it=>!(it.effect&&it.effect.stat==='mithrilArmour'));
+          if(_lairLeft.length>0){
+            f.lairItems=(f.lairItems||[]).concat(_lairLeft);
+            c.items=(c.items||[]).filter(it=>it.effect&&it.effect.stat==='mithrilArmour');
+            log('explore',`The ${f.monster?.name||'guardian'} drags ${c.name}'s possessions into its hoard — ${_lairLeft.map(it=>it.name).join(', ')} now lie among the bones, waiting for a stronger hand.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          }
           handleHeroDeath(c,null);
           break; // no further order processing for this hero
         }
@@ -9791,7 +9825,13 @@ const BATTLE_ARMY_SPELLS={
           if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
           c.items=(c.items||[]);
           drops.forEach(it=>{ c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+it.effect.bonus);} });
-          if(drops.length>0) log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and recovers ${drops.map(d=>'the '+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Item 4: recover any items earlier challengers left behind when the guardian slew them.
+          if((f.lairItems||[]).length>0){
+            const _recovered=f.lairItems.slice();
+            _recovered.forEach(it=>{ c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+it.effect.bonus);} });
+            f.lairItems=[];
+            log('explore',`Among the bones of the fallen, ${c.name} recovers ${_recovered.map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          }
           else log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name}, though the lair holds no magic this time.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(!encounter.fled){
           const dmg=encounter.damageToHero||rng(2,7);
@@ -14058,6 +14098,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-0223</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-0823</div>
 </body>
 </html>
