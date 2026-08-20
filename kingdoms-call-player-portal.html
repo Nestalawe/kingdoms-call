@@ -188,6 +188,13 @@ section{display:none;}.section-active{display:block;}
   #map-zoom-bar{ display:flex; gap:4px; align-items:center; }
   #map-zoom-bar button{ background:#2a1c0c; color:#e8b84b; border:1px solid #5a4020; border-radius:2px;
     width:22px; height:22px; line-height:1; cursor:pointer; font-size:.8rem; padding:0; }
+  /* Item 2: the map window scrolls (both axes) when zoomed in — make the bars clearly visible. */
+  #report-map-container{ overflow:auto!important; scrollbar-width:thin; scrollbar-color:#8a6a2a #1a1208; }
+  #report-map-container::-webkit-scrollbar{ width:11px; height:11px; }
+  #report-map-container::-webkit-scrollbar-thumb{ background:#8a6a2a; border-radius:5px; border:2px solid #1a1208; }
+  #report-map-container::-webkit-scrollbar-thumb:hover{ background:#c8922a; }
+  #report-map-container::-webkit-scrollbar-track{ background:#1a1208; }
+  #report-map-container::-webkit-scrollbar-corner{ background:#1a1208; }
 }
 @media (max-width:820px){
   /* On mobile the panels are transparent pass-throughs — the mobile tab bar + mv-* classes drive the
@@ -719,9 +726,13 @@ function mapZoom(delta){
   const svg=document.getElementById('report-map-svg');
   if(!svg) return;
   _mapZoom = delta===0 ? 1 : Math.max(1, Math.min(4, _mapZoom+delta));
+  // Item 2: scale BOTH dimensions by the zoom factor so the map genuinely overflows its window when
+  // zoomed in — the container (#report-map-container, overflow:auto) then shows horizontal AND vertical
+  // scroll bars. The SVG's viewBox + preserveAspectRatio keeps the drawing undistorted inside the box.
   svg.style.width=(_mapZoom*100)+'%';
-  svg.style.height='auto';
+  svg.style.height=(_mapZoom*100)+'%';
   svg.style.maxWidth='none';
+  svg.style.maxHeight='none';
 }
 window.addEventListener('resize',()=>{
   if(window.innerWidth<821) teardownDeskLayout(); else setupDeskLayout();
@@ -5387,8 +5398,8 @@ function renderMapIntoSvg(svgEl, report){
         const dx=x-HS+9, dy=y-HS+10;
         const dt=document.createElementNS(svgNS,'text');
         dt.setAttribute('x',dx);dt.setAttribute('y',dy);
-        dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','12');
-        dt.setAttribute('fill','#7a1f1f');dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.5');
+        dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','6'); // item: half size
+        dt.setAttribute('fill','#7a1f1f');dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.25');
         dt.setAttribute('pointer-events','none');
         dt.textContent='\u2620'; // ☠ — fallen hero
         symbolLayer.appendChild(dt);
@@ -5403,8 +5414,8 @@ function renderMapIntoSvg(svgEl, report){
       const gx=x+HS-9, gy=y+HS-6;
       const gtxt=document.createElementNS(svgNS,'text');
       gtxt.setAttribute('x',gx);gtxt.setAttribute('y',gy);
-      gtxt.setAttribute('text-anchor','middle');gtxt.setAttribute('font-size','11');
-      gtxt.setAttribute('fill','#2c3e6a');gtxt.setAttribute('stroke','#f4ead8');gtxt.setAttribute('stroke-width','0.5');
+      gtxt.setAttribute('text-anchor','middle');gtxt.setAttribute('font-size','5.5'); // item: half size
+      gtxt.setAttribute('fill','#2c3e6a');gtxt.setAttribute('stroke','#f4ead8');gtxt.setAttribute('stroke-width','0.25');
       gtxt.setAttribute('pointer-events','none');
       const _gn=(pd.garrisonArmies||[]).length;
       const _tt=document.createElementNS(svgNS,'title'); _tt.textContent=`Garrison: ${_gn} unit${_gn!==1?'s':''} holding this province`;
@@ -5562,6 +5573,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-1425</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-1844</div>
 </body>
 </html>
