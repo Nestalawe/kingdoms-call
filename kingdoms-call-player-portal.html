@@ -164,6 +164,38 @@ section{display:none;}.section-active{display:block;}
   #mobile-tabbar button .mt-ico{font-size:1.25rem;line-height:1;}
   #mobile-tabbar button.active{color:#f0c96a;background:#2a1c0c;}
 }
+/* ── Item 16: DESKTOP two-column layout ──
+   Left panel switches Map ↔ Report; right panel switches Report ↔ Orders. 2% gaps at the far edges
+   and 2% between. Panels are built by setupDeskLayout() (JS moves the existing map/report/orders
+   elements into them, preserving all their event listeners). */
+@media (min-width:821px){
+  #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important;
+    margin-left:calc(-50vw + 50%)!important; margin-right:calc(-50vw + 50%)!important; }
+  #rp-layout.desk > #rp-map-col, #rp-layout.desk > #rp-report-col, #rp-layout.desk > #orders-column,
+  #rp-layout.desk > .rp-spacer{ display:none!important; } /* originals live inside the panels now */
+  #desk-left,#desk-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
+    height:calc(100vh - 120px); border:1px solid var(--stone); border-radius:3px; overflow:hidden; background:#0e0a04; }
+  .desk-tabs{ display:flex; background:#1a1208; border-bottom:1px solid #333; flex-shrink:0; }
+  .desk-tabs button{ flex:1; background:transparent; border:none; color:#c8922a; font-family:'Cinzel',serif;
+    font-size:.72rem; letter-spacing:.04em; padding:9px 6px; cursor:pointer; border-bottom:2px solid transparent; }
+  .desk-tabs button.active{ color:#e8b84b; border-bottom-color:#c8922a; background:#241810; }
+  .desk-body{ flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  .desk-body > #rp-map-col, .desk-body > #rp-report-col, .desk-body > #orders-column{
+    position:static!important; width:100%!important; max-width:100%!important; height:100%!important;
+    min-width:0!important; border-right:none!important; flex:1 1 auto; overflow:auto; box-sizing:border-box; }
+  .desk-body > #rp-map-col{ overflow:hidden; }
+  /* Map zoom controls */
+  #map-zoom-bar{ display:flex; gap:4px; align-items:center; }
+  #map-zoom-bar button{ background:#2a1c0c; color:#e8b84b; border:1px solid #5a4020; border-radius:2px;
+    width:22px; height:22px; line-height:1; cursor:pointer; font-size:.8rem; padding:0; }
+}
+@media (max-width:820px){
+  /* On mobile the panels are transparent pass-throughs — the mobile tab bar + mv-* classes drive the
+     view, so let the moved columns stack full-width just as before. */
+  #desk-left,#desk-right{ display:contents; }
+  .desk-body{ display:contents; }
+  .desk-tabs{ display:none!important; }
+}
 </style>
 </head>
 <body>
@@ -343,7 +375,7 @@ section{display:none;}.section-active{display:block;}
 
         <!-- Previous turns navigator -->
         <div style="padding:8px 10px;background:var(--parchment-dark);border-bottom:1px solid var(--stone);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.06em">Turn:</span>
+          <span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.06em;font-weight:700">Turn:</span>
           <div id="turn-nav-btns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
           <span style="margin-left:auto;display:flex;gap:4px">
             <button class="secall-btn" onclick="collapseAllSections('#rp-report-col',true)" title="Minimise all sections">&#9656; all</button>
@@ -593,7 +625,7 @@ function show(id){
   document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
   // On a phone, default the report screen to the Report view the first time it's shown.
-  if(id==='sec-report') ensureMobileDefault();
+  if(id==='sec-report'){ ensureMobileDefault(); if(window.innerWidth<821) teardownDeskLayout(); else setupDeskLayout(); }
 }
 
 // ── MOBILE VIEW SWITCHER ─────────────────────────────
@@ -608,6 +640,92 @@ function setMobileView(view){
   document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-mv')===view));
   try{ window.scrollTo(0,0); }catch(e){}   // start each view at its head
 }
+
+// ── Item 16: DESKTOP TWO-COLUMN LAYOUT ──────────────────────────────────────
+// Left panel switches Map ↔ Report; right panel switches Report ↔ Orders. The single report element
+// moves between the two panels on demand (appendChild preserves its listeners). Torn down below the
+// desktop breakpoint so the mobile tab bar keeps working unchanged.
+let _deskLeftView='map', _deskRightView='report';
+function setupDeskLayout(){
+  const lay=document.getElementById('rp-layout');
+  const map=document.getElementById('rp-map-col');
+  const rep=document.getElementById('rp-report-col');
+  const ord=document.getElementById('orders-column');
+  if(!lay||!map||!rep||!ord) return;
+  if(window.innerWidth<821){ return; } // mobile: leave the columns as direct children of #rp-layout
+  if(!document.getElementById('desk-left')){
+    const left=document.createElement('div'); left.id='desk-left';
+    left.innerHTML='<div class="desk-tabs">'
+      +'<button data-side="left" data-view="map" onclick="setDeskView(\'left\',\'map\')">🗺 Map</button>'
+      +'<button data-side="left" data-view="report" onclick="setDeskView(\'left\',\'report\')">📜 Report</button>'
+      +'</div><div class="desk-body" id="desk-left-body"></div>';
+    const right=document.createElement('div'); right.id='desk-right';
+    right.innerHTML='<div class="desk-tabs">'
+      +'<button data-side="right" data-view="report" onclick="setDeskView(\'right\',\'report\')">📜 Report</button>'
+      +'<button data-side="right" data-view="orders" onclick="setDeskView(\'right\',\'orders\')">📋 Orders</button>'
+      +'</div><div class="desk-body" id="desk-right-body"></div>';
+    lay.appendChild(left); lay.appendChild(right);
+    document.getElementById('desk-left-body').appendChild(map);
+    document.getElementById('desk-right-body').appendChild(ord);
+    document.getElementById('desk-left-body').appendChild(rep); // report starts on the left (hidden)
+    injectMapZoomBar();
+  }
+  lay.classList.add('desk');
+  applyDeskViews();
+}
+function teardownDeskLayout(){
+  const lay=document.getElementById('rp-layout');
+  const dl=document.getElementById('desk-left'), dr=document.getElementById('desk-right');
+  if(!lay||!dl) return;
+  const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'), ord=document.getElementById('orders-column');
+  // Restore original order as direct children of #rp-layout for the mobile stacked view.
+  [map,rep,ord].forEach(el=>{ if(el){ el.style.display=''; lay.appendChild(el); } });
+  dl.remove(); if(dr) dr.remove();
+  lay.classList.remove('desk');
+}
+function setDeskView(side,view){
+  if(side==='left'){ _deskLeftView=view; if(view==='report'&&_deskRightView==='report') _deskRightView='orders'; }
+  else { _deskRightView=view; if(view==='report'&&_deskLeftView==='report') _deskLeftView='map'; }
+  applyDeskViews();
+}
+function applyDeskViews(){
+  const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'), ord=document.getElementById('orders-column');
+  const lb=document.getElementById('desk-left-body'), rb=document.getElementById('desk-right-body');
+  if(!map||!rep||!ord||!lb||!rb) return;
+  // Place the report in whichever panel currently wants it (left wins ties; right handled above).
+  if(_deskLeftView==='report'){ if(rep.parentNode!==lb) lb.appendChild(rep); }
+  else if(_deskRightView==='report'){ if(rep.parentNode!==rb) rb.appendChild(rep); }
+  map.style.display=(_deskLeftView==='map')?'':'none';
+  ord.style.display=(_deskRightView==='orders')?'':'none';
+  rep.style.display=(_deskLeftView==='report'||_deskRightView==='report')?'':'none';
+  // Reflect active tab state.
+  document.querySelectorAll('#desk-left .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskLeftView));
+  document.querySelectorAll('#desk-right .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskRightView));
+  if(_deskLeftView==='map'){ try{ renderPlayerMap(); }catch(e){} }
+}
+// Map zoom (item 16): scale the map SVG width; the container scrolls. Works because the SVG has a viewBox.
+let _mapZoom=1;
+function injectMapZoomBar(){
+  const hdr=document.querySelector('#rp-map-col > div'); // the map header row
+  if(!hdr||document.getElementById('map-zoom-bar')) return;
+  const bar=document.createElement('span'); bar.id='map-zoom-bar';
+  bar.innerHTML='<button title="Zoom out" onclick="mapZoom(-0.25)">−</button>'
+    +'<button title="Reset zoom" onclick="mapZoom(0)">⤢</button>'
+    +'<button title="Zoom in" onclick="mapZoom(0.25)">+</button>';
+  // place the zoom bar just before the fullscreen button
+  const fs=hdr.querySelector('button'); if(fs) hdr.insertBefore(bar, fs); else hdr.appendChild(bar);
+}
+function mapZoom(delta){
+  const svg=document.getElementById('report-map-svg');
+  if(!svg) return;
+  _mapZoom = delta===0 ? 1 : Math.max(1, Math.min(4, _mapZoom+delta));
+  svg.style.width=(_mapZoom*100)+'%';
+  svg.style.height='auto';
+  svg.style.maxWidth='none';
+}
+window.addEventListener('resize',()=>{
+  if(window.innerWidth<821) teardownDeskLayout(); else setupDeskLayout();
+});
 function ensureMobileDefault(){
   const lay=document.getElementById('rp-layout');
   if(lay && !/\bmv-(map|report|orders)\b/.test(lay.className)) setMobileView('report');
@@ -1502,7 +1620,7 @@ function renderReportView(report){
   const alignIcons={Divine:'✨',Good:'⚔',Druidic:'🌿',Neutral:'⚖',Pagan:'🔥',Evil:'💀',Undead:'💀'};
   const alignBanner=alignSummary?`
     <div style="background:#fdf8ee;border-left:4px solid ${alignColours[playerAlignment]||'#888'};padding:8px 12px;margin-bottom:10px;border-radius:0 3px 3px 0">
-      <div style="font-family:'Cinzel',serif;font-size:.72rem;color:${alignColours[playerAlignment]||'#888'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${alignIcons[playerAlignment]||''} ${playerAlignment} Kingdom</div>
+      <div style="font-family:'Cinzel',serif;font-size:.72rem;color:${alignColours[playerAlignment]||'#888'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:700">${alignIcons[playerAlignment]||''} ${playerAlignment} Kingdom</div>
       <div style="font-size:.78rem;color:#444;line-height:1.5">${bulletizeDesc(alignSummary)}</div>
     </div>`:'';
 
@@ -1594,7 +1712,6 @@ function renderReportView(report){
               if(kingRaceMatch) bs=Math.round(bs*1.2);
               if(leadRaceMatch) bs=Math.round(bs*1.2);
               if(feudLed) bs=Math.round(bs*0.8);
-              totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
               const creature=CREATURE_ARMIES_UI.has(a.type), monster=MONSTER_ARMIES_UI.has(a.type);
               let req=DRUID_REQ[a.type]||0;
               if(a.skeletal) req=0;              // skeletons are exempt from the Druid penalty
@@ -1603,7 +1720,11 @@ function renderReportView(report){
               const sameRace=leadRaceMatch;
               const effDru=sameRace?Math.max(1,druLevel):druLevel;
               const shortfall=Math.max(0,req-effDru);
-              if(shortfall>0) druidShort++;
+              // Item 8 (this session): a Druid shortfall actually REDUCES the unit's strength — apply it to
+              // the shown figure and the panel total (matching the engine's max(0.1, 1−0.2×shortfall)),
+              // instead of only tagging the penalty beside a full-strength number.
+              if(shortfall>0){ druidShort++; bs=Math.max(1,Math.round(bs*Math.max(0.1,1-shortfall*0.20))); }
+              totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
               const pen=shortfall>0?` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
               const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#2d7a2d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
               const feudTag=feudLed?` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
@@ -1654,7 +1775,7 @@ function renderReportView(report){
   // get a "(dead)" marker on the map (see renderPlayerMap).
   const visDeadHeroes=report.visibleDeadHeroes||[];
   if(visDeadHeroes.length>0){
-    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">💀 Fallen Heroes</div>`;
+    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Fallen Heroes</div>`;
     otherForcesHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
       <strong>${h.name}</strong> <span style="color:#8a1c1c">(dead)</span>${h.isOwn?' — your hero':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
       ${h.inVisibleProv
@@ -1665,7 +1786,7 @@ function renderReportView(report){
 
   // Mercenary bands visible in accessible provinces → Other Armies & Heroes card
   if(mercs.length>0){
-    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a1c1c;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em">⚔ Mercenary Bands</div>`;
+    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a1c1c;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Mercenary Bands</div>`;
     otherForcesHtml+=mercs.map(m=>`<div class="intel-entry" style="border-left-color:#8a1c1c;background:#fff8f8">
       <strong>${m.unitName||m.type}</strong> (${m.quality} ${m.type}) — ${m.location}<br>
       <span style="font-size:.72rem;color:#8a4a4a">Available for hire — use Recruit Armies in ${m.location}.</span>
@@ -1673,9 +1794,10 @@ function renderReportView(report){
   }
   if(sightings.length>0){
     const wanderers=sightings.filter(s=>s.type==='wandering');
+    const chieftains=sightings.filter(s=>s.type==='neutral_guard'); // Item 15: neutral province defenders
     const enemies=sightings.filter(s=>s.type==='enemy');
     if(wanderers.length>0){
-      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Wandering Heroes</div>`;
+      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Wandering Heroes</div>`;
       otherForcesHtml+=wanderers.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
@@ -1687,8 +1809,20 @@ function renderReportView(report){
         </div>`;
       }).join('');
     }
+    if(chieftains.length>0){
+      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a6a2a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Local Chieftains</div>`;
+      otherForcesHtml+=chieftains.map(s=>{
+        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
+        const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
+          ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
+          : `Best skill: ${topStr}`;
+        return`<div class="intel-entry" style="border-left-color:#8a6a2a">
+          🛡 <strong>${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
+          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+        </div>`;
+      }).join('');
+    }
     if(enemies.length>0){
-      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Enemy Heroes Sighted</div>`;
       otherForcesHtml+=enemies.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
@@ -1709,7 +1843,7 @@ function renderReportView(report){
   // intelligence. Events are grouped by province and ordered by the phase they happened in.
   const provinceEvents=report.provinceEvents||[];
   if(provinceEvents.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">Province Reports</div>`;
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Province Reports</div>`;
     const SEASONS_E=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
     const _evByProv=new Map();
     provinceEvents.forEach(ev=>{
@@ -1734,7 +1868,7 @@ function renderReportView(report){
   // there at END of turn (even if your agent has since moved on). Only non-your characters shown.
   const spiedProvIntel=(report.provinceCharIntel||[]).filter(p=>p.spied);
   if(spiedProvIntel.length>0){
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d7a2d;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">🔍 Spied Provinces</div>`;
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d7a2d;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spied Provinces</div>`;
     spiedProvIntel.forEach(pc=>{
       const others=(pc.characters||[]).filter(ch=>ch.category!=='own');
       const roster=others.length>0
@@ -1763,7 +1897,7 @@ function renderReportView(report){
   const spyActivity=report.spyActivity||[];
   if(spyActivity.length>0){
     const SEASONS_SA=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
-    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d6a7a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em">🔍 Spy Activity Reports</div>`;
+    intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d6a7a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spy Activity Reports</div>`;
     spyActivity.forEach(sa=>{
       const rows=(sa.lines||[]).map(l=>{
         const phLbl=(l.phase!=null&&l.phase>=0&&l.phase<=4)?SEASONS_SA[l.phase]:null;
@@ -1782,7 +1916,7 @@ function renderReportView(report){
 
   // Known features
   if(knownFeatures.length>0){
-    lairsHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em">Known Lairs</div>`;
+    lairsHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--forest);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Known Lairs</div>`;
     lairsHtml+=`<div style="font-size:.73rem;color:var(--stone);margin-bottom:6px;line-height:1.8">
       Guardian difficulty: 
       <span style="background:#4a8a4a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🐾 Weak</span> can be handled by a lone hero ·
@@ -1974,7 +2108,7 @@ const MASTERY_EFFECTS={
   tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Grandmaster tactician — no further command bonus (capped at 5); mastery is in your Feigned Retreat and Grand Stratagem orders.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'+1 land movement point.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'+2 land movement points.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
   naval:{6:'+1 sea movement point.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'+2 sea movement points.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
-  sage:{6:'Your Sage discovery chance keeps climbing past level 5.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Your mastery of lore deepens — discoveries come more readily still.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
+  sage:{6:'Master scholar — your Sage discovery chance is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Grand scholar — no further discovery-chance climb (capped at 5); mastery is in your Research Breakthrough and Grand Design orders.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Archdruid — your primal-army strength benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Grand Archdruid — no further primal-strength bonus (capped at 5); mastery is in your Awaken Grove and Wild Calling orders.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
@@ -2101,7 +2235,7 @@ function renderTitles(report){
 
   // ── Item 4: how to Call the Reckoning (always shown while titles are public) ──
   const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#555;line-height:1.5">
-    <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Calling the Reckoning</div>
+    <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;font-weight:700">Calling the Reckoning</div>
     There is no turn limit — the game ends only when one kingdom is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
     <ul style="margin:4px 0 4px 16px;padding:0">
       <li>your <strong>King must be alive</strong> — it is a King-only act; and</li>
@@ -2440,7 +2574,8 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           const items=c.items||[];
           // Calculate item bonuses per skill
           const itemBonuses={};
-          items.forEach(it=>{if(it.effect?.stat&&it.effect?.bonus)itemBonuses[it.effect.stat]=(itemBonuses[it.effect.stat]||0)+it.effect.bonus;});
+          const _seenItemNames=new Set();
+          items.forEach(it=>{ if(!it) return; const _k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(_seenItemNames.has(_k)) return; _seenItemNames.add(_k); if(it.effect?.stat&&it.effect?.bonus)itemBonuses[it.effect.stat]=(itemBonuses[it.effect.stat]||0)+it.effect.bonus;}); // item 6: no duplicate stacking
           const allSkills=Object.keys({...skills,...itemBonuses}).filter(k=>((skills[k]||0)+(itemBonuses[k]||0))>0);
           if(allSkills.length===0) return '<span style="color:#aaa">No skills</span>';
           return allSkills.map(k=>{
@@ -2497,7 +2632,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
 
         <!-- Encounter Plan -->
         <div style="margin-top:10px;padding:8px;background:#fdf5e0;border:1px solid #c8922a;border-radius:2px">
-          <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a5a10;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">
+          <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a5a10;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">
             ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#999">— used when searching lairs or in random encounters</span>
           </div>
           <div style="font-size:.78rem;color:var(--stone);margin-bottom:6px">
@@ -3633,10 +3768,10 @@ function updateRaceDesc(){
   const desc=document.getElementById('join-race-desc');
   if(!sel||!desc) return;
   const DESCS={
-    Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit a broad roster — Shieldwall Levies, Free Lances and Yeoman Longbows on the plains, heavily-armoured Gilded Lances, plus flying Noble Griffons — and the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you, making Humans the most flexible race for any strategy. Heroes of your own race cost 2g/turn to keep.',
-    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, especially in forest and jungle where they fight best. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. Fewer heavy units — you win through mobility and missile fire, not brute force.',
-    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough, disciplined Dwarven Guard and Ironwood Crossbows anchor your line, and powerful Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flying units, and armoured Dwarf Ironclads dominate coastal waters. Dwarves are at their most dangerous defending or fighting in mountain terrain, but move slowly.',
-    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and ferocious Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) are your heavy hitters, thriving in forest, jungle and mountains. Orcs overwhelm through numbers and speed rather than quality.',
+    Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit the broadest roster — Shieldwall Levies, Free Lances and Yeoman Longbows, heavily-armoured Gilded Lances, and flying Noble Griffons — plus the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you: the most flexible race for any strategy. A commander leading troops of their own race fights at +20% and needs no Druid skill to command them. Feud: Humans and Orcs bear an ancient animosity — an Orc commanding Human troops (or the reverse) fights at −20%. Heroes of your own race cost 2g/turn to keep.',
+    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, fighting best in forest and jungle. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. An Elven kingdom MAPS forest and jungle twice as fast (exploration). A commander leading their own race fights at +20% with no Druid requirement. Feud: Elves and Dwarves are old rivals — either leading the other\u2019s troops fights at −20%. You win through mobility and missile fire, not brute force.',
+    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough Dwarven Guard and Ironwood Crossbows anchor the line, and Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flyers, and armoured Dwarf Ironclads dominate coastal waters. Every Dwarven character of a Dwarven kingdom is issued MITHRIL ARMOUR — melee and arrow blows against them deal 2 less damage. Dwarves are deadliest defending or fighting in mountains (but move slowly). Own-race command gives +20% and no Druid penalty. Feud: Dwarves and Elves fight at −20% under a rival-kin commander.',
+    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) thrive in forest, jungle and mountains. A commander leading their own race fights at +20% with no Druid requirement. Feud: Orcs and Humans loathe one another — either leading the other\u2019s troops fights at −20%. Orcs overwhelm through numbers and speed rather than quality.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
 }
@@ -5279,14 +5414,18 @@ function renderMapIntoSvg(svgEl, report){
       symbolLayer.appendChild(gtxt);
     }
 
-    // Battle icon — crossed swords at the TOP-MIDDLE of any hex where a battle was fought this turn.
-    if(pd.hadBattle){
+    // Battle icon — crossed swords at the TOP-MIDDLE of any hex where a battle was fought this turn,
+    // OR where a battle is still raging unresolved (a carry-on that will resume) — item 14. An ongoing
+    // fight glows a little brighter and its tooltip says so.
+    if(pd.hadBattle || pd.battleUnresolved){
       const bx=x,by=y-HS+9;
       const btxt=document.createElementNS(svgNS,'text');
       btxt.setAttribute('x',bx);btxt.setAttribute('y',by);
       btxt.setAttribute('text-anchor','middle');btxt.setAttribute('font-size','9'); // ×1.5 of prior 6
-      btxt.setAttribute('fill','#ff4444');btxt.setAttribute('pointer-events','none');
+      btxt.setAttribute('fill', pd.battleUnresolved?'#ff8800':'#ff4444');btxt.setAttribute('pointer-events','auto');
       btxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
+      const _bt=document.createElementNS(svgNS,'title'); _bt.textContent=pd.battleUnresolved?'Battle still raging here — it will carry on next turn':'Battle fought here this turn';
+      btxt.appendChild(_bt);
       btxt.textContent='⚔';
       symbolLayer.appendChild(btxt);
     }
@@ -5307,7 +5446,7 @@ function renderMapIntoSvg(svgEl, report){
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
     // where this player has a character with troops under their command. Pagan ritual-site moons sit
     // just to its right so the two never collide.
-    if((pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0)){
+    if(pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0)){
       const lx=x-HS+7,ly=y+HS-6;
       const ltxt=document.createElementNS(svgNS,'text');
       ltxt.setAttribute('x',lx);ltxt.setAttribute('y',ly);
@@ -5321,7 +5460,7 @@ function renderMapIntoSvg(svgEl, report){
     // Pagan ritual sites (item): the same 🌙 the report uses, drawn at the bottom-left of hexes where a
     // Pagan kingdom has discovered a ritual site, so its standing stones are easy to find on the map.
     if(_isPagan && (pd.features||[]).some(f=>f.ritualSite)){
-      const hasFlag=(pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
+      const hasFlag=pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
       const mnx=x-HS+(hasFlag?17:7),mny=y+HS-6;
       const mtxt=document.createElementNS(svgNS,'text');
       mtxt.setAttribute('x',mnx);mtxt.setAttribute('y',mny);
@@ -5367,12 +5506,15 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         }
-        tt.innerHTML=h;
+        tt.innerHTML=h+`<div style="text-align:right;margin-top:8px;border-top:1px solid #4a3a1a;padding-top:6px"><button onclick="_closeMapTip(event)" style="background:#7a1c1c;color:#fff;border:none;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;pointer-events:auto">\u2715 Close</button></div>`;
         tt.style.display='block';
         tt.style.left=(ev.clientX+16)+'px';
         tt.style.top=(ev.clientY+16)+'px';
       });
-      g.addEventListener('mouseleave',()=>{tt.style.display='none';});
+      g.addEventListener('mouseleave',()=>{ if(!tt._sticky) tt.style.display='none'; });
+      // Item 4: a tap/click makes the popup STICKY and interactive (so the Close button works on mobile,
+      // where there is no mouse-leave to dismiss it). Desktop hover still auto-hides on mouse-leave.
+      g.addEventListener('click',ev=>{ tt._sticky=true; tt.style.pointerEvents='auto'; ev.stopPropagation(); });
     }
 
     svgEl.appendChild(g);
@@ -5382,6 +5524,8 @@ function renderMapIntoSvg(svgEl, report){
 }
 
 // ── INLINE MAP ─────────────────────────────────────────
+// Item 4: dismiss the sticky province popup (mobile — no mouse-leave to hide it).
+function _closeMapTip(ev){ if(ev){ev.stopPropagation();} const tt=document.getElementById('map-tooltip'); if(tt){ tt.style.display='none'; tt._sticky=false; tt.style.pointerEvents='none'; } }
 function renderPlayerMap(report){
   const svg=document.getElementById('report-map-svg');
   const r=report||viewingReport||currentReport;
@@ -5418,6 +5562,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-0823</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-1425</div>
 </body>
 </html>

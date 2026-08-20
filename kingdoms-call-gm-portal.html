@@ -599,7 +599,7 @@ const MASTERY_UNLOCKS={
   tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Grandmaster tactician — no further command bonus (capped at 5); mastery is in your Feigned Retreat and Grand Stratagem orders.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'+1 land movement point.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'+2 land movement points.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
   naval:{6:'+1 sea movement point.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'+2 sea movement points.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
-  sage:{6:'Your Sage discovery chance keeps climbing past level 5.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Your mastery of lore deepens — discoveries come more readily still.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
+  sage:{6:'Master scholar — your Sage discovery chance is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Grand scholar — no further discovery-chance climb (capped at 5); mastery is in your Research Breakthrough and Grand Design orders.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Archdruid — your primal-army strength benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Grand Archdruid — no further primal-strength bonus (capped at 5); mastery is in your Awaken Grove and Wild Calling orders.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
@@ -2142,7 +2142,7 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   if(required===0) return 1.0;
 
   // Psychic Blast (battle magic): this commander's Druid skill has been negated for the battle.
-  let rawDruid=heroChar._druidNegated?0:Math.max(0,Math.min(5,(heroChar.skills?.druid||0)+((heroChar.items||[]).reduce((s,it)=>s+(it.effect?.stat==='druid'?it.effect.bonus:0),0))));
+  let rawDruid=heroChar._druidNegated?0:Math.max(0,Math.min(5,(heroChar.skills?.druid||0)+(dedupeItemsByName(heroChar.items).reduce((s,it)=>s+(it.effect?.stat==='druid'?it.effect.bonus:0),0))));
   // Curse (battle magic): if Druid is the commander's cursed ability, it is halved for the battle.
   if(heroChar._curseHalveStat==='druid') rawDruid=Math.floor(rawDruid/2);
   // Same-race troops are led as if the commander had at least Druid 1 for that race
@@ -2453,6 +2453,10 @@ const MONSTERS_P=[
     spells:[{name:'Sounding Dive',school:'elemental',dmg:[8,14],effect:'',castChance:45,flavour:'The leviathan rolls and its flukes come down like a falling cliff!'},
             {name:'Tidal Surge',school:'elemental',dmg:[5,10],effect:'hero -20% to hit',castChance:35,flavour:'Its passing throws up a wall of water that hurls you off your feet!'}]},
 ];
+// Item 2 (this session): the SINGLE source of truth for which guardians are SEA creatures. Sea lairs
+// draw only from these; LAND lairs must exclude all of them. Previously the land filter used a much
+// smaller ad-hoc set, so sea beasts (e.g. Giant Barnacle) leaked onto land groves.
+const SEA_GUARDIAN_NAMES=new Set(['Sea Serpent','Kraken Spawn','Storm Eagle','Giant Crab','Shark Pack','Reef Piranha Swarm','Drowned Deckhand','Giant Barnacle','Siren','Sea Hag','Merrow Raider','Anglerfish Horror','Electric Eel Swarm','Pirate Captain','Ghost Galleon Crew','Deep One Priest','Abyssal Horror','Leviathan','Leviathan Young']);
 // ── PAGAN TUNING ──
 const RITUAL_SITE_NAMES=['Standing Stones','Blood Altar','Circle of the Old Gods'];
 const RITUAL_SITE_CHANCE_PRIMAL=0.60;   // share of primal land provinces with a ritual site (was 0.35)
@@ -2672,7 +2676,23 @@ function rollMagicItem(monsterPower, taken){
 // characters of a Dwarven kingdom. Kept out of ALL_MAGIC_ITEMS_P so rollMagicItem never awards it and
 // every qualifying dwarf can hold their own copy. Effect stat 'mithrilArmour' reduces melee damage
 // dealt to the wearer by 2 (applied per-hit in pcMeleeDamage; non-stacking — one suit is enough).
-const MITHRIL_ARMOUR={name:'Mithril Armour',desc:'Melee attacks against the wearer deal 2 less damage',effect:{stat:'mithrilArmour',bonus:2},tier:1};
+const MITHRIL_ARMOUR={name:'Mithril Armour',desc:'Melee and arrow attacks against the wearer deal 2 less damage',effect:{stat:'mithrilArmour',bonus:2},tier:1};
+// Item 6 (this session): duplicate items of the SAME type (same name) do NOT stack — a character may
+// hold several, but only ONE of each name has any effect. Every place that sums item effects runs the
+// item list through this first. (Different items that happen to share a stat still stack normally.)
+function dedupeItemsByName(items){
+  const seen=new Set(); const out=[];
+  (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
+  return out;
+}
+// Item 6: apply a maxHp item's bonus ONLY if the character isn't already wearing one of the same name
+// (maxHp is applied at grant-time, not summed, so duplicates would otherwise stack permanently).
+function applyItemMaxHp(ch, item){
+  if(!ch||!item||item.effect?.stat!=='maxHp') return;
+  if((ch.items||[]).some(x=>x&&x!==item&&x.name===item.name)) return; // already have this item's type
+  ch.maxHp=(ch.maxHp||20)+item.effect.bonus;
+  if(ch.hp!=null) ch.hp=Math.min(ch.maxHp, ch.hp+item.effect.bonus);
+}
 function grantMithrilTo(ch, gs){
   if(!ch||ch.alive===false) return;
   ch.items=ch.items||[];
@@ -3717,9 +3737,8 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           let fname,tries=0;
           do{fname=pool[Math.floor(Math.random()*pool.length)];tries++;}while(used.has(fname)&&tries<20);
           used.add(fname);
-          // Land features: avoid sea-specific monsters (Kraken, Sea Serpent, etc.)
-          const SEA_MONSTERS=new Set(['Sea Serpent','Kraken Spawn','Leviathan','Leviathan Young','Pirate Captain','Ghost Galleon Crew','Shark Pack','Giant Crab']);
-          const landMonsters=MONSTERS_P.filter(m=>!SEA_MONSTERS.has(m.name));
+          // Land features: exclude EVERY sea guardian (item 2) so land lairs never get sea beasts.
+          const landMonsters=MONSTERS_P.filter(m=>!SEA_GUARDIAN_NAMES.has(m.name));
           const m={...(landMonsters.length>0?landMonsters:MONSTERS_P)[Math.floor(Math.random()*(landMonsters.length||MONSTERS_P.length))]};
           features.push({name:fname,monster:{...m},discovered:false,cleared:false,treasure:Math.max(1,Math.round(rP(1,10)*(0.4+Math.random()*0.6)))});
         }
@@ -3866,8 +3885,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // one-feature block above was removed).
   {
     const SEA_FEATURE_NAMES=['Sunken Ship','Sea Cave','Kraken Lair','Mermaid Grotto','Ghost Galleon','Coral Fortress','Pirate Cove','Lighthouse Ruin','Drowned Temple','Barnacle Reef','Whalebone Graveyard','Tide Pools','Sea-Witch\u2019s Cove','Wreckers\u2019 Shoal','Abyssal Trench','Siren Rocks','Salt Marsh Delta','Smugglers\u2019 Grotto','Sunken City','Reef of Bones','Storm-Wrack','Glasswater Shallows','Drowned Lighthouse','Coral Labyrinth'];
-    const SEA_GUARDIAN_NAMES=new Set(['Sea Serpent','Kraken Spawn','Storm Eagle','Giant Crab','Shark Pack','Reef Piranha Swarm','Drowned Deckhand','Giant Barnacle','Siren','Sea Hag','Merrow Raider','Anglerfish Horror','Electric Eel Swarm','Pirate Captain','Ghost Galleon Crew','Deep One Priest','Abyssal Horror','Leviathan']);
-    const _seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name));
+    const _seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name)); // item 2: shared module-level set
     const _byTier={Weak:_seaMons.filter(m=>m.power==='Weak'),Moderate:_seaMons.filter(m=>m.power==='Moderate'),Powerful:_seaMons.filter(m=>m.power==='Powerful')};
     const _pickTier=(tax)=>{
       const rr=Math.random();
@@ -4057,16 +4075,21 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     allChars.push(king);
     best.characters.push(kingId);
 
-    // Starting heroes — same race as king, pay = 1 (loyal to their liege)
+    // Starting heroes — pay = 1 (loyal to their liege). Item 10 (this session): the FIRST hero shares
+    // the king's race; the SECOND is a random race that bears no animosity toward the king's race
+    // (Orcs↔Humans and Elves↔Dwarves are the feuding pairs), so a king never opens with a rival-kin
+    // hero at his side (who would lead his native troops at −20%).
+    const _RACE_RIVAL={Human:'Orcish',Orcish:'Human',Elven:'Dwarven',Dwarven:'Elven'};
     const heroIds=[];
     for(let h=0;h<2;h++){
       const hid=allChars.length;
       const hSkills={};
       for(let s=0;s<3;s++){const sk=ABILITIES_P[Math.floor(Math.random()*ABILITIES_P.length)];hSkills[sk]=(hSkills[sk]||0)+1;}
       const heroAlign=ALIGNMENTS_P[Math.max(0,Math.min(6,ALIGNMENTS_P.indexOf(sp.alignment)+rP(-1,1)))];
+      const _hRace=(h===0)?sp.race:(()=>{ const opts=RACES_P.filter(r=>r!==_RACE_RIVAL[sp.race]); return opts[Math.floor(Math.random()*opts.length)]; })();
       const hero={
         id:hid,name:nextHeroName(heroAlign),isKing:false,player:pi,
-        race:sp.race,  // same race as king
+        race:_hRace,  // item 10: hero 0 = king's race; hero 1 = random non-feuding race
         alignment:heroAlign,
         temper:TEMPERS_P[Math.floor(Math.random()*4)],
         hp:15,maxHp:0,skills:hSkills,aptitude:{},
@@ -4726,6 +4749,10 @@ function buildTurnReport(gameState, playerIndex){
       // Illusory Terrain: enemies of the caster see a false terrain until they enter or it fades.
       const _apparentTerrain=(p._illusoryTerrain && p._illusoryTerrain.caster!==playerIndex) ? p._illusoryTerrain.fake : p.terrain;
       const explored=(p.exploredBy&&p.exploredBy[playerIndex])||0;
+      // Item 13: does THIS player lead an army here right now? Computed straight from character
+      // locations (c.location), so the field-banner never depends on prov.characters staying in sync —
+      // a king or hero leading troops always flies a flag wherever they actually stand.
+      const _ownArmyHere=(gameState.characters||[]).some(c=>c&&c.alive&&c.player===playerIndex&&c.location===p.id&&(c.armies||[]).length>0);
       // Live-visible characters here: own characters always; enemy/neutral only where this player
       // currently has a character present. Enemy units/characters are NEVER shown as "last seen"
       // — only when visible at the end of the turn (line of sight).
@@ -4749,31 +4776,31 @@ function buildTurnReport(gameState, playerIndex){
       if(isOwned){
         // Full live info — your own province.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,tier:'owned',
-          tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor', ownArmyHere:_ownArmyHere,
           consecrated:gameState.players[playerIndex]?.consecratedProvId===p.id, // DIVINE — Consecrate: mark the kingdom's holy ground so the player can confirm it is active
-          hadBattle:!!p._hadBattleThisTurn,
+          hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
-          characters:liveChars(),
+          characters:liveChars(), ownArmyHere:_ownArmyHere,
         };
       } else if(isLive){
         // You have a character standing here right now — full current info + line-of-sight characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'live',race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn,
+          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
-          characters:liveChars(),
+          characters:liveChars(), ownArmyHere:_ownArmyHere,
         };
       } else if(isBorder){
         // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'border',race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn,
+          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
-          characters:[],
+          characters:[], ownArmyHere:_ownArmyHere,
         };
       } else if(memo){
         // Remembered: frozen at the last phase one of your characters could see it. Core info and
@@ -4783,7 +4810,7 @@ function buildTurnReport(gameState, playerIndex){
           owner:memo.owner,ownerName:memo.ownerName??null,ownerColor:memo.ownerColor??null,
           armyTypes:memo.armyTypes||[],neighbors,explored,seenTurn:memo.turn,
           features:memo.features||[],
-          characters:[],
+          characters:[], ownArmyHere:_ownArmyHere,
         };
       } else {
         // Unknown — just the grid position so we can draw an empty hex.
@@ -5524,7 +5551,7 @@ async function runTurn(){
   }
   function effStat(c,stat){
     let base=(c.skills||{})[stat]||0;
-    (c.items||[]).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;});
+    dedupeItemsByName(c.items).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;}); // item 6: no duplicate stacking
     base-=(c._curses||{})[stat]||0; // Curse spell reduces skill temporarily
     // Crown of Command: +1 to ALL skills if a co-located ally (or self) carries the aura item.
     if(c&&c.location!=null&&(G.characters||[]).some(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&(o.items||[]).some(it=>it.effect&&it.effect.stat==='aura'))) base+=1;
@@ -6148,7 +6175,7 @@ const BATTLE_ARMY_SPELLS={
       const _byName=(c.player!=null)?(G.players[c.player]?.name||'an unknown power'):'unknown agents';
       const _vp=G.players[sprov.owner];
       if(_vp){ _vp._spiedOnThisTurn=_vp._spiedOnThisTurn||[]; _vp._spiedOnThisTurn.push({provId:sprov.id,provName:sprov.name,byPlayer:c.player,byName:_byName,turn:G.turn}); }
-      log('spy',`[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,{actor:null,targets:[sprov.owner],provinceId:sprov.id});
+      log('spy',`[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,{actor:null,targets:[sprov.owner],provinceId:sprov.id,charId:null});
     }
     c.merits=(c.merits||0)+1;
     (sprov.features||[]).filter(f=>!featDiscovered(f,c.player)).forEach(f=>{if(Math.random()<0.5)discoverFeat(f,c.player);});
@@ -6188,6 +6215,7 @@ const BATTLE_ARMY_SPELLS={
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
     consumeTerror(prov, defenders, narrative);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
+    { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // item 5: commander's magic items in play
     narrative.push(forceMarker(c.name, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`));
     if(neutralGuardHero){
       narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
@@ -7196,8 +7224,7 @@ const BATTLE_ARMY_SPELLS={
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // A Cautious fighter rolls with the blow rather than taking it square on.
     dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
-    // Item 3 (this session): Mithril Armour turns aside 2 points of any melee blow (min 1 damage still lands).
-    if(defender.mithril) dmg=Math.max(1, dmg-2);
+    // (Mithril Armour is applied in pcTakeHit now — item 5 — so it also covers arrows.)
     return dmg;
   }
   // Which damage channel a hit belongs to, so a monster's vulnerabilities/resistances
@@ -7211,6 +7238,13 @@ const BATTLE_ARMY_SPELLS={
       return 0;
     }
     let d=dmg;
+    // Item 5 (this session): Mithril Armour turns aside 2 points of any MELEE or ARROW blow that lands
+    // (a magic sword-arm or spell still ignores it), never below 1 damage — and it announces itself
+    // each time it saves the wearer harm.
+    if(target.mithril && (PC_CHANNEL[kind]==='melee'||PC_CHANNEL[kind]==='archery') && d>1){
+      const _b=d; d=Math.max(1,d-2);
+      if(d<_b) narrative.push(`  🛡 ${target.name}'s Mithril Armour turns aside ${_b-d} of the ${PC_CHANNEL[kind]==='archery'?'arrow':'blow'}.`);
+    }
     // Monster nature: armoured hides turn blades, bone shrugs off arrows, magic ignores plate.
     if(target.vuln){ const ch=PC_CHANNEL[kind]||'spell'; d=Math.max(1, Math.round(d*(target.vuln[ch]||1))); }
     if(target.status && target.status.incomingDmgBonus>0) d+=target.status.incomingDmgBonus; // Melt Armour
@@ -7836,7 +7870,19 @@ const BATTLE_ARMY_SPELLS={
     return{atkMorale,defMorale,atkSlain,defSlain};
   }
 
+  // Item 5: which magic items a combatant brings to bear — announced at the start of a battle or duel
+  // so every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls out
+  // each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
+  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','maxHp','white','black','pagan','psychic','elemental','necromancy','spellcasting']);
+  function magicItemsLine(ch){
+    const its=(ch&&ch.items||[]).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
+    if(!its.length) return null;
+    return `  ⚜ ${ch.name} bears ${its.map(it=>it.name+(it.tier===3?' (Legendary)':'')).join(', ')} into the fight.`;
+  }
   function resolveDuel(atk, def, narrative){
+    const _ia=magicItemsLine(atk), _ib=magicItemsLine(def); // item 5
+    if(_ia) narrative.push(_ia);
+    if(_ib) narrative.push(_ib);
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
     const res=resolvePersonalCombat(A, B, {maxRounds:16});
     narrative.push(...res.narrative);
@@ -7875,6 +7921,7 @@ const BATTLE_ARMY_SPELLS={
     const _pvpHeldBy=(prov.owner!=null&&G.players[prov.owner])?`${G.players[prov.owner].name}`:`${G.players[def.player]?.name||def.name}`;
     if(!atk._resumeBattle) narrative.push(`➡️ ${atk.name} (${G.players[atk.player]?.name}) moves into ${prov.name}, held by ${_pvpHeldBy} — a battle is initiated.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
+    { const _ia=magicItemsLine(atk), _id=magicItemsLine(def); if(_ia)narrative.push(_ia); if(_id)narrative.push(_id); } // item 5
     narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''}, with`));
     narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''}, with`));
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now (stacking).
@@ -9124,6 +9171,7 @@ const BATTLE_ARMY_SPELLS={
         noteEntered(c.player, toProv.id);
         if(!toProv.visitedBy)toProv.visitedBy=[];
         if(!toProv.visitedBy.includes(c.player)) toProv.visitedBy.push(c.player);
+        let _moveExplNote=''; // item 12: exploration change to append to the move-in line
         {
           // Moving into a province raises this player's exploration by 10% + 5% per Explorer
           // skill level of the moving character — applied on EVERY move in, not just the first.
@@ -9135,6 +9183,13 @@ const BATTLE_ARMY_SPELLS={
           const prevExp=toProv.exploredBy[c.player]||0;
           toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove*_elfWoodMove);
           toProv.explored=toProv.exploredBy[c.player];
+          // Item 12: tell the player how far this move mapped the province, and its new total (or that
+          // it was already fully explored).
+          { const _eg=toProv.explored-prevExp, _en=toProv.explored;
+            _moveExplNote = _en>=100
+              ? (prevExp>=100 ? ` (${toProv.name} was already fully explored — 100% mapped.)`
+                              : ` Their passage completes the map of ${toProv.name} — now 100% explored (+${_eg}%).`)
+              : (_eg>0 ? ` Exploration of ${toProv.name} rises +${_eg}% to ${_en}%.` : ''); }
           // Check if any features are now discoverable
           const totalF=(toProv.features||[]).length;
           if(totalF>0){
@@ -9149,14 +9204,17 @@ const BATTLE_ARMY_SPELLS={
             // Item: report a spotted-on-entry lair in the SAME style as an Explore discovery, and note
             // when a lair the character stumbles into has already been cleared (no guardian remains).
             const _artM=(n)=>{ if(!n) return 'a creature'; if(/s$/.test(n)) return n; return (/^[aeiou]/i.test(n)?'an ':'a ')+n; };
+            // Item 3: a ritual site has no guardian — never describe it as "guarded by a creature".
+            const _featTail=(f)=> f.ritualSite ? `It is an ancient ritual site of the old gods — no guardian lairs here.`
+              : (f.cleared ? `Its guardian has already been slain — the lair lies cleared.`
+                           : `Legend says it is guarded by ${_artM(f.monster?.name)}.`);
+            const _featFrag=(f)=> f.ritualSite ? `the ${f.name} (a ritual site)`
+              : `the ${f.name}${f.cleared?' (already cleared)':` (guarded by ${_artM(f.monster?.name)})`}`;
             if(_spotted.length===1){
               const f=_spotted[0];
-              const tail=f.cleared
-                ? `Its guardian has already been slain — the lair lies cleared.`
-                : `Legend says it is guarded by ${_artM(f.monster?.name)}.`;
-              _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} discovers the ${f.name}! ${tail}`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
+              _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} discovers the ${f.name}! ${_featTail(f)}`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
             } else if(_spotted.length>1){
-              const frags=_spotted.map(f=>`the ${f.name}${f.cleared?' (already cleared)':` (guarded by ${_artM(f.monster?.name)})`}`);
+              const frags=_spotted.map(_featFrag);
               const list=frags.slice(0,-1).join(', ')+' and '+frags[frags.length-1];
               _discoveryLines.push([`Moving into ${toProv.name}, ${c.name} discovers ${list}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
             }
@@ -9611,7 +9669,7 @@ const BATTLE_ARMY_SPELLS={
               log('move',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
               _moveLineLogged=true;
             } else {
-              log('move',`${c.name} ventures into ${toProv.name} to explore — without armies at their back, they can only observe, not conquer.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+              log('move',`${c.name} ventures into ${toProv.name} to explore — without armies at their back, they can only observe, not conquer.${_moveExplNote}`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
               _moveLineLogged=true;
             }
           }
@@ -9619,7 +9677,7 @@ const BATTLE_ARMY_SPELLS={
           // logged. Sea moves ("moves across sea to…"), coastal landings, and claim/venture lines
           // already describe the move, so skip the redundant generic line in those cases.
           if(!coastalLanding&&!enteringSea&&!_moveLineLogged){
-            log('move',`${c.name} moves to ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
+            log('move',`${c.name} moves to ${toProv.name}.${_moveExplNote}`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:false});
           }
         }
         // Item 1: now that the move action has been reported, emit any discovery lines after it.
@@ -9661,11 +9719,13 @@ const BATTLE_ARMY_SPELLS={
         }
         if(newlyDiscovered.length>0){
           const _art=(n)=>{ if(!n) return 'a creature'; if(/s$/.test(n)) return n; return (/^[aeiou]/i.test(n)?'an ':'a ')+n; };
+          // Item 3: a ritual site has no guardian — report it as a ritual site.
+          const _rtTail=(f)=> f.ritualSite ? `It is an ancient ritual site of the old gods — no guardian lairs here.` : `Legend says it is guarded by ${_art(f.monster?.name)}.`;
           if(newlyDiscovered.length===1){
             const f=newlyDiscovered[0];
-            log('explore',`${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped) and discovers the ${f.name}! Legend says it is guarded by ${_art(f.monster?.name)}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('explore',`${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped) and discovers the ${f.name}! ${_rtTail(f)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           } else {
-            const frags=newlyDiscovered.map(f=>`the ${f.name} (guarded by ${_art(f.monster?.name)})`);
+            const frags=newlyDiscovered.map(f=>f.ritualSite?`the ${f.name} (a ritual site)`:`the ${f.name} (guarded by ${_art(f.monster?.name)})`);
             const list=frags.slice(0,-1).join(', ')+' and '+frags[frags.length-1];
             log('explore',`${c.name} explores ${prov.name} (+${gain}%, now ${prov.explored}% mapped) and uncovers ${newlyDiscovered.length} sites: ${list}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
@@ -9824,11 +9884,11 @@ const BATTLE_ARMY_SPELLS={
           // sd25 Alchemical Theory: 10% chance of an extra find.
           if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
           c.items=(c.items||[]);
-          drops.forEach(it=>{ c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+it.effect.bonus);} });
+          drops.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ });
           // Item 4: recover any items earlier challengers left behind when the guardian slew them.
           if((f.lairItems||[]).length>0){
             const _recovered=f.lairItems.slice();
-            _recovered.forEach(it=>{ c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+it.effect.bonus);} });
+            _recovered.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ });
             f.lairItems=[];
             log('explore',`Among the bones of the fallen, ${c.name} recovers ${_recovered.map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
@@ -10182,7 +10242,10 @@ const BATTLE_ARMY_SPELLS={
           // Library (sd30): 10% per Sage level instead of 5%. This discovery defined an effect
           // (`sageDiscoveryBonus`) that nothing ever read — the rate was hard-coded at 5%.
           const perLevel=hasDisc(c.player,'sd30')?10:5;
-          const discoveryChance=sageLevel*perLevel+neutralSageBonus+perkTier(c,'sage')*perLevel+(charMinor(c,'loreseeker')?perLevel:0); // Master Scholar + Loreseeker minor
+          // Item 1 (this session): the discovery-chance benefit CAPS at level 5 (via effStat). Levels
+          // 6+ grant the Sage's distinct L7/L9 orders (Research Breakthrough, Grand Design), not a
+          // further per-level climb — matching the "benefits cap at 5" principle applied to the other skills.
+          const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0); // + Loreseeker minor title
           const dRoll=d100();
           log('system',`📊 Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${perLevel===10?', Library ×2':''}${neutralSageBonus>0?', Neutral ×2':''}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
           if(dRoll<=discoveryChance){
@@ -10362,7 +10425,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sameProv){
           // Hand over now.
           recip.items=(recip.items||[]);
-          given.forEach(item=>{ recip.items.push(item); if(item.effect?.stat==='maxHp'){recip.maxHp=(recip.maxHp||20)+item.effect.bonus;} });
+          given.forEach(item=>{ recip.items.push(item); applyItemMaxHp(recip,item); /* item 6 */ });
           log('hire',`${c.name} hands ${_names} to ${recip.name}.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
           // Item 9 — tell the recipient, in their own section.
           notifyTarget(recip,`📦 ${recip.name} receives ${_names} from ${c.name}.`,ph);
@@ -10617,7 +10680,7 @@ const BATTLE_ARMY_SPELLS={
             const idx=Math.floor(Math.random()*items.length);
             const stolen=items.splice(idx,1)[0];
             c.items=(c.items||[]);c.items.push(stolen);
-            if(stolen.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+stolen.effect.bonus;c.hp=Math.min(c.maxHp,c.hp+stolen.effect.bonus);}
+            applyItemMaxHp(c,stolen); /* item 6 */
             c.merits=(c.merits||0)+2;
             log('hire',`${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!==null),provinceId:prov.id,public:false});
             if(victim.player!==null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[victim.player],provinceId:prov.id});
@@ -11275,7 +11338,7 @@ const BATTLE_ARMY_SPELLS={
         let msg='';
         if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; msg=`${take}g spirited away`; }
         // Chance to also lift a magic item.
-        if((victim.items||[]).length>0 && Math.random()<0.5){ const it=victim.items.splice(Math.floor(Math.random()*victim.items.length),1)[0]; c.items=(c.items||[]); c.items.push(it); if(it.effect?.stat==='maxHp'){c.maxHp=(c.maxHp||20)+it.effect.bonus;c.hp=Math.min(c.maxHp,(c.hp||20)+it.effect.bonus);} msg=(msg?msg+' — and ':'')+`the ${it.name} lifted`; }
+        if((victim.items||[]).length>0 && Math.random()<0.5){ const it=victim.items.splice(Math.floor(Math.random()*victim.items.length),1)[0]; c.items=(c.items||[]); c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ msg=(msg?msg+' — and ':'')+`the ${it.name} lifted`; }
         c.merits=(c.merits||0)+2;
         log('hire',`💰 ${c.name} pulls off a Grand Heist against ${victim.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player,vp].filter(x=>x!=null),provinceId:prov.id});
         if(vp!=null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) robbed ${victim.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
@@ -13297,7 +13360,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         return;
       }
       dest.items=dest.items||[];
-      (d.items||[]).forEach(item=>{ dest.items.push(item); if(item.effect?.stat==='maxHp'){dest.maxHp=(dest.maxHp||20)+item.effect.bonus;} });
+      (d.items||[]).forEach(item=>{ dest.items.push(item); applyItemMaxHp(dest,item); /* item 6 */ });
       log('hire',`📦 A courier reaches ${dest.name} with ${nm}${d.fromName?` from ${d.fromName}`:''} — delivered as the season closes, ready to use next turn.`,{actor:dest.player,targets:[dest.player],charId:dest.id,phase:99});
     });
     G._itemDeliveries=[];
@@ -14098,6 +14161,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-0823</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-1425</div>
 </body>
 </html>
