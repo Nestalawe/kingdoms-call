@@ -475,13 +475,34 @@ function abilityMissileUnits(force, terrain){
   return list;
 }
 // ELF — Loosed From Cover: Shadow Archers shoot from hiding and are not shot at in return.
-function missileTargetPool(enemyArmies, frontWidth){
+// Item 4: the per-unit arrow-softening cap and whether a target has reached it. Flyers soften twice as
+// hard; Ironwood Crossbows punch further; Dwarf Ironclads are arrow-immune. A unit at the cap gains
+// nothing from more shots, so the target pool skips it (kept in this scope so missileTargetPool sees it).
+const _MISSILE_CAP_FRAC=0.30; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope)
+function missileCap(target, firer){
+  const baseStr=unitBaseStrength(target);
+  const isFly=FLYING_TYPES.has(target.type);
+  let capFraction=isFly?_MISSILE_CAP_FRAC*2:_MISSILE_CAP_FRAC;
+  if(firer&&firer.type==='Ironwood Crossbows') capFraction=isFly?0.90:0.45;
+  return Math.max(1, Math.floor(baseStr*capFraction));
+}
+function missileCapReached(target, firer){
+  if(!target) return true;
+  if(target.type==='Dwarf Ironclads') return true; // arrow-immune — never worth a shot
+  return (target._archeryRed||0) >= missileCap(target, firer);
+}
+function missileTargetPool(enemyArmies, frontWidth, firer){
   const all=enemyArmies||[];
   const visible=all.filter(a=>a.type!=='Shadow Archers');
   const src=visible.length?visible:all;
-  const fly=src.filter(u=>FLYING_TYPES.has(u.type));
+  // Item 4 (this session): archers don't keep shooting at flyers already softened as far as arrows
+  // allow — a fully-softened (or arrow-immune) unit drops out of the target pool, so remaining volleys
+  // fall through to flyers still worth hitting, then to non-flying units, rather than being wasted.
+  const live=u=>!missileCapReached(u, firer);
+  const fly=src.filter(u=>FLYING_TYPES.has(u.type) && live(u));
   if(fly.length) return fly;
-  return src.slice(0,Math.max(1,frontWidth));
+  const ground=src.filter(u=>live(u));
+  return ground.slice(0,Math.max(1,frontWidth));
 }
 // ELF — Ambush: enemy archers never get a clear shot at Wardens in their own woods.
 function archeryBlockedBy(defenderForce, terrain){
@@ -4794,7 +4815,7 @@ function buildTurnReport(gameState, playerIndex){
           hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,
-          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
+          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           characters:liveChars(), ownArmyHere:_ownArmyHere,
         };
       } else if(isLive){
@@ -4803,7 +4824,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
-          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
+          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           characters:liveChars(), ownArmyHere:_ownArmyHere,
         };
       } else if(isBorder){
@@ -4812,7 +4833,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
-          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite})),
+          features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           characters:[], ownArmyHere:_ownArmyHere,
         };
       } else if(memo){
@@ -5815,9 +5836,7 @@ function applyMissileHit(target, archSkill, firer, opts){
   let dmg=Math.max(1, Math.round(baseStr*pct*firepower*(opts.dmgMult||1)));
   if(isFly) dmg=dmg*2; // archers are especially good against flyers — double damage
   // DWARF — Punch Through: heavy bolts grind a target past the point bows can manage.
-  let capFraction=isFly?MISSILE_CAP_FRACTION*2:MISSILE_CAP_FRACTION;
-  if(firer&&firer.type==='Ironwood Crossbows') capFraction=isFly?0.90:0.45;
-  const cap=Math.max(1, Math.floor(baseStr*capFraction));
+  const cap=missileCap(target, firer);
   const already=target._archeryRed||0;
   dmg=Math.max(0, Math.min(dmg, cap-already));
   if(dmg>0){ target._archeryRed=already+dmg; target._tempStrReduction=(target._tempStrReduction||0)+dmg; }
@@ -6204,6 +6223,22 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`\u{1FA78} Blood Harvest — the old gods claim their due from ${destroyed} fallen enemy unit${destroyed!==1?'s':''}: +${_take}g in offerings.`);
   }
 
+  // ── Item 5: BATTLE-REPORT AUDIENCE ─────────────────────────────────────────
+  // Full blow-by-blow goes ONLY to the battle's participants (the player(s) whose commanders fought).
+  // A one-line result summary additionally goes to onlookers — players who had a (non-fighting)
+  // character in the province. Everyone else sees nothing. This is enforced by the report filter using
+  // the flags set here: detail lines carry battleDetail:true and target the participants; the summary
+  // line carries summary:true. (Participants are also in `targets`, so they always get the detail.)
+  function emitBattle(battle, prov, ph, participants, opts){
+    opts=opts||{};
+    const parts=(participants||[]).filter(x=>x!=null);
+    const base={provinceId:(prov&&prov.id), phase:(ph!=null?ph:undefined), public:true,
+      actor:(opts.actor!=null?opts.actor:null), charId:(opts.charId!==undefined?opts.charId:null), targets:parts};
+    (battle&&battle.narrative||[]).forEach(line=>log('combat',line,{...base, battleDetail:true}));
+    const sTxt=opts.summaryText||battle&&battle.summaryText;
+    if(sTxt) log('combat',sTxt,{...base, summary:true});
+  }
+
   function combatVsNPC(c, prov, neutralGuardHero){
     _combatSkillProv=(prov&&prov.id!=null)?prov.id:null; // item 3: battle-series key (cleared at each loop boundary)
     // Item 3: a resumed battle is another carry-on round (deadlier); a fresh clash resets the count.
@@ -6254,7 +6289,7 @@ const BATTLE_ARMY_SPELLS={
     // Naval, Druid or spellcraft for the rest of this battle.
     const defHero=defCmdrSlain?null:(neutralGuardHero||null);
     let tactSkill=(atkCmdrSlain||c._tacticalNegated)?0:(effStat(c,'tactical')+(charMinor(c,'strategist')?1:0)); if(c._curseHalveStat==='tactical') tactSkill=Math.floor(tactSkill/2); // LEVEL 6+ PERK — Grand Tactician
-    const tactBonus=1+tactSkill*0.2;
+    const tactBonus=Math.min(2.0,1+tactSkill*0.2); // item 3: Tactical battle bonus hard-capped at ×2.0 (incl. titles)
     // Tactical only applies to land armies (not flying or naval) per AK 4.1.1
     // Tactical only applies in land provinces AND to land units
     const isLandBattle=prov.terrain!=='sea';
@@ -6392,7 +6427,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr below)
     let defTactLvl=defHero?(defHero._tacticalNegated?0:(effStat(defHero,'tactical')+(charMinor(defHero,'strategist')?1:0))):0; if(defHero&&defHero._curseHalveStat==='tactical') defTactLvl=Math.floor(defTactLvl/2); // LEVEL 6+ PERK — Grand Tactician
-    const defTactBonus=defTactLvl>0?1+defTactLvl*0.2:1;
+    const defTactBonus=defTactLvl>0?Math.min(2.0,1+defTactLvl*0.2):1; // item 3: cap ×2.0
     // Army / defender counts (needed by archery and battle lines)
     const atkCount=armies.length; const defCount=(prov.neutralDefenders||[]).length;
 
@@ -6434,7 +6469,7 @@ const BATTLE_ARMY_SPELLS={
         for(let v=0;v<volleys;v++){
           // Archers loose at the enemy's flyers first if any are present (double damage vs flyers);
           // otherwise they target a random front-row defender.
-          const pool=missileTargetPool(defenders, Math.min(defenders.length,Math.max(1,atkCount)));
+          const pool=missileTargetPool(defenders, Math.min(defenders.length,Math.max(1,atkCount)), atk); // item 4: skip fully-softened targets
           if(!pool.length) break;
           const target=pool[Math.floor(Math.random()*pool.length)];
           const dmgMult=missileDamageMult(atk, armies, prov.terrain, target);
@@ -6528,7 +6563,7 @@ const BATTLE_ARMY_SPELLS={
         let totalDefArrow=0;
         missileDef.forEach(def=>{
           // Loose at attacking flyers first if any are present (double damage vs flyers), else front row.
-          const pool=missileTargetPool(armies, Math.min(armies.length,Math.max(1,defCount)));
+          const pool=missileTargetPool(armies, Math.min(armies.length,Math.max(1,defCount)), def); // item 4: skip fully-softened targets
           if(!pool.length) return;
           const target=pool[Math.floor(Math.random()*pool.length)];
           const dmgMult=missileDamageMult(def, defenders, prov.terrain, target);
@@ -7016,7 +7051,10 @@ const BATTLE_ARMY_SPELLS={
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGain) trySkillGain(c,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative);       // Druid: won while leading primal armies
-    return{won,narrative};
+    // Item 5: a one-line result that onlookers (a char present but not fighting) may see instead of the
+    // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows more.
+    const summaryText=`⚔ Battle at ${prov.name}: ${cName}'s forces ${won?'carry the field':'are thrown back'}.`;
+    return{won,narrative,summaryText};
   }
 
   // ============================================================================
@@ -7927,8 +7965,8 @@ const BATTLE_ARMY_SPELLS={
     let defTact=def._tacticalNegated?0:(effStat(def,'tactical')+(charMinor(def,'strategist')?1:0)); if(def._curseHalveStat==='tactical') defTact=Math.floor(defTact/2); // LEVEL 6+ PERK — Grand Tactician
     // Tactical bonus only applies in land provinces
     const isPvPSea=prov.terrain==='sea';
-    let atkTactBonus=isPvPSea?1:1+atkTact*0.2;
-    let defTactBonus=isPvPSea?1:1+defTact*0.2;
+    let atkTactBonus=isPvPSea?1:Math.min(2.0,1+atkTact*0.2); // item 3: cap ×2.0
+    let defTactBonus=isPvPSea?1:Math.min(2.0,1+defTact*0.2); // item 3: cap ×2.0
 
     // Item 5: frame how the battle began for PvP too — who advanced, into whose province.
     const _pvpHeldBy=(prov.owner!=null&&G.players[prov.owner])?`${G.players[prov.owner].name}`:`${G.players[def.player]?.name||def.name}`;
@@ -8604,7 +8642,9 @@ const BATTLE_ARMY_SPELLS={
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGainPvP) trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative);       // Druid: won while leading primal armies
-    return{won,narrative};
+    // Item 5: onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless host.
+    const summaryText=`⚔ Battle at ${prov.name}: ${won?`${atkName}'s forces defeat ${defName}`:`${defName}'s forces hold against ${atkName}`}.`;
+    return{won,narrative,summaryText};
   }
 
   // Process one order
@@ -9312,7 +9352,7 @@ const BATTLE_ARMY_SPELLS={
           // combatVsNPC applies a losing retreat to the *copy* — propagate the real character's
           // new location (and clear the stale _died flags left on removed army objects).
           if(battleAttacker.location!==c.location) c.location=battleAttacker.location;
-          battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id,public:true}));
+          emitBattle(battle, toProv, ph, [c.player], {actor:c.player}); // item 5
           if(battle.won){
             markOrcAttackWin(c, G); // Item 4: orc war-spoils — this attacking force won
             if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
@@ -9456,7 +9496,7 @@ const BATTLE_ARMY_SPELLS={
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
             creditBattle(c,defChar,battle,combinedAtk.armies,combinedDef.armies,toProv);
             const targets=[c.player,defChar.player];
-            battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets,provinceId:toProv.id,public:true}));
+            emitBattle(battle, toProv, ph, targets, {actor:c.player}); // item 5
             // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
             // with _died on the shared army objects. Write those casualties back to the real
             // characters and their reinforcements so destroyed armies are actually removed
@@ -9578,7 +9618,7 @@ const BATTLE_ARMY_SPELLS={
               toProv.neutralDefenders=_savedDefs; toProv.npcArmies=_savedNpcCount;
               toProv.garrisonArmies=garSurvivors;
               toProv._hadBattleThisTurn=true;
-              garBattle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:toProv.id,public:true}));
+              emitBattle(garBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!==null), {actor:c.player}); // item 5
               if(garBattle.won){
                 markOrcAttackWin(c, G); // Item 4: orc war-spoils — this attacking force won
                 movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
@@ -9641,7 +9681,7 @@ const BATTLE_ARMY_SPELLS={
             // commanderless garrison — no Tactical, no duel, no spells — but they DO fight.
             c._attackedFrom=prov.id;
             const llBattle=combatVsNPC(c,toProv,null);
-            llBattle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id,public:true}));
+            emitBattle(llBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!=null), {actor:c.player}); // item 5
             c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
             toProv._hadBattleThisTurn=true;
             if(llBattle.won){
@@ -11961,7 +12001,7 @@ const BATTLE_ARMY_SPELLS={
         else if(guard){ guard.armies=[]; guard._isNeutralGuard=false; }
         attacker.armies=(attacker.armies||[]).filter(a=>atkCopy.armies.includes(a));
         if(atkCopy.location!==attacker.location){ attacker.location=atkCopy.location; const np=G.world.provinces[attacker.location]; if(np) attacker.locationName=np.name; }
-        battle.narrative.forEach(line=>log('combat',line,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true}));
+        emitBattle(battle, prov, ph, [attacker.player], {actor:attacker.player, charId:_ctxCharId}); // item 5 (NPC/guard defender)
         const liveGuard=!!guard&&!_guardDiedNow;
         if(battle.won){
           // Erode the survivors exactly as the first battle does — flee, demote, or disband.
@@ -12056,7 +12096,7 @@ const BATTLE_ARMY_SPELLS={
         // sync the real characters' locations from the copies.
         if(atkCopy.location!==attacker.location){ attacker.location=atkCopy.location; const np=G.world.provinces[attacker.location]; if(np) attacker.locationName=np.name; }
         if(defCopy.location!==defender.location){ defender.location=defCopy.location; const np=G.world.provinces[defender.location]; if(np) defender.locationName=np.name; }
-        battle.narrative.forEach(line=>log('combat',line,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true}));
+        emitBattle(battle, prov, ph, [attacker.player,defender.player], {actor:attacker.player, charId:_ctxCharId}); // item 5
         const winner=battle.won?attacker:defender;
         const enemyStillHere=(G.characters||[]).some(ch=>ch.alive&&ch.location===prov.id&&(ch.armies||[]).length>0&&ch.player!==winner.player);
         if(!enemyStillHere && prov.owner!==winner.player){
@@ -12246,7 +12286,7 @@ const BATTLE_ARMY_SPELLS={
       const combinedDef={...enemyChar,armies:[...(enemyChar.armies||[]),...defReinf.flatMap(d=>d.armies||[])]};
       battle=combatVsChar(c, combinedDef, prov);
       creditBattle(c,enemyChar,battle,c.armies,combinedDef.armies,prov);
-      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id,public:true}));
+      emitBattle(battle, prov, ph, targets, {actor:c.player}); // item 5
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       // Same pooled-copy sync as the move handler: combatVsChar retreats the COPY, so the real
@@ -12279,17 +12319,17 @@ const BATTLE_ARMY_SPELLS={
         prov.npcArmies=(prov.neutralDefenders||[]).length;
         prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
       }
-      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true}));
+      emitBattle(battle, prov, ph, [c.player], {actor:c.player}); // item 5
     } else if(llDefs.length>0){
       // Leaderless neutral garrison — fights without commander skills, straight off the province.
       battle=combatVsNPC(c, prov, null);
       prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
-      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true}));
+      emitBattle(battle, prov, ph, [c.player], {actor:c.player}); // item 5
     } else {
       const _savedDefs=prov.neutralDefenders; prov.neutralDefenders=[...garrison];
       battle=combatVsNPC(c, prov, null);
       prov.neutralDefenders=_savedDefs;
-      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:[c.player,prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true}));
+      emitBattle(battle, prov, ph, [c.player,prov.owner].filter(x=>x!=null), {actor:c.player}); // item 5
       if(battle.won){ garrison.forEach(a=>recordBattleGraves(prov,[a])); prov.garrisonArmies=[]; }
     }
     delete c._resumeBattle; // Item 5: clear the already-here flag — a genuine march later still prints its moves-into line
@@ -12768,6 +12808,10 @@ const BATTLE_ARMY_SPELLS={
       let best=null;
       for(const P of zone){
         if(P._battleUnresolved) continue; // already contested — that battle series is tracked and resumes next phase
+        // Item 2 (this session): a general on Defend only rides out to fight in ADJACENT provinces HE
+        // CONTROLS — never into a neutral province or one another player holds. (A force that
+        // materialises in the very province he stands on is still met where he stands.)
+        if(P.id!==c.location && P.owner!==c.player) continue;
         const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(c.player,e.player)
           &&e.location===P.id&&(e.armies||[]).length>0);
         if(!foes.length) continue;
@@ -12803,7 +12847,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat',`⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
       creditBattle(c,quarry,battle,combinedAtk.armies,combinedDef.armies,prov);
-      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}));
+      emitBattle(battle, prov, ph, targetsPi, {actor:c.player}); // item 5
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       if(combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; }
@@ -12982,7 +13026,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat',`⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
       creditBattle(c,quarry,battle,combinedAtk.armies,combinedDef.armies,prov);
-      battle.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}));
+      emitBattle(battle, prov, ph, targetsPi, {actor:c.player}); // item 5
       // Write casualties back from the pooled copies to the real characters.
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
@@ -13997,6 +14041,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       return false;
     };
 
+    // Item 5: a non-participant may witness a battle only if a character of theirs was PRESENT in the
+    // province at that phase — spies/scouts no longer see battles they weren't near.
+    const charPresentAt=(prov,ph)=>{
+      if(prov==null) return false;
+      if(ph!=null && presenceByPhase[ph] && presenceByPhase[ph].get(prov)?.has(pi)) return true;
+      return false;
+    };
+
     const _filteredLog=turnLog.filter(e=>{
       // 1. Directly targeted at this player (wages, intel notifications, spell hits etc.)
       if((e.targets||[]).includes(pi)) return true;
@@ -14004,15 +14056,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       if(e.actor===pi) return true;
       // 4. Entry attributed to one of this player's own characters (charId match)
       if(e.charId!=null && ownCharIds.has(e.charId)) return true;
-      // 3. Public events. Battle reports the player did NOT participate in are only visible with
-      //    line-of-sight: a character present in the battle province at the battle's phase, or a
-      //    spy on that province in the same phase or earlier. Non-combat public events keep the
-      //    broader "province you can see" visibility.
+      // 3. Public events. Item 5: a battle the player did NOT take part in is visible ONLY as a one-line
+      //    result SUMMARY, and only if they had a character present in the province at the battle's
+      //    phase. The full blow-by-blow (battleDetail) is for participants alone. Non-combat public
+      //    events keep the broader "province you can see" visibility.
       if(e.public && e.provinceId!=null){
         if(e.type==='combat'){
-          if(e.phase!=null) return canSeeBattle(e.provinceId, e.phase);
-          // Combat line with no phase context — fall back to territory visibility.
-          return playerVisitedProvs.has(e.provinceId);
+          if(e.summary){
+            if(e.phase!=null) return charPresentAt(e.provinceId, e.phase);
+            return playerVisitedProvs.has(e.provinceId);
+          }
+          return false; // battle detail — participants only (handled by the targets/actor/charId checks above)
         }
         return playerVisitedProvs.has(e.provinceId);
       }
@@ -14194,6 +14248,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-1901</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.21-1009</div>
 </body>
 </html>

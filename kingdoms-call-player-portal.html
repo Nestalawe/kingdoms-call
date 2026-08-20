@@ -370,7 +370,7 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Lair</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🛡</span> Defenders</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#2c3e6a">🛡️</span> Garrison held (bottom-right)</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#7a1f1f">☠</span> Fallen hero (top-left)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#7a1f1f">☠</span> Fallen hero (bottom-left)</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#FFD700;border:2px solid #FFA500;box-shadow:0 0 3px #FFD700"></span> Rich</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#CD7F32;border:2px solid #A0522D"></span> Poor</span>
@@ -711,7 +711,10 @@ function applyDeskViews(){
   document.querySelectorAll('#desk-right .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskRightView));
   if(_deskLeftView==='map'){ try{ renderPlayerMap(); }catch(e){} }
 }
-// Map zoom (item 16): scale the map SVG width; the container scrolls. Works because the SVG has a viewBox.
+// Map zoom (item 6): at 1× the map fits the window; above 1× the SVG is sized in explicit pixels
+// (container content size × zoom) so it genuinely overflows and the container (#report-map-container,
+// overflow:auto) shows horizontal AND vertical scroll bars for panning. Re-applied after every render
+// and on resize so the current zoom always matches the panel.
 let _mapZoom=1;
 function injectMapZoomBar(){
   const hdr=document.querySelector('#rp-map-col > div'); // the map header row
@@ -723,20 +726,25 @@ function injectMapZoomBar(){
   // place the zoom bar just before the fullscreen button
   const fs=hdr.querySelector('button'); if(fs) hdr.insertBefore(bar, fs); else hdr.appendChild(bar);
 }
-function mapZoom(delta){
+function applyMapZoom(){
   const svg=document.getElementById('report-map-svg');
+  const cont=document.getElementById('report-map-container');
   if(!svg) return;
+  if(_mapZoom<=1){ svg.style.width='100%'; svg.style.height='100%'; svg.style.maxWidth=''; svg.style.maxHeight=''; return; }
+  const pad=12; // container padding (6px each side)
+  const cw=Math.max(50,((cont&&cont.clientWidth)||320)-pad);
+  const ch=Math.max(50,((cont&&cont.clientHeight)||320)-pad);
+  svg.style.width=(cw*_mapZoom)+'px';
+  svg.style.height=(ch*_mapZoom)+'px';
+  svg.style.maxWidth='none'; svg.style.maxHeight='none';
+}
+function mapZoom(delta){
   _mapZoom = delta===0 ? 1 : Math.max(1, Math.min(4, _mapZoom+delta));
-  // Item 2: scale BOTH dimensions by the zoom factor so the map genuinely overflows its window when
-  // zoomed in — the container (#report-map-container, overflow:auto) then shows horizontal AND vertical
-  // scroll bars. The SVG's viewBox + preserveAspectRatio keeps the drawing undistorted inside the box.
-  svg.style.width=(_mapZoom*100)+'%';
-  svg.style.height=(_mapZoom*100)+'%';
-  svg.style.maxWidth='none';
-  svg.style.maxHeight='none';
+  applyMapZoom();
 }
 window.addEventListener('resize',()=>{
   if(window.innerWidth<821) teardownDeskLayout(); else setupDeskLayout();
+  applyMapZoom();
 });
 function ensureMobileDefault(){
   const lay=document.getElementById('rp-layout');
@@ -5107,6 +5115,12 @@ function _tintForDarkTooltip(hex){
   const mix=c=>Math.round(c+(255-c)*0.45), h2=c=>c.toString(16).padStart(2,'0');
   return '#'+h2(mix(r))+h2(mix(g))+h2(mix(b));
 }
+// Item 1 (this session): each lair in a province popup gets its OWN star, tinted by the guardian's
+// difficulty (Weak→green, Moderate→gold, Powerful→orange, Legendary→crimson).
+function _lairStar(f){
+  const col={Weak:'#4caf50',Moderate:'#e0b030',Powerful:'#e07b30',Legendary:'#c0392b'}[f.power]||'#c8922a';
+  return `<span style="color:${col}">\u2b50</span> ${f.name}`;
+}
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
   // Item 3 (this session): a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id,
@@ -5315,10 +5329,10 @@ function renderMapIntoSvg(svgEl, report){
       const enemyChars=pd.characters.filter(c=>!c.isOwn&&!c.isWanderer&&!c.isNeutralGuard&&c.ownerColor);
       const wanderers=pd.characters.filter(c=>!c.isOwn&&(c.isWanderer||c.isNeutralGuard||!c.ownerColor));
 
-      let markerX=x+HS-7;
+      let markerX=x+HS-11; // item: nudged inward so it clearly sits inside the hex
       // Own characters
       if(ownChars.length>0){
-        const mx=markerX,my=y-HS+9;
+        const mx=markerX,my=y-HS+12;
         const mg=document.createElementNS(svgNS,'g');
         mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
         const circ=document.createElementNS(svgNS,'circle');
@@ -5347,7 +5361,7 @@ function renderMapIntoSvg(svgEl, report){
       }
       // Enemy characters
       if(enemyChars.length>0){
-        const mx=markerX,my=y-HS+9;
+        const mx=markerX,my=y-HS+12;
         const mg=document.createElementNS(svgNS,'g');
         mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
         const ec=document.createElementNS(svgNS,'circle');
@@ -5377,7 +5391,7 @@ function renderMapIntoSvg(svgEl, report){
       }
       // Wandering heroes
       if(wanderers.length>0){
-        const mx=markerX,my=y-HS+9;
+        const mx=markerX,my=y-HS+12;
         const mg=document.createElementNS(svgNS,'g');
         mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
         const wc=document.createElementNS(svgNS,'circle');
@@ -5395,13 +5409,13 @@ function renderMapIntoSvg(svgEl, report){
     }
 
     // Item 5/10: a distinct "(dead)" skull marker for any fallen hero whose body lies in a province
-    // this player can see. Sits TOP-LEFT (the bottom-right corner is reserved for the garrison symbol,
+    // this player can see. Sits BOTTOM-LEFT (the bottom-right corner is reserved for the garrison symbol,
     // item 9). The name-with-"(dead)" shows in the hex tooltip (popupKnownChars). Drawn even when no
     // living characters stand here, and never the same glyph as a living commander.
     if(isOwned||isVisited){
       const deadHere=(report.visibleDeadHeroes||[]).filter(d=>d.locationId===pd.id);
       if(deadHere.length>0){
-        const dx=x-HS+9, dy=y-HS+10;
+        const dx=x-HS+8, dy=y+HS-10; // item 1: moved to the bottom-left corner (item 2: inward)
         const dt=document.createElementNS(svgNS,'text');
         dt.setAttribute('x',dx);dt.setAttribute('y',dy);
         dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','6'); // item: half size
@@ -5414,10 +5428,10 @@ function renderMapIntoSvg(svgEl, report){
     // Item 9 (this session): a shield at the BOTTOM-RIGHT of any owned hex where the player holds
     // GARRISONED (unled) units — a glance tells them which provinces are actually held by a standing
     // garrison rather than just owned on paper. Keyed on pd.garrisonArmies (only populated for owned
-    // provinces); the bottom-right corner is kept clear of the dead-hero (top-left), battle (top-mid)
+    // provinces); the bottom-right corner is kept clear of the dead-hero (bottom-left), battle (top-mid)
     // and consecrate (top-right) markers.
     if(isOwned && (pd.garrisonArmies||[]).length>0){
-      const gx=x+HS-9, gy=y+HS-6;
+      const gx=x+HS-13, gy=y+HS-10;
       const gtxt=document.createElementNS(svgNS,'text');
       gtxt.setAttribute('x',gx);gtxt.setAttribute('y',gy);
       gtxt.setAttribute('text-anchor','middle');gtxt.setAttribute('font-size','5.5'); // item: half size
@@ -5435,7 +5449,7 @@ function renderMapIntoSvg(svgEl, report){
     // OR where a battle is still raging unresolved (a carry-on that will resume) — item 14. An ongoing
     // fight glows a little brighter and its tooltip says so.
     if(pd.hadBattle || pd.battleUnresolved){
-      const bx=x,by=y-HS+9;
+      const bx=x,by=y-HS+12;
       const btxt=document.createElementNS(svgNS,'text');
       btxt.setAttribute('x',bx);btxt.setAttribute('y',by);
       btxt.setAttribute('text-anchor','middle');btxt.setAttribute('font-size','9'); // ×1.5 of prior 6
@@ -5452,7 +5466,7 @@ function renderMapIntoSvg(svgEl, report){
     // Undead/Evil attackers, and resurrection anchor all key off this province).
     if(pd.consecrated){
       const ctxt=document.createElementNS(svgNS,'text');
-      ctxt.setAttribute('x',x+HS*0.55);ctxt.setAttribute('y',y-HS*0.35);
+      ctxt.setAttribute('x',x+HS*0.42);ctxt.setAttribute('y',y-HS*0.20); // item 2: pulled inward, clear of the top-right hero markers
       ctxt.setAttribute('text-anchor','middle');ctxt.setAttribute('font-size','8');
       ctxt.setAttribute('pointer-events','none');
       ctxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
@@ -5464,7 +5478,8 @@ function renderMapIntoSvg(svgEl, report){
     // where this player has a character with troops under their command. Pagan ritual-site moons sit
     // just to its right so the two never collide.
     if(pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0)){
-      const lx=x-HS+7,ly=y+HS-6;
+      const _deadBL=(report.visibleDeadHeroes||[]).some(d=>d.locationId===pd.id); // item 1: dead marker shares the bottom-left
+      const lx=x-HS+8+(_deadBL?9:0),ly=y+HS-10;
       const ltxt=document.createElementNS(svgNS,'text');
       ltxt.setAttribute('x',lx);ltxt.setAttribute('y',ly);
       ltxt.setAttribute('text-anchor','middle');ltxt.setAttribute('font-size','9');
@@ -5478,7 +5493,8 @@ function renderMapIntoSvg(svgEl, report){
     // Pagan kingdom has discovered a ritual site, so its standing stones are easy to find on the map.
     if(_isPagan && (pd.features||[]).some(f=>f.ritualSite)){
       const hasFlag=pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
-      const mnx=x-HS+(hasFlag?17:7),mny=y+HS-6;
+      const _deadBL2=(report.visibleDeadHeroes||[]).some(d=>d.locationId===pd.id);
+      const mnx=x-HS+8+((_deadBL2?9:0)+(hasFlag?9:0)),mny=y+HS-10;
       const mtxt=document.createElementNS(svgNS,'text');
       mtxt.setAttribute('x',mnx);mtxt.setAttribute('y',mny);
       mtxt.setAttribute('text-anchor','middle');mtxt.setAttribute('font-size','9');
@@ -5500,7 +5516,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>!f.cleared);
           const kfLairs=kf.filter(f=>!f.ritualSite), kfRituals=kf.filter(f=>f.ritualSite);
-          if(kfLairs.length) h+=`<br>\u2b50 ${kfLairs.map(f=>f.name).join(', ')}`;
+          if(kfLairs.length) h+=`<br>${kfLairs.map(_lairStar).join(' &nbsp; ')}`;
           if(kfRituals.length) h+=`<br>\u{1F319} ${kfRituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kfRituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
@@ -5514,7 +5530,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
-          if(kf2Lairs.length) h+=`<br>\u2b50 ${kf2Lairs.map(f=>f.name).join(', ')}`;
+          if(kf2Lairs.length) h+=`<br>${kf2Lairs.map(_lairStar).join(' &nbsp; ')}`;
           if(kf2Rituals.length) h+=`<br>\u{1F319} ${kf2Rituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kf2Rituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
@@ -5595,6 +5611,7 @@ function renderPlayerMap(report){
   buildMapIconToggles(); // item 2: ensure the icon on/off bar exists
   renderMapIntoSvg(svg, r);
   applyMapIconVisibility(); // re-assert toggles onto the freshly drawn icons
+  applyMapZoom(); // item 6: keep the current zoom (and its scroll bars) after a re-render
 }
 
 // ── FULLSCREEN MAP ─────────────────────────────────────
@@ -5626,6 +5643,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-1901</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.21-1009</div>
 </body>
 </html>
