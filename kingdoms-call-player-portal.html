@@ -347,6 +347,7 @@ section{display:none;}.section-active{display:block;}
           <span style="font-family:'Cinzel',serif;font-size:.75rem;color:#c8922a;letter-spacing:.06em">🗺 Known World</span>
           <button onclick="showFullscreenMap()" class="btn btn-ghost" style="font-size:.65rem;padding:3px 9px">⛶ Fullscreen</button>
         </div>
+        <div id="map-icon-toggles" style="display:flex;flex-wrap:wrap;gap:3px;padding:4px 8px;background:#160f06;border-bottom:1px solid #2a1c0c;font-size:.62rem"></div>
         <div id="report-map-container" style="flex:1;overflow:auto;padding:6px">
           <svg id="report-map-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%"></svg>
         </div>
@@ -4451,7 +4452,7 @@ function buildTargetField(c, ph, saved){
       const loc=predictedLocation(c.id,ph);
       const ownedHere=loc&&(report.ownedProvinces||[]).some(p=>p.id===loc.id);
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Consecrates ${loc?loc.name:'current province'}${ownedHere?'':' — must be YOURS at this phase!'}" readonly>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%, fallen heroes return here. One per kingdom (a new consecration moves it). Cannot be cast on your home province or its neighbours — the crown's hearth was anointed at the coronation; the gods bid you carry the light outward.</div>`;}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%, fallen heroes return to hallowed ground. You may hold up to your <strong>White skill level</strong> in consecrated provinces at once; a consecrated province that is captured frees a slot. Cannot be cast on your home province or its neighbours — the crown's hearth was anointed at the coronation; the gods bid you carry the light outward.</div>`;}
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good')
@@ -5108,12 +5109,17 @@ function _tintForDarkTooltip(hex){
 }
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
-  const dead=(deadHeroes||[]).filter(d=>d.locationId===(pd&&pd.id));
+  // Item 3 (this session): a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id,
+  // and drop from the live lists any character that also appears among the dead (the dead entry wins),
+  // so a hero never shows both as a living commander and again as "(dead)".
+  const _deadSeen=new Set();
+  const dead=(deadHeroes||[]).filter(d=>d.locationId===(pd&&pd.id)).filter(d=>{ if(_deadSeen.has(d.id)) return false; _deadSeen.add(d.id); return true; });
+  const deadIds=new Set(dead.map(d=>d.id));
   if(!chars.length && !dead.length) return '';
   const cnt=(c)=>c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'';
-  const own=chars.filter(c=>c.isOwn);
-  const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer);
-  const wand=chars.filter(c=>c.isWanderer);
+  const own=chars.filter(c=>c.isOwn && !deadIds.has(c.id));
+  const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer && !deadIds.has(c.id));
+  const wand=chars.filter(c=>c.isWanderer && !deadIds.has(c.id));
   let s='';
   // Item 6: colour character names by owner — own & enemy in their kingdom colour (lightened if
   // needed for the dark tooltip), wandering heroes and local chieftains (neutral) in grey.
@@ -5297,7 +5303,7 @@ function renderMapIntoSvg(svgEl, report){
       dot.setAttribute('stroke',ws.stroke);dot.setAttribute('stroke-width','0.5');
       if(ws.glow) dot.setAttribute('filter',ws.glow);
       dot.setAttribute('pointer-events','none');
-      symbolLayer.appendChild(dot);
+      dot.setAttribute('class','sym-prosper'); symbolLayer.appendChild(dot);
     }
 
     // Character markers — own (player color), enemy (their color), wanderer (grey-gold)
@@ -5336,7 +5342,7 @@ function renderMapIntoSvg(svgEl, report){
           sh.setAttribute('fill','#fff');sh.setAttribute('pointer-events','none');
           mg.appendChild(hd);mg.appendChild(sh);
         }
-        symbolLayer.appendChild(mg);
+        mg.setAttribute('class','sym-char'); symbolLayer.appendChild(mg);
         markerX-=8;
       }
       // Enemy characters
@@ -5366,7 +5372,7 @@ function renderMapIntoSvg(svgEl, report){
           esh.setAttribute('fill','#fff');esh.setAttribute('pointer-events','none');
           mg.appendChild(ehd);mg.appendChild(esh);
         }
-        symbolLayer.appendChild(mg);
+        mg.setAttribute('class','sym-char'); symbolLayer.appendChild(mg);
         markerX-=8;
       }
       // Wandering heroes
@@ -5384,7 +5390,7 @@ function renderMapIntoSvg(svgEl, report){
         wlbl.setAttribute('fill','#fff');wlbl.setAttribute('pointer-events','none');
         wlbl.textContent='?';
         mg.appendChild(wc);mg.appendChild(wlbl);
-        symbolLayer.appendChild(mg);
+        mg.setAttribute('class','sym-char'); symbolLayer.appendChild(mg);
       }
     }
 
@@ -5402,7 +5408,7 @@ function renderMapIntoSvg(svgEl, report){
         dt.setAttribute('fill','#7a1f1f');dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.25');
         dt.setAttribute('pointer-events','none');
         dt.textContent='\u2620'; // ☠ — fallen hero
-        symbolLayer.appendChild(dt);
+        dt.setAttribute('class','sym-dead'); symbolLayer.appendChild(dt);
       }
     }
     // Item 9 (this session): a shield at the BOTTOM-RIGHT of any owned hex where the player holds
@@ -5422,7 +5428,7 @@ function renderMapIntoSvg(svgEl, report){
       gtxt.setAttribute('pointer-events','auto');
       gtxt.appendChild(_tt);
       gtxt.textContent='\u{1F6E1}'; // 🛡 garrison
-      symbolLayer.appendChild(gtxt);
+      gtxt.setAttribute('class','sym-garrison'); symbolLayer.appendChild(gtxt);
     }
 
     // Battle icon — crossed swords at the TOP-MIDDLE of any hex where a battle was fought this turn,
@@ -5438,7 +5444,7 @@ function renderMapIntoSvg(svgEl, report){
       const _bt=document.createElementNS(svgNS,'title'); _bt.textContent=pd.battleUnresolved?'Battle still raging here — it will carry on next turn':'Battle fought here this turn';
       btxt.appendChild(_bt);
       btxt.textContent='⚔';
-      symbolLayer.appendChild(btxt);
+      btxt.setAttribute('class','sym-battle'); symbolLayer.appendChild(btxt);
     }
 
     // DIVINE — Consecrate: a ✨ at the TOP-RIGHT marks the kingdom's holy ground so the player can
@@ -5451,7 +5457,7 @@ function renderMapIntoSvg(svgEl, report){
       ctxt.setAttribute('pointer-events','none');
       ctxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
       ctxt.textContent='✨';
-      symbolLayer.appendChild(ctxt);
+      ctxt.setAttribute('class','sym-consec'); symbolLayer.appendChild(ctxt);
     }
 
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
@@ -5465,7 +5471,7 @@ function renderMapIntoSvg(svgEl, report){
       ltxt.setAttribute('fill',playerColor);ltxt.setAttribute('pointer-events','none'); // item: army banner in the player's colour
       ltxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
       ltxt.textContent='⚑';
-      symbolLayer.appendChild(ltxt);
+      ltxt.setAttribute('class','sym-flag'); symbolLayer.appendChild(ltxt);
     }
 
     // Pagan ritual sites (item): the same 🌙 the report uses, drawn at the bottom-left of hexes where a
@@ -5479,7 +5485,7 @@ function renderMapIntoSvg(svgEl, report){
       mtxt.setAttribute('pointer-events','none');
       mtxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
       mtxt.textContent='🌙';
-      symbolLayer.appendChild(mtxt);
+      mtxt.setAttribute('class','sym-ritual'); symbolLayer.appendChild(mtxt);
     }
 
     // Tooltip
@@ -5492,8 +5498,10 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.consecrated) h+=`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`;
           h+=`<br>\u{1F6C2} ${formatRace(pd.race)}`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
-          const kf=(pd.features||[]).filter(f=>f.discovered&&!f.cleared);
-          if(kf.length) h+=`<br>\u2b50 ${kf.map(f=>f.name).join(', ')}`;
+          const kf=(pd.features||[]).filter(f=>!f.cleared);
+          const kfLairs=kf.filter(f=>!f.ritualSite), kfRituals=kf.filter(f=>f.ritualSite);
+          if(kfLairs.length) h+=`<br>\u2b50 ${kfLairs.map(f=>f.name).join(', ')}`;
+          if(kfRituals.length) h+=`<br>\u{1F319} ${kfRituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kfRituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
@@ -5505,7 +5513,9 @@ function renderMapIntoSvg(svgEl, report){
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
-          if(kf2.length) h+=`<br>\u2b50 ${kf2.map(f=>f.name).join(', ')}`;
+          const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
+          if(kf2Lairs.length) h+=`<br>\u2b50 ${kf2Lairs.map(f=>f.name).join(', ')}`;
+          if(kf2Rituals.length) h+=`<br>\u{1F319} ${kf2Rituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kf2Rituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
@@ -5537,11 +5547,54 @@ function renderMapIntoSvg(svgEl, report){
 // ── INLINE MAP ─────────────────────────────────────────
 // Item 4: dismiss the sticky province popup (mobile — no mouse-leave to hide it).
 function _closeMapTip(ev){ if(ev){ev.stopPropagation();} const tt=document.getElementById('map-tooltip'); if(tt){ tt.style.display='none'; tt._sticky=false; tt.style.pointerEvents='none'; } }
+
+// ── Item 2: MAP ICON TOGGLES ────────────────────────────────────────────────
+// Each overlay icon type carries a CSS class (sym-<type>); a shared <style> hides the classes the
+// player has switched off, so the setting persists across map re-renders and applies to both the inline
+// and fullscreen maps. The toggle bar is built once.
+const MAP_ICON_TYPES=[
+  {key:'char',     label:'👤 Heroes'},
+  {key:'flag',     label:'⚑ Army flags'},
+  {key:'garrison', label:'🛡 Garrisons'},
+  {key:'battle',   label:'⚔ Battles'},
+  {key:'dead',     label:'☠ Fallen'},
+  {key:'consec',   label:'✨ Consecrated'},
+  {key:'ritual',   label:'🌙 Ritual sites'},
+  {key:'prosper',  label:'● Prosperity'},
+];
+const _mapIconOff=new Set();
+function applyMapIconVisibility(){
+  let st=document.getElementById('map-icon-style');
+  if(!st){ st=document.createElement('style'); st.id='map-icon-style'; document.head.appendChild(st); }
+  st.textContent=[..._mapIconOff].map(k=>`.sym-${k}{display:none!important;}`).join('');
+  // reflect button states
+  document.querySelectorAll('#map-icon-toggles button[data-icon]').forEach(b=>{
+    const off=_mapIconOff.has(b.getAttribute('data-icon'));
+    b.style.opacity=off?'0.4':'1';
+    b.style.textDecoration=off?'line-through':'none';
+  });
+}
+function toggleMapIcon(key){
+  if(_mapIconOff.has(key)) _mapIconOff.delete(key); else _mapIconOff.add(key);
+  applyMapIconVisibility();
+}
+function buildMapIconToggles(){
+  const bar=document.getElementById('map-icon-toggles');
+  if(!bar || bar._built) return;
+  bar._built=true;
+  bar.innerHTML=MAP_ICON_TYPES.map(t=>
+    `<button type="button" data-icon="${t.key}" onclick="toggleMapIcon('${t.key}')" title="Show/hide ${t.label}" `
+    +`style="background:#241810;color:#e8b84b;border:1px solid #4a3418;border-radius:2px;padding:2px 6px;cursor:pointer;font-size:.62rem;line-height:1.3">${t.label}</button>`
+  ).join('');
+  applyMapIconVisibility();
+}
 function renderPlayerMap(report){
   const svg=document.getElementById('report-map-svg');
   const r=report||viewingReport||currentReport;
   if(!svg||!r) return;
+  buildMapIconToggles(); // item 2: ensure the icon on/off bar exists
   renderMapIntoSvg(svg, r);
+  applyMapIconVisibility(); // re-assert toggles onto the freshly drawn icons
 }
 
 // ── FULLSCREEN MAP ─────────────────────────────────────
@@ -5573,6 +5626,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-1844</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.20-1901</div>
 </body>
 </html>

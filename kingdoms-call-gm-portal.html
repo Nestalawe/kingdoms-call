@@ -2680,6 +2680,19 @@ const MITHRIL_ARMOUR={name:'Mithril Armour',desc:'Melee and arrow attacks agains
 // Item 6 (this session): duplicate items of the SAME type (same name) do NOT stack — a character may
 // hold several, but only ONE of each name has any effect. Every place that sums item effects runs the
 // item list through this first. (Different items that happen to share a stat still stack normally.)
+// Item 1 (this session): a Divine kingdom may now hold MULTIPLE consecrated provinces — up to the
+// king's White skill level, that many at any one time. Consecration is stored as a LIST
+// (player.consecratedProvIds); this helper returns it, migrating any legacy single `consecratedProvId`
+// save into the list on first read.
+function consecratedIds(pl){
+  if(!pl) return [];
+  if(!Array.isArray(pl.consecratedProvIds)){
+    pl.consecratedProvIds = (pl.consecratedProvId!=null)?[pl.consecratedProvId]:[];
+    if('consecratedProvId' in pl) delete pl.consecratedProvId; // fold the old single field into the list
+  }
+  return pl.consecratedProvIds;
+}
+function isConsecrated(pl, provId){ return consecratedIds(pl).includes(provId); }
 function dedupeItemsByName(items){
   const seen=new Set(); const out=[];
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
@@ -4777,7 +4790,7 @@ function buildTurnReport(gameState, playerIndex){
         // Full live info — your own province.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,tier:'owned',
           tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor', ownArmyHere:_ownArmyHere,
-          consecrated:gameState.players[playerIndex]?.consecratedProvId===p.id, // DIVINE — Consecrate: mark the kingdom's holy ground so the player can confirm it is active
+          consecrated:isConsecrated(gameState.players[playerIndex],p.id), // DIVINE — Consecrate: mark the kingdom's holy ground so the player can confirm it is active
           hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,
@@ -6718,7 +6731,7 @@ const BATTLE_ARMY_SPELLS={
     // Apply discovery bonuses to final attack str
     const finalAtkMod=discArmyBonus;
     // DIVINE — Consecrate: an Undead/Evil kingdom assaulting consecrated ground fights at −15%.
-    const _consecNPC=prov.owner!=null&&prov.owner!==c.player&&G.players[prov.owner]?.consecratedProvId===prov.id&&(align==='Undead'||align==='Evil');
+    const _consecNPC=prov.owner!=null&&prov.owner!==c.player&&isConsecrated(G.players[prov.owner],prov.id)&&(align==='Undead'||align==='Evil');
     if(_consecNPC) narrative.push(`✨ The ground of ${prov.name} is consecrated — ${cName}'s ${align.toLowerCase()} host falters on hallowed earth (−15% strength).`);
     // Post-multiplier base strengths — every battle-level multiplier (fanaticism, discoveries,
     // morale, home/defensive bonus, illusory, consecrate) folded in, BEFORE the dice.
@@ -7992,7 +8005,7 @@ const BATTLE_ARMY_SPELLS={
     let _defFanPct=Math.max(0,(defFanChance[defAlign]||0.1)-(_wyvAtk?0.15:0));
     // DIVINE — Consecrate: defenders on consecrated ground are TWICE as likely to be seized by
     // fanatical zeal (they fight before the altars of their gods).
-    const _consecratedHere=def.player!=null&&G.players[def.player]?.consecratedProvId===prov.id&&prov.owner===def.player;
+    const _consecratedHere=def.player!=null&&isConsecrated(G.players[def.player],prov.id)&&prov.owner===def.player;
     if(_consecratedHere){ _defFanPct=Math.min(1,_defFanPct*2); }
     if(_wyvDef) narrative.push(`🐉 ${defName}'s Wyvern Riders wheel above the field — ${atkName}'s troops fight with one eye on the sky (−15% fanaticism).`);
     if(_wyvAtk) narrative.push(`🐉 ${atkName}'s Wyvern Riders wheel above the field — ${defName}'s troops fight with one eye on the sky (−15% fanaticism).`);
@@ -10095,15 +10108,18 @@ const BATTLE_ARMY_SPELLS={
         const _homeAdj=new Set(_homeId!=null?getNeighborsP(G.world.provinces[_homeId],G.world.cols,G.world.rows,G.world.provinces).map(x=>x&&x.id).filter(x=>x!=null):[]);
         if(prov.id===_homeId||_homeAdj.has(prov.id)){
           log('system',`${c.name}: the crown's own hearth was anointed at the coronation — its grace already shelters the throne and the lands in its shadow. The gods charge their servants to carry the light OUTWARD: consecrate a province beyond the home marches.`,{actor:c.player,targets:[c.player]});break;}
-        if(player.consecratedProvId===prov.id){
+        const _cList=consecratedIds(player);
+        if(_cList.includes(prov.id)){
           log('system',`${prov.name} is already consecrated — the ground is holy and needs no second blessing.`,{actor:c.player,targets:[c.player]});break;}
-        if(player.consecratedProvId!=null){
-          const oldP=G.world.provinces[player.consecratedProvId];
-          if(oldP) log('system',`The consecration of ${oldP.name} lapses as the divine favour moves on.`,{actor:c.player,targets:[c.player],provinceId:oldP.id});
-        }
-        player.consecratedProvId=prov.id;
+        // Item 1: the crown may hold up to its WHITE skill level in consecrated provinces at once.
+        const _cLimit=skillLevel(c,'white');
+        if(_cLimit<=0){
+          log('system',`${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,{actor:c.player,targets:[c.player]});break;}
+        if(_cList.length>=_cLimit){
+          log('system',`${c.name}: your White faith can sustain only ${_cLimit} consecrated province${_cLimit!==1?'s':''} at once (${_cList.map(id=>G.world.provinces[id]?.name).filter(Boolean).join(', ')||'—'}). One must be lost or captured before you can hallow ${prov.name}. (Raise your White skill to consecrate more.)`,{actor:c.player,targets:[c.player]});break;}
+        _cList.push(prov.id);
         TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
-        log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and fallen heroes return HERE when divine grace restores them. (One consecrated province per kingdom — consecrating another moves the blessing.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
+        log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and fallen heroes return to hallowed ground when divine grace restores them. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
         break;
       }
       // GOOD — Call to Arms: the folk answer the king; a free Green garrison unit musters.
@@ -13217,7 +13233,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           if(pv._earthquakeNoTax===G.turn) t=0; // Earthquake: no revenue this turn
           if(pv._sabotagedForTurn===G.turn) t=0; // SPY L7 Sabotage: wrecked province yields no tax this turn
           if(pv._blessedTurn===G.turn) t=Math.round(t*(pv._blessedMult||1.6)); // Bless Province: +60% (or +100% from a Divine king)
-          if(p.consecratedProvId===pv.id){ const _cb=t; t=Math.round(t*1.5); _consecBonus+=(t-_cb); } // DIVINE — Consecrate: hallowed ground prospers (+50%)
+          if(isConsecrated(p,pv.id)){ const _cb=t; t=Math.round(t*1.5); _consecBonus+=(t-_cb); } // DIVINE — Consecrate: hallowed ground prospers (+50%)
           if(pv._enslavedUntil!=null&&pv._enslavedUntil>=G.turn) t=Math.max(0,t-1); // EVIL — Enslave: resentment (−1 tax while it lasts)
           if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0));
           // sd11 Advanced Agriculture: +1g from provinces with tax>=3
@@ -13342,6 +13358,23 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }
 
   _currentPhase=null; // Item 6: the phase loop is over — any later gain belongs to END OF TURN
+
+  // ── Item 1: DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's
+  // hands this turn (captured by an enemy, or otherwise no longer owned) loses its blessing — which
+  // also frees a slot so the king may hallow new ground next turn (up to his White skill level).
+  (G.players||[]).forEach((pl,pi)=>{
+    if(!pl) return;
+    const list=consecratedIds(pl);
+    if(!list.length) return;
+    const kept=list.filter(pid=>{ const pv=G.world.provinces[pid]; return pv && pv.owner===pi; });
+    if(kept.length!==list.length){
+      list.filter(pid=>!kept.includes(pid)).forEach(pid=>{
+        const pv=G.world.provinces[pid];
+        if(pv) log('system',`✨ The consecration of ${pv.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,{actor:pi,targets:[pi],provinceId:pid,public:true,env:true});
+      });
+      pl.consecratedProvIds=kept;
+    }
+  });
 
   // ── Item 8: COURIER DELIVERIES ── Cross-province Send Item arrivals reach their recipient now, as
   // the season closes, so the items are in hand from the START of next turn (not usable this turn).
@@ -13736,7 +13769,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const ownedProvs=(playerP.provinces||[]).map(id=>G.world.provinces[id]).filter(Boolean);
     if(!ownedProvs.length) return; // no province to return to
     // Consecrated ground is where divine grace returns the fallen; wealthiest province otherwise.
-    const consecP=(playerP.consecratedProvId!=null)?ownedProvs.find(p=>p.id===playerP.consecratedProvId):null;
+    const _cIds=consecratedIds(playerP); const consecP=ownedProvs.find(p=>_cIds.includes(p.id))||null;
     const homeProv=consecP||ownedProvs.reduce((best,p)=>p.tax>=(best?.tax||0)?p:best, ownedProvs[0]);
     // Resurrect — strip armies and items (divine gift, not a free ride)
     hero.alive=true;hero.hp=Math.floor(hero.maxHp*0.5)||8;hero.killedThisTurn=false;
@@ -14161,6 +14194,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-1844</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.20-1901</div>
 </body>
 </html>
