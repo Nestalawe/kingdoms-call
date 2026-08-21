@@ -3118,6 +3118,28 @@ function botPlanAssaults(G, pi, chars, assigned){
 // force (folded into winnability) and a hunt-score bonus so bots chase down heroes and especially KINGS
 // (a king's death triggers succession and can swing the game). hasKing also earns a slimmer attack
 // margin — bots take a little more risk to land an assassination.
+// ── NAVAL (item 1) ─────────────────────────────────────────────────────────
+// Module-level mirrors of the engine's sea taxonomy + getSeaCapability, so the bot movement/economy
+// passes (which live at module scope, above runTurn) can reason about fleets. Kept in sync with the
+// in-engine sets around the FLYING_TYPES/CARRIER_TYPES block.
+const BOT_CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+const BOT_PRIMAL_SEA_TYPES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
+const BOT_AERIAL_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+const BOT_SEA_ALL=new Set([...BOT_CARRIER_TYPES,...BOT_PRIMAL_SEA_TYPES]);
+const BOT_LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers']);
+// 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
+// enough hulls to put to sea). Mirrors getSeaCapability exactly.
+function botSeaCap(armies){
+  armies=armies||[];
+  if(armies.length===0) return 'all';
+  const landArmies=armies.filter(a=>a&&!BOT_AERIAL_TYPES.has(a.type)&&!BOT_SEA_ALL.has(a.type));
+  const hulls=armies.filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length;
+  if(landArmies.length===0) return 'all';
+  let need=0; landArmies.forEach(a=>{ need+=BOT_LIGHT_ARMIES.has(a.type)?0.5:1; });
+  return hulls>=need ? 'sea' : 'land';
+}
+// A force carrying land troops it can ferry (has fleets AND land armies) — the invasion package.
+function botIsLoadedFleet(armies){ armies=armies||[]; return armies.some(a=>a&&BOT_CARRIER_TYPES.has(a.type)) && armies.some(a=>a&&!BOT_AERIAL_TYPES.has(a.type)&&!BOT_SEA_ALL.has(a.type)); }
 function botEnemyChars(G, prov, pi){
   let force=0, value=0, hasKing=false;
   (prov.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id);
@@ -3151,6 +3173,20 @@ function botLairDir(G, P, c, pi){
   }
   return -1;
 }
+// Item 5 — CONCENTRATION (movement). Early game, a secondary character with nothing to attack rallies
+// toward the bot's PRIMARY stack through owned land instead of wandering off alone, so the bot fights as
+// one big army. Greedy row/col step — only moves if it gets closer.
+function botRallyDir(G, P, c, pi, primaryLoc){
+  if(primaryLoc==null||primaryLoc===P.id) return -1;
+  const tgt=G.world.provinces[primaryLoc]; if(!tgt) return -1;
+  const curD=Math.abs(P.row-tgt.row)+Math.abs(P.col-tgt.col);
+  let bestDir=-1,bestD=curD;
+  for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.owner!==pi||N.terrain==='sea') continue;
+    const d=Math.abs(N.row-tgt.row)+Math.abs(N.col-tgt.col);
+    if(d<bestD){ bestD=d; bestDir=i; }
+  }
+  return bestDir;
+}
 // Write movement orders for every bot's armed characters. Called from runTurn after human orders are
 // merged into G.turnOrders and before the default-to-Defend pass.
 function runBotMovement(G, botIdxSet){
@@ -3161,6 +3197,10 @@ function runBotMovement(G, botIdxSet){
     const chars=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&(c.armies||[]).length>0);
     const assigned=new Set();
     botPlanAssaults(G, pi, chars, assigned);          // Phase 4b: concentrated assaults (gang up on strong provinces)
+    // Item 5 — identify this bot's PRIMARY stack (biggest; tie → the king) and whether the tax base is
+    // still thin, so early-game secondaries can rally to it rather than scatter.
+    const _solidBase = botTaxIncome(G,pi) >= BOT_STACK_SPLIT_INCOME;
+    let _primaryLoc=null; { let bestN=-1; chars.forEach(x=>{ const n=(x.armies||[]).length+(x.isKing?0.5:0); if(n>bestN){bestN=n;_primaryLoc=x.location;} }); }
     chars.forEach(c=>{
       if(assigned.has(c.id)) return;                  // already committed to a coordinated assault
       const P=G.world.provinces[c.location]; if(!P) return;
@@ -3176,7 +3216,10 @@ function runBotMovement(G, botIdxSet){
         (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botForceStrength(e.armies); });
         if(enemyForceInN>maxThreat){ maxThreat=enemyForceInN; threatDir=i; }
         // TARGET scan (attack / expand):
-        if(N.terrain==='sea') continue;                // land-only in v1
+        // NAVAL (item 1): a sea province is a valid target only for a sea-capable force (fleets/flyers,
+        // with hulls enough to carry any land troops aboard). A pure land force still skips the sea.
+        // A force already AT SEA targeting an adjacent LAND province is making a coastal landing.
+        if(N.terrain==='sea' && botSeaCap(c.armies)==='land') continue;   // no shipping — can't put to sea
         if(N.owner===pi){
           // REINFORCE candidate: an owned valuable neighbour an enemy could take as it stands. Pick the
           // one in the most trouble; moving there adds this character's force to its defence next battle.
@@ -3199,7 +3242,12 @@ function runBotMovement(G, botIdxSet){
         }
         const effMargin=ec.hasKing?margin*0.9:margin;  // take a little more risk to assassinate a king
         if(targetStr>0 && myStr < targetStr*effMargin) continue;   // not confidently winnable — don't march in
-        const score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value; // + hunt bonus
+        let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value; // + hunt bonus
+        // NAVAL invasion approach: a loaded fleet (troops aboard) prefers a sea tile that touches an
+        // at-war enemy coast, so next turn it can storm ashore there.
+        if(N.terrain==='sea' && botIsLoadedFleet(c.armies)){
+          for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy'){ score+=T.rivalBias*2; break; } }
+        }
         if(!best||score>best.score) best={dirIdx:i,score};
       }
       // Phase 4b — DEFENCE: don't abandon a threatened capital or Rich province to raid elsewhere. If an
@@ -3243,6 +3291,16 @@ function runBotMovement(G, botIdxSet){
         G.turnOrders[c.id]=orders;
         return;
       }
+      // Item 5 — early game, a secondary character rallies to the main stack instead of advancing alone.
+      if(!_solidBase && c.location!==_primaryLoc){
+        const rd=botRallyDir(G,P,c,pi,_primaryLoc);
+        if(rd>=0){
+          const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[rd],extra:'',desc:'Rally to main force'}];
+          for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
+          G.turnOrders[c.id]=orders;
+          return;
+        }
+      }
       const fd=botFrontierDir(G,P,pi);
       if(fd>=0){
         const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[fd],extra:'',desc:'Advance'}];
@@ -3275,17 +3333,59 @@ function botUpkeep(G, pi){
 function botTaxIncome(G, pi){
   let inc=0; (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi) inc+=(p.tax||0); }); return inc;
 }
+// Item 5 — below this tax income the bot keeps a SINGLE main army stack (concentrate recruiting on one
+// character); at/above it the economy is solid enough to support several stacks.
+const BOT_STACK_SPLIT_INCOME=20;
+// ── ECONOMY helpers for the 2026-08 batch ───────────────────────────────────
+// Item 3 — is this bot AT WAR (any at-war relation with a live player)? At-war bots spend their treasury
+// down and raise their sustainable army ceiling to build for the fight.
+function botAtWar(G, pi){
+  return (G.players||[]).some((p,j)=> j!==pi && p && (G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===j) && botRelationRaw(G,pi,j)==='enemy');
+}
+// Item 3 — the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide
+// when to go to a war footing and roughly how big an army to build toward.
+function botMaxEnemyStack(G, pi){
+  let mx=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player!=null&&c.player!==pi&&botRelationRaw(G,pi,c.player)==='enemy'){ const n=(c.armies||[]).length; if(n>mx)mx=n; } }); return mx;
+}
+// Item 1a — a CARRIER fleet type this province can raise (for sea conquest / troop transport), else null.
+function botCoastalFleetType(prov){ return (prov.armyTypes||[]).find(t=>BOT_CARRIER_TYPES.has(t))||null; }
+// Item 1a — does the bot have a naval reason here: a sea province to take, or an at-war enemy coast one
+// sea-hop away (an invasion route)? Only then is spending on a fleet worthwhile.
+function botNavalUseful(G, prov, pi){
+  for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(!N) continue;
+    if(N.terrain==='sea'){
+      if(N.owner==null || (N.owner!==pi && botRelationRaw(G,pi,N.owner)==='enemy')) return true;   // sea to conquer
+      for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy') return true; } // enemy coast across the water
+    }
+  }
+  return false;
+}
+// Item 5 — how many fleet hulls the bot already leads across its whole roster (so it stops over-building ships).
+function botFleetHullCount(G, pi){ let h=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ if(a&&BOT_CARRIER_TYPES.has(a.type))h++; }); }); return h; }
 function runBotEconomy(G, botIdxSet){
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
   const T=botTuning(G);
   G.turnOrders=G.turnOrders||{};
-  const RESERVE=T.goldReserve;                                // keep this much gold on hand
+  const RESERVE_BASE=T.goldReserve;                          // keep this much gold on hand
   botIdxSet.forEach(pi=>{
     const player=G.players[pi]; if(!player) return;
-    const upkeepCap=Math.floor(botTaxIncome(G,pi)*T.upkeepCapFrac); // never let wages exceed this fraction of income
+    const income=botTaxIncome(G,pi);
+    // Item 3 — WAR FOOTING: at war (or facing an enemy leading a big stack) the bot spends its treasury
+    // down and pushes its sustainable army ceiling toward 100% of income, building up to MATCH the foe;
+    // in peacetime it keeps the tuned cap and a small war chest.
+    const warFooting = botAtWar(G,pi) || botMaxEnemyStack(G,pi)>5;
+    const effCapFrac = warFooting ? Math.min(1.0, T.upkeepCapFrac+0.10) : T.upkeepCapFrac;
+    const upkeepCap=Math.floor(income*effCapFrac);
+    const RESERVE = warFooting ? Math.min(2,RESERVE_BASE) : RESERVE_BASE;   // item 3: aim for a lean (<10) treasury
     let upkeep=botUpkeep(G,pi);
     let budget=(player.gold||0)-RESERVE;                      // shared across this bot's recruiters
     if(budget<1 || upkeep>=upkeepCap) return;                 // broke or already fully committed
+    // Item 5 — CONCENTRATION: with a thin tax base, only the PRIMARY character (biggest stack; tie → the
+    // king) raises field troops, so the army grows as ONE stack instead of scattering. A solid tax base
+    // lifts the restriction and every holder may recruit (multiple stacks).
+    const solidBase = income >= BOT_STACK_SPLIT_INCOME;
+    let primaryId=null;
+    if(!solidBase){ let bestN=-1; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&!c._isHeir){ const n=(c.armies||[]).length+(c.isKing?0.5:0); if(n>bestN){bestN=n;primaryId=c.id;} } }); }
     const recruitedByProv={};                                // provId → Set(types) issued this turn
     // A holder is a bot character not doing anything yet. NOTE: runTurn pre-populates G.turnOrders[c.id]
     // with an all-null array before the bot passes, and runBotMovement overwrites movers with a move in
@@ -3309,10 +3409,20 @@ function runBotEconomy(G, botIdxSet){
       // Recruit the strongest affordable & sustainable field units in a SINGLE order (item 6): pack
       // several types — and 2 of a type where the per-type turn limit allows (tax≥10) — into one Recruit
       // order instead of dribbling one unit per phase. Musters faster when flush and frees other phases.
-      if(!recruitedByProv[prov.id] && prov.armyTypes){
+      // Item 5: with a thin tax base only the primary character raises field troops (one growing stack).
+      const mayRecruit = solidBase || primaryId==null || c.id===primaryId;
+      if(mayRecruit && !recruitedByProv[prov.id] && prov.armyTypes){
         const doneProv=recruitedByProv[prov.id]=new Set();
         const perTypeLimit=(prov.tax>=10?2:1);
         const tokens=[];
+        // Item 1a — NAVY FIRST: if there's a naval reason here (a sea province to take or an enemy coast
+        // one hop across the water) and we're short of hulls, buy a fleet before land units. A few hulls
+        // are enough to conquer sea regions and ferry a small landing force.
+        const fleetType=botCoastalFleetType(prov);
+        if(fleetType && botNavalUseful(G,prov,pi) && botFleetHullCount(G,pi)<3){
+          const cost=ARMY_COST_MASTER[fleetType]||3;
+          if(budget>=cost && upkeep+cost<=upkeepCap){ tokens.push(`${fleetType}|1`); doneProv.add(fleetType); budget-=cost; upkeep+=cost; }
+        }
         for(const t of botRecruitableTypes(prov)){
           if(ph>=5||budget<1||upkeep>=upkeepCap) break;
           if(doneProv.has(t)) continue;
@@ -3378,14 +3488,36 @@ function botActionCast(G, c){
     scan(prov); for(let i=0;i<6;i++) scan(botNeighbourProv(G,prov,i));
     return best?best.e:null;
   };
-  const enemyProvAdj=needArmies=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i);
-    if(N&&N.owner!=null&&N.owner!==c.player&&botRelationRaw(G,c.player,N.owner)==='enemy'&&(!needArmies||botEnemyDefence(G,N,N.owner)>0)) return N; } return null; };
+  // At-war enemy provinces in reach ("in or adjacent"), with the enemy force standing in each.
+  const enemyProvs=()=>{ const out=[]; const seen=new Set();
+    const scan=pv=>{ if(pv&&!seen.has(pv.id)&&pv.owner!=null&&pv.owner!==c.player&&botRelationRaw(G,c.player,pv.owner)==='enemy'){ seen.add(pv.id); out.push(pv); } };
+    scan(prov); for(let i=0;i<6;i++) scan(botNeighbourProv(G,prov,i)); return out; };
+  const armiesIn=N=>botEnemyDefence(G,N,N.owner);
+  // Item 2 — FLOOD an at-war enemy's land army to STRAND it (a flooded province acts as sea, so land
+  // armies can't march out this turn). Prefer the province holding the most troops.
+  if((sk.elemental||0)>=1){
+    const cand=enemyProvs().filter(N=>N.terrain!=='sea'&&!N._flood&&armiesIn(N)>0).sort((a,b)=>armiesIn(b)-armiesIn(a))[0];
+    if(cand) return {action:'cast_spell', target:'Flood', extra:String(cand.id), desc:'Cast Flood on '+cand.name};
+  }
+  // Item 2 — PLAGUE an enemy army, best of all one already FLOODED and stranded (the combo). Else the
+  // largest enemy army in reach.
+  if((sk.necromancy||0)>=1){
+    const withArmies=enemyProvs().filter(N=>armiesIn(N)>0);
+    const cand=withArmies.filter(N=>N._flood).sort((a,b)=>armiesIn(b)-armiesIn(a))[0] || withArmies.sort((a,b)=>armiesIn(b)-armiesIn(a))[0];
+    if(cand) return {action:'cast_spell', target:'Plague', extra:String(cand.id), desc:'Cast Plague on '+cand.name};
+  }
   if((sk.necromancy||0)>=1){ const t=enemyCharNear(); if(t) return {action:'cast_spell', target:'Curse', extra:String(t.id), desc:'Cast Curse on '+t.name}; }
   if((sk.psychic||0)>=1){ const t=enemyCharNear(); if(t) return {action:'cast_spell', target:'Psychic Blast', extra:String(t.id), desc:'Cast Psychic Blast on '+t.name}; }
-  if((sk.elemental||0)>=1){ const N=enemyProvAdj(false); if(N) return {action:'cast_spell', target:'Earthquake', extra:String(N.id), desc:'Cast Earthquake on '+N.name}; }
-  if((sk.necromancy||0)>=1){ const N=enemyProvAdj(true); if(N) return {action:'cast_spell', target:'Plague', extra:String(N.id), desc:'Cast Plague on '+N.name}; }
-  if((sk.white||0)>=1 && prov.owner===c.player && prov._blessedTurn!==G.turn){
-    return {action:'cast_spell', target:'Bless Province', extra:String(c.location), desc:'Cast Bless Province'};
+  // Item 2 — EARTHQUAKE the RICHEST enemy province in reach (deny its tax). Only worth a phase on real tax.
+  if((sk.elemental||0)>=1){
+    const cand=enemyProvs().filter(N=>N.terrain!=='sea').sort((a,b)=>(b.tax||0)-(a.tax||0))[0];
+    if(cand && (cand.tax||0)>=4) return {action:'cast_spell', target:'Earthquake', extra:String(cand.id), desc:'Cast Earthquake on '+cand.name};
+  }
+  // Item 2 — BLESS our RICHEST province in reach (tax boost + a ward vs enemy Flood/Earthquake/Plague).
+  if((sk.white||0)>=1){
+    const own=[prov]; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(N)own.push(N); }
+    const cand=own.filter(N=>N&&N.owner===c.player&&N._blessedTurn!==G.turn&&N.terrain!=='sea').sort((a,b)=>(b.tax||0)-(a.tax||0))[0];
+    if(cand) return {action:'cast_spell', target:'Bless Province', extra:String(cand.id), desc:'Cast Bless Province on '+cand.name};
   }
   if((sk.necromancy||0)>=1 && (prov.battleGraves||[]).length>0){
     return {action:'cast_spell', target:'Skeletal Armies', extra:'', desc:'Cast Skeletal Armies'};
@@ -3457,9 +3589,10 @@ function botTitleFocusSkill(c, titles){
 function botCanBeatGuardian(c, m){
   if(!m) return true;                                  // no guardian → trivially clearable
   const sk=c.skills||{};
-  const combatSkill=(sk.melee||0)+(sk.archery||0);
-  const battleMagic=(sk.elemental||0)+(sk.necromancy||0)+(sk.psychic||0); // can blast the monster in the encounter
-  if(combatSkill<1 && battleMagic<1) return false;     // a non-fighter (e.g. a pure white caster) can't hurt it — don't send it to die
+  // Item 4 — don't send heroes into lairs until they're real fighters: require melee 3 OR archery 3
+  // before attempting ANY guardian. (Softer combat-skill≥1 was letting fresh heroes die.)
+  if((sk.melee||0)<3 && (sk.archery||0)<3) return false;
+  const battleMagic=(sk.elemental||0)+(sk.necromancy||0)+(sk.psychic||0); // can also blast the monster in the encounter
   const POWER={'':0,'Weak':0,'Moderate':8,'Powerful':16,'Legendary':24};
   const monRating=(m.hp||10)+(POWER[m.power]||0);
   const charRating=(c.maxHp||20)+(sk.melee||0)*6+(sk.tactical||0)*3+(sk.archery||0)*2+battleMagic*4;
@@ -14248,6 +14381,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.21-1009</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.21-1516</div>
 </body>
 </html>
