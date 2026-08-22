@@ -617,20 +617,24 @@ const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'M
 const MASTERY_UNLOCKS={
   melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
   archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\'s Mark orders.',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
-  tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Grandmaster tactician — no further command bonus (capped at 5); mastery is in your Feigned Retreat and Grand Stratagem orders.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
-  march:{6:'+1 land movement point.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'+2 land movement points.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
-  naval:{6:'+1 sea movement point.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'+2 sea movement points.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
-  sage:{6:'Master scholar — your Sage discovery chance is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Grand scholar — no further discovery-chance climb (capped at 5); mastery is in your Research Breakthrough and Grand Design orders.',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
+  tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
+  march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
+  naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
+  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
-  thief:{6:'A growing personal stipend rewards your cunning.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Your thievery deepens — your own purse grows harder to pick.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
-  druid:{6:'Archdruid — your primal-army strength benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Grand Archdruid — no further primal-strength bonus (capped at 5); mastery is in your Awaken Grove and Wild Calling orders.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
-  explorer:{6:'You now automatically spot every lair on entering a province.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Your trailcraft deepens — the wilds hide little from you.',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
-  white:{6:'+1 White Magic casting each turn.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'Your White Magic mastery deepens.',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
-  psychic:{6:'+1 Psychic Magic casting each turn.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'Your Psychic mastery deepens.',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
-  illusory:{6:'+1 Illusory Magic casting each turn.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'Your Illusory mastery deepens.',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
-  elemental:{6:'+1 Elemental Magic casting each turn.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'Your Elemental mastery deepens.',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
-  necromancy:{6:'+1 Necromancy casting each turn.',7:"New spell — Raise Wraiths: raise an elite undead unit from the province's battlefield dead.",8:'Your Necromancy mastery deepens.',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
+  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
+  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
+  explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
+  white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
+  psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
+  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
+  elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
+  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise an elite undead unit from the province's battlefield dead.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
 };
+// ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
+// turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler).
+const MASTERY_ORDER_KEYS=new Set(['challenge','rampage','rain_of_arrows','snipers_mark','feigned_retreat','grand_stratagem','forced_march','lightning_advance','blockade','raid_coast','research_breakthrough','grand_design','sabotage','assassinate','grand_heist','vanish','awaken_grove','wild_calling','chart_unknown','discover_ruin']);
+const MASTERY_ORDER_LABEL={challenge:'Challenge',rampage:'Rampage',rain_of_arrows:'Rain of Arrows',snipers_mark:"Sniper's Mark",feigned_retreat:'Feigned Retreat',grand_stratagem:'Grand Stratagem',forced_march:'Forced March',lightning_advance:'Lightning Advance',blockade:'Blockade',raid_coast:'Raid the Coast',research_breakthrough:'Research Breakthrough',grand_design:'Grand Design',sabotage:'Sabotage',assassinate:'Assassinate',grand_heist:'Grand Heist',vanish:'Vanish',awaken_grove:'Awaken Grove',wild_calling:'Wild Calling',chart_unknown:'Chart the Unknown',discover_ruin:'Discover Lost Ruin'};
 const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
@@ -2531,26 +2535,26 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'War Drum of the Ancients',desc:'Tactical +1, all armies +1 quality tier in one battle',effect:{stat:'tactical',bonus:1},tier:1},
   // ── March ──
   {name:'Boots of the Wind',desc:'March +2',effect:{stat:'march',bonus:2},tier:2},
-  {name:'Traveller\'s Cloak',desc:'March +1, +1 move point per turn',effect:{stat:'march',bonus:1},tier:1},
+  {name:'Traveller\'s Cloak',desc:'March +1, +20% province exploration when you move into a province',effect:{stat:'march',bonus:1},exploreMove:20,tier:1},
   // ── Naval ──
   {name:'Admiral\'s Spyglass',desc:'Naval +2, fleets +2 str',effect:{stat:'naval',bonus:2},tier:2},
-  {name:'Sea Chart of the Deep',desc:'Naval +1, may enter any sea province freely',effect:{stat:'naval',bonus:1},tier:1},
+  {name:'Sea Chart of the Deep',desc:'Naval +1, and all fleets you lead: +1 strength',effect:{stat:'naval',bonus:1},fleetStr:1,tier:1},
   // ── Sage ──
   {name:'Sage\'s Crown',desc:'Sage +2',effect:{stat:'sage',bonus:2},tier:2},
   {name:'Philosopher\'s Lens',desc:'Sage +1, reveals one random lair when exploring',effect:{stat:'sage',bonus:1},tier:1},
   // ── Spy ──
   {name:'Shadowcloak',desc:'Spy +2',effect:{stat:'spy',bonus:2},tier:2},
   {name:'Crystal Orb',desc:'Spy always succeeds — no roll needed',effect:{stat:'oracle',bonus:1},tier:3},
-  {name:'Whispering Mirror',desc:'Spy +1, enemy army strength always shown as Moderate',effect:{stat:'spy',bonus:1},tier:1},
+  {name:'Whispering Mirror',desc:'Spy +1',effect:{stat:'spy',bonus:1},tier:1},
   // ── Thief ──
   {name:'Gloves of the Nightcrawler',desc:'Thief +2',effect:{stat:'thief',bonus:2},tier:2},
   {name:'Lock-Pick of Legends',desc:'Thief +1, +20% steal chance in encounters',effect:{stat:'thief',bonus:1},tier:1},
   // ── Druid ──
   {name:'Staff of the Wildwood',desc:'Druid +2',effect:{stat:'druid',bonus:2},tier:2},
-  {name:'Green Stone of Speaking',desc:'Druid +1, and Talk can pacify even creatures that would normally never parley',effect:{stat:'druid',bonus:1},tier:1},
+  {name:'Green Stone of Speaking',desc:'Druid +1',effect:{stat:'druid',bonus:1},tier:1},
   // ── Explorer ──
   {name:'Ring of the Explorer',desc:'Explorer +2',effect:{stat:'explorer',bonus:2},tier:2},
-  {name:'Compass of the Wanderer',desc:'Explorer +1, first visit to a province reveals all lairs',effect:{stat:'explorer',bonus:1},tier:1},
+  {name:'Compass of the Wanderer',desc:'Explorer +1',effect:{stat:'explorer',bonus:1},tier:1},
   // ── White Magic ──
   {name:'Holy Reliquary',desc:'White Magic +2',effect:{stat:'white',bonus:2},tier:2},
   {name:'Chalice of Dawn',desc:'White Magic +1, Divine armies +15% str',effect:{stat:'white',bonus:1},tier:1},
@@ -2568,7 +2572,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Death\'s Finger Ring',desc:'Necromancy +1, and your Hand of Death strikes home more readily in combat',effect:{stat:'necromancy',bonus:1},tier:1},
   // ── HP ──
   {name:'Amulet of Fortitude',desc:'Max HP +8',effect:{stat:'maxHp',bonus:8},tier:2},
-  {name:'Iron Heart Talisman',desc:'Max HP +5, +2 HP recovered each Rest order',effect:{stat:'maxHp',bonus:5},tier:1},
+  {name:'Iron Heart Talisman',desc:'Max HP +5, +10% HP recovered each Rest order',effect:{stat:'maxHp',bonus:5},tier:1},
   // ── Army bonuses (general) ──
   {name:'Battle Standard',desc:'All armies led: strength +2 each',effect:{stat:'armyBonus',bonus:2},tier:3},
   {name:'Banner of the Realm',desc:'All armies led: +1 quality tier when defending home province',effect:{stat:'homeDefBonus',bonus:1},tier:2},
@@ -2582,16 +2586,16 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Quiver of Many Arrows',desc:'Archer units you lead: fire one extra shot in the archery pre-phase',effect:{stat:'archBonus',bonus:1},tier:1},
   {name:'Eagle-Eye Pendant',desc:'Yeoman Longbows and Elven Bowmen: +30% strength',effect:{stat:'archerStr',bonus:1},tier:1},
   // ── Naval-specific ──
-  {name:'Kraken Figurehead',desc:'All fleets you lead: +2 strength and +1 speed',effect:{stat:'navalBonus',bonus:1},tier:3},
-  {name:'Tide-Caller\'s Horn',desc:'Fleets may move through any sea province regardless of sea movement rules',effect:{stat:'navalMove',bonus:1},tier:2},
+  {name:'Kraken Figurehead',desc:'All fleets you lead fight as if one experience level higher',effect:{stat:'navalBonus',bonus:1},tier:3},
+  {name:'Tide-Caller\'s Horn',desc:'Land units you lead fight at full battle strength in sea battles',effect:{stat:'navalMove',bonus:1},landFullAtSea:true,tier:2},
   // ── Heavy/Siege-specific ──
   {name:'Engineer\'s Blueprint',desc:'Mountain Guns and Dwarf Ironclads: +4 strength',effect:{stat:'heavyBonus',bonus:1},tier:1},
   {name:'Siege Master\'s Ring',desc:'Province defence bonuses reduced by half when you attack',effect:{stat:'siegeBonus',bonus:1},tier:2},
   // ── Undead-specific ──
-  {name:'Black Sceptre',desc:'Skeletal Legions you lead: +2 strength and never disband',effect:{stat:'undeadBonus',bonus:1},tier:1},
+  {name:'Black Sceptre',desc:'Skeletal Legions you lead: +4 strength',effect:{stat:'undeadBonus',bonus:1},tier:1},
   {name:'Wailing Phylactery',desc:'Necromancy spells always succeed first cast per turn',effect:{stat:'necroAuto',bonus:1},tier:3},
   // ── Economy ──
-  {name:'Ring of Wealth',desc:'+2g collected each tax season',effect:{stat:'taxBonus',bonus:2},tier:1},
+  {name:'Ring of Wealth',desc:'+5g collected each tax season',effect:{stat:'taxBonus',bonus:5},tier:1},
   {name:'Merchant\'s Ledger',desc:'+1g collected per province owned',effect:{stat:'taxPerProv',bonus:1},tier:1},
   // ── Special ──
   {name:'Philosopher\'s Stone',desc:'Once per game: instantly promote all armies one quality tier',effect:{stat:'massPromote',bonus:1},tier:3},
@@ -2600,9 +2604,9 @@ const ALL_MAGIC_ITEMS_P=[
   // ── Three added legendaries (2026-07 — brings the Legendary tier to 10 "named relics", one per
   //    Legacy point in the Titles/Reckoning scoring. Each reuses an already-wired effect stat so
   //    none is a dead item: melee (effStat), taxBonus (tax collection), armyBonus (armStr). ──
-  {name:'Sword of the First Emperor',desc:'The blade that founded the old Empire. Melee +2.',effect:{stat:'melee',bonus:2},tier:3},
-  {name:'Imperial Regalia',desc:'The crown, orb and sceptre of the vanished throne. +5g collected each tax season.',effect:{stat:'taxBonus',bonus:5},tier:3},
-  {name:'Standard of the Nine Legions',desc:'The war-banner under which the Empire was won. All armies you lead: strength +3 each.',effect:{stat:'armyBonus',bonus:3},tier:3},
+  {name:'Sword of the First Emperor',desc:'The blade that founded the old Empire. Melee +4.',effect:{stat:'melee',bonus:4},tier:3},
+  {name:'Imperial Regalia',desc:'The crown, orb and sceptre of the vanished throne. +10g collected each tax season.',effect:{stat:'taxBonus',bonus:10},tier:3},
+  {name:'Standard of the Nine Legions',desc:'The war-banner under which the Empire was won. All armies you lead: strength +5 each.',effect:{stat:'armyBonus',bonus:5},tier:3},
 ];
 // ── Item 2 (this session): triple the tier-1 and tier-2 relics ──────────────────────────────────
 // Each tier-1 / tier-2 item now exists in THREE differently-named versions with IDENTICAL effects,
@@ -4390,7 +4394,7 @@ function hexDistP(a,b,cols){
 // ── BUILD PLAYER TURN REPORT ──────────────────────────
 // ══ VICTORY & TITLES (KC Reckoning system) — see KC-design-victory-and-titles.md ══════════════
 // Per-character merit accumulators, ensured lazily so existing saves upgrade cleanly.
-function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,featuresFound:0,discoveries:0}; return c.tm; }
+function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,darkCasts:0,featuresFound:0,discoveries:0}; return c.tm; }
 
 const TITLE_DEFS=[
   {key:'throne',  name:'The Throne',        prize:20, kingdomLevel:true, req:'Hold the largest tax base (total province tax income) in the world.', perk:'+3g imperial revenue each turn.'},
@@ -4401,6 +4405,7 @@ const TITLE_DEFS=[
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'+5% exploration on each Explore order.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'+1 spell of every school each turn.'},
   {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'+50% HP recovered when resting.'},
+  {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Skeletal legions you lead fight at +5% strength.'},
 ];
 const RELIC_PRIZE_EACH=1;                 // 10 legendary items × 1 = 10 points → 100-pt spread
 const TITLES_PUBLIC_FROM_TURN=5;          // standings hidden turns 1–4 (clarification #10)
@@ -4413,7 +4418,7 @@ function reckoningThreshold(nPlayers){
 // Alignment signature merit multiplier — each alignment's natural title lane costs less to win (#6).
 const ALIGN_TITLE_BOOST={
   Divine:{hiero:1.25}, Good:{marshal:1.25}, Druidic:{monster:1.25},
-  Neutral:{vault:1.25, lore:1.25}, Pagan:{lore:1.25}, Evil:{marshal:1.25}, Undead:{marshal:1.25},
+  Neutral:{vault:1.25, lore:1.25}, Pagan:{lore:1.25}, Evil:{marshal:1.25, necro:1.25}, Undead:{marshal:1.25, necro:1.25},
 };
 const _MAGIC_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
 function _skillItem(c,stat){
@@ -4437,6 +4442,7 @@ function _charTitleMerit(c){
     lore:_skillItem(c,'explorer')+_skillItem(c,'spy')+_skillItem(c,'sage')+(tm.featuresFound||0)*2+(tm.discoveries||0)*2,
     arch:magic+spellItems,
     hiero:_skillItem(c,'white')+_skillItem(c,'druid')+(tm.holyCasts||0),
+    necro:_skillItem(c,'necromancy')+(tm.darkCasts||0),
   };
 }
 // Allied bloc = connected component under 'allied' relations (bloc-aware Reckoning trigger).
@@ -4518,7 +4524,7 @@ function runBotReckoning(G, botIdxSet, reckoningCalls){
     if(kingAlive && reckoningBlocShare(G, pi) >= thr) reckoningCalls.add(pi);
   });
 }
-const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant'};
+const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant',necro:'Deathpriest'};
 
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
@@ -5033,7 +5039,8 @@ function buildTurnReport(gameState, playerIndex){
   }catch(e){}
   const titlePerkGold=throneG+vaultG+cutpurseG+championG+castellanG;
   const baseTaxIncome=provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)
-  const taxIncome=provTaxIncome+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold;
+  const thiefStipend=_pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0); // THIEF L6: +5g income per Thief-6 character
+  const taxIncome=provTaxIncome+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold+thiefStipend;
   const ARMY_COST_TR=ARMY_COST_MASTER; // alias → master table at top of script
   const playerCharsForWages=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
   const allArmiesForWages=playerCharsForWages.flatMap(c=>c.armies||[]);
@@ -5092,7 +5099,9 @@ function buildTurnReport(gameState, playerIndex){
     };
   });
 
-  const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>s+(ARMY_COST_TR[a.type]||2),0);
+  const _druidHalfWageR=new Set();
+  playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0)(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 (report mirror)
+  const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); return s+w; },0);
   const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>s+(h.pay||0),0);
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
@@ -5167,8 +5176,8 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd02',name:'War Drums',category:'Military',desc:'All your armies gain +10% strength in every battle.',effect:{type:'globalArmyBonus',pct:0.10}},
   {id:'sd03',name:'Siege Engines',category:'Military',desc:'Province defender bonus reduced from ×1.25 to ×1.10 when you attack.',effect:{type:'reduceSiegeBonus',factor:0.10}},
   {id:'sd04',name:'Signal Fires',category:'Military',desc:'Friendly forces invading the same province always unify (100% at any distance).',effect:{type:'fullUnify'}},
-  {id:'sd05',name:'Steel Armour',category:'Military',desc:'All your land armies take 15% less damage in battle.',effect:{type:'damageReduction',pct:0.15}},
-  {id:'sd06',name:'Military Discipline',category:'Military',desc:'Armies you lead have a 10% higher chance of promotion after a battle.',effect:{type:'promotionBonus',pct:0.10}},
+  {id:'sd05',name:'Steel Armour',category:'Military',desc:'All your land armies have 25% less chance of dying in battle.',effect:{type:'deathReduction',pct:0.25}},
+  {id:'sd06',name:'Military Discipline',category:'Military',desc:'Armies you lead have a 20% higher chance of promotion after a battle.',effect:{type:'promotionBonus',pct:0.20}},
   {id:'sd07',name:'Fire Arrows',category:'Military',desc:'All archer and missile units you lead gain an additional +10% strength bonus.',effect:{type:'archerBonus',pct:0.10}},
   {id:'sd08',name:'War Academy',category:'Military',desc:'One random army in your home province promoted one tier each turn.',effect:{type:'homePromotion'}},
   {id:'sd09',name:'Flanking Tactics',category:'Military',desc:'In battles where you have more armies than enemy, excess armies fight at 75% instead of 25%.',effect:{type:'flankBonus'}},
@@ -5189,7 +5198,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd22',name:'Informant Network',category:'Espionage',desc:'Once per turn, you learn the location of one random enemy character.',effect:{type:'informants'}},
   {id:'sd23',name:'Disguise Techniques',category:'Espionage',desc:'Heroes you send on Spy orders cannot be detected by enemy intrusion notifications.',effect:{type:'spyDisguise'}},
   // ── Magic & Scholarship ──
-  {id:'sd24',name:'The Compass',category:'Scholarship',desc:'Explorer ability of all your characters treated as 1 level higher.',effect:{type:'skillBonus',skill:'explorer',bonus:1}},
+  {id:'sd24',name:'The Compass',category:'Scholarship',desc:'All your Explore actions map 40% more of the province.',effect:{type:'exploreBonus',pct:0.40}},
   {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'+10% chance of finding a magic item in any lair your characters clear.',effect:{type:'itemChanceBonus',pct:0.10}},
   {id:'sd26',name:'Astronomical Tables',category:'Scholarship',desc:'All Practice orders for your characters have +5% success chance.',effect:{type:'practiceBonus',pct:0.05}},
   {id:'sd27',name:'Arcane Codex',category:'Scholarship',desc:'All spell casting chances for your characters increased by +10%.',effect:{type:'spellBonus',pct:0.10}},
@@ -5244,10 +5253,10 @@ const SPELL_DEFS_P={
     desc:'Action: everything that happens to the target character becomes known to you for the rest of the turn. Only one Clairvoyance may be active at a time — a new casting replaces the old.',
     fn:'psychic_clairvoyance'},
   'Psychic Blast':  {school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Action: the target loses one level in a random skill. Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
+    desc:'Action: the target loses 2 skill levels, each drawn from a random owned skill (the two picks may be the same skill). Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
     fn:'psychic_blast'},
   'Telekinetic Storm':{school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Action: a number of the target\'s army units equal to your skill level each have a 50% chance to fight as if one experience level lower in their next battle this turn (temporary — they recover afterward). Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
+    desc:'Action: a number of the target\'s units equal to your skill level are struck — Green units are destroyed outright, and every other struck unit fights one experience level lower for the REST OF THE TURN. Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
     fn:'psychic_storm'},
 
   // ══ ILLUSORY MAGIC ══
@@ -5261,7 +5270,7 @@ const SPELL_DEFS_P={
     desc:'Action: all lairs you have discovered in a province you are in or adjacent to become invisible to explorers. 10% chance to fade each turn.',
     fn:'illusory_hide_feature'},
   'Invisibility':   {school:'illusory',target:'none',encounter:true,phase:false,
-    desc:'Combat: the caster becomes twice as hard to hit for the fight, gains +15% to a following Steal and +30% to Flee.',
+    desc:'Combat: enemies suffer \u221225% to hit the caster (to a minimum of 40%) for the fight, and the caster gains +30% to Flee.',
     fn:'illusory_invisibility'},
   'Mirror Image':   {school:'illusory',target:'none',encounter:true,phase:false,
     desc:'Combat: conjures a phantom duplicate of your opponent that they must fight while you concentrate (taking no other actions). Each round they may disbelieve it (4% per total skill level); casting it again dissipates both images.',
@@ -5321,16 +5330,16 @@ const SPELL_DEFS_P={
     desc:'Action (Illusory 9): you and your host vanish from all enemy sight until the end of the turn.',
     fn:'illusory_veil'},
   'Chain Lightning':  {school:'elemental',target:'character',encounter:false,phase:true,reqLevel:7,
-    desc:'Action (Elemental 7): arcing lightning strikes an enemy hero in your province, destroying several of the units they lead.',
+    desc:'Action (Elemental 7): arcing lightning tears through an enemy hero in your province — 30% of the units they lead are caught, and each caught unit has a 50% chance to be destroyed.',
     fn:'elemental_chainlightning'},
   'Cataclysm':        {school:'elemental',target:'province',encounter:false,phase:true,reqLevel:9,
-    desc:'Action (Elemental 9): devastate a province you are in or adjacent to — every enemy force there loses units, and the land yields no tax this turn.',
+    desc:'Action (Elemental 9): devastate a province you are in or adjacent to — every enemy force there loses units, and the province tax base is permanently reduced to 0.',
     fn:'elemental_cataclysm'},
   'Raise Wraiths':    {school:'necromancy',target:'none',encounter:false,phase:true,reqLevel:7,
     desc:'Action (Necromancy 7): raise an elite Wraith unit from the battlefield dead of your province.',
     fn:'necromancy_wraiths'},
   "Death's Dominion": {school:'necromancy',target:'none',encounter:false,phase:true,reqLevel:9,
-    desc:'Action (Necromancy 9): the fallen of your province rise en masse — raise several skeletal units at once from its battlefield graves.',
+    desc:'Action (Necromancy 9): the fallen of your province rise en masse — raise several skeletal units at once from its battlefield graves, each risen one experience level higher.',
     fn:'necromancy_dominion'},
 };
 
@@ -5991,7 +6000,8 @@ function seaPenalty(armyType, terrain){
     const Q_MULT=UNIT_Q_MULT; // alias → master
     // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier higher.
     const Q_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
-    const effQuality=(heroChar&&heroChar._oratoryBoost)?(Q_UP[army.quality||'Average']||army.quality||'Average'):(army.quality||'Average');
+    let effQuality=(heroChar&&heroChar._oratoryBoost)?(Q_UP[army.quality||'Average']||army.quality||'Average'):(army.quality||'Average');
+    if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){ effQuality=Q_UP[effQuality]||effQuality; } // DRUID L8: creatures & monsters fight one tier higher
     const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[effQuality]||2);
     // Apply Druid penalty
     let str=baseStr;
@@ -6027,7 +6037,10 @@ function seaPenalty(armyType, terrain){
       let sp=seaPenalty(army.type,terrain);
       if(sp<1 && terrain==='sea' && ctx && (ctx.force||[]).some(a=>a&&a.type==='Elven Galleys')
          && MISSILE_ARMIES_MASTER.has(army.type)) sp=1.0;
-      let terrainMultFinal=terrainMod(army.type,terrain)*sp;
+      if(sp<1 && terrain==='sea' && heroChar && (perkTier(heroChar,'naval')>=3 || (heroChar.items||[]).some(it=>it.landFullAtSea))) sp=1.0; // NAVAL L8 / Tide-Caller's Horn: land units led at sea take no penalty
+      let _tmod=terrainMod(army.type,terrain);
+      if(heroChar && perkTier(heroChar,'march')>=3){ _tmod = _tmod>1 ? 1+(_tmod-1)*2 : Math.max(1,_tmod); } // MARCH L8: terrain bonuses doubled, no terrain penalties
+      let terrainMultFinal=_tmod*sp;
       // (Home-of-the-Wild forest/jungle ×1.5 for Creatures is applied ONCE, below, keyed on the
       // kingdom — a duplicate copy that lived here caused a ×2.25 double-dip for Druidic-aligned
       // commanders and has been removed.)
@@ -6041,6 +6054,7 @@ function seaPenalty(armyType, terrain){
     if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false) str=Math.round(str*1.5);
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
     if(army._tempStrReduction){ const floorStr=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr,str-army._tempStrReduction); } // battle-only; cleared at battle end. Floored so pre-battle softening never zeroes a unit before the melee.
+    if(army._turnStrReduction){ const floorStr2=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr2,str-army._turnStrReduction); } // Telekinetic Storm: persists ALL turn (cleared at turn end only)
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
     if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
     // Magic-item army bonuses carried by the leading commander.
@@ -6056,8 +6070,9 @@ function seaPenalty(armyType, terrain){
       if(has('infBonus')&&INF_I.has(army.type)) str=Math.round(str*1.2);  // Legionnaire's Mark
       if(has('archerStr')&&ARCH_I.has(army.type)) str=Math.round(str*1.3);// Eagle-Eye Pendant
       if(has('heavyBonus')&&HEAVY_I.has(army.type)) str+=4;          // Engineer's Blueprint
-      if(has('navalBonus')&&FLEET_I.has(army.type)) str+=2;         // Kraken Figurehead
-      if(has('undeadBonus')&&army._isSkeletal) str+=2;              // Black Sceptre
+      if(has('navalBonus')&&FLEET_I.has(army.type)){ const _ku=Q_UP[army.quality]; if(_ku&&_ku!==army.quality) str=Math.round(str*UNIT_Q_MULT[_ku]/UNIT_Q_MULT[army.quality]); } // Kraken Figurehead: fleets fight one exp level higher
+      if(heroChar.items.some(it=>it.fleetStr)&&FLEET_I.has(army.type)) str+=1; // Sea Chart of the Deep: fleets +1 strength
+      if(has('undeadBonus')&&army._isSkeletal) str+=4;              // Black Sceptre
     }
     // ── UNIT ABILITIES (force composition) ──
     const abilityM=unitAbilityMult(army, ctx, terrain);
@@ -6069,6 +6084,7 @@ function seaPenalty(armyType, terrain){
     if(heroChar){
       if(terrain==='sea'){ if(charHoldsTitle(heroChar,'sea')) str=Math.round(str*1.05); }
       else if(charHoldsTitle(heroChar,'marshal')) str=Math.round(str*1.05);
+      if(charHoldsTitle(heroChar,'necro')&&army._isSkeletal) str=Math.round(str*1.05); // LIVE TITLE PERK \u2014 Deathpriest: skeletal legions +5%
     }
     // ── Druid creature-leading ── the strength benefit CAPS at level 5 (via effStat elsewhere);
     // levels 6+ grant the Druid's distinct L7/L9 orders, not further strength scaling. (item 6)
@@ -6982,10 +6998,11 @@ const BATTLE_ARMY_SPELLS={
 
     // Steel Armour discovery: -15% death chance
     const steelArmour=hasDisc(c.player,'sd05');
-    const steelMult=steelArmour?0.85:1;
-    // Military Discipline discovery: +10% XP gain chance
+    const steelMult=steelArmour?0.75:1;
+    const tacMultNPC=perkTier(c,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
+    // Military Discipline discovery: +20% XP gain chance
     const milDisc=hasDisc(c.player,'sd06');
-    const milMult=milDisc?1.10:1;
+    const milMult=milDisc?1.20:1;
 
     const tiers=['Green','Average','Veteran','Crack','Elite'];
 
@@ -7108,12 +7125,12 @@ const BATTLE_ARMY_SPELLS={
       armies.forEach(a=>{
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<loseDeathChance*steelMult+_npcRideDef){
+        if(roll<loseDeathChance*steelMult*tacMultNPC+_npcRideDef){
           narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
           a._died=true;
         } else if(!a._isSkeletal){
           const roll2=Math.random();
-          if(roll2<loseDemoteChance){
+          if(roll2<loseDemoteChance*tacMultNPC){
             if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
             else {a._notable=true;narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} lost heart in defeat, reduced to ${a.quality}.`);}
           } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G)){
@@ -7399,6 +7416,7 @@ const BATTLE_ARMY_SPELLS={
     chance += temperOf(attacker.temper).meleeHit;
     chance -= temperOf(defender.temper).defence;
     chance -= (attacker.status.hitPenalty||0);
+    chance -= (defender.status.toHitReduce||0);            // Invisibility: flat \u221225 to hit (floored at 40 below)
     chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
     return Math.max(40, Math.min(95, chance));
   }
@@ -7510,7 +7528,7 @@ const BATTLE_ARMY_SPELLS={
         narrative.push(`  🪞 ${caster.name} conjures a perfect phantom of ${target.name} — ${target.name} must fight their own mirror while ${caster.name} concentrates, taking no other action.`);
         break;
       }
-      case 'Invisibility':{ caster.status.dodge=Math.min(caster.status.dodge,0.5); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — twice as hard to hit, +30% flee.`); break; }
+      case 'Invisibility':{ caster.status.toHitReduce=Math.max(caster.status.toHitReduce||0,25); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — enemies suffer \u221225% to hit (min 40%), +30% flee.`); break; }
       case 'Hand of Death':{ if(Math.random()*100<lvl*10){ const d=Math.max(1,Math.round(target.maxHp*0.5)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${lvl*10}%]`); break; }
       case 'Curse':{
         // Halve (round down) the target's best combat ability for the duration of the fight.
@@ -8545,8 +8563,10 @@ const BATTLE_ARMY_SPELLS={
     const winXPPvP=isNarrowPvP?0.50:isDecisivePvP?0.15:0.30;
     const loseXPPvP=isNarrowPvP?0.12:isDecisivePvP?0.02:0.06;
     const loseDemotePvP=isNarrowPvP?0.10:isDecisivePvP?0.30:0.20;
-    const atkSteelMult=hasDisc(atk.player,'sd05')?0.85:1;
-    const defSteelMult=hasDisc(def.player,'sd05')?0.85:1;
+    const atkSteelMult=hasDisc(atk.player,'sd05')?0.75:1;
+    const defSteelMult=hasDisc(def.player,'sd05')?0.75:1;
+    const atkTacMult=perkTier(atk,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
+    const defTacMult=perkTier(def,'tactical')>=3?0.5:1;
     // ── UNIT ABILITIES: casualty & retreat ──
     // HUMAN — Ride Them Down: light horse are murder on a broken enemy. +6pp per Free Lances unit
     // in the WINNING force to each losing unit's destruction roll, capped +18pp.
@@ -8614,10 +8634,10 @@ const BATTLE_ARMY_SPELLS={
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<loseDeathPvP*defSteelMult+_rideAtkEff){a._died=true;narrative.push(`— ${defName}'s ${a.unitName||a.type} were destroyed in the rout!`);}
+        if(roll<loseDeathPvP*defSteelMult*defTacMult+_rideAtkEff){a._died=true;narrative.push(`— ${defName}'s ${a.unitName||a.type} were destroyed in the rout!`);}
         else {
           const roll2=Math.random();
-          if(roll2<loseDemotePvP){ if(_sfDef){ narrative.push(`— ${defName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${defName}'s ${a.unitName||a.type} are reduced to ${a.quality} in defeat.`);}
+          if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${defName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${defName}'s ${a.unitName||a.type} are reduced to ${a.quality} in defeat.`);}
           else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${defName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
         }
       });
@@ -8683,10 +8703,10 @@ const BATTLE_ARMY_SPELLS={
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<loseDeathPvP*atkSteelMult+_rideDefEff){a._died=true;narrative.push(`— ${atkName}'s ${a.unitName||a.type} were annihilated!`);}
+        if(roll<loseDeathPvP*atkSteelMult*atkTacMult+_rideDefEff){a._died=true;narrative.push(`— ${atkName}'s ${a.unitName||a.type} were annihilated!`);}
         else {
           const roll2=Math.random();
-          if(roll2<loseDemotePvP){ if(_sfAtk){ narrative.push(`— ${atkName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${atkName}'s ${a.unitName||a.type} suffer in retreat, demoted to ${a.quality}.`);}
+          if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${atkName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${atkName}'s ${a.unitName||a.type} suffer in retreat, demoted to ${a.quality}.`);}
           else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Through adversity, ${atkName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
         }
       });
@@ -9196,6 +9216,16 @@ const BATTLE_ARMY_SPELLS={
     const prov=provOf(c);
     const player=G.players[c.player];
 
+    // ── ONCE PER TURN ── a mastery order may be attempted only once per turn per character.
+    if(MASTERY_ORDER_KEYS.has(action)){
+      c._masteryOrderUsed=c._masteryOrderUsed||{};
+      if(c._masteryOrderUsed[action]===G.turn){
+        log('system',`${c.name} has already used their ${MASTERY_ORDER_LABEL[action]||action} mastery this turn \u2014 it may be commanded but once per turn.`,{actor:c.player,targets:[c.player]});
+        _logCtx={charId:null,phase:null};return;
+      }
+      c._masteryOrderUsed[action]=G.turn;
+    }
+
     switch(action){
       case 'move':{
         // Safety net: if this owned hero never had a move pool computed (both pools undefined) —
@@ -9236,7 +9266,7 @@ const BATTLE_ARMY_SPELLS={
         // was a force with enough hulls being told "need 3 hulls, but the force has only 4 fleet units.
         // Move blocked." (the block read a stale 'land' capability while the message counted the live
         // hulls). Recomputing here keeps the gate and the message in agreement. Cache is refreshed too.
-        const sc=getSeaCapability(c.armies||[]);
+        const sc=getSeaCapability(c.armies||[], c);
         seaCap[c.id]=sc;
 
         // Determine which move pool to use
@@ -9363,12 +9393,19 @@ const BATTLE_ARMY_SPELLS={
           // skill level of the moving character — applied on EVERY move in, not just the first.
           if(!toProv.exploredBy) toProv.exploredBy={};
           const explLvlMove=effStat(c,'explorer');
-          const explGainMove=(10+5*explLvlMove)+(charHoldsTitle(c,'lore')?5:0); // LIVE TITLE PERK — Loremaster
+          const explGainMove=(10+5*explLvlMove)+(charHoldsTitle(c,'lore')?5:0)+(c.items||[]).reduce((sm,it)=>sm+((it&&it.exploreMove)||0),0)+(perkTier(c,'march')>0?2*((c.armies||[]).length):0); // Loremaster · Traveller's Cloak +20% · MARCH L6 +2%/army led
           // Item 2 (this session): an Elven character of an Elven kingdom maps forest & jungle twice as fast.
           const _elfWoodMove=(c.race==='Elven'&&G.players[c.player]?.race==='Elven'&&(toProv.terrain==='forest'||toProv.terrain==='jungle'))?2:1;
           const prevExp=toProv.exploredBy[c.player]||0;
           toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove*_elfWoodMove);
           toProv.explored=toProv.exploredBy[c.player];
+          // NAVAL L6 — charting the coast: entering a SEA province while leading naval units adds +5%
+          // exploration to each LAND province adjacent to this sea province.
+          if(toProv.terrain==='sea' && perkTier(c,'naval')>0 && (c.armies||[]).some(a=>SEA_TYPES.has(a.type))){
+            getNeighborsP(toProv,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{
+              if(nb && nb.terrain!=='sea'){ if(!nb.exploredBy) nb.exploredBy={}; const _npe=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_npe+5); nb.explored=nb.exploredBy[c.player]; }
+            });
+          }
           // Item 12: tell the player how far this move mapped the province, and its new total (or that
           // it was already fully explored).
           { const _eg=toProv.explored-prevExp, _en=toProv.explored;
@@ -9382,11 +9419,16 @@ const BATTLE_ARMY_SPELLS={
             const thresh=100/totalF;
             const _spotted=[];
             toProv.features.forEach((f,idx)=>{
-              if(!featDiscovered(f,c.player)&&!f._hidden&&(toProv.explored>=(thresh*(idx+1))||perkTier(c,'explorer')>0)){ // LEVEL 6+ PERK — Pathfinder: auto-spot on entry
+              if(!featDiscovered(f,c.player)&&!f._hidden&&(toProv.explored>=(thresh*(idx+1)))){
                 discoverFeat(f,c.player); TM(c).featuresFound+=1; // TITLE MERIT: Loremaster
                 _spotted.push(f);
               }
             });
+            // EXPLORER L6 — Pathfinder: on entry, automatically spot ONE random not-yet-found lair (was: all of them).
+            if(perkTier(c,'explorer')>0){
+              const _hiddenPool=toProv.features.filter(f=>!featDiscovered(f,c.player)&&!f._hidden);
+              if(_hiddenPool.length>0){ const _pf=_hiddenPool[Math.floor(Math.random()*_hiddenPool.length)]; discoverFeat(_pf,c.player); TM(c).featuresFound+=1; _spotted.push(_pf); }
+            }
             // Item: report a spotted-on-entry lair in the SAME style as an Explore discovery, and note
             // when a lair the character stumbles into has already been cleared (no guardian remains).
             const _artM=(n)=>{ if(!n) return 'a creature'; if(/s$/.test(n)) return n; return (/^[aeiou]/i.test(n)?'an ':'a ')+n; };
@@ -9879,17 +9921,19 @@ const BATTLE_ARMY_SPELLS={
   const BASIC_EXPLORE={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
         const basicRate=BASIC_EXPLORE[prov.terrain]||15;
         // sd24 The Compass: Explorer treated as 1 level higher
-        const explorerSkill=Math.min(5,effStat(c,'explorer')+(hasDisc(c.player,'sd24')?1:0));
+        const explorerSkill=Math.min(5,effStat(c,'explorer'));
         // sd10 Scouts & Rangers: +20% explore bonus
         const scoutBonus=hasDisc(c.player,'sd10')?1.20:1;
         const loreMult=(charHoldsTitle(c,'lore')?1.05:1)*(charMinor(c,'trailblazer')?1.05:1); // Loremaster title + Trailblazer minor: +5% exploration each
         // Item 2 (this session): Elven character of an Elven kingdom explores forest/jungle twice as fast.
         const _elfWoodExpl=(c.race==='Elven'&&G.players[c.player]?.race==='Elven'&&(prov.terrain==='forest'||prov.terrain==='jungle'))?2:1;
-        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*_elfWoodExpl));
+        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*_elfWoodExpl*(hasDisc(c.player,'sd24')?1.40:1))); // sd24 The Compass: +40% mapped
         if(!prov.exploredBy) prov.exploredBy={};
         const before=prov.exploredBy[c.player]||0;
         prov.exploredBy[c.player]=Math.min(100,before+gain);
         prov.explored=prov.exploredBy[c.player]; // keep legacy field for compatibility
+        // EXPLORER L8 — surveying the ground sometimes reveals richer land: 50% chance to +2 tax base (max 10), permanent.
+        if(perkTier(c,'explorer')>=3 && Math.random()<0.5){ const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
         // Feature discovery: proportional thresholds based on how many features exist
         // At 100% explored, all features visible. 1 feature=100%, 2=50%/100%, 4=25%/50%/75%/100% etc.
         const totalFeatures=(prov.features||[]).length;
@@ -10176,7 +10220,9 @@ const BATTLE_ARMY_SPELLS={
           const alreadyDone=recruitedThisTurn[`${prov.id}:${armyType}`]||0;
           const actualQty=Math.min(qty, limit-alreadyDone);
           const FLEET_TYPES_DISC=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-          const unitCost=Math.ceil((ARMY_COST_P[armyType]||2)*(FLEET_TYPES_DISC.has(armyType)&&hasDisc(c.player,'sd16')?0.5:1));
+          let _unitCost=Math.ceil((ARMY_COST_P[armyType]||2)*(FLEET_TYPES_DISC.has(armyType)&&hasDisc(c.player,'sd16')?0.5:1));
+          if(perkTier(c,'druid')>0&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType))) _unitCost=Math.floor(_unitCost*0.5); // DRUID L6: creatures/monsters cost half (rounded down)
+          const unitCost=_unitCost;
           const cost=actualQty*unitCost;
           if((player.gold||0)<totalCost+cost){
             blocked.push(`${armyType} (insufficient gold: need ${cost}g more)`);continue;
@@ -10445,6 +10491,8 @@ const BATTLE_ARMY_SPELLS={
             if(available.length>0){
               const disc=available[Math.floor(Math.random()*available.length)];
               player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1; // TITLE MERIT: Loremaster
+              if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
+              if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } } // SAGE L8: +2 tax (max 10) to the province you are in
               log('explore',`💡 ${c.name}'s scholarly pursuits bear fruit! **${disc.name}** (${disc.category}) discovered. ${disc.desc}`,{actor:c.player,targets:[c.player]});
               trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
             } else {
@@ -10584,6 +10632,7 @@ const BATTLE_ARMY_SPELLS={
         let heal=isDivineKingdom?baseHeal*3:baseHeal;
         if(charHoldsTitle(c,'hiero')) heal=Math.round(heal*1.5); // LIVE TITLE PERK — Hierophant: +50% rest healing
         if(charMinor(c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
+        if((c.items||[]).some(it=>it.name==='Iron Heart Talisman')) heal+=Math.round((c.maxHp||20)*0.10); // Iron Heart Talisman: +10% of max HP recovered
         c.hp=Math.min(c.maxHp||20,c.hp+heal);
         log('system',`${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom?' — Divine blessing triples healing':''}).`,{actor:c.player,targets:[c.player]});
         break;
@@ -10666,7 +10715,7 @@ const BATTLE_ARMY_SPELLS={
         // a zeroed pool up to the current land allowance (never refreshes a pool already spent at sea).
         const _refreshSeaState=(ch)=>{
           if(!ch) return;
-          seaCap[ch.id]=getSeaCapability(ch.armies||[]);
+          seaCap[ch.id]=getSeaCapability(ch.armies||[], ch);
           if((ch.armies||[]).length>0 && (ch.armies||[]).every(a=>AERIAL_TYPES.has(a.type)) && (seaMovePoints[ch.id]??0)<=0){
             seaMovePoints[ch.id]=movePoints[ch.id]??0; seaMoveActive[ch.id]=true;
           }
@@ -10813,7 +10862,7 @@ const BATTLE_ARMY_SPELLS={
           if(seaMovePoints[c.id]>newSeaPool) seaMovePoints[c.id]=newSeaPool;
           seaMoveActive[c.id]=true;
         }
-        const newSC=getSeaCapability(c.armies||[]);
+        const newSC=getSeaCapability(c.armies||[], c);
         seaCap[c.id]=newSC;
         log('move',`${c.name} now leads ${(c.armies||[]).length} arm${(c.armies||[]).length!==1?'ies':'y'}. Land MPs: ${movePoints[c.id]}, Sea MPs: ${seaMovePoints[c.id]}.`,{actor:c.player,targets:[c.player]});
         break;
@@ -10932,7 +10981,7 @@ const BATTLE_ARMY_SPELLS={
         {
           const _school=spellDef.school;
           const _lvl=effStat(c,_school);
-          const _limit=(_lvl>=4?3:_lvl>=3?2:1)+(charHoldsTitle(c,'arch')?1:0)+(perkTier(c,_school)>0?1:0)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Archmage title + school mastery + Warlock minor
+          const _limit=(_lvl>=4?3:_lvl>=3?2:1)+(charHoldsTitle(c,'arch')?1:0)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Archmage title + Warlock minor (L6 +1-cast perk retired)
           const _castsSoFar=(G.turnOrders[c.id]||[]).slice(0,ph).filter(o=>{
             if(!o||o.action!=='cast_spell') return false;
             return SPELL_DEFS_P[o.target]?.school===_school;
@@ -10956,11 +11005,22 @@ const BATTLE_ARMY_SPELLS={
           break;
         }
 
+        // ── ONCE PER TURN ── a mastery spell (L7/L9, has reqLevel) may be attempted only once per
+        // turn per caster. Base spells keep the per-school casting limit above; this is the extra cap.
+        if(spellDef.reqLevel){
+          c._masterySpellUsed=c._masterySpellUsed||{};
+          if(c._masterySpellUsed[spellName]===G.turn){
+            log('system',`${c.name} has already invoked ${spellName} this turn \u2014 such mastery may be worked but once per turn.`,{actor:c.player,targets:[c.player]});break;
+          }
+          c._masterySpellUsed[spellName]=G.turn;
+        }
+
         // Cast chance: 20% + 10% per level; Arcane Codex discovery +10%
         const arcaneBonus=hasDisc(c.player,'sd27')?10:0;
         // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
         const necroAuto = school==='necromancy' && !c._necroAutoUsed && (c.items||[]).some(it=>it.effect&&it.effect.stat==='necroAuto');
-        const castChance=necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus);
+        const l8Bonus=10*['white','psychic','illusory','elemental','necromancy'].filter(sc=>skillLevel(c,sc)>=8).length; // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
+        const castChance=necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus+l8Bonus);
         if(necroAuto) c._necroAutoUsed=true;
         const castRoll=d100();
         log('system',`📊 ${c.name} casts ${spellName} (${school} ${spellLevel}): ${castChance}% chance [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -10970,6 +11030,8 @@ const BATTLE_ARMY_SPELLS={
           break;
         }
 
+        { const _hpUp=rng(3,5); c.maxHp=(c.maxHp||20)+_hpUp; c.hp=Math.min(c.maxHp,(c.hp||0)+_hpUp); } // MAGIC BASE PERK: every successful cast raises current & max HP by 3-5
+        if(school==='necromancy') TM(c).darkCasts=(TM(c).darkCasts||0)+1; // TITLE MERIT: Deathpriest
         // Resolve spell effect
         const fn=spellDef.fn;
         const extraId=parseInt(extra)||0;
@@ -11217,36 +11279,43 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='psychic_blast'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Psychic Blast: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(targetChar.player===c.player){log('system',`Psychic Blast cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
-          // The target loses one level in a random skill they possess.
-          const owned=Object.keys(targetChar.skills||{}).filter(s=>(targetChar.skills[s]||0)>0);
-          if(owned.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
-          const sk=owned[Math.floor(Math.random()*owned.length)];
-          targetChar.skills[sk]=Math.max(0,(targetChar.skills[sk]||0)-1);
-          log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s ${SKILL_LABELS[sk]||sk} skill is seared down to level ${targetChar.skills[sk]}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears their ${SKILL_LABELS[sk]||sk} down to level ${targetChar.skills[sk]}.`,ph,'combat');
+          // The target loses 2 skill levels, each drawn from a random owned skill (the two picks may
+          // land on the same skill, in which case it drops by 2).
+          const _pbDrops=[];
+          for(let _k=0;_k<2;_k++){
+            const owned=Object.keys(targetChar.skills||{}).filter(s=>(targetChar.skills[s]||0)>0);
+            if(owned.length===0)break;
+            const sk=owned[Math.floor(Math.random()*owned.length)];
+            targetChar.skills[sk]=Math.max(0,(targetChar.skills[sk]||0)-1);
+            _pbDrops.push(SKILL_LABELS[sk]||sk);
+          }
+          if(_pbDrops.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s mind buckles, losing ${_pbDrops.join(' and ')}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears away ${_pbDrops.join(' and ')}.`,ph,'combat');
         }
         else if(fn==='psychic_storm'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Telekinetic Storm: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(targetChar.player===c.player){log('system',`Telekinetic Storm cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const QUALITY_DOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
-          const armies=(targetChar.armies||[]).slice();
+          const armies=(targetChar.armies||[]);
           if(armies.length===0){log('combat',`✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const n=Math.min(spellLevel, armies.length);
-          const picks=armies.sort(()=>Math.random()-0.5).slice(0,n);
-          let demoted=0;
-          // The affected units fight as if one experience level lower — but ONLY for the duration of the
-          // next battle they're drawn into (a battle-scoped strength reduction, cleared at battle end and at
-          // turn's end). Their actual quality tier is NOT permanently changed.
+          const picks=armies.slice().sort(()=>Math.random()-0.5).slice(0,n);
+          let demoted=0, destroyed=0;
+          // Every tested unit is affected (100%). A Green unit is torn apart outright; any other unit fights
+          // one experience level lower, and that reduction now persists for the REST OF THE TURN (across every
+          // battle), cleared only at turn's end. Actual quality tier is not permanently changed.
           picks.forEach(a=>{
+            if(a.quality==='Green'){ const gi=armies.indexOf(a); if(gi>=0){armies.splice(gi,1); destroyed++;} return; }
             const lower=QUALITY_DOWN[a.quality];
-            if(lower && Math.random()<0.5){
+            if(lower){
               const drop=unitBaseStrength(a)-unitBaseStrength({...a,quality:lower});
-              a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,drop);
+              a._turnStrReduction=(a._turnStrReduction||0)+Math.max(1,drop);
               demoted++;
             }
           });
-          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} tested, ${demoted} will fight as if a level lower in their next battle this turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`🌀 ${c.name}'s Telekinetic Storm scatters ${targetChar.name}'s formations — ${demoted} unit${demoted!==1?'s':''} will fight a level lower in their next battle.`,ph,'combat');
+          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} caught: ${destroyed} green unit${destroyed!==1?'s':''} shattered outright, ${demoted} will fight a level lower for the rest of the turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`🌀 ${c.name}'s Telekinetic Storm scatters ${targetChar.name}'s formations — ${destroyed} destroyed, ${demoted} weakened for the rest of the turn.`,ph,'combat');
         }
 
         // ── ILLUSORY ──
@@ -11424,7 +11493,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetChar.player===c.player){log('system',`Dominate cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const src=targetChar.armies||[];
           if(src.length===0){log('combat',`✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
-          const take=Math.max(1,Math.floor(src.length/2));
+          const take=Math.max(1,Math.floor(src.length*0.25));
           const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,take).sort((a,b)=>b-a);
           const seized=idxs.map(i=>src.splice(i,1)[0]);
           c.armies=(c.armies||[]).concat(seized);
@@ -11449,17 +11518,20 @@ const BATTLE_ARMY_SPELLS={
           if(targetChar.player===c.player){log('system',`Chain Lightning cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const src=targetChar.armies||[];
           if(src.length===0){log('combat',`✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
-          const hits=Math.min(src.length,1+Math.floor(spellLevel/2));
-          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,hits).sort((a,b)=>b-a);
-          idxs.forEach(i=>src.splice(i,1));
-          log('combat',`⚡ ${c.name}'s Chain Lightning leaps through ${targetChar.name}'s ranks — ${hits} unit${hits!==1?'s':''} are blasted apart!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`⚡ ${c.name}'s Chain Lightning tears through ${targetChar.name}'s ranks — ${hits} unit${hits!==1?'s':''} blasted apart.`,ph,'combat');
+          const pool=Math.floor(src.length*0.30);
+          if(pool<=0){log('combat',`⚡ ${c.name}'s Chain Lightning crackles around ${targetChar.name}'s handful of troops but earths out without a kill.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,pool).sort((a,b)=>b-a);
+          let killed=0;
+          idxs.forEach(i=>{ if(Math.random()<0.5){ src.splice(i,1); killed++; } });
+          log('combat',`⚡ ${c.name}'s Chain Lightning arcs through ${targetChar.name}'s ranks — of ${pool} unit${pool!==1?'s':''} caught in the arc, ${killed} ${killed===1?'is':'are'} blasted apart!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          notifyTarget(targetChar,`⚡ ${c.name}'s Chain Lightning tears through ${targetChar.name}'s ranks — ${killed} unit${killed!==1?'s':''} blasted apart.`,ph,'combat');
         }
         else if(fn==='elemental_cataclysm'){
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Cataclysm must target your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
           targetProv._earthquakeNoTax=G.turn;
+          targetProv.tax=0; targetProv._taxDestroyed=true; // Cataclysm now ruins the tax base PERMANENTLY
           let totalDestroyed=0;
           const _ccVictims=new Set();
           (G.characters||[]).filter(ch=>ch.alive&&ch.location===targetProv.id&&ch.player!==c.player&&(ch.armies||[]).length>0).forEach(ch=>{
@@ -11469,13 +11541,14 @@ const BATTLE_ARMY_SPELLS={
             if(ch.player!=null) _ccVictims.add(ch.player);
           });
           if(targetProv.owner!=null&&targetProv.owner!==c.player) _ccVictims.add(targetProv.owner);
-          log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the ruined land yields no tax this turn.`,{actor:c.player,targets:[..._ccVictims],provinceId:targetProv.id,public:true});
+          log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the land is left permanently barren (tax base reduced to 0 for good).`,{actor:c.player,targets:[..._ccVictims],provinceId:targetProv.id,public:true});
         }
         // NECROMANCY
         else if(fn==='necromancy_wraiths'){
           const graves=prov.battleGraves||[];
           if(graves.length===0){log('explore',`${c.name}'s call for Wraiths finds no battlefield dead in ${prov.name} to answer.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-          const g=prov.battleGraves.splice(Math.floor(Math.random()*prov.battleGraves.length),1)[0];
+          let _wbi=0,_wbs=-1; prov.battleGraves.forEach((gr,i)=>{ const st=unitBaseStrength({type:gr.type,quality:gr.quality||'Average'}); if(st>_wbs){_wbs=st;_wbi=i;} }); // raise the STRONGEST fallen unit
+          const g=prov.battleGraves.splice(_wbi,1)[0];
           const wraith={type:g.type,quality:'Elite',race:'Undead',_isSkeletal:true,unitName:`Wraiths (${armyUnitName(g.type)})`};
           c.armies=(c.armies||[]);c.armies.push(wraith);
           log('explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn; ${prov.battleGraves.length} grave${prov.battleGraves.length!==1?'s':''} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -11484,8 +11557,9 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='necromancy_dominion'){
           const graves=prov.battleGraves||[];
           if(graves.length===0){log('explore',`${c.name}'s Death's Dominion finds no fallen army in ${prov.name} to raise.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const QUALITY_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
           const n=Math.min(graves.length,spellLevel); let raised=0;
-          for(let k=0;k<n;k++){ if(prov.battleGraves.length===0)break; const g=prov.battleGraves.splice(Math.floor(Math.random()*prov.battleGraves.length),1)[0]; c.armies=(c.armies||[]); c.armies.push({type:g.type,quality:g.quality,race:'Undead',_isSkeletal:true,unitName:`${g.unitName||armyUnitName(g.type)} (Skeletal)`}); raised++; }
+          for(let k=0;k<n;k++){ if(prov.battleGraves.length===0)break; const g=prov.battleGraves.splice(Math.floor(Math.random()*prov.battleGraves.length),1)[0]; c.armies=(c.armies||[]); c.armies.push({type:g.type,quality:(QUALITY_UP[g.quality]||g.quality),race:'Undead',_isSkeletal:true,unitName:`${g.unitName||armyUnitName(g.type)} (Skeletal)`}); raised++; }
           log('explore',`💀 ${c.name} unleashes Death's Dominion over ${prov.name} — ${raised} skeletal unit${raised!==1?'s':''} claw up from the graves to serve! (${prov.battleGraves.length} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           resolveUnitGainInProvince(c, prov, ph);
         }
@@ -11523,7 +11597,8 @@ const BATTLE_ARMY_SPELLS={
         if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const vp=victim.player;
         const purse=(vp!=null)?(G.players[vp]?.gold||0):0;
-        const take=Math.max(5, Math.floor(purse*0.4));
+        let take=Math.max(5, Math.floor(purse*0.4));
+        if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — thief gains the full amount even if the victim cannot cover it (victim floored at 0 below)
         let msg='';
         if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; msg=`${take}g spirited away`; }
         // Chance to also lift a magic item.
@@ -11744,7 +11819,7 @@ const BATTLE_ARMY_SPELLS={
 
   // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
   // stored per character for the whole turn
-  function getSeaCapability(armies){
+  function getSeaCapability(armies, leadChar){
     if(armies.length===0) return 'all';
     const landArmies=armies.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
     // Only CARRIERS provide capacity. Primal sea beasts swim themselves across but carry nothing,
@@ -11761,6 +11836,7 @@ const BATTLE_ARMY_SPELLS={
     landArmies.forEach(a=>{
       landCapNeeded+=LIGHT_ARMIES.has(a.type)?0.5:1; // light=0.5 cap, heavy/cavalry=1
     });
+    if(leadChar && perkTier(leadChar,'naval')>=3) landCapNeeded/=2; // NAVAL L8: one naval hull carries what once needed two
     if(seaCount>=landCapNeeded) return 'sea';
     return 'land';
   }
@@ -11854,9 +11930,11 @@ const BATTLE_ARMY_SPELLS={
     }
     // ── LEVEL 6+ SKILL PERK ── Forced March (march) / Master Mariner (naval): extra movement past
     // level 5 — +1 point at levels 6–7, +2 at levels 8–9 (only when a pool actually exists).
-    { const mE=perkTier(c,'march'); if((mE>0||charMinor(c,'swift')) && (movePoints[c.id]||0)>0) movePoints[c.id]+=(mE>=3?2:1)+(charMinor(c,'swift')?1:0);
-      const nE=perkTier(c,'naval'); if((nE>0||charMinor(c,'seawolf')) && (seaMovePoints[c.id]||0)>0) seaMovePoints[c.id]+=(nE>=3?2:1)+(charMinor(c,'seawolf')?1:0); }
-    seaCap[c.id]=getSeaCapability(armies);
+    // March L6/L8 and Naval L6/L8 no longer grant movement points (repurposed to exploration/terrain/sea).
+    // The Swift / Seawolf minor titles keep their +1.
+    { if(charMinor(c,'swift') && (movePoints[c.id]||0)>0) movePoints[c.id]+=1;
+      if(charMinor(c,'seawolf') && (seaMovePoints[c.id]||0)>0) seaMovePoints[c.id]+=1; }
+    seaCap[c.id]=getSeaCapability(armies, c);
   }
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(setMovePool);
 
@@ -13454,11 +13532,16 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // Item 4 (this session): ORC WAR-SPOILS — an Orcish unit of an Orcish kingdom that won a battle
         // as part of an attacking force THIS turn pays only half upkeep for this turn (min 1g).
         const _orcKingdom=(p.race==='Orcish');
+        // DRUID L6 — creatures/monsters led by a Druid-6 character pay half wages. Built as a Set of the
+        // actual army objects (identity), since the wage sum flattens away the leader association.
+        const _druidHalfWage=new Set();
+        playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0)(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); });
         let armyWages=allKingdomArmies.reduce((s,a)=>{
           if(a._temporary) return s;
           if(a._isSkeletal) return s+1;
           let w=ARMY_COST[a.type]||2;
           if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn) w=Math.max(1,Math.round(w*0.5));
+          if(_druidHalfWage.has(a)) w=Math.max(1,Math.floor(w*0.5)); // DRUID L6
           return s+w;
         },0);
         // MINOR TITLE — The Host-Leader: this kingdom's greatest general pays 1g less per unit he leads (min 1/unit).
@@ -13864,7 +13947,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     delete c._necroAutoUsed;
     // Units fully recover between turns — clear any lingering battle-scoped strength loss
     // (e.g. a Telekinetic Storm cast in an action phase that saw no ensuing battle).
-    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._archeryRed) delete a._archeryRed; });
+    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; });
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
@@ -13875,7 +13958,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     }
     // Clear any battle-scoped strength reductions still sitting on this province's neutral defenders
     // (e.g. a Telekinetic Storm cast with no ensuing battle) so units fully recover between turns.
-    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._archeryRed) delete a._archeryRed; });
+    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; });
     // Hidden features persist until they fade (10%/turn).
     (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.10){ delete f._hidden; delete f._hiddenBy; } });
     if(p._phantomArmies) delete p._phantomArmies;
@@ -13888,6 +13971,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(p._holyBonus) delete p._holyBonus;
     if(p._oratoryBonus) delete p._oratoryBonus;
     if(p._tempStrReduction) delete p._tempStrReduction;
+    if(p._turnStrReduction) delete p._turnStrReduction;
   });
 
   // 7c2. sd35 Order of the Golden Shield: king gets +3 max HP (once)
@@ -14381,6 +14465,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.21-1516</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.22-1430</div>
 </body>
 </html>
