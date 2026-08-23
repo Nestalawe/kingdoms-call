@@ -5179,7 +5179,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd05',name:'Steel Armour',category:'Military',desc:'All your land armies have 25% less chance of dying in battle.',effect:{type:'deathReduction',pct:0.25}},
   {id:'sd06',name:'Military Discipline',category:'Military',desc:'Armies you lead have a 20% higher chance of promotion after a battle.',effect:{type:'promotionBonus',pct:0.20}},
   {id:'sd07',name:'Fire Arrows',category:'Military',desc:'All archer and missile units you lead gain an additional +10% strength bonus.',effect:{type:'archerBonus',pct:0.10}},
-  {id:'sd08',name:'War Academy',category:'Military',desc:'One random army in your home province promoted one tier each turn.',effect:{type:'homePromotion'}},
+  {id:'sd08',name:'War Academy',category:'Military',desc:'Each army in your home province has a 50% chance of being promoted one tier at the end of each turn.',effect:{type:'homePromotion'}},
   {id:'sd09',name:'Flanking Tactics',category:'Military',desc:'In battles where you have more armies than enemy, excess armies fight at 75% instead of 25%.',effect:{type:'flankBonus'}},
   {id:'sd10',name:'Scouts & Rangers',category:'Military',desc:'+20% exploration bonus on every Explore order across all your characters.',effect:{type:'exploreBonus',pct:0.20}},
   // ── Economy ──
@@ -5195,7 +5195,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd19',name:'Cipher Scripts',category:'Espionage',desc:'Enemy Spy orders on your provinces have 25% lower success chance.',effect:{type:'counterSpy',reduction:0.25}},
   {id:'sd20',name:'Messenger Birds',category:'Espionage',desc:'You receive [Intelligence] notifications even from provinces two steps away from yours.',effect:{type:'extendedIntel',range:2}},
   {id:'sd21',name:'Forgery Arts',category:'Espionage',desc:'+15% to all Spy order success chances for your characters.',effect:{type:'spyBonus',pct:0.15}},
-  {id:'sd22',name:'Informant Network',category:'Espionage',desc:'Once per turn, you learn the location of one random enemy character.',effect:{type:'informants'}},
+  {id:'sd22',name:'Informant Network',category:'Espionage',desc:'Once per turn, you learn the location of one random enemy character you cannot already see.',effect:{type:'informants'}},
   {id:'sd23',name:'Disguise Techniques',category:'Espionage',desc:'Heroes you send on Spy orders cannot be detected by enemy intrusion notifications.',effect:{type:'spyDisguise'}},
   // ── Magic & Scholarship ──
   {id:'sd24',name:'The Compass',category:'Scholarship',desc:'All your Explore actions map 40% more of the province.',effect:{type:'exploreBonus',pct:0.40}},
@@ -5206,16 +5206,16 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd29',name:'Herbal Lore',category:'Scholarship',desc:'Characters who take damage in encounters or battles recover 1 HP automatically next phase.',effect:{type:'autoHeal',hp:1}},
   {id:'sd30',name:'Library',category:'Scholarship',desc:'Sage practice success chance increased to 10% per level (instead of 5%).',effect:{type:'sageDiscoveryBonus',pct:0.10}},
   {id:'sd31',name:'Diplomatic Protocols',category:'Scholarship',desc:'The Divine/Undead hiring ban is waived for your kingdom — even heroes from the far end of the alignment spectrum may be hired (at the maximum 5g/turn).',effect:{type:'alignmentHire'}},
-  {id:'sd32',name:'Ancient Lore',category:'Scholarship',desc:'All Explore actions reveal one extra partially-explored province in adjacent areas.',effect:{type:'adjacentReveal'}},
+  {id:'sd32',name:'Ancient Lore',category:'Scholarship',desc:'Every Explore action also maps 10% of each adjacent province.',effect:{type:'adjacentReveal'}},
   // ── Heroic ──
   {id:'sd33',name:'Duelling Code',category:'Heroic',desc:'Your characters gain +10% to hit in all personal duels and encounters.',effect:{type:'duelBonus',pct:0.10}},
   {id:'sd34',name:'Mounted Couriers',category:'Heroic',desc:'Newly hired heroes may act from the phase they are hired (not the next phase).',effect:{type:'immediateHire'}},
-  {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king gains +3 maximum HP.',effect:{type:'kingHpBonus',hp:3}},
+  {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king gains double the usual permanent HP for slaying enemy commanders.',effect:{type:'kingKillHpX2'}},
   {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Characters who are slain in encounters have a 20% chance to survive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
   {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters\' Melee and Archery treated as 1 level higher in personal combat.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
   {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'Hero desertion chance on unpaid wages reduced by 20%.',effect:{type:'reduceDesertion',pct:0.20}},
   // ── Special ──
-  {id:'sd39',name:'Arcane Observatory',category:'Special',desc:'Once per game: reveal the full map (all provinces, owners, and lairs) for one turn.',effect:{type:'fullMapReveal'}},
+  {id:'sd39',name:'Arcane Observatory',category:'Special',desc:'Each turn, a random province you have not yet fully explored is charted in full (100% explored).',effect:{type:'turnReveal'}},
   {id:'sd40',name:'Dragon Taming',category:'Special',desc:'Your characters may lead Eagle Riders and other flying units without Druidic ability.',effect:{type:'flyingNoDruid'}},
 ];
 
@@ -8988,7 +8988,8 @@ const BATTLE_ARMY_SPELLS={
   function awardKillXP(killer, victim, narrative){
     if(!killer || !victim || killer===victim || (killer.hp||0)<=0) return;
     const vHp=victim.maxHp||20;
-    const hpGain=vHp>=36?rng(4,8):vHp>=21?rng(3,6):vHp>=13?rng(2,4):rng(1,3);
+    let hpGain=vHp>=36?rng(4,8):vHp>=21?rng(3,6):vHp>=13?rng(2,4):rng(1,3);
+    if(killer.isKing && hasDisc(killer.player,'sd35')) hpGain*=2; // sd35 Order of the Golden Shield: the king hardens twice as fast from his kills
     killer.maxHp=(killer.maxHp||20)+hpGain;
     killer.hp=Math.min(killer.maxHp,(killer.hp||0)+hpGain);
     const msg=`⚔ ${killer.name} grows hardened from slaying ${victim.name} — maximum HP permanently increases by ${hpGain} (now ${killer.maxHp} max HP).`;
@@ -9934,6 +9935,10 @@ const BATTLE_ARMY_SPELLS={
         prov.explored=prov.exploredBy[c.player]; // keep legacy field for compatibility
         // EXPLORER L8 — surveying the ground sometimes reveals richer land: 50% chance to +2 tax base (max 10), permanent.
         if(perkTier(c,'explorer')>=3 && Math.random()<0.5){ const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
+        // ANCIENT LORE (sd32) — the same Explore action also maps 10% of each adjacent province.
+        if(hasDisc(c.player,'sd32')){
+          getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+10); nb.explored=nb.exploredBy[c.player]; });
+        }
         // Feature discovery: proportional thresholds based on how many features exist
         // At 100% explored, all features visible. 1 feature=100%, 2=50%/100%, 4=25%/50%/75%/100% etc.
         const totalFeatures=(prov.features||[]).length;
@@ -11142,6 +11147,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.terrain!=='sea'){
             log('system',`${c.name}: Part Sea can only be cast on a sea province.`,{actor:c.player,targets:[c.player]});break;
           }
+          if(blessWardNegates(targetProv, c, 'Part Sea')) break; // Q2: a warded province can turn aside an enemy Part Sea too
           // Cancel any Flood on this province, then turn the sea to dry plains for the rest of the turn.
           delete targetProv._flooded;
           targetProv._partSea={orig:targetProv.terrain, turn:G.turn, blockFleetsFromPhase:ph+1};
@@ -11159,9 +11165,9 @@ const BATTLE_ARMY_SPELLS={
           }
           targetProv._blessedTurn=G.turn;
           // Item: the blessing also WARDS the province — a chance to turn aside a later enemy Flood /
-          // Earthquake / Plague. Base 10% + 10% per point of the caster's White skill (capped at 100%).
+          // Earthquake / Plague / Part Sea. Base 10% + 15% per point of the caster's White skill (capped at 100%).
           targetProv._blessWardTurn=G.turn; targetProv._blessWardBy=c.player;
-          targetProv._blessWardPct=Math.min(100, 10+10*effStat(c,'white'));
+          targetProv._blessWardPct=Math.min(100, 10+15*effStat(c,'white')); // Q2: 10% + 15% per White skill level
           TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           // DIVINE: a Divine kingdom's casters bless at +80% (the long-advertised alignment bonus,
           // previously described but never implemented — engine now honours it), and the Divine
@@ -11170,7 +11176,7 @@ const BATTLE_ARMY_SPELLS={
           const _divineKingBless=c.isKing&&_divineKingdom;
           targetProv._blessedMult=_divineKingBless?2.0:(_divineKingdom?1.8:1.6);
           const _blessPct=_divineKingBless?'+100% tax (a Divine king\'s blessing — the gods answer their anointed in full)':(_divineKingdom?'+80% tax (Divine blessing)':'+60% tax');
-          log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake or Plague cast here this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
+          log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake, Plague or Part Sea cast here this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
         }
 
         // ── PSYCHIC ──
@@ -13974,24 +13980,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(p._turnStrReduction) delete p._turnStrReduction;
   });
 
-  // 7c2. sd35 Order of the Golden Shield: king gets +3 max HP (once)
-  G.players.forEach((p,pi)=>{
-    if(!hasDisc(pi,'sd35')) return;
-    const king=(G.characters||[]).find(c=>c.isKing&&c.player===pi&&c.alive);
-    if(king&&!king._goldenShieldApplied){
-      king.maxHp=(king.maxHp||22)+3;
-      king.hp=Math.min(king.maxHp,king.hp+3);
-      king._goldenShieldApplied=true;
-      log('system',`Order of the Golden Shield: ${king.name}'s max HP increased to ${king.maxHp}!`,{actor:pi,targets:[pi]});
-    }
-  });
+  // 7c2. sd35 Order of the Golden Shield: the king gains DOUBLE the usual permanent HP for slaying
+  // enemy commanders (applied in awardKillXP), so there is no per-turn effect to run here.
 
   // 7d. sd08 War Academy: promote one random army in each player's home province
   G.players.forEach((p,pi)=>{
     if(!hasDisc(pi,'sd08')) return;
     const homeProv=G.world.provinces.find(pv=>pv.owner===pi&&pv.tax>=10);
     if(!homeProv) return;
-    // Find any army in the home province led by a character there
     const charsAtHome=(G.characters||[]).filter(c=>c.alive&&c.player===pi&&c.location===homeProv.id);
     const allArmies=charsAtHome.flatMap(c=>c.armies||[]);
     if(allArmies.length===0) return;
@@ -13999,20 +13995,29 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // Skeletal armies never gain experience/quality tiers — the dead don't learn.
     const eligible=allArmies.filter(a=>!a._isSkeletal&&tiers.indexOf(a.quality)<4);
     if(eligible.length===0) return;
-    const army=eligible[Math.floor(Math.random()*eligible.length)];
-    const idx=tiers.indexOf(army.quality);
-    army.quality=tiers[idx+1];
-    log('system',`War Academy: ${army.unitName?army.unitName+' ('+army.type+')':'a '+army.type} in ${homeProv.name} trains to ${army.quality}!`,{actor:pi,targets:[pi]});
+    // Each eligible army independently has a 50% chance to train up one tier this turn.
+    let _waPromoted=0;
+    eligible.forEach(army=>{ if(Math.random()<0.5){ const idx=tiers.indexOf(army.quality); army.quality=tiers[idx+1]; _waPromoted++; log('system',`War Academy: ${army.unitName?army.unitName+' ('+army.type+')':'a '+army.type} in ${homeProv.name} trains to ${army.quality}!`,{actor:pi,targets:[pi]}); } });
+    if(_waPromoted===0) log('system',`War Academy: the drills in ${homeProv.name} produced no promotions this turn.`,{actor:pi,targets:[pi]});
   });
 
   // 7e. sd22 Informant Network: reveal one random enemy character location
   G.players.forEach((p,pi)=>{
     if(!hasDisc(pi,'sd22')) return;
-    const enemyChars=(G.characters||[]).filter(c=>c.alive&&c.player!==null&&c.player!==pi&&!c.isKing);
-    if(enemyChars.length===0) return;
+    // Provinces the player can already see this turn: those they own, or that hold one of their characters.
+    const _seen=new Set();
+    (G.world.provinces||[]).forEach((pv,idx)=>{ if(pv.owner===pi) _seen.add(idx); });
+    (G.characters||[]).forEach(c=>{ if(c.alive&&c.player===pi) _seen.add(c.location); });
+    const enemyChars=(G.characters||[]).filter(c=>c.alive&&c.player!==null&&c.player!==pi&&!c.isKing&&!_seen.has(c.location));
+    if(enemyChars.length===0){ log('system',`[Intelligence] Your informants surface nothing new — every enemy captain they could name is already within your sight.`,{actor:pi,targets:[pi]}); return; }
     const target=enemyChars[Math.floor(Math.random()*enemyChars.length)];
     const tProv=G.world.provinces[target.location];
-    log('system',`[Intelligence] Informant Network reports: ${target.name} of ${G.players[target.player]?.name} was last seen in ${tProv?.name||'unknown'}.`,{actor:pi,targets:[pi]});
+    log('system',`[Intelligence] Informant Network reports: ${target.name} of ${G.players[target.player]?.name} \u2014 unseen by your own eyes \u2014 was last in ${tProv?.name||'unknown'}.`,{actor:pi,targets:[pi]});
+    // ARCANE OBSERVATORY (sd39) — each turn, chart one province you have not yet fully explored.
+    if(hasDisc(pi,'sd39')){
+      const _unseen=(G.world.provinces||[]).filter(pv=>(((pv.exploredBy&&pv.exploredBy[pi])||0)<100));
+      if(_unseen.length>0){ const _pk=_unseen[Math.floor(Math.random()*_unseen.length)]; if(!_pk.exploredBy)_pk.exploredBy={}; _pk.exploredBy[pi]=100; _pk.explored=100; log('explore',`\ud83d\udd2d Arcane Observatory: your astronomers chart ${_pk.name} in full \u2014 it is now 100% explored.`,{actor:pi,targets:[pi]}); }
+    }
   });
 
   // 7d. Divine kingdom resurrection — a fallen hero spends one full turn in death, then returns.
@@ -14465,6 +14470,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.22-1430</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.22-1934</div>
 </body>
 </html>
