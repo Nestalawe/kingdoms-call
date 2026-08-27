@@ -525,7 +525,7 @@ const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker']);
 // target: 'none' (self/current province), 'province' (a seen province), or 'character' (an enemy hero here).
 const L79_ORDERS={
   'Sabotage':{skill:'spy',lvl:7,target:'province',provKind:'enemy',hint:'Spy 7: wreck an enemy province you can see — it yields no tax next turn and loses a garrison unit.'},
-  'Forced March':{skill:'march',lvl:7,target:'none',hint:'March 7: drive your column onward — your land movement is doubled for the rest of this turn. (Uses this phase.)'},
+  'Forced March':{skill:'march',lvl:7,target:'province',provKind:'move_adjacent',hint:'March 7: march to an adjacent province — if an enemy army or a Defend order awaits, a 50% chance to slip in without a battle this phase (the fight comes next phase if you stay, or at turn end).'},
   'Grand Heist':{skill:'thief',lvl:7,target:'character',hint:'Thief 7: rob an enemy hero in your province of a large sum of gold (and perhaps a magic item).'},
   'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
   'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
@@ -2125,9 +2125,9 @@ function initReportCollapsers(){
 const MASTERY_EFFECTS={
   melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
   archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\'s Mark orders.',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
-  tactical:{6:'Master tactician — your Tactical battle bonus is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
-  march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: spend a phase to double this column's movement (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: arrive with surprise — the defender gets no Defend reaction.'},
-  naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade: seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast: an amphibious assault striking a coastal province at +strength.'},
+  tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
+  march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
+  naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
@@ -4273,6 +4273,15 @@ function buildTargetField(c, ph, saved){
     }
     if(cfg.target==='province'){
       const wmProvs=(report.worldMeta?.provinces)||[];
+      if(cfg.provKind==='move_adjacent'){
+        const curLoc=predictedLocation(c.id,ph); const curId=curLoc?curLoc.id:c.locationId;
+        const curP=wmProvs.find(p=>p.id===curId);
+        const candIds=((curP&&curP.neighbors)||[]);
+        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p) return ''; return `<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Province '+pid)}${p.ownerName?` — ${p.ownerName}`:''}</option>`;}).filter(Boolean).join('');
+        return opts
+          ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
+          :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No adjacent province to march into" disabled>${hintHtml}`;
+      }
       if(cfg.provKind==='sea_adjacent'){
         const curLoc=predictedLocation(c.id,ph); const curId=curLoc?curLoc.id:c.locationId;
         const curP=wmProvs.find(p=>p.id===curId);
@@ -5643,6 +5652,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.22-1934</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.27-0736</div>
 </body>
 </html>
