@@ -627,9 +627,9 @@ const MASTERY_UNLOCKS={
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
-  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
+  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: for two phases, you and your armies vanish from enemy sight and hostile magic.'},
   elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
-  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise an elite undead unit from the province's battlefield dead.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
+  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
 };
 // ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
 // turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler).
@@ -2566,7 +2566,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Mirror Shard',desc:'Illusory Magic +1, and your Mirror Image illusions are harder to disbelieve',effect:{stat:'illusory',bonus:1},tier:1},
   // ── Elemental Magic ──
   {name:'Orb of the Storm',desc:'Elemental Magic +2',effect:{stat:'elemental',bonus:2},tier:2},
-  {name:'Ember Rune',desc:'Elemental Magic +1, and your Fireball may target any province within sight',effect:{stat:'elemental',bonus:1},tier:1},
+  {name:'Ember Rune',desc:'Elemental Magic +1, and your Fireball strikes the two strongest enemy units instead of one',effect:{stat:'elemental',bonus:1},emberTwo:true,tier:1},
   // ── Necromancy ──
   {name:'Skull of the Undying',desc:'Necromancy +2',effect:{stat:'necromancy',bonus:2},tier:2},
   {name:'Death\'s Finger Ring',desc:'Necromancy +1, and your Hand of Death does 10% more damage in personal combat',effect:{stat:'necromancy',bonus:1},tier:1},
@@ -4385,6 +4385,23 @@ function getNeighborsP(prov,cols,rows,provinces){
   }).filter(Boolean);
 }
 
+// Raise Wraiths — "Wraith's Touch": if a force contains a wraith, ONE random highest-experience enemy
+// unit is PERMANENTLY reduced by one experience tier (written back to the real unit). Fires once at the
+// start of a battle, per side that fields a wraith.
+const _WRAITH_DOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
+function applyWraithTouch(friendly, enemy, narr){
+  if(!Array.isArray(friendly)||!Array.isArray(enemy)) return;
+  if(!friendly.some(a=>a&&a._isWraith)) return;
+  const tiers=['Green','Average','Veteran','Crack','Elite'];
+  const dem=enemy.filter(a=>a&&tiers.indexOf(a.quality)>0);
+  if(dem.length===0) return;
+  const maxT=Math.max.apply(null,dem.map(a=>tiers.indexOf(a.quality)));
+  const top=dem.filter(a=>tiers.indexOf(a.quality)===maxT);
+  const v=top[Math.floor(Math.random()*top.length)];
+  const was=v.quality; v.quality=_WRAITH_DOWN[v.quality]||v.quality;
+  if(narr) narr.push(`  \u2620 Wraith's Touch withers ${v.unitName||v.type} \u2014 permanently reduced from ${was} to ${v.quality}.`);
+}
+
 function hexDistP(a,b,cols){
   let dc=Math.abs(a.col-b.col);if(cols>0)dc=Math.min(dc,cols-dc);
   const dr=Math.abs(a.row-b.row);
@@ -4405,7 +4422,7 @@ const TITLE_DEFS=[
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'Each turn you learn which Sage discoveries your rivals made this turn \u2014 and copy one of them at random, for free.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage in every magic school.'},
   {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn you are told the location and strength of the largest skeletal army in the world.'},
-  {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Skeletal legions you lead fight at +5% strength.'},
+  {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead.'},
 ];
 const RELIC_PRIZE_EACH=1;                 // 10 legendary items × 1 = 10 points → 100-pt spread
 const TITLES_PUBLIC_FROM_TURN=5;          // standings hidden turns 1–4 (clarification #10)
@@ -4728,7 +4745,7 @@ function buildTurnReport(gameState, playerIndex){
   // cloaked (Veil / hidden-item) hero cannot be picked out at all. The Encounter order then chases
   // the quarry wherever they go, so the list need only reflect where they were last seen.
   const _encVisProv=new Set([...ownedProvIds, ...ownCharLocs, ...spiedThisTurn]);
-  const _encHidden=(ch)=>!!(ch&&((ch._veiledTurn===gameState.turn)||(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden')));
+  const _encHidden=(ch)=>!!(ch&&(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden')); // Veil is phase-scoped (see isVeiled); by report time it has parted
   const encounterTargets=gameState.characters
     .filter(c=>c.alive&&c.player!==null&&c.player!==playerIndex&&_encVisProv.has(c.location)&&!_encHidden(c)
       && !(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(c.location)))
@@ -5100,7 +5117,8 @@ function buildTurnReport(gameState, playerIndex){
   const _druidHalfWageR=new Set();
   playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0)(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 (report mirror)
   const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); return s+w; },0);
-  const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>s+(h.pay||0),0);
+  const _inspiringR=hasDiscR('sd38'); // Inspiring Leadership (report mirror)
+  const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ let w=(h.pay||0); if(_inspiringR) w=Math.floor(w*0.5); return s+w; },0);
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
     kingdom:{gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
@@ -5199,8 +5217,8 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd24',name:'The Compass',category:'Scholarship',desc:'All your Explore actions map 40% more of the province.',effect:{type:'exploreBonus',pct:0.40}},
   {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'+10% chance of finding a magic item in any lair your characters clear.',effect:{type:'itemChanceBonus',pct:0.10}},
   {id:'sd26',name:'Astronomical Tables',category:'Scholarship',desc:'All Practice orders for your characters have +5% success chance.',effect:{type:'practiceBonus',pct:0.05}},
-  {id:'sd27',name:'Arcane Codex',category:'Scholarship',desc:'All spell casting chances for your characters increased by +10%.',effect:{type:'spellBonus',pct:0.10}},
-  {id:'sd28',name:'Medical Arts',category:'Scholarship',desc:'Rest orders heal 3–7 HP instead of 2–5 HP.',effect:{type:'healBonus',min:3,max:7}},
+  {id:'sd27',name:'Arcane Codex',category:'Scholarship',desc:'All spells cast by your characters have a +5% chance of success (still capped at 95%).',effect:{type:'spellBonus',pct:0.05}},
+  {id:'sd28',name:'Medical Arts',category:'Scholarship',desc:'A single Rest order restores a character to full HP.',effect:{type:'restFull'}},
   {id:'sd29',name:'Herbal Lore',category:'Scholarship',desc:'Characters who take damage in encounters or battles recover 1 HP automatically next phase.',effect:{type:'autoHeal',hp:1}},
   {id:'sd30',name:'Library',category:'Scholarship',desc:'Sage practice success chance increased to 10% per level (instead of 5%).',effect:{type:'sageDiscoveryBonus',pct:0.10}},
   {id:'sd31',name:'Diplomatic Protocols',category:'Scholarship',desc:'The Divine/Undead hiring ban is waived for your kingdom — even heroes from the far end of the alignment spectrum may be hired (at the maximum 5g/turn).',effect:{type:'alignmentHire'}},
@@ -5211,7 +5229,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king gains double the usual permanent HP for slaying enemy commanders.',effect:{type:'kingKillHpX2'}},
   {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Characters who are slain in encounters have a 20% chance to survive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
   {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters\' Melee and Archery treated as 1 level higher in personal combat.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
-  {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'Hero desertion chance on unpaid wages reduced by 20%.',effect:{type:'reduceDesertion',pct:0.20}},
+  {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'The wages of all your heroes are halved.',effect:{type:'halveHeroWages'}},
   // ── Special ──
   {id:'sd39',name:'Arcane Observatory',category:'Special',desc:'Each turn, a random province you have not yet fully explored is charted in full (100% explored).',effect:{type:'turnReveal'}},
   {id:'sd40',name:'Dragon Taming',category:'Special',desc:'Your characters may lead Eagle Riders and other flying units without Druidic ability.',effect:{type:'flyingNoDruid'}},
@@ -5265,7 +5283,7 @@ const SPELL_DEFS_P={
     desc:'Action: illusory soldiers march with a friendly army-leading hero (you or an adjacent ally) for the rest of the turn, adding +10% per caster level to the strength of the armies they directly lead in battle. Not cumulative.',
     fn:'illusory_phantasmal'},
   'Hide Lairs':  {school:'illusory',target:'province',encounter:false,phase:true,
-    desc:'Action: all lairs you have discovered in a province you are in or adjacent to become invisible to explorers. 10% chance to fade each turn.',
+    desc:'Action: veil an entire province you are in or adjacent to — every lair within becomes invisible to all other players, who cannot discover any lair there (though any they already found remains theirs). 20% chance to fade each turn.',
     fn:'illusory_hide_feature'},
   'Invisibility':   {school:'illusory',target:'none',encounter:true,phase:false,
     desc:'Combat: enemies suffer \u221225% to hit the caster (to a minimum of 40%) for the fight, and the caster gains +30% to Flee.',
@@ -5325,7 +5343,7 @@ const SPELL_DEFS_P={
     desc:'Action (Illusory 7): conjure a phantom army under your banner. It fights like real troops but dissolves at the end of the turn.',
     fn:'illusory_phantomhost'},
   'Veil':             {school:'illusory',target:'none',encounter:false,phase:true,reqLevel:9,
-    desc:'Action (Illusory 9): you and your host vanish from all enemy sight until the end of the turn.',
+    desc:'Action (Illusory 9): for this phase and the next, you and the armies you lead vanish from enemy sight and cannot be targeted or affected by any hostile spell.',
     fn:'illusory_veil'},
   'Chain Lightning':  {school:'elemental',target:'character',encounter:false,phase:true,reqLevel:7,
     desc:'Action (Elemental 7): arcing lightning tears through an enemy hero in your province — 30% of the units they lead are caught, and each caught unit has a 50% chance to be destroyed.',
@@ -5334,7 +5352,7 @@ const SPELL_DEFS_P={
     desc:'Action (Elemental 9): devastate a province you are in or adjacent to — every enemy force there loses units, and the province tax base is permanently reduced to 0.',
     fn:'elemental_cataclysm'},
   'Raise Wraiths':    {school:'necromancy',target:'none',encounter:false,phase:true,reqLevel:7,
-    desc:'Action (Necromancy 7): raise an elite Wraith unit from the battlefield dead of your province.',
+    desc:'Action (Necromancy 7): raise the strongest of your province\'s battlefield dead as an elite Wraith — whose Wraith\'s Touch permanently withers a highest-experience enemy unit each battle it fights.',
     fn:'necromancy_wraiths'},
   "Death's Dominion": {school:'necromancy',target:'none',encounter:false,phase:true,reqLevel:9,
     desc:'Action (Necromancy 9): the fallen of your province rise en masse — raise several skeletal units at once from its battlefield graves, each risen one experience level higher.',
@@ -5733,7 +5751,9 @@ async function runTurn(){
   }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
   // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character.
-  function isHiddenChar(ch){ return !!(ch&&((ch._veiledTurn===G.turn)||(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden'))); } // ILLUSORY L9 Veil = turn-stamped hidden
+  // ILLUSORY L9 Veil — active only during the cast phase and the phase after it (two phases).
+  function isVeiled(ch){ return !!(ch && ch._veilTurn===G.turn && _currentPhase!=null && ch._veilCastPhase!=null && _currentPhase>=ch._veilCastPhase && _currentPhase<=ch._veilCastPhase+1); }
+  function isHiddenChar(ch){ return !!(ch&&(isVeiled(ch)||(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden'))); }
 
   // A hero's wage is a function of their skills, so it must be recomputed EVERYWHERE skills
   // change — not just in the Practice order. Experience-driven gains (trySkillGain) previously
@@ -6083,7 +6103,6 @@ function seaPenalty(armyType, terrain){
     // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies +5%.
     if(heroChar){
       // Grand Marshal / Sea Lord combat bonuses removed — those titles are now end-of-turn intel lines.
-      if(charHoldsTitle(heroChar,'necro')&&army._isSkeletal) str=Math.round(str*1.05); // LIVE TITLE PERK \u2014 Deathpriest: skeletal legions +5% (kept pending Q1)
     }
     // ── Druid creature-leading ── the strength benefit CAPS at level 5 (via effStat elsewhere);
     // levels 6+ grant the Druid's distinct L7/L9 orders, not further strength scaling. (item 6)
@@ -6483,6 +6502,7 @@ const BATTLE_ARMY_SPELLS={
     // that is relevant to army combat (hits provinces/armies)
     // ══════════════════════════════════════════════════════
     const BATTLE_MAGIC_SPELLS=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
+    applyWraithTouch(armies, defenders, narrative); applyWraithTouch(defenders, armies, narrative); // Wraith's Touch
     if(c) ensureEncounterPlan(c); // bots/NPCs get an auto battle-magic plan so they cast when attacking
     const heroTactics=(c.encounterPlan?.tactics)||[];
     const heroPick=pickBattleSpell(heroTactics, c, defHero, defenders);
@@ -6491,14 +6511,14 @@ const BATTLE_ARMY_SPELLS={
       const school=heroPick.school;
       const spellLvl=effStat(c,school);
       if(spellLvl>=1){
-        const castChance=Math.min(95,20+spellLvl*10+(hasDisc(c.player,'sd27')?10:0));
+        const castChance=Math.min(95,20+spellLvl*10+(hasDisc(c.player,'sd27')?5:0));
         const castRoll=d100();
         narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
           trySkillGain(c, school, SKILLGAIN_STD, narrative); // magic school gain on a successful battle cast (single roll — see below)
           if(spellName==='Fireball'){
             // The strongest enemy unit has its base strength halved for the battle.
-            if(defenders.length>0){ const d=defenders.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b); const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5)); d._tempStrReduction=(d._tempStrReduction||0)+cut; narrative.push(`  🔥 Fireball engulfs the enemy's strongest unit, ${d.unitName||d.type} — its strength is halved this battle (−${cut}).`); }
+            if(defenders.length>0){ const _ember=(c&&(c.items||[]).some(it=>it&&it.emberTwo)); const _fbHits=defenders.slice().sort((a,b)=>unitBaseStrength(b)-unitBaseStrength(a)).slice(0,_ember?2:1); _fbHits.forEach(d=>{ const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5)); d._tempStrReduction=(d._tempStrReduction||0)+cut; }); narrative.push(`  🔥 Fireball engulfs the enemy's ${_fbHits.length>1?'two strongest units':'strongest unit'}, ${_fbHits.map(d=>d.unitName||d.type).join(' and ')} — halved this battle.`); }
           } else if(spellName==='Telekinetic Storm'){
             // Negate the enemy commander's Tactical bonus for this battle.
             if(defHero){ defHero._tacticalHalved=true; defHero._tacticalMult=0.5; narrative.push(`  🌀 Telekinetic Storm scatters ${defHero.name}'s formations — their Tactical command is cut to half effectiveness this battle.`); }
@@ -8112,9 +8132,10 @@ const BATTLE_ARMY_SPELLS={
     recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
     // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE per side which units fight a tier higher this battle.
     [atk,def].forEach(_ld=>{ if(_ld&&Array.isArray(_ld.armies)){ const _tac=perkTier(_ld,'tactical')>0, _drum=(_ld.items||[]).some(it=>it&&it.drumTierUp); _ld.armies.forEach(a=>{ if(a){ a._tacUp=_tac&&Math.random()<0.10; a._drumUp=_drum&&Math.random()<0.20; } }); } });
+    const narrative=[];
     const _atkLA=!!(atk&&atk._lightningAdvanceTurn===G.turn); // MARCH L9 Lightning Advance
     if(_atkLA){ (def.armies||[]).forEach(a=>{ if(a) a._laNoTerrain=true; }); narrative.push(`⚡ ${atk.name}'s Lightning Advance catches ${def.name} completely unready — no terrain advantage, no pre-battle magic and no answering volley.`); }
-    const narrative=[];
+    applyWraithTouch(atk.armies||[], def.armies||[], narrative); applyWraithTouch(def.armies||[], atk.armies||[], narrative); // Wraith's Touch
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
     if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._tacticalHalved=false;atk._tacticalMult=1;atk._curseHalveStat=null; if(atk._massConfusedTurn===G.turn)atk._tacticalNegated=true;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._tacticalHalved=false;def._tacticalMult=1;def._curseHalveStat=null; if(def._massConfusedTurn===G.turn)def._tacticalNegated=true;}
     const atkArmies=atk.armies||[];
@@ -8280,13 +8301,13 @@ const BATTLE_ARMY_SPELLS={
       const school=pick.school;
       const spellLvl=effStat(caster,school);
       if(spellLvl<1) return;
-      const castChance=Math.min(95,20+spellLvl*10+(hasDisc(caster.player,'sd27')?10:0));
+      const castChance=Math.min(95,20+spellLvl*10+(hasDisc(caster.player,'sd27')?5:0));
       const castRoll=d100();
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
       trySkillGain(caster, school, SKILLGAIN_STD, narr); // magic school gain on a successful battle cast
       if(spellName==='Fireball'){
-        if(targets.length>0){const d=targets.reduce((b,x)=>unitBaseStrength(x)>unitBaseStrength(b)?x:b);const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;narr.push(`  🔥 Fireball halves the enemy's strongest unit, ${d.unitName||d.type} (−${cut}).`);}
+        if(targets.length>0){const _ember=(caster&&(caster.items||[]).some(it=>it&&it.emberTwo));const _fbHits=targets.slice().sort((a,b)=>unitBaseStrength(b)-unitBaseStrength(a)).slice(0,_ember?2:1);_fbHits.forEach(d=>{const cut=Math.max(1,Math.round(unitBaseStrength(d)*0.5));d._tempStrReduction=(d._tempStrReduction||0)+cut;});narr.push(`  🔥 Fireball halves the enemy's ${_fbHits.length>1?'two strongest units':'strongest unit'}, ${_fbHits.map(d=>d.unitName||d.type).join(' and ')}.`);}
       } else if(spellName==='Telekinetic Storm'){
         if(enemyCmdr){ if(effStat(enemyCmdr,'tactical')>0&&!isPvPSea){ enemyCmdr._tacticalHalved=true; enemyCmdr._tacticalMult=0.5; narr.push(`  🌀 Telekinetic Storm scatters ${enemyCmdr.name}'s formations — their Tactical command is cut to half effectiveness this battle.`); } else { enemyCmdr._tacticalHalved=true; narr.push(`  🌀 Telekinetic Storm rages, but ${enemyCmdr.name} has no tactical command to disrupt here.`); } }
       } else if(spellName==='Psychic Blast'){
@@ -9438,15 +9459,20 @@ const BATTLE_ARMY_SPELLS={
             const thresh=100/totalF;
             const _spotted=[];
             toProv.features.forEach((f,idx)=>{
-              if(!featDiscovered(f,c.player)&&!f._hidden&&(toProv.explored>=(thresh*(idx+1)))){
+              if(!featDiscovered(f,c.player)&&!(f._hidden&&f._hiddenBy!==c.player)&&(toProv.explored>=(thresh*(idx+1)))){
                 discoverFeat(f,c.player); TM(c).featuresFound+=1; // TITLE MERIT: Loremaster
                 _spotted.push(f);
               }
             });
             // EXPLORER L6 — Pathfinder: on entry, automatically spot ONE random not-yet-found lair (was: all of them).
             if(perkTier(c,'explorer')>0){
-              const _hiddenPool=toProv.features.filter(f=>!featDiscovered(f,c.player)&&!f._hidden);
+              const _hiddenPool=toProv.features.filter(f=>!featDiscovered(f,c.player)&&!(f._hidden&&f._hiddenBy!==c.player));
               if(_hiddenPool.length>0){ const _pf=_hiddenPool[Math.floor(Math.random()*_hiddenPool.length)]; discoverFeat(_pf,c.player); TM(c).featuresFound+=1; _spotted.push(_pf); }
+            }
+            // Hide Lairs: a rival's illusion conceals lairs here that this explorer has not already found —
+            // they sense the interference but cannot discover what lies hidden.
+            if(toProv.features.some(f=>f._hidden&&f._hiddenBy!==c.player&&!featDiscovered(f,c.player))){
+              _discoveryLines.push([`🌫 Something clouds ${c.name}'s search of ${toProv.name} — a veiling illusion conceals lairs hidden here, blocking any discovery.`,{actor:c.player,targets:[c.player],provinceId:toProv.id}]);
             }
             // Item: report a spotted-on-entry lair in the SAME style as an Explore discovery, and note
             // when a lair the character stumbles into has already been cleared (no guardian remains).
@@ -9688,6 +9714,8 @@ const BATTLE_ARMY_SPELLS={
             }
             const combinedAtk={...c,armies:[...(c.armies||[]),...pvpReinforcements.flatMap(a=>a.armies||[])]};
             const combinedDef={...defChar,armies:[...(defChar.armies||[]),...defReinforcements.flatMap(d=>d.armies||[]),..._rallied]};
+            const _vDefs=[defChar,...defReinforcements].filter(Boolean);
+            if(isVeiled(c) || (_vDefs.length>0 && _vDefs.every(d=>isVeiled(d)))){ break; } // ILLUSORY L9 VEIL: a veiled attacker slips in unseen; a wholly-veiled defence cannot be found — no battle, no contest flagged (it triggers when the veil parts, via the re-trigger scan).
             if(_fmSlip && Math.random()<0.5){ toProv._battleUnresolved=true; log('move',`⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true}); break; } // MARCH L7 slip
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
             creditBattle(c,defChar,battle,combinedAtk.armies,combinedDef.armies,toProv);
@@ -9976,11 +10004,14 @@ const BATTLE_ARMY_SPELLS={
         if(totalFeatures>0){
           const threshold=100/totalFeatures; // % per feature
           prov.features.forEach((f,idx)=>{
-            if(!featDiscovered(f,c.player)&&prov.explored>=(threshold*(idx+1))){
+            if(!featDiscovered(f,c.player)&&!(f._hidden&&f._hiddenBy!==c.player)&&prov.explored>=(threshold*(idx+1))){
               discoverFeat(f,c.player);c.merits=(c.merits||0)+1; TM(c).featuresFound+=1; // TITLE MERIT: Loremaster
               newlyDiscovered.push(f);
             }
           });
+        }
+        if((prov.features||[]).some(f=>f._hidden&&f._hiddenBy!==c.player&&!featDiscovered(f,c.player))){
+          log('explore',`🌫 Something clouds ${c.name}'s exploration of ${prov.name} — a veiling illusion conceals lairs hidden here, and none can be discovered while it holds.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         if(newlyDiscovered.length>0){
           const _art=(n)=>{ if(!n) return 'a creature'; if(/s$/.test(n)) return n; return (/^[aeiou]/i.test(n)?'an ':'a ')+n; };
@@ -10659,9 +10690,9 @@ const BATTLE_ARMY_SPELLS={
         // sd28 Medical Arts: better healing on rest
         // Divine alignment: all heroes heal 3x as much (divine blessing)
         const isDivineKingdom=G.players[c.player]?.alignment==='Divine';
-        const healRange=hasDisc(c.player,'sd28')?[3,7]:[2,5];
-        const baseHeal=rng(healRange[0],healRange[1]);
-        let heal=isDivineKingdom?baseHeal*3:baseHeal;
+        const _medArts=hasDisc(c.player,'sd28'); // Medical Arts: a single Rest fully restores HP
+        const baseHeal=rng(2,5);
+        let heal=_medArts?Math.max(0,(c.maxHp||20)-c.hp):(isDivineKingdom?baseHeal*3:baseHeal);
         if(charMinor(c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
         if((c.items||[]).some(it=>it.name==='Iron Heart Talisman')) heal+=Math.round((c.maxHp||20)*0.10); // Iron Heart Talisman: +10% of max HP recovered
         c.hp=Math.min(c.maxHp||20,c.hp+heal);
@@ -11046,8 +11077,8 @@ const BATTLE_ARMY_SPELLS={
           c._masterySpellUsed[spellName]=G.turn;
         }
 
-        // Cast chance: 20% + 10% per level; Arcane Codex discovery +10%
-        const arcaneBonus=hasDisc(c.player,'sd27')?10:0;
+        // Cast chance: 20% + 10% per level; Arcane Codex discovery +5%
+        const arcaneBonus=hasDisc(c.player,'sd27')?5:0;
         // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
         const necroAuto = school==='necromancy' && !c._necroAutoUsed && (c.items||[]).some(it=>it.effect&&it.effect.stat==='necroAuto');
         const l8Bonus=10*['white','psychic','illusory','elemental','necromancy'].filter(sc=>skillLevel(c,sc)>=8).length; // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
@@ -11068,6 +11099,10 @@ const BATTLE_ARMY_SPELLS={
         const extraId=parseInt(extra)||0;
         const targetProv=extraId>=0&&G.world.provinces[extraId]?G.world.provinces[extraId]:prov;
         const targetChar=G.characters.find(ch=>ch.alive&&ch.id===extraId);
+        // ILLUSORY L9 Veil: a veiled character (and the host they lead) cannot be reached by ANY hostile spell while the veil holds.
+        if(targetChar&&targetChar.player!==c.player&&isVeiled(targetChar)){
+          log('system',`${c.name}'s ${spellName} cannot reach ${targetChar.name} — they and their host are veiled from all hostile magic.`,{actor:c.player,targets:[c.player]});break;
+        }
         // Cloak of Many Faces: shields the wearer from hostile Psychic Blast / Curse.
         if(targetChar&&targetChar.player!==c.player&&isHiddenChar(targetChar)&&(spellName==='Psychic Blast'||spellName==='Curse')){
           log('system',`${c.name}'s ${spellName} cannot find ${targetChar.name} — they are cloaked from hostile magic.`,{actor:c.player,targets:[c.player]});break;
@@ -11379,10 +11414,10 @@ const BATTLE_ARMY_SPELLS={
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Hide Lairs must target a province you are in or adjacent to.`,{actor:c.player,targets:[c.player]});break;}
-          const disc=(targetProv.features||[]).filter(f=>featDiscovered(f,c.player)&&!f._hidden);
-          if(disc.length===0){log('system',`${c.name}: no discovered lair to hide in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});break;}
-          disc.forEach(f=>{f._hidden=true; f._hiddenBy=c.player;});
-          log('explore',`✨ ${c.name} veils ${disc.length>1?disc.length+' lairs':'the '+(disc[0].name||'lair')} in ${targetProv.name} from the eyes of explorers.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
+          const toHide=(targetProv.features||[]).filter(f=>!f._hidden);
+          if(toHide.length===0){log('system',`${c.name}: there are no lairs left to hide in ${targetProv.name}.`,{actor:c.player,targets:[c.player]});break;}
+          toHide.forEach(f=>{f._hidden=true; f._hiddenBy=c.player;});
+          log('explore',`✨ ${c.name} veils ${targetProv.name} in confounding illusion — every lair within (${toHide.length}) vanishes from all other explorers' sight, and none can be freshly discovered here until the glamour fades.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id});
         }
 
         // ── ELEMENTAL ──
@@ -11541,8 +11576,8 @@ const BATTLE_ARMY_SPELLS={
           resolveUnitGainInProvince(c, prov, ph);
         }
         else if(fn==='illusory_veil'){
-          c._veiledTurn=G.turn;
-          log('explore',`✨ ${c.name} draws a Veil of illusion over their host — they vanish from all enemy sight until the end of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          c._veilTurn=G.turn; c._veilCastPhase=ph; // ILLUSORY L9 Veil: active THIS phase and the next (two phases)
+          log('explore',`✨ ${c.name} draws a Veil of illusion over their host — for this phase and the next, they and the armies they lead vanish from all enemy sight, cannot be touched by hostile magic, and cannot be brought to battle. The illusion parts as the phase after next begins.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         // ELEMENTAL
         else if(fn==='elemental_chainlightning'){
@@ -11581,7 +11616,7 @@ const BATTLE_ARMY_SPELLS={
           if(graves.length===0){log('explore',`${c.name}'s call for Wraiths finds no battlefield dead in ${prov.name} to answer.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
           let _wbi=0,_wbs=-1; prov.battleGraves.forEach((gr,i)=>{ const st=unitBaseStrength({type:gr.type,quality:gr.quality||'Average'}); if(st>_wbs){_wbs=st;_wbi=i;} }); // raise the STRONGEST fallen unit
           const g=prov.battleGraves.splice(_wbi,1)[0];
-          const wraith={type:g.type,quality:'Elite',race:'Undead',_isSkeletal:true,unitName:`Wraiths (${armyUnitName(g.type)})`};
+          const wraith={type:g.type,quality:'Elite',race:'Undead',_isSkeletal:true,_isWraith:true,unitName:`Wraiths (${armyUnitName(g.type)})`};
           c.armies=(c.armies||[]);c.armies.push(wraith);
           log('explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn; ${prov.battleGraves.length} grave${prov.battleGraves.length!==1?'s':''} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           resolveUnitGainInProvince(c, prov, ph);
@@ -12186,6 +12221,9 @@ const BATTLE_ARMY_SPELLS={
     (G.world.provinces||[]).forEach(prov=>{
       _combatSkillProv=null; // item 3: reset before each province; combatVs* re-sets it to this prov
       if(!prov||!prov._battleUnresolved) return;
+      // ILLUSORY L9 VEIL: while any armed force here is veiled, the contest is SUSPENDED — keep the flag
+      // and do not resolve until the veil parts (battles trigger when the veil ends).
+      if((G.characters||[]).some(ch=>(ch.alive||ch._leaderlessHost)&&ch.location===prov.id&&(ch.armies||[]).length>0&&isVeiled(ch))) return;
       prov._battleUnresolved=false; // clear — a fresh stall this phase will set it again
       // `ch.alive||ch._leaderlessHost` — a commander killed while pinned here keeps his host for
       // the duration of the battle (item 7). Filtering on `alive` alone made that host invisible,
@@ -13354,6 +13392,16 @@ const BATTLE_ARMY_SPELLS={
     G._phaseSkillSnapshot={};
     (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; delete c._foughtStalledBattlePhase; });
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
+    // ILLUSORY L9 VEIL — post-veil re-trigger: once a veil parts, a fight that was skipped while the
+    // force was hidden must be joined. Flag any province where two enemy players' armed, UNVEILED forces
+    // now stand together and it is not already contested; resolveStalledBattles (next) resolves it.
+    (G.world.provinces||[]).forEach(pv=>{
+      if(!pv||pv._battleUnresolved) return;
+      const _vf=(G.characters||[]).filter(ch=>ch.alive&&ch.location===pv.id&&(ch.armies||[]).length>0&&ch.player!=null&&!isVeiled(ch));
+      const _vpl=[...new Set(_vf.map(ch=>ch.player))];
+      let _vep=false; for(let i=0;i<_vpl.length&&!_vep;i++) for(let j=i+1;j<_vpl.length;j++) if(areEnemies(_vpl[i],_vpl[j])){ _vep=true; break; }
+      if(_vep) pv._battleUnresolved=true;
+    });
     resolveStalledBattles(ph);
     _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
     _combatSkillProv=null; // item 3: stalled battles done — no series context until the next fight
@@ -13579,7 +13627,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const heroes=playerChars.filter(c=>!c.isKing);
         // sd17 Granaries: hero wages reduced by 1g each (minimum 1g)
         const granariesDisc=hasDisc(p.id,'sd17');
-        const heroWages=heroes.reduce((s,h)=>s+Math.max(1,(h.pay||0)-(granariesDisc?1:0)),0);
+        const _inspiring=hasDisc(p.id,'sd38'); // Inspiring Leadership: hero wages halved
+        const heroWages=heroes.reduce((s,h)=>{ let w=Math.max(1,(h.pay||0)-(granariesDisc?1:0)); if(_inspiring) w=Math.floor(w*0.5); return s+w; },0);
 
         const totalWages=armyWages+heroWages;
 
@@ -13988,7 +14037,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // (e.g. a Telekinetic Storm cast with no ensuing battle) so units fully recover between turns.
     (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
     // Hidden features persist until they fade (10%/turn).
-    (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.10){ delete f._hidden; delete f._hiddenBy; } });
+    (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.20){ delete f._hidden; delete f._hiddenBy; } });
     if(p._phantomArmies) delete p._phantomArmies;
     if(p._featuresHidden) delete p._featuresHidden;
     if(p._earthquakeTax){delete p._earthquakeTax;}
@@ -14068,6 +14117,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0); const parts=[['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].map(([sk,lab])=>{ let best=null,bl=-1,bt=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } }); return (best&&bl>0)?`${lab}: ${best.name} (${pnm(best.player)}, L${bl})`:`${lab}: —`; }); log('system',`[The Archmage] Foremost mage of each school \u2014 ${parts.join('; ')}.`,{actor:pi,targets:[pi]}); } }
     // THE HIEROPHANT — the largest skeletal army
     { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${best.name} of ${pnm(best.player)} in ${prn(best.location)} \u2014 ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
+    // THE DEATHPRIEST — Grave-sight: every province whose battlefield graves hold Crack or Elite dead.
+    { const pi=holder('necro'); if(pi!=null){ const gp=[]; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const n=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')).length; if(n>0) gp.push(`${prn(pv.id)} (${n})`); }); log('system', gp.length?`[The Deathpriest] Grave-sight \u2014 battlefield graves holding crack or elite dead: ${gp.join(', ')}.`:`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
   })();
 
   // 7d. Divine kingdom resurrection — a fallen hero spends one full turn in death, then returns.
@@ -14520,6 +14571,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.27-0736</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.28-0827</div>
 </body>
 </html>

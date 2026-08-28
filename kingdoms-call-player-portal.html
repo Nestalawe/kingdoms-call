@@ -2137,7 +2137,7 @@ const MASTERY_EFFECTS={
   psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
   illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
   elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
-  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise an elite undead unit from the province's battlefield dead.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
+  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
 };
 function renderMastery(report){
   const card=document.getElementById('mastery-card');
@@ -5652,6 +5652,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.27-0736</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.28-0827</div>
 </body>
 </html>
