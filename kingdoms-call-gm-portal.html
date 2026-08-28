@@ -620,7 +620,7 @@ const MASTERY_UNLOCKS={
   tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
-  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: unlock a unique, kingdom-only invention.'},
+  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique kingdom-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
@@ -5049,7 +5049,7 @@ function buildTurnReport(gameState, playerIndex){
     if(hasDiscR('sd11')&&pv.tax>=3){ t+=1; _sdAgri+=1; }          // Advanced Agriculture
     if(hasDiscR('sd15')&&pv.terrain==='mountain'){ t+=2; _sdMining+=2; }            // Mining Techniques
     if(hasDiscR('sd18')&&(pv.terrain==='plain'||pv.terrain==='desert')){ t+=1; _sdAqueduct+=1; } // Aqueducts
-    if(hasDiscR('gd')){ t+=1; _sdGrand+=1; }                      // SAGE L9 Grand Design (the Wonder)
+    if(hasDiscR('gd')&&player.alignment==='Good'&&(pv.garrisonArmies||[]).length>0){ t+=2; _sdGrand+=2; } // GRAND DESIGN — Good: +2 tax per garrisoned province
     return s+t;
   },0);
   const _pChars=(gameState.characters||[]).filter(c=>c.player===playerIndex&&c.alive);
@@ -5136,7 +5136,7 @@ function buildTurnReport(gameState, playerIndex){
   });
 
   const _druidHalfWageR=new Set();
-  playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0)(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 (report mirror)
+  playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0||(hasDiscR('gd')&&player.alignment==='Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 + GRAND DESIGN Druidic (report mirror)
   const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); return s+w; },0);
   const _inspiringR=hasDiscR('sd38'); // Inspiring Leadership (report mirror)
   const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ let w=(h.pay||0); if(_inspiringR) w=Math.floor(w*0.5); return s+w; },0);
@@ -6093,6 +6093,7 @@ function seaPenalty(armyType, terrain){
     // ── DWARVEN BULWARK (this session, item 3) ── Dwarven armies of a Dwarven kingdom defend at ×1.5
     // in any battle (per-unit; applies only on the defending side).
     if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false) str=Math.round(str*1.5);
+    if(heroChar&&playerAlignment==='Pagan'&&hasDisc(heroChar.player,'gd')&&ctx&&ctx.isAttacker===false&&(terrain==='forest'||terrain==='jungle'||terrain==='mountain')) str=Math.round(str*1.25); // GRAND DESIGN — Pagan (Standing Stones)
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
     if(army._tempStrReduction){ const floorStr=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr,str-army._tempStrReduction); } // battle-only; cleared at battle end. Floored so pre-battle softening never zeroes a unit before the melee.
     if(army._turnStrReduction){ const floorStr2=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr2,str-army._turnStrReduction); } // Telekinetic Storm: persists ALL turn (cleared at turn end only)
@@ -6409,6 +6410,19 @@ const BATTLE_ARMY_SPELLS={
     const _take=destroyed*BLOOD_HARVEST_PER_UNIT;
     _pl.gold=(_pl.gold||0)+_take;
     narrative.push(`\u{1FA78} Blood Harvest — the old gods claim their due from ${destroyed} fallen enemy unit${destroyed!==1?'s':''}: +${_take}g in offerings.`);
+  }
+  // GRAND DESIGN — Evil (Iron Throne of Skulls): enemy units that fall in a battle you WIN have a 20%
+  // chance to rise as your skeletons. Copies are pushed into the winner's WORKING array before its
+  // survivor-filter, so they carry through to the surviving force. Already-skeletal dead are left be.
+  function ironThroneRaise(winnerChar, deadUnits, narrative){
+    if(!winnerChar||winnerChar.player==null||winnerChar.id==null||!Array.isArray(deadUnits)) return;
+    const _pl=G.players[winnerChar.player];
+    if(!_pl||_pl.alignment!=='Evil'||!((_pl.discoveries||[]).some(d=>d&&d.id==='gd'))) return;
+    // Combat runs on shallow COPIES whose sync-back keeps only armies already on the real character, so a
+    // freshly-raised skeleton pushed to the copy is dropped. Queue by the winner's real id; flush at turn end.
+    let _r=0;
+    deadUnits.forEach(u=>{ if(u&&!u._isSkeletal&&Math.random()<0.20){ G._pendingRises=G._pendingRises||[]; G._pendingRises.push({charId:winnerChar.id, unit:{type:u.type,quality:u.quality,race:'Undead',_isSkeletal:true,unitName:`${u.unitName||armyUnitName(u.type)} (Skeletal)`}}); _r++; } });
+    if(_r>0&&narrative) narrative.push(`\u{1F480} Iron Throne of Skulls — ${_r} of the enemy's fallen claw their way up to serve as your skeletons.`);
   }
 
   // ── Item 5: BATTLE-REPORT AUDIENCE ─────────────────────────────────────────
@@ -7130,6 +7144,7 @@ const BATTLE_ARMY_SPELLS={
       const _defFallen=defenders.filter(a=>a._died);
       if(_defFallen.length>0) recordBattleGraves(prov, _defFallen);
       bloodHarvest(c, _defFallen.length, narrative);
+      ironThroneRaise(c, _defFallen, narrative); // GRAND DESIGN — Evil
       const _defLeft=defenders.filter(a=>!a._died&&!a._disbanded);
       // (No "all other defenders hold their ground" line here: the CALLER runs erodeGuardSurvivors
       // immediately after this returns, and that decides each survivor's fate individually — rally,
@@ -8695,6 +8710,7 @@ const BATTLE_ARMY_SPELLS={
       recordBattleGraves(prov, atkArmies.filter(a=>a._died));
       recordBattleGraves(prov, defArmies.filter(a=>a._died));
       bloodHarvest(atk, defArmies.filter(a=>a._died).length, narrative);
+      ironThroneRaise(atk, defArmies.filter(a=>a._died), narrative); // GRAND DESIGN — Evil
       atk.armies=atkArmies.filter(a=>!a._died&&!a._disbanded);
       def.armies=defArmies.filter(a=>!a._died&&!a._disbanded);
       // Losing defender retreat
@@ -8773,6 +8789,7 @@ const BATTLE_ARMY_SPELLS={
       recordBattleGraves(prov, atkArmies.filter(a=>a._died));
       recordBattleGraves(prov, defArmies.filter(a=>a._died));
       bloodHarvest(def, atkArmies.filter(a=>a._died).length, narrative);
+      ironThroneRaise(def, atkArmies.filter(a=>a._died), narrative); // GRAND DESIGN — Evil
       atk.armies=atkArmies.filter(a=>!a._died&&!a._disbanded);
       def.armies=defArmies.filter(a=>!a._died&&!a._disbanded);
       // Losing attacker retreat
@@ -10318,7 +10335,7 @@ const BATTLE_ARMY_SPELLS={
           totalCost+=cost;
           for(let q=0;q<actualQty;q++){
             // sd01 Superior Forging: recruited armies start at Veteran
-          const startQuality=hasDisc(c.player,'sd01')?'Veteran':'Average';
+          const startQuality=(hasDisc(c.player,'sd01')||(hasDisc(c.player,'gd')&&G.players[c.player]&&G.players[c.player].alignment==='Druidic'&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType))))?'Veteran':'Average'; // + GRAND DESIGN Druidic: creatures/monsters muster as Veterans
           // Whale Cohorts are wild sea creatures — always the Primal race, whoever raises them.
           const recruitRace=(armyType==='Whale Cohort')?'Primal':(prov.race||'Human');
           _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
@@ -10533,7 +10550,8 @@ const BATTLE_ARMY_SPELLS={
         player.gold-=2;
         const hIdx=Math.floor(Math.random()*prov.battleGraves.length);
         const hGrave=prov.battleGraves.splice(hIdx,1)[0];
-        const hSkel={type:hGrave.type,quality:hGrave.quality,race:'Undead',_isSkeletal:true,
+        const _uTierH=(hasDisc(c.player,'gd')&&G.players[c.player]&&G.players[c.player].alignment==='Undead'); // GRAND DESIGN — Undead
+        const hSkel={type:hGrave.type,quality:(_uTierH?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[hGrave.quality]||hGrave.quality):hGrave.quality),race:'Undead',_isSkeletal:true,
           unitName:`${hGrave.unitName||armyUnitName(hGrave.type)} (Skeletal)`};
         c.armies=(c.armies||[]); c.armies.push(hSkel);
         log('hire',`💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (2g; upkeep 1g/turn; ${prov.battleGraves.length} grave${prov.battleGraves.length!==1?'s':''} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -11069,11 +11087,13 @@ const BATTLE_ARMY_SPELLS={
           const _school=spellDef.school;
           const _lvl=effStat(c,_school);
           const _limit=(_lvl>=4?3:_lvl>=3?2:1)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
+          const _divCath=hasDisc(c.player,'gd')&&G.players[c.player]&&G.players[c.player].alignment==='Divine'; // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot
           const _castsSoFar=(G.turnOrders[c.id]||[]).slice(0,ph).filter(o=>{
             if(!o||o.action!=='cast_spell') return false;
+            if(o.target==='Bless'&&_divCath) return false; // a Grand Cathedral's Bless never consumes a slot
             return SPELL_DEFS_P[o.target]?.school===_school;
           }).length;
-          if(_castsSoFar>=_limit&&_lvl>0){
+          if(_castsSoFar>=_limit&&_lvl>0&&!(spellName==='Bless'&&_divCath)){
             log('system',`${c.name}: ${SKILL_LABELS[_school]||_school} Lv${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,{actor:c.player,targets:[c.player]});break;
           }
         }
@@ -11521,7 +11541,8 @@ const BATTLE_ARMY_SPELLS={
           }
           const gIdx=Math.floor(Math.random()*prov.battleGraves.length);
           const grave=prov.battleGraves.splice(gIdx,1)[0];
-          const skel={ type:grave.type,quality:grave.quality,race:'Undead',_isSkeletal:true,
+          const _uTier=(hasDisc(c.player,'gd')&&G.players[c.player]&&G.players[c.player].alignment==='Undead'); // GRAND DESIGN — Undead: +1 tier when raised
+          const skel={ type:grave.type,quality:(_uTier?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[grave.quality]||grave.quality):grave.quality),race:'Undead',_isSkeletal:true,
             unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)` };
           c.armies=(c.armies||[]);c.armies.push(skel);
           log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn; ${prov.battleGraves.length} grave${prov.battleGraves.length!==1?'s':''} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -11899,9 +11920,12 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'sage')<9){log('system',`${c.name} lacks the Sage mastery (9) to realise a Grand Design.`,{actor:c.player,targets:[c.player]});break;}
         const player=G.players[c.player]; if(!player.discoveries) player.discoveries=[];
         if(player.discoveries.some(d=>d.id==='gd')){log('system',`${G.players[c.player]?.name} has already completed its Grand Design — there can be only one.`,{actor:c.player,targets:[c.player]});break;}
-        player.discoveries.push({id:'gd',name:'Grand Design — The Great Work',category:'Wonder',desc:'A unique kingdom-wide invention: every province the kingdom holds yields +1 tax, forever.',turnDiscovered:G.turn});
+        const _GD_DEFS={Divine:{name:'Grand Cathedral',desc:'Bless costs you no casting slot, and its ward lies permanently over your capital.'},Good:{name:'Free City Charter',desc:'Every province you hold that keeps a garrison yields +2 tax.'},Neutral:{name:'Grand Library',desc:'Your scholars make one guaranteed Sage discovery every turn.'},Pagan:{name:'Standing Stones',desc:'Your armies fight at +25% strength when defending forest, jungle or mountain provinces.'},Evil:{name:'Iron Throne of Skulls',desc:'Enemy units slain in battles you win may rise as your skeletons.'},Undead:{name:'Deathless Legion',desc:'Your skeletal units never disband for unpaid wages, and rise one experience tier stronger.'},Druidic:{name:'World-Tree Grove',desc:'Your monsters and creatures cost half their wages and muster as Veterans.'}};
+        const _gdA=(G.players[c.player]&&G.players[c.player].alignment)||'Neutral';
+        const _gdD=_GD_DEFS[_gdA]||{name:'The Great Work',desc:'A unique kingdom-wide Wonder.'};
+        player.discoveries.push({id:'gd',name:'Grand Design \u2014 '+_gdD.name,category:'Wonder',desc:_gdD.desc,turnDiscovered:G.turn});
         TM(c).discoveries+=1;
-        log('explore',`🏗 ${c.name} completes ${G.players[c.player]?.name}'s Grand Design — a Wonder of the age! Every province your kingdom holds will yield +1 tax from now on.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        log('explore',`🏗 ${c.name} completes ${G.players[c.player]?.name}'s Grand Design \u2014 the ${_gdD.name}, a Wonder of the age! ${_gdD.desc}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         trySkillGain(c,'sage',SKILLGAIN_STD);
         break;
       }
@@ -13403,6 +13427,8 @@ const BATTLE_ARMY_SPELLS={
   // heroes hired last turn, resurrected dwarves, charm-reverts, and any path the inline grants miss.
   grantMithrilToDwarves(G);
 
+  // GRAND DESIGN — Divine (Grand Cathedral): the capital is permanently warded (Plague/Earthquake/Flood/Part Sea turned aside).
+  (G.players||[]).forEach((pl,pi)=>{ if(pl&&pl.alignment==='Divine'&&hasDisc(pi,'gd')){ const _cap=G.world.provinces[homeProvinceIdFor(G,pi)]; if(_cap){ _cap._blessWardTurn=G.turn; _cap._blessWardBy=pi; _cap._blessWardPct=100; } } });
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // Item 6: reliable phase for skill-rises earned outside processOrder
     log('system',`— ${SEASONS[ph]} —`);
@@ -13607,8 +13633,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           if(hasDisc(pi,'sd15')&&pv.terrain==='mountain') t+=2;
           // sd18 Aqueducts: +1g from plain/desert provinces
           if(hasDisc(pi,'sd18')&&(pv.terrain==='plain'||pv.terrain==='desert')) t+=1;
-          // SAGE L9 Grand Design (the Wonder): every province the kingdom holds yields +1 tax.
-          if(hasDisc(pi,'gd')) t+=1;
+          // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a garrison.
+          if(hasDisc(pi,'gd')&&G.players[pi]&&G.players[pi].alignment==='Good'&&(pv.garrisonArmies||[]).length>0) t+=2;
           return s+t;
         },0);
         const pChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
@@ -13643,7 +13669,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // DRUID L6 — creatures/monsters led by a Druid-6 character pay half wages. Built as a Set of the
         // actual army objects (identity), since the wage sum flattens away the leader association.
         const _druidHalfWage=new Set();
-        playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0)(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); });
+        playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0||(hasDisc(p.id,'gd')&&G.players[p.id]&&G.players[p.id].alignment==='Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); }); // + GRAND DESIGN Druidic
         let armyWages=allKingdomArmies.reduce((s,a)=>{
           if(a._temporary) return s;
           if(a._isSkeletal) return s+1;
@@ -13686,6 +13712,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
             // Item 8: elementals and other temporary summons are never disbanded for non-payment —
             // they dissolve on their own at turn's end (and no longer draw a wage above).
             if(army._temporary)return;
+            if(army._isSkeletal&&hasDisc(p.id,'gd')&&G.players[p.id]&&G.players[p.id].alignment==='Undead')return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
             // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons) still free
             const cost=army._isSkeletal?1:(ARMY_COST[army.type]||2);
             if(cost===0)return; // other free armies never disband for non-payment
@@ -14086,6 +14113,22 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // 7c2. sd35 Order of the Golden Shield: the king gains DOUBLE the usual permanent HP for slaying
   // enemy commanders (applied in awardKillXP), so there is no per-turn effect to run here.
+
+  // GRAND DESIGN — Evil (Iron Throne of Skulls): apply this turn's queued skeleton-rises to the real winners.
+  (G._pendingRises||[]).forEach(r=>{ const _ch=(G.characters||[]).find(c=>c&&c.id===r.charId); if(_ch&&_ch.alive){ _ch.armies=_ch.armies||[]; _ch.armies.push(r.unit); } });
+  G._pendingRises=[];
+
+  // GRAND DESIGN — Neutral (Grand Library): one guaranteed Sage discovery each turn, reported.
+  (G.players||[]).forEach((pl,pi)=>{
+    if(!pl||pl.alignment!=='Neutral'||!hasDisc(pi,'gd')) return;
+    pl.discoveries=pl.discoveries||[];
+    const _known=new Set(pl.discoveries.map(d=>d.id));
+    const _avail=SAGE_DISCOVERIES_P.filter(d=>!_known.has(d.id));
+    if(_avail.length===0){ log('system',`\ud83d\udcda Grand Library: your scholars have already unlocked every known discovery.`,{actor:pi,targets:[pi]}); return; }
+    const _d=_avail[Math.floor(Math.random()*_avail.length)];
+    pl.discoveries.push({id:_d.id,name:_d.name,category:_d.category,desc:_d.desc,turnDiscovered:G.turn});
+    log('explore',`\ud83d\udcda Grand Library: this turn your scholars uncover \u2014 **${_d.name}** (${_d.category}). ${_d.desc}`,{actor:pi,targets:[pi]});
+  });
 
   // 7d. sd08 War Academy: promote one random army in each player's home province
   G.players.forEach((p,pi)=>{
@@ -14604,6 +14647,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.28-1344</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.29-0850</div>
 </body>
 </html>
