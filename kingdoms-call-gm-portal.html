@@ -627,7 +627,7 @@ const MASTERY_UNLOCKS={
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
-  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: conjure an army that fights one battle before fading.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: for two phases, you and your armies vanish from enemy sight and hostile magic.'},
+  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: for two phases, you and your armies vanish from enemy sight and hostile magic.'},
   elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
   necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
 };
@@ -4402,6 +4402,27 @@ function applyWraithTouch(friendly, enemy, narr){
   if(narr) narr.push(`  \u2620 Wraith's Touch withers ${v.unitName||v.type} \u2014 permanently reduced from ${was} to ${v.quality}.`);
 }
 
+// PHANTASMAL ARMIES / PHANTOM HOST — illusory duplicates live in ch._phantoms (a SEPARATE store, so they
+// never appear in rosters, order dropdowns, wages, give/disband/garrison — all of which read ch.armies).
+// They are injected as marked copies into the fighting force only for the duration of a battle, then removed.
+function injectPhantoms(ch){
+  if(!ch||!Array.isArray(ch._phantoms)||ch._phantoms.length===0||!Array.isArray(ch.armies)) return;
+  const byTag={}; ch.armies.forEach(a=>{ if(a&&a._phTag&&!a._phantom) byTag[a._phTag]=a; });
+  ch._phantoms=ch._phantoms.filter(ph=>ph&&byTag[ph._phantomOf]); // dissipate any whose original has left the force
+  ch._phantoms.forEach(ph=>{ const o=byTag[ph._phantomOf];
+    // Copy is drawn from the CURRENT original, so it mirrors its strength (promotions) and this battle's
+    // per-battle buffs (Tactical/War Drum tier-ups, skeletal status) — same strength AND effects.
+    const copy={type:o.type,quality:o.quality,race:o.race,unitName:o.unitName,_phantom:true,_phantomOf:ph._phantomOf};
+    if(o._isSkeletal)copy._isSkeletal=true; if(o._tacUp)copy._tacUp=true; if(o._drumUp)copy._drumUp=true;
+    ch.armies.push(copy);
+  });
+}
+function clearPhantomCopies(ch, lost){
+  if(!ch) return;
+  if(Array.isArray(ch.armies)) ch.armies=ch.armies.filter(a=>!(a&&a._phantom)); // remove the transient fighting copies
+  if(lost) ch._phantoms=[]; // a beaten force loses ALL its phantasmal armies
+}
+
 function hexDistP(a,b,cols){
   let dc=Math.abs(a.col-b.col);if(cols>0)dc=Math.min(dc,cols-dc);
   const dr=Math.abs(a.row-b.row);
@@ -5280,7 +5301,7 @@ const SPELL_DEFS_P={
     desc:'Action: a province you are in or adjacent to shows enemies a false, ever-shifting terrain on their maps. Any enemy who fights there is disoriented — each of their units fights as if caught in the worst terrain for its kind, always at least a 15% strength reduction. An enemy hero who enters dispels it at the end of that turn; otherwise 20% chance to fade each turn.',
     fn:'illusory_terrain'},
   'Phantasmal Armies':{school:'illusory',target:'character',encounter:false,phase:true,
-    desc:'Action: illusory soldiers march with a friendly army-leading hero (you or an adjacent ally) for the rest of the turn, adding +10% per caster level to the strength of the armies they directly lead in battle. Not cumulative.',
+    desc:'Action: phantasmal duplicates of 15% per caster level (min 1) of the humanoid armies led by you or an allied hero in your province join that force for the rest of the turn — they fight but never appear in the roster, and melt away if their originals fall or the force is beaten.',
     fn:'illusory_phantasmal'},
   'Hide Lairs':  {school:'illusory',target:'province',encounter:false,phase:true,
     desc:'Action: veil an entire province you are in or adjacent to — every lair within becomes invisible to all other players, who cannot discover any lair there (though any they already found remains theirs). 20% chance to fade each turn.',
@@ -5340,7 +5361,7 @@ const SPELL_DEFS_P={
     desc:'Action (Psychic 9): seize the mind of an enemy hero in your province — up to half the armies they lead defect to you.',
     fn:'psychic_dominate'},
   'Phantom Host':     {school:'illusory',target:'none',encounter:false,phase:true,reqLevel:7,
-    desc:'Action (Illusory 7): conjure a phantom army under your banner. It fights like real troops but dissolves at the end of the turn.',
+    desc:'Action (Illusory 7): phantasmal duplicates of 15% per caster level (min 1) of the monsters/creatures you lead join your force for the rest of the turn — they fight but never appear in your roster, and melt away if their originals fall or the force is beaten.',
     fn:'illusory_phantomhost'},
   'Veil':             {school:'illusory',target:'none',encounter:false,phase:true,reqLevel:9,
     desc:'Action (Illusory 9): for this phase and the next, you and the armies you lead vanish from enemy sight and cannot be targeted or affected by any hostile spell.',
@@ -6418,6 +6439,7 @@ const BATTLE_ARMY_SPELLS={
     const _cLA=!!(c&&c._lightningAdvanceTurn===G.turn); // MARCH L9 Lightning Advance: defenders fight with no terrain / magic / archery this battle
     const armies=c.armies||[];
     const defenders=prov.neutralDefenders||[];
+    injectPhantoms(c); // PHANTASMAL/PHANTOM HOST: spectral doubles join the fight (removed at battle end)
 
     // Setup — the deployment is described BEFORE the challenge is issued, so a commander slain
     // in the pre-battle duel is not narrated "standing firm" after they have already fallen.
@@ -7219,6 +7241,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
     [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
+    clearPhantomCopies(c, !won); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGain) trySkillGain(c,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
@@ -8136,6 +8159,7 @@ const BATTLE_ARMY_SPELLS={
     const _atkLA=!!(atk&&atk._lightningAdvanceTurn===G.turn); // MARCH L9 Lightning Advance
     if(_atkLA){ (def.armies||[]).forEach(a=>{ if(a) a._laNoTerrain=true; }); narrative.push(`⚡ ${atk.name}'s Lightning Advance catches ${def.name} completely unready — no terrain advantage, no pre-battle magic and no answering volley.`); }
     applyWraithTouch(atk.armies||[], def.armies||[], narrative); applyWraithTouch(def.armies||[], atk.armies||[], narrative); // Wraith's Touch
+    injectPhantoms(atk); injectPhantoms(def); // PHANTASMAL/PHANTOM HOST: spectral doubles join the fight (removed at battle end)
     // Battle-scoped psychic negations start clear each battle (set by pre-battle magic below).
     if(atk){atk._druidNegated=false;atk._tacticalNegated=false;atk._tacticalHalved=false;atk._tacticalMult=1;atk._curseHalveStat=null; if(atk._massConfusedTurn===G.turn)atk._tacticalNegated=true;} if(def){def._druidNegated=false;def._tacticalNegated=false;def._tacticalHalved=false;def._tacticalMult=1;def._curseHalveStat=null; if(def._massConfusedTurn===G.turn)def._tacticalNegated=true;}
     const atkArmies=atk.armies||[];
@@ -8801,6 +8825,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
     [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
+    clearPhantomCopies(atk, !won); clearPhantomCopies(def, won); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
     // ORC — Run Them Down: a warg-heavy victor takes up the chase without being told to.
     (function(){
       const winnerArmed=won?atkArmies:defArmies;
@@ -11405,10 +11430,13 @@ const BATTLE_ARMY_SPELLS={
           // recruit armies in a later phase this turn (item 12).
           const t=(targetChar&&targetChar.player===c.player)?targetChar:c;
           if(t.id!==c.id && t.location!==c.location){log('system',`${c.name}: Phantasmal Armies must target yourself or an allied hero in your province.`,{actor:c.player,targets:[c.player]});break;}
-          const bonus=0.10*spellLevel;
-          t._phantasmalBonus=Math.max(t._phantasmalBonus||0, bonus); // not cumulative — take the strongest
-          const _leadsNow=(t.armies||[]).length>0;
-          log('explore',`✨ ${c.name} conjures phantom legions to march with ${t===c?'their own banner':t.name} — ${_leadsNow?'the armies they lead':'any armies they command'} fight at +${Math.round(bonus*100)}% strength in the next battle this turn.${_leadsNow?'':' (No armies with them yet — the illusion waits.)'}`,{actor:c.player,targets:[c.player],provinceId:t.location});
+          const _realForce=(t.armies||[]).filter(a=>a&&!a._phantom);
+          const _elig=_realForce.filter(a=>!CREATURE_ARMIES.has(a.type)&&!MONSTER_ARMIES.has(a.type));
+          if(_elig.length===0){log('system',`${c.name}: ${t===c?'you have':t.name+' has'} no humanoid armies for Phantasmal Armies to duplicate.`,{actor:c.player,targets:[c.player]});break;}
+          const _n=Math.min(_elig.length, Math.max(1, Math.floor(0.15*Math.min(spellLevel,5)*_realForce.length)));
+          t._phantoms=t._phantoms||[];
+          [..._elig].sort(()=>Math.random()-0.5).slice(0,_n).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); t._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
+          log('explore',`✨ ${c.name} conjures phantasmal duplicates of ${_n} of ${t===c?'their':t.name+"'s"} humanoid ${_n===1?'army':'armies'} — spectral doubles that march and fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:t.location,public:true});
         }
         else if(fn==='illusory_hide_feature'){
           const casterProv=G.world.provinces[c.location];
@@ -11570,10 +11598,13 @@ const BATTLE_ARMY_SPELLS={
         }
         // ILLUSORY
         else if(fn==='illusory_phantomhost'){
-          const phantom={type:'Phantom Legion',quality:'Elite',race:'Illusion',unitName:'a Phantom Legion',_temporary:true,_expiresAfterPhase:-1,_illusory:true};
-          c.armies=(c.armies||[]);c.armies.push(phantom);
-          log('explore',`✨ ${c.name} conjures a Phantom Host — spectral legions form under your banner and fight as real troops until they dissolve at turn's end.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-          resolveUnitGainInProvince(c, prov, ph);
+          const _realForceH=(c.armies||[]).filter(a=>a&&!a._phantom);
+          const _eligH=_realForceH.filter(a=>CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type));
+          if(_eligH.length===0){log('system',`${c.name}: you lead no monsters or creatures for Phantom Host to duplicate.`,{actor:c.player,targets:[c.player]});break;}
+          const _nH=Math.min(_eligH.length, Math.max(1, Math.floor(0.15*Math.min(spellLevel,5)*_realForceH.length)));
+          c._phantoms=c._phantoms||[];
+          [..._eligH].sort(()=>Math.random()-0.5).slice(0,_nH).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); c._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
+          log('explore',`✨ ${c.name} conjures a Phantom Host — spectral doubles of ${_nH} of their ${_nH===1?'beast':'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         }
         else if(fn==='illusory_veil'){
           c._veilTurn=G.turn; c._veilCastPhase=ph; // ILLUSORY L9 Veil: active THIS phase and the next (two phases)
@@ -12115,7 +12146,7 @@ const BATTLE_ARMY_SPELLS={
     // LED by a present character (→ that character's Chronicle), the owner's unled GARRISON
     // (→ Kingdom Events), and neutral/leaderless defenders (no player to notify).
     const entries=[];
-    (G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id).forEach(ch=>{
+    (G.characters||[]).filter(ch=>ch.alive&&ch.location===prov.id&&!isVeiled(ch)).forEach(ch=>{ // ILLUSORY L9 Veil: a veiled commander's host is spared the plague
       (ch.armies||[]).forEach(a=>entries.push({a, owner:ch.player, charId:(ch.player!=null?ch.id:null), garrison:false}));
     });
     (prov.garrisonArmies||[]).forEach(a=>entries.push({a, owner:prov.owner, charId:null, garrison:true}));
@@ -13390,6 +13421,7 @@ const BATTLE_ARMY_SPELLS={
     // processed later in the same phase.
     enteredThisPhase={}; // provinces entered during THIS phase only
     G._phaseSkillSnapshot={};
+    (G.characters||[]).forEach(ch=>{ if(ch&&Array.isArray(ch.armies)&&ch.armies.some(a=>a&&a._phantom)) ch.armies=ch.armies.filter(a=>!(a&&a._phantom)); }); // PHANTOM safety net: strip any stray fighting-copies
     (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; delete c._foughtStalledBattlePhase; });
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     // ILLUSORY L9 VEIL — post-veil re-trigger: once a veil parts, a fight that was skipped while the
@@ -14020,6 +14052,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     delete c._druidNegated;
     delete c._tacticalNegated; delete c._tacticalHalved; delete c._tacticalMult;
     delete c._phantasmalBonus;
+    if(c._phantoms&&c._phantoms.length) c._phantoms=[]; // phantasmal armies fade as the turn ends
     delete c._curseHalveStat;
     delete c._necroAutoUsed;
     // Units fully recover between turns — clear any lingering battle-scoped strength loss
@@ -14571,6 +14604,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.28-0827</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.28-1344</div>
 </body>
 </html>
