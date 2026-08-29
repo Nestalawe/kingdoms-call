@@ -5837,6 +5837,9 @@ async function runTurn(){
       const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
       const _payAfter=real.pay||0;
+      // A March/Naval rise increases pace immediately: recompute this character's move pool so the
+      // extra reach is available for the rest of THIS turn (preserving points already spent).
+      if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
       const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience.`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle.
@@ -9733,9 +9736,15 @@ const BATTLE_ARMY_SPELLS={
             // Defender unify (defenders in same province always combine)
             const defReinforcements=G.characters.filter(d=>d.alive&&d.id!==defChar.id&&d.player===toProv.owner&&d.location===toProv.id&&(d.armies||[]).length>0);
             const defNavLvl=effStat(defChar,'naval');
+            // Item (reorder): the "…moves into… a battle is initiated" line must be the FIRST line of the
+            // battle block — before the defender's reinforce/rally form-up. Those lines are therefore
+            // COLLECTED here (not logged inline) and spliced into battle.narrative right after the
+            // move-in line, once combatVsChar has produced it. (Previously they were log()'d immediately,
+            // so they printed ABOVE the move-in line.)
+            const _defFormupLines=[];
             // Naval skill gives defenders unify bonus for sea battles
             if(defReinforcements.length>0){
-              log('combat',`${defChar.name} is reinforced by ${defReinforcements.map(d=>d.name).join(', ')} in the defence of ${toProv.name}!`,{actor:defChar.player,targets:[defChar.player],provinceId:toProv.id,public:true});
+              _defFormupLines.push(`${defChar.name} is reinforced by ${defReinforcements.map(d=>d.name).join(', ')} in the defence of ${toProv.name}!`);
             }
             // ── Standing troops rally to the defence (item 8) ── A province's own units do not
             // stand idle while a friendly hero fights for it. Two sources join the defender's line:
@@ -9752,7 +9761,7 @@ const BATTLE_ARMY_SPELLS={
             const _rallied=[..._garrisonHere,..._leaderlessHosts.flatMap(dc=>dc.armies)];
             if(_rallied.length>0){
               const _bits=[]; if(_garrisonHere.length>0)_bits.push(`the garrison (${_garrisonHere.length})`); _leaderlessHosts.forEach(dc=>_bits.push(`${dc.name}'s leaderless host`));
-              log('combat',`🛡 The standing troops of ${toProv.name} rally to ${defChar.name}: ${_bits.join(', ')} join the defence.`,{actor:defChar.player,targets:[defChar.player],provinceId:toProv.id,public:true});
+              _defFormupLines.push(`🛡 The standing troops of ${toProv.name} rally to ${defChar.name}: ${_bits.join(', ')} join the defence.`);
             }
             const combinedAtk={...c,armies:[...(c.armies||[]),...pvpReinforcements.flatMap(a=>a.armies||[])]};
             const combinedDef={...defChar,armies:[...(defChar.armies||[]),...defReinforcements.flatMap(d=>d.armies||[]),..._rallied]};
@@ -9762,6 +9771,14 @@ const BATTLE_ARMY_SPELLS={
             const battle=combatVsChar(combinedAtk,combinedDef,toProv);
             creditBattle(c,defChar,battle,combinedAtk.armies,combinedDef.armies,toProv);
             const targets=[c.player,defChar.player];
+            // Reorder: place the collected reinforce/rally lines immediately AFTER the "…moves into… a
+            // battle is initiated." line so the move that triggers the fight reads first, then the defence
+            // forms up. Splice after that line if present (first-contact battle); otherwise (no move-in
+            // line, e.g. a suppressed/edge case) prepend so they still lead the block.
+            if(_defFormupLines.length && battle && Array.isArray(battle.narrative)){
+              let _mi=battle.narrative.findIndex(l=>typeof l==='string' && l.includes('a battle is initiated'));
+              battle.narrative.splice(_mi>=0?_mi+1:0, 0, ..._defFormupLines);
+            }
             emitBattle(battle, toProv, ph, targets, {actor:c.player}); // item 5
             // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
             // with _died on the shared army objects. Write those casualties back to the real
@@ -9857,6 +9874,23 @@ const BATTLE_ARMY_SPELLS={
               if(!_fellBackTo.characters.includes(c.id)) _fellBackTo.characters.push(c.id);
               c.location=_fellBackTo.id;
               if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
+            }
+            // ── Garrison joins the hero for the whole fight (Toby's call) ──
+            // If this battle left the province CONTESTED (a resume is pending) and the defending hero is
+            // still standing in it, the rallied garrison must keep fighting alongside him — not sit
+            // benched in toProv.garrisonArmies while the resume (which fights only the hero's own armies)
+            // ignores it. Fold the surviving garrison (and any leaderless-host survivors already absorbed
+            // into it above) into the hero's force, so they carry into every resume battle here as one
+            // host. Each folded unit REMEMBERS its home province (_garrisonOf): once the whole contest
+            // resolves, settleRalliedGarrisons() either RETURNS them to garrison the province (if the hero
+            // held it) or lets them stay with the hero (if he lost and retreated) — see that helper.
+            if(toProv._battleUnresolved && defChar.alive && defChar.location===toProv.id && (toProv.garrisonArmies||[]).length>0){
+              const _join=toProv.garrisonArmies;
+              _join.forEach(a=>{ delete a._fromGarrison; delete a._fromLeaderless; a._garrisonOf=toProv.id; });
+              defChar.armies=(defChar.armies||[]).concat(_join);
+              toProv.garrisonArmies=[];
+              if(typeof refreshMovePool==='function') refreshMovePool(defChar); // added units may change his pace
+              log('combat',`🛡 The standing troops of ${toProv.name} fall in with ${defChar.name} and fight on at his side as the battle continues.`,{actor:defChar.player,targets,provinceId:toProv.id,public:true});
             }
           } else {
             // ── Unled garrison (item 8) ── A battle is fought exactly as it would be against any
@@ -10351,6 +10385,9 @@ const BATTLE_ARMY_SPELLS={
             {actor:c.player,targets:[c.player],provinceId:prov.id});
           // Item 9: if the muster went to ANOTHER of the player's characters, notify them in their section.
           if(!_destGarrison && _destChar && _destChar.id!==c.id) notifyTarget(_destChar,`⚔ ${recruited.join(', ')} muster to ${_destChar.name}'s banner in ${prov.name}, raised by ${c.name}.`,ph,'hire');
+          // Newly-mustered units join the destination character's column — recompute their pace (a slow
+          // recruit can only reduce it), preserving points already spent. Garrison musters don't march.
+          if(!_destGarrison && _destChar) refreshMovePool(_destChar);
         } else {
           log('system',`${c.name}'s recruitment in ${prov.name} was entirely blocked: ${blocked.join('; ')}.`,{actor:c.player,targets:[c.player]});
         }
@@ -10812,19 +10849,10 @@ const BATTLE_ARMY_SPELLS={
         }
         if(removed.length===0){log('system',`${c.name}: could not find specified armies to transfer.`,{actor:c.player,targets:[c.player]});break;}
 
-        // Bug fix (partial transfer): the sea-move pool is built ONCE at turn start. A force that was
-        // MIXED then (a flyer riding alongside a land army) had its sea pool zeroed, because it was not
-        // all-flying. Once the land army is peeled off (into the garrison or to another hero) the
-        // REMAINING force may be all-flying and can cross sea (e.g. a flooded province) — but the stale
-        // zeroed pool wrongly reported "no sea movement points". Un-stick it here. This only ever LIFTS
-        // a zeroed pool up to the current land allowance (never refreshes a pool already spent at sea).
-        const _refreshSeaState=(ch)=>{
-          if(!ch) return;
-          seaCap[ch.id]=getSeaCapability(ch.armies||[], ch);
-          if((ch.armies||[]).length>0 && (ch.armies||[]).every(a=>AERIAL_TYPES.has(a.type)) && (seaMovePoints[ch.id]??0)<=0){
-            seaMovePoints[ch.id]=movePoints[ch.id]??0; seaMoveActive[ch.id]=true;
-          }
-        };
+        // (Move-pool recomputation after the transfer is handled by refreshMovePool below, which fully
+        // recomputes land + sea pools and sea capability from the remaining force — superseding the old
+        // partial sea-only un-stick. In particular a MIXED force that becomes all-flying after a land
+        // army is peeled off regains its sea reach, and a force that sheds a slow unit regains pace.)
 
         // Skeletal armies refuse to follow non-Undead commanders
         const recipIsUndead2=!recip2||(recip2.alignment==='Undead')||(recip2.player!==null&&G.players[recip2.player]?.alignment==='Undead');
@@ -10840,20 +10868,21 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           // Item 9: notify the receiving commander in their own section.
           notifyTarget(recip2,`⚔ ${recip2.name} takes command of ${removed.map(a=>a.unitName||a.type).join(', ')}, handed over by ${c.name} in ${prov.name}.`,ph,'hire');
-          _refreshSeaState(c); _refreshSeaState(recip2);
+          // Recompute BOTH move pools for giver and recipient: the giver may now be faster (a slow unit
+          // left) and the recipient may now be slower (a slow unit joined). refreshMovePool preserves
+          // points already spent this turn, so neither refunds nor double-charges moves.
+          refreshMovePool(c); refreshMovePool(recip2);
           break;
         }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(removed);
         log('hire',`${c.name} garrisons ${removed.map(a=>a.type).join(', ')} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        // If hero now has no armies, restore full move points (5)
+        // Recompute the move pool from the REMAINING force. Dropping a slow unit correctly frees up the
+        // faster pace for the rest of the turn; dropping ALL armies gives foot-passage (land 5 / sea 5),
+        // which is why a hero who hands off his whole army can still march — including onto the sea.
+        // Points already spent this turn are preserved.
+        refreshMovePool(c);
         if((c.armies||[]).length===0){
-          movePoints[c.id]=5;
-          seaCap[c.id]='all';
-          seaMovePoints[c.id]=5; // no fleet to command — flat 5, Naval skill does not apply
-          seaMoveActive[c.id]=true;
-          log('move',`${c.name} left all armies behind in ${prov.name} — land move points reset to 5, sea move points to 5.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        } else {
-          _refreshSeaState(c);
+          log('move',`${c.name} left all armies behind in ${prov.name} — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
@@ -10893,11 +10922,12 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} disbands ${army.unitName||army.type} (${army.quality}) — they become a mercenary band in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         });
 
-        // If hero now has no armies, restore move points
+        // Recompute the move pool from the remaining force — disbanding a slow unit frees up pace for
+        // the rest of the turn, and disbanding everything restores foot-passage (land 5 / sea 5).
+        // Points already spent this turn are preserved.
+        refreshMovePool(c);
         if((c.armies||[]).length===0){
-          movePoints[c.id]=5;seaCap[c.id]='all';
-          seaMovePoints[c.id]=5;seaMoveActive[c.id]=true; // no fleet — flat 5
-          log('move',`${c.name} has disbanded all armies — movement restored.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('move',`${c.name} has disbanded all armies — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         break;
       }
@@ -10949,26 +10979,10 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} picks up ${army.unitName?army.unitName+' ('+army.quality+' '+army.type+')':army.quality+' '+army.type} from the garrison in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         }
-        // Recalculate move points — picking up a slow army may reduce them
-        const navalLvlPick=effStat(c,'naval');
-        const landArmiesPick=(c.armies||[]).filter(a=>!SEA_TYPES.has(a.type));
-        const seaArmiesPick=(c.armies||[]).filter(a=>SEA_TYPES.has(a.type));
-        // Land pool: can only reduce (slowest land army limits it)
-        if(landArmiesPick.length>0){
-          const slowestLand=Math.min(...landArmiesPick.map(a=>ARMY_SPEED_R[a.type]||3));
-          if(movePoints[c.id]>slowestLand) movePoints[c.id]=slowestLand;
-        }
-        // Sea pool: recalculate from the SLOWEST sea army after its Naval bonus (can only reduce)
-        if(seaArmiesPick.length>0){
-          const newSeaPool=Math.min(...seaArmiesPick.map(a=>{
-            const base=ARMY_SPEED_R[a.type]||3;
-            return base+navalSpeedBonus(base,navalLvlPick);
-          }));
-          if(seaMovePoints[c.id]>newSeaPool) seaMovePoints[c.id]=newSeaPool;
-          seaMoveActive[c.id]=true;
-        }
-        const newSC=getSeaCapability(c.armies||[], c);
-        seaCap[c.id]=newSC;
+        // Recompute the move pool from the new force — picking up a slow army reduces pace. Uses the
+        // shared computation (so March/Naval/Swift bonuses apply consistently) and preserves points
+        // already spent this turn.
+        refreshMovePool(c);
         log('move',`${c.name} now leads ${(c.armies||[]).length} arm${(c.armies||[]).length!==1?'ies':'y'}. Land MPs: ${movePoints[c.id]}, Sea MPs: ${seaMovePoints[c.id]}.`,{actor:c.player,targets:[c.player]});
         break;
       }
@@ -12000,22 +12014,24 @@ const BATTLE_ARMY_SPELLS={
   //   Leading fleets/sea beasts: the SLOWEST sea unit's speed (the squadron sails at the pace of
   //   its worst ship, exactly as a land column marches at the pace of its slowest army), each
   //   unit first improved by the Naval bonus — the sea-going mirror of the March bonus.
-  const movePoints={};       // land move point pool
-  const seaMovePoints={};    // separate sea move point pool
+  const movePoints={};       // land move point pool (REMAINING this turn)
+  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)
   const seaMoveActive={};    // whether this character has sea move capability this turn
   const seaCap={};
-  function setMovePool(c){
+  const moveMax={};          // land pool MAX for the turn — lets refreshMovePool preserve points already spent
+  const seaMoveMax={};       // sea pool MAX for the turn
+  // Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
+  // Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
+  // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
+  function computeMovePoolMax(c){
     const armies=c.armies||[];
     const marchLevel=effStat(c,'march');
     const navalLevel=effStat(c,'naval');
     const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
-
+    let land, sea, seaActive;
     if(armies.length===0){
-      movePoints[c.id]=5;
-      seaMovePoints[c.id]=5; // a hero with no fleet takes passage — Naval skill buys nothing
-      seaMoveActive[c.id]=true;
+      land=5; sea=5; seaActive=true; // a hero with no fleet takes passage — Naval skill buys nothing
     } else {
-      // Land move pool: based on slowest land/flying army, boosted by March
       const landArmies=armies.filter(a=>!SEA_TYPES.has(a.type));
       if(landArmies.length>0){
         const landSpeeds=landArmies.map(a=>{
@@ -12023,38 +12039,47 @@ const BATTLE_ARMY_SPELLS={
           if(FLYING_TYPES.has(a.type)) return base; // flying not affected by March
           return base+(base<=2?MB_SLOW[Math.min(marchLevel,5)]:MB_FAST[Math.min(marchLevel,5)]);
         });
-        movePoints[c.id]=Math.min(...landSpeeds);
+        land=Math.min(...landSpeeds);
       } else {
-        // Only sea armies: land move points = 0 (can't traverse land directly)
-        movePoints[c.id]=0;
+        land=0; // only sea armies: can't traverse land directly
       }
-
-      // Sea move pool: the SLOWEST sea unit sets the pace, each unit first lifted by the Naval
-      // bonus (mirrors the land pool, which takes the slowest land army after the March bonus).
       const seaArmies=armies.filter(a=>SEA_TYPES.has(a.type));
       if(seaArmies.length>0){
-        const seaSpeeds=seaArmies.map(a=>{
-          const base=ARMY_SPEED_R[a.type]||3;
-          return base+navalSpeedBonus(base,navalLevel);
-        });
-        seaMovePoints[c.id]=Math.min(...seaSpeeds);
-        seaMoveActive[c.id]=true;
+        const seaSpeeds=seaArmies.map(a=>{ const base=ARMY_SPEED_R[a.type]||3; return base+navalSpeedBonus(base,navalLevel); });
+        sea=Math.min(...seaSpeeds); seaActive=true;
       } else if(armies.every(a=>AERIAL_TYPES.has(a.type))){
-        // All flying: use land pool for sea too (free sea entry for flying)
-        seaMovePoints[c.id]=movePoints[c.id];
-        seaMoveActive[c.id]=true;
+        sea=land; seaActive=true; // all flying: free sea entry
       } else {
-        seaMovePoints[c.id]=0;
-        seaMoveActive[c.id]=false;
+        sea=0; seaActive=false;
       }
     }
-    // ── LEVEL 6+ SKILL PERK ── Forced March (march) / Master Mariner (naval): extra movement past
-    // level 5 — +1 point at levels 6–7, +2 at levels 8–9 (only when a pool actually exists).
-    // March L6/L8 and Naval L6/L8 no longer grant movement points (repurposed to exploration/terrain/sea).
-    // The Swift / Seawolf minor titles keep their +1.
-    { if(charMinor(c,'swift') && (movePoints[c.id]||0)>0) movePoints[c.id]+=1;
-      if(charMinor(c,'seawolf') && (seaMovePoints[c.id]||0)>0) seaMovePoints[c.id]+=1; }
-    seaCap[c.id]=getSeaCapability(armies, c);
+    // Swift / Seawolf minor titles keep their +1 (only when a pool actually exists).
+    if(charMinor(c,'swift') && land>0) land+=1;
+    if(charMinor(c,'seawolf') && sea>0) sea+=1;
+    return {land, sea, seaActive, cap:getSeaCapability(armies, c)};
+  }
+  function setMovePool(c){
+    const m=computeMovePoolMax(c);
+    movePoints[c.id]=m.land; seaMovePoints[c.id]=m.sea;
+    seaMoveActive[c.id]=m.seaActive; seaCap[c.id]=m.cap;
+    moveMax[c.id]=m.land; seaMoveMax[c.id]=m.sea;
+  }
+  // Recompute the pool mid-turn after a composition change (transfer/give/garrison/disband) or a
+  // March/Naval skill gain, WITHOUT refunding or double-spending: points already spent this turn are
+  // preserved, so dropping a slow unit correctly frees up the extra reach for the rest of the turn,
+  // and picking up a slow unit correctly reduces it. (Fixes: army stuck at an old slow speed after a
+  // slow unit was transferred out; move rate not rising when March increased mid-turn.)
+  function refreshMovePool(c){
+    if(!c||c.id==null) return;
+    const oldLandMax=(moveMax[c.id]!=null?moveMax[c.id]:(movePoints[c.id]??0));
+    const oldSeaMax =(seaMoveMax[c.id]!=null?seaMoveMax[c.id]:(seaMovePoints[c.id]??0));
+    const landSpent=Math.max(0, oldLandMax-(movePoints[c.id]??0));
+    const seaSpent =Math.max(0, oldSeaMax -(seaMovePoints[c.id]??0));
+    const m=computeMovePoolMax(c);
+    movePoints[c.id]=Math.max(0, m.land-landSpent);
+    seaMovePoints[c.id]=Math.max(0, m.sea-seaSpent);
+    seaMoveActive[c.id]=m.seaActive; seaCap[c.id]=m.cap;
+    moveMax[c.id]=m.land; seaMoveMax[c.id]=m.sea;
   }
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(setMovePool);
 
@@ -12458,6 +12483,48 @@ const BATTLE_ARMY_SPELLS={
         const lp=G.players[lone.player]; if(lp&&!lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
         log('combat',`${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`,{charId:_ctxCharId,phase:ph,actor:lone.player,targets:[],provinceId:prov.id,public:true});
       }
+    });
+  }
+
+  // ── Settle rallied garrisons once a contest ends (Toby's call) ──
+  // Units folded into a defending hero during a contested defence carry a _garrisonOf marker naming
+  // their home province. Called after every stalled-battle resolution pass: for each such unit, once the
+  // home province is no longer contested, decide its fate by the FINAL result of the whole fight —
+  //   • the hero WON and still holds the province  → the troops RETURN to garrison it; or
+  //   • the hero lost / retreated / fell           → the troops have "joined the hero" and stay with him
+  //     (they retreated at his side), so we simply drop the marker.
+  // While the province is still contested (_battleUnresolved) the marker is left in place and the unit
+  // keeps fighting as part of the hero's host.
+  function settleRalliedGarrisons(){
+    const _returnedByProv={}; // provId -> count, for a clean grouped log
+    (G.characters||[]).forEach(c=>{
+      if(!c||!Array.isArray(c.armies)||c.armies.length===0) return;
+      const marked=c.armies.filter(a=>a&&a._garrisonOf!=null);
+      if(marked.length===0) return;
+      let changed=false;
+      marked.forEach(a=>{
+        const homeId=a._garrisonOf;
+        const home=G.world.provinces[homeId];
+        if(!home){ delete a._garrisonOf; changed=true; return; }
+        if(home._battleUnresolved) return; // still contested — fight on with the hero
+        if(c.alive && c.location===homeId && home.owner===c.player){
+          // WON and held: the troops fall back into garrison duty in the province they defended.
+          delete a._garrisonOf;
+          c.armies=c.armies.filter(x=>x!==a);
+          home.garrisonArmies=(home.garrisonArmies||[]).concat(a);
+          _returnedByProv[homeId]=(_returnedByProv[homeId]||0)+1;
+          changed=true;
+        } else {
+          // The hero left the province (retreated with them) or lost it — they stay in his host now.
+          delete a._garrisonOf; changed=true;
+        }
+      });
+      if(changed && typeof refreshMovePool==='function') refreshMovePool(c);
+    });
+    Object.keys(_returnedByProv).forEach(pid=>{
+      const prov=G.world.provinces[pid]; if(!prov) return;
+      const n=_returnedByProv[pid];
+      log('combat',`🛡 With ${prov.name} held, its standing troops (${n} unit${n!==1?'s':''}) resume their post as the garrison.`,{actor:prov.owner,targets:[prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true});
     });
   }
 
@@ -13461,6 +13528,7 @@ const BATTLE_ARMY_SPELLS={
       if(_vep) pv._battleUnresolved=true;
     });
     resolveStalledBattles(ph);
+    settleRalliedGarrisons(); // return rallied garrisons to their province if the contest is won, else keep them with the hero
     _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
     _combatSkillProv=null; // item 3: stalled battles done — no series context until the next fight
     spreadPlagues(ph);
@@ -14647,6 +14715,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.29-0850</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.30-0201</div>
 </body>
 </html>
