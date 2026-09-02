@@ -602,6 +602,60 @@ let currentReport = null;
 let diploChoices = {};
 // Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant). Submitted with orders.
 let reckoningCall = false;
+
+// ── Task 10: PLAYER-TO-PLAYER DISPATCHES (compose) ─────────────────────────
+// Pending dispatches for THIS turn: [{to:[recipientIdx…] | 'all', text}]. Submitted with orders; the GM
+// engine delivers them into each addressee's report. Recipients are the kingdoms you've encountered.
+let pendingDispatches = [];
+function _dispatchKnown(){ const r=currentReport||{}; return (r.diplomacy&&r.diplomacy.known)||[]; }
+function syncDispatchesFromDOM(){
+  const wrap=document.getElementById('dispatch-compose'); if(!wrap) return;
+  const rows=wrap.querySelectorAll('[data-dispatch-row]');
+  pendingDispatches=Array.from(rows).map(row=>{
+    const text=(row.querySelector('.dispatch-text')?.value||'');
+    const allBox=row.querySelector('.dispatch-all');
+    if(allBox&&allBox.checked) return {to:'all',text};
+    const to=Array.from(row.querySelectorAll('.dispatch-rcpt:checked')).map(cb=>parseInt(cb.value)).filter(n=>Number.isInteger(n));
+    return {to,text};
+  });
+}
+function addDispatch(){ syncDispatchesFromDOM(); pendingDispatches.push({to:[],text:''}); renderDispatchCompose(); }
+function removeDispatch(i){ syncDispatchesFromDOM(); pendingDispatches.splice(i,1); renderDispatchCompose(); }
+function _dispatchEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function renderDispatchCompose(){
+  const wrap=document.getElementById('dispatch-compose'); if(!wrap) return;
+  const known=_dispatchKnown();
+  let head=`<div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--parchment-dark)">
+      <span style="font-size:1rem">📨</span><span style="font-weight:600">Dispatches to other kingdoms</span></div>`;
+  if(!known.length){
+    wrap.innerHTML=head+`<div style="font-size:.78rem;color:var(--stone);padding:2px 2px 8px">You have not encountered another kingdom yet — once you have, you can send them dispatches here.</div>`;
+    return;
+  }
+  const rowsHtml=pendingDispatches.map((m,i)=>{
+    const isAll=(m.to==='all');
+    const chosen=new Set(Array.isArray(m.to)?m.to:[]);
+    const rcptBoxes=known.map(k=>`<label style="font-size:.72rem;display:inline-flex;align-items:center;gap:3px;margin-right:8px;white-space:nowrap">
+        <input type="checkbox" class="dispatch-rcpt" value="${k.index}" ${(!isAll&&chosen.has(k.index))?'checked':''} ${isAll?'disabled':''} onchange="syncDispatchesFromDOM()"> ${_dispatchEsc(k.name)}</label>`).join('');
+    return `<div data-dispatch-row style="border:1px solid var(--parchment-dark);border-radius:3px;padding:8px;margin-bottom:8px;background:#fdf5e0">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+        <label style="font-size:.72rem;font-weight:600;display:inline-flex;align-items:center;gap:3px;white-space:nowrap">
+          <input type="checkbox" class="dispatch-all" ${isAll?'checked':''} onchange="syncDispatchesFromDOM();renderDispatchCompose()"> All kingdoms</label>
+        <span style="font-size:.72rem;color:var(--stone)">${isAll?'(sending to every kingdom you\\u2019ve met)':'choose recipients:'}</span>
+        <button type="button" onclick="removeDispatch(${i})" title="Remove this dispatch" style="margin-left:auto;font-size:.7rem;padding:2px 8px;border:1px solid #b04a4a;background:transparent;color:#b04a4a;border-radius:2px;cursor:pointer">✕ remove</button>
+      </div>
+      ${isAll?'':`<div style="margin-bottom:5px;line-height:1.9">${rcptBoxes}</div>`}
+      <textarea class="dispatch-text" rows="2" maxlength="1000" placeholder="Write your message…" oninput="syncDispatchesFromDOM()" style="width:100%;font-family:'Crimson Text',Georgia,serif;font-size:.82rem;padding:6px;border:1px solid var(--stone);border-radius:2px;background:#fff;resize:vertical">${_dispatchEsc(m.text||'')}</textarea>
+    </div>`;
+  }).join('');
+  wrap.innerHTML=head+rowsHtml+`<button type="button" onclick="addDispatch()" style="font-family:Cinzel,serif;font-size:.72rem;padding:6px 12px;border:1px solid var(--gold);background:transparent;color:var(--ink);border-radius:2px;cursor:pointer">＋ Add dispatch</button>`;
+}
+// Read the composer into the submit payload: only well-formed, non-empty dispatches with recipients.
+function collectMessages(){
+  syncDispatchesFromDOM();
+  return pendingDispatches
+    .map(m=>({to:(m.to==='all'?'all':(Array.isArray(m.to)?m.to.filter(n=>Number.isInteger(n)):[])), text:(m.text||'').trim()}))
+    .filter(m=>m.text && (m.to==='all' || (Array.isArray(m.to)&&m.to.length>0)));
+}
 let currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing history)
 let viewingReport = null;
@@ -1207,6 +1261,8 @@ function buildChronicle(log, chars_for_log){
     const systemByPhase={0:[],1:[],2:[],3:[],4:[],99:[]};  // 99 = no-phase (wages/tax)
     const intelByPhase= {0:[],1:[],2:[],3:[],4:[],99:[]};
     const titleIntel=[]; // imperial-title perk lines ([The Throne], [The Sea Lord] …) — their own subsection
+    const dispatches=[]; // Task 10: player-to-player messages received/sent this turn — their own section
+    const escapeHtml=(s)=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     // The imperial titles whose per-turn perk is an intelligence line (emitted end-of-turn to the holder).
     const TITLE_INTEL_TAGS=['[The Throne]','[The Vaultkeeper]','[The Grand Marshal]','[The Sea Lord]',
       '[The Monster-Bane]','[The Loremaster]','[The Archmage]','[The Hierophant]','[The Deathpriest]'];
@@ -1226,15 +1282,22 @@ function buildChronicle(log, chars_for_log){
       const _txt=e.text||'';
       const isIntel=_txt.startsWith('[Intelligence]');
       const isTitleIntel=TITLE_INTEL_TAGS.some(t=>_txt.startsWith(t));
-      const hasChar=e.charId!=null&&(e.charId in charEntries);
+      // Route to a character's section if the entry names one of THIS viewer's characters — either as
+      // the primary charId, or via charIds (Task 9: a duel/battle names BOTH combatants, so each owner
+      // sees it under the character of theirs who was involved).
+      let _secCharId=(e.charId!=null&&(e.charId in charEntries))?e.charId
+        :(Array.isArray(e.charIds)?e.charIds.find(id=>id in charEntries):undefined);
+      const hasChar=_secCharId!=null&&_secCharId!==undefined;
 
-      if(isTitleIntel){
+      if(e.type==='message'){
+        dispatches.push(e); // Task 10: player-to-player dispatch — its own section, never scattered
+      } else if(isTitleIntel){
         titleIntel.push(e); // grouped into their own Intelligence subsection, not scattered by phase
       } else if(isIntel){
         intelByPhase[ph]=(intelByPhase[ph]||[]);
         intelByPhase[ph].push(e);
       } else if(hasChar){
-        charEntries[e.charId].phases[ph>=0&&ph<=4?ph:0].push(e);
+        charEntries[_secCharId].phases[ph>=0&&ph<=4?ph:0].push(e);
       } else {
         systemByPhase[ph]=(systemByPhase[ph]||[]);
         systemByPhase[ph].push(e);
@@ -1385,6 +1448,23 @@ function buildChronicle(log, chars_for_log){
     });
 
     // ══════════════════════════════════════════════════
+    // SECTION: Dispatches — player-to-player messages (Task 10). Shown prominently above Kingdom Events.
+    if(dispatches.length>0){
+      html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #6b8ec8;border-radius:3px;overflow:hidden">
+        <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
+          padding:7px 12px;background:#4a6ea5;display:flex;align-items:center;gap:8px">
+          <span style="font-size:1rem">📨</span>
+          <span style="font-weight:600">Dispatches</span>
+          <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)">&#9662;</button>
+        </div>
+        <div style="padding:6px 10px">`;
+      dispatches.forEach(e=>{
+        html+=`<div class="log-entry" style="padding:5px 4px;border-bottom:1px dotted var(--parchment-dark)">${escapeHtml(e.text||'')}</div>`;
+      });
+      html+=`</div></div>`;
+    }
+
+    // ══════════════════════════════════════════════════
     // SECTION 2: Kingdom Events — system events grouped by phase
     const hasSystemEvents=Object.values(systemByPhase).some(a=>a.length>0);
     if(hasSystemEvents){
@@ -1523,8 +1603,14 @@ async function loadPastReport(gameId, playerIndex, turn){
     if((e.targets||[]).includes(pi)) return true;
     if(e.actor===pi) return true;
     if(e.charId!=null&&ownCharIds.has(e.charId)) return true;
+    if(Array.isArray(e.charIds)&&e.charIds.some(id=>ownCharIds.has(id))) return true;
     return false;
-  }).map(e=>({type:e.type,text:e.text,charId:ownCharIds.has(e.charId)?e.charId:null,phase:e.phase??null}));
+  }).map(e=>{
+    // Route to one of THIS player's characters via charId, or via charIds (a duel/battle names both).
+    let cid=(e.charId!=null&&ownCharIds.has(e.charId))?e.charId
+      :(Array.isArray(e.charIds)?(e.charIds.find(id=>ownCharIds.has(id))??null):null);
+    return {type:e.type,text:e.text,charId:cid,phase:e.phase??null};
+  });
 
   if(entries.length>0){
     buildChronicle(entries, allChars.filter(c=>c.player===pi));
@@ -2401,7 +2487,7 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 // Spell hints shown below the order form
 const SPELL_HINTS={
   'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — his body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your kingdom. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
-  'Part Sea':'Target: a sea province you\u2019re in or next to. Becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cancels Flood.',
+  'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine kingdoms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
@@ -2784,6 +2870,11 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
       </div>
     </div>`;
   }).join('');
+
+  // Task 10: player-to-player dispatch composer at the foot of the orders form.
+  pendingDispatches = Array.isArray(rawSaved.messages) ? rawSaved.messages.map(m=>({to:m.to,text:m.text||''})) : [];
+  el.insertAdjacentHTML('beforeend', `<div id="dispatch-compose" style="margin-top:16px"></div>`);
+  renderDispatchCompose();
 
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
@@ -3922,7 +4013,7 @@ async function doSaveOrders(){
   }
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
-  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall});
+  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,messages:collectMessages()});
   const {error:saveErr}=await sb.from('game_players').update({
     orders:_payload,
     orders_submitted:false
@@ -4049,7 +4140,7 @@ async function doSubmitOrders(){
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,forTurn:expectedTurn}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,messages:collectMessages(),forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -4262,8 +4353,28 @@ function predictedLocation(charId, upToPhaseExclusive){
 }
 
 // Track recruit orders already placed in earlier phases (client-side)
+// Compass direction from one province to another on the offset-hex map, used to label an as-yet
+// unexplored target province as e.g. "Unknown province (West)" instead of a meaningless internal number.
+// Rows shift by half a column with parity (pointy-top offset), and columns wrap around the map edge.
+function provDirectionLabel(fromId, toId, provs, cols){
+  if(!Array.isArray(provs)) return null;
+  const a=provs.find(p=>p.id===fromId), b=provs.find(p=>p.id===toId);
+  if(!a||!b||a.row==null||b.row==null) return null;
+  let dc=b.col-a.col;
+  if(cols){ if(dc>cols/2) dc-=cols; if(dc<-cols/2) dc+=cols; } // shortest way around the wrap
+  const dr=b.row-a.row;
+  if(dr===0&&dc===0) return null;
+  const x1=a.col+(a.row&1)*0.5, y1=a.row*0.866;
+  const x2=(a.col+dc)+(b.row&1)*0.5, y2=b.row*0.866;
+  const ang=Math.atan2(y2-y1,x2-x1)*180/Math.PI; // y grows southward: 0=E, 90=S, 180=W, 270=N
+  const dirs=['East','Southeast','South','Southwest','West','Northwest','North','Northeast'];
+  return dirs[Math.round(((ang+360)%360)/45)%8];
+}
+
 function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive){
-  // Look at orders already set in earlier phases (from DOM) + saved orders
+  // The recruit cap is PER PROVINCE per unit type (the GM engine keys it `provId:type`), so this tally
+  // must be keyed the same way — otherwise recruiting a type in one province wrongly zeroes it out in
+  // every OTHER province this character musters in this turn. Returns counts keyed `${provId}:${type}`.
   const recruited={};
   const savedOrders=currentGamePlayer?.orders;
   let parsedOrders={};
@@ -4280,10 +4391,15 @@ function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive){
     if(action!=='Recruit Armies') continue;
     const tgt=domAction?getOrderTarget(charId,ph):(parsedOrders[ph]?.target||'');
     if(!tgt) continue;
+    // The province is wherever the character stands in THIS phase (recruit happens at its location).
+    const loc=predictedLocation(charId,ph);
+    const provKey=loc?loc.id:('unknown'+ph); // keep unknown-location phases from cross-counting
     tgt.split(',').forEach(sel=>{
-      if(sel.trim().startsWith('merc:')) return; // mercenary hire — not a native recruit
-      const parts=sel.trim().split('|');
-      if(parts[0]) recruited[parts[0].trim()]=(recruited[parts[0].trim()]||0)+1;
+      const s=sel.trim();
+      if(s.startsWith('merc:')) return;   // mercenary hire — not a native recruit, no per-turn cap
+      if(s.startsWith('to:')) return;     // muster-destination selector, not a unit type
+      const parts=s.split('|');
+      if(parts[0]){ const key=`${provKey}:${parts[0].trim()}`; recruited[key]=(recruited[key]||0)+1; }
     });
   }
   return recruited;
@@ -4331,7 +4447,7 @@ function buildTargetField(c, ph, saved){
         const curLoc=predictedLocation(c.id,ph); const curId=curLoc?curLoc.id:c.locationId;
         const curP=wmProvs.find(p=>p.id===curId);
         const candIds=((curP&&curP.neighbors)||[]);
-        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p) return ''; return `<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Province '+pid)}${p.ownerName?` — ${p.ownerName}`:''}</option>`;}).filter(Boolean).join('');
+        const opts=candIds.map(pid=>{const p=wmProvs.find(x=>x.id===pid); if(!p) return ''; return `<option value="${pid}" ${target==pid?'selected':''}>${p.name||('Unknown province ('+(provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?')+')')}${p.ownerName?` — ${p.ownerName}`:''}</option>`;}).filter(Boolean).join('');
         return opts
           ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
           :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No adjacent province to march into" disabled>${hintHtml}`;
@@ -4681,19 +4797,20 @@ function buildTargetField(c, ph, saved){
           const p=wmProvs.find(x=>x.id===pid);
           if(!p) return '';
           const t=p.terrain; // null for unexplored tiles (and possibly illusory — the map is what you see)
-          if(selSpell==='Part Sea'&&t!=='sea') return '';
+          // Task 3: Part Sea may target any land OR sea province in reach — a land province flooded to sea
+          // later this turn can then be reverted (the Flood counter), so no terrain filter for Part Sea.
           if(selSpell==='Flood'&&(t==='sea'||t==null)) return '';
           if(selSpell==='Hide Lairs'){
             const hasKnownFeature=((p.features||[]).length>0)||(p.name&&kfNames.has(p.name));
             if(!hasKnownFeature) return '';
           }
-          const label=(p.name||`Unknown province (${pid})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'');
+          const label=(p.name||`Unknown province (${provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?'})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'');
           return `<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
         }).filter(Boolean).join('');
         secondaryHtml=provOpts
           ?`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`
-          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No sea province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
+          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else if(NEEDS_CHAR.has(selSpell)){
         const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
@@ -4830,7 +4947,7 @@ function buildTargetField(c, ph, saved){
       // (Don't hard-block on current gold — gold can change across phases and affordability is
       // enforced when the turn resolves. Previously an unaffordable-right-now province wrongly
       // showed "No armies available to recruit".)
-      const anyRecruitable=(pd.armyTypes||[]).some(at=>(at.maxPerTurn-(alreadyRecruited[at.type]||0))>0);
+      const anyRecruitable=(pd.armyTypes||[]).some(at=>(at.maxPerTurn-(alreadyRecruited[`${loc.id}:${at.type}`]||0))>0);
       if(!anyRecruitable){
         if(mercRows) return mercWrap(mercRows);
         const why=(pd.armyTypes||[]).length===0
@@ -4849,7 +4966,7 @@ function buildTargetField(c, ph, saved){
         ${_destRow(true)}
         ${mercRows}
         ${(pd.armyTypes||[]).flatMap(at=>{
-          const done=alreadyRecruited[at.type]||0;
+          const done=alreadyRecruited[`${loc.id}:${at.type}`]||0;
           const remaining=at.maxPerTurn-done;
           if(remaining<=0) return[];
           const costEach=at.cost||2;
@@ -4948,8 +5065,12 @@ function buildTargetField(c, ph, saved){
       const cLoc=predictedLocation(c.id,ph);
       const cLocId=cLoc?cLoc.id:null;
       const ownedIds=new Set((report.ownedProvinces||[]).map(p=>p.id));
-      // Garrison is only a valid recipient if the player OWNS the province they are in.
-      const canGarrison=cLocId!=null&&ownedIds.has(cLocId);
+      // Garrison recipient: allowed outright in a province you OWN now, and ALSO offered CONDITIONALLY in
+      // a province you don't yet own (Task 5) — you may seize it earlier this turn. The GM engine
+      // re-checks ownership (prov.owner===player) when the order resolves and simply skips the garrison
+      // if you don't control the province by then (the troops stay under command).
+      const ownsHere=cLocId!=null&&ownedIds.has(cLocId);
+      const canGarrison=cLocId!=null; // offer garrison wherever this character stands this phase
       // Recipients: only the player's OWN characters predicted to be in the SAME province this phase.
       // (report.characters already contains only this player's living characters, so neutral heroes
       // and enemy characters can never appear here.)
@@ -4959,9 +5080,9 @@ function buildTargetField(c, ph, saved){
         return xl&&cLocId!=null&&xl.id===cLocId;
       });
       const recipParts=[];
-      if(canGarrison) recipParts.push(`<option value="-1" ${extra==='-1'||!extra?'selected':''}>Garrison in ${cLoc.name||'province'}</option>`);
+      if(canGarrison) recipParts.push(`<option value="-1" ${extra==='-1'||!extra?'selected':''}>${ownsHere?`Garrison in ${cLoc.name||'province'}`:`Garrison in ${cLoc.name||'province'} \u2691 (only if you control it when this resolves)`}</option>`);
       othersHere.forEach(x=>recipParts.push(`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`));
-      if(recipParts.length===0) recipParts.push(`<option value="" disabled selected>No valid recipient here — garrison requires owning the province, or place another of your characters here first</option>`);
+      if(recipParts.length===0) recipParts.push(`<option value="" disabled selected>No valid recipient here — place another of your characters here first</option>`);
       const recipOpts=recipParts.join('');
       const allChk=savedTgts.includes('all')?'checked':'';
       // Item 4 — ALWAYS offer an "All armies" option, even when the projected army list is empty.
@@ -5709,6 +5830,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.08.30-0201</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.03-0737</div>
 </body>
 </html>

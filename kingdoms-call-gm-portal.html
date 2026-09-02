@@ -833,7 +833,8 @@ function buildTargetField(c,ph,saved){
         const candIds=[casterLocG,...((curP&&curP.neighbors)||[])];
         const provOpts=candIds.map(pid=>{
           const p=wmProvs.find(x=>x.id===pid); if(!p) return '';
-          if(selSpell==='Part Sea'&&p.terrain!=='sea') return '';
+          // Task 3: Part Sea may target any land OR sea province in reach (a land province flooded to sea
+          // later in the turn can then be reverted — the Flood counter). No terrain filter for Part Sea.
           if(selSpell==='Flood'&&(p.terrain==='sea'||p.terrain==null)) return '';
           return `<option value="${pid}" ${extra==pid?'selected':''}>${p.name||('Province '+pid)}${pid===casterLocG?' (here)':''}${p.terrain?' — '+p.terrain:''}</option>`;
         }).filter(Boolean).join('');
@@ -1779,8 +1780,11 @@ async function loadTurnLog(gameId, turn){
   allEntries.forEach(e=>{
     const ph=(e.phase!=null&&e.phase>=0&&e.phase<=4)?e.phase:99;
     const isIntel=(e.text||'').startsWith('[Intelligence]')||(e.text||'').startsWith('[Intel]');
+    // Route to a character section by charId, or via charIds (Task 9: a duel/battle names both combatants).
+    const _secCharId=(e.charId!=null&&charGroups[e.charId])?e.charId
+      :(Array.isArray(e.charIds)?e.charIds.find(id=>charGroups[id]):undefined);
     if(isIntel){(intelByPhase[ph]=intelByPhase[ph]||[]).push(e);}
-    else if(e.charId!=null&&charGroups[e.charId]){charGroups[e.charId].phases[ph>=0&&ph<=4?ph:0].push(e);}
+    else if(_secCharId!=null&&_secCharId!==undefined){charGroups[_secCharId].phases[ph>=0&&ph<=4?ph:0].push(e);}
     else{(systemByPhase[ph]=systemByPhase[ph]||[]).push(e);}
   });
 
@@ -5267,7 +5271,7 @@ const SPELL_DEFS_P={
     desc:'Action: bring a slain (non-king) hero back to life — without their possessions. The hero must have been in your province at the start of the turn and not already been raised this turn.',
     fn:'white_resurrect'},
   'Part Sea':       {school:'white',target:'province',encounter:false,phase:true,
-    desc:'Action: a sea province you are in or adjacent to becomes plains for the rest of this turn; fleets cannot enter or leave it from the next phase onward. Cancels Flood.',
+    desc:'Action: any sea OR land province you are in or adjacent to. A sea province (including a land province flooded to sea earlier this turn) becomes plains for the rest of this turn; fleets cannot enter or leave it from the next phase onward. Cast on still-dry land it finds no sea to part. Cancels Flood.',
     fn:'white_part_sea'},
   'Bless Province': {school:'white',target:'province',encounter:false,phase:true,
     desc:'Action: a province you are in or adjacent to gains +60% tax base this turn (+80% for Divine kingdoms; +100% when the Divine KING casts it himself). Only one Bless can affect a province at a time (does not stack).',
@@ -5462,6 +5466,10 @@ async function runTurn(){
   const diploDeclarations={};
   // Victory: players who Called the Reckoning this turn (king-only, one per kingdom).
   const reckoningCalls=new Set();
+  // Task 10: player-to-player messages submitted with orders, keyed by sender index → [{to, text}].
+  // `to` is an array of recipient player indices, or the string 'all'. Delivered into each recipient's
+  // report below (this turn's report, which they read before ordering next turn).
+  const playerMessages={};
   freshPlayers.filter(p=>p.user_id&&p.orders).forEach(gp=>{
     let raw=typeof gp.orders==='string'?JSON.parse(gp.orders):gp.orders||{};
     // Detect new format: {orders:{charId:[phases]}, encounterPlans:{}, forTurn:N}
@@ -5479,6 +5487,7 @@ async function runTurn(){
       // against the encountered set; stored raw here.
       if(raw.diplomacy && typeof raw.diplomacy==='object') diploDeclarations[gp.player_index]=raw.diplomacy;
       if(raw.callReckoning===true) reckoningCalls.add(gp.player_index);
+      if(Array.isArray(raw.messages)) playerMessages[gp.player_index]=raw.messages;
     }
     // CRITICAL: reject orders that were stamped for a different turn (stale submissions)
     if(forTurn!==null&&forTurn!==expectedTurnToRun){
@@ -5643,6 +5652,10 @@ async function runTurn(){
       system: meta.system??false,
       armyEstimate: meta.armyEstimate??null,
       charId: meta.charId??_logCtx.charId,   // which character's action this is
+      charIds: meta.charIds||null,            // Task 9: extra characters this entry pertains to — the
+                                              // report files it into WHICHEVER of the viewer's own
+                                              // characters it names (e.g. a duel shows in BOTH
+                                              // combatants' sections, each for its own owner).
       phase: meta.phase??_logCtx.phase,       // which phase (0–4)
       pinNotice: meta.pinNotice??false,       // Item 4: hoist to the top of the char's phase report
       env: meta.env??false,                   // Item 8: environmental province event (earthquake,
@@ -5663,6 +5676,21 @@ async function runTurn(){
       charId:targetChar.id, phase:_ph, provinceId:(targetChar.location!=null?targetChar.location:null)});
   }
 
+  // ── Task 9(b): PROVINCE / KINGDOM NOTIFICATIONS ────────────────────────────
+  // When something is done TO one of a player's PROVINCES that they'd learn of — an enemy Flood,
+  // Earthquake, Plague, Cataclysm, Part Sea, etc. — file a line in that owner's KINGDOM EVENTS feed
+  // (charId null so it is NOT a character section, and env:false so it is NOT diverted to the quieter
+  // Province Reports stream). No-op if the caster IS the owner (they already know) or the land is
+  // unowned. targets makes the owner see it even though the caster was an enemy.
+  function notifyProvinceOwner(prov, text, casterPlayer, ph){
+    if(!prov || prov.owner==null || prov.owner===casterPlayer) return;
+    const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
+    // Push directly (bypassing log()'s charId?? _logCtx fallback) so this files under the owner's KINGDOM
+    // EVENTS — a real null charId, never inherited from the casting character's log context.
+    turnLog.push({type:'system', text, actor:null, targets:[prov.owner], provinceId:prov.id, public:false,
+      spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
+  }
+
   // ── DIPLOMACY (KC alliance system) ─────────────────────────────────────────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
   // entry is NEUTRAL (the default). These helpers are the single source of truth consulted by the
@@ -5676,6 +5704,9 @@ async function runTurn(){
   }
   function areEnemies(a,b){ return relationBetween(a,b)==='enemy'; }
   function areAllied(a,b){ return relationBetween(a,b)==='allied'; }
+  // Task 8: a valid RETREAT destination is a FRIENDLY province — one the player owns, or one held by an
+  // ally. Never a neutral or enemy province (a beaten force cannot fall back onto ground it does not hold).
+  function isFriendlyProvFor(prov, pi){ return !!prov && pi!=null && (prov.owner===pi || (prov.owner!=null && areAllied(pi, prov.owner))); }
 
   // ── TITLE MERIT: battles ── Grand Marshal (land) / Sea Lord (sea): the winner gains +1 per enemy
   // unit destroyed; the loser loses 1 per own unit lost. Counted from the pooled battle copies, which
@@ -5728,6 +5759,38 @@ async function runTurn(){
   // Flush any stale-order warnings collected during the merge phase
   if(staleOrderWarnings.length>0){
     staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true}));
+  }
+
+  // ── Task 10: DELIVER PLAYER-TO-PLAYER MESSAGES ─────────────────────────────
+  // Each sender's dispatches are filed into every addressee's report as 'message' entries (targets =
+  // the recipient, so only they see it). 'all' fans out to every other living human player. The sender
+  // is named by kingdom; empty/oversized text is skipped. A copy is filed back to the SENDER too (as a
+  // sent-confirmation) so they have a record of what they sent, in their own report.
+  {
+    const humanIdx=(G.players||[]).map((p,i)=>i).filter(i=>{ const gp=freshPlayers.find(x=>x.player_index===i); return gp && gp.user_id; });
+    Object.keys(playerMessages).forEach(sk=>{
+      const senderPi=parseInt(sk);
+      const senderName=G.players[senderPi]?.name||('Player '+(senderPi+1));
+      (playerMessages[senderPi]||[]).forEach(msg=>{
+        if(!msg||typeof msg.text!=='string') return;
+        const text=msg.text.trim().slice(0,1000);
+        if(!text) return;
+        let rcpts;
+        if(msg.to==='all'||(Array.isArray(msg.to)&&msg.to.includes('all'))){
+          rcpts=humanIdx.filter(i=>i!==senderPi);
+        } else if(Array.isArray(msg.to)){
+          rcpts=msg.to.map(x=>parseInt(x)).filter(i=>Number.isInteger(i)&&i!==senderPi&&i>=0&&i<(G.players||[]).length);
+        } else { rcpts=[]; }
+        rcpts=[...new Set(rcpts)];
+        if(rcpts.length===0) return;
+        const rcptNames=rcpts.map(i=>G.players[i]?.name||('Player '+(i+1)));
+        rcpts.forEach(rpi=>{
+          log('message',`📨 Dispatch from ${senderName}: “${text}”`,{actor:senderPi,targets:[rpi],phase:99,public:false});
+        });
+        // Sender's own copy (confirmation of what they sent, and to whom).
+        log('message',`📨 You sent to ${rcptNames.join(', ')}: “${text}”`,{actor:senderPi,targets:[senderPi],phase:99,public:false});
+      });
+    });
   }
 
   // Build a rough army strength description for use in enemy intel
@@ -6438,7 +6501,8 @@ const BATTLE_ARMY_SPELLS={
     opts=opts||{};
     const parts=(participants||[]).filter(x=>x!=null);
     const base={provinceId:(prov&&prov.id), phase:(ph!=null?ph:undefined), public:true,
-      actor:(opts.actor!=null?opts.actor:null), charId:(opts.charId!==undefined?opts.charId:null), targets:parts};
+      actor:(opts.actor!=null?opts.actor:null), charId:(opts.charId!==undefined?opts.charId:null),
+      charIds:(opts.charIds||null), targets:parts};
     (battle&&battle.narrative||[]).forEach(line=>log('combat',line,{...base, battleDetail:true}));
     const sTxt=opts.summaryText||battle&&battle.summaryText;
     if(sTxt) log('combat',sTxt,{...base, summary:true});
@@ -7203,7 +7267,7 @@ const BATTLE_ARMY_SPELLS={
 
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
-      const friendlyAdj=adjProvs.filter(p2=>p2.owner===c.player);
+      const friendlyAdj=adjProvs.filter(p2=>isFriendlyProvFor(p2,c.player)); // Task 8: own OR allied provinces only
       prov._hadBattleThisTurn=true;
       const infStay=(c.items||[]).some(it=>it.effect&&it.effect.stat==='infStay');
       // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
@@ -7243,13 +7307,13 @@ const BATTLE_ARMY_SPELLS={
         if(_sfNPC) narrative.push(`🛡 Shield Fort — ${cName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[c._attackedFrom];
         // Item 7: never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&fromProv.owner===c.player&&fromProv.id!==prov.id)?fromProv:(friendlyAdj.find(p2=>p2.id!==prov.id)||friendlyAdj[0]);
+        const retreatTo=(fromProv&&isFriendlyProvFor(fromProv,c.player)&&fromProv.id!==prov.id)?fromProv:(friendlyAdj.find(p2=>p2.id!==prov.id)||friendlyAdj[0]);
         narrative.push(`${cName}'s forces retreat to ${retreatTo.name}.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         retreatTo.characters=(retreatTo.characters||[]);
         if(!retreatTo.characters.includes(c.id)) retreatTo.characters.push(c.id);
         c.location=retreatTo.id;
-        movePoints[c.id]=0; seaMovePoints[c.id]=0;
+        // Task 2: a forced retreat does NOT consume the character's move points.
       }
 
       if(armies.some(a=>!a._died&&!a._notable)) narrative.push(`— ${armies.some(a=>a._died||a._notable)?'All other':'All'} forces survive the engagement.`);
@@ -8294,11 +8358,14 @@ const BATTLE_ARMY_SPELLS={
     if(defFanatic&&_consecratedHere) narrative.push(`✨ On the consecrated ground of ${prov.name}, ${defName}'s defenders fight before the altars of their gods with fanatical zeal! (+30% defending strength)`);
     else if(defFanatic) narrative.push(`${defName}'s forces fight with fanatical zeal! (+30% defending strength)`);
 
-    // Terrain battle line
-    const TERRAIN_LINE={plain:[5,10],forest:[3,6],jungle:[3,6],mountain:[1,3],desert:[5,10],sea:[5,10]};
-    const [minW,maxW]=TERRAIN_LINE[prov.terrain]||[5,10];
-    const terrainLineW=rng(minW,maxW);
-    narrative.push(`The ${prov.terrain} terrain sets a ${terrainLineW}-unit front. Deeper ranks fight at reduced effectiveness.`);
+    // Terrain sets the front-line width — how many units fight in the front row (the rest form a
+    // reduced-effect reserve). This is the ONE source of truth for the front width, used by BOTH the
+    // narrative here and the front-line strength computation below, so they can never disagree.
+    // (Previously a separate TERRAIN_LINE table rolled a RANDOM 1–3 for mountains for this line while the
+    // mechanic used a fixed 3 — the "battlefront one wide vs three wide" inconsistency Toby saw.)
+    const PVP_TERRAIN_FRONT={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
+    const pvpFront=PVP_TERRAIN_FRONT[prov.terrain]??6;
+    narrative.push(`The ${prov.terrain} terrain sets a ${pvpFront}-unit front. Deeper ranks fight at reduced effectiveness.`);
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
@@ -8482,9 +8549,7 @@ const BATTLE_ARMY_SPELLS={
     if(!pvpIsLand&&(atkArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))||defArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))))
       narrative.push(`⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
 
-    // Battle lines for PvP — terrain sets the front-line width for both sides
-    const PVP_TERRAIN_FRONT={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
-    const pvpFront=PVP_TERRAIN_FRONT[pvpTerrain]??6;
+    // Battle lines for PvP — front-line width (pvpFront) is declared above as the single source of truth.
     const pvpAtkCt=atkArmies.length; const pvpDefCt=defArmies.length;
 
     // Illusory Terrain (per-unit): a side that did NOT cast the illusion is disoriented — each unit
@@ -8718,7 +8783,7 @@ const BATTLE_ARMY_SPELLS={
       def.armies=defArmies.filter(a=>!a._died&&!a._disbanded);
       // Losing defender retreat
       const defAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
-      let defFriendlyAdj=defAdjProvs.filter(p2=>p2.owner===def.player);
+      let defFriendlyAdj=defAdjProvs.filter(p2=>isFriendlyProvFor(p2,def.player)); // Task 8: own OR allied provinces only
       // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
       if(_cutAtk&&defFriendlyAdj.length>0){
         const overland=defFriendlyAdj.filter(p2=>p2.terrain!=='sea');
@@ -8753,7 +8818,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfDef&&def.armies.length>0) narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const defFromProv=G.world.provinces[def._attackedFrom];
         // Item 7: never retreat INTO the contested province (stale _attackedFrom guard).
-        const defRetreatTo=(defFromProv&&defFromProv.owner===def.player&&defFromProv.id!==prov.id)?defFromProv:(defFriendlyAdj.find(p2=>p2.id!==prov.id)||defFriendlyAdj[0]);
+        const defRetreatTo=(defFromProv&&isFriendlyProvFor(defFromProv,def.player)&&defFromProv.id!==prov.id)?defFromProv:(defFriendlyAdj.find(p2=>p2.id!==prov.id)||defFriendlyAdj[0]);
         narrative.push(`${defName} retreats to ${defRetreatTo.name}.`);
         const defSurvivors2=def.armies||[];
         if(defSurvivors2.length>0) narrative.push(`📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
@@ -8761,7 +8826,7 @@ const BATTLE_ARMY_SPELLS={
         prov.characters=(prov.characters||[]).filter(id=>id!==def.id);
         defRetreatTo.characters=(defRetreatTo.characters||[]);
         if(!defRetreatTo.characters.includes(def.id)) defRetreatTo.characters.push(def.id);
-        def.location=defRetreatTo.id; movePoints[def.id]=0; seaMovePoints[def.id]=0;
+        def.location=defRetreatTo.id; // Task 2: a forced retreat does NOT consume the character's move points.
       }
     } else {
       narrative.push(`${atkName}'s assault is repelled! After a ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`);
@@ -8797,7 +8862,7 @@ const BATTLE_ARMY_SPELLS={
       def.armies=defArmies.filter(a=>!a._died&&!a._disbanded);
       // Losing attacker retreat
       const atkAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
-      let atkFriendlyAdj=atkAdjProvs.filter(p2=>p2.owner===atk.player);
+      let atkFriendlyAdj=atkAdjProvs.filter(p2=>isFriendlyProvFor(p2,atk.player)); // Task 8: own OR allied provinces only
       // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
       if(_cutDef&&atkFriendlyAdj.length>0){
         const overland=atkFriendlyAdj.filter(p2=>p2.terrain!=='sea');
@@ -8830,7 +8895,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfAtk&&atk.armies.length>0) narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[atk._attackedFrom];
         // Item 7: never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&fromProv.owner===atk.player&&fromProv.id!==prov.id)?fromProv:(atkFriendlyAdj.find(p2=>p2.id!==prov.id)||atkFriendlyAdj[0]);
+        const retreatTo=(fromProv&&isFriendlyProvFor(fromProv,atk.player)&&fromProv.id!==prov.id)?fromProv:(atkFriendlyAdj.find(p2=>p2.id!==prov.id)||atkFriendlyAdj[0]);
         narrative.push(`${atkName} retreats to ${retreatTo.name}.`);
         // Summarise surviving attacker armies
         const atkSurvivors=atk.armies||[];
@@ -8839,7 +8904,7 @@ const BATTLE_ARMY_SPELLS={
         prov.characters=(prov.characters||[]).filter(id=>id!==atk.id);
         retreatTo.characters=(retreatTo.characters||[]);
         if(!retreatTo.characters.includes(atk.id)) retreatTo.characters.push(atk.id);
-        atk.location=retreatTo.id; movePoints[atk.id]=0; seaMovePoints[atk.id]=0;
+        atk.location=retreatTo.id; // Task 2: a forced retreat does NOT consume the character's move points.
       }
     }
 
@@ -9815,7 +9880,7 @@ const BATTLE_ARMY_SPELLS={
                   toProv.characters=(toProv.characters||[]).filter(id=>id!==ch.id);
                   if(!_defFellBackTo.characters.includes(ch.id)) _defFellBackTo.characters.push(ch.id);
                   ch.location=_defFellBackTo.id; ch.locationName=_defFellBackTo.name;
-                  movePoints[ch.id]=0; seaMovePoints[ch.id]=0;
+                  // Task 2: forced retreat/fall-back does NOT consume move points.
                 });
                 if(defReinforcements.length>0){
                   log('combat',`${defReinforcements.map(d=>d.name).join(', ')} fall back to ${_defFellBackTo.name} alongside ${defChar.name}.`,{actor:defChar.player,targets,provinceId:_defFellBackTo.id,public:true});
@@ -11259,20 +11324,27 @@ const BATTLE_ARMY_SPELLS={
         }
         else if(fn==='white_part_sea'){
           // A sea province the caster is in or adjacent to becomes plains for the rest of the turn.
+          // Task 3: the target may be a sea OR a land province in reach — a land province that has been
+          // FLOODED into sea earlier this turn reads as terrain 'sea' at resolution, so Part Sea reverts
+          // it (the intended Flood counter); a still-dry land target simply finds no sea to part.
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){
-            log('system',`${c.name}: Part Sea can only target a sea province you are in or next to.`,{actor:c.player,targets:[c.player]});break;
-          }
-          if(targetProv.terrain!=='sea'){
-            log('system',`${c.name}: Part Sea can only be cast on a sea province.`,{actor:c.player,targets:[c.player]});break;
+            log('system',`${c.name}: Part Sea can only target a province you are in or next to.`,{actor:c.player,targets:[c.player]});break;
           }
           if(blessWardNegates(targetProv, c, 'Part Sea')) break; // Q2: a warded province can turn aside an enemy Part Sea too
-          // Cancel any Flood on this province, then turn the sea to dry plains for the rest of the turn.
-          delete targetProv._flooded;
-          targetProv._partSea={orig:targetProv.terrain, turn:G.turn, blockFleetsFromPhase:ph+1};
-          targetProv.terrain='plains';
-          log('explore',`✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true,env:true});
+          if(targetProv.terrain==='sea'){
+            // Part the waters: open sea OR a flooded land province becomes dry plains for the rest of the turn.
+            delete targetProv._flooded; // cancel any Flood on this province
+            targetProv._partSea={orig:targetProv.terrain, turn:G.turn, blockFleetsFromPhase:ph+1};
+            targetProv.terrain='plains';
+            log('explore',`✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true,env:true});
+          } else {
+            // Cast on dry land — the anticipated Flood never came (or was already parted). There is no sea
+            // to part; clear any lingering flood marker and note it. The cast is spent but harmless.
+            delete targetProv._flooded;
+            log('explore',`✨ ${c.name} calls the waters back from ${targetProv.name}, but the ground already lies dry — the spell finds no sea to part.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
+          }
         }
         else if(fn==='white_bless_province'){
           const casterProv=G.world.provinces[c.location];
@@ -11491,6 +11563,7 @@ const BATTLE_ARMY_SPELLS={
           if(blessWardNegates(targetProv, c, 'Earthquake')) break;
           targetProv._earthquakeNoTax=G.turn;
           log('combat',`✨ ${c.name} rends the earth beneath ${targetProv.name} — its fields and roads are ruined, and it will yield no tax at the end of this turn.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
+          notifyProvinceOwner(targetProv, `🜃 An enemy Earthquake has torn through ${targetProv.name} — it will yield no tax this turn.`, c.player, ph);
         }
         else if(fn==='elemental_flood'){
           const casterProv=G.world.provinces[c.location];
@@ -11503,6 +11576,7 @@ const BATTLE_ARMY_SPELLS={
           targetProv._flood={orig:targetProv.terrain, turn:G.turn};
           targetProv.terrain='sea';
           log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets may pass.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
+          notifyProvinceOwner(targetProv, `🌊 An enemy Flood has swallowed ${targetProv.name} — it acts as sea for the rest of the turn, and any land army there is stranded.`, c.player, ph);
         }
         else if(fn==='elemental_summon'){
           if(c._elementalSummonedThisTurn){log('system',`${c.name} has already summoned an elemental this turn.`,{actor:c.player,targets:[c.player]});break;}
@@ -11588,6 +11662,7 @@ const BATTLE_ARMY_SPELLS={
           targetProv._plaguedTurn=G.turn; targetProv._plagueLevel=spellLevel; targetProv._plagueCaster=c.player;
           const res=applyPlague(targetProv, spellLevel, ph);
           log('combat',`☠ ${c.name} calls down a Plague upon ${targetProv.name} — of ${res.tested} humanoid unit${res.tested!==1?'s':''}, ${res.affected} sicken and lose an experience level. It may spread to neighbouring lands in the phases to come.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
+          notifyProvinceOwner(targetProv, `☠ An enemy Plague has struck ${targetProv.name} — ${res.affected} of your unit${res.affected!==1?'s there sicken':' there sickens'} and may spread to neighbouring lands.`, c.player, ph);
         }
 
         // ══ LEVEL 7 & 9 MASTERY SPELLS ══════════════════════════════════════════════
@@ -11675,6 +11750,7 @@ const BATTLE_ARMY_SPELLS={
           });
           if(targetProv.owner!=null&&targetProv.owner!==c.player) _ccVictims.add(targetProv.owner);
           log('combat',`☄ ${c.name} calls down a Cataclysm upon ${targetProv.name} — ${totalDestroyed} enemy unit${totalDestroyed!==1?'s':''} destroyed, and the land is left permanently barren (tax base reduced to 0 for good).`,{actor:c.player,targets:[..._ccVictims],provinceId:targetProv.id,public:true});
+          notifyProvinceOwner(targetProv, `☄ An enemy Cataclysm has devastated ${targetProv.name} — its tax base is permanently ruined${totalDestroyed>0?` and ${totalDestroyed} of your unit${totalDestroyed!==1?'s were':' was'} destroyed`:''}.`, c.player, ph);
         }
         // NECROMANCY
         else if(fn==='necromancy_wraiths'){
@@ -12700,7 +12776,7 @@ const BATTLE_ARMY_SPELLS={
             prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
             if(!_defFellBackTo.characters.includes(d.id)) _defFellBackTo.characters.push(d.id);
             d.location=_defFellBackTo.id; d.locationName=_defFellBackTo.name;
-            movePoints[d.id]=0; seaMovePoints[d.id]=0;
+            // Task 2: forced retreat/fall-back does NOT consume move points.
           });
         }
       }
@@ -13137,9 +13213,16 @@ const BATTLE_ARMY_SPELLS={
       if(!c.alive||c.player==null||!c._defend||!c._defend.active) return;
       if((c.armies||[]).length===0) return;                 // only generals react
       if(c._defendReactedPhase===ph) return;                 // one reaction per phase
-      if((movePoints[c.id]??0)<=0) return;                   // AK: reacting costs movement
+      if((movePoints[c.id]??0)<=0 && (seaMovePoints[c.id]??0)<=0) return; // AK: reacting costs movement (land OR sea)
       const here=G.world.provinces[c.location];
       if(!here) return;
+      // Task 4: a defender FLOODED into a sea province is stranded — he can only ride out to a neighbour
+      // if he can move by sea (a fleet, or an all-flying force). A land host on drowned ground stays put;
+      // the Defend order must not let it march out over water it cannot cross.
+      if(here.terrain==='sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id]??0)>0)){
+        log('move',`${c.name} is stranded by the waters covering ${here.name} — without a fleet his troops cannot march out, and hold what ground remains.`,{actor:c.player,targets:[c.player],provinceId:here.id,public:false});
+        return;
+      }
 
       // If his OWN province is under attack he stays and holds it — splitting a single stack
       // between two fronts isn't representable, so the garrison of the spot he stands on wins.
@@ -13172,11 +13255,16 @@ const BATTLE_ARMY_SPELLS={
 
       // March to the aid of the invaded province.
       const P=target.prov;
+      // Use the correct movement pool: leaving OR entering a sea province is a sea move (needs a fleet);
+      // otherwise it's a land march. (The stranded guard above already blocked a fleetless land host on
+      // drowned ground.)
+      const _bySea=(here.terrain==='sea'||P.terrain==='sea');
+      if(_bySea){ if((seaMovePoints[c.id]??0)<=0) return; } else { if((movePoints[c.id]??0)<=0) return; }
       here.characters=(here.characters||[]).filter(id=>id!==c.id);
       P.characters=P.characters||[];
       if(!P.characters.includes(c.id)) P.characters.push(c.id);
       c.location=P.id; c.locationName=P.name;
-      movePoints[c.id]=Math.max(0,(movePoints[c.id]??0)-1);
+      if(_bySea){ seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1); } else { movePoints[c.id]=Math.max(0,(movePoints[c.id]??0)-1); }
       c._defendReactedPhase=ph;
       c._attackedFrom=here.id;
       log('move',`🛡 ${c.name} is standing watch — word reaches him that ${target.names.join(' and ')} ${target.names.length>1?'are':'is'} crossing into ${P.name}. He breaks camp at once and marches to meet them.`,
@@ -13202,6 +13290,11 @@ const BATTLE_ARMY_SPELLS={
       if((movePoints[c.id]??0)<=0 && (seaMovePoints[c.id]??0)<=0) return;
       const here=G.world.provinces[c.location];
       if(!here) return;
+      // Task 4: a defender flooded into a sea province cannot ride out unless he can move by sea.
+      if(here.terrain==='sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id]??0)>0)){
+        log('move',`${c.name} is stranded by the waters covering ${here.name} — without a fleet his troops cannot march out, and hold what ground remains.`,{actor:c.player,targets:[c.player],provinceId:here.id,public:false});
+        return;
+      }
       const sc=seaCap[c.id]||'land';
       // Watch zone: the province he stands on plus its immediate neighbours.
       const zone=[here, ...getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces)].filter(Boolean);
@@ -13224,7 +13317,7 @@ const BATTLE_ARMY_SPELLS={
       const prov=best.P;
       // March to meet them if they are in a neighbour (costs one movement point of the right kind).
       if(prov.id!==c.location){
-        const toSea=prov.terrain==='sea';
+        const toSea=(prov.terrain==='sea'||here.terrain==='sea'); // leaving OR entering water = a sea move
         if(toSea){ if((seaMovePoints[c.id]??0)<=0) return; seaMovePoints[c.id]--; }
         else { if((movePoints[c.id]??0)<=0) return; movePoints[c.id]--; }
         here.characters=(here.characters||[]).filter(id=>id!==c.id);
@@ -13261,7 +13354,7 @@ const BATTLE_ARMY_SPELLS={
             prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
             if(!np.characters.includes(d.id)) np.characters.push(d.id);
             d.location=np.id; d.locationName=np.name;
-            movePoints[d.id]=0; seaMovePoints[d.id]=0;
+            // Task 2: forced retreat/fall-back does NOT consume move points.
           });
         }
       }
@@ -13424,10 +13517,10 @@ const BATTLE_ARMY_SPELLS={
       const combinedAtk={...c,armies:[...(c.armies||[])]};
       const combinedDef={...quarry,armies:[...(quarry.armies||[]),...defReinf.flatMap(d=>d.armies||[])]};
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
-      log('combat',`⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+      log('combat',`⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:[c.id,quarry.id]});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
       creditBattle(c,quarry,battle,combinedAtk.armies,combinedDef.armies,prov);
-      emitBattle(battle, prov, ph, targetsPi, {actor:c.player}); // item 5
+      emitBattle(battle, prov, ph, targetsPi, {actor:c.player, charIds:[c.id,quarry.id]}); // Task 9: into both combatants' sections
       // Write casualties back from the pooled copies to the real characters.
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
@@ -13442,7 +13535,7 @@ const BATTLE_ARMY_SPELLS={
             prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
             if(!np.characters.includes(d.id)) np.characters.push(d.id);
             d.location=np.id; d.locationName=np.name;
-            movePoints[d.id]=0; seaMovePoints[d.id]=0;
+            // Task 2: forced retreat/fall-back does NOT consume move points.
           });
         }
       }
@@ -13470,16 +13563,17 @@ const BATTLE_ARMY_SPELLS={
       const atkPlan=filterPlan(c.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
       const defPlan=filterPlan(quarry.encounterPlan); if(!defPlan.length) defPlan.push('ME');
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
-      log('combat',`⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null});
+      const _duelChars=[c.id,quarry.id]; // Task 9: the duel belongs in BOTH duellists' report sections
+      log('combat',`⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id}));
+      enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       // Item 3 (this session): a hero beaten to 0 HP in the duel DIES outright — the old "capitulates
       // and survives at 1 HP" reprieve is gone. atkKilled/defKilled still cover the explicit-slaying
       // path; the hp<=0 checks catch every other felling.
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}); } else { log('combat',`${c.name} has been slain at the end of the chase!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}); handleHeroDeath(c,quarry); awardKillXP(quarry,c); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}); } else { log('combat',`${quarry.name} is run down and slain!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true}); handleHeroDeath(quarry,c); awardKillXP(c,quarry); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${c.name} has been slain at the end of the chase!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(c,quarry); awardKillXP(quarry,c); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${quarry.name} is run down and slain!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(quarry,c); awardKillXP(c,quarry); } }
     }
     // Mark the pair so a mutual Encounter (each hunting the other) can't resolve a second time this phase.
     c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
@@ -14521,8 +14615,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       if((e.targets||[]).includes(pi)) return true;
       // 2. This player's own character performed the action
       if(e.actor===pi) return true;
-      // 4. Entry attributed to one of this player's own characters (charId match)
+      // 4. Entry attributed to one of this player's own characters (charId or charIds match)
       if(e.charId!=null && ownCharIds.has(e.charId)) return true;
+      if(Array.isArray(e.charIds) && e.charIds.some(id=>ownCharIds.has(id))) return true;
       // 3. Public events. Item 5: a battle the player did NOT take part in is visible ONLY as a one-line
       //    result SUMMARY, and only if they had a character present in the province at the battle's
       //    phase. The full blow-by-blow (battleDetail) is for participants alone. Non-combat public
@@ -14626,6 +14721,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // in Kingdom Events. Non-participants (line-of-sight viewers) still get null → Kingdom Events.
     const _reattributeCharId=(e)=>{
       if(e.charId!=null&&ownCharIds.has(e.charId)) return e.charId;
+      // Task 9: an entry naming several characters (a duel/battle names both combatants) is filed under
+      // whichever one belongs to THIS viewer.
+      if(Array.isArray(e.charIds)){ const own=e.charIds.find(id=>ownCharIds.has(id)); if(own!=null) return own; }
       if(e.type==='combat'&&e.provinceId!=null&&e.phase!=null&&e.phase>=0&&e.phase<=4){
         const cmds=battleCommanders[e.provinceId+'@'+e.phase];
         if(cmds){ const own=cmds.find(id=>ownCharIds.has(id)); if(own!=null) return own; }
@@ -14715,6 +14813,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.08.30-0201</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-0737</div>
 </body>
 </html>
