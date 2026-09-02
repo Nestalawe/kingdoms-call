@@ -4517,11 +4517,11 @@ function computeStandings(state){
       const metric=t.key==='throne'?taxByPlayer:goldByPlayer;
       let best=-1,bi=-1; metric.forEach((v,pi)=>{ if(v>best){best=v;bi=pi;} });
       const king=chars.find(c=>c.isKing&&c.player===bi);
-      titles[t.key]={playerIndex:(bi>=0&&best>0)?bi:null,charId:king?king.id:null,merit:best,prize:t.prize,name:t.name};
+      titles[t.key]={playerIndex:(bi>=0&&best>0)?bi:null,charId:(bi>=0&&best>0&&king)?king.id:null,merit:best,prize:t.prize,name:t.name};
     } else {
       let best=-Infinity,bc=null;
       chars.forEach(c=>{ const v=perChar[c.id][t.key]||0; if(v>best){best=v;bc=c;} });
-      titles[t.key]={playerIndex:(bc&&best>0)?bc.player:null,charId:bc?bc.id:null,merit:best>-Infinity?best:0,prize:t.prize,name:t.name};
+      titles[t.key]={playerIndex:(bc&&best>0)?bc.player:null,charId:(bc&&best>0)?bc.id:null,merit:best>-Infinity?best:0,prize:t.prize,name:t.name};
     }
   });
   const legNames=_legendaryNames(), relics=[];
@@ -14329,36 +14329,6 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     }
   });
 
-  // 7c9. IMPERIAL TITLE INTEL — each imperial title's perk is now an end-of-turn report line delivered
-  // to its holder. Gated naturally: G._titleHolders is empty before titles go public, so nothing emits.
-  (function(){
-    const TH=G._titleHolders||{}; const provs=G.world.provinces||[];
-    const holder=key=>{ const h=TH[key]; return (h&&h.playerIndex!=null)?h.playerIndex:null; };
-    const pnm=pi=>G.players[pi]?.name||('Player '+pi);
-    const prn=id=>provs[id]?.name||'unknown';
-    const isNaval=t=>SEA_TYPES.has(t);
-    const kindStr=(ch,naval)=>(ch.armies||[]).filter(a=>naval?isNaval(a.type):!isNaval(a.type)).reduce((s,a)=>s+unitBaseStrength(a),0);
-    const strongestLoc=(pi,naval)=>{ let best=-1,loc=null; (G.characters||[]).filter(c=>c.alive&&c.player===pi).forEach(c=>{ const st=kindStr(c,naval); if(st>best){best=st;loc=c.location;} }); return best>0?loc:null; };
-    // THE THRONE — rival shares of the world tax base
-    { const pi=holder('throne'); if(pi!=null){ const world=provs.reduce((s,pv)=>s+((pv.owner!=null)?(pv.tax||0):0),0)||1; const parts=G.players.map((pl,i)=>i===pi?null:`${pnm(i)}: ${Math.round(100*provs.filter(pv=>pv.owner===i).reduce((s,pv)=>s+(pv.tax||0),0)/world)}%`).filter(Boolean); if(parts.length) log('system',`[The Throne] Rival shares of the world tax base \u2014 ${parts.join(', ')}.`,{actor:pi,targets:[pi]}); } }
-    // THE VAULTKEEPER — rival treasuries
-    { const pi=holder('vault'); if(pi!=null){ const parts=G.players.map((pl,i)=>i===pi?null:`${pnm(i)}: ${pl.gold||0}g`).filter(Boolean); if(parts.length) log('system',`[The Vaultkeeper] Rival treasuries \u2014 ${parts.join(', ')}.`,{actor:pi,targets:[pi]}); } }
-    // THE GRAND MARSHAL — each rival's strongest land army location
-    { const pi=holder('marshal'); if(pi!=null){ const parts=G.players.map((pl,i)=>{ if(i===pi)return null; const loc=strongestLoc(i,false); return loc!=null?`${pnm(i)}: ${prn(loc)}`:null; }).filter(Boolean); log('system',parts.length?`[The Grand Marshal] Strongest land army of each rival \u2014 ${parts.join(', ')}.`:`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); } }
-    // THE SEA LORD — each rival's strongest fleet location
-    { const pi=holder('sea'); if(pi!=null){ const parts=G.players.map((pl,i)=>{ if(i===pi)return null; const loc=strongestLoc(i,true); return loc!=null?`${pnm(i)}: ${prn(loc)}`:null; }).filter(Boolean); log('system',parts.length?`[The Sea Lord] Strongest fleet of each rival \u2014 ${parts.join(', ')}.`:`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
-    // THE MONSTER-BANE — the runner-up for this title
-    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; log('system',`[The Monster-Bane] Your closest rival for the title: ${sec.name} of ${pnm(sec.player)}, last in ${prn(sec.location)}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
-    // THE LOREMASTER — rivals' discoveries this turn, and copy one for free
-    { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const found=[]; G.players.forEach((pl,i)=>{ if(i===pi)return; (pl.discoveries||[]).forEach(d=>{ if(d.turnDiscovered===tt) found.push({d,i}); }); }); if(found.length){ log('system',`[The Loremaster] Rival discoveries this turn \u2014 ${found.map(f=>`${f.d.name} (${pnm(f.i)})`).join(', ')}.`,{actor:pi,targets:[pi]}); const lp=G.players[pi]; if(lp){ const owned=new Set((lp.discoveries||[]).map(d=>d.id)); const learn=found.filter(f=>!owned.has(f.d.id)); if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d; (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn}); log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's notes \u2014 you now hold this discovery.`,{actor:pi,targets:[pi]}); } } } else log('system',`[The Loremaster] No rival made a new discovery this turn.`,{actor:pi,targets:[pi]}); } }
-    // THE ARCHMAGE — strongest mage per school (ties: total skill, then arbitrary)
-    { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0); const parts=[['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].map(([sk,lab])=>{ let best=null,bl=-1,bt=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } }); return (best&&bl>0)?`${lab}: ${best.name} (${pnm(best.player)}, L${bl})`:`${lab}: —`; }); log('system',`[The Archmage] Foremost mage of each school \u2014 ${parts.join('; ')}.`,{actor:pi,targets:[pi]}); } }
-    // THE HIEROPHANT — the largest skeletal army
-    { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${best.name} of ${pnm(best.player)} in ${prn(best.location)} \u2014 ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
-    // THE DEATHPRIEST — Grave-sight: every province whose battlefield graves hold Crack or Elite dead.
-    { const pi=holder('necro'); if(pi!=null){ const gp=[]; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const n=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')).length; if(n>0) gp.push(`${prn(pv.id)} (${n})`); }); log('system', gp.length?`[The Deathpriest] Grave-sight \u2014 battlefield graves holding crack or elite dead: ${gp.join(', ')}.`:`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
-  })();
-
   // 7d. Divine kingdom resurrection — a fallen hero spends one full turn in death, then returns.
   // This step runs AFTER the turn counter advanced (§7 above), so when a hero dies during turn N's
   // resolution their grave carries killedOnTurn=N and G.turn is now N+1. Requiring G.turn >=
@@ -14462,6 +14432,45 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // reads province.characters for the map. Rebuilding here means what is saved, what is rendered
   // and where characters actually are can never disagree.
   reconcileProvinceCharacters();
+  // ── IMPERIAL TITLE INTEL (Items 1, 2, 4) ── Titles are AWARDED here, AFTER all turn resolution
+  // (combat, conquest, tax, resurrection, wandering-drift) and the final reconcile — so this ONE
+  // end-of-turn standings computation is what every title benefit reports from. The intel lines,
+  // the holders board and each report's gains/losses therefore never disagree on who holds what.
+  // Each rival / piece of intel is its OWN line, and any character named carries their province.
+  // Gated: nothing emits before Titles go public (turn 5) or once the game is over.
+  (function(){
+    const _pub=((G.turn||1)>=TITLES_PUBLIC_FROM_TURN)||!!G.gameOver;
+    if(!_pub) return;
+    let STD; try{ STD=computeStandings(G); }catch(e){ return; }
+    const TH=STD.titles||{}; const provs=G.world.provinces||[];
+    const holder=key=>{ const h=TH[key]; return (h&&h.playerIndex!=null)?h.playerIndex:null; };
+    const pnm=pi=>G.players[pi]?.name||('Player '+pi);
+    const prn=id=>provs[id]?.name||'unknown';
+    const isNaval=t=>SEA_TYPES.has(t);
+    const kindStr=(ch,naval)=>(ch.armies||[]).filter(a=>naval?isNaval(a.type):!isNaval(a.type)).reduce((s,a)=>s+unitBaseStrength(a),0);
+    // Strongest land/sea force for a rival → the COMMANDING character, so we can name them AND give
+    // their current province (Item 4: locations of characters mentioned).
+    const strongestChar=(pi,naval)=>{ let best=-1,bc=null; (G.characters||[]).filter(c=>c.alive&&c.player===pi).forEach(c=>{ const st=kindStr(c,naval); if(st>best){best=st;bc=c;} }); return best>0?bc:null; };
+    // THE THRONE — each rival's share of the world tax base. Uses the SAME denominator as the
+    // Reckoning (STD.worldTax = every province, land AND sea), so these %s correlate across reports.
+    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; G.players.forEach((pl,i)=>{ if(i===pi)return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); } }
+    // THE VAULTKEEPER — each rival's treasury (own line).
+    { const pi=holder('vault'); if(pi!=null){ G.players.forEach((pl,i)=>{ if(i===pi)return; log('system',`[The Vaultkeeper] ${pnm(i)}: ${pl.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); }); } }
+    // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
+    { const pi=holder('marshal'); if(pi!=null){ let any=false; G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,false); if(c){ any=true; log('system',`[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)}.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); } }
+    // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
+    { const pi=holder('sea'); if(pi!=null){ let any=false; G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)}.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
+    // THE MONSTER-BANE — the runner-up for this title: name + province.
+    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; log('system',`[The Monster-Bane] Your closest rival for the title: ${sec.name} of ${pnm(sec.player)}, last seen in ${prn(sec.location)}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
+    // THE LOREMASTER — each rival discovery this turn (own line), then copy one for free.
+    { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const found=[]; G.players.forEach((pl,i)=>{ if(i===pi)return; (pl.discoveries||[]).forEach(d=>{ if(d.turnDiscovered===tt) found.push({d,i}); }); }); if(found.length){ found.forEach(f=>log('system',`[The Loremaster] ${pnm(f.i)} discovered ${f.d.name} this turn.`,{actor:pi,targets:[pi]})); const lp=G.players[pi]; if(lp){ const owned=new Set((lp.discoveries||[]).map(d=>d.id)); const learn=found.filter(f=>!owned.has(f.d.id)); if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d; (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn}); log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's notes — you now hold this discovery.`,{actor:pi,targets:[pi]}); } } } else log('system',`[The Loremaster] No rival made a new discovery this turn.`,{actor:pi,targets:[pi]}); } }
+    // THE ARCHMAGE — foremost mage of each school (own line): name + province.
+    { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0); [['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].forEach(([sk,lab])=>{ let best=null,bl=-1,bt=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } }); if(best&&bl>0) log('system',`[The Archmage] ${lab}: ${best.name} of ${pnm(best.player)} (L${bl}) in ${prn(best.location)}.`,{actor:pi,targets:[pi]}); else log('system',`[The Archmage] ${lab}: no mage of note.`,{actor:pi,targets:[pi]}); }); } }
+    // THE HIEROPHANT — the largest skeletal army: name + province.
+    { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${best.name} of ${pnm(best.player)} in ${prn(best.location)} — ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
+    // THE DEATHPRIEST — Grave-sight: each province with Crack/Elite dead (own line).
+    { const pi=holder('necro'); if(pi!=null){ let any=false; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const n=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')).length; if(n>0){ any=true; log('system',`[The Deathpriest] Grave-sight: ${prn(pv.id)} holds ${n} crack/elite dead.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
+  })();
   // ── TITLE CHANGES (Item 2) ── compare this turn's holders to last turn's snapshot so each player's
   // report can announce titles their characters/kingdom newly won this turn (with how + effect).
   (function(){
@@ -14813,6 +14822,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-0737</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-0802</div>
 </body>
 </html>
