@@ -102,6 +102,7 @@ em{color:var(--ink-light);}
 .tbl th{background:var(--parchment-dark); font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-light);}
 .tbl tr:nth-child(even) td{background:rgba(216,195,154,.28);}
 .tbl td.num{text-align:right; font-variant-numeric:tabular-nums;}
+.tbl tr.grp td{background:var(--parchment-dark); font-family:'Cinzel',serif; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-light); padding-top:9px;}
 .wrap{overflow-x:auto;}
 
 /* ── Callouts / panels ───────────────────────────────── */
@@ -504,6 +505,59 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Orcish</strong></td><td>Goblin Horde (3), Orc Berserkers (6)</td><td>Warg Riders (5)</td><td>Wyvern Riders (6)</td><td>Orcish Longships (5)</td><td>Orc Garrison (2)</td></tr>
   </table></div>
   <p>The pattern tells each people's story: humans are the broadest, with the game's best cavalry; elves are archer-heavy and woodland-swift; dwarves field the heaviest foot, guns and ironclads; orcs bring cheap, numerous foot and fliers. <strong>Corsair Fleet</strong> (4) is a mercenary hull any coast may hire, and the <strong>Whale Cohort</strong> (4) a wild sea-creature led by Druids.</p>
+  <h3>Complete army roster</h3>
+  <p>Every unit in the game, with its <strong>base strength</strong> (before quality), <strong>move rate</strong> (land move points per turn — sea units use sea move points), <strong>Druid requirement</strong> to lead it (— = none; Druidic kingdoms lead Creatures freely, and a Pagan Wild Hunt binds Creatures or Monsters without Druid magic), and its special ability. Multiply base strength by the quality multiplier for real strength.</p>
+  <div class="wrap"><table class="tbl">
+    <caption>Every army unit — race/origin, type, base strength, move rate, Druid requirement and special ability</caption>
+    <tr><th>Unit</th><th>Race / origin</th><th>Type</th><th>Str</th><th>Move</th><th>Druid</th><th>Special ability</th></tr>
+    <tr class="grp"><td colspan="6"><strong>Human</strong></td></tr>
+    <tr><td><strong>Shieldwall Levies</strong></td><td>Human</td><td>Foot (light)</td><td style="text-align:center">4</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Cheap, steady line infantry.</td></tr>
+    <tr><td><strong>Free Lances</strong></td><td>Human</td><td>Cavalry</td><td style="text-align:center">5</td><td style="text-align:center">4</td><td style="text-align:center">—</td><td>Ride-down: pursue and cut down a broken enemy. Weak in forest/jungle/mountain.</td></tr>
+    <tr><td><strong>Yeoman Longbows</strong></td><td>Human</td><td>Missile (archer)</td><td style="text-align:center">4</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Massed longbow volleys.</td></tr>
+    <tr><td><strong>Gilded Lances</strong></td><td>Human</td><td>Cavalry (heavy)</td><td style="text-align:center">6</td><td style="text-align:center">4</td><td style="text-align:center">—</td><td>Elite armoured horse — the game’s best cavalry.</td></tr>
+    <tr><td><strong>Noble Griffons</strong></td><td>Human</td><td>Flyer</td><td style="text-align:center">6</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td>Winged shock; ignore terrain when moving.</td></tr>
+    <tr><td><strong>Galleon Fleet</strong></td><td>Human</td><td>Fleet</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Ocean warship.</td></tr>
+    <tr><td><strong>Human Garrison</strong></td><td>Human</td><td>Garrison</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">—</td><td>Cheap static province defence.</td></tr>
+    <tr class="grp"><td colspan="6"><strong>Elven</strong></td></tr>
+    <tr><td><strong>Elven Bowmen</strong></td><td>Elven</td><td>Missile (archer)</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Woodland Volley — double missile damage in forest and jungle.</td></tr>
+    <tr><td><strong>Forest Wardens</strong></td><td>Elven</td><td>Missile / foot</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Woodland skirmishers.</td></tr>
+    <tr><td><strong>Shadow Archers</strong></td><td>Elven</td><td>Missile (elite)</td><td style="text-align:center">6</td><td style="text-align:center">4</td><td style="text-align:center">—</td><td>The deadliest archers in the game.</td></tr>
+    <tr><td><strong>Eagle Riders</strong></td><td>Elven</td><td>Flyer</td><td style="text-align:center">6</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td>Swift flying scouts and strikers (speed 5).</td></tr>
+    <tr><td><strong>Elven Galleys</strong></td><td>Elven</td><td>Fleet</td><td style="text-align:center">5</td><td style="text-align:center">4</td><td style="text-align:center">—</td><td>Fast, graceful warships.</td></tr>
+    <tr><td><strong>Elven Garrison</strong></td><td>Elven</td><td>Garrison</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">—</td><td>Cheap static province defence.</td></tr>
+    <tr class="grp"><td colspan="6"><strong>Dwarven</strong></td></tr>
+    <tr><td><strong>Dwarven Guard</strong></td><td>Dwarven</td><td>Foot (heavy)</td><td style="text-align:center">6</td><td style="text-align:center">2</td><td style="text-align:center">—</td><td>Shield Fort — a beaten Guard-heavy force withdraws in good order, or, if trapped, locks shields and holds with no flight losses.</td></tr>
+    <tr><td><strong>Ironwood Crossbows</strong></td><td>Dwarven</td><td>Missile (archer)</td><td style="text-align:center">5</td><td style="text-align:center">2</td><td style="text-align:center">—</td><td>Heavy crossbows; strong but slow.</td></tr>
+    <tr><td><strong>Mountain Guns</strong></td><td>Dwarven</td><td>Artillery</td><td style="text-align:center">7</td><td style="text-align:center">1</td><td style="text-align:center">—</td><td>Siege guns (Str 7); devastating, very slow.</td></tr>
+    <tr><td><strong>Gnomish Gyrocopters</strong></td><td>Dwarven</td><td>Flyer</td><td style="text-align:center">5</td><td style="text-align:center">4</td><td style="text-align:center">2</td><td>Flak Screen — each engages one enemy flyer at −30%.</td></tr>
+    <tr><td><strong>Dwarf Ironclads</strong></td><td>Dwarven</td><td>Fleet</td><td style="text-align:center">7</td><td style="text-align:center">2</td><td style="text-align:center">—</td><td>Armoured warships (Str 7); rule coastal waters.</td></tr>
+    <tr><td><strong>Dwarf Garrison</strong></td><td>Dwarven</td><td>Garrison</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">—</td><td>Cheap static province defence.</td></tr>
+    <tr class="grp"><td colspan="6"><strong>Orcish</strong></td></tr>
+    <tr><td><strong>Warg Riders</strong></td><td>Orcish</td><td>Cavalry</td><td style="text-align:center">5</td><td style="text-align:center">4</td><td style="text-align:center">—</td><td>Fast wolf-riders.</td></tr>
+    <tr><td><strong>Orc Berserkers</strong></td><td>Orcish</td><td>Foot (heavy)</td><td style="text-align:center">6</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Ferocious shock infantry.</td></tr>
+    <tr><td><strong>Goblin Horde</strong></td><td>Orcish</td><td>Foot (light) / missile</td><td style="text-align:center">3</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Cheap and numerous; thrown spears.</td></tr>
+    <tr><td><strong>Wyvern Riders</strong></td><td>Orcish</td><td>Flyer</td><td style="text-align:center">6</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td>Flying shock.</td></tr>
+    <tr><td><strong>Orcish Longships</strong></td><td>Orcish</td><td>Fleet</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td style="text-align:center">—</td><td>Raider warships.</td></tr>
+    <tr><td><strong>Orc Garrison</strong></td><td>Orcish</td><td>Garrison</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">—</td><td>Cheap static province defence.</td></tr>
+    <tr class="grp"><td colspan="6"><strong>Mercenary / wild</strong></td></tr>
+    <tr><td><strong>Corsair Fleet</strong></td><td>Mercenary</td><td>Fleet</td><td style="text-align:center">4</td><td style="text-align:center">4</td><td style="text-align:center">—</td><td>A hull any coast may hire; cheap raiders.</td></tr>
+    <tr><td><strong>Whale Cohort</strong></td><td>Wild (Primal)</td><td>Sea-creature</td><td style="text-align:center">4</td><td style="text-align:center">5</td><td style="text-align:center">3</td><td>Wild sea-beasts led by Druids.</td></tr>
+    <tr class="grp"><td colspan="6"><strong>Creature (Primal)</strong></td></tr>
+    <tr><td><strong>Stone Giants</strong></td><td>Stone Giant</td><td>Heavy</td><td style="text-align:center">9</td><td style="text-align:center">1</td><td style="text-align:center">4</td><td>Boulder Barrage (single). Nearly unstoppable in mountains; crushingly slow.</td></tr>
+    <tr><td><strong>Forest Ents</strong></td><td>Forest Ent</td><td>Heavy</td><td style="text-align:center">8</td><td style="text-align:center">2</td><td style="text-align:center">4</td><td>Regenerate in forest, burn in desert. Choking Spores (all).</td></tr>
+    <tr><td><strong>Giant Eagles</strong></td><td>Giant Eagle</td><td>Flyer</td><td style="text-align:center">7</td><td style="text-align:center">5</td><td style="text-align:center">4</td><td>Diving Talons (single); swift aerial strikers.</td></tr>
+    <tr><td><strong>Crimson Rocs</strong></td><td>Roc</td><td>Flyer</td><td style="text-align:center">10</td><td style="text-align:center">5</td><td style="text-align:center">5</td><td>Air superiority — enemy archers −30% vs them. Thunderous Stoop (single).</td></tr>
+    <tr class="grp"><td colspan="6"><strong>Monster (Primal)</strong></td></tr>
+    <tr><td><strong>Cave Trolls</strong></td><td>Cave Troll</td><td>Heavy</td><td style="text-align:center">8</td><td style="text-align:center">2</td><td style="text-align:center">4</td><td>Regenerating; 30% chance not to die in a lost battle. Hurled Rubble (single).</td></tr>
+    <tr><td><strong>Manticore Pride</strong></td><td>Manticore</td><td>Flyer</td><td style="text-align:center">8</td><td style="text-align:center">4</td><td style="text-align:center">4</td><td>Pursue at 100%. Spine Volley (all).</td></tr>
+    <tr><td><strong>Basilisk Brood</strong></td><td>Basilisk</td><td>Heavy</td><td style="text-align:center">7</td><td style="text-align:center">2</td><td style="text-align:center">4</td><td>Petrifying Gaze — the enemies they face fight at −15%.</td></tr>
+    <tr><td><strong>Sea Giants</strong></td><td>Sea Giant</td><td>Naval</td><td style="text-align:center">9</td><td style="text-align:center">3</td><td style="text-align:center">4</td><td>Also fight coastal land at −20%. Tidal Surge (single).</td></tr>
+    <tr><td><strong>Kraken Tentacles</strong></td><td>Kraken</td><td>Naval</td><td style="text-align:center">10</td><td style="text-align:center">2</td><td style="text-align:center">4</td><td>Extraordinarily powerful at sea. Crushing Coils (single).</td></tr>
+    <tr><td><strong>Elder Dragons</strong></td><td>Dragon</td><td>Flyer</td><td style="text-align:center">12</td><td style="text-align:center">4</td><td style="text-align:center">5</td><td>Dragonfire Breath hits the whole front line.</td></tr>
+    <tr><td><strong>Titan Warbeasts</strong></td><td>Titan</td><td>Heavy</td><td style="text-align:center">11</td><td style="text-align:center">2</td><td style="text-align:center">5</td><td>Fight from the back line with front-line effect. World-Shaking Charge (all).</td></tr>
+    <tr><td><strong>Leviathan Pods</strong></td><td>Leviathan</td><td>Naval</td><td style="text-align:center">13</td><td style="text-align:center">3</td><td style="text-align:center">5</td><td>The most powerful naval unit in the game. Abyssal Maelstrom (all).</td></tr>
+  </table></div>
+
   <p>Beyond the mustered soldiery are the wild and the raised — powerful, but each with a catch:</p>
   <div class="wrap"><table class="tbl">
     <tr><th>Kind</th><th>Nature</th></tr>
@@ -543,10 +597,10 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Pre-battle duel.</strong> Opposing commanders may face each other in single combat first, per the old traditions — a chance to wound or kill the enemy leader before a blow is struck.</li>
     <li><strong>Battle magic.</strong> Eligible spells cast into the battle take effect — weakening enemy units, shielding your own, turning undead, and so on.</li>
     <li><strong>Archery.</strong> Missile units loose before the lines close, thinning the enemy front.</li>
-    <li><strong>The strength clash.</strong> Each side's total effective strength is compared — base × quality, modified by Tactical command, Druid leadership, terrain, <strong>racial affinity and animosity</strong>, each race's combat gifts (elven <em>woodland mastery</em> in the trees, dwarven <em>bulwark</em> on defence), fanaticism, spells, temper and items. The front line's width is limited by terrain, so on tight ground (mountains) sheer numbers count for less.</li>
-    <li><strong>Margin &amp; consequences.</strong> The winner's margin decides the toll: units on both sides are killed, promoted or demoted, and the loser may be forced to retreat. A decisive win can shatter an army; a narrow one is bloody for everyone.</li>
+    <li><strong>The strength clash.</strong> Each side's total effective strength is compared — <strong>base × quality</strong>, then modified by everything that applies. Key multipliers: <strong>racial affinity</strong> (units of the owning king's race ×1.2, units led by a same-race commander ×1.2 — both stack, so a king leading his own race fights at ×1.44); <strong>racial animosity</strong> (a commander leading a rival race — Human↔Orc, Elf↔Dwarf — fights at ×0.8, i.e. −20%); <strong>Woodland Mastery</strong> (an Elven kingdom's own troops ×1.5 in forest/jungle); <strong>Tactical command</strong> (+10% per level, so Tactical 5 = +50%); fanaticism (×1.3 when it fires); plus terrain, Druid leadership, spells, temper and items. The <strong>front line's width</strong> is set by terrain — <strong>6 units on plains, desert or sea, 4 in forest or jungle, 3 in mountains</strong> — and only front-line units fight at full effect, so on tight ground sheer numbers count for less.</li>
+    <li><strong>Margin &amp; consequences.</strong> The winner's margin sets the toll on the LOSER's units each round: a <strong>decisive</strong> win (margin ≥ ~50%) kills ~<strong>35%</strong> and demotes ~30% of them; a <strong>standard</strong> win kills ~<strong>18%</strong> and demotes ~20%; a <strong>narrow</strong> win kills ~<strong>12%</strong> on both sides. The winner's own losses are light — ~1% (decisive), ~5% (standard), ~12% (narrow). A beaten force with an open line of retreat falls back to a friendly province; one with nowhere to run takes an extra <strong>15% per unit</strong> "no escape" toll and the province stays contested.</li>
   </ol>
-  <p>Defenders fight with an edge on their own ground, and a home province defended by its owner is tougher still. Taking a contested province often takes more than one phase, because beaten defenders can stay and keep contesting it.</p>
+  <p>Defenders fight with an edge on their own ground, and a home province defended by its owner is tougher still. Quality is the single biggest lever: the tier multiplier runs <strong>Green ×1, Average ×2 (a fresh recruit), Veteran ×3, Crack ×4, Elite ×5</strong> — a Veteran is worth one-and-a-half fresh recruits, an Elite two-and-a-half. Taking a contested province often takes more than one phase, because beaten defenders can stay and keep contesting it.</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -830,7 +884,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.08.16-0142</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.03-2339</span> · Adventurer Kings ruleset
 </footer>
 
 <script>

@@ -910,7 +910,7 @@ function buildTargetField(c,ph,saved){
       const canHunt=(pd?.armyTypes||[]).some(a=>PRIMAL_ARMY_DEFS_P[a.type]);
       return`<select id="po-target-${c.id}-${ph}">
         ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>Rite of the Wild Hunt — bind 2 wild creatures (6g, until end of next turn)</option>`:''}
-        <option value="Blood Offering" ${target==='Blood Offering'?'selected':''}>Blood Offering — sacrifice a unit: full heal + bless a unit's quality</option>
+        <option value="Blood Offering" ${target==='Blood Offering'?'selected':''}>Blood Offering — sacrifice units to empower an equal number (+2 tiers each)</option>
       </select>`;
     }
     case 'Recruit Armies':{
@@ -2766,9 +2766,11 @@ function humanXPMult(a, ownerPi, gs){
 
 
 function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
-// Starting neutral defender count by wealth tier — Rich(tax>=8) 3-4 / Prosperous(tax>=4) 2-3 / Poor 1-2.
+// Starting neutral defender count by wealth tier. MUST use the SAME tax thresholds as the player-facing
+// wealth label (tax>=7 Rich / tax>=3 Prosperous / else Poor) — otherwise a province shown as "Prosperous"
+// (e.g. tax 3) quietly fell into the poor band and was defended by a single unit. Rich 3-4 / Prosperous 2-3 / Poor 1-2.
 // Single source of truth used by every world-gen defender pass (land, sea, primal, home-race conversion).
-function neutralDefCount(tax){return tax>=8?rP(3,4):tax>=4?rP(2,3):rP(1,2);}
+function neutralDefCount(tax){return tax>=7?rP(3,4):tax>=3?rP(2,3):rP(1,2);}
 
 // ── Percentage dice (item 8) ─────────────────────────────────────────────────
 // d100() returns an integer 1–100. A percentage check SUCCEEDS when the rolled
@@ -4169,6 +4171,47 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       }
     }
 
+    // ── Tasks 6 & 7: alignment starting primal neighbour ──
+    // Pagan kings open beside a PRIMAL FOREST or JUNGLE province that holds a RITUAL SITE (somewhere to
+    // Perform Rites from turn one). Druidic kings open beside a PRIMAL CREATURE province (Griffons,
+    // Eagles, Ents, Giants, Rocs — a wild host they can lead with no Druid requirement). We convert a
+    // free neighbour, preferring one that is NOT the king's own-race homeland guaranteed above.
+    {
+      const _align=sp.alignment;
+      if(_align==='Pagan'||_align==='Druidic'){
+        const CBT={plain:['Giant Eagles','Stone Giants'],desert:['Stone Giants','Giant Eagles'],forest:['Forest Ents','Giant Eagles'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Giant Eagles']};
+        const MBT={plain:['Titan Warbeasts','Manticore Pride'],desert:['Manticore Pride','Basilisk Brood'],forest:['Cave Trolls','Basilisk Brood'],jungle:['Basilisk Brood','Cave Trolls','Manticore Pride'],mountain:['Cave Trolls','Elder Dragons']};
+        const _freeNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
+        // don't clobber the just-guaranteed own-race neighbour if we can help it
+        const _pick=(list)=>{ const notOwn=list.filter(n=>n.race!==sp.race); return (notOwn.length?notOwn:list); };
+        let cand=null;
+        if(_align==='Pagan'){
+          const pool=_pick(_freeNbrs);
+          // prefer an existing forest/jungle neighbour; else re-terrain one to forest/jungle
+          cand=pool.find(n=>n.terrain==='forest'||n.terrain==='jungle')||pool[0];
+          if(cand){ if(cand.terrain!=='forest'&&cand.terrain!=='jungle') cand.terrain=Math.random()<0.5?'forest':'jungle'; }
+        } else { // Druidic
+          cand=_pick(_freeNbrs)[0];
+        }
+        if(cand){
+          const creatureOnly=(_align==='Druidic');
+          const bank=creatureOnly?(CBT[cand.terrain]||['Stone Giants'])
+                                 :((Math.random()<0.5?CBT:MBT)[cand.terrain]||['Stone Giants']);
+          const primalUnit=bank[Math.floor(Math.random()*bank.length)];
+          cand.race='Primal:'+(PRIMAL_ARMY_DEFS_P[primalUnit]?.race||primalUnit);
+          cand.armyTypes=[primalUnit];
+          const dc=neutralDefCount(cand.tax);
+          cand.neutralDefenders=Array.from({length:dc},()=>({type:primalUnit,quality:Math.random()<0.5?'Veteran':'Average',race:cand.race,unitName:armyUnitName(primalUnit)}));
+          cand.npcArmies=cand.neutralDefenders.length;
+          if(_align==='Pagan' && !(cand.features||[]).some(f=>f&&f.ritualSite)){
+            cand.features=cand.features||[];
+            cand.features.push({name:RITUAL_SITE_NAMES[Math.floor(Math.random()*RITUAL_SITE_NAMES.length)],ritualSite:true,monster:null,discovered:false,cleared:false,treasure:0});
+          }
+          cand.name=null; // re-named thematically by the naming pass
+        }
+      }
+    }
+
     // ── Guarantee: at least one WEAK feature in every player's home province ──
     {
       const SEA_MONS=new Set(['Sea Serpent','Kraken Spawn','Leviathan','Leviathan Young','Pirate Captain','Ghost Galleon Crew','Shark Pack','Giant Crab']);
@@ -5516,7 +5559,7 @@ async function runTurn(){
         return;
       }
       // Handle synthetic hired hero IDs: 'hired_HEROID_via_CHARID_phPH'
-      const hiredMatch=charId.match(/^hired_(\d+)_via_\d+_ph(\d+)$/);
+      const hiredMatch=charId.match(/^hired_(\d+)_via_.+_ph(\d+)$/); // Task 1: caster may itself be a synthetic (nested-hire) id
       if(hiredMatch){
         const realHeroId=parseInt(hiredMatch[1]);
         const hiredAtPh=parseInt(hiredMatch[2]);
@@ -5554,7 +5597,7 @@ async function runTurn(){
     // hired — and now a raised — hero used to be collected by the portal and then silently dropped
     // here, leaving them fighting on the default ME plan.
     Object.entries(epObj).forEach(([charId,plan])=>{
-      const syn=String(charId).match(/^(?:hired|resurrect|charm)_(\d+)_via_\d+_ph\d+$/);
+      const syn=String(charId).match(/^(?:hired|resurrect|charm)_(\d+)_via_.+_ph\d+$/); // Task 1: allow synthetic (nested) caster id
       const realId=syn?parseInt(syn[1]):parseInt(charId);
       const ch=G.characters.find(c=>c.id===realId);
       if(ch&&plan) ch.encounterPlan=plan;
@@ -6153,9 +6196,9 @@ function seaPenalty(armyType, terrain){
       // commanders and has been removed.)
       str=Math.floor(str*terrainMultFinal);
     }
-    // ── ELVEN WOODLAND MASTERY (this session, item 2) ── Elven armies of an Elven kingdom fight +20%
-    // in forest and jungle — their home ground.
-    if(_unitRace==='Elven'&&_ownerRace==='Elven'&&(terrain==='forest'||terrain==='jungle')) str=Math.round(str*1.2);
+    // ── ELVEN WOODLAND MASTERY ── Elven armies of an Elven kingdom fight +50% in forest and jungle —
+    // their home ground. (Raised from +20% this session.)
+    if(_unitRace==='Elven'&&_ownerRace==='Elven'&&(terrain==='forest'||terrain==='jungle')) str=Math.round(str*1.5);
     // ── DWARVEN BULWARK (this session, item 3) ── Dwarven armies of a Dwarven kingdom defend at ×1.5
     // in any battle (per-unit; applies only on the defending side).
     if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false) str=Math.round(str*1.5);
@@ -6300,12 +6343,27 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Record killed armies into province grave pool for Skeletal Armies spell
-  function recordBattleGraves(prov, killedArmies){
+  // Task 3: Elven army units of an Elven KINGDOM that would fall in battle have a terrain-based chance
+  // to slip the field and make for home instead of dying. The chance is decided here, at the moment of
+  // loss; the survivor is DELIVERED at the end of the turn (see flushElvenEscapes), to the king's home
+  // province — or, if that has been lost, the kingdom's wealthiest remaining province — so the
+  // destination reflects final ownership. Desert/mountain 10%, plains 15%, forest/jungle 20%.
+  const _elvenEscapeQueue=[];
+  function elvenEscapeChance(terrain){ return (terrain==='desert'||terrain==='mountain')?10:(terrain==='forest'||terrain==='jungle')?20:15; }
+  function recordBattleGraves(prov, killedArmies, ownerPlayer){
     if(!killedArmies||!killedArmies.length) return;
     if(!prov.battleGraves) prov.battleGraves=[];
+    const ownerIsElven=(ownerPlayer!=null && G.players[ownerPlayer] && G.players[ownerPlayer].race==='Elven');
     killedArmies.forEach(a=>{
       // Don't record skeletal armies — they don't leave useful remains
       if(a._isSkeletal) return;
+      if(ownerIsElven && a && a.race==='Elven' && !a._temporary && a._wildHuntUntilTurn==null && !a._elvenEscaped){
+        if(Math.random()*100 < elvenEscapeChance(prov&&prov.terrain)){
+          a._elvenEscaped=true;
+          _elvenEscapeQueue.push({player:ownerPlayer, unit:{type:a.type, quality:a.quality, race:'Elven', unitName:a.unitName||armyUnitName(a.type), strength:a.strength}});
+          return; // fled toward home — no grave left here
+        }
+      }
       prov.battleGraves.push({type:a.type,quality:a.quality,race:a.race||'Human',unitName:a.unitName});
     });
   }
@@ -7184,7 +7242,7 @@ const BATTLE_ARMY_SPELLS={
       if(isDecisive&&G.players[c.player]?.alignment==='Evil'&&((c.encounterPlan?.evilMode)||'terror')==='terror'){
         spreadTerror(prov, c.player, narrative);
       }
-      recordBattleGraves(prov, armies.filter(a=>a._died));
+      recordBattleGraves(prov, armies.filter(a=>a._died), c.player); // Task 3: attacker's Elven units may escape home
 
       // ── Defender casualties: identical logic to a player-vs-player defeat ──
       // Neutral defenders used to be deleted outright on any loss, which meant the caller's
@@ -7317,7 +7375,7 @@ const BATTLE_ARMY_SPELLS={
       }
 
       if(armies.some(a=>!a._died&&!a._notable)) narrative.push(`— ${armies.some(a=>a._died||a._notable)?'All other':'All'} forces survive the engagement.`);
-      recordBattleGraves(prov, armies.filter(a=>a._died));
+      recordBattleGraves(prov, armies.filter(a=>a._died), c.player); // Task 3: attacker's Elven units may escape home
       c.armies=c.armies.filter(a=>!a._died&&!a._disbanded);
     }
 
@@ -8529,7 +8587,7 @@ const BATTLE_ARMY_SPELLS={
     applyBreachAndSwamp(defArmies, atkArmies, def.name, narrative);
     // Remove anything sunk before strengths are counted.
     if(atkArmies.some(a=>a._died)||defArmies.some(a=>a._died)){
-      recordBattleGraves(prov, [...atkArmies,...defArmies].filter(a=>a._died));
+      recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player); recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player); // Task 3: Elven escape per side
       for(let i=atkArmies.length-1;i>=0;i--) if(atkArmies[i]._died) atkArmies.splice(i,1);
       for(let i=defArmies.length-1;i>=0;i--) if(defArmies[i]._died) defArmies.splice(i,1);
       atk.armies=atkArmies; def.armies=defArmies;
@@ -8775,8 +8833,8 @@ const BATTLE_ARMY_SPELLS={
           else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${defName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
         }
       });
-      recordBattleGraves(prov, atkArmies.filter(a=>a._died));
-      recordBattleGraves(prov, defArmies.filter(a=>a._died));
+      recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
+      recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
       bloodHarvest(atk, defArmies.filter(a=>a._died).length, narrative);
       ironThroneRaise(atk, defArmies.filter(a=>a._died), narrative); // GRAND DESIGN — Evil
       atk.armies=atkArmies.filter(a=>!a._died&&!a._disbanded);
@@ -8854,8 +8912,8 @@ const BATTLE_ARMY_SPELLS={
         if(roll<winDeathPvP*defSteelMult){a._died=true;narrative.push(`— ${defName}'s ${a.unitName||a.type} were lost defending ${prov.name}.`);}
         else if(roll<winDeathPvP*defSteelMult+xpChancePvP(winXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${defName}'s ${a.unitName||a.type} are hardened by victory to ${a.quality}!`);}}
       });
-      recordBattleGraves(prov, atkArmies.filter(a=>a._died));
-      recordBattleGraves(prov, defArmies.filter(a=>a._died));
+      recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
+      recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
       bloodHarvest(def, atkArmies.filter(a=>a._died).length, narrative);
       ironThroneRaise(def, atkArmies.filter(a=>a._died), narrative); // GRAND DESIGN — Evil
       atk.armies=atkArmies.filter(a=>!a._died&&!a._disbanded);
@@ -9544,10 +9602,10 @@ const BATTLE_ARMY_SPELLS={
           if(!toProv.exploredBy) toProv.exploredBy={};
           const explLvlMove=effStat(c,'explorer');
           const explGainMove=(10+5*explLvlMove)+(c.items||[]).reduce((sm,it)=>sm+((it&&it.exploreMove)||0),0)+(perkTier(c,'march')>0?2*((c.armies||[]).length):0); // Traveller's Cloak +20% · MARCH L6 +2%/army led (Loremaster explore bonus removed \u2014 now an intel line)
-          // Item 2 (this session): an Elven character of an Elven kingdom maps forest & jungle twice as fast.
-          const _elfWoodMove=(c.race==='Elven'&&G.players[c.player]?.race==='Elven'&&(toProv.terrain==='forest'||toProv.terrain==='jungle'))?2:1;
+          // (The old Elven "Pathfinder" forest/jungle exploration doubling is REPLACED this session by
+          // the Elven escape ability — no exploration bonus now.)
           const prevExp=toProv.exploredBy[c.player]||0;
-          toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove*_elfWoodMove);
+          toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove);
           toProv.explored=toProv.exploredBy[c.player];
           // NAVAL L6 — charting the coast: entering a SEA province while leading naval units adds +5%
           // exploration to each LAND province adjacent to this sea province.
@@ -10125,9 +10183,9 @@ const BATTLE_ARMY_SPELLS={
         // sd10 Scouts & Rangers: +20% explore bonus
         const scoutBonus=hasDisc(c.player,'sd10')?1.20:1;
         const loreMult=(charMinor(c,'trailblazer')?1.05:1); // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
-        // Item 2 (this session): Elven character of an Elven kingdom explores forest/jungle twice as fast.
-        const _elfWoodExpl=(c.race==='Elven'&&G.players[c.player]?.race==='Elven'&&(prov.terrain==='forest'||prov.terrain==='jungle'))?2:1;
-        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*_elfWoodExpl*(hasDisc(c.player,'sd24')?1.40:1))); // sd24 The Compass: +40% mapped
+        // (The old Elven "Pathfinder" double forest/jungle exploration has been REPLACED this session by
+        // the Elven escape ability — see recordBattleGraves / flushElvenEscapes. No exploration bonus now.)
+        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*(hasDisc(c.player,'sd24')?1.40:1))); // sd24 The Compass: +40% mapped
         if(!prov.exploredBy) prov.exploredBy={};
         const before=prov.exploredBy[c.player]||0;
         prov.exploredBy[c.player]=Math.min(100,before+gain);
@@ -10205,26 +10263,33 @@ const BATTLE_ARMY_SPELLS={
           resolveUnitGainInProvince(c, prov, ph);
           break;
         }
-        // ── Blood Offering (default) ── Sacrifice one army unit; the old gods mend their champion
-        // and put fire in the ranks: full heal + one surviving unit gains a quality tier.
-        const _sacrificable=(c.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null);
-        if(_sacrificable.length===0){
-          log('system',`${c.name} has no army unit of their own to offer at the ${_riteSite.name} — the gods take blood, not borrowed beasts.`,{actor:c.player,targets:[c.player]});break;}
-        const _named=target&&!_rite.startsWith('blood')?_sacrificable.find(a=>a.unitName===target||a.type===target):null;
-        const _victim=_named||_sacrificable[Math.floor(Math.random()*_sacrificable.length)];
-        c.armies=c.armies.filter(a=>a!==_victim);
-        recordBattleGraves(prov,[_victim]);
-        const _healed=(c.hp||0)<(c.maxHp||20);
-        c.hp=c.maxHp||20;
+        // ── Blood Offering (default) ── The player names units to SACRIFICE and an EQUAL number of
+        // units to EMPOWER; each empowered unit gains TWO experience tiers (capped at Elite). Some units
+        // are given up to make others stronger. Encoded in the order's `extra` as "S:i,j|E:a,b" — indices
+        // into the character's army. Borrowed/temporary/skeletal units can be neither offered nor raised.
         const _tiers=['Green','Average','Veteran','Crack','Elite'];
-        const _blessable=(c.armies||[]).filter(a=>!a._isSkeletal&&a._wildHuntUntilTurn==null&&!a._temporary&&_tiers.indexOf(a.quality)>-1&&_tiers.indexOf(a.quality)<4);
-        let _blessLine='';
-        if(_blessable.length>0){
-          const _b=_blessable[Math.floor(Math.random()*_blessable.length)];
-          _b.quality=_tiers[_tiers.indexOf(_b.quality)+1];
-          _blessLine=` ${_b.unitName||_b.type} drink of the offering and rise to ${_b.quality}.`;
+        const _army=c.armies||[];
+        const _bOffElig=i=>{ const a=_army[i]; return !!a && !a._temporary && a._wildHuntUntilTurn==null && !a._isSkeletal; };
+        let _sacI=[], _benI=[];
+        const _bm=/S:([0-9,]*)\|E:([0-9,]*)/.exec((extra||'').trim());
+        if(_bm){
+          _sacI=[...new Set(_bm[1].split(',').filter(x=>x!=='').map(Number))].filter(i=>Number.isInteger(i)&&_bOffElig(i));
+          _benI=[...new Set(_bm[2].split(',').filter(x=>x!=='').map(Number))].filter(i=>Number.isInteger(i)&&_bOffElig(i)&&!_sacI.includes(i));
         }
-        log('combat',`\u{1FA78} ${c.name} makes a Blood Offering at the ${_riteSite.name} — ${_victim.unitName||_victim.type} (${_victim.quality}) are given to the old gods.${_healed?` ${c.name} is made whole (healed to full).`:''}${_blessLine}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        // Legacy/no-selection fallback: sacrifice one own unit to raise one other by two tiers.
+        if(_sacI.length===0||_benI.length===0){
+          const _own=_army.map((a,i)=>i).filter(_bOffElig);
+          if(_own.length>=2){ _sacI=[_own[0]]; _benI=[_own[1]]; }
+          else { log('system',`${c.name} makes no Blood Offering — name units to sacrifice and an equal number to empower (needs at least two of its own units).`,{actor:c.player,targets:[c.player]}); break; }
+        }
+        const _bn=Math.min(_sacI.length,_benI.length);   // each sacrifice funds exactly one empowerment
+        const _sac=_sacI.slice(0,_bn).map(i=>_army[i]);
+        const _ben=_benI.slice(0,_bn).map(i=>_army[i]);
+        c.armies=_army.filter(a=>!_sac.includes(a));
+        recordBattleGraves(prov,_sac);
+        _ben.forEach(b=>{ const cur=_tiers.indexOf(b.quality); if(cur>-1) b.quality=_tiers[Math.min(4,cur+2)]; });
+        if(typeof refreshMovePool==='function') refreshMovePool(c); // the host is smaller now — pace may change
+        log('combat',`\u{1FA78} ${c.name} makes a Blood Offering at the ${_riteSite.name} — ${_sac.map(a=>a.unitName||a.type).join(', ')} (${_bn} unit${_bn!==1?'s':''}) are given to the old gods, and their strength passes to ${_ben.map(a=>`${a.unitName||a.type} (rise to ${a.quality})`).join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         break;
       }
       case 'search':{
@@ -13957,6 +14022,28 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     G._itemDeliveries=[];
   }
 
+  // ── Task 3: ELVEN ESCAPE delivery ── Units that slipped a lost battle make for home NOW, when the
+  // turn's fighting is done and ownership is final. Each is placed in the king's home province (or the
+  // kingdom's wealthiest remaining province if the home has fallen); a dynasty that holds no land at all
+  // has nowhere to run to, and those survivors are lost. They arrive as garrison of the province.
+  if(Array.isArray(_elvenEscapeQueue) && _elvenEscapeQueue.length){
+    const _byPlayer={};
+    _elvenEscapeQueue.forEach(e=>{ (_byPlayer[e.player]=_byPlayer[e.player]||[]).push(e.unit); });
+    Object.keys(_byPlayer).forEach(pk=>{
+      const pi=+pk; const units=_byPlayer[pk];
+      const destId=monarchRestProvId(G, pi);
+      const dest=(destId!=null)?G.world.provinces[destId]:null;
+      if(!dest){
+        log('combat',`🍃 ${units.length} Elven unit${units.length!==1?'s':''} broke free of battle and made for home — but ${G.players[pi]?.name||'the kingdom'} holds no land left to return to, and they scatter into the wild, lost.`,{actor:null,targets:[pi],phase:99});
+        return;
+      }
+      dest.garrisonArmies=dest.garrisonArmies||[];
+      units.forEach(u=>dest.garrisonArmies.push(u));
+      log('combat',`🍃 ${units.map(u=>u.unitName||u.type).join(', ')} (${units.length} unit${units.length!==1?'s':''}) slipped away from battle and have found their way home to ${dest.name}, rejoining the garrison there.`,{actor:pi,targets:[pi],provinceId:dest.id,phase:99,public:false});
+    });
+    _elvenEscapeQueue.length=0;
+  }
+
   // Item 12 safety net: flush any incidental skill-rises that were earned after the last in-phase
   // flush (none expected today, but this guarantees no such line is ever silently dropped).
   if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
@@ -14822,6 +14909,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-1221</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-2339</div>
 </body>
 </html>

@@ -1770,7 +1770,7 @@ function renderReportView(report){
     Good:`Your kingdom is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever he happens to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
     Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Creature armies also fight with a +25% fanaticism bonus under your banner. Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
     Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — he may hire any wandering hero the kingdom can see without leaving his hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the kingdom has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
-    Pagan:`Your kingdom draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering trades one of your units for a full heal and a quality blessing. Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
+    Pagan:`Your kingdom draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering sacrifices units to empower an equal number of others (+2 quality tiers each, to Elite). Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
     Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — +30% when the king leads them in person, +20% under any other commander. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
   };
@@ -3624,7 +3624,15 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   const containerId=`hired-hero-orders-${charId}-${ph}`;
   document.getElementById(containerId)?.remove();
 
-  const charBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
+  let charBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
+  if(!charBlock){
+    // Task 1 — NESTED hire: the hiring character is itself a hero hired earlier this turn (a synthetic
+    // id), whose phase-0 row may be a "not yet hired" placeholder with no action select. Find their card
+    // block by any of their phase selects, or by the data-fakeid marker on their injected card, so the
+    // newly-hired hero's own order window still appears and can be given orders straight away.
+    for(let _p=0;_p<5&&!charBlock;_p++){ const el=document.getElementById(`po-action-${charId}-${_p}`); if(el) charBlock=el.closest('.orders-char-block'); }
+    if(!charBlock){ const fake=document.querySelector(`[data-fakeid="${charId}"]`); if(fake) charBlock=fake; }
+  }
   if(!charBlock) return;
 
   const SEASONS_H=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
@@ -3764,6 +3772,26 @@ function getOrderExtra(charId, ph){
   return el?.value||'';
 }
 
+// Task 8: read the Blood Offering per-unit Sacrifice/Empower selectors into the hidden extra field
+// ("S:i,j|E:a,b"), show the block only for the Blood Offering rite, and warn if the counts don't match.
+function updateBloodOffering(charId, ph){
+  const rite=(document.getElementById(`po-target-${charId}-${ph}`)?.value)||'';
+  const block=document.getElementById(`bo-block-${charId}-${ph}`);
+  const extra=document.getElementById(`po-extra-${charId}-${ph}`);
+  const hint=document.getElementById(`bo-hint-${charId}-${ph}`);
+  if(block) block.style.display=(rite==='Blood Offering')?'block':'none';
+  if(rite!=='Blood Offering'){ if(extra) extra.value=''; return; }
+  const sels=document.querySelectorAll(`.bo-sel[data-cid="${charId}"][data-ph="${ph}"]`);
+  const sac=[], ben=[];
+  sels.forEach(s=>{ const idx=parseInt(s.getAttribute('data-idx')); if(s.value==='S') sac.push(idx); else if(s.value==='E') ben.push(idx); });
+  if(extra) extra.value=`S:${sac.join(',')}|E:${ben.join(',')}`;
+  if(hint){
+    if(sac.length===0&&ben.length===0){ hint.textContent='Mark units to sacrifice and an equal number to empower.'; hint.style.color='var(--stone)'; }
+    else if(sac.length!==ben.length){ hint.textContent=`⚠ ${sac.length} to sacrifice vs ${ben.length} to empower — only ${Math.min(sac.length,ben.length)} pair(s) will take effect (each sacrifice funds one empowerment).`; hint.style.color='#b04a4a'; }
+    else { hint.textContent=`✓ ${sac.length} unit(s) sacrificed to empower ${ben.length} other(s) by +2 tiers.`; hint.style.color='#2d6a2d'; }
+  }
+}
+
 
 
 async function submitOrders(){
@@ -3869,7 +3897,7 @@ function updateAlignmentDesc(){
     Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
     Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, gain +25% fanaticism, and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
     Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 2g less. Sage discoveries twice as often.',
-    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in Primal country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> trades one unit for a full heal and a quality blessing. <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
+    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in Primal country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> sacrifices units to empower an equal number of others (+2 quality tiers each). <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
     Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) get +25% fanaticism. Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are looted for 50% of their tax value — or, per character, <strong>Enslaved</strong> instead: a free Green native garrison unit, but −1 tax there for 3 turns. Choose each character\'s doctrine in their orders.',
     Undead:'💀 <strong>Undead:</strong> King starts with Necromancy +1 and a free Skeletal unit. Skeletal armies: always fanatical (+30% king-led, +20% hero-led), 1g upkeep, no Druid penalty. Graves decay at half rate in your provinces. <strong>Harvest the Field</strong>: raise a grave as a skeleton for 2g, no magic needed. <strong>Deathless March</strong>: all-skeletal forces never take flight casualties. Cannot hire Divine heroes; righteous heroes cost extra.',
   };
@@ -3934,7 +3962,7 @@ function updateRaceDesc(){
   if(!sel||!desc) return;
   const DESCS={
     Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit the broadest roster — Shieldwall Levies, Free Lances and Yeoman Longbows, heavily-armoured Gilded Lances, and flying Noble Griffons — plus the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you: the most flexible race for any strategy. A commander leading troops of their own race fights at +20% and needs no Druid skill to command them. Feud: Humans and Orcs bear an ancient animosity — an Orc commanding Human troops (or the reverse) fights at −20%. Heroes of your own race cost 2g/turn to keep.',
-    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, fighting best in forest and jungle. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. An Elven kingdom MAPS forest and jungle twice as fast (exploration). A commander leading their own race fights at +20% with no Druid requirement. Feud: Elves and Dwarves are old rivals — either leading the other\u2019s troops fights at −20%. You win through mobility and missile fire, not brute force.',
+    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, fighting best in forest and jungle. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. An Elven kingdom\u2019s own troops fight at +50% in forest and jungle (Woodland Mastery). Homeward Flight: an Elven unit that would fall in battle may instead slip away and return home — chance by terrain (10% desert/mountain, 15% plains, 20% forest/jungle); the survivors reach the king\u2019s home (or wealthiest province) as the turn closes. A commander leading their own race fights at +20% with no Druid requirement. Feud: Elves and Dwarves are old rivals — either leading the other\u2019s troops fights at −20%. You win through mobility and missile fire, not brute force.',
     Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough Dwarven Guard and Ironwood Crossbows anchor the line, and Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flyers, and armoured Dwarf Ironclads dominate coastal waters. Every Dwarven character of a Dwarven kingdom is issued MITHRIL ARMOUR — melee and arrow blows against them deal 2 less damage. Dwarves are deadliest defending or fighting in mountains (but move slowly). Own-race command gives +20% and no Druid penalty. Feud: Dwarves and Elves fight at −20% under a rival-kin commander.',
     Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) thrive in forest, jungle and mountains. A commander leading their own race fights at +20% with no Druid requirement. Feud: Orcs and Humans loathe one another — either leading the other\u2019s troops fights at −20%. Orcs overwhelm through numbers and speed rather than quality.',
   };
@@ -4698,10 +4726,29 @@ function buildTargetField(c, ph, saved){
       // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
       // still holds a primal unit (Creature or Monster country).
       const canHunt=(pd?.armyTypes||[]).some(a=>CREATURE_ARMIES_UI.has(a.type)||MONSTER_ARMIES_UI.has(a.type));
-      return`<select id="po-target-${c.id}-${ph}">
+      const _boArmy=c.armies||[];
+      // Pre-select from any saved order (extra encodes "S:i,j|E:a,b").
+      const _boSaved={S:new Set(),E:new Set()};
+      { const m=/S:([0-9,]*)\|E:([0-9,]*)/.exec(extra||''); if(m){ m[1].split(',').filter(Boolean).forEach(x=>_boSaved.S.add(+x)); m[2].split(',').filter(Boolean).forEach(x=>_boSaved.E.add(+x)); } }
+      const _boRows=_boArmy.length
+        ? _boArmy.map((a,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
+            <span style="flex:1">${(typeof unitEmoji==='function'?unitEmoji(a.type):'')} ${a.unitName||a.type} (${a.quality})</span>
+            <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering('${c.id}',${ph})" style="font-size:.7rem">
+              <option value="K" ${(!_boSaved.S.has(i)&&!_boSaved.E.has(i))?'selected':''}>Keep</option>
+              <option value="S" ${_boSaved.S.has(i)?'selected':''}>Sacrifice ✝</option>
+              <option value="E" ${_boSaved.E.has(i)?'selected':''}>Empower +2</option>
+            </select></div>`).join('')
+        : `<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
+      return`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering('${c.id}',${ph})">
         ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 wild creatures (6g, serve until end of NEXT turn)</option>`:''}
-        <option value="Blood Offering" ${target==='Blood Offering'?'selected':''}>\u{1FA78} Blood Offering — sacrifice one unit: heal to full + one unit gains a quality tier</option>
+        <option value="Blood Offering" ${target==='Blood Offering'||!target?'selected':''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+2 tiers each)</option>
       </select>
+      <input id="po-extra-${c.id}-${ph}" type="hidden" value="${(extra||'').replace(/"/g,'&quot;')}">
+      <div id="bo-block-${c.id}-${ph}" style="margin-top:5px;border:1px solid var(--parchment-dark);border-radius:3px;padding:6px;background:#fdf5e0">
+        <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+2 quality tiers each, max Elite):</div>
+        ${_boRows}
+        <div id="bo-hint-${c.id}-${ph}" style="font-size:.7rem;color:var(--stone);margin-top:3px"></div>
+      </div>
       <div style="font-size:.68rem;color:#7a4a00;margin-top:3px">At the ${site.name}. The old gods always take payment.</div>`;
     }
     case 'Cast Spell':{
@@ -5830,6 +5877,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.03-1221</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.03-2339</div>
 </body>
 </html>
