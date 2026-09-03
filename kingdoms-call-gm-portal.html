@@ -3994,7 +3994,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     }
   }
 
-  const FLEET_BY_RACE={Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']};
+  const FLEET_BY_RACE={Human:['Galleon Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}; // Corsair Fleet retired (was Human alt); coastal Humans now build Galleon Fleet only
   provinces.forEach(p=>{
     if(p.terrain==='sea') return; // sea handled separately below
     // Naval units are a HUMANOID shipbuilding tradition. Primal provinces (race 'Primal:...') and
@@ -4110,7 +4110,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         return nb&&nb.terrain==='sea';
       });
       if(homeCoastal&&Math.random()<COASTAL_NAVAL_CHANCE){
-        const hf=({Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[];
+        const hf=({Human:['Galleon Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[]; // Corsair Fleet retired
         const pickH=hf[Math.floor(Math.random()*hf.length)];
         if(pickH&&!best.armyTypes.includes(pickH)) best.armyTypes.push(pickH);
       }
@@ -4152,7 +4152,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
             return nb&&nb.terrain==='sea';
           });
           if(convCoastal&&Math.random()<COASTAL_NAVAL_CHANCE){
-            const cf=({Human:['Galleon Fleet','Corsair Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[];
+            const cf=({Human:['Galleon Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[]; // Corsair Fleet retired
             const pickF=cf[Math.floor(Math.random()*cf.length)];
             if(pickF&&!conv.armyTypes.includes(pickF)) conv.armyTypes.push(pickF);
           }
@@ -6347,9 +6347,9 @@ const BATTLE_ARMY_SPELLS={
   // to slip the field and make for home instead of dying. The chance is decided here, at the moment of
   // loss; the survivor is DELIVERED at the end of the turn (see flushElvenEscapes), to the king's home
   // province — or, if that has been lost, the kingdom's wealthiest remaining province — so the
-  // destination reflects final ownership. Desert/mountain 10%, plains 15%, forest/jungle 20%.
+  // destination reflects final ownership. Desert/mountain 30%, plains 45%, forest/jungle 60%.
   const _elvenEscapeQueue=[];
-  function elvenEscapeChance(terrain){ return (terrain==='desert'||terrain==='mountain')?10:(terrain==='forest'||terrain==='jungle')?20:15; }
+  function elvenEscapeChance(terrain){ return (terrain==='desert'||terrain==='mountain')?30:(terrain==='forest'||terrain==='jungle')?60:45; }
   function recordBattleGraves(prov, killedArmies, ownerPlayer){
     if(!killedArmies||!killedArmies.length) return;
     if(!prov.battleGraves) prov.battleGraves=[];
@@ -14909,6 +14909,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-2339</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-0832</div>
 </body>
 </html>
