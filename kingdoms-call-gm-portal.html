@@ -9755,7 +9755,7 @@ const BATTLE_ARMY_SPELLS={
               if(toProv._leaderlessDefenders) log('combat',`🛡 Their commander fell, but the garrison of ${toProv.name} held — the leaderless defenders keep the province.`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             }
             toProv.characters=toProv.characters.filter(id=>id!==c.id);
-            prov.characters.push(c.id);c.location=prov.id;if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
+            prov.characters.push(c.id);c.location=prov.id; // rule: never zero remaining move points — the attack move already cost its point; the rest of the turn's budget stays.
           }
         } else if(toProv.owner!==null&&toProv.owner!==c.player&&(c.armies||[]).length>0&&areEnemies(c.player,toProv.owner)){
           // ENEMY-owned province → invasion/battle (below). ALLIED-owned falls through to the final
@@ -9938,7 +9938,7 @@ const BATTLE_ARMY_SPELLS={
               if(!_fellBackTo.characters) _fellBackTo.characters=[];
               if(!_fellBackTo.characters.includes(c.id)) _fellBackTo.characters.push(c.id);
               c.location=_fellBackTo.id;
-              if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
+              // rule: never zero remaining move points on a move-in/battle — the move already cost its point; the rest of the turn’s budget stays.
             }
             // ── Garrison joins the hero for the whole fight (Toby's call) ──
             // If this battle left the province CONTESTED (a resume is pending) and the defending hero is
@@ -10027,7 +10027,7 @@ const BATTLE_ARMY_SPELLS={
                   :`The garrison of ${toProv.name} repels ${c.name}'s attack — leaderless troops can hold walls!`,
                   {actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:toProv.id,public:true});
                 if(_stoodGround) toProv._battleUnresolved=true;
-                if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
+                // rule: never zero remaining move points on a move-in/battle — the move already cost its point; the rest of the turn’s budget stays.
               }
             } else {
               const _prevOwnerIdx=(toProv.owner!=null&&toProv.owner!==c.player)?toProv.owner:null; // capture before ownership transfers
@@ -10072,7 +10072,7 @@ const BATTLE_ARMY_SPELLS={
               toProv._leaderlessDefenders=(toProv.neutralDefenders||[]).length>0;
               toProv.characters=(toProv.characters||[]).filter(id=>id!==c.id);
               prov.characters.push(c.id); c.location=prov.id;
-              if(enteringSea||coastalLanding){seaMovePoints[c.id]=0;}else{movePoints[c.id]=0;}
+              // rule: never zero remaining move points on a move-in/battle — the move already cost its point; the rest of the turn’s budget stays.
               log('combat',`Even without a commander, the garrison of ${toProv.name} throws ${c.name} back!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             }
             _moveLineLogged=true;
@@ -14822,6 +14822,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-0802</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.03-1221</div>
 </body>
 </html>
