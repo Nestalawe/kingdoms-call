@@ -628,7 +628,7 @@ const DIRECTIONS = DIRS;
 const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
 // Alignment-signature actions and king-only actions — mirrored from the player portal.
 const ALIGN_ACTIONS_G={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
-const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker']);
+const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker','Consecrate']);
 // Item 7 (this session): same dropdown ordering as the player portal — alignment specials on top,
 // then most-used first. (This GM mirror lists a subset of orders; the sort tolerates that.)
 const ACTION_DISPLAY_ORDER_G=[
@@ -9841,6 +9841,13 @@ const BATTLE_ARMY_SPELLS={
         // compute it now so they aren't wrongly told they have no movement left. We only do this
         // when BOTH pools are undefined (never set), never when a pool is 0 from being spent.
         if(movePoints[c.id]===undefined&&seaMovePoints[c.id]===undefined){ setMovePool(c); }
+        // Reconcile the pool with the character's CURRENT army composition before checking it, so any
+        // mid-turn change (a recruit or mercenary hire to this hero, a transfer/gift, a disband, a
+        // spell-raised unit) is reflected here even if the handler that made the change did not itself
+        // refresh. refreshMovePool preserves moves already spent and discounts light-travel moves, so
+        // this is idempotent — it never refunds or double-charges — and closes the whole class of
+        // "movement points wrongly zeroed after gaining armies" bugs.
+        if(typeof refreshMovePool==='function') refreshMovePool(c);
         const mp=movePoints[c.id]??0;
         const smpAvail=seaMovePoints[c.id]??0;
         if(mp<=0&&smpAvail<=0){log('move',`${c.name} has no movement points remaining this turn.`,{actor:c.player,targets:[c.player]});break;}
@@ -9935,6 +9942,7 @@ const BATTLE_ARMY_SPELLS={
           if(smp<=0){
             log('move',`${c.name} has no sea movement points remaining this turn.`,{actor:c.player,targets:[c.player]});break;
           }
+          if((c.armies||[]).length===0) lightSeaMoves[c.id]=(lightSeaMoves[c.id]||0)+1; // free-passage sea leg — don't charge a later fleet for it
           seaMovePoints[c.id]=smp-1;
           const navalLvl=effStat(c,'naval');
           log('move',`${c.name} moves across sea to ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
@@ -9945,6 +9953,7 @@ const BATTLE_ARMY_SPELLS={
             log('move',`${c.name} has no sea movement points remaining to make a coastal landing in ${toProv.name}.`,{actor:c.player,targets:[c.player]});break;
           }
           // Check the target province is actually adjacent (coastal landing must be to adjacent land)
+          if((c.armies||[]).length===0) lightSeaMoves[c.id]=(lightSeaMoves[c.id]||0)+1; // free-passage landing — don't charge a later fleet for it
           seaMovePoints[c.id]=smp-1;
           // ORC — Reaver Crews: troops put ashore from longships hit the beach at a run and fight
           // at +25% in any battle this phase. (There is no coastal-landing PENALTY in the engine to
@@ -9979,6 +9988,7 @@ const BATTLE_ARMY_SPELLS={
           if(mp<=0){
             log('move',`${c.name} has no land movement points left this turn.`,{actor:c.player,targets:[c.player]});break;
           }
+          if((c.armies||[]).length===0) lightLandMoves[c.id]=(lightLandMoves[c.id]||0)+1; // free-passage land leg — don't charge a later army for it
           movePoints[c.id]=mp-1;
         }
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
@@ -10874,7 +10884,8 @@ const BATTLE_ARMY_SPELLS={
             G.mercenaries=G.mercenaries.filter(m=>m.id!==merc.id);mHired=true;
             log('hire',`${c.name} hires mercenary band ${merc.unitName||merc.type} (${merc.quality}) for ${mCost}g${mCost<baseMercCost?' (Neutral discount)':''}.`,{actor:c.player,targets:[c.player],provinceId:c.location});
           });
-          if(mHired) resolveUnitGainInProvince(_destGarrison?c:_destChar, prov, ph);
+          if(mHired){ resolveUnitGainInProvince(_destGarrison?c:_destChar, prov, ph);
+            if(!_destGarrison && _destChar) refreshMovePool(_destChar); } // mercenaries joined a column — recompute its pace
         }
         // Whatever is left of the order after the mercenary tokens are removed is native recruitment.
         const _nativeSel=(extra||_rawSel.filter(t=>!_mercTokens.has(t)&&!t.startsWith('merc:')).join(',')||(mHired?'':'Shieldwall Levies|1'))
@@ -12607,6 +12618,11 @@ const BATTLE_ARMY_SPELLS={
   const seaCap={};
   const moveMax={};          // land pool MAX for the turn — lets refreshMovePool preserve points already spent
   const seaMoveMax={};       // sea pool MAX for the turn
+  // Light-travel moves made while the character led NO armies (its generous 5-pool "takes passage"
+  // mode). Counted here so refreshMovePool can DISCOUNT them when the hero later picks up troops —
+  // free-passage moves must not be charged against a real army's small marching allowance.
+  const lightLandMoves={};   // land moves made while travelling light (no armies)
+  const lightSeaMoves={};    // sea  moves made while travelling light (no armies)
   // Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
   // Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
   // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
@@ -12669,9 +12685,20 @@ const BATTLE_ARMY_SPELLS={
     if(!c||c.id==null) return;
     const oldLandMax=(moveMax[c.id]!=null?moveMax[c.id]:(movePoints[c.id]??0));
     const oldSeaMax =(seaMoveMax[c.id]!=null?seaMoveMax[c.id]:(seaMovePoints[c.id]??0));
-    const landSpent=Math.max(0, oldLandMax-(movePoints[c.id]??0));
-    const seaSpent =Math.max(0, oldSeaMax -(seaMovePoints[c.id]??0));
+    let landSpent=Math.max(0, oldLandMax-(movePoints[c.id]??0));
+    let seaSpent =Math.max(0, oldSeaMax -(seaMovePoints[c.id]??0));
     const m=computeMovePoolMax(c);
+    // LIGHT-TRAVEL / ARMY transition fix. A hero with no armies "takes passage" on a generous 5-move
+    // pool; those free-passage moves must NOT be charged against a real army's much smaller marching
+    // allowance when the hero later picks up troops. Without this, one light move plus a slow recruit
+    // (e.g. a speed-1 garrison) zeroed the whole pool — "no movement points remaining" even though the
+    // army had not yet marched. So when the NEW composition leads armies, discount the light-travel
+    // moves already made from the carried spend. Total moves stay capped by the 5-phase turn structure
+    // (one move per phase), so this can never let a character exceed 5 provinces in a turn.
+    if((c.armies||[]).length>0){
+      landSpent=Math.max(0, landSpent-(lightLandMoves[c.id]||0));
+      seaSpent =Math.max(0, seaSpent -(lightSeaMoves[c.id]||0));
+    }
     movePoints[c.id]=Math.max(0, m.land-landSpent);
     seaMovePoints[c.id]=Math.max(0, m.sea-seaSpent);
     seaMoveActive[c.id]=m.seaActive; seaCap[c.id]=m.cap;
@@ -14399,6 +14426,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       log('system','═ Tax collection ═');
       G.players.forEach(p=>{
         const pi=p.id;
+        // Item 5: open the Kingdom Events economy block with the treasury balance the kingdom carries
+        // INTO tax collection (p.gold before any income is added), so the player sees their starting
+        // gold above the tax/wages lines that follow.
+        if((p.provinces||[]).length>0||(G.characters||[]).some(c=>c.player===p.id&&c.alive)||(p.gold||0)>0){
+          log('system',`${p.name} has ${p.gold||0}g in the treasury.`,{actor:p.id,targets:[p.id]});
+        }
         let _consecBonus=0; // DIVINE — Consecrate: track the +50% holy-ground uplift so the player can SEE it itemised
         const income=(p.provinces||[]).reduce((s,id)=>{
           const pv=G.world.provinces[id];if(!pv) return s;
@@ -15499,6 +15532,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1943</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-0710</div>
 </body>
 </html>

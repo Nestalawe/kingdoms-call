@@ -350,6 +350,13 @@ section{display:none;}.section-active{display:block;}
       <button class="btn btn-ghost" onclick="show('sec-games');loadAllGames()">← My Games</button>
       <h2 id="report-title">Turn Report</h2>
     </div>
+    <!-- New-turn notice: shown by the background poll when the GM resolves the turn while this report is
+         open. It never reloads on its own (that would wipe unsaved orders) — the player chooses when. -->
+    <div id="new-turn-banner" style="display:none;padding:8px 14px;background:#e8f3e0;border-bottom:2px solid #2d7a2d;color:#1f5a1f;font-size:.8rem;display:none;align-items:center;gap:10px">
+      <span style="font-weight:700">✅ A new turn has been resolved.</span>
+      <span style="opacity:.85">Refresh to see the latest results — your unsaved orders won't be affected until you do.</span>
+      <button onclick="refreshOpenReport()" style="margin-left:auto;font-size:.74rem;padding:3px 10px;border:1px solid #2d7a2d;background:#2d7a2d;color:#fff;cursor:pointer;border-radius:3px;font-weight:600">↻ Refresh report</button>
+    </div>
 
     <!-- Three-column layout: map + report content + orders (each independently scrollable) -->
     <div id="rp-layout" style="display:flex;gap:0;align-items:flex-start;min-height:calc(100vh - 120px);width:100vw;overflow-x:hidden;box-sizing:border-box">
@@ -533,7 +540,9 @@ const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','En
 // the same gating — no more dangling Pagan action in every dropdown). King-only actions are
 // hidden from heroes' dropdowns entirely.
 const ALIGN_ACTIONS={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
-const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker']);
+// King-only actions — the engine rejects these from a hero, so they are hidden from heroes' dropdowns
+// entirely (Consecrate is king-only: only the anointed crown can hallow ground — see the engine handler).
+const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker','Consecrate']);
 // L7/L9 mastery ORDERS — gated by the hero's RAW skill level (past-5 comes from experience only).
 // target: 'none' (self/current province), 'province' (a seen province), or 'character' (an enemy hero here).
 const L79_ORDERS={
@@ -565,19 +574,21 @@ const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 // puts a kingdom's special order first when it appears). Mastery (L7/L9) orders sink to the bottom
 // as rare, situational picks. Adjust freely — this array is the single source of the ordering.
 const ACTION_DISPLAY_ORDER=[
-  // Alignment-signature orders — very top
+  // ── SPECIAL actions the character can take — pinned to the very top (item 7) ──
+  // Alignment-signature orders (each shown only to its own kingdom)…
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
-  // Everyday orders, most-used first
-  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
-  'Spy','Steal','Practice Skill',
-  // Occasional logistics
-  'Use Item','Send Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
-  // Mastery (L7/L9) orders — rare & situational, kept at the bottom
+  // …and MASTERY (L7/L9) orders, which surface only when the hero's skill is high enough. actionsFor()
+  // already filters both groups down to what THIS character actually qualifies for, so only the
+  // specials available to them appear here.
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
   'Challenge','Rampage','Rain of Arrows',"Sniper's Mark",
   'Feigned Retreat','Grand Stratagem','Lightning Advance','Raid the Coast',
   'Wild Calling','Grand Design',
+  // ── Everyday orders — exact order requested (item 7) ──
+  'Move','Practice Skill','Cast Spell','Explore','Search Lair','Recruit Armies',
+  'Pick Up Army','Leave/Transfer Army','Disband Army','Hire Hero','Defend',
+  'Encounter Character','Spy','Send Item','Use Item','Steal','Rest',
 ];
 const _actionRank=(a)=>{ const i=ACTION_DISPLAY_ORDER.indexOf(a); return i<0?ACTION_DISPLAY_ORDER.length:i; };
 function actionsFor(c){
@@ -936,11 +947,75 @@ async function onSignedIn(){
   document.getElementById('player-name-display').textContent=displayName;
   show('sec-games');
   await loadAllGames();
+  startUpdatePolling(); // Item 1: keep the games list live and flag newly-resolved turns
 }
 
 // ── GAME LISTS ────────────────────────────────────────
 async function loadAllGames(){
   await Promise.all([loadMyGames(), loadOpenGames()]);
+}
+
+// ── LIVE UPDATE POLLING (Item 1) ──────────────────────
+// A light background poll keeps the portal current without the player having to reload the page.
+// It is deliberately NON-DESTRUCTIVE:
+//   • On the My Games list it simply re-renders the cards (turn number + status pills) when anything
+//     changes — there are no orders on that screen, so nothing can be lost.
+//   • While a report/orders screen is open it NEVER re-renders or navigates on its own (that would
+//     blank out unsaved orders). It only reveals a "new turn resolved" banner offering a manual
+//     Refresh, so the player decides when to reload — protecting any orders they are mid-way through.
+let _pollTimer=null;
+let _lastMyGamesSig=null;
+const POLL_MS=20000;
+
+function _activeSectionId(){
+  const s=document.querySelector('section.section-active');
+  return s?s.id:null;
+}
+
+function startUpdatePolling(){
+  if(_pollTimer) return;              // never stack timers
+  _pollTimer=setInterval(pollForUpdates, POLL_MS);
+}
+function stopUpdatePolling(){ if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; } }
+
+async function pollForUpdates(){
+  if(!currentUser) return;
+  if(document.hidden) return;         // don't poll a backgrounded tab
+  try{
+    // One light query: this player's slots (turn/status live on the game rows we fetch next).
+    const {data:mySlots}=await sb.from('game_players').select('id,game_id,orders_submitted').eq('user_id',currentUser.id);
+    if(!mySlots||!mySlots.length) return;
+    const gameIds=[...new Set(mySlots.map(s=>s.game_id))];
+    const {data:games}=await sb.from('games').select('id,turn,status').in('id',gameIds);
+    const gById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
+
+    // Signature of everything the My Games cards show — cheap change-detection.
+    const sig=mySlots.map(s=>{const g=gById[s.game_id]||{};return `${s.id}:${g.turn||0}:${g.status||''}:${s.orders_submitted?1:0}`;}).sort().join('|');
+
+    const active=_activeSectionId();
+    if(active==='sec-games'){
+      // Safe to repaint the list — no order state lives here.
+      if(sig!==_lastMyGamesSig){ _lastMyGamesSig=sig; loadMyGames(); }
+    } else if(active==='sec-report' && currentGamePlayer){
+      // A report/orders screen is open. Do NOT touch it — just surface a notice if THIS game advanced.
+      const g=gById[currentGamePlayer.game_id];
+      const openLiveTurn=currentGamePlayer._liveTurn||0;
+      if(g && (g.turn||0)>openLiveTurn){
+        const b=document.getElementById('new-turn-banner');
+        if(b) b.style.display='flex';
+      }
+    }
+    _lastMyGamesSig=sig;
+  }catch(e){ /* transient network/RLS hiccup — try again next tick */ }
+}
+
+// Manual refresh from the new-turn banner. Re-opens the current report (fetches the fresh turn_report);
+// the player triggered it, so replacing the current view is expected. Any draft they had already saved
+// is reloaded from the server by openReport; a draft only typed but not saved is theirs to re-enter.
+function refreshOpenReport(){
+  const b=document.getElementById('new-turn-banner');
+  if(b) b.style.display='none';
+  if(currentGamePlayerId) openReport(currentGamePlayerId);
 }
 
 async function loadMyGames(){
@@ -1668,11 +1743,14 @@ function returnToCurrentReport(){
     restoreSubmitWrap('Submit');
   }
   if(submitWrap) submitWrap.style.display='flex';
-  // Restore the current-turn map and chronicle
+  // Restore the WHOLE current-turn body. loadPastReport paints every read-only section (kingdom,
+  // provinces, intel, discoveries, diplomacy, titles, mastery, map AND chronicle) from the past-turn
+  // snapshot, so returning must repaint every one of them from the current report — not just the map
+  // and chronicle. Repainting only those two left the other sections frozen on the turn just viewed,
+  // which read as a report "muddled" with a previous one until the browser was reloaded.
   viewingReport=currentReport;
   if(currentReport){
-    renderPlayerMap(currentReport);
-    buildChronicle(currentReport.lastTurnLog||[], currentReport.characters||[]);
+    renderReportView(currentReport);
   }
 }
 
@@ -1680,6 +1758,7 @@ function returnToCurrentReport(){
 async function openReport(gamePlayerId){
   currentGamePlayerId=gamePlayerId;
   show('sec-report');
+  { const _ntb=document.getElementById('new-turn-banner'); if(_ntb) _ntb.style.display='none'; } // clear any stale new-turn notice
   document.getElementById('report-title').textContent='Loading…';
 
   // Fetch game_player row first
@@ -4933,7 +5012,11 @@ function buildTargetField(c, ph, saved){
             const hasKnownFeature=((p.features||[]).length>0)||(p.name&&kfNames.has(p.name));
             if(!hasKnownFeature) return '';
           }
-          const label=(p.name||`Unknown province (${provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?'})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'');
+          // Item 4: Bless boosts a province's tax at collection, so list each candidate's tax base to
+          // help the player pick the richest target. Only shown for Bless (other province spells don't
+          // care about tax) and only when the tax base is actually known for that province.
+          const taxLbl=(selSpell==='Bless Province'&&p.tax!=null)?` · tax base ${p.tax}g`:'';
+          const label=(p.name||`Unknown province (${provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?'})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'')+taxLbl;
           return `<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
         }).filter(Boolean).join('');
         secondaryHtml=provOpts
@@ -5960,6 +6043,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-1943</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.05-0710</div>
 </body>
 </html>
