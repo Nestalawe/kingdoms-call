@@ -2964,6 +2964,35 @@ function provinceConsecrated(gs, prov){
   const owner=gs&&gs.players&&gs.players[prov.owner];
   return !!owner && isConsecrated(owner, prov.id);
 }
+// Item 7 (this session): relation lookup usable at MODULE level (buildTurnReport can't reach the
+// runTurn-nested areEnemies/relationBetween). Relations live in gs.relations keyed "min-max".
+function relOfReport(gs,a,b){ if(a==null||b==null||a===b) return 'neutral'; const k=a<b?a+'-'+b:b+'-'+a; return (gs.relations||{})[k]||'neutral'; }
+// Deterministic 0..1 roll so the same (turn, viewer, enemy, province) always resolves the same way —
+// the map is built once, but this keeps a GM preview and the saved report identical, and re-rolls each turn.
+function detRoll(turn,viewerPi,charId,provId){
+  let h=2166136261>>>0;
+  const s=turn+'|'+viewerPi+'|'+charId+'|'+provId;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+  return (h>>>0)/4294967296;
+}
+// Detection of an ENEMY character lurking in a province you OWN but have no character standing in.
+// Chance = your exploration% of the province, −20%/enemy Spy level (cap L5), +10%/highest friendly
+// (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
+// for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
+function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
+  const explored=(prov.exploredBy&&prov.exploredBy[viewerPi])||0;
+  const enemySpy=Math.min(5,(enemyChar.skills&&enemyChar.skills.spy)||0);
+  let friendlySpy=0;
+  (prov.characters||[]).forEach(cid=>{
+    const f=gs.characters[cid];
+    if(!f||!f.alive||f.player==null) return;
+    const friendly=(f.player===viewerPi)||relOfReport(gs,viewerPi,f.player)==='allied';
+    if(friendly) friendlySpy=Math.max(friendlySpy,(f.skills&&f.skills.spy)||0);
+  });
+  friendlySpy=Math.min(5,friendlySpy);
+  const chance=Math.max(5, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
+  return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
+}
 function dedupeItemsByName(items){
   const seen=new Set(); const out=[];
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
@@ -5321,8 +5350,25 @@ function buildTurnReport(gameState, playerIndex){
         // province (your garrison and subjects report the intruder) — previously only co-location
         // revealed them, so an enemy sitting in an owned province with no hero of yours present was
         // invisible on your map. The only thing that still hides them is moving in UNSEEN (below).
-        if(!isOwn && !ownCharLocs.has(p.id) && !ownedProvIds.has(p.id)) return null;
-        if(!isOwn && c._unspottedTurn===gameState.turn && !spiedThisTurn.has(p.id)) return null; // Item 5 / Task 9: spy moved them in unseen (unless you spied this province)
+        const coLoc=ownCharLocs.has(p.id), ownHere=ownedProvIds.has(p.id);
+        // Line of sight: a non-own character is visible only where you have a character (co-location)
+        // or you OWN the province (your garrison/subjects report anyone in your land).
+        if(!isOwn && !coLoc && !ownHere) return null;
+        // Item 7 (this session): spotting an ENEMY in a province you OWN but have NO character in is a
+        // Spy contest (spotEnemyInOwnedProvince) — this REPLACES the flat _unspottedTurn cloak here.
+        // An enemy LEADING AN ARMY can't hide (that only happens mid-battle) → always seen. A deliberate
+        // Spy on the province this turn pierces stealth. Allies/neutral-realm characters are never hidden
+        // from you this way; wandering/guardian neutrals (no player) keep the old passive-stealth rule.
+        if(!isOwn){
+          if(c.player!=null && relOfReport(gameState,playerIndex,c.player)==='enemy' && ownHere && !coLoc && !spiedThisTurn.has(p.id)){
+            const leadsArmy=(c.armies||[]).length>0;
+            if(!leadsArmy && !spotEnemyInOwnedProvince(gameState,playerIndex,p,c)) return null;
+          } else if(c.player==null || !ownHere){
+            // Neutrals everywhere, and any non-own character seen only by non-owned line-of-sight:
+            // the flat unspotted cloak still applies.
+            if(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(p.id)) return null;
+          }
+        }
         return{id:c.id,name:c.name,isOwn,isKing:c.isKing,
           isWanderer:c.player===null,
           // A neutral character is either the sworn guardian of this province ("local chieftain")
@@ -15453,6 +15499,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1921</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1943</div>
 </body>
 </html>
