@@ -2956,6 +2956,14 @@ function consecratedIds(pl){
   return pl.consecratedProvIds;
 }
 function isConsecrated(pl, provId){ return consecratedIds(pl).includes(provId); }
+// Item 4 (this session): consecration is holy ground anyone can SEE (altars, standing stones), not a
+// private fact of the owner. This tells us whether a province is consecrated by its CURRENT owner, so
+// the map can mark it for every player who can see the province — not only the Divine king who blessed it.
+function provinceConsecrated(gs, prov){
+  if(!prov || prov.owner==null) return false;
+  const owner=gs&&gs.players&&gs.players[prov.owner];
+  return !!owner && isConsecrated(owner, prov.id);
+}
 function dedupeItemsByName(items){
   const seen=new Set(); const out=[];
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
@@ -4972,7 +4980,11 @@ function buildTurnReport(gameState, playerIndex){
     explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,
     characters:(p.characters||[]).map(cid=>{
       const c=gameState.characters[cid];
-      return c?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
+      // A fallen character is shown ONLY by the ☠ marker (from visibleDeadHeroes), never as a living
+      // character circle. This owned-province list omitted the c.alive filter that liveChars() applies,
+      // so a corpse lying in your own province drew a second, colourless (grey) character icon on top
+      // of its skull. Filter the dead out here to match liveChars().
+      return (c&&c.alive)?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
     }).filter(Boolean),
   }));
 
@@ -5337,6 +5349,7 @@ function buildTurnReport(gameState, playerIndex){
         // You have a character standing here right now — full current info + line-of-sight characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'live',race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          consecrated:provinceConsecrated(gameState,p), // Item 4: holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
@@ -5346,6 +5359,7 @@ function buildTurnReport(gameState, playerIndex){
         // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'border',race:p.race,
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          consecrated:provinceConsecrated(gameState,p), // Item 4: holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
@@ -10741,10 +10755,17 @@ const BATTLE_ARMY_SPELLS={
           const rollItem=()=>{const base=rollMagicItem(tier,_taken);if(!base) return null;_taken.add(base.name);G._awardedItems.push(base.name);const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;return {...base,id:itemId};};
           if(Math.random()<T.itemChance){ const it=rollItem(); if(it) drops.push(it); }
           if(Math.random()<T.bonusItem){ const it=rollItem(); if(it) drops.push(it); }
+          const baseDrops=drops.slice(); // item (this session): the tier-roll finds, narrated below; the Alchemical bonus announces itself.
           // sd25 Alchemical Theory: 10% chance of an extra find.
           if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
           c.items=(c.items||[]);
           drops.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ });
+          // Narrate the magic actually won here. Previously the tier-roll drops were pushed to the hero
+          // SILENTLY: the report then fell through to the "no magic this time" line even though the hero
+          // walked away with an item — the bug Toby saw (gold reported, no item reported, item in pack).
+          if(baseDrops.length>0){
+            log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and hauls out ${baseDrops.map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          }
           // Item 4: recover any items earlier challengers left behind when the guardian slew them.
           if((f.lairItems||[]).length>0){
             const _recovered=f.lairItems.slice();
@@ -10752,7 +10773,8 @@ const BATTLE_ARMY_SPELLS={
             f.lairItems=[];
             log('explore',`Among the bones of the fallen, ${c.name} recovers ${_recovered.map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
-          else log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name}, though the lair holds no magic this time.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // Only claim "no magic" when the fight truly yielded no items — no tier drops AND no Alchemical bonus AND no recovered lair items.
+          else if(drops.length===0) log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name}, though the lair holds no magic this time.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(!encounter.fled){
           const dmg=encounter.damageToHero||rng(2,7);
           c.hp=Math.max(1,c.hp-dmg);
@@ -13260,7 +13282,19 @@ const BATTLE_ARMY_SPELLS={
       battle=combatVsNPC(c, prov, null);
       prov.neutralDefenders=_savedDefs;
       emitBattle(battle, prov, ph, [c.player,prov.owner].filter(x=>x!=null), {actor:c.player}); // item 5
-      if(battle.won){ garrison.forEach(a=>recordBattleGraves(prov,[a])); prov.garrisonArmies=[]; }
+      if(battle.won){
+        // combatVsNPC set ._died (and narrated + graved) on the garrison units that fell IN the fighting.
+        // Any that survived the combat rolls are overrun when the province changes hands — previously the
+        // caller wiped garrisonArmies and graved every unit with NO narration, so a garrison that lived
+        // through the battle vanished silently (the bug Toby saw: "no narration about the garrison being
+        // killed"). Announce the overrun and grave only those not already recorded.
+        const _overrun=garrison.filter(a=>!a._died);
+        if(_overrun.length>0){
+          log('combat',`🛡 The garrison of ${prov.name} is overwhelmed as the province falls — ${_overrun.map(a=>a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type).join(', ')} ${_overrun.length===1?'is':'are'} cut down defending the walls.`,{actor:c.player,targets:[c.player,prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true});
+          _overrun.forEach(a=>recordBattleGraves(prov,[a]));
+        }
+        prov.garrisonArmies=[];
+      }
     }
     delete c._resumeBattle; // Item 5: clear the already-here flag — a genuine march later still prints its moves-into line
     prov._hadBattleThisTurn=true;
@@ -13894,7 +13928,9 @@ const BATTLE_ARMY_SPELLS={
       trySkillGain(c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
       c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
       c._defendReactedPhase=ph;
-      prov._hadBattleThisTurn=true;
+      // NOTE: an ambush is a PERSONAL duel (no armies), not a field battle — it must NOT set
+      // _hadBattleThisTurn. That flag drives the map's crossed-swords marker, which is for ARMY
+      // battles only; a duel here was painting swords on provinces where no battle was fought (item 6).
       _combatSkillProv=null;
     });
   }
@@ -15222,6 +15258,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       if(!pv) return;
       const realBattle=!!G.world.provinces[pv.id]?._hadBattleThisTurn;
       pv.hadBattle = realBattle && _visibleBattleProvs.has(pv.id);
+      // Item 5 (this session): the ORANGE ongoing-battle marker (battleUnresolved) was set
+      // unconditionally in buildTurnReport and never visibility-gated, so a carry-on fight anywhere
+      // on the map lit up for every player. Restrict it to a battle this player can actually witness,
+      // exactly like the crossed-swords marker above.
+      if(pv.battleUnresolved) pv.battleUnresolved = _visibleBattleProvs.has(pv.id);
     });
 
     // ── Province character intel (Intelligence → Province Reports) ──
@@ -15412,6 +15453,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1646</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1921</div>
 </body>
 </html>

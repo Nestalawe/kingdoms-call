@@ -4727,7 +4727,10 @@ function buildTargetField(c, ph, saved){
       const ownedHere=!!(curP&&curP.tier==='owned');
       const homeP=wmP.find(p=>p.tier==='owned'&&p.tax>=10); // home = the tax-10 seat
       const homeId=homeP?homeP.id:null;
-      const consecIds=new Set(wmP.filter(p=>p.consecrated).map(p=>p.id));
+      // Only YOUR OWN consecrated provinces bear on the placement rules (adjacency ban + White-skill
+      // limit). Enemy holy ground is now visible on the map too (item 4), so it must be excluded here
+      // or it would wrongly block your placements / inflate your consecrated count.
+      const consecIds=new Set(wmP.filter(p=>p.consecrated&&p.tier==='owned').map(p=>p.id));
       const nbrs=(curP&&curP.neighbors)||[];
       const white=(c.skills||{}).white||0;
       // Task 8: reflect the placement rules — owned, not home / home-adjacent, not already consecrated,
@@ -5957,6 +5960,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-1646</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-1921</div>
 </body>
 </html>
