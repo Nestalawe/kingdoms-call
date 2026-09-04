@@ -168,7 +168,25 @@ section{display:none;}.section-active{display:block;}
         <option value="hard">Hard — bold, well armed (a genuine challenge)</option>
       </select>
       <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
-      <div class="msg-info" style="margin-top:4px">Once you create the game, players can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports (bot kingdoms are generated at Turn 0).</div>
+
+      <!-- Visibility: Public (anyone can join) vs Private (only invited players see it) -->
+      <label style="margin-top:12px">Who Can Join</label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-weight:normal;font-size:.86rem">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="new-game-visibility" value="public" checked onchange="updateGameVisibility()"> 🌍 Public — any registered player can join
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="radio" name="new-game-visibility" value="private" onchange="updateGameVisibility()"> 🔒 Private — only players you invite
+        </label>
+      </div>
+      <div id="new-game-invite-wrap" style="display:none;margin-top:8px;border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
+        <div style="font-size:.82rem;color:var(--parchment);margin-bottom:6px">Tick the players who may see and join this private game:</div>
+        <input type="text" id="new-game-invite-search" placeholder="Filter by name or email…" oninput="renderInviteCheckboxes('new-game-invite-list','new-game-invite-search',_inviteSelected,'new-game-invite-count')" style="margin-bottom:8px">
+        <div id="new-game-invite-list" style="max-height:230px;overflow:auto;border:1px solid var(--stone);border-radius:3px;background:#12100b"></div>
+        <div id="new-game-invite-count" style="font-size:.78rem;color:var(--gold);margin-top:6px"></div>
+      </div>
+
+      <div class="msg-info" style="margin-top:8px">Once you create the game, invited players (Private) or everyone (Public) can see it and sign up. You run Turn 0 once all players have joined to generate their starting turn reports (bot kingdoms are generated at Turn 0).</div>
       <button class="btn btn-crimson btn-full" style="margin-top:8px" onclick="createGame()">Create Game</button>
     </div>
   </section>
@@ -187,6 +205,7 @@ section{display:none;}.section-active{display:block;}
     <div class="card">
       <h3>Players <span id="detail-player-count" style="font-size:.75rem;color:var(--stone)"></span></h3>
       <div id="detail-players-list"></div>
+      <div id="detail-visibility-wrap" style="margin-top:12px"></div>
       <div id="detail-run-turn0-wrap" style="margin-top:12px;display:none">
         <div class="msg-info">All players have joined. You can now run Turn 0 to generate the map and starting turn reports.</div>
         <button class="btn btn-crimson btn-full" onclick="runTurn0()">⚡ Run Turn 0 — Generate Starting Reports</button>
@@ -1155,11 +1174,21 @@ async function loadGames(){
     const _botTag=_plannedBots?` +${_plannedBots}🤖`:'';
     let pill='';
     if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
-    else if(g.status==='active') pill=`<span class="pill pill-blue">Turn ${g.turn} — ${submitted}/${joined} orders in${_botTag}</span>`;
+    else if(g.status==='active'){
+      // Green once every joined human has submitted (submitted>=joined, including the all-bot
+      // joined===0 case, where there are no human orders to wait on) — signals the turn is ready to run.
+      const _allIn=submitted>=joined;
+      pill=`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${submitted}/${joined} orders in${_allIn?' ✓':''}${_botTag}</span>`;
+    }
     else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
+    // Visibility lives in the setup-phase game_state; active/complete games no longer carry it.
+    const _vis=gameVisibility(g);
+    const _visTag=(g.status==='setup')
+      ? (_vis.private?` <span class="pill pill-amber" title="Only invited players can see this game">🔒 Private · ${_vis.invited.length} invited</span>`:` <span class="pill pill-blue">🌍 Public</span>`)
+      : '';
     return`<div class="game-card" onclick="openGame('${g.id}')">
       <div>
-        <div class="gc-name">${g.name}${pill}</div>
+        <div class="gc-name">${g.name}${pill}${_visTag}</div>
         <div class="gc-meta">${maxP} player slots · Created ${new Date(g.created_at).toLocaleDateString()}</div>
       </div>
       <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
@@ -1171,7 +1200,145 @@ async function loadGames(){
 function showNewGame(){
   document.getElementById('new-game-msg').innerHTML='';
   updateMaxPlayersForMap(); // ensure the player-count options match the selected map size
+  // Reset visibility to Public (the default / current behaviour) each time the form opens.
+  const _pub=document.querySelector('input[name="new-game-visibility"][value="public"]');
+  if(_pub) _pub.checked=true;
+  _inviteSelected=new Set();
+  const _search=document.getElementById('new-game-invite-search'); if(_search) _search.value='';
+  const _wrap=document.getElementById('new-game-invite-wrap'); if(_wrap) _wrap.style.display='none';
   show('sec-new-game');
+}
+
+// ── PRIVATE-GAME INVITES ──────────────────────────────
+// Private games are stored WITHOUT any DB schema change: the setup-phase game_state JSON carries
+// {visibility:'private', invited:[<profile.id>,…]}. Existing/running games have no `visibility` key,
+// so they read as Public and are unaffected. (game_state is overwritten with world state at Turn 0,
+// by which point the game is 'active' and no longer joinable, so the invite list is self-cleaning.)
+let _invitablePlayers=null;   // cached profiles [{id,name,email}]
+let _inviteSelected=new Set(); // ids ticked in the New Game picker
+
+// Fetch every registered player's profile (name + email if the profiles table has that column).
+// Excludes the signed-in GM. Cached for the session; pass force=true to refetch.
+async function loadInvitablePlayers(force){
+  if(_invitablePlayers && !force) return _invitablePlayers;
+  const {data,error}=await sb.from('profiles').select('*').order('name',{ascending:true});
+  if(error){ _invitablePlayers=null; throw error; }
+  _invitablePlayers=(data||[])
+    .filter(p=>p && p.id!==currentUser.id) // don't offer the GM as a joinable player
+    .map(p=>({id:p.id, name:p.name||p.display_name||'(unnamed)', email:p.email||''}));
+  return _invitablePlayers;
+}
+
+// Toggle the picker when Public/Private changes; lazily load the player list the first time.
+async function updateGameVisibility(){
+  const priv=document.querySelector('input[name="new-game-visibility"]:checked')?.value==='private';
+  const wrap=document.getElementById('new-game-invite-wrap');
+  if(wrap) wrap.style.display=priv?'block':'none';
+  if(!priv) return;
+  const list=document.getElementById('new-game-invite-list');
+  if(list) list.innerHTML='<div style="padding:10px;color:var(--stone);font-size:.82rem">Loading registered players…</div>';
+  try{
+    await loadInvitablePlayers();
+    renderInviteCheckboxes('new-game-invite-list','new-game-invite-search',_inviteSelected,'new-game-invite-count');
+  }catch(e){
+    if(list) list.innerHTML=`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
+  }
+}
+
+// Shared renderer for both the New Game picker and the detail-screen Edit-Invites modal. Reads the
+// cached _invitablePlayers, filters by the search box, and reflects/updates the given Set of ids.
+function renderInviteCheckboxes(listId, searchId, selectedSet, countId){
+  const list=document.getElementById(listId);
+  if(!list) return;
+  const q=(document.getElementById(searchId)?.value||'').trim().toLowerCase();
+  const players=_invitablePlayers||[];
+  const anyEmail=players.some(p=>p.email);
+  const shown=players.filter(p=>!q || p.name.toLowerCase().includes(q) || (p.email&&p.email.toLowerCase().includes(q)));
+  if(players.length===0){ list.innerHTML='<div style="padding:10px;color:var(--stone);font-size:.82rem">No other registered players yet.</div>'; }
+  else if(shown.length===0){ list.innerHTML='<div style="padding:10px;color:var(--stone);font-size:.82rem">No players match that filter.</div>'; }
+  else{
+    list.innerHTML=shown.map(p=>{
+      const on=selectedSet.has(p.id);
+      const safeName=(p.name||'').replace(/</g,'&lt;');
+      const safeEmail=(p.email||'').replace(/</g,'&lt;');
+      return `<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #2a2015;cursor:pointer;font-weight:normal">
+        <input type="checkbox" ${on?'checked':''} onchange="toggleInvite('${listId}','${searchId}','${countId}','${p.id}',this.checked)">
+        <span style="flex:1;min-width:0">
+          <span style="color:var(--parchment)">${safeName}</span>
+          ${safeEmail?`<span style="color:var(--stone);font-size:.78rem"> · ${safeEmail}</span>`:''}
+        </span>
+      </label>`;
+    }).join('');
+  }
+  const cnt=document.getElementById(countId);
+  if(cnt){
+    cnt.innerHTML=`${selectedSet.size} player${selectedSet.size!==1?'s':''} invited`
+      +(anyEmail?'':' · <span style="color:var(--stone)">emails aren’t stored in your profiles table (names only)</span>');
+  }
+  // stash the working Set + ids on the list so toggleInvite can reach the right one
+  list._selectedSet=selectedSet;
+}
+function toggleInvite(listId, searchId, countId, id, on){
+  const list=document.getElementById(listId);
+  const set=list&&list._selectedSet; if(!set) return;
+  if(on) set.add(id); else set.delete(id);
+  const cnt=document.getElementById(countId);
+  if(cnt){ const anyEmail=(_invitablePlayers||[]).some(p=>p.email);
+    cnt.innerHTML=`${set.size} player${set.size!==1?'s':''} invited`+(anyEmail?'':' · <span style="color:var(--stone)">emails aren’t stored in your profiles table (names only)</span>'); }
+}
+// Map a set/array of invited ids to display names (for the detail screen).
+function invitedNames(ids){
+  const byId={}; (_invitablePlayers||[]).forEach(p=>byId[p.id]=p.name);
+  return (ids||[]).map(id=>byId[id]||'(unknown player)');
+}
+
+// ── EDIT INVITES (game-detail modal, setup-phase private games) ──
+let _editInviteSelected=new Set();
+async function openEditInvites(){
+  if(!currentGame){ return; }
+  if(currentGame.status!=='setup'){ alert('Invites can only be edited while the game is still in setup.'); return; }
+  const vis=gameVisibility(currentGame);
+  _editInviteSelected=new Set(vis.invited||[]);
+  // Build the modal shell
+  if(document.getElementById('edit-invite-overlay')) return;
+  const ov=document.createElement('div');
+  ov.id='edit-invite-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:99999';
+  ov.innerHTML=`
+    <div style="background:#12100b;border:2px solid var(--gold);border-radius:6px;padding:16px;max-width:460px;width:92%;max-height:82vh;display:flex;flex-direction:column">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:8px;color:var(--gold)">🔒 Edit invited players</div>
+      <input type="text" id="edit-invite-search" placeholder="Filter by name or email…" oninput="renderInviteCheckboxes('edit-invite-list','edit-invite-search',_editInviteSelected,'edit-invite-count')" style="margin-bottom:8px">
+      <div id="edit-invite-list" style="flex:1;overflow:auto;border:1px solid var(--stone);border-radius:3px;background:#0d0b07;min-height:120px"><div style="padding:10px;color:var(--stone);font-size:.82rem">Loading registered players…</div></div>
+      <div id="edit-invite-count" style="font-size:.78rem;color:var(--gold);margin:6px 0"></div>
+      <div id="edit-invite-msg" style="font-size:.8rem;min-height:16px;margin-bottom:6px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeEditInvites()">Cancel</button>
+        <button class="btn btn-crimson" onclick="saveEditInvites()">Save invites</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  try{
+    await loadInvitablePlayers();
+    renderInviteCheckboxes('edit-invite-list','edit-invite-search',_editInviteSelected,'edit-invite-count');
+  }catch(e){
+    const l=document.getElementById('edit-invite-list');
+    if(l) l.innerHTML=`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
+  }
+}
+function closeEditInvites(){ const o=document.getElementById('edit-invite-overlay'); if(o) o.remove(); }
+async function saveEditInvites(){
+  const msg=document.getElementById('edit-invite-msg');
+  if(!currentGame){ closeEditInvites(); return; }
+  const invited=[..._editInviteSelected];
+  // Merge into the existing setup config (keep mapSize/botCount/allBot etc. intact).
+  let cfg={}; try{ cfg=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):(currentGame.game_state||{}); }catch(e){ cfg={}; }
+  cfg.visibility='private'; cfg.invited=invited;
+  if(msg) msg.innerHTML='<span style="color:var(--stone)">Saving…</span>';
+  const {error}=await sb.from('games').update({game_state:JSON.stringify(cfg)}).eq('id',currentGame.id);
+  if(error){ if(msg) msg.innerHTML=`<span style="color:#e88">${error.message}</span>`; return; }
+  currentGame.game_state=JSON.stringify(cfg); // keep the in-memory copy fresh
+  closeEditInvites();
+  openGame(currentGame.id); // re-render the detail with the updated invite list
 }
 
 // Comfortable player caps per map size — the most kings that fit with at least ~3 provinces
@@ -1235,19 +1402,27 @@ async function createGame(){
     // Bots fill every slot but the GM didn't tick all-bot — treat as all-bot rather than lock humans out silently.
     if(!confirm(`You've set ${botCount} bots with no room for human players. Create this as an all-bot game?`)) return;
   }
+  // ── Visibility (Public / Private) ──
+  const isPrivate=document.querySelector('input[name="new-game-visibility"]:checked')?.value==='private';
+  const invited=isPrivate?[..._inviteSelected]:[];
+  if(isPrivate && !allBot && invited.length===0){
+    if(!confirm('This private game has no invited players — nobody will be able to join it. Create it anyway (you can add invites from the game screen)?')) return;
+  }
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
+  const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
+  if(isPrivate){ _cfg.visibility='private'; _cfg.invited=invited; }
   const {data:game,error}=await sb.from('games').insert({
     name, gm_user_id:currentUser.id,
     status:'setup', turn:0,
     max_players:maxP, max_turns:maxTurns,
-    game_state:JSON.stringify({mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)})
+    game_state:JSON.stringify(_cfg)
   }).select().single();
   if(error){
     const isRLS=error.message?.includes('row-level security')||error.code==='42501';
     msg.innerHTML=`<div class="msg-error">${error.message}${isRLS?'<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>':''}</div>`;
     return;
   }
-  msg.innerHTML='<div class="msg-success">Game created! Players can now see and join it.</div>';
+  msg.innerHTML=`<div class="msg-success">Game created! ${isPrivate?`Only your ${invited.length} invited player${invited.length!==1?'s':''} will see it.`:'Any registered player can now see and join it.'}</div>`;
   setTimeout(()=>{show('sec-games');loadGames();},1500);
 }
 
@@ -1357,6 +1532,36 @@ async function openGame(gameId){
     </div>`).join('');
 
   document.getElementById('detail-players-list').innerHTML=slotsHtml+reservedBotHtml+emptySlotsHtml;
+
+  // Visibility / invites panel (setup phase only — visibility is dropped once a game goes active).
+  const _visWrap=document.getElementById('detail-visibility-wrap');
+  if(_visWrap){
+    if(game.status!=='setup'){ _visWrap.innerHTML=''; }
+    else{
+      const vis=gameVisibility(game);
+      if(!vis.private){
+        _visWrap.innerHTML=`<div class="msg-info" style="margin:0">🌍 <strong>Public game</strong> — any registered player can see and join it.</div>`;
+      }else{
+        // Names need the profile cache; load it (best-effort) so we can show who's invited.
+        let namesHtml=`<span style="color:var(--stone)">${vis.invited.length} invited</span>`;
+        try{
+          await loadInvitablePlayers();
+          const names=invitedNames(vis.invited);
+          namesHtml = names.length
+            ? names.map(n=>`<span class="pill pill-blue" style="margin:2px 4px 2px 0">${(n||'').replace(/</g,'&lt;')}</span>`).join('')
+            : '<span style="color:#c88">nobody invited yet — no one can join</span>';
+        }catch(e){ namesHtml=`<span style="color:#c88">${vis.invited.length} invited (couldn't load names: ${e.message})</span>`; }
+        _visWrap.innerHTML=`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="color:var(--parchment);font-weight:600">🔒 Private game</span>
+            <span style="color:var(--stone);font-size:.8rem">— only the players below can see and join it.</span>
+            <button class="btn btn-gold" style="margin-left:auto;font-size:.72rem;padding:4px 10px" onclick="openEditInvites()">✎ Edit invited players</button>
+          </div>
+          <div>${namesHtml}</div>
+        </div>`;
+      }
+    }
+  }
 
   // Turn 0: show run button when enough kingdoms (humans + planned bots) exist
   if(game.status==='setup' && (joined + plannedBots) >= 2){
@@ -2896,6 +3101,13 @@ function botConfigFor(game){
   const allBot=cfg.allBot===true;
   const botCount=allBot?maxP:Math.max(0,Math.min(parseInt(cfg.botCount)||0,maxP));
   return {botCount, allBot};
+}
+// Read {private, invited[]} from a game's setup-phase game_state. Games with no `visibility` key
+// (all pre-existing games, and every game once it goes active) read as Public with no invite list.
+function gameVisibility(game){
+  let cfg={}; try{ cfg=typeof game.game_state==='string'?JSON.parse(game.game_state):game.game_state||{}; }catch(e){}
+  const isPrivate=cfg.visibility==='private';
+  return { private:isPrivate, invited:(isPrivate&&Array.isArray(cfg.invited))?cfg.invited:[] };
 }
 // Alignment → four starting skill points, drawn from each alignment's Title signature lane
 // (see KC-design-victory-and-titles.md §5). Real engine skills only (SKILL_LABELS). Each totals 4.
@@ -14909,6 +15121,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-0832</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1422</div>
 </body>
 </html>

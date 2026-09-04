@@ -1015,8 +1015,23 @@ async function loadOpenGames(){
     return Math.max(0,maxP-bots);
   };
 
+  // Visibility gate: a Private game (game_state.visibility==='private') is only visible to the players
+  // in its `invited` list. Games with no `visibility` key (all pre-existing games, and every game once
+  // it goes active) read as Public, so running games are unaffected. This is a UI-level gate matching
+  // the existing client-side capacity filter — see note in DEV_LOG about tightening with RLS later.
+  const visOf=g=>{
+    let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
+    const isPrivate=cfg.visibility==='private';
+    return { private:isPrivate, invited:(isPrivate&&Array.isArray(cfg.invited))?cfg.invited:[] };
+  };
+  const canSee=g=>{
+    const v=visOf(g);
+    return !v.private || v.invited.includes(currentUser.id);
+  };
+
   const openGames=games.filter(g=>{
     if(myGameIds.has(g.id)) return false;
+    if(!canSee(g)) return false; // private game this player wasn't invited to
     const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
     return joined<humanCapOf(g);
   });
@@ -1030,8 +1045,9 @@ async function loadOpenGames(){
     const maxP=humanCapOf(g); // human-facing capacity; reserved bot slots stay hidden
     const info=gameInfo(g);
     const gmEsc=info.gm.replace(/'/g,"\\'");
+    const privBadge=visOf(g).private?' <span class="pill pill-blue">🔒 Invited</span>':'';
     return`<div class="game-card clickable" onclick="showJoinGame('${g.id}','${g.name.replace(/'/g,"\\'")}',${maxP},${joined},'${gmEsc}','${info.size}')">
-      <div class="gc-name">${g.name} <span class="pill pill-green">Open</span></div>
+      <div class="gc-name">${g.name} <span class="pill pill-green">Open</span>${privBadge}</div>
       <div class="gc-meta">GM: <strong>${info.gm}</strong> · World: ${info.size} · ${joined}/${maxP} players joined</div>
       <div class="gc-meta" style="opacity:.7">Click to join this game</div>
     </div>`;
@@ -1199,6 +1215,20 @@ async function doJoinGame(gameId){
     }
   }
   msg.innerHTML='<div class="msg-info">Joining game…</div>';
+
+  // Defense-in-depth: re-check visibility at submit time. A Private game may only be joined by an
+  // invited player, even if they somehow reached this flow without seeing the (hidden) card.
+  {
+    const {data:gRow}=await sb.from('games').select('game_state,status').eq('id',gameId).single();
+    let cfg={}; try{ cfg=typeof gRow?.game_state==='string'?JSON.parse(gRow.game_state):(gRow?.game_state||{}); }catch(e){}
+    if(gRow?.status==='setup' && cfg.visibility==='private'){
+      const inv=Array.isArray(cfg.invited)?cfg.invited:[];
+      if(!inv.includes(currentUser.id)){
+        msg.innerHTML='<div class="msg-error">This is a private game and you are not on its invite list. Ask the GM to invite you.</div>';
+        return;
+      }
+    }
+  }
 
   // Find next available player_index
   const {data:existingSlots}=await sb.from('game_players').select('player_index').eq('game_id',gameId);
@@ -1628,12 +1658,16 @@ function returnToCurrentReport(){
   document.getElementById('prev-report-banner').style.display='none';
   document.getElementById('orders-card').style.display='block';
   refreshOrdersVisibility(true); // back on the live turn — orders available (desk tab governs display)
-  // Restore the correct submit wrap (may have been replaced by success message)
+  // Restore the correct submit wrap based on the TRUE submitted state (not on whatever DOM happens
+  // to be there). If the live turn is not submitted, ensure a live Submit button — this clears any
+  // stale "success / ↺ Resubmit" block from an earlier submission. If it IS submitted, leave the
+  // existing submitted/resubmit control in place.
   const submitWrap=document.getElementById('orders-submit-wrap');
-  if(submitWrap&&!submitWrap.querySelector('#submit-btn')&&!submitWrap.querySelector('button[onclick*="resubmitOrders"]')){
+  const _submitted=!!(currentGamePlayer&&currentGamePlayer.orders_submitted);
+  if(submitWrap && !_submitted && !submitWrap.querySelector('#submit-btn')){
     restoreSubmitWrap('Submit');
   }
-  submitWrap.style.display='flex';
+  if(submitWrap) submitWrap.style.display='flex';
   // Restore the current-turn map and chronicle
   viewingReport=currentReport;
   if(currentReport){
@@ -2665,16 +2699,23 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // stable in modern engines, so every other character keeps its original report order.
   chars=[...chars].sort((a,b)=>((a.isKing||a._isHeir)?0:1)-((b.isKing||b._isHeir)?0:1));
   const el=document.getElementById('orders-form');
-  const btn=document.getElementById('submit-btn');
   const msg=document.getElementById('orders-msg');
+  // NB: #submit-btn is NOT grabbed here. The submit control (orders-submit-wrap) is a live DOM node
+  // that survives openReport calls; a previous submission replaces it with a "success / ↺ Resubmit"
+  // block that has NO #submit-btn. Each branch below rebuilds the wrap from the true submitted state,
+  // then re-fetches #submit-btn — so a stale success block can never bleed onto a fresh, un-submitted
+  // turn (the reported "already submitted" ghost) and no branch ever dereferences a null button.
 
   if(alreadySubmitted){
     msg.innerHTML=`<div class="msg-success" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>✓ Orders submitted — awaiting the GM to run the turn.</span>
       <button class="btn btn-ghost" style="padding:6px 14px;font-size:.8rem" onclick="reviseOrders()">✏ Revise Orders</button>
     </div>`;
-    btn.disabled=true;
-    btn.textContent='Orders Submitted ✓';
+    // Rebuild the submit control as a single disabled indicator. (Deliberately NO "Save Draft" button
+    // here — the orders below are read-only, so a Save Draft would write a blank draft and un-submit.)
+    { const _w=document.getElementById('orders-submit-wrap');
+      if(_w){ _w.innerHTML=`<button class="btn btn-crimson btn-full" id="submit-btn" disabled style="flex:1;padding:12px;font-size:.85rem;opacity:.7;cursor:default">Orders Submitted ✓</button>`;
+        _w.style.display='flex'; } }
     // Show existing orders read-only so the player can see what they sent
     const savedOrders=typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders||{};
     const savedO=savedOrders.orders||savedOrders||{};
@@ -2698,6 +2739,11 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     </div>`;
     return;
   }
+
+  // NOT submitted: guarantee a live "💾 Save Draft + Submit" control. This clears any stale
+  // "success / ↺ Resubmit" (or "Submit Anyway / Go Back") block left in the wrap by an earlier
+  // submission on this or another game — the fix for the ghost "orders submitted" state.
+  restoreSubmitWrap('Submit');
 
   let rawSaved={};
   try{rawSaved=typeof existingOrders==='string'?JSON.parse(existingOrders||'{}'):existingOrders||{};}catch(e){rawSaved={};}
@@ -2879,8 +2925,8 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
 
-  btn.disabled=false;
-  btn.textContent=`Submit Orders for Turn ${(turnNum||1)}`;
+  const btn=document.getElementById('submit-btn'); // freshly rebuilt by restoreSubmitWrap above
+  if(btn){ btn.disabled=false; btn.textContent=`Submit Orders for Turn ${(turnNum||1)}`; }
 }
 
 // Render the "Pre-battle magic" control for a character from its hidden ep-preschool field.
@@ -5877,6 +5923,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-0832</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-1422</div>
 </body>
 </html>
