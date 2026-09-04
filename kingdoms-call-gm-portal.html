@@ -415,6 +415,35 @@ function navalSpeedBonus(baseSpeed,navalLevel){
   // "is this a naval unit" (sea-battle penalties, Naval-skill bonuses, hull targeting, move pools).
   const SEA_TYPES=new Set([...CARRIER_TYPES,...PRIMAL_SEA_TYPES]);
 
+  // ── Task 6: FLYING CARRY ───────────────────────────────────────────────────
+  // A humanoid flyer (one of FLYING_TYPES) can lift a single humanoid FOOT soldier and carry it
+  // through the air, exactly as a fleet ferries land units across the sea. Cavalry, naval hulls, sea
+  // beasts and creature/monster units are too heavy or unsuitable and are never carried.
+  const CAVALRY_TYPES=new Set(['Free Lances','Gilded Lances','Warg Riders']);
+  function isAirCarriable(a){
+    if(!a) return false; const t=a.type;
+    if(AERIAL_TYPES.has(t)||SEA_TYPES.has(t)) return false;          // flyers carry, hulls/sea-beasts sail
+    if(CREATURE_ARMIES.has(t)||MONSTER_ARMIES.has(t)) return false;  // no lifting creatures/monsters
+    if(CAVALRY_TYPES.has(t)) return false;                            // horses don't ride griffons
+    return true;                                                      // humanoid foot (levy/archer/guard/garrison/gun)
+  }
+  // Can this WHOLE force take to the air? Every foot soldier must be liftable, and there must be at
+  // least one humanoid flyer per carried unit (self-flying units ride for free: humanoid flyers and
+  // primal winged beasts). Any grounded unit that can be neither carried nor fly on its own — a horse,
+  // a fleet, a walking creature/monster — anchors the column to the earth.
+  function getFlyCapability(armies){
+    if(!armies||armies.length===0) return false;
+    let carriers=0, carried=0, sawSelfFlier=false;
+    for(const a of armies){
+      if(!a) continue;
+      if(FLYING_TYPES.has(a.type)){ carriers++; sawSelfFlier=true; continue; } // humanoid flyer: flies + carries 1
+      if(AERIAL_TYPES.has(a.type)){ sawSelfFlier=true; continue; }             // primal winged beast: flies, carries none
+      if(isAirCarriable(a)){ carried++; continue; }                            // foot soldier that must be lifted
+      return false;                                                            // grounded — the force cannot fly
+    }
+    return sawSelfFlier && carriers>=carried;
+  }
+
 
 // HUMAN — Ride Them Down only works in open country. Light horse need room to run a broken enemy
 // down; in woods, jungle or mountains the survivors simply scatter into cover.
@@ -890,7 +919,7 @@ function buildTargetField(c,ph,saved){
       if(report.kingdom?.alignment!=='Divine') return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine kingdoms may consecrate" disabled>`;
       if(!c.isKing) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc=predictedLocation(c.id,ph);
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Consecrates ${loc?loc.name:'current province'} (owned, not home/adjacent-home)" readonly>`;}
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Consecrates ${loc?loc.name:'current province'} (owned; not home/home-adjacent; not next to another consecrated province)" readonly>`;}
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good') return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good kingdoms" disabled>`;
       if(!c.isKing) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
@@ -3351,12 +3380,29 @@ const BOT_SEA_ALL=new Set([...BOT_CARRIER_TYPES,...BOT_PRIMAL_SEA_TYPES]);
 const BOT_LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers']);
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
+const BOT_FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+const BOT_CREATURE_ARMIES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+const BOT_MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+const BOT_CAVALRY_TYPES=new Set(['Free Lances','Gilded Lances','Warg Riders']);
+// Task 6: bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the
+// whole column flies (and crosses sea without a fleet)?
+function botCanFly(armies){
+  armies=armies||[]; if(!armies.length) return false;
+  let carriers=0, carried=0, selfFly=false;
+  for(const a of armies){ if(!a) continue;
+    if(BOT_FLYING_TYPES.has(a.type)){ carriers++; selfFly=true; continue; }
+    if(BOT_AERIAL_TYPES.has(a.type)){ selfFly=true; continue; }
+    if(BOT_SEA_ALL.has(a.type)||BOT_CREATURE_ARMIES.has(a.type)||BOT_MONSTER_ARMIES.has(a.type)||BOT_CAVALRY_TYPES.has(a.type)) return false;
+    carried++; }
+  return selfFly && carriers>=carried;
+}
 function botSeaCap(armies){
   armies=armies||[];
   if(armies.length===0) return 'all';
   const landArmies=armies.filter(a=>a&&!BOT_AERIAL_TYPES.has(a.type)&&!BOT_SEA_ALL.has(a.type));
   const hulls=armies.filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length;
   if(landArmies.length===0) return 'all';
+  if(botCanFly(armies)) return 'sea'; // Task 6: airborne column crosses sea
   let need=0; landArmies.forEach(a=>{ need+=BOT_LIGHT_ARMIES.has(a.type)?0.5:1; });
   return hulls>=need ? 'sea' : 'land';
 }
@@ -4138,7 +4184,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         // NO guardian monster and are never "cleared"; discovery works like any other feature
         // (Explore thresholds). Non-Pagans can find them; only Pagans can use them. Skipped entirely
         // when no player is Pagan, so a Pagan-less game is never littered with unusable sites.
-        if(hasPaganPlayer && Math.random()<(isPrimal?RITUAL_SITE_CHANCE_PRIMAL:RITUAL_SITE_CHANCE_HUMANOID)){
+        // Task 3: ritual sites belong to the old wild faith — they appear ONLY in Primal (creature or
+        // monster) country, never in humanoid provinces. (RITUAL_SITE_CHANCE_HUMANOID retired.)
+        if(hasPaganPlayer && isPrimal && Math.random()<RITUAL_SITE_CHANCE_PRIMAL){
           features.push({name:RITUAL_SITE_NAMES[Math.floor(Math.random()*RITUAL_SITE_NAMES.length)],
             ritualSite:true, monster:null, discovered:false, cleared:false, treasure:0});
         }
@@ -4898,9 +4946,13 @@ function buildTurnReport(gameState, playerIndex){
       return (p.features||[]).map((f,idx)=>{
         const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
         const known=featDiscovered(f,playerIndex);
-        const canSee=known||(explored>=threshold);
+        // Task 3: a ritual site in your OWN province is always visible — you hold the ground and know
+        // your own standing stones. Other features still follow the explore-threshold reveal. The
+        // ritualSite flag was previously dropped from the owned-province payload (enemy provinces kept
+        // it), so the map crescent and pop-up never fired on your own land.
+        const canSee=known||(explored>=threshold)||!!f.ritualSite;
         if(!canSee) return null;
-        return{name:f.name,discovered:canSee,cleared:f.cleared,treasure:known?f.treasure:null};
+        return{name:f.name,discovered:canSee,cleared:f.cleared,ritualSite:!!f.ritualSite,treasure:known?f.treasure:null};
       }).filter(Boolean);
     })(),
     neutralDefenders:(()=>{
@@ -4947,11 +4999,33 @@ function buildTurnReport(gameState, playerIndex){
     const landArmiesRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type));
     const seaArmiesRep=armies.filter(a=>SEA_UNIT_TYPES.includes(a.type));
     const trueLandRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type)&&!AERIAL_UNIT_TYPES.has(a.type));
-    const effSpd=armies.length===0?5:landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):0;
+    let effSpd=armies.length===0?5:landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):0;
     // Sea speed: use fleets if present; else all-flying/empty forces cross by air at their land speed.
-    const effSeaSpd=seaArmiesRep.length>0?Math.max(...seaArmiesRep.map(a=>repSpd(a)))
+    let effSeaSpd=seaArmiesRep.length>0?Math.max(...seaArmiesRep.map(a=>repSpd(a)))
       :armies.length===0?5+navalLvl
       :(trueLandRep.length===0?(landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):5):0);
+    // ── Task 6: FLYING CARRY (report mirror of getFlyCapability) ── If the humanoid flyers can lift
+    // every foot soldier in the force (1 each, nothing grounded left behind), the column takes to the
+    // air: it moves at the flyers' pace (carried infantry no longer slow it) and crosses sea freely.
+    {
+      const FLY_CARRIERS_REP=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+      const CAV_REP=new Set(['Free Lances','Gilded Lances','Warg Riders']);
+      const CRE_REP=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+      const MON_REP=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+      const repAirCarriable=(t)=>!(AERIAL_UNIT_TYPES.has(t)||SEA_UNIT_TYPES.includes(t)||CRE_REP.has(t)||MON_REP.has(t)||CAV_REP.has(t));
+      let carriers=0,carried=0,selfFly=false,grounded=false;
+      armies.forEach(a=>{
+        if(FLY_CARRIERS_REP.has(a.type)){carriers++;selfFly=true;}
+        else if(AERIAL_UNIT_TYPES.has(a.type)){selfFly=true;}
+        else if(repAirCarriable(a.type)){carried++;}
+        else grounded=true;
+      });
+      const canFlyRep=armies.length>0 && !grounded && selfFly && carriers>=carried && !armies.every(a=>AERIAL_UNIT_TYPES.has(a.type));
+      if(canFlyRep){
+        const flyerSpeeds=armies.filter(a=>AERIAL_UNIT_TYPES.has(a.type)).map(a=>repSpd(a));
+        if(flyerSpeeds.length){ effSpd=Math.min(...flyerSpeeds); effSeaSpd=effSpd; }
+      }
+    }
     return{
       id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,
       hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},aptitude:c.aptitude||{},armies,items:c.items||[],pay:c.pay||0,
@@ -4992,9 +5066,10 @@ function buildTurnReport(gameState, playerIndex){
     visibleChars.forEach(v=>{ rec[v.id]={id:v.id,name:v.name,isKing:v.isKing,race:v.race,alignment:v.alignment,
       player:v.player,isWandering:v.isWandering,lastSeenTurn:gameState.turn,lastLocId:v.locationId,lastLocName:v.locationName}; });
     // Own characters are always "seen" but are never Clairvoyance targets worth listing — skip them.
+    // Task 7(b): neutral/wandering heroes (player==null) cannot be Clairvoyance targets — drop them.
     return Object.values(rec).filter(x=>{
       const live=gameState.characters.find(ch=>ch.id===x.id);
-      return live&&live.alive; // dead targets are handled by the spell's dead-target report
+      return live&&live.alive&&live.player!=null; // dead handled by the spell's dead-target report; neutrals excluded
     });
   })();
 
@@ -5230,8 +5305,12 @@ function buildTurnReport(gameState, playerIndex){
         const c=gameState.characters[cid];
         if(!c||!c.alive) return null;
         const isOwn=c.player===playerIndex;
-        if(!isOwn && !ownCharLocs.has(p.id)) return null;
-        if(!isOwn && c._unspottedTurn===gameState.turn) return null; // Item 5: unspotted → off the map
+        // Task 9: an enemy character is visible if you have a character standing here OR you OWN this
+        // province (your garrison and subjects report the intruder) — previously only co-location
+        // revealed them, so an enemy sitting in an owned province with no hero of yours present was
+        // invisible on your map. The only thing that still hides them is moving in UNSEEN (below).
+        if(!isOwn && !ownCharLocs.has(p.id) && !ownedProvIds.has(p.id)) return null;
+        if(!isOwn && c._unspottedTurn===gameState.turn && !spiedThisTurn.has(p.id)) return null; // Item 5 / Task 9: spy moved them in unseen (unless you spied this province)
         return{id:c.id,name:c.name,isOwn,isKing:c.isKing,
           isWanderer:c.player===null,
           // A neutral character is either the sworn guardian of this province ("local chieftain")
@@ -5546,7 +5625,7 @@ const SPELL_DEFS_P={
     desc:'Action: every army travelling with the target (self or an ally in your province) gains +1 quality level for the rest of the turn. Not cumulative.',
     fn:'psychic_oratory'},
   'Clairvoyance':   {school:'psychic',target:'character',encounter:false,phase:true,
-    desc:'Action: everything that happens to the target character becomes known to you for the rest of the turn. Only one Clairvoyance may be active at a time — a new casting replaces the old.',
+    desc:'Action: everything that happens to the target enemy character becomes known to you for the rest of the turn, reported in your Kingdom Events. Cannot be cast on a neutral or wandering hero. Only one Clairvoyance may be active at a time — a new casting replaces the old.',
     fn:'psychic_clairvoyance'},
   'Psychic Blast':  {school:'psychic',target:'character',encounter:true,phase:true,
     desc:'Action: the target loses 2 skill levels, each drawn from a random owned skill (the two picks may be the same skill). Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
@@ -5869,6 +5948,10 @@ async function runTurn(){
   //  public   — if true, all players who own or have characters in this province see it
   //  redact   — if true, enemy army strength is shown as a rough estimate only
   const turnLog=[];
+  // Task 7: CLAIRVOYANCE watch snapshot. targetChar._clairvoyantBy is cleared at turn-end BEFORE the
+  // per-player reports are built, so record each caster's active watch here (one per player — a new
+  // casting replaces the old) to survive into report generation. { playerIndex: {charId, fromPhase} }.
+  const clairWatch={};
   // Which commanders fought in each battle, keyed by provinceId@phase. Every battle line carries a
   // SINGLE charId — the attacker's (via _logCtx) for a fresh fight, or the ranking live force for a
   // resumed stalled battle. For the OTHER participating player (the defender, or the dead/leaderless
@@ -5973,6 +6056,41 @@ async function runTurn(){
     const defLost=(defArmiesCopy||[]).filter(a=>a&&a._died).length;
     if(battle.won){ TM(atkChar)[bucket]+=defLost; TM(defChar)[bucket]-=defLost; }
     else          { TM(defChar)[bucket]+=atkLost; TM(atkChar)[bucket]-=atkLost; }
+  }
+
+  // ── Task 12: MAXIMUM-HP CAP ───────────────────────────────────────────────
+  // A character's maximum HP may not be raised beyond  Melee×4 + (every OTHER skill summed)×2 . The
+  // cap GATES INCREASES only — it never retroactively cuts HP a character already holds, so a starting
+  // hero whose maxHp already exceeds their skill-based ceiling keeps it, but cannot grow further until
+  // they train new skills (which raises the ceiling). All EARNED maxHp growth — kill-hardening, the
+  // magic-cast perk, Search-Lair rewards, Orc Vigour — flows through raiseMaxHp so the ceiling is
+  // enforced uniformly and, when a gain is withheld, the player is told why. (Magic-item maxHp bonuses
+  // are static, reversible equipment and sit OUTSIDE this cap — see applyItemMaxHp.)
+  function hpCapFor(ch){
+    if(!ch) return Infinity;
+    const melee=skillLevel(ch,'melee');
+    let others=0;
+    ALL_SKILLS.forEach(sk=>{ if(sk!=='melee') others+=skillLevel(ch,sk); });
+    return melee*4 + others*2;
+  }
+  // Raise ch.maxHp by up to `amount` (healing current HP by whatever is actually granted), clamped to
+  // the cap. Returns the amount granted. `reason` is a short clause for the Chronicle line.
+  function raiseMaxHp(ch, amount, reason){
+    if(!ch||!(amount>0)) return 0;
+    const cap=hpCapFor(ch);
+    const cur=ch.maxHp||0;
+    const prov=(ch.location!=null)?G.world.provinces[ch.location]:null;
+    const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
+    if(cur>=cap){
+      log('system',`${ch.name} — ${reason} — would grow tougher, but has reached the limit of what their skills can sustain: maximum HP is capped at ${cap} (Melee×4 + other skills×2). Training new skills will raise the ceiling.`,tgt);
+      return 0;
+    }
+    const granted=Math.min(amount, cap-cur);
+    ch.maxHp=cur+granted;
+    if(ch.hp!=null) ch.hp=Math.min(ch.maxHp, ch.hp+granted);
+    const capNote=(granted<amount)?` (${amount-granted} more withheld — the skill cap of ${cap} is reached)`:'';
+    log('system',`💪 ${ch.name}: ${reason} — maximum HP rises by ${granted} to ${ch.maxHp}${capNote}.`,tgt);
+    return granted;
   }
 
   // ── LIVE TITLE PERKS + MINOR TITLES ── Determine who holds each Title going into this turn (once,
@@ -7537,7 +7655,10 @@ const BATTLE_ARMY_SPELLS={
 
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
-      const friendlyAdj=adjProvs.filter(p2=>isFriendlyProvFor(p2,c.player)); // Task 8: own OR allied provinces only
+      // Task 2: a retreat is a real move — the force can only fall back onto ground it could legally
+      // enter. A land force (no fleet capacity) must NOT retreat into an owned/allied sea province.
+      const _retSc=getSeaCapability(c.armies||[],c);
+      const friendlyAdj=adjProvs.filter(p2=>isFriendlyProvFor(p2,c.player)&&canEnterTerrain(c,p2.terrain,_retSc)); // Task 8: own OR allied provinces only; Task 2: legally-enterable terrain only
       prov._hadBattleThisTurn=true;
       const infStay=(c.items||[]).some(it=>it.effect&&it.effect.stat==='infStay');
       // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
@@ -9053,7 +9174,8 @@ const BATTLE_ARMY_SPELLS={
       def.armies=defArmies.filter(a=>!a._died&&!a._disbanded);
       // Losing defender retreat
       const defAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
-      let defFriendlyAdj=defAdjProvs.filter(p2=>isFriendlyProvFor(p2,def.player)); // Task 8: own OR allied provinces only
+      const _defRetSc=getSeaCapability(def.armies||[],def); // Task 2: only ground the beaten force could legally enter
+      let defFriendlyAdj=defAdjProvs.filter(p2=>isFriendlyProvFor(p2,def.player)&&canEnterTerrain(def,p2.terrain,_defRetSc)); // Task 8: own OR allied provinces only; Task 2: no land force fleeing into owned sea
       // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
       if(_cutAtk&&defFriendlyAdj.length>0){
         const overland=defFriendlyAdj.filter(p2=>p2.terrain!=='sea');
@@ -9132,7 +9254,8 @@ const BATTLE_ARMY_SPELLS={
       def.armies=defArmies.filter(a=>!a._died&&!a._disbanded);
       // Losing attacker retreat
       const atkAdjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
-      let atkFriendlyAdj=atkAdjProvs.filter(p2=>isFriendlyProvFor(p2,atk.player)); // Task 8: own OR allied provinces only
+      const _atkRetSc=getSeaCapability(atk.armies||[],atk); // Task 2: only ground the beaten force could legally enter
+      let atkFriendlyAdj=atkAdjProvs.filter(p2=>isFriendlyProvFor(p2,atk.player)&&canEnterTerrain(atk,p2.terrain,_atkRetSc)); // Task 8: own OR allied provinces only; Task 2: no land force fleeing into owned sea
       // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
       if(_cutDef&&atkFriendlyAdj.length>0){
         const overland=atkFriendlyAdj.filter(p2=>p2.terrain!=='sea');
@@ -9397,9 +9520,18 @@ const BATTLE_ARMY_SPELLS={
     const vHp=victim.maxHp||20;
     let hpGain=vHp>=36?rng(4,8):vHp>=21?rng(3,6):vHp>=13?rng(2,4):rng(1,3);
     if(killer.isKing && hasDisc(killer.player,'sd35')) hpGain*=2; // sd35 Order of the Golden Shield: the king hardens twice as fast from his kills
-    killer.maxHp=(killer.maxHp||20)+hpGain;
-    killer.hp=Math.min(killer.maxHp,(killer.hp||0)+hpGain);
-    const msg=`⚔ ${killer.name} grows hardened from slaying ${victim.name} — maximum HP permanently increases by ${hpGain} (now ${killer.maxHp} max HP).`;
+    // Task 12: clamp the hardening to the skill-based max-HP ceiling.
+    const cap=hpCapFor(killer), cur=killer.maxHp||20;
+    if(cur>=cap){
+      const msg=`⚔ ${killer.name} cuts down ${victim.name}, but is already as hardened as their skills allow — maximum HP is capped at ${cap} (Melee×4 + other skills×2).`;
+      if(narrative){ narrative.push(msg); } else { const kp=G.world.provinces[killer.location]; log('combat',msg,{actor:killer.player,targets:[killer.player].filter(x=>x!==null),provinceId:kp?.id,public:true}); }
+      return;
+    }
+    const granted=Math.min(hpGain, cap-cur);
+    killer.maxHp=cur+granted;
+    killer.hp=Math.min(killer.maxHp,(killer.hp||0)+granted);
+    const capNote=(granted<hpGain)?` (the rest withheld — skill cap of ${cap} reached)`:'';
+    const msg=`⚔ ${killer.name} grows hardened from slaying ${victim.name} — maximum HP permanently increases by ${granted} (now ${killer.maxHp} max HP)${capNote}.`;
     if(narrative){ narrative.push(msg); }
     else { const kp=G.world.provinces[killer.location]; log('combat',msg,{actor:killer.player,targets:[killer.player].filter(x=>x!==null),provinceId:kp?.id,public:true}); }
   }
@@ -9801,6 +9933,9 @@ const BATTLE_ARMY_SPELLS={
         }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
+        // Task 4: remember which province this character MARCHED INTO this phase, so a lone defender on
+        // Defend can tell an incursion (a fresh mover) from a force that was already standing nearby.
+        c._enteredProvThisPhase=toProv.id;
         // Remember that this player set foot here THIS PHASE, before any battle is fought. If the
         // move ends in a repulse the character will be gone by the end of the phase, but they still
         // scouted the province and its surrounds and the map must reflect that.
@@ -10147,6 +10282,10 @@ const BATTLE_ARMY_SPELLS={
               if(_defFellBackTo){
                 if(!_defFellBackTo.characters) _defFellBackTo.characters=[];
                 [defChar,...defReinforcements].forEach(ch=>{
+                  // Task 11: a commander slain in the pre-battle duel does NOT follow the rout — the
+                  // corpse stays in the province where the battle was fought (their grave is already
+                  // recorded there). Only the living fall back.
+                  if(!ch.alive){ return; }
                   toProv.characters=(toProv.characters||[]).filter(id=>id!==ch.id);
                   if(!_defFellBackTo.characters.includes(ch.id)) _defFellBackTo.characters.push(ch.id);
                   ch.location=_defFellBackTo.id; ch.locationName=_defFellBackTo.name;
@@ -10204,10 +10343,15 @@ const BATTLE_ARMY_SPELLS={
               // copy's decision rather than overriding it.
               const _stoodGround=(combinedAtk.location===toProv.id);
               const _fellBackTo=_stoodGround?toProv:(G.world.provinces[combinedAtk.location]||prov);
-              if(!_stoodGround) toProv.characters=(toProv.characters||[]).filter(id=>id!==c.id);
-              if(!_fellBackTo.characters) _fellBackTo.characters=[];
-              if(!_fellBackTo.characters.includes(c.id)) _fellBackTo.characters.push(c.id);
-              c.location=_fellBackTo.id;
+              // Task 11: if the attacking commander was slain in the pre-battle duel, the corpse stays
+              // where they fell (toProv) — only a LIVING repelled attacker falls back. Their leaderless
+              // host still retreats via the host-dispersal logic; the body does not travel with it.
+              if(c.alive){
+                if(!_stoodGround) toProv.characters=(toProv.characters||[]).filter(id=>id!==c.id);
+                if(!_fellBackTo.characters) _fellBackTo.characters=[];
+                if(!_fellBackTo.characters.includes(c.id)) _fellBackTo.characters.push(c.id);
+                c.location=_fellBackTo.id;
+              }
               // rule: never zero remaining move points on a move-in/battle — the move already cost its point; the rest of the turn’s budget stays.
             }
             // ── Garrison joins the hero for the whole fight (Toby's call) ──
@@ -10449,7 +10593,9 @@ const BATTLE_ARMY_SPELLS={
         // ── PAGAN: Perform Rite ── Only Pagan kingdoms; only at a DISCOVERED ritual site.
         if(G.players[c.player]?.alignment!=='Pagan'){
           log('system',`${c.name} does not keep the old faith — only Pagan kingdoms may perform rites.`,{actor:c.player,targets:[c.player]});break;}
-        const _riteSite=(prov.features||[]).find(f=>f.ritualSite&&featDiscovered(f,c.player));
+        // Task 3: a ritual site in your OWN province is always known to you (it shows on your map), so
+        // the rite may be performed there without first Exploring. Elsewhere, the site must be discovered.
+        const _riteSite=(prov.features||[]).find(f=>f.ritualSite&&(featDiscovered(f,c.player)||prov.owner===c.player));
         if(!_riteSite){
           log('system',`${c.name} finds no ritual site in ${prov.name} — rites need standing stones, and stones must first be found.`,{actor:c.player,targets:[c.player]});break;}
         const _rite=(target||'').toLowerCase();
@@ -10575,13 +10721,16 @@ const BATTLE_ARMY_SPELLS={
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           // Permanent max-HP growth (the main power curve alongside magic items).
           const preHpMax=c.maxHp||20;
-          const hpGain=rng(T.hp[0],T.hp[1]);
+          const rawHpGain=rng(T.hp[0],T.hp[1]);
+          const _capHere=hpCapFor(c); // Task 12: skill-based max-HP ceiling
+          const hpGain=Math.max(0, Math.min(rawHpGain, _capHere-preHpMax));
           c.maxHp=preHpMax+hpGain;
           const postHp=(encounter.heroHpAfter!=null?encounter.heroHpAfter:c.hp);
           const hpLost=Math.max(0,preHpMax-postHp);
           const healAmt=Math.ceil(hpLost*0.5)+hpGain;
           c.hp=Math.min(c.maxHp, postHp+healAmt);
-          log('explore',`⚔ ${c.name} grows hardened — max HP +${hpGain} (now ${c.maxHp}), and catches their breath to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          const _capNoteLair=(hpGain<rawHpGain)?(hpGain>0?` (part of the gain withheld — skill cap ${_capHere})`:` (no max-HP gain — already at the skill cap of ${_capHere})`):'';
+          log('explore',`⚔ ${c.name} grows hardened — max HP +${hpGain} (now ${c.maxHp})${_capNoteLair}, and catches their breath to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           // Item drops — chance/quantity scale with tier, and item QUALITY scales with tier too.
           // Item 2 (this session): uniqueness. `_taken` seeds from the game-wide roll of items already
           // found (G._awardedItems) and grows as each drop is chosen, so no lair — this one or any
@@ -10814,6 +10963,12 @@ const BATTLE_ARMY_SPELLS={
         const _cList=consecratedIds(player);
         if(_cList.includes(prov.id)){
           log('system',`${prov.name} is already consecrated — the ground is holy and needs no second blessing.`,{actor:c.player,targets:[c.player]});break;}
+        // Task 8: holy ground must be spread across the realm — two consecrated provinces may not lie
+        // side by side. Reject if any neighbour of this province is already consecrated.
+        const _provAdjC=new Set(getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).map(x=>x&&x.id).filter(x=>x!=null));
+        const _adjConsecId=_cList.find(id=>_provAdjC.has(id));
+        if(_adjConsecId!=null){
+          log('system',`${c.name}: ${prov.name} borders ${G.world.provinces[_adjConsecId]?.name||'already-hallowed ground'} — two consecrated provinces may not lie side by side. Carry the light to ground set apart from your other holy lands.`,{actor:c.player,targets:[c.player]});break;}
         // Item 1: the crown may hold up to its WHITE skill level in consecrated provinces at once.
         const _cLimit=skillLevel(c,'white');
         if(_cLimit<=0){
@@ -11418,7 +11573,7 @@ const BATTLE_ARMY_SPELLS={
         c._defend={centre:centreProv.id,active:true,setPhase:ph};
         delete c._defendReactedPhase;
         if((c.armies||[]).length===0){
-          log('move',`${c.name} holds position in ${prov.name}, though with no troops at his back there is little he can do to bar a road.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('move',`${c.name} melts into the country around ${prov.name} and lies in wait — with no column at his back he cannot bar a road, but he will try to ambush any enemy who ventures into these lands (his Spy craft decides whether he can spring the trap).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(centreProv.id===prov.id){
           log('move',`${c.name} makes camp in ${prov.name} and sets a watch — his column will answer any incursion into the lands about him for the rest of the year.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
@@ -11493,7 +11648,7 @@ const BATTLE_ARMY_SPELLS={
           break;
         }
 
-        { const _hpUp=rng(3,5); c.maxHp=(c.maxHp||20)+_hpUp; c.hp=Math.min(c.maxHp,(c.hp||0)+_hpUp); } // MAGIC BASE PERK: every successful cast raises current & max HP by 3-5
+        raiseMaxHp(c, rng(3,5), 'the working of magic tempers body as well as will'); // MAGIC BASE PERK: every successful cast raises current & max HP (capped — Task 12; now reported — Task 10)
         if(school==='necromancy') TM(c).darkCasts=(TM(c).darkCasts||0)+1; // TITLE MERIT: Deathpriest
         // Resolve spell effect
         const fn=spellDef.fn;
@@ -11731,10 +11886,18 @@ const BATTLE_ARMY_SPELLS={
             }
             log('system',`Clairvoyance: choose a character you have seen to watch.`,{actor:c.player,targets:[c.player]});break;
           }
+          // Task 7(b): Clairvoyance reaches a mind bound to a crown — it cannot be turned on a neutral
+          // or wandering hero (a hero guarding a neutral province, or one roaming unaligned).
+          if(targetChar.player==null){
+            log('system',`${c.name}'s Clairvoyance finds no thread to follow — ${targetChar.name} serves no crown, and the spell cannot fix upon a wandering or neutral mind.`,{actor:c.player,targets:[c.player],provinceId:c.location});break;
+          }
           // Only one Clairvoyance at a time — a new casting replaces the old.
           (G.characters||[]).forEach(ch=>{ if(Array.isArray(ch._clairvoyantBy)) ch._clairvoyantBy=ch._clairvoyantBy.filter(pl=>pl!==c.player); });
           targetChar._clairvoyantBy=targetChar._clairvoyantBy||[];
           if(!targetChar._clairvoyantBy.includes(c.player)) targetChar._clairvoyantBy.push(c.player);
+          // Task 7(a): remember this watch so the report can surface everything that befalls the target
+          // FROM THIS PHASE ONWARD, filed into the caster's Kingdom Events. One watch per player.
+          clairWatch[c.player]={charId:targetChar.id, fromPhase:ph};
           const tp=G.world.provinces[targetChar.location];
           // Item 7: watching a character with Clairvoyance also reveals their full skills.
           {
@@ -12315,6 +12478,9 @@ const BATTLE_ARMY_SPELLS={
     const seaCount=armies.filter(a=>CARRIER_TYPES.has(a.type)).length;
     const flyCount=armies.filter(a=>AERIAL_TYPES.has(a.type)).length;
     if(landArmies.length===0) return 'all'; // only flying/sea
+    // Task 6: if the humanoid flyers can lift every foot soldier, the whole column takes to the air
+    // and crosses sea without a fleet — just like an all-flying host.
+    if(getFlyCapability(armies)) return 'sea';
     // Fleet capacity: light foot = 0.5 capacity (2 per hull), heavy/cavalry/siege/beast = 1 per hull
     const LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
       'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison',
@@ -12404,6 +12570,15 @@ const BATTLE_ARMY_SPELLS={
         sea=land; seaActive=true; // all flying: free sea entry
       } else {
         sea=0; seaActive=false;
+      }
+      // Task 6: FLYING CARRY. If the humanoid flyers can lift every foot soldier (1 each, nothing
+      // grounded left behind), the column takes to the air: it no longer marches at the infantry's
+      // pace but at the flyers' own speed, and — like an all-flying host — it crosses sea freely. Only
+      // the self-flying units (humanoid flyers + primal winged beasts) set the pace; carried infantry
+      // ride along at that speed. March does not speed flight (flyers already ignore March above).
+      if(getFlyCapability(armies) && !armies.every(a=>AERIAL_TYPES.has(a.type))){
+        const flyerSpeeds=armies.filter(a=>AERIAL_TYPES.has(a.type)).map(a=>ARMY_SPEED_R[a.type]||3);
+        if(flyerSpeeds.length){ land=Math.min(...flyerSpeeds); sea=land; seaActive=true; }
       }
     }
     // Swift / Seawolf minor titles keep their +1 (only when a pool actually exists).
@@ -13050,6 +13225,7 @@ const BATTLE_ARMY_SPELLS={
         if(_defFellBackTo){
           if(!_defFellBackTo.characters) _defFellBackTo.characters=[];
           [enemyChar,...defReinf].forEach(d=>{
+            if(!d.alive){ return; } // Task 11: a commander slain in the pre-battle duel stays where they fell
             prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
             if(!_defFellBackTo.characters.includes(d.id)) _defFellBackTo.characters.push(d.id);
             d.location=_defFellBackTo.id; d.locationName=_defFellBackTo.name;
@@ -13624,10 +13800,11 @@ const BATTLE_ARMY_SPELLS={
       if(combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; }
       if(combinedDef.location!==quarry.location){
         const np=G.world.provinces[combinedDef.location];
-        quarry.location=combinedDef.location; if(np) quarry.locationName=np.name;
+        if(quarry.alive){ quarry.location=combinedDef.location; if(np) quarry.locationName=np.name; } // Task 11: a slain commander stays where they fell
         if(np){
           if(!np.characters) np.characters=[];
           defReinf.forEach(d=>{
+            if(!d.alive){ return; } // Task 11: dead reinforcements do not rout
             prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
             if(!np.characters.includes(d.id)) np.characters.push(d.id);
             d.location=np.id; d.locationName=np.name;
@@ -13640,7 +13817,87 @@ const BATTLE_ARMY_SPELLS={
     });
   }
 
-  // ── REINFORCEMENT ARRIVALS (AK [7.0]) ─────────────────────────────────────
+  // ── Task 4: LONE DEFENDER AMBUSH ──────────────────────────────────────────
+  // A character on Defend who leads NO armies cannot ride out to fight a battle (the two passes above
+  // require a column). Instead he lies in wait: any enemy character who MARCHES into the province he
+  // holds — or one immediately adjacent — may be intercepted and forced into a personal battle. The
+  // chance of springing the ambush scales with his Spy skill (a scout's craft), and is halved against
+  // a target at the head of an army (harder to catch a well-guarded commander alone). Runs after every
+  // order and after the armed Defend reactions, so all of this phase's movers are already in place.
+  function runDefendAmbush(ph){
+    (G.characters||[]).forEach(c=>{
+      if(!c.alive||c.player==null||!c._defend||!c._defend.active) return;
+      if((c.armies||[]).length>0) return;                    // ONLY lone characters ambush (armed ones ride out above)
+      if(c._defendReactedPhase===ph) return;                 // one reaction per phase
+      if(c._encounteredThisPhase!=null) return;              // already in a personal fight this phase
+      const here=G.world.provinces[c.location];
+      if(!here) return;
+      // Watch zone: the province he stands on plus its immediate neighbours.
+      const zoneIds=new Set([here.id, ...getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces).filter(Boolean).map(p=>p.id)]);
+      // Candidate quarry: an ENEMY character who entered the zone THIS phase (an incursion), is not
+      // cloaked, and has not already fought a personal action this phase. A wandering/neutral hero
+      // (player==null) is never an "enemy character" and is left alone.
+      const foes=(G.characters||[]).filter(e=>{
+        if(!e||!e.alive||e.player==null||e.id===c.id) return false;
+        if(!areEnemies(c.player,e.player)) return false;
+        if(e.location==null||!zoneIds.has(e.location)) return false;
+        if(e._enteredProvThisPhase!==e.location) return false; // must have MARCHED IN this phase (a real incursion)
+        if(e._encounteredThisPhase!=null) return false;
+        if(e.isKing && !c.isKing) return false;              // a crowned head is not waylaid by a lone hero — only a king may ambush a king
+        if(isHiddenChar(e)) return false;                    // Cloak of Many Faces & the like leave no trail
+        return true;
+      });
+      if(!foes.length) return;
+      // Prefer the highest-value quarry: a king first, then the heaviest column, then the strongest man.
+      foes.sort((a,b)=> (b.isKing?1:0)-(a.isKing?1:0) || armyTotalStr(b,G.world.provinces[b.location])-armyTotalStr(a,G.world.provinces[a.location]) || effStat(b,'melee')-effStat(a,'melee'));
+      const quarry=foes[0];
+      const quarryProv=G.world.provinces[quarry.location];
+      if(!quarryProv) return;
+      // Spy-scaled ambush chance. Base 10% + 9%/Spy level (a master scout ~90%). Halved against a
+      // commander leading an army — his guards make a lone strike far harder to land.
+      const spy=effStat(c,'spy');
+      let chance=Math.min(90, 10+spy*9);
+      const guarded=(quarry.armies||[]).length>0;
+      if(guarded) chance=Math.floor(chance/2);
+      const roll=d100();
+      const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
+      log('system',`📊 Ambush — ${c.name} (Spy ${spy}) lies in wait for ${quarry.name}${guarded?' (guarded — halved)':''}: ${fmtRoll(chance,roll)}`,{actor:c.player,targets:[c.player],provinceId:quarryProv.id});
+      if(roll>chance){
+        log('move',`${c.name} watches ${quarry.name} pass through ${quarryProv.name} but cannot find the opening to strike.`,{actor:c.player,targets:[c.player],provinceId:quarryProv.id});
+        c._defendReactedPhase=ph;                            // the attempt spends his watch for this phase
+        return;
+      }
+      // Sprung. Close on the quarry (into a neighbour if need be — a lone scout crosses freely) and
+      // force the personal battle. A forced ambush overrides the "a king won't stoop to a challenge"
+      // and "a commander won't break ranks" refusals of a chosen duel: he is set upon, not challenged.
+      if(quarry.location!==c.location){
+        here.characters=(here.characters||[]).filter(id=>id!==c.id);
+        quarryProv.characters=quarryProv.characters||[]; if(!quarryProv.characters.includes(c.id)) quarryProv.characters.push(c.id);
+        c.location=quarryProv.id; c.locationName=quarryProv.name;
+        if(!quarryProv.visitedBy) quarryProv.visitedBy=[];
+        if(!quarryProv.visitedBy.includes(c.player)) quarryProv.visitedBy.push(c.player);
+      }
+      const prov=quarryProv;
+      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase())||String(t).toUpperCase().startsWith('CA:'));
+      ensureEncounterPlan(c); ensureEncounterPlan(quarry);
+      const atkPlan=filterPlan(c.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
+      const defPlan=filterPlan(quarry.encounterPlan); if(!defPlan.length) defPlan.push('ME');
+      const _duelChars=[c.id,quarry.id];
+      log('combat',`⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
+      const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
+      enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      c.hp=Math.max(1,enc.atkHp);
+      if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${c.name} is cut down in the ambush he laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(c,quarry); awardKillXP(quarry,c); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${quarry.name} is struck down in the ambush!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(quarry,c); awardKillXP(c,quarry); } }
+      trySkillGain(c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
+      c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
+      c._defendReactedPhase=ph;
+      prov._hadBattleThisTurn=true;
+      _combatSkillProv=null;
+    });
+  }
   // "Battles are fought at the end of the phase, after all characters have taken their actions."
   // Orders here still resolve one at a time, so a defender who was ordered into his own threatened
   // province but happens to have lower initiative than the invader used to arrive AFTER the province
@@ -13801,14 +14058,15 @@ const BATTLE_ARMY_SPELLS={
       // Write casualties back from the pooled copies to the real characters.
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
-      if(combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; }
+      if(c.alive && combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; } // Task 11: a slain pursuer stays where they fell
       if(combinedDef.location!==quarry.location){
         const np=G.world.provinces[combinedDef.location];
-        quarry.location=combinedDef.location; if(np) quarry.locationName=np.name;
+        if(quarry.alive){ quarry.location=combinedDef.location; if(np) quarry.locationName=np.name; } // Task 11: a slain quarry stays where they fell
         // The quarry's unified defenders rout with them rather than being left behind alone.
         if(np){
           if(!np.characters) np.characters=[];
           defReinf.forEach(d=>{
+            if(!d.alive){ return; } // Task 11: dead reinforcements do not rout
             prov.characters=(prov.characters||[]).filter(id=>id!==d.id);
             if(!np.characters.includes(d.id)) np.characters.push(d.id);
             d.location=np.id; d.locationName=np.name;
@@ -13886,7 +14144,7 @@ const BATTLE_ARMY_SPELLS={
     enteredThisPhase={}; // provinces entered during THIS phase only
     G._phaseSkillSnapshot={};
     (G.characters||[]).forEach(ch=>{ if(ch&&Array.isArray(ch.armies)&&ch.armies.some(a=>a&&a._phantom)) ch.armies=ch.armies.filter(a=>!(a&&a._phantom)); }); // PHANTOM safety net: strip any stray fighting-copies
-    (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; delete c._foughtStalledBattlePhase; });
+    (G.characters||[]).forEach(c=>{ G._phaseSkillSnapshot[c.id]={...(c.skills||{})}; delete c._encounteredThisPhase; delete c._amphibiousAssault; delete c._foughtStalledBattlePhase; delete c._enteredProvThisPhase; });
     // Re-fight any battles whose loser could not retreat last phase (they are still co-located).
     // ILLUSORY L9 VEIL — post-veil re-trigger: once a veil parts, a fight that was skipped while the
     // force was hidden must be joined. Flag any province where two enemy players' armed, UNVEILED forces
@@ -13983,6 +14241,9 @@ const BATTLE_ARMY_SPELLS={
     // defender's watch zone now exists — let generals on Defend ride out and give it battle.
     _combatSkillProv=null;
     runDefendMaterializedReactions(ph);
+    _combatSkillProv=null;
+    // Task 4: lone characters on Defend now spring their Spy-gated ambushes on this phase's incursions.
+    runDefendAmbush(ph);
     _combatSkillProv=null;
 
     // Item 12: all this phase's actions have resolved — now report any incidental skill-rises they
@@ -14089,8 +14350,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // 10% of treasury (capped 5g). Applied to the title-holding kingdom.
         let titlePerkGold=0, titlePerkNote='';
         pChars.forEach(pc=>{ if(charMinor(pc,'cutpurse')){ titlePerkGold+=2; titlePerkNote+=` (+2g the Cutpurse)`; } if(charMinor(pc,'champion')){ titlePerkGold+=2; titlePerkNote+=` (+2g Champion of the People)`; } if(charMinor(pc,'castellan')){ const cg=Math.floor((G.world.provinces||[]).filter(pv=>pv.owner===pi).length/5); if(cg>0){ titlePerkGold+=cg; titlePerkNote+=` (+${cg}g the Castellan)`; } } });
-        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold;
-        if(income>0||perProvBonus>0||titlePerkGold>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold}g in taxes${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}${_consecBonus>0?` (+${_consecBonus}g from consecrated ground)`:''}${titlePerkNote}.`,{actor:p.id,targets:[p.id]});
+        // THIEF L6: +5g income per Thief-6 character. This was previously only shown in the player's
+        // tax-income forecast but never actually paid at collection — the forecast over-promised. Pay it here.
+        const thiefStipend=pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0);
+        const thiefNote=thiefStipend>0?` (+${thiefStipend}g Thief network)`:'';
+        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold+thiefStipend;
+        if(income>0||perProvBonus>0||titlePerkGold>0||thiefStipend>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold+thiefStipend}g in taxes${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}${_consecBonus>0?` (+${_consecBonus}g from consecrated ground)`:''}${titlePerkNote}${thiefNote}.`,{actor:p.id,targets:[p.id]});
       });
       log('system','═ Army wages & hero wages ═');
       G.players.forEach(p=>{
@@ -14278,11 +14543,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   healFeatureMonsters();
 
   // ── ORC VIGOUR (this session, item 4) ── Orcish characters of an Orcish kingdom grow tougher with
-  // every year of war: their MAXIMUM hp rises by 2-3 each turn. This is growth, not healing — current
-  // hp is left untouched (the extra headroom is filled by Rest or other healing).
+  // every year of war: their MAXIMUM hp rises by 1-2 each turn (Task 5). This is growth, not healing —
+  // current hp is left untouched (the extra headroom is filled by Rest or other healing). The rise is
+  // now announced in the character's Chronicle so the player can see it happen. (Task 12: subject to
+  // the max-HP cap — raiseMaxHp reports and withholds the gain if the ceiling is already reached.)
   (G.characters||[]).forEach(ch=>{
     if(ch&&ch.alive&&ch.race==='Orcish'&&ch.player!=null&&G.players[ch.player]&&G.players[ch.player].race==='Orcish'){
-      ch.maxHp=(ch.maxHp||20)+rP(2,3);
+      raiseMaxHp(ch, rP(1,2), 'another year of war hardens their sinews', {orc:true});
     }
   });
 
@@ -15046,6 +15313,30 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       pinNotice:!!e.pinNotice, // Item 4: battle-lock notice — the player portal hoists this to the top of its phase
       env:!!e.env, // Item 8: routed to Province Reports, kept OUT of Chronicle / Kingdom Events
     }));
+    // ── Task 7(a): CLAIRVOYANCE FEED ──────────────────────────────────────────
+    // If this player watched an enemy character via Clairvoyance, surface everything that character
+    // did (or that befell them) from the cast phase onward — filed into KINGDOM EVENTS (charId null,
+    // not env), prefixed so it reads as scried intelligence. Deduped against what the player already
+    // sees, and internal battle-force markers / raw roll lines are skipped.
+    {
+      const _watch=clairWatch[pi];
+      if(_watch && _watch.charId!=null){
+        const W=_watch.charId, F=_watch.fromPhase||0;
+        const _seenKeys=new Set(report.lastTurnLog.map(e=>(e.phase==null?'x':e.phase)+'|'+(e.text||'')));
+        turnLog.forEach(e=>{
+          if(e.phase==null || e.phase<F) return;
+          const aboutW=(e.charId===W)||(Array.isArray(e.charIds)&&e.charIds.includes(W));
+          if(!aboutW) return;
+          const t=e.text||'';
+          if(t.startsWith('\u2691FORCE\u2691')) return;   // internal battle-force marker
+          if(t.startsWith('\u{1F4CA}')) return;            // 📊 raw roll lines — too noisy for a scry feed
+          const key=(e.phase==null?'x':e.phase)+'|'+t;
+          if(_seenKeys.has(key)) return;                   // already visible to this player
+          _seenKeys.add(key);
+          report.lastTurnLog.push({ type:'system', text:'\u{1F52E} Clairvoyance \u2014 '+t, charId:null, phase:e.phase, pinNotice:false, env:false });
+        });
+      }
+    }
     // Item 8: environmental province events (earthquake / flood / plague / blessing / part-sea /
     // consecrate …) the player can see — surfaced in their own "Province Reports" section instead
     // of the hero listings that used to live there (those duplicated Wandering / Enemy Heroes).
@@ -15121,6 +15412,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1422</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.04-1646</div>
 </body>
 </html>

@@ -1860,7 +1860,7 @@ function renderReportView(report){
     ${chars.filter(c=>c.alive!==false).map(c=>{
       const hpPct=Math.round((c.hp/c.maxHp)*100)||0;
       const skillTags=Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="skill-tag">${k} ${v}</span>`).join('');
-      const effSpd=(c.armies||[]).length===0?5:Math.min(...(c.armies||[]).map(a=>a.speed||3));
+      const effSpd=(c.armies||[]).length===0?5:(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...(c.armies||[]).map(a=>a.speed||3)));
       return`<div class="char-card">
         <div class="char-card-head">
           <span style="font-size:.9rem">${c.isKing?'👑':'⚔'}</span>
@@ -1925,9 +1925,18 @@ function renderReportView(report){
               const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
               return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
             }).join('');
-            const effSpd2=Math.min(...arr.map(a=>a.speed||3));
+            const effSpd2=(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...arr.map(a=>a.speed||3)));
+            // Task 6: FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
+            // column that can cross sea), tell the player so the raised speed and sea reach make sense.
+            const _FLY_UI2=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+            const _SEA_UI2=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+            const _AER_UI2=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+            const _hasFlyer=arr.some(a=>_FLY_UI2.has(a.type));
+            const _hasFoot=arr.some(a=>!_AER_UI2.has(a.type)&&!_SEA_UI2.has(a.type));
+            const _airborne=_hasFlyer&&_hasFoot&&!arr.some(a=>_SEA_UI2.has(a.type))&&(c.effectiveSeaSpeed>0);
+            const _airNote=_airborne?` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`:'';
             const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#2d7a2d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
-            const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}</div>`;
+            const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}</div>`;
             return head+lines+summary+`</div>`;
           })()}
         </div>
@@ -2527,7 +2536,7 @@ const SPELL_HINTS={
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord. Kings and army-leaders are immune. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
-  'Clairvoyance':'Target: any character you\u2019ve ever seen, anywhere. You learn all that happens to them this turn and see their full skills. Only one active at a time.',
+  'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Kingdom Events — and see their full skills. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. Up to your-level units each have a 50% chance to fight one level lower in their next battle this turn (temporary). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
@@ -4643,7 +4652,9 @@ function buildTargetField(c, ph, saved){
     // character's own province plus everything within two provinces of it that this player knows.
     case 'Defend':{
       if((c.armies||[]).length===0){
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(holds position — only a general leading troops can guard a province)" disabled>`;
+        return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+          <div style="font-size:.72rem;color:var(--forest)">🗡 Lies in wait around ${curProv_?curProv_.name:'the province he stands in'} and its neighbours.</div>
+          <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at his back he cannot bar a road, but he will try to <em>ambush</em> any enemy character who marches into his province or one adjacent — springing a personal battle. His <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is himself a king. Cancelled by a later Move or Encounter order.</div>`;
       }
       // Defend no longer takes a target — it always guards the province the character stands in.
       // The engine reads no target for Defend; a hidden field keeps the order shape consistent.
@@ -4711,9 +4722,31 @@ function buildTargetField(c, ph, saved){
       if(!c.isKing)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc=predictedLocation(c.id,ph);
-      const ownedHere=loc&&(report.ownedProvinces||[]).some(p=>p.id===loc.id);
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Consecrates ${loc?loc.name:'current province'}${ownedHere?'':' — must be YOURS at this phase!'}" readonly>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%, fallen heroes return to hallowed ground. You may hold up to your <strong>White skill level</strong> in consecrated provinces at once; a consecrated province that is captured frees a slot. Cannot be cast on your home province or its neighbours — the crown's hearth was anointed at the coronation; the gods bid you carry the light outward.</div>`;}
+      const wmP=((report.worldMeta&&report.worldMeta.provinces)||[]);
+      const curP=loc?wmP.find(p=>p.id===loc.id):null;
+      const ownedHere=!!(curP&&curP.tier==='owned');
+      const homeP=wmP.find(p=>p.tier==='owned'&&p.tax>=10); // home = the tax-10 seat
+      const homeId=homeP?homeP.id:null;
+      const consecIds=new Set(wmP.filter(p=>p.consecrated).map(p=>p.id));
+      const nbrs=(curP&&curP.neighbors)||[];
+      const white=(c.skills||{}).white||0;
+      // Task 8: reflect the placement rules — owned, not home / home-adjacent, not already consecrated,
+      // not adjacent to another consecrated province, and within the White-skill limit.
+      let warn='';
+      if(!loc) warn='Province unknown this phase.';
+      else if(!ownedHere) warn=`${loc.name} is not yours this phase — you may only consecrate land you hold.`;
+      else if(homeId!=null&&loc.id===homeId) warn=`${loc.name} is your home province — already anointed at the coronation. Carry the light outward.`;
+      else if(homeId!=null&&nbrs.includes(homeId)) warn=`${loc.name} borders your home province — the crown's hearth already shelters it. Consecrate ground beyond the home marches.`;
+      else if(curP&&curP.consecrated) warn=`${loc.name} is already consecrated.`;
+      else if(nbrs.some(id=>consecIds.has(id))) warn=`${loc.name} borders one of your consecrated provinces — two may not lie side by side. Choose ground set apart.`;
+      else if(white<=0) warn=`Consecration flows from the White arts — learn White magic before you can sanctify ground.`;
+      else if(consecIds.size>=white) warn=`You already hold ${consecIds.size}/${white} consecrated province${white!==1?'s':''} (your White limit). One must be lost or captured first, or raise White to hold more.`;
+      const okMsg=`Consecrates ${loc?loc.name:'current province'} — holy ground (${consecIds.size}/${white||0} held).`;
+      const inputBox=warn
+        ? `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
+        : `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
+      return inputBox+
+        `<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%, fallen heroes return to hallowed ground. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured frees a slot.</div>`;}
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good')
@@ -4943,9 +4976,10 @@ function buildTargetField(c, ph, saved){
           // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
           // persistent sighting record (everSeenChars), plus anyone visible right now.
           const seen=(report.everSeenChars&&report.everSeenChars.length?report.everSeenChars:(report.visibleChars||[]))
+            .filter(x=>x && x.player!=null && !x.isWandering) // Task 7(b): neutral/wandering heroes are not valid Clairvoyance targets
             .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null||x.isWandering?' (wandering)':x.player===c.player?' (yours)':' ⚔ (enemy)'} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>You have not seen any characters yet</option>';
+          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':' ⚔ (enemy)'} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>You have not seen any enemy characters yet</option>';
         } else if(selSpell==='Control Undead'){
           // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
           // to reveal the dead army units lying in it.
@@ -5923,6 +5957,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-1422</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.04-1646</div>
 </body>
 </html>
