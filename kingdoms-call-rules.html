@@ -177,6 +177,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><a href="#races">The Four Races</a></li>
     <li><a href="#world">The World &amp; Provinces</a></li>
     <li><a href="#features">Features, Monsters &amp; Treasure</a></li>
+    <li><a href="#sight">Sight, Fog &amp; Intelligence</a></li>
     <li><a href="#characters">Kings &amp; Heroes</a></li>
     <li><a href="#skills">The Fifteen Skills</a></li>
     <li><a href="#orders">Every Order Explained</a></li>
@@ -205,9 +206,8 @@ footer.book .v{color:var(--gold-deep);}
 
   <p>You expand by <strong>exploring</strong> the fog-shrouded map, <strong>conquering</strong> the neutral provinces that fill it, and <strong>clearing</strong> the monster lairs and ruins hidden in the wild. You grow stronger by <strong>recruiting armies</strong>, <strong>training your heroes</strong>, and <strong>hoarding gold</strong> — while watching the rival kingdoms doing exactly the same.</p>
 
-  <p>There is no fixed number of turns. The game ends at <strong>the Reckoning</strong>: when one kingdom (or an allied bloc) comes to dominate the world, its king may lay claim to the vacant Imperial throne. The claimant is then judged against every rival across eight <strong>Imperial Titles</strong>, and the kingdom with the greatest legacy is crowned. <a href="#victory">Full detail below.</a></p>
+  <p>There is no fixed number of turns. The game ends at <strong>the Reckoning</strong>: when one kingdom (or an allied bloc) comes to dominate the world, its king may lay claim to the vacant Imperial throne. The claimant is then judged against every rival across nine <strong>Imperial Titles</strong> and the ten Legendary relics, and the kingdom with the greatest legacy is crowned. <a href="#victory">Full detail below.</a></p>
 
-  <div class="note tip"><span class="lbl">The whole game in one sentence</span>Grow faster than your neighbours, avoid ruinous wars until you're ready, and be the dominant power when the music stops.</div>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -344,7 +344,7 @@ footer.book .v{color:var(--gold-deep);}
 <!-- 5 ───────────────────────────────────────────────── -->
 <section id="features">
   <h2>Features, Monsters &amp; Treasure</h2>
-  <p>Scattered across the map are <strong>features</strong>: monster lairs, ancient ruins, treasure sites and ritual grounds. They're the cheapest gold in the game and the only reliable source of <strong>permanent hero hit points</strong> and <strong>magic items</strong>. A hero who spends the early game clearing features becomes far more powerful than one who doesn't.</p>
+  <p>Scattered across the map are <strong>features</strong>: monster lairs, ancient ruins, treasure sites and ritual grounds. Clearing a feature is the main source of <strong>permanent hero maximum-HP gains</strong> and <strong>magic items</strong>, alongside gold. Features are revealed by exploration and appear on both land and sea.</p>
 
   <h3>Searching a feature</h3>
   <p>Send a hero to <strong>Search Lair</strong> — investigate a discovered feature in their province. Many are guarded by a <strong>monster</strong> the hero must defeat in personal combat. The tougher the guardian, the richer the reward — gold, a bump to the hero's maximum HP, and a chance at a magic item. Guardians range from weak beasts a starting hero can handle to legendary monsters that will kill an unprepared champion.</p>
@@ -358,6 +358,49 @@ footer.book .v{color:var(--gold-deep);}
 </section>
 
 <!-- 6 ───────────────────────────────────────────────── -->
+<section id="sight">
+  <h2>Sight, Fog &amp; Intelligence</h2>
+  <p>The map is hidden. You see a province, and what stands in it, only through the sources below. Intelligence you gather persists across turns as remembered (possibly out-of-date) information; live information is only shown where you can see the province at the end of the turn.</p>
+
+  <h3>Which provinces you can see</h3>
+  <ul>
+    <li><strong>Owned</strong> — provinces you hold. Full current information.</li>
+    <li><strong>Occupied</strong> — a province where one of your characters stands at the end of the turn. Full current information.</li>
+    <li><strong>Bordering</strong> — a province adjacent to land you own or occupy. Current terrain, ownership and wealth; no enemy units or characters shown.</li>
+    <li><strong>Remembered</strong> — a province one of your characters has seen before but cannot see now. Shown frozen at its last-seen state; no live units or characters.</li>
+    <li><strong>Spied</strong> — a province you ran a <em>Spy</em> action on this turn. Reveals its defenders, owner, features and the characters present, including unit types and qualities.</li>
+  </ul>
+  <p>The <strong>Messenger Birds</strong> Sage discovery extends passive sight to provinces two steps out from those you own.</p>
+
+  <h3>Seeing other players' characters</h3>
+  <p>Whether an <strong>enemy</strong> character standing in a province is shown to you depends on how you see that province:</p>
+  <ul>
+    <li><strong>You have a character in the province (you are co-located):</strong> the enemy is always seen.</li>
+    <li><strong>You spied the province this turn:</strong> the enemy is always seen (a deliberate spy pierces concealment).</li>
+    <li><strong>The enemy is leading an army in a province you own:</strong> always seen — an army in your land means a battle is being fought there.</li>
+    <li><strong>An enemy character is lurking in a province you own but have no character in:</strong> your garrison and subjects may or may not spot them — this is a Spy contest, resolved by the formula below.</li>
+    <li><strong>Allied and neutral-realm characters</strong> standing in a province you own are always seen.</li>
+    <li><strong>Wandering heroes and neutral guards</strong> (belonging to no kingdom) follow the older concealment rule: a high-Spy character may pass through unseen unless you spy the province.</li>
+  </ul>
+
+  <h3>Spotting a lurking enemy in your own province</h3>
+  <p>When an enemy character (leading no army) is in a province you own but occupy with no character of your own, the chance your garrison spots them each turn is:</p>
+  <p style="text-align:center"><strong>spot chance = exploration % − (20% × enemy Spy) + (10% × your best Spy present)</strong>, clamped to 5–95%</p>
+  <div class="wrap"><table class="tbl">
+    <caption>Chance to spot a lurking enemy character in a province you own</caption>
+    <tr><th>Term</th><th>Effect on the spot chance</th></tr>
+    <tr><td>Base</td><td>Your <strong>exploration %</strong> of that province (0–100).</td></tr>
+    <tr><td>Enemy stealth</td><td><strong>−20%</strong> per level of the <strong>enemy character's Spy skill</strong> (counted up to level 5, so at most −100%).</td></tr>
+    <tr><td>Your watchers</td><td><strong>+10%</strong> per level of the <strong>highest Spy skill among your own or allied characters standing in that province</strong> (counted up to level 5, so at most +50%).</td></tr>
+    <tr><td>Clamp</td><td>The final chance is held between <strong>5% and 95%</strong> — never certain, never impossible.</td></tr>
+  </table></div>
+  <p>The roll is made <strong>once per enemy character, per province, per turn</strong>. Kings are spotted on the same terms as heroes. A successful spot reveals the character's presence, identity and the number of army units they lead; to learn the exact composition of their force you must <em>Spy</em> the province.</p>
+
+  <h3>Spying and counter-intelligence</h3>
+  <p>A <strong>Spy</strong> action reveals the characters in the target province and their skills. Spying a rival's <strong>home capital</strong> also reveals its income and can <strong>steal one of its Sage discoveries</strong> (the victim keeps theirs; a higher Spy makes the theft more likely). When you are spied, a counter-intelligence alert names the offending <strong>kingdom</strong> (not the individual agent) — unless the spy moved in disguise. A high-Spy character may slip through an enemy's passive watch unseen, but a deliberate Spy on the right province still finds them.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
 <section id="characters">
   <div class="eyebrow">Part Three · Your People</div>
   <h2>Kings &amp; Heroes</h2>
@@ -374,6 +417,17 @@ footer.book .v{color:var(--gold-deep);}
 
   <h3>Hiring wandering heroes</h3>
   <p>Unaligned <strong>wandering heroes</strong> roam the map. Use the <strong>Hire Hero</strong> order when one of your characters shares their province to bring them into service for a per-turn wage. How much you pay — and whether you can hire them at all — depends on how far their alignment sits from yours: like-minded heroes are cheap, opposites are dear or refuse outright. (The <strong>Charm</strong> and <strong>Broker</strong> abilities open other routes to new heroes.)</p>
+
+  <h3>Hero wages — and how they rise with skill</h3>
+  <p>Every hero draws a wage each turn, paid in the end-of-turn tax-and-wages step. <strong>Kings draw no wage.</strong> A hero's per-turn wage is set by the <strong>total of all their skill levels</strong>, across all fifteen skills:</p>
+  <p style="text-align:center"><strong>wage (gold/turn) = total skill levels ÷ 4, rounded up, minimum 1</strong></p>
+  <div class="wrap"><table class="tbl">
+    <caption>Hero wage by total skill levels</caption>
+    <tr><th>Total skill levels</th><th class="num">1–4</th><th class="num">5–8</th><th class="num">9–12</th><th class="num">13–16</th><th class="num">17–20</th><th class="num">21–24</th></tr>
+    <tr><td>Wage per turn</td><td class="num">1g</td><td class="num">2g</td><td class="num">3g</td><td class="num">4g</td><td class="num">5g</td><td class="num">6g</td></tr>
+  </table></div>
+  <p>The wage is <strong>recalculated the moment a skill rises</strong> — whether trained on the Practice ground or gained through field experience — so a hero grows more expensive as they grow more capable. A starting hero with 3 skill points pays 1g; every further 4 levels of total skill adds 1g. There is no cap on the wage beyond the skill caps themselves.</p>
+  <p>When you <strong>hire a wandering hero</strong>, their opening wage is set instead by <strong>alignment distance</strong> — how far their alignment sits from your kingdom's on the seven-step spectrum: <strong>2g</strong> for a close match, <strong>3g</strong> at two–three steps, <strong>4g</strong> at four–five steps, and an outright <strong>refusal</strong> at the full gulf (a Divine hero will not serve an Undead crown, or the reverse). Once a hired hero begins gaining or training skills, their wage follows the skill formula above. Certain Sage discoveries reduce hero wages (for example one that lowers every hero's wage by 1g, and one that halves all hero wages).</p>
 
   <h3>Death &amp; succession</h3>
   <p>When a hero dies their body lies where they fell — it can be looted, and (if not a king) even <strong>Resurrected</strong> by White magic. When a <strong>king</strong> dies, succession passes to an heir if one exists; if not, the kingdom is in mortal peril. Kings can never be resurrected or charmed.</p>
@@ -404,13 +458,13 @@ footer.book .v{color:var(--gold-deep);}
     <tr class="grp"><td colspan="2"><strong>Martial</strong></td></tr>
     <tr><td><strong>Melee</strong></td><td>+to-hit and damage in personal combat (duels, guardian fights).</td></tr>
     <tr><td><strong>Archery</strong></td><td><strong>+10% strength to your missile units</strong> each level (Archery 5 = +50%), and +to-hit in personal archery.</td></tr>
-    <tr><td><strong>Tactical</strong></td><td><strong>×1.2 army strength per level, capped ×2.0</strong> (Tactical 5 = ×2.0 = +100%). Land battles only. This is the single strongest force multiplier in the game.</td></tr>
+    <tr><td><strong>Tactical</strong></td><td><strong>×1.2 army strength per level, up to ×2.0 at level 5</strong> (a hard cap, titles and items included). Applies to land battles only.</td></tr>
     <tr><td><strong>March</strong></td><td>Adds land <strong>move points</strong>: slow armies (base ≤2) gain +0/+0/+1/+1/+2 at levels 1–5; faster armies gain +1/+1/+2/+2/+2. Your column always moves at the pace of its slowest land unit.</td></tr>
     <tr><td><strong>Naval</strong></td><td>The sea-going mirror of March — adds sea move points to your fleets, by the same ladder.</td></tr>
     <tr class="grp"><td colspan="2"><strong>Special</strong></td></tr>
     <tr><td><strong>Spy</strong></td><td>Intelligence accuracy: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying.</td></tr>
     <tr><td><strong>Thief</strong></td><td>Raises Steal success in personal combat and against provinces.</td></tr>
-    <tr><td><strong>Druid</strong></td><td>Lets you LEAD wild armies: <strong>Creatures at Druid 4</strong>, <strong>Monsters at Druid 5</strong> (Druidic kingdoms lead Creatures free; Pagan Wild Hunt binds them without Druid).</td></tr>
+    <tr><td><strong>Druid</strong></td><td>Lets you LEAD non-native races and wild units. The level required varies by unit (see the <a href="#armies">roster's Druid column</a>): tamer creatures need Druid 2–3, the mightiest monsters need Druid 5. Druidic kingdoms lead all Creatures without any Druid skill; a Pagan Wild Hunt binds creatures or monsters without it.</td></tr>
     <tr><td><strong>Sage</strong></td><td>Chance of a kingdom Discovery each turn (the <strong>chance caps at level 5</strong>); each discovery is a permanent kingdom upgrade.</td></tr>
     <tr><td><strong>Explorer</strong></td><td>Charts the map faster — exploration gain scales with <strong>(level + 1)</strong>, so Explorer 4 maps five times as fast as Explorer 0.</td></tr>
     <tr class="grp"><td colspan="2"><strong>Magic (each school)</strong></td></tr>
@@ -427,10 +481,10 @@ footer.book .v{color:var(--gold-deep);}
   <h3>The mastery ladder (levels 6–9)</h3>
   <p>Every skill keeps rewarding you past 5, in the same shape: the <strong>even</strong> levels (6 and 8) grant quiet <em>always-on perks</em>, and the <strong>odd</strong> levels (7 and 9) grant a powerful <em>new ability</em> — a new order for most skills, or a new spell for the magic schools. What each one actually unlocks is deliberately left for you to <strong>discover in the field</strong>: only a hero who has pushed a skill to those heights learns what it bestows. They are earned by experience alone, never bought — and every level past 5 also counts toward the <a href="#victory">Imperial Titles</a>.</p>
 
-  <h3>Cross-training — the underrated habit</h3>
-  <p>A hero is only as flexible as their skill spread. A pure warrior can't scout, spy or cast; a pure mage can't hold a battle line. Because levels 1–5 are cheap to Practice, spending a few early orders <strong>rounding out</strong> your characters — a little Tactical on a fighter, a little Explorer or Sage on everyone, a level of Druid so a leader can command mixed troops — pays off all game. See the <a href="#firstturns">first-three-turns advice</a>.</p>
+  <h3>Cross-training</h3>
+  <p>A character can hold levels in any mix of the fifteen skills; a skill a character has no levels in provides none of its effects (a character with no Druid cannot lead non-native or wild units, a character with no levels in a magic school cannot cast its spells, and so on). Levels 1–5 can be trained by the Practice Skill order, so a character can be developed across several skills over successive turns.
 
-  <div class="note tip"><span class="lbl">Minor Titles</span>Beyond the eight Imperial Titles that win the game, there are <strong>twenty honorary Minor Titles</strong> — best duellist, best marksman, largest army, most magic items, and so on. Each is re-awarded every turn to the single best living character and grants a small personal perk. They don't win the game, but they make a specialist hero markedly better at what they do.</div>
+  <div class="note tip"><span class="lbl">Minor Titles</span>Separate from the nine Imperial Titles are <strong>twenty Minor Titles</strong> — highest Melee, highest Archery, largest army, most magic items, and so on. Each is re-awarded every turn to the single leading living character and grants that character a small personal perk. Minor Titles do not count toward the Reckoning.</div>
   <div class="note"><span class="lbl">Spycraft</span><p style="margin:0 0 .5em">The <strong>Spy</strong> skill does far more than scout. A successful spy reveals the characters standing in the target province and their skills; spy a rival's <strong>home capital</strong> and you learn its income and may even <strong>steal one of its Sage discoveries</strong> for yourself (a higher Spy makes the theft more likely — the victim keeps theirs). Spying also decides aggressive <strong>encounters</strong>: catching a lone enemy hero is a contest of your Spy against theirs, not a certainty.</p>
   <p style="margin:0">Spycraft cuts both ways. When you are spied, a <strong>counter-intelligence</strong> alert names the offending <em>kingdom</em> (though not the agent) — unless they moved in disguise. And a high-Spy character can slip through the enemy's <strong>passive watch unseen</strong>, vanishing from their sightings and maps — though a deliberate Spy on the right province will always find them.</p></div>
   <a class="totop" href="#overview">↑ top</a>
@@ -461,7 +515,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Hire Hero</strong> — take a wandering hero in your province into service.</li>
     <li><strong>Disband Army</strong> — dismiss units you no longer wish to pay for.</li>
     <li><strong>Leave / Transfer Army</strong> — drop units as a garrison, or hand them to another of your characters in the same province.</li>
-    <li><strong>Pick Up Army</strong> — take command of a garrison or another character's units where you stand.</li>
+    <li><strong>Pick Up Army</strong> — take command of the <strong>unled (garrison) units stationed in the province the character currently stands in</strong>. You may take all of them or a selected subset. It cannot take units led by another of your characters (use <em>Leave / Transfer Army</em> for that) or hire mercenaries (use <em>Recruit Armies</em>). Picking up slower units lowers the character's move rate for the rest of the turn.</li>
     <li><strong>Give Item</strong> — pass a magic item to another of your characters in the same province.</li>
   </ul>
 
@@ -497,10 +551,10 @@ footer.book .v{color:var(--gold-deep);}
 
 <!-- 9 ───────────────────────────────────────────────── -->
 <section id="mastery">
-  <h2>Mastery — Levels 7 &amp; 9</h2>
-  <p>Push a non-magic skill to level 7, and again to level 9, and a powerful new <strong>order</strong> opens for that hero — a signature move that only a true master of the craft can perform. The five magic schools follow the same rhythm, gaining a new <strong>spell</strong> at each of those levels instead.</p>
-  <p>What each mastery order and spell actually does is a <strong>secret of the trade</strong> — you learn it when one of your heroes first reaches the level and the order appears on their sheet. Some are quiet edges; some reshape a battle; a few can only be turned against a kingdom you are openly <strong>at war</strong> with. Half the reward of raising a specialist to the heights is finding out what waits at the top.</p>
-  <div class="note tip"><span class="lbl">No shortcuts</span>Levels 7 and 9 cannot be trained on the Practice ground — they come only from <strong>hard field experience</strong>. A hero who has earned a mastery ability has genuinely lived through a great deal.</div>
+  <h2>Mastery — Levels 6 to 9</h2>
+  <p>A skill's per-level benefit is capped at level 5. Levels 6–9 grant separate <strong>mastery perks</strong> instead: the <strong>even</strong> levels (6 and 8) are always-on passives, and the <strong>odd</strong> levels (7 and 9) grant a new <strong>order</strong> (for the ten non-magic skills) or a new <strong>spell</strong> (for the five magic schools). Each L7/L9 mastery order may be used at most once per turn per character, and some mastery abilities can be used only against a kingdom you are openly <strong>at war</strong> with.</p>
+  <p>Levels 6–9 are won <strong>only through field experience</strong> — fighting, casting, exploring, leading — and cannot be trained on the Practice ground. Every level past 5 counts toward the <a href="#victory">Imperial Titles</a>.</p>
+  <p>The specific perk, order or spell each mastery level grants is <strong>not listed in this rulebook</strong>. Each one is revealed to you in play: when one of your characters reaches the level, the new ability appears on that character's sheet with its full description.</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -608,9 +662,9 @@ footer.book .v{color:var(--gold-deep);}
   <h3>Race &amp; the Druid requirement</h3>
   <p>A unit's race is the race of the province it was raised in. Any commander leads troops of <strong>their own race</strong> freely. Leading <strong>other races</strong>, and exotic <strong>Creatures, Monsters and fleets</strong>, needs the <strong>Druid</strong> skill — the more exotic the beast, the higher the level required. Fall short and that unit fights at a heavy penalty. <em>Exemptions:</em> skeletal units and neutral guards never suffer it, and Druidic kingdoms lead all Creatures freely.</p>
 
-  <h3>The wage rule — the most important economic law in the game</h3>
-  <div class="note warn"><span class="lbl">Learn this or lose</span><p style="margin:0">Every unit costs its price to <strong>recruit</strong>, and <strong>the same price again every single turn it exists</strong>. Because tax is collected and wages paid in the same end-of-turn step, a unit raised this turn effectively costs <em>double</em> in its first season. Wages are owed on garrison units too, not just those in the field. (Skeletal units are the cheap exception, at 1 gold flat.)</p>
-  <p style="margin:.6em 0 0">If you can't pay your wages, your <strong>armies disband themselves</strong>, cheapest first, until the debt clears — and if that isn't enough, your <strong>heroes start to desert</strong>. This is the single most common way new players wreck their own kingdom.</p></div>
+  <h3>The wage rule</h3>
+  <div class="note warn"><span class="lbl">The wage rule</span><p style="margin:0">Every unit costs its listed price to <strong>recruit</strong>, and the <strong>same price again every turn it exists</strong> as its wage. Tax is collected and wages are paid in the same end-of-turn step, so a unit recruited this turn is also paid its wage this turn. Wages are owed on garrison (unled) units as well as fielded ones. Skeletal units are the exception at a flat 1 gold.</p>
+  <p style="margin:.6em 0 0">If your gold cannot cover your wages, units disband automatically, cheapest first, until the shortfall clears; if that is not enough, heroes then desert.</p></div>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -734,7 +788,7 @@ footer.book .v{color:var(--gold-deep);}
   </table></div>
 
   <h3>Mastery spells (levels 7 &amp; 9)</h3>
-  <p>Beyond these twenty-five, every school holds two further <strong>capstone spells</strong> that reveal themselves only when a caster's raw level reaches 7 and again 9 — the crowning works of that discipline. Their names and effects are left for you to <strong>discover in play</strong>: raise a school to those heights and the new spell simply appears in your caster's repertoire. Each is markedly more powerful than the five core spells, and worth the long road to earn it.</p>
+  <p>Beyond the twenty-five core spells, each school grants one further spell at raw level <strong>7</strong> and another at level <strong>9</strong>. These levels come only from field experience, never the Practice ground. The spell is added to the caster's repertoire automatically on reaching the level, and its name and effect are shown to you then. As with all mastery abilities, these spells are <strong>not detailed in this rulebook</strong> — you discover each one in play (see <a href="#mastery">Mastery — Levels 6 to 9</a>).</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -764,7 +818,7 @@ footer.book .v{color:var(--gold-deep);}
   <h3>Income</h3>
   <p>Your gold comes chiefly from the <strong>tax</strong> of the provinces you hold, plus bonuses from items, discoveries, titles and (for Neutral kingdoms) trade. Each province pays its <strong>tax value in gold</strong> per turn — roughly <strong>1–3 for a poor province, 4–6 for a prosperous one, 7–10 for a rich one</strong> (owned sea provinces pay a modest 0–2). Provinces conquered during a turn pay you at the end of that same turn. <strong>Neutral</strong> kingdoms add a <strong>+20% trade bonus</strong> on top of their tax; Sage discoveries and Explorer finds can permanently raise a province's tax base by <strong>+2 (to a max of 10)</strong>; and Bless / Consecrate / titles add further gold.</p>
   <h3>Expenditure</h3>
-  <p>You spend on <strong>recruiting</strong> new units, <strong>wages</strong> for every unit and hired hero you keep, <strong>hiring</strong> wandering heroes, and the odd purchased action (a Spy order costs 2g, raising graves costs gold, etc.). By far the biggest recurring cost is wages — a unit's wage each turn equals its recruit price (typically <strong>2–4g</strong>; skeletal units are the 1g exception). A hired hero's wage is <strong>2–4g/turn</strong> depending on how far their alignment sits from yours (2g for a close match, rising to 4g; a Divine hero will never serve an Undead crown, or vice-versa). Leading Creature/Monster units at Druid 6 halves both their recruit price and their wage.</p>
+  <p>You spend on <strong>recruiting</strong> new units, <strong>wages</strong> for every unit and hired hero you keep, <strong>hiring</strong> wandering heroes, and the odd purchased action (a Spy order costs 2g, raising graves costs gold, etc.). By far the biggest recurring cost is wages — a unit's wage each turn equals its recruit price (typically <strong>2–4g</strong>; skeletal units are the 1g exception). A hero's per-turn wage is set by their total skill (total skill levels ÷ 4, rounded up, minimum 1g) and is recalculated whenever a skill rises; a wandering hero's opening wage is instead the alignment-distance rate of 2–4g (see <a href="#characters">Hero wages</a>). Kings draw no wage. Leading Creature/Monster units at Druid 6 halves both their recruit price and their wage.</p>
   <h3>Order of operations — why it matters</h3>
   <p>At turn's end, tax and wages settle together. Because a newly recruited unit is paid its wage the same turn you raise it, <strong>the first season of any unit costs double</strong>. Plan your recruiting against the income you'll actually have <em>after</em> that double hit — including any tax from provinces you expect to take this turn.</p>
   <div class="note warn"><span class="lbl">Bankruptcy</span>If you can't cover wages, units disband (cheapest first) and then heroes desert. Always keep your wage bill comfortably below your income, and disband deliberately rather than letting the shortfall choose for you.</div>
@@ -832,23 +886,22 @@ footer.book .v{color:var(--gold-deep);}
   </ul>
 
   <h3>The Reckoning is scored on Titles, not raw size</h3>
-  <p>If dominance holds when the two turns are up, the world is judged. The winner is <strong>not simply the biggest empire</strong> — every kingdom is scored across eight <strong>Imperial Titles</strong> and the ten Legendary relics, and the greatest total <strong>Legacy</strong> wins the throne. Raw empire is the single biggest prize, but only one slice of the whole.</p>
+  <p>If dominance holds when the two turns are up, the world is judged. The winner is the kingdom with the greatest total <strong>Legacy</strong>, scored across the nine <strong>Imperial Titles</strong> and the ten Legendary relics. Each Title is awarded to the single leading kingdom (or, for character-based Titles, the kingdom whose character leads). The tax-base Title (The Throne) is worth 20; every other Title is worth 10; each Legendary relic held is worth 1.</p>
   <div class="wrap"><table class="tbl">
-    <caption>The Eight Imperial Titles</caption>
+    <caption>The Nine Imperial Titles (plus the ten relics)</caption>
     <tr><th>Title</th><th>Awarded for</th><th>Legacy</th></tr>
     <tr><td>The Throne <em>(Emperor)</em></td><td>Largest tax base at the Reckoning.</td><td class="num">20</td></tr>
-    <tr><td>The Vaultkeeper</td><td>Richest treasury.</td><td class="num">10</td></tr>
-    <tr><td>The Grand Marshal</td><td>Greatest feats of war.</td><td class="num">10</td></tr>
-    <tr><td>The Sea Lord</td><td>Mastery of the seas (Naval &amp; naval deeds).</td><td class="num">10</td></tr>
-    <tr><td>The Monster-Bane</td><td>Greatest slayer of monsters.</td><td class="num">10</td></tr>
-    <tr><td>The Loremaster</td><td>Exploration, spycraft and discovery.</td><td class="num">10</td></tr>
-    <tr><td>The Archmage</td><td>Supremacy across the magic schools.</td><td class="num">10</td></tr>
-    <tr><td>The Hierophant</td><td>Holy power — White &amp; Druid magic and holy deeds.</td><td class="num">10</td></tr>
+    <tr><td>The Vaultkeeper</td><td>Largest treasury.</td><td class="num">10</td></tr>
+    <tr><td>The Grand Marshal</td><td>Most land-battle merit (units destroyed, less units lost).</td><td class="num">10</td></tr>
+    <tr><td>The Sea Lord</td><td>Most sea-battle merit, sea provinces held and Naval skill.</td><td class="num">10</td></tr>
+    <tr><td>The Monster-Bane</td><td>Greatest total HP of lair guardians slain (half credit if pacified).</td><td class="num">10</td></tr>
+    <tr><td>The Loremaster</td><td>Highest combined Explorer + Spy + Sage, lairs first found and discoveries made.</td><td class="num">10</td></tr>
+    <tr><td>The Archmage</td><td>Most total magic-school levels, plus legendary casting items.</td><td class="num">10</td></tr>
+    <tr><td>The Hierophant</td><td>Highest combined White + Druid, plus Bless / Consecrate / Resurrection casts.</td><td class="num">10</td></tr>
+    <tr><td>The Deathpriest</td><td>Highest Necromancy, plus every dark rite worked (Curse, Plague, undead raised, etc.).</td><td class="num">10</td></tr>
     <tr><td>The Relics</td><td>Each of the ten Legendary items held, 1 point apiece.</td><td class="num">10</td></tr>
   </table></div>
-  <p>Ties are broken by tax base, then treasury. Each alignment finds one Title lane a little cheaper to win, matching its nature. Because your merit for most Titles is carried by <em>characters</em>, the grace period makes assassinating a rival's Title-holder a legitimate endgame play — and every level of skill past 5 that your heroes have earned counts here.</p>
-
-  <div class="note tip"><span class="lbl">So how do you actually win?</span>Grow a large, rich empire (that's the Throne, worth the most), <em>and</em> develop specialist heroes who can seize the other Titles — a champion monster-slayer, an archmage, a loremaster — <em>and</em> gather Legendary relics. When you're dominant, Call the Reckoning and survive two turns of everyone trying to tear you down.</div>
+  <p>Ties are broken by tax base, then treasury. Standings are hidden for the first four turns and shown from turn 5 onward. Merit for most Titles is carried by individual <strong>characters</strong>, so a rival's Title-holder can be targeted during the grace period, and every level of skill past 5 a hero has earned counts toward these Titles. Holding a Title also grants a per-turn intelligence perk (for example, The Throne shows every rival's share of the world tax base).</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -909,7 +962,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.04-1355</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.04-2200</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
