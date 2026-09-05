@@ -2480,7 +2480,7 @@ function setFeatureTreasure(f, v){
 // Item 9: the gold a hero collects for CLEARING a feature guardian is a tier-band roll. We roll it
 // ONCE and cache it on the feature, so a Scout can report the EXACT figure a clearer will receive
 // and the victory branch pays out that same amount (rolled here if the site was never scouted).
-const ENCOUNTER_CLEAR_GOLD_BANDS={Weak:[3,8],Moderate:[8,16],Powerful:[18,35],Legendary:[40,70]};
+const ENCOUNTER_CLEAR_GOLD_BANDS={Weak:[3,8],Moderate:[8,16],Powerful:[18,25],Legendary:[26,40]};
 function encounterClearGold(feat){
   if(!feat) return 0;
   if(feat._clearGold==null){
@@ -4989,7 +4989,7 @@ function buildTurnReport(gameState, playerIndex){
         // it), so the map crescent and pop-up never fired on your own land.
         const canSee=known||(explored>=threshold)||!!f.ritualSite;
         if(!canSee) return null;
-        return{name:f.name,discovered:canSee,cleared:f.cleared,ritualSite:!!f.ritualSite,treasure:known?f.treasure:null};
+        return{name:f.name,discovered:canSee,cleared:f.cleared,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||'',treasure:known?f.treasure:null};
       }).filter(Boolean);
     })(),
     neutralDefenders:(()=>{
@@ -5546,6 +5546,13 @@ function buildTurnReport(gameState, playerIndex){
     // Any dead hero visible to this player can be resurrected — own or enemy
     deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const restId=g._monarch?monarchRestProvId(gameState,g.player):null;const locId=(restId!=null)?restId:g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
     characters:charReports,ownedProvinces,intel,
+    // Tasks 1 & 4 (this session): colour lookups so the portal can tint EVERY kingdom name and
+    // character name in any report line in the controlling player's colour. Kingdom names are public;
+    // character names are limited to living (or just-fallen) NON-cloaked characters — a Cloak of Many
+    // Faces stays anonymous, so nothing hidden leaks — and the portal only visibly tints names that
+    // actually appear in the rendered text.
+    allKingdoms:(gameState.players||[]).map((p,i)=>({index:i,name:(p&&p.name)||('Kingdom '+(i+1)),color:(p&&p.color)||null})),
+    nameColors:(gameState.characters||[]).filter(c=>c&&c.name&&(c.alive||c.killedThisTurn)&&!((c.items||[]).some(it=>it&&it.effect&&it.effect.stat==='hidden'))).map(c=>({name:c.name,color:(c.player!=null?(gameState.players[c.player]?.color||null):null),neutral:(c.player==null)})),
     visitedProvinceIds:[...visitedProvIds],
     worldMeta, availableHeroesByProv, provinceOrderData,
     knownFeatures, heroSightings,
@@ -6910,7 +6917,13 @@ const BATTLE_ARMY_SPELLS={
       const _byName=(c.player!=null)?(G.players[c.player]?.name||'an unknown power'):'unknown agents';
       const _vp=G.players[sprov.owner];
       if(_vp){ _vp._spiedOnThisTurn=_vp._spiedOnThisTurn||[]; _vp._spiedOnThisTurn.push({provId:sprov.id,provName:sprov.name,byPlayer:c.player,byName:_byName,turn:G.turn}); }
-      log('spy',`[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,{actor:null,targets:[sprov.owner],provinceId:sprov.id,charId:null});
+      // Task 2 (this session): this alert belongs ONLY to the pried-upon owner. Passing charId:null is
+      // not enough — log()'s `meta.charId ?? _logCtx.charId` would fall back to the PRYING character,
+      // and the report filter (ownCharIds.has(e.charId)) would then surface it in the spy's OWN report.
+      // Detach the character context for this one line so its charId truly resolves to null.
+      const _savedCtxChar=_logCtx.charId; _logCtx.charId=null;
+      log('spy',`[Intelligence] 🕵 Counter-intelligence: your watch in ${sprov.name} caught ${_byName}'s agents prying this turn.`,{actor:null,targets:[sprov.owner],provinceId:sprov.id});
+      _logCtx.charId=_savedCtxChar;
     }
     c.merits=(c.merits||0)+1;
     (sprov.features||[]).filter(f=>!featDiscovered(f,c.player)).forEach(f=>{if(Math.random()<0.5)discoverFeat(f,c.player);});
@@ -8086,7 +8099,7 @@ const BATTLE_ARMY_SPELLS={
 
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
     switch(spellName){
-      case 'Lightning Bolt':{ let d=0; for(let i=0;i<Math.max(1,lvl);i++) d+=rng(2,4); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Lightning Bolt':{ let d=0; const _lbLvl=Math.min(Math.max(1,lvl),5); for(let i=0;i<_lbLvl;i++) d+=rng(2,4); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
       case 'Fireball':{ target.status.dot.push({dmg:Math.max(1,Math.round(target.maxHp*0.10)),rounds:3,label:'Fireball burns'}); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for 10% of its health each phase for 3 phases.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvl*10*(holy?2:1); target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
@@ -8100,9 +8113,19 @@ const BATTLE_ARMY_SPELLS={
           state.mirror=null; break;
         }
         // Conjure a phantom duplicate of the OPPONENT, with their characteristics at this moment.
-        const ph={ kind:'phantasm', name:target.name+"'s mirror image",
-          hp:target.hp, maxHp:target.maxHp, melee:target.melee, archery:target.archery,
-          temper:target.temper, status:pcNewStatus() };
+        // Item 5 (this session): the phantom is a FULL clone of the mirrored combatant so it fights
+        // back exactly as they would — running THEIR Encounter Plan from the very start (spells,
+        // archery and tactics, not just melee). It gets its own fresh status, spell-limit trackers
+        // and plan pointer (tacIdx 0) so nothing bleeds back into the real character, and its own
+        // Mirror Image casts are stripped from the copied plan (an illusion casting illusions is
+        // meaningless and would only end its own duel).
+        let _phTactics=((target.tactics)||['ME']).slice().filter(t=>!/mirror\s*image/i.test(t));
+        if(!_phTactics.length) _phTactics=['ME'];
+        const ph={ ...target, kind:'phantasm', name:target.name+"'s mirror image", ref:target.ref,
+          hp:target.hp, maxHp:target.maxHp,
+          school:{...(target.school||{})}, specials:(target.specials||[]).slice(),
+          tactics:_phTactics, tacIdx:0, planExhausted:false, neverFlees:false,
+          castSpells:[], castSchool:{}, status:pcNewStatus() };
         state.mirror={ caster, victim:target, phantasm:ph };
         narrative.push(`  🪞 ${caster.name} conjures a perfect phantom of ${target.name} — ${target.name} must fight their own mirror while ${caster.name} concentrates, taking no other action.`);
         break;
@@ -8385,7 +8408,7 @@ const BATTLE_ARMY_SPELLS={
         const STEAL_TIER_PENALTY={Weak:0, Moderate:15, Powerful:30, Legendary:45};
         const _tier=(foe&&foe.ref&&foe.ref.power)||'Weak';
         const tierPen=STEAL_TIER_PENALTY[_tier]||0;
-        const chance=Math.max(5, Math.min(95, 15+th*15+bonus-tierPen));
+        const chance=Math.max(5, Math.min(95, 50+10*Math.min(th,5)+bonus-tierPen));
         if(Math.random()*100<chance){ state.stoleBy=actor; narrative.push(`  ${actor.name} slips past the ${_tier.toLowerCase()} guardian and seizes the prize! [${chance}%${tierPen?`, −${tierPen}% ${_tier}`:''}]`); }
         else narrative.push(`  ${actor.name}'s theft is noticed. [${chance}%${tierPen?`, −${tierPen}% ${_tier}`:''}]`);
         break;
@@ -8483,7 +8506,16 @@ const BATTLE_ARMY_SPELLS={
           // Victim fights their mirror (an even duel); the caster does nothing this round.
           narrative.push(`  🪞 ${victim.name} trades blows with their own mirror image while ${caster.name} concentrates.`);
           if(Math.random()*100<pcHitChance(victim,phantasm,50)){ const d=pcMeleeDamage(victim,phantasm); phantasm.hp-=d; narrative.push(`    ${victim.name} strikes the phantom for ${d} damage. (Phantom HP ${Math.max(0,Math.round(phantasm.hp))})`); }
-          if(phantasm.hp>0 && Math.random()*100<pcHitChance(phantasm,victim,50)){ const d=pcMeleeDamage(phantasm,victim); const dealt=pcTakeHit(victim,d,narrative,phantasm.name,'blow'); if(dealt)narrative.push(`    the phantom strikes ${victim.name} for ${dealt} damage! (HP ${Math.max(0,Math.round(victim.hp))})`); }
+          // Item 5 (this session): the phantom fights back exactly as the mirrored character would —
+          // it runs THEIR Encounter Plan (from the start), so a spell-caster's reflection hurls the
+          // same spells, an archer's looses arrows, and so on. It acts in its own isolated combat
+          // state (fresh range, no shared feature/terminal flags) so a phantom can never "flee",
+          // "parley" or change the real fight's range; only the damage/effects it lands on the victim
+          // (a shared object) persist.
+          if(phantasm.hp>0){
+            const _mstate={fledBy:null,parley:false,stoleBy:null,range:'melee',mirror:null,feature:null};
+            pcAct(phantasm, victim, narrative, _mstate);
+          }
           if(phantasm.hp<=0){ narrative.push(`  🪞 ${victim.name} shatters the phantom — the illusion ends.`); state.mirror=null; }
           if(victim.hp<=0){ narrative.push(`  ${victim.name} is struck down by their own mirror image!`); state.mirror=null; }
           continue; // skip the normal round
@@ -9266,6 +9298,12 @@ const BATTLE_ARMY_SPELLS={
         // Item 4: still the stronger host — the defender refuses to yield and fights on.
         narrative.push(`${defName}'s forces are pushed back but not broken — still the stronger host, they hold their ground in ${prov.name} and re-form to fight on rather than retreat.`);
         prov._battleUnresolved=true;
+      } else if(def.alive===false || def.killedThisTurn){
+        // Task 3 (this session): the commander is already dead (e.g. slain in the pre-battle duel) — a
+        // corpse does not retreat, and a force wiped to the last has nothing left to fall back with.
+        // Any leaderless survivors are dispersed after the battle by disperseDeadCharArmies (which logs
+        // where they go), so we say nothing about a retreat here.
+        if((def.armies||[]).length===0) narrative.push(`📊 ${defName}'s force is destroyed to the last — commander and column both.`);
       } else {
         if(_sfDef&&def.armies.length>0) narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const defFromProv=G.world.provinces[def._attackedFrom];
@@ -9344,6 +9382,10 @@ const BATTLE_ARMY_SPELLS={
         // Item 4: still the stronger host — the attacker refuses to break off and fights on.
         narrative.push(`${atkName}'s assault is thrown back but their host is still the stronger — they hold the field in ${prov.name} and re-form to press the attack again rather than retreat.`);
         prov._battleUnresolved=true;
+      } else if(atk.alive===false || atk.killedThisTurn){
+        // Task 3 (this session): commander already slain — a corpse does not retreat; a force wiped to
+        // the last has nothing to fall back with. Leaderless survivors are dispersed after the battle.
+        if((atk.armies||[]).length===0) narrative.push(`📊 ${atkName}'s force is destroyed to the last — commander and column both.`);
       } else {
         if(_sfAtk&&atk.armies.length>0) narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[atk._attackedFrom];
@@ -10781,8 +10823,8 @@ const BATTLE_ARMY_SPELLS={
           // Reward ladder — tougher monsters are meaningfully more worthwhile (gold + item odds + HP).
           const T=({Weak:{gold:[3,8],hp:[1,3],itemChance:0.25,bonusItem:0},
                     Moderate:{gold:[8,16],hp:[2,4],itemChance:0.60,bonusItem:0},
-                    Powerful:{gold:[18,35],hp:[3,6],itemChance:1.0,bonusItem:0.15},
-                    Legendary:{gold:[40,70],hp:[5,9],itemChance:1.0,bonusItem:0.50}})[tier]
+                    Powerful:{gold:[18,25],hp:[3,6],itemChance:1.0,bonusItem:0.15},
+                    Legendary:{gold:[26,40],hp:[5,9],itemChance:1.0,bonusItem:0.50}})[tier]
                     ||{gold:[1,5],hp:[1,3],itemChance:0.25,bonusItem:0};
           // Item 9: pay out the cached clear-gold roll so a scouted figure is exactly honoured; if the
           // site was never scouted, encounterClearGold rolls it now from the same tier band (T.gold).
@@ -11391,8 +11433,10 @@ const BATTLE_ARMY_SPELLS={
           G._itemDeliveries.push({toId:recip.id, items:given, fromName:c.name});
           const _rProv=G.world.provinces[recip.location];
           log('hire',`${c.name} dispatches ${_names} by courier to ${recip.name} in ${_rProv?_rProv.name:'a distant province'} — it will arrive by turn's end.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
-          // Item 9 — tell the recipient a courier is on the way.
-          notifyTarget(recip,`📦 A courier from ${c.name} is bringing ${recip.name} ${_names} — it arrives by the end of this turn, ready to use next turn.`,ph);
+          // Item 4 (this session): the recipient's send-phase "a courier is on the way" notice was
+          // removed — it duplicated the end-of-turn delivery line (see the COURIER DELIVERIES flush),
+          // which already tells the recipient the parcel arrived and is ready to use next turn. The
+          // sender still gets the dispatch line above.
         }
         break;
       }
@@ -11577,6 +11621,12 @@ const BATTLE_ARMY_SPELLS={
         if(quarry.id===c.id){
           log('system',`${c.name} cannot set out to encounter himself.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
+        // Item 6 (this session): only a king may run down an enemy king. A common hero can never
+        // force a meeting with a rival monarch — a king answers only to another crown. (Once caught,
+        // a king is no harder to run down than any hero: pursuitCatchChance treats them the same.)
+        if(quarry.isKing && !c.isKing && quarry.player!==c.player){
+          log('system',`${c.name} sets out after ${quarry.name}, but a rival king does not answer to a common hero — only a king may run down another king. The chase is abandoned.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+        }
         if(quarry.player!==c.player&&isHiddenChar(quarry)){
           log('system',`${c.name} sets out after ${quarry.name}, but they are cloaked and leave no trail to follow.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
@@ -11597,9 +11647,9 @@ const BATTLE_ARMY_SPELLS={
         const thiefLevel=effStat(c,'thief');
         // Steal only works if victim has magic items to steal
         if((victim.items||[]).length===0){log('system',`${c.name} attempts to steal from ${victim.name} but they carry no magic items.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        // Base 15% + 15% per Thief level; halved if victim leads armies
+        // Base 50% + 10% per Thief level (level counted up to 5, so 50–100%); halved if victim leads armies.
         const leadsArmies=(victim.armies||[]).length>0;
-        let stealChance=15+thiefLevel*15;
+        let stealChance=50+10*Math.min(thiefLevel,5);
         if(leadsArmies) stealChance=Math.floor(stealChance/2);
         const stealRoll=d100();
         const escapeChance=thiefLevel*20; // chance to avoid detection if caught
@@ -15532,6 +15582,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-0710</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-1236</div>
 </body>
 </html>

@@ -1448,7 +1448,15 @@ function buildChronicle(log, chars_for_log){
     // registered for a name key sticks). Matches the POWER_COLORS used on the Known Features card.
     const _GUARD_POWER_COLORS={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'};
     (_chronRep.knownFeatures||[]).forEach(f=>{
-      if(f&&f.monster&&f.monsterPower&&!f.cleared) _registerName(f.monster, _GUARD_POWER_COLORS[f.monsterPower]||null, false);
+      if(!f) return;
+      // Task 5 (this session): tint BOTH the guardian AND the lair itself in the guardian's difficulty
+      // colour, everywhere they appear in the report (chronicle, kingdom events, intel) — cleared or
+      // not, so long as the difficulty is known. Registered here (before the neutral sightings below)
+      // so the difficulty colour wins the first-registered-wins race.
+      const _pcol=_GUARD_POWER_COLORS[f.monsterPower]||null;
+      if(!_pcol) return;
+      if(f.monster && f.monster!=='unknown guardian') _registerName(f.monster, _pcol, false);
+      if(f.name) _registerName(f.name, _pcol, false);
     });
     (_chronRep.heroSightings||[]).forEach(s=>{
       if(s.type==='enemy') _registerName(s.name, s.kingdomColor||null, false);
@@ -1461,15 +1469,23 @@ function buildChronicle(log, chars_for_log){
         else _registerName(ch.name, null, true); // neutral → grey
       });
     });
+    // Tasks 1 & 4: register EVERY player's kingdom name in that player's colour, and every named
+    // (living / just-fallen, non-cloaked) character in its controlling player's colour — so kingdom
+    // and character names are tinted even when they never appeared as a sighting or battle marker
+    // (e.g. title-intel rivals, distant conquests). Registered AFTER the visible/guardian sources so
+    // the more specific colours already set win (first-registered-wins).
+    (_chronRep.allKingdoms||[]).forEach(k=>{ if(k&&k.name&&k.color) _registerName(k.name, k.color, false); });
+    (_chronRep.nameColors||[]).forEach(n=>{ if(n&&n.name) _registerName(n.name, n.color||null, !!n.neutral); });
     function _escapeRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     const _nameKeys=[...nameColors.keys()].filter(Boolean).sort((a,b)=>b.length-a.length);
-    function colorizeNames(html){
+    function colorizeNames(html, bold){
       if(!_nameKeys.length) return html;
       let out=html;
+      const wt=bold?';font-weight:700':'';
       _nameKeys.forEach(nm=>{
         const info=nameColors.get(nm); const col=info.neutral?NEUTRAL_COLOR:info.color; if(!col) return;
         const re=new RegExp('\\b'+_escapeRe(nm)+'\\b','g');
-        out=out.replace(re, m=>`<span style="color:${col}">${m}</span>`);
+        out=out.replace(re, m=>`<span style="color:${col}${wt}">${m}</span>`);
       });
       return out;
     }
@@ -1625,8 +1641,11 @@ function buildChronicle(log, chars_for_log){
           text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
           border-bottom:1px dotted var(--parchment-dark);margin:2px 0 4px">👑 Imperial Titles</div>`;
         titleIntel.forEach(e=>{
-          // Bold the "[The Title]" tag so each line reads as a titled dispatch.
-          const text=(e.text||'').replace(/^(\[The [^\]]+\])/,'<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">$1</span>');
+          // Bold the "[The Title]" tag so each line reads as a titled dispatch…
+          let text=(e.text||'').replace(/^(\[The [^\]]+\])/,'<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">$1</span>');
+          // …and Task 1: every character name and kingdom name in the dispatch is bold + tinted in the
+          // controlling player's colour (kingdoms and rivals alike).
+          text=colorizeNames(text, true);
           html+=`<div class="log-entry system">${text}</div>`;
         });
       }
@@ -2031,10 +2050,10 @@ function renderReportView(report){
         <div class="prov-detail">
           Tax: ${p.tax}g/turn · ${formatRace(p.race)} · Explored: ${p.explored||0}%<br>
           ${(p.features||[]).filter(f=>f.discovered&&!f.cleared).length>0
-            ?`Known lairs: ${p.features.filter(f=>f.discovered&&!f.cleared).map(f=>f.name).join(', ')}`
+            ?`Known lairs: ${p.features.filter(f=>f.discovered&&!f.cleared).map(f=>_lairName(f)).join(', ')}`
             :'No lairs discovered yet'}
           ${(p.features||[]).filter(f=>f.cleared).length>0
-            ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>f.name).join(', ')}`
+            ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>_lairName(f)).join(', ')}`
             :''}
           <br>Recruitable: ${(p.armyTypes||[]).map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)).join(' · ')||'none'}
           ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${kingdom.color||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
@@ -2225,7 +2244,7 @@ function renderReportView(report){
         </div>`;
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
-        ${f.cleared?'✓':'⭐'} <strong>${f.name}</strong>${powerBadge}
+        ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
         ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}</span>`}
       </div>`;
     };
@@ -4748,7 +4767,9 @@ function buildTargetField(c, ph, saved){
       // Target any enemy character you can SEE — one standing in a province you own, a province where
       // you have a character, or a province you spied. Your hero then CHASES them wherever they go and
       // forces the meeting when he catches them (report.encounterTargets carries exactly these).
-      const targets=(report.encounterTargets||[]).filter(x=>x.id!==c.id);
+      // Item 6: only a king may run down an enemy king, so a common hero never sees enemy kings here
+      // (the engine enforces the same rule server-side). Own-side characters are never in this list.
+      const targets=(report.encounterTargets||[]).filter(x=>x.id!==c.id && !(x.isKing && !c.isKing));
       if(targets.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
       const opts=targets.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
@@ -4764,11 +4785,11 @@ function buildTargetField(c, ph, saved){
       if(others.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No visible enemy characters to steal from" disabled>`;
       const opts=others.map(x=>{
         const hasItems=(x.items||[]).length>0;
-        const chance=Math.min(75,15+thiefLvl*15);
+        const chance=50+10*Math.min(thiefLvl,5); // base 50% + 10%/level (cap L5)
         return`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${hasItems?` (${x.items.length} item${x.items.length!==1?'s':''})`:' (no items)'}— ~${chance}% base chance</option>`;
       }).join('');
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in same province. Success: ${Math.min(75,15+thiefLvl*15)}% (Thief ${thiefLvl}). If caught, a fight may break out.</div>`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in same province. Success: ${50+10*Math.min(thiefLvl,5)}% base (Thief ${thiefLvl}), halved if the target leads troops. If caught, a fight may break out.</div>`;
     }
 
     // ── SEARCH LAIR ──
@@ -5515,8 +5536,17 @@ function _tintForDarkTooltip(hex){
 // Item 1 (this session): each lair in a province popup gets its OWN star, tinted by the guardian's
 // difficulty (Weak→green, Moderate→gold, Powerful→orange, Legendary→crimson).
 function _lairStar(f){
-  const col={Weak:'#4caf50',Moderate:'#e0b030',Powerful:'#e07b30',Legendary:'#c0392b'}[f.power]||'#c8922a';
-  return `<span style="color:${col}">\u2b50</span> ${f.name}`;
+  // Task 5 (this session): use the SAME difficulty palette as the Known Lairs card and the Chronicle
+  // (POWER_COLORS) — the old star used a different orange/red set — and tint the lair name too.
+  const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[f.power]||'#7a5510';
+  return `<span style="color:${col}">\u2b50 ${f.name}</span>`;
+}
+// Task 5 (this session): tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
+// lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain text.
+function _lairName(f){
+  if(!f) return '';
+  const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[f.monsterPower||f.power]||null;
+  return col?`<span style="color:${col}">${f.name}</span>`:(f.name||'');
 }
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
@@ -6043,6 +6073,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.05-0710</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.05-1236</div>
 </body>
 </html>
