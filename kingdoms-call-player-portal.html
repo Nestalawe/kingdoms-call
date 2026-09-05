@@ -5624,7 +5624,7 @@ function renderMapIntoSvg(svgEl, report){
 
   // Visibility sets
   const playerColor=report.kingdom?.color||'#c0392b';
-  const _isPagan=((report.kingdom&&report.kingdom.alignment)||(report.playerSetup&&report.playerSetup.alignment))==='Pagan';
+  const _isPagan=((report.kingdom&&report.kingdom.alignment)||(report.playerSetup&&report.playerSetup.alignment))==='Pagan'; void _isPagan; // retained for possible Pagan-only map cues
   const ownedIds=new Set((report.ownedProvinces||[]).map(p=>p.id));
   const visitedIds=new Set([...(report.visitedProvinceIds||[]),...ownedIds]);
   const adjacentIds=new Set();
@@ -5916,9 +5916,11 @@ function renderMapIntoSvg(svgEl, report){
       ltxt.setAttribute('class','sym-flag'); symbolLayer.appendChild(ltxt);
     }
 
-    // Pagan ritual sites (item): the same 🌙 the report uses, drawn at the bottom-left of hexes where a
-    // Pagan kingdom has discovered a ritual site, so its standing stones are easy to find on the map.
-    if(_isPagan && (pd.features||[]).some(f=>f.ritualSite)){
+    // Ritual sites: a 🌙 at the bottom-left of any hex where THIS player has DISCOVERED a ritual site —
+    // shown to every kingdom that has found it (like a lair's star), and persisting on remembered
+    // provinces regardless of who owns the ground. Only Pagan kingdoms may actually Perform Rites here
+    // (the popup notes this); anyone who found the stones can still see them on their map.
+    if((pd.features||[]).some(f=>f.ritualSite)){
       const hasFlag=pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
       const _deadBL2=(report.visibleDeadHeroes||[]).some(d=>d.locationId===pd.id);
       const mnx=x-HS+8+((_deadBL2?9:0)+(hasFlag?9:0)),mny=y+HS-10;
@@ -6073,6 +6075,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.05-2332</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.05-2358</div>
 </body>
 </html>
