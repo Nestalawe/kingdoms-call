@@ -164,6 +164,7 @@ footer.book .v{color:var(--gold-deep);}
   <div class="sub">The Player's Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival kingdoms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 5 September 2026, 23:32 NZT</div>
 </header>
 
 <div class="shell">
@@ -183,6 +184,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><a href="#orders">Every Order Explained</a></li>
     <li><a href="#mastery">Mastery — Levels 7 &amp; 9</a></li>
     <li><a href="#armies">Armies, Quality &amp; the Wage Rule</a></li>
+    <li><a href="#movement">Movement &amp; Marching</a></li>
     <li><a href="#battle">How a Battle Is Fought</a></li>
     <li><a href="#personal">Personal Combat &amp; Temper</a></li>
     <li><a href="#magic">Magic: The Five Schools</a></li>
@@ -397,7 +399,7 @@ footer.book .v{color:var(--gold-deep);}
   <p>The roll is made <strong>once per enemy character, per province, per turn</strong>. Kings are spotted on the same terms as heroes. A successful spot reveals the character's presence, identity and the number of army units they lead; to learn the exact composition of their force you must <em>Spy</em> the province.</p>
 
   <h3>Spying and counter-intelligence</h3>
-  <p>A <strong>Spy</strong> action reveals the characters in the target province and their skills. Spying a rival's <strong>home capital</strong> also reveals its income and can <strong>steal one of its Sage discoveries</strong> (the victim keeps theirs; a higher Spy makes the theft more likely). When you are spied, a counter-intelligence alert names the offending <strong>kingdom</strong> (not the individual agent) — unless the spy moved in disguise. A high-Spy character may slip through an enemy's passive watch unseen, but a deliberate Spy on the right province still finds them.</p>
+  <p>A <strong>Spy</strong> action reveals the characters in the target province and their skills. Spying a rival's <strong>home capital</strong> also reveals its income and can <strong>steal one of its Sage discoveries</strong> (the victim keeps theirs; the theft lands at <strong>10% + 10% per level of Spy</strong>, clamped 5–95%). When you are spied, a counter-intelligence alert names the offending <strong>kingdom</strong> (not the individual agent) — unless the spy moved in disguise. A high-Spy character may slip through an enemy's passive watch unseen, but a deliberate Spy on the right province still finds them.</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -462,11 +464,11 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>March</strong></td><td>Adds land <strong>move points</strong>: slow armies (base ≤2) gain +0/+0/+1/+1/+2 at levels 1–5; faster armies gain +1/+1/+2/+2/+2. Your column always moves at the pace of its slowest land unit.</td></tr>
     <tr><td><strong>Naval</strong></td><td>The sea-going mirror of March — adds sea move points to your fleets, by the same ladder.</td></tr>
     <tr class="grp"><td colspan="2"><strong>Special</strong></td></tr>
-    <tr><td><strong>Spy</strong></td><td>Intelligence accuracy: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying.</td></tr>
-    <tr><td><strong>Thief</strong></td><td>Raises Steal success in personal combat and against provinces.</td></tr>
+    <tr><td><strong>Spy</strong></td><td>A Spy <em>action</em> succeeds at <strong>20% + 20% per level</strong> (level 5 is effectively certain; level 6 never fails). Intelligence accuracy scales too: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying and helps you run down a quarry.</td></tr>
+    <tr><td><strong>Thief</strong></td><td>Raises Steal success: a Steal attempt lands at <strong>50% + 10% per level</strong> (Cowardly heroes add a further +15), <strong>halved</strong> if the target is leading troops.</td></tr>
     <tr><td><strong>Druid</strong></td><td>Lets you LEAD non-native races and wild units. The level required varies by unit (see the <a href="#armies">roster's Druid column</a>): tamer creatures need Druid 2–3, the mightiest monsters need Druid 5. Druidic kingdoms lead all Creatures without any Druid skill; a Pagan Wild Hunt binds creatures or monsters without it.</td></tr>
-    <tr><td><strong>Sage</strong></td><td>Chance of a kingdom Discovery each turn (the <strong>chance caps at level 5</strong>); each discovery is a permanent kingdom upgrade.</td></tr>
-    <tr><td><strong>Explorer</strong></td><td>Charts the map faster — exploration gain scales with <strong>(level + 1)</strong>, so Explorer 4 maps five times as fast as Explorer 0.</td></tr>
+    <tr><td><strong>Sage</strong></td><td>Chance of a kingdom Discovery each turn: <strong>5% per level</strong>, so <strong>25% at level 5</strong> (the chance <strong>caps at 5</strong>). <strong>Neutral</strong> kingdoms roll at double, and the <em>Library</em> discovery doubles the rate again. Each discovery is a permanent kingdom-wide upgrade.</td></tr>
+    <tr><td><strong>Explorer</strong></td><td>Charts the map faster — each Explore order adds <strong>(terrain base) × (Explorer level + 1)%</strong>, so Explorer 4 maps five times as fast as Explorer 0. Terrain base per Explore: plains 35, desert/sea 25, forest/mountain 20, jungle 15 (percentage points).</td></tr>
     <tr class="grp"><td colspan="2"><strong>Magic (each school)</strong></td></tr>
     <tr><td><strong>White · Psychic · Illusory · Elemental · Necromancy</strong></td><td>Your level in a school is <strong>how many of its spells you know</strong> (level 1 = the first spell … level 5 = all five), and it raises your per-turn casting chance. The <strong>per-turn casting benefit caps at level 5</strong>; levels 6–9 unlock mastery spells and count toward the Archmage title.</td></tr>
   </table></div>
@@ -521,8 +523,8 @@ footer.book .v{color:var(--gold-deep);}
 
   <h4>Confrontation</h4>
   <ul>
-    <li><strong>Encounter Character</strong> — name any enemy character you can see and <strong>hunt them down</strong>, chasing wherever they flee until you corner them. The meeting resolves as a personal duel — or, if both of you lead armies, as a full battle. A quarry still marching with a column won't break ranks to fight, and a king answers only a mutual challenge. <em>(This order now does the work of the old Encounter and Pursue both.)</em></li>
-    <li><strong>Steal</strong> — attempt to rob gold or an item from a character in your province (better with Thief; the Cowardly are natural thieves).</li>
+    <li><strong>Encounter Character</strong> — name any enemy character you can see and <strong>hunt them down</strong>, chasing wherever they flee (one province per phase, one movement point per step) until you corner them. The <strong>chance to corner them each phase</strong> rises with your <strong>Spy</strong> skill and falls with distance — roughly <strong>50% at Spy 0, 100% at Spy 1+</strong> when adjacent, halving for each further province between you, and <strong>doubled if the quarry is leading an army</strong> (a column leaves a plain trail). The meeting resolves as a personal duel — or, if both of you lead armies, as a full battle. A quarry still marching with a column won't break ranks to fight, and a king answers only a mutual challenge (only a king may run down another king). <em>(This order now does the work of the old Encounter and Pursue both.)</em></li>
+    <li><strong>Steal</strong> — attempt to rob gold or an item from a character in your province. Success is <strong>50% + 10% per level of Thief</strong> (Cowardly heroes add +15), <strong>halved</strong> if the target is leading troops; get caught and a fight may break out.</li>
   </ul>
 
   <h4>Power &amp; self-improvement</h4>
@@ -668,6 +670,70 @@ footer.book .v{color:var(--gold-deep);}
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
+<!-- 10b ─────────────────────────────────────────────── -->
+<section id="movement">
+  <h2>Movement &amp; Marching</h2>
+  <p>Getting your forces to the right province at the right phase wins as many campaigns as the fighting does. Every character carries two separate pools of <strong>movement points</strong> each turn — one for <strong>land</strong>, one for <strong>sea</strong> — and each <em>Move</em> order spends one point to step into a single adjacent province.</p>
+
+  <h3>The golden rule: one Move = one province</h3>
+  <p>A single <em>Move</em> order always advances a character <strong>exactly one province</strong>, into a tile adjacent to where they stand, no matter how large their movement pool is. What the pool decides is <strong>how many Move orders you can afford across the whole turn</strong> — and since a turn has only five phases (one order each), <strong>five provinces is the hard ceiling on how far anything can travel in a turn</strong>, however fast it is. A big pool doesn't let you leap; it lets you keep moving phase after phase without running dry.</p>
+
+  <h3>How big is your pool?</h3>
+  <p>A character's land pool is set by the <strong>slowest land unit they lead</strong> — a column marches at the pace of its slowest wagon — improved by that leader's <strong>March</strong> skill. A character <strong>leading no armies at all</strong> travels light and gets a flat, generous <strong>5</strong> land and <strong>5</strong> sea points (a lone rider or a hero taking ship's passage moves freely). Every unit has a base land <strong>Move</strong> rating (shown in the <a href="#armies">army roster</a>); the common values are:</p>
+  <div class="wrap"><table class="tbl">
+    <caption>Representative base land move rates (before March)</caption>
+    <tr><th>Move</th><th>Typical units</th></tr>
+    <tr><td class="num">1</td><td>Garrisons of every race; Mountain Guns; Stone Giants</td></tr>
+    <tr><td class="num">2</td><td>Dwarven Guard, Ironwood Crossbows, Dwarf Ironclads; Forest Ents, Cave Trolls, Basilisks, Titans</td></tr>
+    <tr><td class="num">3</td><td>Most foot &amp; archers (Shieldwall Levies, Elven Bowmen, Goblin Horde, Orc Berserkers); many fleets</td></tr>
+    <tr><td class="num">4</td><td>Cavalry (Free Lances, Gilded Lances, Warg Riders); Shadow Archers; Manticores; Elder Dragons; Corsair/Elven/faster fleets</td></tr>
+    <tr><td class="num">5</td><td>All flyers (Eagle Riders, Noble Griffons, Gnomish Gyrocopters, Wyvern Riders, Giant Eagles, Crimson Rocs)</td></tr>
+  </table></div>
+
+  <h3>March — the land accelerator</h3>
+  <p>The <strong>March</strong> skill adds points to a land column, and it helps a <em>wallowing</em> column more than a fast one (a good quartermaster gets more out of slow baggage than out of light horse). It is added to the slowest unit's rate:</p>
+  <div class="wrap"><table class="tbl">
+    <caption>March bonus to land move points, by March level</caption>
+    <tr><th>Column's slowest unit</th><th>M1</th><th>M2</th><th>M3</th><th>M4</th><th>M5</th></tr>
+    <tr><td>Slow (base move 1–2)</td><td class="num">+0</td><td class="num">+0</td><td class="num">+1</td><td class="num">+1</td><td class="num">+2</td></tr>
+    <tr><td>Fast (base move 3+)</td><td class="num">+1</td><td class="num">+1</td><td class="num">+2</td><td class="num">+2</td><td class="num">+2</td></tr>
+  </table></div>
+  <p>So a March-5 general leading base-2 Dwarven Guard moves at <strong>4</strong>; leading base-3 levies, at <strong>5</strong>. The <em>Road Network</em> Sage discovery adds a further <strong>+1</strong> to slow (move 1–2) land columns, and the <em>Boots of the Wind</em> / <em>Traveller's Cloak</em> items add March levels outright. <strong>Flyers ignore March</strong> — they already move at 5 and cross any terrain.</p>
+
+  <h3>Sea movement &amp; the Naval skill</h3>
+  <p>Sea points are a <strong>separate pool</strong>, spent only when a move touches the water — sailing into a sea province, or making a <strong>coastal landing</strong> from sea onto an adjacent shore. Both cost <strong>one sea point</strong>. A fleet's sea pool is set by its <strong>slowest ship</strong>, improved by the leader's <strong>Naval</strong> skill on the very same ladder as March (+0/0/1/1/2 for slow hulls of base ≤2, +1/1/2/2/2 for faster ones). A lone hero with no ships still gets the flat 5 sea points of light travel — but <strong>Naval buys them nothing</strong>, because Naval is the command of a fleet, not of a rowing boat you're a passenger on.</p>
+  <div class="note"><span class="lbl">Ships and sea-beasts can't walk</span>A fleet or a primal sea-beast (Sea Giant, Kraken, Leviathan) <strong>cannot cross land</strong>. From a land province a naval force may only sail to an <em>adjacent sea</em> province; it reaches another coast by sailing through the sea, never by hopping shore-to-shore. A mixed land-and-sea stack likewise can't march overland while it still leads ships — split the troops off first (<em>Leave/Transfer Army</em>), or sail the fleet to open water.</div>
+
+  <h3>Carrying armies across the sea</h3>
+  <p>Only the six humanoid <strong>fleets</strong> (Galleon, Corsair, Elven Galleys, Dwarf Ironclads, Orcish Longships, Whale Cohort) can ferry land troops, and capacity is counted in <strong>hulls</strong>:</p>
+  <ul>
+    <li>Each fleet unit provides <strong>1 hull</strong> of capacity.</li>
+    <li><strong>Light foot</strong> — levies, all archers, garrisons, Goblin Horde, Forest Wardens, Dwarven Guard, Orc Berserkers — take <strong>half a hull</strong> each (two per ship).</li>
+    <li><strong>Everything else</strong> — cavalry, siege, walking creatures and monsters — takes a <strong>full hull</strong> each.</li>
+    <li>The <strong>Naval mastery perk (level 8)</strong> doubles it: one hull then carries what used to need two.</li>
+    <li><strong>Primal sea-beasts</strong> swim under their own power and need no fleet, but they carry <strong>nothing</strong> — a Kraken can't ferry a single soldier.</li>
+  </ul>
+  <p>If the fleet lacks the hulls, the force is turned back at the water's edge — no move, no point spent.</p>
+
+  <h3>Flying — over anything, including the sea</h3>
+  <p>Flyers cross <strong>every terrain</strong>, and cross <strong>open sea without a fleet</strong>. There's more: if humanoid flyers can lift <em>every</em> foot soldier in the column (one liftable foot unit per flyer; cavalry, siege, ships and beasts are too heavy), the <strong>whole column takes to the air</strong> — it stops marching at the infantry's plodding pace and instead moves at the <strong>flyers' own speed</strong>, crossing sea freely like an all-flying host. A single grounded horse or wagon anchors everyone back to the earth.</p>
+
+  <h3>Crossing water by magic</h3>
+  <p>Two Elemental/White spells reshape the map for a turn. <strong>Part Sea</strong> turns a sea province to plains so land armies may walk across it (no fleet may pass while it holds); <strong>Flood</strong> does the reverse, turning a land province to open sea so only fleets and flyers may enter and any land army caught there is stranded. Each cancels the other. A <strong>Naval level-7</strong> blockade can seal a sea province shut for a turn, and a fleet-led <strong>Naval level-9</strong> raider can strike from the sea straight into a coastal province.</p>
+
+  <h3>Movement in battle &amp; conquest</h3>
+  <p>Moving is how you fight and how you conquer, and it all draws on the same pools:</p>
+  <ul>
+    <li><strong>Attacking costs a move.</strong> Marching into a defended enemy or neutral province is a Move like any other — it spends <strong>one point</strong> and triggers the battle on arrival. A lone hero (no army) can walk into an <em>empty</em> province and take it, but <strong>cannot conquer a defended one</strong> — conquest needs armies.</li>
+    <li><strong>A contested province can take more than one phase.</strong> Beaten defenders don't always vanish; a fight can carry on into later phases, and each carry-on round it grows bloodier for both sides (up to ×2.5 the casualty rate). Each phase you press the assault spends another movement point <em>if you have one</em> — but a carry-on battle is fought whether or not points remain, so an attacker who has run dry still finishes what they started.</li>
+    <li><strong>A standing <em>Defend</em> can march to a neighbour.</strong> A general on Defend who answers an assault in an adjacent province in his watch <strong>spends a movement point</strong> to march there and fight — and a defeat there ends his watch for the rest of the year.</li>
+    <li><strong>Chasing spends points too.</strong> An <em>Encounter</em> order runs a quarry down one province per phase at <strong>one point per step</strong>, and stalls when the pool hits zero.</li>
+    <li><strong>Picking up slow troops slows you.</strong> Take command of a plodding garrison mid-turn (<em>Pick Up Army</em>) and your column immediately moves at that slower unit's pace for the rest of the turn; drop a slow unit and you speed back up. Points already spent are never refunded or double-charged.</li>
+  </ul>
+  <div class="note tip"><span class="lbl">Reading your reach</span>Your order forms show each character's remaining land and sea points as you plan. The practical takeaways: a slow garrison stack reaches only an <em>adjacent</em> province per turn (fine for a one-hop assault); a March-trained field army can string several conquests together across the phases; and flyers or a light-travelling hero can cross the map's width in a single season.</div>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
 <!-- 11 ──────────────────────────────────────────────── -->
 <section id="battle">
   <h2>How a Battle Is Fought</h2>
@@ -676,8 +742,9 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Pre-battle duel.</strong> Opposing commanders may face each other in single combat first, per the old traditions — a chance to wound or kill the enemy leader before a blow is struck.</li>
     <li><strong>Battle magic.</strong> Eligible spells cast into the battle take effect — weakening enemy units, shielding your own, turning undead, and so on.</li>
     <li><strong>Archery.</strong> Missile units loose before the lines close, thinning the enemy front.</li>
-    <li><strong>The strength clash.</strong> Each side's total effective strength is compared — <strong>base × quality</strong>, then modified by everything that applies. Key multipliers: <strong>racial affinity</strong> (units of the owning king's race ×1.2, units led by a same-race commander ×1.2 — both stack, so a king leading his own race fights at ×1.44); <strong>racial animosity</strong> (a commander leading a rival race — Human↔Orc, Elf↔Dwarf — fights at ×0.8, i.e. −20%); <strong>Woodland Mastery</strong> (an Elven kingdom's own troops ×1.5 in forest/jungle); <strong>Tactical command</strong> (+20% army strength per level, so Tactical 5 = ×2.0 — the hard cap, titles included); fanaticism (×1.3 when it fires); plus terrain, Druid leadership, spells, temper and items. The <strong>front line's width</strong> is set by terrain — <strong>6 units on plains, desert or sea, 4 in forest or jungle, 3 in mountains</strong> — and only front-line units fight at full effect, so on tight ground sheer numbers count for less.</li>
-    <li><strong>Margin &amp; consequences.</strong> The winner's margin sets the toll on the LOSER's units each round: a <strong>decisive</strong> win (margin ≥ ~50%) kills ~<strong>35%</strong> and demotes ~30% of them; a <strong>standard</strong> win kills ~<strong>18%</strong> and demotes ~20%; a <strong>narrow</strong> win kills ~<strong>12%</strong> on both sides. The winner's own losses are light — ~1% (decisive), ~5% (standard), ~12% (narrow). A beaten force with an open line of retreat falls back to a friendly province; one with nowhere to run takes an extra <strong>15% per unit</strong> "no escape" toll and the province stays contested.</li>
+    <li><strong>The strength clash.</strong> Each side's total effective strength is compared — <strong>base × quality</strong>, then modified by everything that applies. Key multipliers: <strong>racial affinity</strong> (units of the owning king's race ×1.2, units led by a same-race commander ×1.2 — both stack, so a king leading his own race fights at ×1.44); <strong>racial animosity</strong> (a commander leading a rival race — Human↔Orc, Elf↔Dwarf — fights at ×0.8, i.e. −20%); <strong>Woodland Mastery</strong> (an Elven kingdom's own troops ×1.5 in forest/jungle); <strong>Tactical command</strong> (×1.2 army strength per level — 1 + 0.2 × level — so Tactical 5 = ×2.0, the hard cap, titles and items included; land battles only); <strong>Archery</strong> (+10% to your missile units per level); <strong>Naval</strong> (+20% to your fleets per level); and <strong>fanatical zeal</strong> (×1.30 when it fires, at your alignment's chance — Divine 50%, Good 40%, Evil 25%, Druidic 20%, Pagan 15%, Neutral 10%, Undead never rolls but its skeletons are permanently fanatical). Defenders add a <strong>×1.25</strong> edge on their own ground, and a <strong>home capital</strong> ×1.5 in total. On top of all that, plus terrain, Druid leadership, spells, temper and items. The <strong>front line's width</strong> is set by terrain — <strong>6 units on plains, desert or sea, 4 in forest or jungle, 3 in mountains</strong> — with rear-rank units fighting at <strong>half effect (×0.5)</strong>, so on tight ground sheer numbers count for less.</li>
+    <li><strong>The battle dice.</strong> The clash isn't purely arithmetic: after every multiplier is applied, <strong>each side rolls a random swing of 0 up to 70% of the stronger side's strength</strong> and adds it to its total. The higher total wins. A commanding lead almost always tells, but an even fight can genuinely go either way — which is exactly why you want a decisive margin, not a coin-flip.</li>
+    <li><strong>Margin &amp; consequences.</strong> How decisive the win was is measured as the winner's lead as a share of both sides' combined strength. Over <strong>30%</strong> is a <strong>decisive</strong> win; under <strong>10%</strong> is a <strong>narrow</strong> one; in between is a <strong>clear</strong> win. The margin sets the toll on the LOSER's units: a <strong>decisive</strong> win destroys ~<strong>35%</strong> of them and demotes ~30%; a <strong>clear</strong> win ~<strong>18%</strong> killed, ~20% demoted; a <strong>narrow</strong> win ~<strong>12%</strong>, and roughly even on both sides. The winner's own losses are light — ~1% (decisive), ~5% (clear), ~12% (narrow). A beaten force with an open line of retreat falls back to a friendly province; one with <strong>nowhere to run</strong> takes an extra <strong>15% per unit</strong> "no escape" toll and the province stays contested. A fight that <strong>carries on</strong> from phase to phase grows steadily bloodier — casualty rates climb <strong>+35% per carry-on round, up to ×2.5</strong> — so a grinding siege is far deadlier than a clean win.</li>
   </ol>
   <p>Defenders fight with an edge on their own ground, and a home province defended by its owner is tougher still. Quality is the single biggest lever: the tier multiplier runs <strong>Green ×1, Average ×2 (a fresh recruit), Veteran ×3, Crack ×4, Elite ×5</strong> — a Veteran is worth one-and-a-half fresh recruits, an Elite two-and-a-half. Taking a contested province often takes more than one phase, because beaten defenders can stay and keep contesting it.</p>
   <a class="totop" href="#overview">↑ top</a>
@@ -687,6 +754,15 @@ footer.book .v{color:var(--gold-deep);}
 <section id="personal">
   <h2>Personal Combat &amp; Temper</h2>
   <p>When two characters fight — in a duel, an encounter, or a monster lair — it's resolved as <strong>personal combat</strong>: a series of rounds of archery and melee, shaped by each fighter's Melee and Archery skills, hit points, items, spells and, above all, their <strong>temper</strong>.</p>
+
+  <h3>The odds, exactly</h3>
+  <p>Every round opens at range with archery, then closes to melee. The chances are:</p>
+  <ul>
+    <li><strong>Melee to-hit</strong> starts at <strong>50%</strong>, shifted <strong>±10% for each level of Melee</strong> you hold over (or under) your opponent, then adjusted by temper — your <em>attack</em> bonus (Berserk +18, Brave +12, Cautious 0, Cowardly −10) <em>minus</em> the defender's <em>guard</em> (Cautious +14, Cowardly +6, Brave +4, Berserk −10) — and any spell penalties. The result is clamped to the <strong>40%–95%</strong> band, so no fighter is ever a sure hit or a sure miss.</li>
+    <li><strong>Archery to-hit</strong> starts at <strong>30%</strong>, <strong>+10% per level of Archery</strong>, plus temper (Cowardly +22, Brave +8, others 0), clamped <strong>5%–95%</strong>. This is why a Cowardly hero makes a superb archer.</li>
+    <li><strong>Melee damage</strong> is a base of <strong>2–5</strong>, plus the difference if you out-skill your foe, plus a Berserk's +1 — less what a Cautious foe shrugs off (1). A dwarf's <strong>Mithril</strong> turns aside 2 of every blow or arrow.</li>
+    <li><strong>Fleeing</strong> succeeds at <strong>50% + your temper's flee modifier</strong>: Berserk 30%, Brave 60%, Cautious 70%, Cowardly 80% — before spell bonuses like Invisibility (+30) or Charm (doubles it).</li>
+  </ul>
 
   <h3>The four tempers</h3>
   <p>Temper governs how a character fights and when they run. All four are worth playing.</p>
@@ -728,14 +804,23 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Combat spells</strong> are chosen in a personal-combat encounter plan and fire during a duel or lair fight.</li>
     <li><strong>Battle-magic</strong> spells are cast into a full army battle to swing it. Certain combat spells double as battle-magic, weakening whole enemy contingents.</li>
   </ul>
-  <p>The higher your school level, the more spells of that school you may cast per turn, and the true masters more still. <strong>Battlefield graves</strong> are left where armies have fallen; Necromancy draws its skeletons and control from these.</p>
+  <h4>Your chance to cast</h4>
+  <p>Every cast is a roll. Your chance of success is <strong>20% + 10% per level in that school</strong>, capped at <strong>95%</strong> — so level 1 casts at 30%, level 3 at 50%, level 5 at 70%. Bonuses stack on top (still under the 95% ceiling): the <em>Arcane Codex</em> discovery adds <strong>+5%</strong> to every cast, and each magic school you have raised to <strong>level 8</strong> adds <strong>+10%</strong> to casting <em>any</em> spell (a five-school archmage sits at +50%, i.e. the cap on nearly everything). The <em>Wailing Phylactery</em> relic makes your <strong>first Necromancy spell each turn succeed automatically</strong>.</p>
+
+  <h4>How many you may cast</h4>
+  <p>How many spells of a school you can work depends on your level in it:</p>
+  <ul>
+    <li><strong>Action spells (per school, per turn):</strong> <strong>1</strong> at levels 1–2, <strong>2</strong> at level 3, <strong>3</strong> at levels 4–5. (The <em>Warlock</em> minor title adds one to your best school; a Divine <em>Grand Cathedral</em> lets Bless cost no slot.)</li>
+    <li><strong>Combat spells (per school, per fight):</strong> <strong>1</strong> at level 1, <strong>2</strong> at level 2 and above — and any one spell may be cast <strong>once per fight</strong>.</li>
+  </ul>
+  <p><strong>Battlefield graves</strong> are left where armies have fallen; Necromancy draws its skeletons and control from these.</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
 <!-- 14 ──────────────────────────────────────────────── -->
 <section id="spells">
   <h2>The Spellbook</h2>
-  <p>The twenty-five core spells, by school. A character with at least <strong>level 1</strong> in a school can cast <em>any</em> of that school's five core spells — you don't unlock them one by one. Higher levels make your spells more potent and let you cast more of them per turn. <span class="pill">A</span> = action, <span class="pill">C</span> = combat, <span class="pill">B</span> = battle-magic.</p>
+  <p>The twenty-five core spells, by school. A character with at least <strong>level 1</strong> in a school can cast <em>any</em> of that school's five core spells — you don't unlock them one by one. Higher levels make your spells more potent and let you cast more of them per turn. Remember each cast can fail: your success chance is <strong>20% + 10% per school level</strong> (max 95%) — see <a href="#magic">How spells are cast</a>. <span class="pill">A</span> = action, <span class="pill">C</span> = combat, <span class="pill">B</span> = battle-magic.</p>
 
   <h3>✨ White — healing, blessing, holiness</h3>
   <div class="wrap"><table class="tbl">
@@ -962,7 +1047,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.04-2200</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.05-2332</span> · Adventurer Kings ruleset
 </footer>
 
 <script>

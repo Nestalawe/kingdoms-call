@@ -1790,6 +1790,11 @@ function buildGMProvinceOrderData(gs, playerIndex){
   // recruitable units). canRecruit stays false until the province is actually controlled.
   const _seen=new Set();
   _provs.forEach(p=>{ if(p.owner===playerIndex||(p.visitedBy||[]).includes(playerIndex)) _seen.add(p.id); });
+  // A province the player's own character STANDS in this turn is 'occupied' — it must be offered
+  // for orders even if it is neither owned, previously-visited nor adjacent, or a Pagan standing
+  // on a discovered (but unowned) ritual site could not Perform Rite there. Mirrors buildTurnReport's
+  // provinceOrderData gate, which already includes playerCharLocations.
+  const _occupied=new Set((gs.characters||[]).filter(c=>c&&c.alive&&c.player===playerIndex).map(c=>c.location));
   const _adjIds=new Set();
   _provs.forEach(p=>{
     if(_seen.has(p.id)) return;
@@ -1804,7 +1809,8 @@ function buildGMProvinceOrderData(gs, playerIndex){
     const isOwned=p.owner===playerIndex;
     const isVisited=(p.visitedBy||[]).includes(playerIndex);
     const isAdjacent=_adjIds.has(p.id);
-    if(!isOwned&&!isVisited&&!isAdjacent) return;
+    const isOccupied=_occupied.has(p.id);
+    if(!isOwned&&!isVisited&&!isAdjacent&&!isOccupied) return;
     const isHome=p.tax>=10&&isOwned;
     data[p.id]={
       name:p.name,terrain:p.terrain,race:p.race,tax:p.tax,
@@ -5174,7 +5180,11 @@ function buildTurnReport(gameState, playerIndex){
 
   // Known features across all visited/owned provinces
   const knownFeatures=[];
-  gameState.world.provinces.filter(p=>visitedProvIds.has(p.id)||ownedProvIds.has(p.id)).forEach(p=>{
+  // A discovered feature under one of your OWN characters must appear even when the province is
+  // neither owned nor previously-visited (e.g. a Pagan hero standing on a discovered ritual site in
+  // unowned land) — otherwise the site shows on the map but not in the report or order forms.
+  const _kfOcc=new Set(gameState.characters.filter(c=>c.alive&&c.player===playerIndex).map(c=>c.location));
+  gameState.world.provinces.filter(p=>visitedProvIds.has(p.id)||ownedProvIds.has(p.id)||_kfOcc.has(p.id)).forEach(p=>{
     (p.features||[]).filter(f=>featDiscovered(f,playerIndex)||(ownedProvIds.has(p.id)&&!!f.ritualSite)).forEach(f=>{
       knownFeatures.push({province:p.name,name:f.name,cleared:f.cleared,
       ritualSite:!!f.ritualSite,
@@ -15675,6 +15685,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-1923</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-2332</div>
 </body>
 </html>
