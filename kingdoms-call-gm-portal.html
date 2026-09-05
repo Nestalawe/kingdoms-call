@@ -663,8 +663,8 @@ const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'M
 // new mastery ORDER (non-magic skills) or SPELL (magic schools) they can now use. L7/L9 unlocks are
 // fully wired and gated; L6/L8 describe the wired passive that deepens at that level.
 const MASTERY_UNLOCKS={
-  melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
-  archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\'s Mark orders.',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
+  melee:{6:'Parry — in personal combat, each enemy melee blow that lands has a 50% chance to be reduced by 1 up to half your Melee skill.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:"Counterattack — in personal combat, when an enemy misses you there is a 50% chance you riposte at once with a free melee strike.",9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
+  archery:{6:'Impalement — in personal combat, each arrow that hits has a 50% chance to impale, bleeding the foe 1-3 damage every round for the rest of the fight.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:"Trueshot — in personal combat, each arrow that hits has a 50% chance to strike a vital point, so the foe's very next attack automatically fails.",9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
   tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
@@ -673,11 +673,11 @@ const MASTERY_UNLOCKS={
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
-  white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
-  psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
-  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: for two phases, you and your armies vanish from enemy sight and hostile magic.'},
-  elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
-  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
+  white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) are restored to full HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
+  psychic:{6:'Words of Awe — your Oratory raises the armies it inspires by TWO quality levels instead of one.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
+  illusory:{6:'Shimmer — enemy players are half as likely to see or find this character.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: for two phases, you and your armies vanish from enemy sight and hostile magic.'},
+  elemental:{6:'Elemental Armour — in combat, every attack that lands on you is reduced by 1-3 HP.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
+  necromancy:{6:'The Necromantic Arts — every skeletal army you lead fights one experience tier higher in battle.',7:"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
 };
 // ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
 // turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler).
@@ -1823,7 +1823,7 @@ function buildGMProvinceOrderData(gs, playerIndex){
         return (p.features||[]).map((f,idx)=>({f,idx})).filter(({f,idx})=>{
           if(f.cleared) return false;
           const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
-          return featDiscovered(f,playerIndex)||(exploredHere>=threshold);
+          return featDiscovered(f,playerIndex)||(exploredHere>=threshold)||(isOwned&&!!f.ritualSite);
         }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||'',monster:(f.monster&&f.monster.name)||''}));
       })(),
       availableHeroes:(gs.characters||[]).filter(c=>c.player===null&&c.alive&&c.location===p.id&&!c._justDefeated&&!c._isNeutralGuard).map(h=>({
@@ -2990,7 +2990,8 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
     if(friendly) friendlySpy=Math.max(friendlySpy,(f.skills&&f.skills.spy)||0);
   });
   friendlySpy=Math.min(5,friendlySpy);
-  const chance=Math.max(5, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
+  let chance=Math.max(5, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
+  if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
 }
 function dedupeItemsByName(items){
@@ -5168,7 +5169,7 @@ function buildTurnReport(gameState, playerIndex){
   // Known features across all visited/owned provinces
   const knownFeatures=[];
   gameState.world.provinces.filter(p=>visitedProvIds.has(p.id)||ownedProvIds.has(p.id)).forEach(p=>{
-    (p.features||[]).filter(f=>featDiscovered(f,playerIndex)).forEach(f=>{
+    (p.features||[]).filter(f=>featDiscovered(f,playerIndex)||(ownedProvIds.has(p.id)&&!!f.ritualSite)).forEach(f=>{
       knownFeatures.push({province:p.name,name:f.name,cleared:f.cleared,
       ritualSite:!!f.ritualSite,
       monster:f.ritualSite?'':(f.monster?.name||'unknown guardian'),
@@ -5522,7 +5523,7 @@ function buildTurnReport(gameState, playerIndex){
         return (p.features||[]).map((f,idx)=>({f,idx})).filter(({f,idx})=>{
           if(f.cleared) return false;
           const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
-          return featDiscovered(f,playerIndex)||(exploredHere>=threshold);
+          return featDiscovered(f,playerIndex)||(exploredHere>=threshold)||(isOwned&&!!f.ritualSite);
         }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||'',monster:(f.monster&&f.monster.name)||''}));
       })(),
       availableHeroes:availableHeroesByProv[p.id]||[],
@@ -6545,8 +6546,10 @@ function seaPenalty(armyType, terrain){
     const Q_MULT=UNIT_Q_MULT; // alias → master
     // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier higher.
     const Q_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
-    let effQuality=(heroChar&&heroChar._oratoryBoost)?(Q_UP[army.quality||'Average']||army.quality||'Average'):(army.quality||'Average');
+    let effQuality=(army.quality||'Average');
+    if(heroChar&&heroChar._oratoryBoost){ const _oN=(heroChar._oratoryBoost===true?1:(heroChar._oratoryBoost|0))||1; for(let _oi=0;_oi<_oN;_oi++) effQuality=Q_UP[effQuality]||effQuality; } // PSYCHIC Oratory: +1 quality tier (+2 with Words of Awe, L6)
     if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){ effQuality=Q_UP[effQuality]||effQuality; } // DRUID L8: creatures & monsters fight one tier higher
+    if(heroChar&&army._isSkeletal&&perkTier(heroChar,'necromancy')>=1){ effQuality=Q_UP[effQuality]||effQuality; } // NECROMANCY L6 (The Necromantic Arts): skeletal armies you lead fight one experience tier higher
     if(army._tacUp||army._drumUp){ effQuality=Q_UP[effQuality]||effQuality; } // TACTICAL L6 / War Drum: fight one tier higher (rolled ONCE per battle at battle start)
     const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[effQuality]||2);
     // Apply Druid penalty
@@ -7926,7 +7929,7 @@ const BATTLE_ARMY_SPELLS={
   function pcNewStatus(){
     return {stun:0, hitPenalty:0, dodge:1, meleeHalvedRounds:0, silenceRounds:0,
             dot:[], mirrorImages:0, freeAttacksForFoe:0, fleeBonus:0, fleePenalty:0,
-            reflect:0, absorb:0, incomingDmgBonus:0, bestAbilityHalved:false};
+            reflect:0, absorb:0, incomingDmgBonus:0, bestAbilityHalved:false, nextAttackFails:0};
   }
   function pcCharCombatant(ch){
     ensureEncounterPlan(ch);
@@ -7952,6 +7955,13 @@ const BATTLE_ARMY_SPELLS={
       status:pcNewStatus(),
       castSpells:[], castSchool:{}, // per-combat spell limits
       isUndead:(ch.alignment==='Undead'),
+      // ── LEVEL 6/8 SKILL PERKS (personal combat) ──
+      meleeRaw:skillLevel(ch,'melee'), archeryRaw:skillLevel(ch,'archery'),
+      perkParry:perkTier(ch,'melee')>=1,          // MELEE L6 — Parry
+      perkCounter:perkTier(ch,'melee')>=3,        // MELEE L8 — Counterattack
+      perkImpale:perkTier(ch,'archery')>=1,       // ARCHERY L6 — Impalement
+      perkTrueshot:perkTier(ch,'archery')>=3,     // ARCHERY L8 — Trueshot
+      perkElemArmour:perkTier(ch,'elemental')>=1, // ELEMENTAL L6 — Elemental Armour
     };
   }
   // A monster's default action plan. Monsters get Fire actions only if they actually have a
@@ -8023,7 +8033,7 @@ const BATTLE_ARMY_SPELLS={
   }
   // Which damage channel a hit belongs to, so a monster's vulnerabilities/resistances
   // (monsterTraits) scale it: blades, arrows or magic.
-  const PC_CHANNEL={'blow':'melee','free strike':'melee','parting blow':'melee','arrow':'archery'};
+  const PC_CHANNEL={'blow':'melee','free strike':'melee','parting blow':'melee','counterattack':'melee','arrow':'archery'};
   function pcTakeHit(target, dmg, narrative, srcName, kind){
     // Mirror images soak a hit first.
     if(target.status && target.status.mirrorImages>0){
@@ -8056,6 +8066,18 @@ const BATTLE_ARMY_SPELLS={
       target.status.absorb-=soak; d-=soak;
       narrative.push(`  A ward around ${target.name} drinks ${soak} of the blow.`);
       if(d<=0) return 0;
+    }
+    // MELEE L6 (Parry): a master swordsman turns part of a melee blow aside — 50% chance to shave
+    // 1..⌊melee/2⌋ off a landed melee/free/counter strike, never below 1.
+    if(target.perkParry && PC_CHANNEL[kind]==='melee' && d>1 && Math.random()<0.5){
+      const _cut=rng(1,Math.max(1,Math.floor((target.meleeRaw||0)/2)));
+      const _b=d; d=Math.max(1,d-_cut);
+      if(d<_b) narrative.push(`  ⚔ ${target.name} parries, turning aside ${_b-d} of the blow. (Parry)`);
+    }
+    // ELEMENTAL L6 (Elemental Armour): a ward of the elements bleeds 1-3 off EVERY attack that lands.
+    if(target.perkElemArmour && d>1){
+      const _cut2=rng(1,3); const _b2=d; d=Math.max(1,d-_cut2);
+      if(d<_b2) narrative.push(`  🜂 ${target.name}'s Elemental Armour absorbs ${_b2-d} of the ${kind}. (Elemental Armour)`);
     }
     target.hp-=d;
     return d;
@@ -8228,7 +8250,29 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // --- Shared attack routines --------------------------------------------------
+  // MELEE L8 (Counterattack): when a foe MISSES this hero, a 50% chance to riposte with a free melee blow.
+  function pcTryCounter(hero, foe, narrative){
+    if(!hero||!foe||hero.hp<=0||foe.hp<=0) return;
+    if(!hero.perkCounter) return;
+    if(hero.status && hero.status.stun>0) return;   // no riposte while stunned
+    if(Math.random()>=0.5) return;
+    const hit=pcHitChance(hero,foe,50), roll=Math.random()*100;
+    if(roll<hit){
+      hero._didMelee=true;
+      const dmg=pcMeleeDamage(hero,foe);
+      const dealt=pcTakeHit(foe,dmg,narrative,hero.name,'counterattack');
+      if(dealt) narrative.push(`  ↩ ${hero.name} seizes the opening and counterattacks for ${dealt} damage! (Counterattack, ${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
+    } else {
+      narrative.push(`  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (Counterattack)`);
+    }
+  }
   function pcMeleeStrike(actor, foe, narrative){
+    // ARCHERY L8 (Trueshot) aftermath: a foe struck in a vital point sees their very next attack fail.
+    if(actor.status && actor.status.nextAttackFails>0){
+      actor.status.nextAttackFails--;
+      narrative.push(`  ${actor.name} is still reeling from a crippling wound — the attack fails. (Trueshot)`);
+      return;
+    }
     const hit=pcHitChance(actor,foe,50);
     const roll=Math.random()*100;
     narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}% to hit [roll ${Math.floor(roll)}]${roll<hit?' ✓':' ✗'})`);
@@ -8242,7 +8286,7 @@ const BATTLE_ARMY_SPELLS={
         actor.hp-=foe.status.reflect;
         narrative.push(`  ${foe.name}'s shield lashes back for ${foe.status.reflect} damage. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
       }
-    } else narrative.push(`  ${actor.name}'s blow is turned aside.`);
+    } else { narrative.push(`  ${actor.name}'s blow is turned aside.`); pcTryCounter(foe, actor, narrative); }
   }
   function pcAdvanceOrStrike(actor, foe, narrative, state){
     if(state.range!=='melee'){
@@ -8264,6 +8308,12 @@ const BATTLE_ARMY_SPELLS={
   function pcVolleySize(cbt){ return (cbt.archery||0)>=ARCHERY_VOLLEY_AT ? 2 : 1; }
   function pcArrowDamage(cbt){ return rng(2,5)+Math.floor((cbt.archery||0)/3); }
   function pcFireShot(actor, foe, narrative){
+    // ARCHERY L8 (Trueshot) aftermath: a crippled foe's whole volley goes to nothing.
+    if(actor.status && actor.status.nextAttackFails>0){
+      actor.status.nextAttackFails--;
+      narrative.push(`  ${actor.name} is still reeling from a crippling wound — the shot fails. (Trueshot)`);
+      return;
+    }
     const volley=pcVolleySize(actor);
     if(volley>1) narrative.push(`  ${actor.name} draws and looses a volley of ${volley} arrows (Archery ${actor.archery}).`);
     for(let v=0; v<volley && foe.hp>0; v++) pcFireOne(actor, foe, narrative);
@@ -8276,7 +8326,17 @@ const BATTLE_ARMY_SPELLS={
       const d=pcArrowDamage(actor);
       const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow');
       if(dealt)narrative.push(`  ${actor.name}'s shot hits ${foe.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(foe.hp))})`);
-    } else narrative.push(`  ${actor.name}'s shot flies wide. [${hit.toFixed(0)}%]`);
+      // ARCHERY L6 (Impalement): 50% chance a hit lodges, bleeding the foe 1-3 each round for the rest of the fight.
+      if(dealt && actor.perkImpale && foe.hp>0 && Math.random()<0.5){
+        foe.status.dot=foe.status.dot||[]; foe.status.dot.push({dmg:rng(1,3),rounds:99,label:`${actor.name}'s impaling arrow`});
+        narrative.push(`  🩸 ${actor.name}'s arrow impales ${foe.name} — it will bleed for the rest of the fight. (Impalement)`);
+      }
+      // ARCHERY L8 (Trueshot): 50% chance the shot finds a vital — the foe's next attack automatically fails.
+      if(dealt && actor.perkTrueshot && foe.hp>0 && Math.random()<0.5){
+        foe.status.nextAttackFails=(foe.status.nextAttackFails||0)+1;
+        narrative.push(`  🎯 ${actor.name}'s shot strikes a vital point — ${foe.name}'s next attack will fail. (Trueshot)`);
+      }
+    } else { narrative.push(`  ${actor.name}'s shot flies wide. [${hit.toFixed(0)}%]`); pcTryCounter(foe, actor, narrative); }
   }
 
   // --- Tactic selection --------------------------------------------------------
@@ -11998,8 +12058,9 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='psychic_oratory'){
           // Self or an allied character in the same province — their travelling armies gain +1 quality this turn.
           const oratoryTarget=(targetChar&&targetChar.player===c.player&&targetChar.location===c.location)?targetChar:c;
-          oratoryTarget._oratoryBoost=true; // read by armStr: +1 effective quality tier (not cumulative)
-          log('explore',`✨ ${c.name}'s stirring Oratory lifts ${oratoryTarget===c?'their own':oratoryTarget.name+"'s"} troops — every army travelling with ${oratoryTarget===c?c.name:oratoryTarget.name} fights one quality level higher this turn.`,{actor:c.player,targets:[c.player],provinceId:c.location});
+          const _oTiers=(perkTier(c,'psychic')>=1)?2:1; // PSYCHIC L6 (Words of Awe): +2 quality tiers instead of +1
+          oratoryTarget._oratoryBoost=_oTiers; // read by armStr: +N effective quality tiers (not cumulative)
+          log('explore',`✨ ${c.name}'s stirring Oratory lifts ${oratoryTarget===c?'their own':oratoryTarget.name+"'s"} troops — every army travelling with ${oratoryTarget===c?c.name:oratoryTarget.name} fights ${_oTiers>1?'two quality levels':'one quality level'} higher this turn.`,{actor:c.player,targets:[c.player],provinceId:c.location});
         }
         else if(fn==='psychic_clairvoyance'){
           if(!targetChar){
@@ -14707,6 +14768,27 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Wounded feature guardians recover over the year between turns.
   healFeatureMonsters();
 
+  // ── WHITE L6 (Mass Healing) ── A master of the White arts standing among friendly characters at
+  // year's end mends every wound: each own/allied living character sharing their province (the healer
+  // included) is restored to full HP. Runs after all combat so it heals the turn's wounds.
+  {
+    const _mhDone=new Set();
+    (G.characters||[]).forEach(healer=>{
+      if(!healer||!healer.alive||healer.player==null||healer.location==null) return;
+      if(perkTier(healer,'white')<1) return; // WHITE L6+
+      (G.characters||[]).forEach(t=>{
+        if(!t||!t.alive||t.location!==healer.location||_mhDone.has(t.id)) return;
+        const friendly=(t.player===healer.player)||(t.player!=null&&relOfReport(G,healer.player,t.player)==='allied');
+        if(!friendly) return;
+        const max=t.maxHp||20;
+        if((t.hp==null?max:t.hp)<max){
+          t.hp=max; _mhDone.add(t.id);
+          log('system',`✨ ${healer.name}'s Mass Healing washes over ${t.id===healer.id?'them':t.name} — ${t.id===healer.id?'their':t.name+"'s"} wounds close and ${t.id===healer.id?'they are':'they are'} restored to full health.`,{actor:t.player,targets:[t.player],charId:t.id,provinceId:t.location});
+        } else { _mhDone.add(t.id); }
+      });
+    });
+  }
+
   // ── ORC VIGOUR (this session, item 4) ── Orcish characters of an Orcish kingdom grow tougher with
   // every year of war: their MAXIMUM hp rises by 1-2 each turn (Task 5). This is growth, not healing —
   // current hp is left untouched (the extra headroom is filled by Rest or other healing). The rise is
@@ -15281,10 +15363,15 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   (G.characters||[]).forEach(c=>{
     if(!c||!c.alive) return;
     const _lvl=Math.min(5,effStat(c,'spy'));
-    if(_lvl<=0) return;
-    if(d100()<=_lvl*5){
+    const _shimmer=perkTier(c,'illusory')>=1; // ILLUSORY L6 (Shimmer)
+    if(_lvl<=0 && !_shimmer) return;
+    // Spy grants a small chance to slip away unseen (5%/level). Shimmer makes this character HALF
+    // as likely to be seen at all, so the odds of passing unnoticed rise sharply.
+    let _seenPct=100-_lvl*5;
+    if(_shimmer) _seenPct=_seenPct*0.5;
+    if(d100()>_seenPct){
       c._unspottedTurn=G.turn;
-      log('system',`[Intelligence] 🕶 ${c.name} moved unseen this turn — Spy ${_lvl} kept them out of enemy sightings.`,{actor:c.player,targets:[c.player],charId:c.id,phase:0});
+      log('system',`[Intelligence] 🕶 ${c.name} moved unseen this turn — ${_shimmer?'the Shimmer of illusory magic blurred them from watching eyes':'Spy '+_lvl+' kept them out of enemy sightings'}.`,{actor:c.player,targets:[c.player],charId:c.id,phase:0});
     }
   });
   let reportErrors=[];
@@ -15582,6 +15669,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-1236</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-1825</div>
 </body>
 </html>
