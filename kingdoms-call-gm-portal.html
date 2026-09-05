@@ -4812,6 +4812,12 @@ function _skillItem(c,stat){
 // Skill LEVEL (base proficiency, 0–9) for perk unlocks; perkTier = levels past 5 (0–4).
 function skillLevel(c,stat){ return Math.max(0,Math.min(9,((c&&c.skills)||{})[stat]||0)); }
 function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
+// MAGIC L8 PERK — "+10% to cast ANY spell" for each magic school mastered to level 8, stacking across
+// schools (five schools → up to +50%). Applied at EVERY point a character rolls to cast a spell:
+// phase-action casts, personal-combat spells, and pre-battle/battle magic. Each call site keeps its
+// own hard 95% cap. Safe on any object (raw skills via skillLevel); returns 0 for monsters/undefined.
+const MAGIC_L8_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
+function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
 function _legendaryNames(){ return new Set((ITEMS_BY_TIER[3]||[]).map(it=>it.name)); }
 // Per-character raw merit for the six non-kingdom titles (before alignment boost).
 function _charTitleMerit(c){
@@ -7078,7 +7084,7 @@ const BATTLE_ARMY_SPELLS={
       const school=heroPick.school;
       const spellLvl=effStat(c,school);
       if(spellLvl>=1){
-        const castChance=Math.min(95,20+spellLvl*10+(hasDisc(c.player,'sd27')?5:0));
+        const castChance=Math.min(95,20+spellLvl*10+(hasDisc(c.player,'sd27')?5:0)+magicL8CastBonus(c));
         const castRoll=d100();
         narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
@@ -8111,7 +8117,7 @@ const BATTLE_ARMY_SPELLS={
     const limit=lvl>=2?2:1;
     if(caster.castSpells.includes(spellName)){ narrative.push(`  ${caster.name}: ${spellName} already cast this combat.`); return false; }
     if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${school} spell limit reached this combat.`); return false; }
-    const castChance=Math.min(95,20+lvl*10);
+    const castChance=Math.min(95,20+lvl*10+magicL8CastBonus(caster.ref));
     // Item 10: narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader
     // sees the character reach for the spell, then whether the weave holds or collapses.
     const _schoolWeave={white:'sacred',psychic:'psychic',illusory:'illusory',elemental:'elemental',necromancy:'necromantic'}[school]||school;
@@ -8953,7 +8959,7 @@ const BATTLE_ARMY_SPELLS={
       const school=pick.school;
       const spellLvl=effStat(caster,school);
       if(spellLvl<1) return;
-      const castChance=Math.min(95,20+spellLvl*10+(hasDisc(caster.player,'sd27')?5:0));
+      const castChance=Math.min(95,20+spellLvl*10+(hasDisc(caster.player,'sd27')?5:0)+magicL8CastBonus(caster));
       const castRoll=d100();
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
@@ -11826,7 +11832,7 @@ const BATTLE_ARMY_SPELLS={
         const arcaneBonus=hasDisc(c.player,'sd27')?5:0;
         // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
         const necroAuto = school==='necromancy' && !c._necroAutoUsed && (c.items||[]).some(it=>it.effect&&it.effect.stat==='necroAuto');
-        const l8Bonus=10*['white','psychic','illusory','elemental','necromancy'].filter(sc=>skillLevel(c,sc)>=8).length; // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
+        const l8Bonus=magicL8CastBonus(c); // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
         const castChance=necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus+l8Bonus);
         if(necroAuto) c._necroAutoUsed=true;
         const castRoll=d100();
@@ -15669,6 +15675,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-1825</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-1923</div>
 </body>
 </html>
