@@ -2637,6 +2637,118 @@ function renderMinorTitles(t){
 }
 function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(currentReport); }
 
+// Item 12 (Sept 2026): the spell-target (secondary) field builder, extracted from the Cast Spell form so
+// the Use Item form can offer the same province / character targeting for spell items.
+function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
+      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Lairs','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
+      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory','Divine Judgment','Mass Confusion','Dominate','Chain Lightning']);
+      let secondaryHtml='';
+      if(NEEDS_PROV.has(selSpell)){
+        // All province spells reach only the province the caster occupies THIS PHASE or one
+        // adjacent to it (the GM engine enforces the same rule at resolution). Part Sea additionally
+        // requires a sea province; Flood a land province; Hide Lairs a province with lairs
+        // this player has discovered.
+        const wmProvs=(report.worldMeta?.provinces)||[];
+        const curLoc=predictedLocation(c.id,ph);
+        const curId=curLoc?curLoc.id:c.locationId;
+        const curP=wmProvs.find(p=>p.id===curId);
+        const candIds=[curId,...((curP&&curP.neighbors)||[])];
+        const kfNames=new Set((report.knownFeatures||[]).filter(f=>!f.cleared).map(f=>f.province));
+        const provOpts=candIds.map(pid=>{
+          const p=wmProvs.find(x=>x.id===pid);
+          if(!p) return '';
+          const t=p.terrain; // null for unexplored tiles (and possibly illusory — the map is what you see)
+          // Task 3: Part Sea may target any land OR sea province in reach — a land province flooded to sea
+          // later this turn can then be reverted (the Flood counter), so no terrain filter for Part Sea.
+          if(selSpell==='Flood'&&(t==='sea'||t==null)) return '';
+          if(selSpell==='Hide Lairs'){
+            const hasKnownFeature=((p.features||[]).length>0)||(p.name&&kfNames.has(p.name));
+            if(!hasKnownFeature) return '';
+          }
+          // Item 4: Bless boosts a province's tax at collection, so list each candidate's tax base to
+          // help the player pick the richest target. Only shown for Bless (other province spells don't
+          // care about tax) and only when the tax base is actually known for that province.
+          const taxLbl=(selSpell==='Bless Province'&&p.tax!=null)?` · tax base ${p.tax}g`:'';
+          const label=(p.name||`Unknown province (${provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?'})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'')+taxLbl;
+          return `<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
+        }).filter(Boolean).join('');
+        secondaryHtml=provOpts
+          ?`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
+          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`
+          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
+          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
+      } else if(NEEDS_CHAR.has(selSpell)){
+        const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
+        let charOpts='';
+        if(selSpell==='Resurrect'){
+          // Resurrect shows dead heroes the player knows of. Kings can never be resurrected, and
+          // the body must lie in the caster's province at cast time — bodies at the caster's
+          // predicted location are marked ✓; others are listed so the player can plan a move there.
+          const casterHereName=(predictedLocation(c.id,ph)||{}).name;
+          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>!x.isKing||x.isMonarch).map(x=>{
+            const here=casterHereName&&x.locationName===casterHereName;
+            const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':' ⚔ (enemy hero)');
+            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
+          }).join('');
+        } else if(selSpell==='Charm'){
+          // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
+          // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
+          // (The engine enforces all of this — this list simply matches it.)
+          const targets=(report.visibleChars||[]).filter(x=>
+            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 &&
+            (x.player===null || x.player!==c.player));
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune)</option>';
+        } else if(selSpell==='Oratory'){
+          // Oratory: self, or own characters predicted to be in the same province this phase.
+          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+        } else if(selSpell==='Phantasmal Armies'){
+          // Phantasmal Armies: self, or any friendly hero in the SAME province this phase. The buff
+          // no longer requires armies at cast time (item 12) — it sits on the target and is spent by
+          // their next battle, so it still helps if they pick up or recruit armies in a later phase.
+          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
+          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+        } else if(selSpell==='Clairvoyance'){
+          // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
+          // persistent sighting record (everSeenChars), plus anyone visible right now.
+          const seen=(report.everSeenChars&&report.everSeenChars.length?report.everSeenChars:(report.visibleChars||[]))
+            .filter(x=>x && x.player!=null && !x.isWandering) // Task 7(b): neutral/wandering heroes are not valid Clairvoyance targets
+            .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':' ⚔ (enemy)'} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>You have not seen any enemy characters yet</option>';
+        } else if(selSpell==='Control Undead'){
+          // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
+          // to reveal the dead army units lying in it.
+          const scanOpt=`<option value="__scan__" ${extra==='__scan__'?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
+          const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
+          const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+          charOpts=scanOpt+enemyOpts;
+        } else if(selSpell==='Telekinetic Storm'){
+          // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
+          // there is nothing to scatter around a hero marching alone.
+          const targets=(report.visibleChars||[]).filter(x=>
+            x.player!==c.player && x.locationId===casterLoc && (x.armies||0)>0);
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
+        } else {
+          // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
+          // Target visible enemy/neutral characters in the same province.
+          const targets=(report.visibleChars||[]).filter(x=>
+            x.player!==c.player && x.locationId===casterLoc);
+          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
+        }
+        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph});syncCharmCard('${c.id}',${ph})"><option value="">— Target character —</option>${charOpts}</select>
+          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
+      } else {
+        secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
+      }
+      return secondaryHtml;
+}
+
 // ── ORDERS FORM ───────────────────────────────────────
 // ── SPELLS LIST ───────────────────────────────────────
 const SPELLS_BY_SCHOOL={
@@ -3405,7 +3517,9 @@ function onSpellChange(charId, ph, selectedSpell){
   const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
   if(!wrap) return;
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId))||{};
-  wrap.innerHTML=buildTargetField(char, ph, {action:'Cast Spell', target:selectedSpell});
+  // Item 12: the Use Item form reuses this handler for spell items — rebuild under the live action.
+  const liveAction=document.getElementById(`po-action-${charId}-${ph}`)?.value||'Cast Spell';
+  wrap.innerHTML=buildTargetField(char, ph, {action:liveAction==='Use Item'?'Use Item':'Cast Spell', target:selectedSpell});
 }
 
 function _onSpellChange_DEPRECATED(charId, ph, selectedSpell){
@@ -4912,12 +5026,15 @@ function buildTargetField(c, ph, saved){
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',').replace(/"/g,'&quot;')}"></div>`;
     }
     case 'Use Item':{
-      const ACTIVE_ITEM_STATS=new Set(['massPromote']);
+      const ACTIVE_ITEM_STATS=new Set(['massPromote','castSpell']);
       // Items received via Give Item in an earlier phase are usable here too.
       const active=predictedItems(c.id,ph).filter(it=>it&&it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
       if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No usable (active) items — most items are passive" disabled>`;
       const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.tier===3?'✦ Legendary — ':''}${it.name} — ${it.desc}</option>`).join('');
-      return `<select id="po-target-${c.id}-${ph}">${opts}</select>`;
+      // Item 12: a spell item needs the spell's own target (province / character) — same field as Cast Spell.
+      const selIt=active.find(it=>String(it.id)===String(target))||active[0];
+      const sec=(selIt&&selIt.effect&&selIt.effect.stat==='castSpell')?spellSecondaryHtml(report,c,ph,selIt.effect.spell,extra,selIt.effect.spell):'';
+      return `<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${opts}</select>${sec}`;
     }
 
     // ── CAST SPELL ──
@@ -5118,112 +5235,7 @@ function buildTargetField(c, ph, saved){
         .filter(([school])=>effMagicLvl(c,school)>=1||practisingSchools.has(school))
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s])))[0]||'';
       const selSpell=target||firstSpell;
-      const NEEDS_PROV=new Set(['Bless Province','Part Sea','Illusory Terrain','Hide Lairs','Earthquake','Flood','Plague','Sanctuary','Cataclysm']);
-      const NEEDS_CHAR=new Set(['Resurrect','Psychic Blast','Telekinetic Storm','Clairvoyance','Phantasmal Armies','Control Undead','Curse','Charm','Oratory','Divine Judgment','Mass Confusion','Dominate','Chain Lightning']);
-      let secondaryHtml='';
-      if(NEEDS_PROV.has(selSpell)){
-        // All province spells reach only the province the caster occupies THIS PHASE or one
-        // adjacent to it (the GM engine enforces the same rule at resolution). Part Sea additionally
-        // requires a sea province; Flood a land province; Hide Lairs a province with lairs
-        // this player has discovered.
-        const wmProvs=(report.worldMeta?.provinces)||[];
-        const curLoc=predictedLocation(c.id,ph);
-        const curId=curLoc?curLoc.id:c.locationId;
-        const curP=wmProvs.find(p=>p.id===curId);
-        const candIds=[curId,...((curP&&curP.neighbors)||[])];
-        const kfNames=new Set((report.knownFeatures||[]).filter(f=>!f.cleared).map(f=>f.province));
-        const provOpts=candIds.map(pid=>{
-          const p=wmProvs.find(x=>x.id===pid);
-          if(!p) return '';
-          const t=p.terrain; // null for unexplored tiles (and possibly illusory — the map is what you see)
-          // Task 3: Part Sea may target any land OR sea province in reach — a land province flooded to sea
-          // later this turn can then be reverted (the Flood counter), so no terrain filter for Part Sea.
-          if(selSpell==='Flood'&&(t==='sea'||t==null)) return '';
-          if(selSpell==='Hide Lairs'){
-            const hasKnownFeature=((p.features||[]).length>0)||(p.name&&kfNames.has(p.name));
-            if(!hasKnownFeature) return '';
-          }
-          // Item 4: Bless boosts a province's tax at collection, so list each candidate's tax base to
-          // help the player pick the richest target. Only shown for Bless (other province spells don't
-          // care about tax) and only when the tax base is actually known for that province.
-          const taxLbl=(selSpell==='Bless Province'&&p.tax!=null)?` · tax base ${p.tax}g`:'';
-          const label=(p.name||`Unknown province (${provDirectionLabel(curId,pid,wmProvs,report.worldMeta?.cols)||'?'})`)+(pid===curId?' (here)':'')+(t?` — ${t}`:'')+taxLbl;
-          return `<option value="${pid}" ${extra==pid?'selected':''}>${label}</option>`;
-        }).filter(Boolean).join('');
-        secondaryHtml=provOpts
-          ?`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px"><option value="">— Target province —</option>${provOpts}</select>
-          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`
-          :`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="${selSpell==='Part Sea'?'No province here or adjacent':selSpell==='Flood'?'No land province here or adjacent':selSpell==='Hide Lairs'?'No discovered lairs here or adjacent':'No valid target province in reach'}" disabled>
-          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
-      } else if(NEEDS_CHAR.has(selSpell)){
-        const casterLoc=predictedLocation(c.id,ph)?.id??c.locationId;
-        let charOpts='';
-        if(selSpell==='Resurrect'){
-          // Resurrect shows dead heroes the player knows of. Kings can never be resurrected, and
-          // the body must lie in the caster's province at cast time — bodies at the caster's
-          // predicted location are marked ✓; others are listed so the player can plan a move there.
-          const casterHereName=(predictedLocation(c.id,ph)||{}).name;
-          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>!x.isKing||x.isMonarch).map(x=>{
-            const here=casterHereName&&x.locationName===casterHereName;
-            const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':' ⚔ (enemy hero)');
-            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
-          }).join('');
-        } else if(selSpell==='Charm'){
-          // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
-          // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
-          // (The engine enforces all of this — this list simply matches it.)
-          const targets=(report.visibleChars||[]).filter(x=>
-            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 &&
-            (x.player===null || x.player!==c.player));
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune)</option>';
-        } else if(selSpell==='Oratory'){
-          // Oratory: self, or own characters predicted to be in the same province this phase.
-          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
-        } else if(selSpell==='Phantasmal Armies'){
-          // Phantasmal Armies: self, or any friendly hero in the SAME province this phase. The buff
-          // no longer requires armies at cast time (item 12) — it sits on the target and is spent by
-          // their next battle, so it still helps if they pick up or recruit armies in a later phase.
-          const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
-        } else if(selSpell==='Clairvoyance'){
-          // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
-          // persistent sighting record (everSeenChars), plus anyone visible right now.
-          const seen=(report.everSeenChars&&report.everSeenChars.length?report.everSeenChars:(report.visibleChars||[]))
-            .filter(x=>x && x.player!=null && !x.isWandering) // Task 7(b): neutral/wandering heroes are not valid Clairvoyance targets
-            .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':' ⚔ (enemy)'} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>You have not seen any enemy characters yet</option>';
-        } else if(selSpell==='Control Undead'){
-          // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
-          // to reveal the dead army units lying in it.
-          const scanOpt=`<option value="__scan__" ${extra==='__scan__'?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
-          const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
-          const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
-          charOpts=scanOpt+enemyOpts;
-        } else if(selSpell==='Telekinetic Storm'){
-          // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
-          // there is nothing to scatter around a hero marching alone.
-          const targets=(report.visibleChars||[]).filter(x=>
-            x.player!==c.player && x.locationId===casterLoc && (x.armies||0)>0);
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
-        } else {
-          // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
-          // Target visible enemy/neutral characters in the same province.
-          const targets=(report.visibleChars||[]).filter(x=>
-            x.player!==c.player && x.locationId===casterLoc);
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
-        }
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph});syncCharmCard('${c.id}',${ph})"><option value="">— Target character —</option>${charOpts}</select>
-          <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
-      } else {
-        secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
-      }
+      const secondaryHtml=spellSecondaryHtml(report,c,ph,selSpell,extra,target);
       return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${spells}</select>${secondaryHtml}`;}
 
     // ── PRACTICE SKILL ──
@@ -6186,6 +6198,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-2040</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-2057</div>
 </body>
 </html>

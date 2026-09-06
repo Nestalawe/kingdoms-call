@@ -2854,6 +2854,67 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Siege Master\'s Ring',desc:'Province defence bonuses reduced by half when you attack',effect:{stat:'siegeBonus',bonus:1},tier:2},
   // ── Undead-specific ──
   {name:'Black Sceptre',desc:'Skeletal Legions you lead: +4 strength',effect:{stat:'undeadBonus',bonus:1},tier:1},
+  // ── SPELL ITEMS (Item 12, Sept 2026): two per castable action spell. Use Item casts the spell as
+  // a phase order at a flat 95%, no skill or casting-slot needed (effects scale as if caster level 3,
+  // or the holder's own level if higher). Mastery-spell items are tier 2 (tier 3 stays the ten Relics).
+  {name:'Phial of the Dawn',desc:'Use Item: casts Resurrect (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Resurrect',bonus:0},tier:1},
+  {name:'Saint\'s Knucklebone',desc:'Use Item: casts Resurrect (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Resurrect',bonus:0},tier:1},
+  {name:'Rod of the Parted Waters',desc:'Use Item: casts Part Sea (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Part Sea',bonus:0},tier:1},
+  {name:'Pilgrim\'s Sandal',desc:'Use Item: casts Part Sea (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Part Sea',bonus:0},tier:1},
+  {name:'Censer of Plenty',desc:'Use Item: casts Bless Province (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Bless Province',bonus:0},tier:1},
+  {name:'Harvest Icon',desc:'Use Item: casts Bless Province (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Bless Province',bonus:0},tier:1},
+  {name:'Locket of Sweet Words',desc:'Use Item: casts Charm (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Charm',bonus:0},tier:1},
+  {name:'Silver Tongue Charm',desc:'Use Item: casts Charm (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Charm',bonus:0},tier:1},
+  {name:'Speaker\'s Laurel',desc:'Use Item: casts Oratory (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Oratory',bonus:0},tier:1},
+  {name:'Horn of the Assembly',desc:'Use Item: casts Oratory (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Oratory',bonus:0},tier:1},
+  {name:'Seer\'s Bowl',desc:'Use Item: casts Clairvoyance (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Clairvoyance',bonus:0},tier:1},
+  {name:'Eye of the Far Watch',desc:'Use Item: casts Clairvoyance (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Clairvoyance',bonus:0},tier:1},
+  {name:'Shard of the Screaming Mind',desc:'Use Item: casts Psychic Blast (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Psychic Blast',bonus:0},tier:1},
+  {name:'Migraine Stone',desc:'Use Item: casts Psychic Blast (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Psychic Blast',bonus:0},tier:1},
+  {name:'Whirlwind Bracelet',desc:'Use Item: casts Telekinetic Storm (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Telekinetic Storm',bonus:0},tier:1},
+  {name:'Gauntlet of the Unseen Hand',desc:'Use Item: casts Telekinetic Storm (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Telekinetic Storm',bonus:0},tier:1},
+  {name:'Cartographer\'s Prism',desc:'Use Item: casts Illusory Terrain (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Illusory Terrain',bonus:0},tier:1},
+  {name:'Mirage Glass',desc:'Use Item: casts Illusory Terrain (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Illusory Terrain',bonus:0},tier:1},
+  {name:'Banner of Shadows',desc:'Use Item: casts Phantasmal Armies (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Phantasmal Armies',bonus:0},tier:1},
+  {name:'Drum of Ten Thousand',desc:'Use Item: casts Phantasmal Armies (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Phantasmal Armies',bonus:0},tier:1},
+  {name:'Fogbinder\'s Lantern',desc:'Use Item: casts Hide Lairs (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Hide Lairs',bonus:0},tier:1},
+  {name:'Moth-Wing Veil',desc:'Use Item: casts Hide Lairs (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Hide Lairs',bonus:0},tier:1},
+  {name:'Ring of Vanishing',desc:'Use Item: casts Invisibility (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Invisibility',bonus:0},tier:1},
+  {name:'Hood of No-Face',desc:'Use Item: casts Invisibility (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Invisibility',bonus:0},tier:1},
+  {name:'Hammer of the Deep Root',desc:'Use Item: casts Earthquake (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Earthquake',bonus:0},tier:1},
+  {name:'Fault-Stone',desc:'Use Item: casts Earthquake (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Earthquake',bonus:0},tier:1},
+  {name:'Conch of the Drowned Bell',desc:'Use Item: casts Flood (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Flood',bonus:0},tier:1},
+  {name:'Tide-Warden\'s Urn',desc:'Use Item: casts Flood (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Flood',bonus:0},tier:1},
+  {name:'Elementalist\'s Brazier',desc:'Use Item: casts Elemental Summon (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Elemental Summon',bonus:0},tier:1},
+  {name:'Four-Wind Compass',desc:'Use Item: casts Elemental Summon (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Elemental Summon',bonus:0},tier:1},
+  {name:'Leash of Bone',desc:'Use Item: casts Control Undead (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Control Undead',bonus:0},tier:1},
+  {name:'Grave-Warden\'s Whistle',desc:'Use Item: casts Control Undead (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Control Undead',bonus:0},tier:1},
+  {name:'Reaper\'s Bell',desc:'Use Item: casts Skeletal Armies (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Skeletal Armies',bonus:0},tier:1},
+  {name:'Ossuary Key',desc:'Use Item: casts Skeletal Armies (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Skeletal Armies',bonus:0},tier:1},
+  {name:'Hexwright\'s Needle',desc:'Use Item: casts Curse (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Curse',bonus:0},tier:1},
+  {name:'Blackened Wishbone',desc:'Use Item: casts Curse (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Curse',bonus:0},tier:1},
+  {name:'Vial of the Weeping Rot',desc:'Use Item: casts Plague (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Plague',bonus:0},tier:1},
+  {name:'Rat-King\'s Crown',desc:'Use Item: casts Plague (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Plague',bonus:0},tier:1},
+  {name:'Hearthstone of the Refuge',desc:'Use Item: casts Sanctuary (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Sanctuary',bonus:0},tier:2},
+  {name:'Warding Chalice',desc:'Use Item: casts Sanctuary (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Sanctuary',bonus:0},tier:2},
+  {name:'Gavel of the Last Court',desc:'Use Item: casts Divine Judgment (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Divine Judgment',bonus:0},tier:2},
+  {name:'Sunburst Reliquary',desc:'Use Item: casts Divine Judgment (white) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Divine Judgment',bonus:0},tier:2},
+  {name:'Bell of Babel',desc:'Use Item: casts Mass Confusion (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Mass Confusion',bonus:0},tier:2},
+  {name:'Puzzle-Box of the Lost',desc:'Use Item: casts Mass Confusion (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Mass Confusion',bonus:0},tier:2},
+  {name:'Crown of the Puppeteer',desc:'Use Item: casts Dominate (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Dominate',bonus:0},tier:2},
+  {name:'Thrall-Collar',desc:'Use Item: casts Dominate (psychic) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Dominate',bonus:0},tier:2},
+  {name:'Lantern of Doubled Shadows',desc:'Use Item: casts Phantom Host (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Phantom Host',bonus:0},tier:2},
+  {name:'Mummer\'s Mask',desc:'Use Item: casts Phantom Host (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Phantom Host',bonus:0},tier:2},
+  {name:'Cloak-Pin of the Unseen',desc:'Use Item: casts Veil (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Veil',bonus:0},tier:2},
+  {name:'Fog-Glass Pendant',desc:'Use Item: casts Veil (illusory) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Veil',bonus:0},tier:2},
+  {name:'Stormforged Torc',desc:'Use Item: casts Chain Lightning (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Chain Lightning',bonus:0},tier:2},
+  {name:'Rod of Arcing Fire',desc:'Use Item: casts Chain Lightning (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Chain Lightning',bonus:0},tier:2},
+  {name:'Heart of the Mountain',desc:'Use Item: casts Cataclysm (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Cataclysm',bonus:0},tier:2},
+  {name:'Doom-Seed',desc:'Use Item: casts Cataclysm (elemental) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Cataclysm',bonus:0},tier:2},
+  {name:'Lantern of Grieving Souls',desc:'Use Item: casts Raise Wraiths (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Raise Wraiths',bonus:0},tier:2},
+  {name:'Shroud-Knot',desc:'Use Item: casts Raise Wraiths (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Raise Wraiths',bonus:0},tier:2},
+  {name:'Sceptre of the Silent King',desc:'Use Item: casts Death\'s Dominion (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Death\'s Dominion',bonus:0},tier:2},
+  {name:'Deathmask of the First Necromancer',desc:'Use Item: casts Death\'s Dominion (necromancy) as a phase order at 95%, whatever your skill.',effect:{stat:'castSpell',spell:'Death\'s Dominion',bonus:0},tier:2},
   {name:'Wailing Phylactery',desc:'Necromancy spells always succeed first cast per turn',effect:{stat:'necroAuto',bonus:1},tier:3},
   // ── Economy ──
   {name:'Ring of Wealth',desc:'+5g collected each tax season',effect:{stat:'taxBonus',bonus:5},tier:1},
@@ -10059,6 +10120,12 @@ const BATTLE_ARMY_SPELLS={
       _fmSlip=true; action='move';
     }
 
+    // ── Item 12: a SPELL ITEM used via Use Item becomes a cast of its spell at a flat 95%. ──
+    let _itemCast=null;
+    if(action==='use_item'){
+      const _sit=(c.items||[]).find(x=>x&&(String(x.id)===String(target)||x.name===target));
+      if(_sit&&_sit.effect&&_sit.effect.stat==='castSpell'&&SPELL_DEFS_P[_sit.effect.spell]){ _itemCast={item:_sit.name,spell:_sit.effect.spell}; action='cast_spell'; }
+    }
     switch(action){
       case 'move':{
         // Safety net: if this owned hero never had a move pool computed (both pools undefined) —
@@ -11923,13 +11990,13 @@ const BATTLE_ARMY_SPELLS={
 
       case 'cast_spell':{
         // target = spell name, extra = target province id or character id (if needed)
-        const spellName=target;
+        const spellName=_itemCast?_itemCast.spell:target;
         const spellDef=SPELL_DEFS_P[spellName];
         if(!spellDef){log('system',`${c.name}: unknown spell "${spellName}".`,{actor:c.player,targets:[c.player]});break;}
         if(!spellDef.phase){log('system',`${c.name}: ${spellName} cannot be used as a phase order.`,{actor:c.player,targets:[c.player]});break;}
 
         // Enforce action spell limits (AK rules): level 1-2 → 1/turn, level 3 → 2/turn, level 4-5 → 3/turn
-        {
+        if(!_itemCast){
           const _school=spellDef.school;
           const _lvl=effStat(c,_school);
           const _limit=(_lvl>=4?3:_lvl>=3?2:1)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
@@ -11945,7 +12012,7 @@ const BATTLE_ARMY_SPELLS={
         }
 
         const school=spellDef.school;
-        const spellLevel=effStat(c,school);
+        const spellLevel=_itemCast?Math.max(3,effStat(c,school)):effStat(c,school); // Item 12: a spell item works as at least level 3
         const spellLevelEff=Math.min(spellLevel,5); // Item 19 (this session): spell EFFECTS cap at caster level 5; cast chance keeps the full level
         if(spellLevel===0){
           // Check if they were trying to cast after a practice order this turn
@@ -11954,7 +12021,7 @@ const BATTLE_ARMY_SPELLS={
           break;
         }
         // L7/L9 mastery spells require the RAW school level (past-5 comes from experience only).
-        if(spellDef.reqLevel && skillLevel(c,school) < spellDef.reqLevel){
+        if(!_itemCast && spellDef.reqLevel && skillLevel(c,school) < spellDef.reqLevel){
           log('system',`${c.name} cannot yet wield ${spellName} — it demands ${SKILL_LABELS[school]||school} level ${spellDef.reqLevel}, and they have reached only ${skillLevel(c,school)}.`,{actor:c.player,targets:[c.player]});
           break;
         }
@@ -11974,9 +12041,10 @@ const BATTLE_ARMY_SPELLS={
         // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
         const necroAuto = school==='necromancy' && !c._necroAutoUsed && activeItems(c).some(it=>it.effect&&it.effect.stat==='necroAuto');
         const l8Bonus=magicL8CastBonus(c); // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
-        const castChance=necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus+l8Bonus);
-        if(necroAuto) c._necroAutoUsed=true;
+        const castChance=_itemCast?95:(necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus+l8Bonus));
+        if(necroAuto&&!_itemCast) c._necroAutoUsed=true;
         const castRoll=d100();
+        if(_itemCast) log('system',`🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         log('system',`📊 ${c.name} casts ${spellName} (${school} ${spellLevel}): ${castChance}% chance [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`,{actor:c.player,targets:[c.player],provinceId:prov.id});
 
         if(castRoll>castChance){
@@ -15868,6 +15936,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.06-2040</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.06-2057</div>
 </body>
 </html>
