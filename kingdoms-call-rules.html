@@ -322,8 +322,10 @@ footer.book .v{color:var(--gold-deep);}
   <h2>The World &amp; Provinces</h2>
   <p>The map is a grid of provinces, most of it hidden under <strong>fog of war</strong> at the start. You see only what your characters have visited or scouted; everything else is guesswork until you send someone to look. Intelligence you gather (and steal) persists across turns.</p>
 
+  <h3>The size of the world</h3>
+  <p>The map is a wrapped hex grid whose size follows the number of kingdoms: 2 kingdoms 8×6 (48 provinces), 3 → 10×7, 4 → 12×8, 5 → 13×9, 6 → 15×9, 7 → 16×10, 8 → 17×11, 9 → 18×11, 10 → 19×12. Roughly 40% of it is sea, laid out as coherent coasts and inland seas; the rest is land shared exactly equally between the four humanoid races, with a portion of wild Primal (Creature / Monster) country. Every home province starts adjacent to one poor and one prosperous humanoid province, at least one of them the king's own race, plus a sea province for a king with any Naval skill.</p>
   <h3>Terrain</h3>
-  <p>Provinces are plains, forest, jungle, hill, mountain, desert or sea. Terrain shapes which troops thrive there and which suffer — cavalry flounder in forest, missile troops falter at sea, and mountains squeeze a battle line so numbers count for less. <strong>Sea</strong> provinces are open water: only fleets — or land troops carried by fleets, or armies crossing via <em>Part Sea</em> — may enter them. A fleet can hold a sea province, so open water can be captured and owned like any other tile; only sea that no one has claimed belongs to no kingdom. The deep is not empty: sea provinces pay a <strong>modest tax</strong> (0–2), can be guarded by sea-beasts and their guardians, and hide their own <strong>lairs and treasure</strong> — a navy is worth building for more than defence.</p>
+  <p>Provinces are plains, forest, jungle, mountain, desert or sea. Terrain shapes which troops thrive there and which suffer — cavalry flounder in forest, missile troops falter at sea, and mountains squeeze a battle line so numbers count for less. <strong>Sea</strong> provinces are open water: only fleets — or land troops carried by fleets, or armies crossing via <em>Part Sea</em> — may enter them. A fleet can hold a sea province, so open water can be captured and owned like any other tile; only sea that no one has claimed belongs to no kingdom. The deep is not empty: sea provinces pay a <strong>modest tax</strong> (0–2), can be guarded by sea-beasts and their guardians, and hide their own <strong>lairs and treasure</strong> — a navy is worth building for more than defence.</p>
 
   <h3>Wealth</h3>
   <p>Each land province has a <strong>tax</strong> value — the gold it pays you each turn that you hold it. Provinces come in three broad bands:</p>
@@ -462,9 +464,9 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Archery</strong></td><td><strong>+10% strength to your missile units</strong> each level (Archery 5 = +50%), and +to-hit in personal archery.</td></tr>
     <tr><td><strong>Tactical</strong></td><td><strong>×1.2 army strength per level, up to ×2.0 at level 5</strong> (a hard cap, titles and items included). Applies to land battles only.</td></tr>
     <tr><td><strong>March</strong></td><td>Adds land <strong>move points</strong>: slow armies (base ≤2) gain +0/+0/+1/+1/+2 at levels 1–5; faster armies gain +1/+1/+2/+2/+2. Your column always moves at the pace of its slowest land unit.</td></tr>
-    <tr><td><strong>Naval</strong></td><td>The sea-going mirror of Tactical: <strong>×1.2 strength per level to every fleet and sea-beast you lead in a sea battle, up to ×2.0 at level 5</strong> (land battles are unaffected — there Tactical rules). Level 8 mastery lets land troops fight at full strength aboard ship. As a lesser side-effect it also adds sea move points to a fleet you command, on the March ladder.</td></tr>
+    <tr><td><strong>Naval</strong></td><td>The sea-going mirror of Tactical: <strong>×1.2 strength per level to every fleet and sea-beast you lead in a sea battle, up to ×2.0 at level 5</strong> (land battles are unaffected — there Tactical rules). As a lesser side-effect it also adds sea move points to a fleet you command, on the March ladder.</td></tr>
     <tr class="grp"><td colspan="2"><strong>Special</strong></td></tr>
-    <tr><td><strong>Spy</strong></td><td>A Spy <em>action</em> succeeds at <strong>20% + 20% per level</strong> (level 5 is effectively certain; level 6 never fails). Intelligence accuracy scales too: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying and helps you run down a quarry.</td></tr>
+    <tr><td><strong>Spy</strong></td><td>A Spy <em>action</em> succeeds at <strong>20% + 20% per level</strong> (level 5 is effectively certain). Intelligence accuracy scales too: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying and helps you run down a quarry.</td></tr>
     <tr><td><strong>Thief</strong></td><td>Raises Steal success: a Steal attempt lands at <strong>50% + 10% per level</strong> (Cowardly heroes add a further +15), <strong>halved</strong> if the target is leading troops.</td></tr>
     <tr><td><strong>Druid</strong></td><td>Lets you LEAD non-native races and wild units. The level required varies by unit (see the <a href="#armies">roster's Druid column</a>): tamer creatures need Druid 2–3, the mightiest monsters need Druid 5. Druidic kingdoms lead all Creatures without any Druid skill; a Pagan Wild Hunt binds creatures or monsters without it.</td></tr>
     <tr><td><strong>Sage</strong></td><td>Chance of a kingdom Discovery each turn: <strong>5% per level</strong>, so <strong>25% at level 5</strong> (the chance <strong>caps at 5</strong>). <strong>Neutral</strong> kingdoms roll at double, and the <em>Library</em> discovery doubles the rate again. Each discovery is a permanent kingdom-wide upgrade.</td></tr>
@@ -481,6 +483,7 @@ footer.book .v{color:var(--gold-deep);}
   </ul>
 
   <h3>The mastery ladder (levels 6–9)</h3>
+  <div class="note"><span class="lbl">Deliberately unwritten</span>Nothing in this rulebook describes what any level 6–9 perk, order or spell actually does. That they exist is the whole hint; the rest you learn the day a hero earns it.</div>
   <p>Every skill keeps rewarding you past 5, in the same shape: the <strong>even</strong> levels (6 and 8) grant quiet <em>always-on perks</em>, and the <strong>odd</strong> levels (7 and 9) grant a powerful <em>new ability</em> — a new order for most skills, or a new spell for the magic schools. What each one actually unlocks is deliberately left for you to <strong>discover in the field</strong>: only a hero who has pushed a skill to those heights learns what it bestows. They are earned by experience alone, never bought — and every level past 5 also counts toward the <a href="#victory">Imperial Titles</a>.</p>
 
   <h3>Cross-training</h3>
@@ -518,7 +521,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Disband Army</strong> — dismiss units you no longer wish to pay for.</li>
     <li><strong>Leave / Transfer Army</strong> — drop units as a garrison, or hand them to another of your characters in the same province.</li>
     <li><strong>Pick Up Army</strong> — take command of the <strong>unled (garrison) units stationed in the province the character currently stands in</strong>. You may take all of them or a selected subset. It cannot take units led by another of your characters (use <em>Leave / Transfer Army</em> for that) or hire mercenaries (use <em>Recruit Armies</em>). Picking up slower units lowers the character's move rate for the rest of the turn.</li>
-    <li><strong>Give Item</strong> — pass a magic item to another of your characters in the same province.</li>
+    <li><strong>Send Item</strong> — send one or more magic items to any other living character of yours, wherever they stand (equipped items included).</li>
   </ul>
 
   <h4>Confrontation</h4>
@@ -711,7 +714,6 @@ footer.book .v{color:var(--gold-deep);}
     <li>Each fleet unit provides <strong>1 hull</strong> of capacity.</li>
     <li><strong>Light foot</strong> — levies, all archers, garrisons, Goblin Horde, Forest Wardens, Dwarven Guard, Orc Berserkers — take <strong>half a hull</strong> each (two per ship).</li>
     <li><strong>Everything else</strong> — cavalry, siege, walking creatures and monsters — takes a <strong>full hull</strong> each.</li>
-    <li>The <strong>Naval mastery perk (level 8)</strong> doubles it: one hull then carries what used to need two.</li>
     <li><strong>Primal sea-beasts</strong> swim under their own power and need no fleet, but they carry <strong>nothing</strong> — a Kraken can't ferry a single soldier.</li>
   </ul>
   <p>If the fleet lacks the hulls, the force is turned back at the water's edge — no move, no point spent.</p>
@@ -828,7 +830,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Battle-magic</strong> spells are cast into a full army battle to swing it. Certain combat spells double as battle-magic, weakening whole enemy contingents.</li>
   </ul>
   <h4>Your chance to cast</h4>
-  <p>Every cast is a roll. Your chance of success is <strong>20% + 10% per level in that school</strong>, capped at <strong>95%</strong> — so level 1 casts at 30%, level 3 at 50%, level 5 at 70%. Bonuses stack on top (still under the 95% ceiling): the <em>Arcane Codex</em> discovery adds <strong>+5%</strong> to every cast, and each magic school you have raised to <strong>level 8</strong> adds <strong>+10%</strong> to casting <em>any</em> spell (a five-school archmage sits at +50%, i.e. the cap on nearly everything). The <em>Wailing Phylactery</em> relic makes your <strong>first Necromancy spell each turn succeed automatically</strong>.</p>
+  <p>Every cast is a roll. Your chance of success is <strong>20% + 10% per level in that school</strong>, capped at <strong>95%</strong> — so level 1 casts at 30%, level 3 at 50%, level 5 at 70%. Bonuses stack on top (still under the 95% ceiling): the <em>Arcane Codex</em> discovery adds <strong>+5%</strong> to every cast; mastery of a school beyond level 5 brings further casting bonuses you discover in play. The <em>Wailing Phylactery</em> relic makes your <strong>first Necromancy spell each turn succeed automatically</strong>.</p>
 
   <h4>How many you may cast</h4>
   <p>How many spells of a school you can work depends on your level in it:</p>
@@ -843,7 +845,7 @@ footer.book .v{color:var(--gold-deep);}
 <!-- 14 ──────────────────────────────────────────────── -->
 <section id="spells">
   <h2>The Spellbook</h2>
-  <p>The twenty-five core spells, by school. A character with at least <strong>level 1</strong> in a school can cast <em>any</em> of that school's five core spells — you don't unlock them one by one. Higher levels make your spells more potent and let you cast more of them per turn. Remember each cast can fail: your success chance is <strong>20% + 10% per school level</strong>, +5% with the Arcane Codex discovery, +10% for each school mastered to level 8, hard cap 95%. Spell <em>effects</em> never scale beyond level 5 — past that you gain the mastery perks instead — see <a href="#magic">How spells are cast</a>. <span class="pill">A</span> = action, <span class="pill">C</span> = combat, <span class="pill">B</span> = battle-magic.</p>
+  <p>The twenty-five core spells, by school. A character with at least <strong>level 1</strong> in a school can cast <em>any</em> of that school's five core spells — you don't unlock them one by one. Higher levels make your spells more potent and let you cast more of them per turn. Remember each cast can fail: your success chance is <strong>20% + 10% per school level</strong>, +5% with the Arcane Codex discovery, hard cap 95%. Spell <em>effects</em> never scale beyond level 5 — past that you gain the mastery perks instead — see <a href="#magic">How spells are cast</a>. <span class="pill">A</span> = action, <span class="pill">C</span> = combat, <span class="pill">B</span> = battle-magic.</p>
 
   <h3>✨ White — healing, blessing, holiness</h3>
   <div class="wrap"><table class="tbl">
@@ -904,7 +906,7 @@ footer.book .v{color:var(--gold-deep);}
 <section id="items">
   <h2>Magic Items &amp; Discoveries</h2>
   <h3>Magic items</h3>
-  <p>Items are won from lairs, looted from the fallen, and stolen. They come in tiers, the rarest being the world's ten <strong>Legendary relics</strong>. A hero can carry several, and pass them to another character with <em>Give Item</em>. Broadly, items:</p>
+  <p>Items are won from lairs, looted from the fallen, and stolen. They come in tiers, the rarest being the world's ten <strong>Legendary relics</strong>. A hero can carry several, and pass them to another character with <em>Send Item</em>. Broadly, items:</p>
   <div class="note"><span class="lbl">Wearing and wielding</span>Weapons, armour, cloaks, helms/crowns, rings and amulets occupy <strong>slots</strong> — one item per slot (two rings) may be <strong>equipped</strong> at a time, and only equipped slot items give their power. A character auto-equips the first item held for each slot; the <strong>Equip Items</strong> order lets you choose exactly what is worn in every slot. Everything else you carry (horns, banners, ledgers, tomes, relics…) is always active. Equipped items can still be sent to other characters.</div>
 
   <ul>
@@ -956,7 +958,6 @@ footer.book .v{color:var(--gold-deep);}
   <ul><li><strong>Fanatical zeal 25%</strong>; Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) add <strong>+25%</strong> to that chance.</li><li><strong>Terror</strong>: after a decisive (or better) victory, the province and every adjacent province are terrorised — armies defending there in the next battle fight at <strong>−10%</strong> (stacking).</li><li><strong>Plunder</strong>: conquering a province immediately yields <strong>50%</strong> of its tax value in gold.</li><li>A felled Cowardly enemy begging your mercy is spared only <strong>20%</strong> of the time.</li><li>Undead and Evil hosts fight at <strong>−15%</strong> when attacking a consecrated province.</li><li>Hiring: dark end — righteous heroes cost up to <strong>5g/turn</strong>.</li></ul>
   <h3>💀 Undead <span style="font-weight:400;font-size:.85em">— zeal 0%</span></h3>
   <ul><li><strong>No zeal roll</strong> — instead every skeletal army under your banner is permanently fanatical: <strong>+30%</strong> with the King in person, <strong>+20%</strong> under any other commander.</li><li>Your king starts with <strong>Necromancy +1</strong> (heirs too) and a unit of Skeletal Shieldwall Levies.</li><li>Skeletal armies ignore the Druid penalty and cost only <strong>1g</strong> upkeep each.</li><li><strong>Harvest the Field</strong>: any character standing where armies have fallen raises one grave as a Skeletal unit for <strong>2g</strong> — no magic needed.</li><li><strong>Deathless March</strong>: a force of skeletons alone is never cut down in flight — with no line of retreat it stands and holds.</li><li>Battlefield graves in your provinces decay at <strong>5%</strong> per turn instead of 10%.</li><li>Hiring: the unholy end — righteous heroes cost up to <strong>5g/turn</strong>, and <strong>Divine heroes will never serve you</strong>.</li></ul>
-  <div class="note"><span class="lbl">Grand Design</span>The late-game Grand Design discovery adds an alignment-specific capstone (for example Good: +2 tax from every garrisoned province; Druidic: Creature and Monster recruits start Veteran; Undead: raised skeletons come one tier higher and never disband for unpaid wages; Divine: Bless Province needs no casting slot and the capital is permanently warded). The discovery card in play shows the exact text.</div>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -1079,7 +1080,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.06-2057</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.06-2107</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
