@@ -18,7 +18,7 @@ body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--i
    otherwise overlay-scrollbar systems (macOS, some mobile) hide them until hover, reading as "no
    scroll bars". `overflow:auto` on both axes; a corner box where they meet. */
 #report-map-container,#map-fullscreen-modal .kc-map-scroll{
-  overflow:auto!important; scrollbar-width:auto; scrollbar-color:#8a6a2a #1a1208;
+  overflow:auto!important; scrollbar-width:auto; scrollbar-color:#8a6a2a #1a1208; min-height:0; min-width:0;
 }
 #report-map-container::-webkit-scrollbar,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar{ width:13px; height:13px; }
 #report-map-container::-webkit-scrollbar-thumb,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-thumb{ background:#8a6a2a; border-radius:6px; border:2px solid #1a1208; }
@@ -159,7 +159,8 @@ section{display:none;}.section-active{display:block;}
      button remains for a bigger view, and native browser pinch-zoom is left enabled. */
   #rp-map-col{background:#0e0a04;}
   #report-map-container{height:60vh!important;overflow:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
-  #report-map-svg{width:700px!important;height:auto!important;max-width:none!important;}
+  #report-map-zoomwrap{width:700px!important;height:auto!important;max-width:none!important;}
+  #report-map-svg{width:100%!important;height:auto!important;max-width:none!important;}
   /* Orders: stack each phase row's fields full-width; 16px inputs stop iOS auto-zoom on focus. */
   .phase-order{grid-template-columns:1fr!important;gap:4px!important;}
   .phase-order select,.phase-order input{font-size:16px!important;padding:9px 8px!important;}
@@ -368,8 +369,10 @@ section{display:none;}.section-active{display:block;}
           <button onclick="showFullscreenMap()" class="btn btn-ghost" style="font-size:.65rem;padding:3px 9px">⛶ Fullscreen</button>
         </div>
         <div id="map-icon-toggles" style="display:flex;flex-wrap:wrap;gap:3px;padding:4px 8px;background:#160f06;border-bottom:1px solid #2a1c0c;font-size:.62rem"></div>
-        <div id="report-map-container" style="flex:1;overflow:auto;padding:6px">
+        <div id="report-map-container" style="flex:1 1 0;min-height:0;min-width:0;overflow:auto;padding:6px">
+          <div id="report-map-zoomwrap" style="width:100%;height:100%">
           <svg id="report-map-svg" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%"></svg>
+          </div>
         </div>
         <!-- Map legend -->
         <div style="padding:10px 14px;background:#1a1208;border-top:1px solid #333;display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;color:#bbb;align-items:center">
@@ -500,6 +503,8 @@ section{display:none;}.section-active{display:block;}
               </button>
             </div>
             <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
+            <!-- Item 7 (this session): concede the game -->
+            <div id="concede-wrap" style="margin-top:6px;font-size:.72rem"></div>
           </div>
         </div><!-- end orders-card -->
       </div><!-- end orders column -->
@@ -613,6 +618,21 @@ let currentReport = null;
 let diploChoices = {};
 // Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant). Submitted with orders.
 let reckoningCall = false;
+// Item 7 (this session): the player may concede the game with their orders. Once the GM runs a turn
+// with concede=true the kingdom is out for good — its heroes only Defend from then on.
+let concedeGame = false;
+function renderConcede(){
+  const w=document.getElementById('concede-wrap'); if(!w) return;
+  const k=currentReport?.kingdom||{};
+  if(k.conceded){ w.innerHTML=`<div style="background:#eee;border:1px solid #999;border-radius:3px;padding:6px 8px;color:#555">\u{1F3F3} <strong>Your kingdom has conceded.</strong> Your heroes hold their ground and take no further orders.</div>`; return; }
+  w.innerHTML=concedeGame
+    ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px">\u{1F3F3} <strong>You will CONCEDE the game with these orders.</strong> This cannot be undone once the turn runs. <button type="button" onclick="setConcede(false)" style="margin-left:6px;font-size:.7rem;padding:2px 8px;cursor:pointer">Cancel</button></div>`
+    : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#666;border-radius:2px;cursor:pointer" title="Withdraw your kingdom from the game">\u{1F3F3} Concede the game\u2026</button>`;
+}
+function setConcede(v){
+  if(v && !confirm('Concede the game?\n\nYour kingdom withdraws for good: from the turn this is submitted your heroes will only Defend, and you can never rejoin. If every other kingdom has conceded, or all those left are one alliance, the game ends at once and the results are shown.\n\nSubmit your orders to confirm.')) return;
+  concedeGame=!!v; renderConcede();
+}
 
 // ── Task 10: PLAYER-TO-PLAYER DISPATCHES (compose) ─────────────────────────
 // Pending dispatches for THIS turn: [{to:[recipientIdx…] | 'all', text}]. Submitted with orders; the GM
@@ -826,14 +846,19 @@ function injectMapZoomBar(){
 function applyMapZoom(){
   const svg=document.getElementById('report-map-svg');
   const cont=document.getElementById('report-map-container');
+  const wrap=document.getElementById('report-map-zoomwrap');
   if(!svg) return;
-  if(_mapZoom<=1){ svg.style.width='100%'; svg.style.height='100%'; svg.style.maxWidth=''; svg.style.maxHeight=''; return; }
+  // Item 6 (this session): the scroll container is a flex child; without min-height/min-width:0 it
+  // GREW to fit the zoomed map instead of scrolling (flex items default to min-size:auto) — which is
+  // why the bars never appeared. The map is now zoomed via an explicitly sized WRAPPER block, so the
+  // container's content is a plain oversized div and overflow:auto scrolls on both axes.
+  if(cont){ cont.style.minHeight='0'; cont.style.minWidth='0'; cont.style.overflow='auto'; }
+  const setW=(w,h)=>{ if(wrap){ wrap.style.width=w; wrap.style.height=h; } svg.style.width='100%'; svg.style.height='100%'; svg.style.maxWidth='none'; svg.style.maxHeight='none'; };
+  if(_mapZoom<=1){ setW('100%','100%'); return; }
   const pad=12; // container padding (6px each side)
   const cw=Math.max(50,((cont&&cont.clientWidth)||320)-pad);
   const ch=Math.max(50,((cont&&cont.clientHeight)||320)-pad);
-  svg.style.width=(cw*_mapZoom)+'px';
-  svg.style.height=(ch*_mapZoom)+'px';
-  svg.style.maxWidth='none'; svg.style.maxHeight='none';
+  setW((cw*_mapZoom)+'px',(ch*_mapZoom)+'px');
 }
 function mapZoom(delta){
   _mapZoom = delta===0 ? 1 : Math.max(1, Math.min(4, _mapZoom+delta));
@@ -1340,7 +1365,7 @@ function buildChronicle(log, chars_for_log){
     if(t.gameOver){
       const go=t.gameOver;
       return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
-        <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 The Reckoning is complete — ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':'is judged supreme'}!</div>
+        <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 ${go.byConcession?'The game is decided':'The Reckoning is complete'} — ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field as every rival concedes':'is judged supreme'}!</div>
         <div style="font-size:.76rem;color:#555;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>
       </div>`;
     }
@@ -1816,7 +1841,7 @@ async function openReport(gamePlayerId){
     });
   }catch(e){/* no draft yet — heir shows freshly-crowned base skills */}
   diploChoices={}; // fresh pending diplomacy each time a report opens (restored from any saved draft below)
-  reckoningCall=false;
+  reckoningCall=false; concedeGame=false;
   viewingReport=report;              // map/history starts on the current report
 
   // Turn numbering, player-facing:
@@ -2462,7 +2487,7 @@ function renderTitles(report){
     const board=(go.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
       `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#777">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
     el.innerHTML=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
-      <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':'is judged supreme at the Reckoning'}!</div></div>
+      <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field — every rival has conceded':'is judged supreme at the Reckoning'}!</div></div>
       <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#888;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Kingdom</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
     return;
   }
@@ -2640,7 +2665,7 @@ const SPELL_HINTS={
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
   'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Whatever armies they lead in their next battle this turn fight +10% per caster level (works even if they pick up armies in a later phase). Not cumulative.',
   'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides ALL lairs you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
-  'Invisibility':'Combat: you become twice as hard to hit for the fight, +30% to Flee, and +15% to a following Steal.',
+  'Invisibility':'Combat: you become twice as hard to hit for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn.',
   'Lightning Bolt':'Combat: 2\u20134 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
   'Fireball':'Combat: burns the target for 10% of its health each round for 3 rounds. Battle: a random enemy unit\u2019s strength is halved.',
   'Earthquake':'Target: a province you\u2019re in or adjacent to. It yields no tax at the end of this turn.',
@@ -2859,6 +2884,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // Restore any diplomacy declarations saved in this turn's draft so they survive a re-render.
   if(rawSaved.diplomacy && typeof rawSaved.diplomacy==='object') diploChoices={...rawSaved.diplomacy};
   if(rawSaved.callReckoning===true) reckoningCall=true;
+  concedeGame=(rawSaved.concede===true); setTimeout(renderConcede,0);
 
   el.innerHTML=heirSelectorHTML(chars)+chars.filter(c=>c.alive!==false).map(c=>{
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
@@ -2949,25 +2975,12 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#999">— used when searching lairs or in random encounters</span>
           </div>
           <div style="font-size:.78rem;color:var(--stone);margin-bottom:6px">
-            Drag to reorder tactics. The plan is executed in order until the encounter ends. If you run out of tactics, Melee is used.
+            Drag a tactic (or use ▲ ▼) to reorder. The plan is executed in order until the encounter ends. If you run out of tactics, Melee is used.
           </div>
           <div id="ep-list-${c.id}" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px"
             ondragover="event.preventDefault()"
             ondrop="epDropTactic(event,'${c.id}')">
-            ${epOrdered.map((t,i)=>{
-              return`<div draggable="true"
-                data-char="${c.id}" data-idx="${i}"
-                ondragstart="epDragStart(event,'${c.id}',${i})"
-                ondragover="event.preventDefault();this.style.outline='2px solid var(--crimson)'"
-                ondragleave="this.style.outline=''"
-                ondrop="epDropTactic(event,'${c.id}',${i});this.style.outline=''"
-                style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px;cursor:grab">
-                <span style="color:#bbb;font-size:.9rem;cursor:grab" title="Drag to reorder">⠿</span>
-                <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i+1}.</span>
-                <span style="font-size:.8rem;flex:1">${tacticLabel(t)}</span>
-                <button onclick="removeEncounterTactic('${c.id}',${i})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
-              </div>`;
-            }).join('')}
+            ${epOrdered.map((t,i)=>epRowHtml(String(c.id),t,i,epOrdered.length)).join('')}
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS').map(t=>{
@@ -3272,8 +3285,36 @@ function confirmEPSchool(charId, school){
   renderPreSchool(charId);
 }
 
+// Item 2 (this session): ONE row renderer for the encounter plan, used by the initial build AND
+// refreshEncounterPlan. (The refresh used to rebuild rows WITHOUT the draggable/drag attributes, so
+// dragging silently stopped working after the first add/remove.) ▲/▼ buttons give touch devices —
+// which have no HTML5 drag — the same reordering.
+function epRowHtml(charId, t, i, n){
+  return`<div draggable="true" data-char="${charId}" data-idx="${i}"
+      ondragstart="epDragStart(event,'${charId}',${i})"
+      ondragover="event.preventDefault();this.style.outline='2px solid var(--crimson)'"
+      ondragleave="this.style.outline=''"
+      ondrop="epDropTactic(event,'${charId}',${i});this.style.outline=''"
+      style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px;cursor:grab">
+      <span style="color:#bbb;font-size:.9rem;cursor:grab" title="Drag to reorder">⠿</span>
+      <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i+1}.</span>
+      <span style="font-size:.8rem;flex:1">${tacticLabel(t)}</span>
+      <button type="button" onclick="epMoveTactic('${charId}',${i},-1)" ${i===0?'disabled':''} title="Move up" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▲</button>
+      <button type="button" onclick="epMoveTactic('${charId}',${i},1)" ${i>=n-1?'disabled':''} title="Move down" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▼</button>
+      <button type="button" onclick="removeEncounterTactic('${charId}',${i})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
+    </div>`;
+}
+function epMoveTactic(charId, idx, dir){
+  const hidden=document.getElementById(`ep-tactics-${charId}`);
+  if(!hidden) return;
+  const tactics=hidden.value?hidden.value.split(',').filter(Boolean):[];
+  const j=idx+dir; if(idx<0||idx>=tactics.length||j<0||j>=tactics.length) return;
+  [tactics[idx],tactics[j]]=[tactics[j],tactics[idx]];
+  hidden.value=tactics.join(',');
+  refreshEncounterPlan(charId,tactics);
+}
 function epDragStart(event, charId, fromIdx){
-  event.dataTransfer.setData('text/plain', JSON.stringify({charId, fromIdx}));
+  event.dataTransfer.setData('text/plain', JSON.stringify({charId:String(charId), fromIdx}));
   event.dataTransfer.effectAllowed='move';
 }
 
@@ -3281,16 +3322,18 @@ function epDropTactic(event, charId, toIdx){
   event.preventDefault();
   let data;
   try { data=JSON.parse(event.dataTransfer.getData('text/plain')); } catch(e){ return; }
-  if(data.charId!==charId) return; // can't drag between characters
+  if(String(data.charId)!==String(charId)) return; // can't drag between characters
   const fromIdx=data.fromIdx;
-  if(fromIdx===toIdx||toIdx===undefined) return;
   const hidden=document.getElementById(`ep-tactics-${charId}`);
   if(!hidden) return;
   const tactics=hidden.value?hidden.value.split(',').filter(Boolean):[];
   if(fromIdx<0||fromIdx>=tactics.length) return;
+  if(toIdx===undefined) toIdx=tactics.length-1; // dropped on the list background → send to the end
+  if(fromIdx===toIdx) return;
   const moved=tactics.splice(fromIdx,1)[0];
-  const insertAt=toIdx>fromIdx?toIdx-1:toIdx; // adjust for removed element
-  tactics.splice(Math.min(insertAt,tactics.length),0,moved);
+  // Drop ONTO a row: dragging down places the tactic after that row, dragging up places it before —
+  // so after removal the target index itself is the insertion point in both directions.
+  tactics.splice(Math.min(toIdx,tactics.length),0,moved);
   hidden.value=tactics.join(',');
   refreshEncounterPlan(charId,tactics);
 }
@@ -3320,13 +3363,7 @@ function tacticLabel(code){
 function refreshEncounterPlan(charId, tactics){
   const list=document.getElementById(`ep-list-${charId}`);
   if(!list)return;
-  list.innerHTML=tactics.map((t,i)=>{
-    return`<div style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px">
-      <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i+1}.</span>
-      <span style="font-size:.8rem;flex:1">${tacticLabel(t)}</span>
-      <button onclick="removeEncounterTactic('${charId}',${i})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
-    </div>`;
-  }).join('');
+  list.innerHTML=tactics.map((t,i)=>epRowHtml(String(charId),t,i,tactics.length)).join('');
 }
 
 
@@ -4093,15 +4130,15 @@ const UNIT_ABILITIES={
   // magic phase; its chance rises with the commanding hero’s Druid skill — 20% base, +10% per level).
   'Noble Griffons':'Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4). Chance rises with the commander’s Druid skill.',
   'Giant Eagles':'Stoop on the Archers — ×1.25 strength when the enemy fields missile troops. Diving Talons: a pre-battle strike on one enemy unit (4–8).',
-  'Forest Ents':'Rooted Grove — ×1.3 strength in forest and jungle; regenerate in forest, but burn in desert. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each).',
+  'Forest Ents':'Rooted Grove — ×1.3 strength in forest and jungle. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each).',
   'Stone Giants':'Mountain Bulwark — ×1.3 strength in mountains; devastating melee, very slow. Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7).',
-  'Cave Trolls':'Regenerating Hide — ×1.2 strength always, ×1.3 more in mountain or forest; each may shrug off death in a lost battle (30%). Hurled Rubble: a pre-battle strike on one enemy unit (4–7).',
-  'Manticore Pride':'Relentless Hunt — ×1.25 strength when attacking; always pursue a beaten foe. Spine Volley: a pre-battle strike across every enemy unit (2–4 each).',
-  'Basilisk Brood':'Stone Deterrent — ×1.25 strength when defending; their gaze saps the units they face. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
-  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields missile troops; enemy archers fire at −30% against them. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
-  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes the whole enemy front line in fire (3–6 each).',
-  'Titan Warbeasts':'Colossal Bulk — ×1.3 strength always, and they fight from the back line at full front-line effect. World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each).',
-  'Sea Giants':'Tidal Might — ×1.3 strength at sea (may also fight coastal land at −20%). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
+  'Cave Trolls':'Regenerating Hide — ×1.2 strength always, ×1.3 more in mountain or forest (about ×1.56 there). Hurled Rubble: a pre-battle strike on one enemy unit (4–7).',
+  'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker. Spine Volley: a pre-battle strike across every enemy unit (2–4 each).',
+  'Basilisk Brood':'Stone Deterrent — ×1.25 strength when their side is defending. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
+  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields missile troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
+  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each).',
+  'Titan Warbeasts':'Colossal Bulk — ×1.3 strength in every battle (they fight from the back line at full front-line effect). World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each).',
+  'Sea Giants':'Tidal Might — ×1.3 strength at sea. Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
   'Kraken Tentacles':'Deepwater Grasp — ×1.35 strength at sea. Crushing Coils: a pre-battle strike that drags one enemy unit under (5–9).',
   'Leviathan Pods':'Fleet-Sinker — ×1.4 strength at sea, the strongest naval unit in the game. Abyssal Maelstrom: a pre-battle strike across the whole enemy fleet-line (4–7 each).',
 };
@@ -4200,7 +4237,7 @@ async function doSaveOrders(){
   }
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
-  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,messages:collectMessages()});
+  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages()});
   const {error:saveErr}=await sb.from('game_players').update({
     orders:_payload,
     orders_submitted:false
@@ -4327,7 +4364,7 @@ async function doSubmitOrders(){
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,messages:collectMessages(),forTurn:expectedTurn}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -4455,15 +4492,37 @@ function predictedItems(charId, upToPhaseExclusive){
 // recipient and garrison-eligibility lists reflect where the character will actually be.)
 // Known limitation: armies TRANSFERRED to this character by ANOTHER character earlier this turn are
 // not yet projected in — the GM still resolves the transfer correctly, it just isn't previewed here.
-function projectedLedArmies(charId, upToPhaseExclusive){
+function projectedLedArmies(charId, upToPhaseExclusive, _depth){
   const report=currentReport||{};
   const char=(report.characters||[]).find(x=>x.id===charId);
   if(!char) return [];
+  _depth=_depth||0;
   let armies=(char.armies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName,race:a.race,_isSkeletal:a._isSkeletal}));
   const provOrderData=report.provinceOrderData||{};
   for(let prevPh=0;prevPh<upToPhaseExclusive;prevPh++){
     const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
     const prevTarget=document.getElementById(`po-target-${charId}-${prevPh}`)?.value||'';
+    // Item 5 (this session): armies gained FROM OTHER characters of yours earlier this turn —
+    // a Recruit mustered "to:<this id>" or a Leave/Transfer handed to this character — now project
+    // in too (depth-limited so mutual transfers cannot recurse forever).
+    if(_depth<2)(report.characters||[]).forEach(o=>{
+      if(o.id===charId) return;
+      const oAct=document.getElementById(`po-action-${o.id}-${prevPh}`)?.value||'';
+      const oTgt=document.getElementById(`po-target-${o.id}-${prevPh}`)?.value||'';
+      if(oAct==='Recruit Armies'&&oTgt.split(',').map(t=>t.trim()).includes('to:'+charId)){
+        oTgt.split(',').map(t=>t.trim()).forEach(v=>{
+          if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
+          const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
+          for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
+        });
+      } else if(oAct==='Leave/Transfer Army'){
+        const oExtra=document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value||'';
+        if(String(oExtra)!==String(charId)) return;
+        const oArm=projectedLedArmies(o.id, prevPh, _depth+1);
+        if(oTgt.split(',').includes('all')) oArm.forEach(a=>armies.push(a));
+        else oTgt.split(',').filter(Boolean).forEach(val=>{ val=val.trim(); const a=oArm.find(x=>(x.unitName||x.type)===val); if(a) armies.push(a); });
+      }
+    });
     if(prevAction==='Recruit Armies'){
       const wrap=document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
       if(wrap){
@@ -4914,7 +4973,11 @@ function buildTargetField(c, ph, saved){
       // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
       // still holds a primal unit (Creature or Monster country).
       const canHunt=(pd?.armyTypes||[]).some(a=>CREATURE_ARMIES_UI.has(a.type)||MONSTER_ARMIES_UI.has(a.type));
-      const _boArmy=c.armies||[];
+      // Item 5 (this session): list the armies this character will be LEADING at this phase — start-of-
+      // turn units plus anything recruited, picked up, transferred in or otherwise gained earlier in the
+      // turn (the engine resolves the S:/E: indices against the actual army list at that phase, which
+      // is built in the same order: existing units first, gains appended in phase order).
+      const _boArmy=projectedLedArmies(c.id, ph);
       // Pre-select from any saved order (extra encodes "S:i,j|E:a,b").
       const _boSaved={S:new Set(),E:new Set()};
       { const m=/S:([0-9,]*)\|E:([0-9,]*)/.exec(extra||''); if(m){ m[1].split(',').filter(Boolean).forEach(x=>_boSaved.S.add(+x)); m[2].split(',').filter(Boolean).forEach(x=>_boSaved.E.add(+x)); } }
@@ -4944,7 +5007,7 @@ function buildTargetField(c, ph, saved){
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
-        'Illusory Terrain','Phantasmal Armies','Hide Lairs',
+        'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility',
         'Earthquake','Flood','Elemental Summon',
         'Control Undead','Skeletal Armies','Curse','Plague',
         'Sanctuary','Divine Judgment','Mass Confusion','Dominate','Phantom Host','Veil','Chain Lightning','Cataclysm','Raise Wraiths',"Death's Dominion"]);
@@ -5469,29 +5532,30 @@ function makeTerrainIcon(svgNS, cx, cy, terrain){
   };
   switch(terrain){
     case 'sea':
-      els.push(mk('path',{d:`M${cx-7},${cy-1} q4,-4 8,0 q4,4 8,0`,stroke:'rgba(255,255,255,0.55)','stroke-width':'1.5',fill:'none'}));
+      // Item 17b (this session): every glyph re-centred on (cx,cy) by its bounding box.
+      els.push(mk('path',{d:`M${cx-8},${cy-1} q4,-4 8,0 q4,4 8,0`,stroke:'rgba(255,255,255,0.55)','stroke-width':'1.5',fill:'none'}));
       els.push(mk('path',{d:`M${cx-6},${cy+3} q3,-3 6,0 q3,3 6,0`,stroke:'rgba(255,255,255,0.35)','stroke-width':'1',fill:'none'}));
       break;
     case 'forest':
-      [[cx-5,cy],[cx+4,cy]].forEach(([tx,ty])=>{
+      [[cx-8.5,cy-3],[cx+0.5,cy-3]].forEach(([tx,ty])=>{
         els.push(mk('polygon',{points:`${tx},${ty+6} ${tx+4},${ty-2} ${tx+8},${ty+6}`,fill:'rgba(255,255,255,0.35)'}));
         els.push(mk('rect',{x:tx+3.5,y:ty+5,width:1,height:3,fill:'rgba(255,255,255,0.3)'}));
       });
       break;
     case 'jungle':
       // Jungle: circles (like forest but round canopies instead of triangles)
-      [cx-7,cx-1,cx+5].forEach((tx,i)=>{
-        const ty=cy+(i===1?-2:1);
+      [cx-9,cx-3,cx+3].forEach((tx,i)=>{
+        const ty=cy+(i===1?-4:-1);
         els.push(mk('circle',{cx:tx+3,cy:ty+2,r:'4',fill:'rgba(255,255,255,0.28)'}));
         els.push(mk('rect',{x:tx+2.5,y:ty+5.5,width:1,height:2.5,fill:'rgba(255,255,255,0.25)'}));
       });
       break;
     case 'mountain':
-      els.push(mk('polygon',{points:`${cx-9},${cy+6} ${cx-3},${cy-4} ${cx+3},${cy+6}`,fill:'rgba(255,255,255,0.2)',stroke:'rgba(255,255,255,0.45)','stroke-width':'0.8'}));
-      els.push(mk('polygon',{points:`${cx-1},${cy+6} ${cx+5},${cy-3} ${cx+11},${cy+6}`,fill:'rgba(255,255,255,0.12)',stroke:'rgba(255,255,255,0.35)','stroke-width':'0.8'}));
+      els.push(mk('polygon',{points:`${cx-10},${cy+5} ${cx-4},${cy-5} ${cx+2},${cy+5}`,fill:'rgba(255,255,255,0.2)',stroke:'rgba(255,255,255,0.45)','stroke-width':'0.8'}));
+      els.push(mk('polygon',{points:`${cx-2},${cy+5} ${cx+4},${cy-4} ${cx+10},${cy+5}`,fill:'rgba(255,255,255,0.12)',stroke:'rgba(255,255,255,0.35)','stroke-width':'0.8'}));
       break;
     case 'desert':
-      els.push(mk('path',{d:`M${cx-8},${cy+4} q6,-8 12,0 q6,8 12,0`,stroke:'rgba(255,255,255,0.4)','stroke-width':'1.5',fill:'none'}));
+      els.push(mk('path',{d:`M${cx-12},${cy+2} q6,-8 12,0 q6,8 12,0`,stroke:'rgba(255,255,255,0.4)','stroke-width':'1.5',fill:'none'}));
       break;
     case 'plain':
       els.push(mk('circle',{cx,cy,r:'3',fill:'rgba(255,255,255,0.35)'}));
@@ -6081,6 +6145,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-1601</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-1739</div>
 </body>
 </html>
