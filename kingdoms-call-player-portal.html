@@ -302,8 +302,8 @@ section{display:none;}.section-active{display:block;}
           <input type="text" id="join-king-name" placeholder="e.g. King Aldric">
         </div>
         <div>
-          <label>Your Kingdom's Name</label>
-          <input type="text" id="join-kingdom-name" placeholder="e.g. the Kingdom of Woe">
+          <label>Your Realm's Name</label>
+          <input type="text" id="join-kingdom-name" placeholder="e.g. the Realm of Woe">
           <div style="font-size:.68rem;color:#777;margin-top:2px">Shown in reports as "…of &lt;this&gt;". Include "the" if you want it, e.g. "the Iron Throne".</div>
         </div>
       </div>
@@ -429,7 +429,7 @@ section{display:none;}.section-active{display:block;}
         </div>
 
         <div class="card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
-          <h2>👑 Your Kingdom</h2>
+          <h2>👑 Your Realm</h2>
           <div id="report-kingdom"></div>
         </div>
 
@@ -455,7 +455,7 @@ section{display:none;}.section-active{display:block;}
 
         <div class="card" id="diplomacy-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🤝 Diplomacy</h2>
-          <div id="report-diplomacy"><em style="color:#999;font-size:.85rem">No kingdoms encountered yet.</em></div>
+          <div id="report-diplomacy"><em style="color:#999;font-size:.85rem">No realms encountered yet.</em></div>
         </div>
 
         <div class="card" id="titles-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
@@ -557,14 +557,14 @@ const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items',
-  'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
+  'Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
   'Challenge','Rampage','Rain of Arrows',"Sniper's Mark",
   'Feigned Retreat','Grand Stratagem','Lightning Advance','Raid the Coast',
   'Wild Calling','Grand Design',
   'Defend','Rest'];
-// Alignment-signature actions: shown only to the kingdom that owns them (and Perform Rite joins
+// Alignment-signature actions: shown only to the realm that owns them (and Perform Rite joins
 // the same gating — no more dangling Pagan action in every dropdown). King-only actions are
 // hidden from heroes' dropdowns entirely.
 const ALIGN_ACTIONS={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
@@ -581,7 +581,7 @@ const L79_ORDERS={
   'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
   'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden lair or treasure site, if any remain.'},
   'Blockade':{skill:'naval',lvl:7,target:'province',provKind:'sea_adjacent',hint:'Naval 7: seal a sea province you are in or adjacent to — enemy fleets may not cross it this turn.'},
-  'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your kingdom).'},
+  'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your realm).'},
   'Assassinate':{skill:'spy',lvl:9,target:'character',hint:'Spy 9: attempt to slay an enemy hero in the province you stand in — a spy-level chance to kill.'},
   'Vanish':{skill:'thief',lvl:9,target:'none',hint:'Thief 9: melt into the shadows — any enemy pursuit of you fails for the rest of this turn.'},
   'Challenge':{skill:'melee',lvl:7,target:'character',hint:'Melee 7: call out a LONE enemy hero in your province to single combat — the loser is wounded, or slain.'},
@@ -593,17 +593,17 @@ const L79_ORDERS={
   'Lightning Advance':{skill:'march',lvl:9,target:'none',hint:'March 9: strike before they can set — enemies you attack this turn lose their defensive footing (−20%).'},
   'Raid the Coast':{skill:'naval',lvl:9,target:'none',hint:'Naval 9: an amphibious assault — when you attack a coastal province this turn, you hit at +25% strength.'},
   'Wild Calling':{skill:'druid',lvl:9,target:'none',hint:'Druid 9: while standing in a primal province, call its wild host to your banner — several of its beasts defect to you.'},
-  'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your kingdom\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
+  'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your realm\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
 };
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 // Item 7 (this session): dropdown display order — most-used orders near the top, and any
 // alignment-signature order (Broker, Consecrate, Call to Arms, Perform Rite, Awaken the Wild,
-// Harvest the Field) pinned to the VERY TOP (each is only shown to its own kingdom, so this simply
-// puts a kingdom's special order first when it appears). Mastery (L7/L9) orders sink to the bottom
+// Harvest the Field) pinned to the VERY TOP (each is only shown to its own realm, so this simply
+// puts a realm's special order first when it appears). Mastery (L7/L9) orders sink to the bottom
 // as rare, situational picks. Adjust freely — this array is the single source of the ordering.
 const ACTION_DISPLAY_ORDER=[
   // ── SPECIAL actions the character can take — pinned to the very top (item 7) ──
-  // Alignment-signature orders (each shown only to its own kingdom)…
+  // Alignment-signature orders (each shown only to its own realm)…
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
   // …and MASTERY (L7/L9) orders, which surface only when the hero's skill is high enough. actionsFor()
   // already filters both groups down to what THIS character actually qualifies for, so only the
@@ -614,7 +614,7 @@ const ACTION_DISPLAY_ORDER=[
   'Feigned Retreat','Grand Stratagem','Lightning Advance','Raid the Coast',
   'Wild Calling','Grand Design',
   // ── Everyday orders — exact order requested (item 7) ──
-  'Move','Practice Skill','Cast Spell','Explore','Search Lair','Recruit Armies',
+  'Move','Practice Skill','Research','Cast Spell','Explore','Search Lair','Recruit Armies',
   'Pick Up Army','Leave/Transfer Army','Disband Army','Hire Hero','Defend',
   'Encounter Character','Spy','Send Item','Use Item','Equip Items','Steal','Rest',
 ];
@@ -625,6 +625,7 @@ function actionsFor(c){
     if(ALIGN_ACTIONS[a]&&ALIGN_ACTIONS[a]!==align) return false;
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
     if(L79_ORDERS[a]&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
+    if(a==='Research'&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
     return true;
   }).sort((a,b)=>_actionRank(a)-_actionRank(b));
 }
@@ -636,30 +637,30 @@ let joiningGame = null;
 let joinSkills = {};
 let currentGamePlayer = null;
 let currentReport = null;
-// Diplomacy (alliance system): pending declarations for THIS turn, keyed by rival kingdom index →
+// Diplomacy (alliance system): pending declarations for THIS turn, keyed by rival realm index →
 // 'treat' (propose alliance/peace) | 'enemy' (declare war). Submitted with orders; applied at end of turn.
 let diploChoices = {};
 // Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant). Submitted with orders.
 let reckoningCall = false;
 // Item 7 (this session): the player may concede the game with their orders. Once the GM runs a turn
-// with concede=true the kingdom is out for good — its heroes only Defend from then on.
+// with concede=true the realm is out for good — its heroes only Defend from then on.
 let concedeGame = false;
 function renderConcede(){
   const w=document.getElementById('concede-wrap'); if(!w) return;
   const k=currentReport?.kingdom||{};
-  if(k.conceded){ w.innerHTML=`<div style="background:#eee;border:1px solid #999;border-radius:3px;padding:6px 8px;color:#555">\u{1F3F3} <strong>Your kingdom has conceded.</strong> Your heroes hold their ground and take no further orders.</div>`; return; }
+  if(k.conceded){ w.innerHTML=`<div style="background:#eee;border:1px solid #999;border-radius:3px;padding:6px 8px;color:#555">\u{1F3F3} <strong>Your realm has conceded.</strong> Your heroes hold their ground and take no further orders.</div>`; return; }
   w.innerHTML=concedeGame
     ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px">\u{1F3F3} <strong>You will CONCEDE the game with these orders.</strong> This cannot be undone once the turn runs. <button type="button" onclick="setConcede(false)" style="margin-left:6px;font-size:.7rem;padding:2px 8px;cursor:pointer">Cancel</button></div>`
-    : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#666;border-radius:2px;cursor:pointer" title="Withdraw your kingdom from the game">\u{1F3F3} Concede the game\u2026</button>`;
+    : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#666;border-radius:2px;cursor:pointer" title="Withdraw your realm from the game">\u{1F3F3} Concede the game\u2026</button>`;
 }
 function setConcede(v){
-  if(v && !confirm('Concede the game?\n\nYour kingdom withdraws for good: from the turn this is submitted your heroes will only Defend, and you can never rejoin. If every other kingdom has conceded, or all those left are one alliance, the game ends at once and the results are shown.\n\nSubmit your orders to confirm.')) return;
+  if(v && !confirm('Concede the game?\n\nYour realm withdraws for good: from the turn this is submitted your heroes will only Defend, and you can never rejoin. If every other realm has conceded, or all those left are one alliance, the game ends at once and the results are shown.\n\nSubmit your orders to confirm.')) return;
   concedeGame=!!v; renderConcede();
 }
 
 // ── Task 10: PLAYER-TO-PLAYER DISPATCHES (compose) ─────────────────────────
 // Pending dispatches for THIS turn: [{to:[recipientIdx…] | 'all', text}]. Submitted with orders; the GM
-// engine delivers them into each addressee's report. Recipients are the kingdoms you've encountered.
+// engine delivers them into each addressee's report. Recipients are the realms you've encountered.
 let pendingDispatches = [];
 function _dispatchKnown(){ const r=currentReport||{}; return (r.diplomacy&&r.diplomacy.known)||[]; }
 function syncDispatchesFromDOM(){
@@ -680,9 +681,9 @@ function renderDispatchCompose(){
   const wrap=document.getElementById('dispatch-compose'); if(!wrap) return;
   const known=_dispatchKnown();
   let head=`<div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--parchment-dark)">
-      <span style="font-size:1rem">📨</span><span style="font-weight:600">Dispatches to other kingdoms</span></div>`;
+      <span style="font-size:1rem">📨</span><span style="font-weight:600">Dispatches to other realms</span></div>`;
   if(!known.length){
-    wrap.innerHTML=head+`<div style="font-size:.78rem;color:var(--stone);padding:2px 2px 8px">You have not encountered another kingdom yet — once you have, you can send them dispatches here.</div>`;
+    wrap.innerHTML=head+`<div style="font-size:.78rem;color:var(--stone);padding:2px 2px 8px">You have not encountered another realm yet — once you have, you can send them dispatches here.</div>`;
     return;
   }
   const rowsHtml=pendingDispatches.map((m,i)=>{
@@ -693,8 +694,8 @@ function renderDispatchCompose(){
     return `<div data-dispatch-row style="border:1px solid var(--parchment-dark);border-radius:3px;padding:8px;margin-bottom:8px;background:#fdf5e0">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
         <label style="font-size:.72rem;font-weight:600;display:inline-flex;align-items:center;gap:3px;white-space:nowrap">
-          <input type="checkbox" class="dispatch-all" ${isAll?'checked':''} onchange="syncDispatchesFromDOM();renderDispatchCompose()"> All kingdoms</label>
-        <span style="font-size:.72rem;color:var(--stone)">${isAll?'(sending to every kingdom you\\u2019ve met)':'choose recipients:'}</span>
+          <input type="checkbox" class="dispatch-all" ${isAll?'checked':''} onchange="syncDispatchesFromDOM();renderDispatchCompose()"> All realms</label>
+        <span style="font-size:.72rem;color:var(--stone)">${isAll?'(sending to every realm you\\u2019ve met)':'choose recipients:'}</span>
         <button type="button" onclick="removeDispatch(${i})" title="Remove this dispatch" style="margin-left:auto;font-size:.7rem;padding:2px 8px;border:1px solid #b04a4a;background:transparent;color:#b04a4a;border-radius:2px;cursor:pointer">✕ remove</button>
       </div>
       ${isAll?'':`<div style="margin-bottom:5px;line-height:1.9">${rcptBoxes}</div>`}
@@ -1088,7 +1089,7 @@ async function loadMyGames(){
     return`<div class="game-card clickable" onclick="openReport('${slot.id}')">
       <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span></div>
       <div class="gc-meta">
-        Your kingdom: <strong>${slot.display_name||'(joining…)'}</strong> ·
+        Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
         Turn ${g.turn||0}
       </div>
     </div>`;
@@ -1128,7 +1129,7 @@ async function loadOpenGames(){
     let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
     return { gm: gmNameById[g.gm_user_id]||'the Game Master', size: SIZE_LABEL[cfg.mapSize]||'Medium (12×8)' };
   };
-  // Human-joinable capacity = max players minus GM bot kingdoms (bots stay hidden from players).
+  // Human-joinable capacity = max players minus GM bot realms (bots stay hidden from players).
   // An all-bot game has capacity 0 and never appears as joinable.
   const humanCapOf=g=>{
     let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
@@ -1236,16 +1237,16 @@ const SKILL_INFO={
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
-  sage:'Scholarship. Each level gives a 5% chance per turn (10% with the Library discovery), when practising Sage, to make a permanent Sage Discovery (kingdom-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
+  sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance (10% with the Library discovery) per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — both via the Steal order and by pickpocketing during encounters.',
   druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. Higher Druid unlocks the most powerful primal beasts.',
   explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
-  white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine kingdoms start with White 1).',
+  white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine realms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
   illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Lairs. Confuse enemy intelligence and battles.',
   elemental:'Elemental Magic — destruction spells: Lightning Bolt, Fireball, Earthquake, Flood and Elemental Summon. Raw offensive power against armies and provinces.',
-  necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Kill Enemy (Undead kingdoms start with Necromancy 1).',
+  necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Kill Enemy (Undead realms start with Necromancy 1).',
 };
 // Column grouping for the join screen: martial | special | magic
 const SKILL_COLUMNS=[
@@ -1310,7 +1311,7 @@ async function joinGame(){
   const temper=document.getElementById('join-temper').value;
   const msg=document.getElementById('join-msg');
   if(!kingName){msg.innerHTML='<div class="msg-error">Please enter your King\'s name.</div>';return;}
-  if(!kingdomName){msg.innerHTML='<div class="msg-error">Please name your Kingdom.</div>';return;}
+  if(!kingdomName){msg.innerHTML='<div class="msg-error">Please name your Realm.</div>';return;}
   const spent=Object.values(joinSkills).reduce((s,v)=>s+v,0);
   if(spent<4){msg.innerHTML=`<div class="msg-warning">You still have ${4-spent} skill point${4-spent!==1?'s':''} to spend. Are you sure? <button class="btn btn-gold" style="padding:4px 10px;margin-left:8px" onclick="doJoinGame('${joiningGame.id}')">Join Anyway</button></div>`;return;}
   await doJoinGame(joiningGame.id);
@@ -1429,7 +1430,7 @@ function buildChronicle(log, chars_for_log){
     log.forEach(e=>{
       // Item 8: environmental province events (earthquake / flood / plague / blessing / part-sea /
       // consecrate) are shown in their own Province Reports section, so keep them OUT of the
-      // Chronicle character blocks and Kingdom Events here.
+      // Chronicle character blocks and Realm Events here.
       if(e.env) return;
       const ph=(e.phase!=null&&e.phase>=0&&e.phase<=4)?e.phase:99;
       const _txt=e.text||'';
@@ -1459,16 +1460,16 @@ function buildChronicle(log, chars_for_log){
 
     // ── Items 2 & 3: battle-force markers + player-colour map ──────────────────
     // The engine emits '⚑FORCE⚑{json}' lines for each side of a battle (name, owner colour, neutral
-    // flag, role/verb, army roster). We expand those into icon rows (like "Your Kingdom") and tint
+    // flag, role/verb, army roster). We expand those into icon rows (like "Your Realm") and tint
     // every participant's name in the owner's map colour; neutral names go dark grey.
     const NEUTRAL_COLOR='#555';
-    const nameColors=new Map(); // name (and bare/kingdom variants) → {color|null, neutral}
+    const nameColors=new Map(); // name (and bare/realm variants) → {color|null, neutral}
     function _registerName(nm, color, neutral){
       if(!nm) return;
       const add=(k)=>{ if(k && !nameColors.has(k)) nameColors.set(k,{color:neutral?null:color, neutral:!!neutral}); };
       add(nm);
-      add(String(nm).replace(/\s*\(.*?\)\s*$/,'').trim());            // strip trailing "(Kingdom)"
-      const km=String(nm).match(/\(([^)]+)\)\s*$/); if(km) add(km[1]); // the kingdom name itself
+      add(String(nm).replace(/\s*\(.*?\)\s*$/,'').trim());            // strip trailing "(Realm)"
+      const km=String(nm).match(/\(([^)]+)\)\s*$/); if(km) add(km[1]); // the realm name itself
     }
     log.forEach(e=>{
       const t=e.text||'';
@@ -1483,11 +1484,11 @@ function buildChronicle(log, chars_for_log){
         });
       }catch(_){} }
     });
-    // Seed the viewer's own characters with their kingdom colour, in case they never appear in a marker.
+    // Seed the viewer's own characters with their realm colour, in case they never appear in a marker.
     const _ownColor=(viewingReport&&viewingReport.kingdom&&viewingReport.kingdom.color)||null;
     if(_ownColor)(chars_for_log||[]).forEach(c=>_registerName(c.name,_ownColor,false));
     // Item 4: register EVERY character the viewer can name so their name is tinted in EVERY Chronicle
-    // section, in the colour of the player who controls them. Enemy heroes take their kingdom colour;
+    // section, in the colour of the player who controls them. Enemy heroes take their realm colour;
     // wandering heroes and neutral-province guardians are dark grey.
     const _chronRep=viewingReport||currentReport||{};
     // Guardians (the monster defending a feature) are named throughout the Chronicle by their monster
@@ -1498,7 +1499,7 @@ function buildChronicle(log, chars_for_log){
     (_chronRep.knownFeatures||[]).forEach(f=>{
       if(!f) return;
       // Task 5 (this session): tint BOTH the guardian AND the lair itself in the guardian's difficulty
-      // colour, everywhere they appear in the report (chronicle, kingdom events, intel) — cleared or
+      // colour, everywhere they appear in the report (chronicle, realm events, intel) — cleared or
       // not, so long as the difficulty is known. Registered here (before the neutral sightings below)
       // so the difficulty colour wins the first-registered-wins race.
       const _pcol=_GUARD_POWER_COLORS[f.monsterPower]||null;
@@ -1512,13 +1513,13 @@ function buildChronicle(log, chars_for_log){
     });
     (((_chronRep.worldMeta&&_chronRep.worldMeta.provinces)||[])).forEach(p=>{
       (p.characters||[]).forEach(ch=>{
-        if(ch.isOwn) return; // own already seeded in the kingdom colour
+        if(ch.isOwn) return; // own already seeded in the realm colour
         if(ch.ownerColor && !ch.isWanderer && !ch.isNeutralGuard) _registerName(ch.name, ch.ownerColor, false);
         else _registerName(ch.name, null, true); // neutral → grey
       });
     });
-    // Tasks 1 & 4: register EVERY player's kingdom name in that player's colour, and every named
-    // (living / just-fallen, non-cloaked) character in its controlling player's colour — so kingdom
+    // Tasks 1 & 4: register EVERY player's realm name in that player's colour, and every named
+    // (living / just-fallen, non-cloaked) character in its controlling player's colour — so realm
     // and character names are tinted even when they never appeared as a sighting or battle marker
     // (e.g. title-intel rivals, distant conquests). Registered AFTER the visible/guardian sources so
     // the more specific colours already set win (first-registered-wins).
@@ -1617,7 +1618,7 @@ function buildChronicle(log, chars_for_log){
     });
 
     // ══════════════════════════════════════════════════
-    // SECTION: Dispatches — player-to-player messages (Task 10). Shown prominently above Kingdom Events.
+    // SECTION: Dispatches — player-to-player messages (Task 10). Shown prominently above Realm Events.
     if(dispatches.length>0){
       html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #6b8ec8;border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
@@ -1634,14 +1635,14 @@ function buildChronicle(log, chars_for_log){
     }
 
     // ══════════════════════════════════════════════════
-    // SECTION 2: Kingdom Events — system events grouped by phase
+    // SECTION 2: Realm Events — system events grouped by phase
     const hasSystemEvents=Object.values(systemByPhase).some(a=>a.length>0);
     if(hasSystemEvents){
       html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid var(--stone);border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
           padding:7px 12px;background:var(--stone);display:flex;align-items:center;gap:8px">
           <span style="font-size:1rem">⚙</span>
-          <span style="font-weight:600">Kingdom Events</span>
+          <span style="font-weight:600">Realm Events</span>
           <span style="font-size:.7rem;opacity:.7;margin-left:auto">Battles · Conquests · Tax &amp; Wages</span>
           <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)" style="margin-left:8px">&#9662;</button>
         </div>
@@ -1691,8 +1692,8 @@ function buildChronicle(log, chars_for_log){
         titleIntel.forEach(e=>{
           // Bold the "[The Title]" tag so each line reads as a titled dispatch…
           let text=(e.text||'').replace(/^(\[The [^\]]+\])/,'<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">$1</span>');
-          // …and Task 1: every character name and kingdom name in the dispatch is bold + tinted in the
-          // controlling player's colour (kingdoms and rivals alike).
+          // …and Task 1: every character name and realm name in the dispatch is bold + tinted in the
+          // controlling player's colour (realms and rivals alike).
           text=colorizeNames(text, true);
           html+=`<div class="log-entry system">${text}</div>`;
         });
@@ -1787,7 +1788,7 @@ async function loadPastReport(gameId, playerIndex, turn){
   if(entries.length>0){
     buildChronicle(entries, allChars.filter(c=>c.player===pi));
   }else if(turn===0){
-    document.getElementById('report-log').innerHTML='<div class="log-entry system">Your kingdom is founded. The realm awaits your first commands.</div>';
+    document.getElementById('report-log').innerHTML='<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>';
   }
   banner.innerHTML=`Viewing Turn ${turn} — read only. `
     +`<span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> `
@@ -1810,7 +1811,7 @@ function returnToCurrentReport(){
     restoreSubmitWrap('Submit');
   }
   if(submitWrap) submitWrap.style.display='flex';
-  // Restore the WHOLE current-turn body. loadPastReport paints every read-only section (kingdom,
+  // Restore the WHOLE current-turn body. loadPastReport paints every read-only section (realm,
   // provinces, intel, discoveries, diplomacy, titles, mastery, map AND chronicle) from the past-turn
   // snapshot, so returning must repaint every one of them from the current report — not just the map
   // and chronicle. Repainting only those two left the other sections frozen on the turn just viewed,
@@ -1841,7 +1842,7 @@ async function openReport(gamePlayerId){
   currentReport=report;
   currentReport._liveTurn=g.turn||1; // ensure submit uses live turn not report turn
   // Royal succession: re-apply any saved heir skill allocation from this turn's DRAFT onto the heir
-  // characters BEFORE the kingdom + orders sections render. This makes the allocation (a) survive a
+  // characters BEFORE the realm + orders sections render. This makes the allocation (a) survive a
   // re-render (openReport re-fetches the pristine turn_report, which would otherwise wipe it) and
   // (b) take effect immediately this turn — the order forms read c.skills, so newly-bought magic
   // surfaces its spells straight away. Also snapshot each heir's crowned skills as _heirBase so the
@@ -1929,14 +1930,14 @@ async function openReport(gamePlayerId){
   renderReportView(report);
 }
 
-// Renders the full read-only report body (chronicle, kingdom, provinces, intel, discoveries,
+// Renders the full read-only report body (chronicle, realm, provinces, intel, discoveries,
 // diplomacy, titles, mastery, and the map) from whatever report object it is handed — the live
 // turn_report for the current turn, or a per-turn snapshot when viewing history.
 function renderReportView(report){
   // Render chronicle
   buildChronicle(report.lastTurnLog||[], report.characters||[]);
 
-  // Kingdom summary
+  // Realm summary
   const kingdom=report.kingdom||{};
   const chars=report.characters||[];
   const taxIncome=kingdom.taxIncome||0;
@@ -1946,13 +1947,13 @@ function renderReportView(report){
   const playerAlignment=kingdom.alignment||'Neutral';
 
   const ALIGNMENT_SUMMARIES={
-    Divine:`Your kingdom walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING himself works the blessing, the province yields a full 100% more. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Consecrate: your king or heroes may sanctify ONE owned province (not the home province or its neighbours — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and your resurrected heroes return there. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
-    Good:`Your kingdom is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever he happens to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
-    Druidic:`Your kingdom is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Creature armies also fight with a +25% fanaticism bonus under your banner. Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
-    Neutral:`Your kingdom prizes pragmatism above all. Province tax income flows 20% richer than other kingdoms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — he may hire any wandering hero the kingdom can see without leaving his hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the kingdom has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
-    Pagan:`Your kingdom draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering sacrifices units to empower an equal number of others (+2 quality tiers each, to Elite). Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
-    Evil:`Your kingdom rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
-    Undead:`Your kingdom defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — +30% when the king leads them in person, +20% under any other commander. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
+    Divine:`Your realm walks in the light of the divine. All heroes recover three times as much HP when they Rest (6–15 HP rather than the usual 2–5). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Consecrate: your king or heroes may sanctify ONE owned province (not the home province or its neighbours — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and your resurrected heroes return there. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
+    Good:`Your realm is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever they happen to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
+    Druidic:`Your realm is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Creature armies also fight with a +25% fanaticism bonus under your banner. Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
+    Neutral:`Your realm prizes pragmatism above all. Province tax income flows 20% richer than other realms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — they may hire any wandering hero the realm can see without leaving their hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the realm has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
+    Pagan:`Your realm draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering sacrifices units to empower an equal number of others (+2 quality tiers each, to Elite). Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
+    Evil:`Your realm rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command (+25% fanaticism). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
+    Undead:`Your realm defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — +30% when the king leads them in person, +20% under any other commander. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
   };
 
   const alignSummary=ALIGNMENT_SUMMARIES[playerAlignment]||'';
@@ -1960,7 +1961,7 @@ function renderReportView(report){
   const alignIcons={Divine:'✨',Good:'⚔',Druidic:'🌿',Neutral:'⚖',Pagan:'🔥',Evil:'💀',Undead:'💀'};
   const alignBanner=alignSummary?`
     <div style="background:#fdf8ee;border-left:4px solid ${alignColours[playerAlignment]||'#888'};padding:8px 12px;margin-bottom:10px;border-radius:0 3px 3px 0">
-      <div style="font-family:'Cinzel',serif;font-size:.72rem;color:${alignColours[playerAlignment]||'#888'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:700">${alignIcons[playerAlignment]||''} ${playerAlignment} Kingdom</div>
+      <div style="font-family:'Cinzel',serif;font-size:.72rem;color:${alignColours[playerAlignment]||'#888'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:700">${alignIcons[playerAlignment]||''} ${playerAlignment} Realm</div>
       <div style="font-size:.78rem;color:#444;line-height:1.5">${bulletizeDesc(alignSummary)}</div>
     </div>`:'';
 
@@ -1972,7 +1973,7 @@ function renderReportView(report){
       ${playerAlignment==='Evil'?'<br><span style="color:#8a1c1c;font-weight:600">[M] Monsters:</span> Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods':''}
     </div>`:'';
   // Royal-succession skill allocation is rendered at the TOP of the orders column now
-  // (see heirSelectorHTML in buildOrdersForm), not here in the kingdom section.
+  // (see heirSelectorHTML in buildOrdersForm), not here in the realm section.
   document.getElementById('report-kingdom').innerHTML=alignBanner+cmGuide+`
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
@@ -2055,7 +2056,7 @@ function renderReportView(report){
               const creature=CREATURE_ARMIES_UI.has(a.type), monster=MONSTER_ARMIES_UI.has(a.type);
               let req=DRUID_REQ[a.type]||0;
               if(a.skeletal) req=0;              // skeletons are exempt from the Druid penalty
-              if(isDruidic&&creature) req=0;      // Druidic kingdoms lead Creatures with no Druid
+              if(isDruidic&&creature) req=0;      // Druidic realms lead Creatures with no Druid
               if(req>0) druidUnits++;
               const sameRace=leadRaceMatch;
               const effDru=sameRace?Math.max(1,druLevel):druLevel;
@@ -2241,7 +2242,7 @@ function renderReportView(report){
     });
   }
 
-  // ── Item 2: Spy Activity Reports — what other kingdoms' characters DID in a province you spied,
+  // ── Item 2: Spy Activity Reports — what other realms' characters DID in a province you spied,
   // in the phases after your agent arrived (the spy's lingering line of sight).
   const spyActivity=report.spyActivity||[];
   if(spyActivity.length>0){
@@ -2283,12 +2284,12 @@ function renderReportView(report){
       const pIcon=POWER_ICONS[f.monsterPower]||'?';
       const powerBadge=f.monsterPower&&!f.cleared
         ?`<span style="background:${pColor};color:#fff;font-size:.65rem;padding:1px 5px;border-radius:2px;margin-left:4px">${pIcon} ${f.monsterPower}</span>`:'';
-      // Ritual sites have no guardian — they are sacred ground usable only by a Pagan kingdom's
+      // Ritual sites have no guardian — they are sacred ground usable only by a Pagan realm's
       // Perform Rite. Show that instead of an empty "Guardian:" line.
       if(f.ritualSite){
         return`<div class="intel-entry" style="border-left-color:#5a0a9a">
           🌙 <strong>${f.name}</strong>
-          <br><span style="font-size:.78rem;color:#5a0a9a">A sacred site of the old faith — only a Pagan kingdom may Perform Rites here.</span>
+          <br><span style="font-size:.78rem;color:#5a0a9a">A sacred site of the old faith — only a Pagan realm may Perform Rites here.</span>
         </div>`;
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
@@ -2322,7 +2323,7 @@ function renderReportView(report){
   const discEl=document.getElementById('report-discoveries');
   if(discEl){
     if(discoveries.length===0){
-      discEl.innerHTML='<em style="color:#999;font-size:.85rem">No discoveries yet. Assign Practice Sage orders to your scholars.</em>';
+      discEl.innerHTML='<em style="color:#999;font-size:.85rem">No discoveries yet. Give Research orders to your scholars (Sage 1+).</em>';
     } else {
       // Group by category
       const catMap={};
@@ -2357,14 +2358,14 @@ function renderReportView(report){
 }
 
 // ── DIPLOMACY PANEL (alliance system) ─────────────────
-// Renders the kingdoms this player has encountered with the current relation and the declarations
+// Renders the realms this player has encountered with the current relation and the declarations
 // available. A pending choice is stored in diploChoices and submitted with the turn's orders.
 function renderDiplomacy(report){
   const el=document.getElementById('report-diplomacy'); if(!el) return;
   const known=(report&&report.diplomacy&&report.diplomacy.known)||[];
   const alliancesAllowed=!report||!report.diplomacy||report.diplomacy.alliancesAllowed!==false;
   if(!known.length){
-    el.innerHTML='<em style="color:#999;font-size:.85rem">You have not yet encountered another kingdom. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
+    el.innerHTML='<em style="color:#999;font-size:.85rem">You have not yet encountered another realm. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
     return;
   }
   const relBadge=(r)=> r==='allied'
@@ -2402,7 +2403,7 @@ function renderDiplomacy(report){
     </div>`;
   }).join('')
    + `<div style="font-size:.72rem;color:#999;margin-top:6px">${alliancesAllowed
-       ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> kingdoms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
+       ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
        : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn. Submit your orders to lodge these declarations.</div>`;
 }
 function setDiploChoice(idx, val){
@@ -2457,7 +2458,7 @@ const MASTERY_EFFECTS={
   tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
-  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique kingdom-wide Wonder.'},
+  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
@@ -2511,7 +2512,7 @@ function renderTitles(report){
       `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#777">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
     el.innerHTML=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
       <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field — every rival has conceded':'is judged supreme at the Reckoning'}!</div></div>
-      <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#888;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Kingdom</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#888;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Realm</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
     return;
   }
   if(!t.public){
@@ -2521,7 +2522,7 @@ function renderTitles(report){
   const nPlayers=(t.standings||[]).length||2;
   const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
 
-  // ── Item 2: titles newly WON this turn (character or kingdom), with how + effect ──
+  // ── Item 2: titles newly WON this turn (character or realm), with how + effect ──
   let gainsHtml='';
   const gains=t.gains||[];
   if(gains.length){
@@ -2535,7 +2536,7 @@ function renderTitles(report){
     gainsHtml=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:8px 10px;margin-bottom:10px">
       <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">${header}</div>
       ${gains.map(g=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
-        <strong>${g.scope==='minor'?'🎖':'🏆'} ${g.name}</strong> — ${g.charName?`${g.charName} of `:''}<span style="color:var(--forest)">${g.kingdomName||'your kingdom'}</span>.
+        <strong>${g.scope==='minor'?'🎖':'🏆'} ${g.name}</strong> — ${g.charName?`${g.charName} of `:''}<span style="color:var(--forest)">${g.kingdomName||'your realm'}</span>.
         <br><span style="color:#666">${verb}: ${g.req||''}</span>
         <br><span style="color:#2d6a2d">Effect: ${g.perk||''}</span></div>`).join('')}</div>`;
   }
@@ -2563,7 +2564,7 @@ function renderTitles(report){
   const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
     `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
 
-  // ── Item 3: the eight Imperial Titles — holder (character + kingdom), how earned, perk while held ──
+  // ── Item 3: the eight Imperial Titles — holder (character + realm), how earned, perk while held ──
   const holders=t.holders||{};
   const majorHtml=_TITLE_ORDER.map(([k,name,prize])=>{
     const h=holders[k]||{};
@@ -2585,10 +2586,10 @@ function renderTitles(report){
   // ── Item 4: how to Call the Reckoning (always shown while titles are public) ──
   const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#555;line-height:1.5">
     <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;font-weight:700">Calling the Reckoning</div>
-    There is no turn limit — the game ends only when one kingdom is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
+    There is no turn limit — the game ends only when one realm is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
     <ul style="margin:4px 0 4px 16px;padding:0">
       <li>your <strong>King must be alive</strong> — it is a King-only act; and</li>
-      <li>your kingdom, <strong>or your mutually-allied bloc</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base (the bar for a ${nPlayers}-kingdom game — fewer kingdoms need a higher share).</li>
+      <li>your realm, <strong>or your mutually-allied bloc</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base (the bar for a ${nPlayers}-realm game — fewer realms need a higher share).</li>
     </ul>
     Calling it announces the claim to every realm and begins a <strong>2-turn grace period</strong>. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
   </div>`;
@@ -2787,14 +2788,14 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 
 // Spell hints shown below the order form
 const SPELL_HINTS={
-  'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — his body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your kingdom. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
+  'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
-  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine kingdoms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
+  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord. Kings and army-leaders are immune. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
-  'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Kingdom Events — and see their full skills. Only one active at a time.',
+  'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. Up to your-level units each have a 50% chance to fight one level lower in their next battle this turn (temporary). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
@@ -3728,7 +3729,7 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
     </div>
     <div style="padding:5px 10px 6px;background:#f5eeff;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
       <div style="color:#5a3a7a">These orders only take effect if the Resurrect succeeds. If the cast
-      fails, or another kingdom raises ${dead.name} first, they are simply ignored.</div>
+      fails, or another realm raises ${dead.name} first, they are simply ignored.</div>
       <div style="color:var(--stone);margin-top:2px">Returns at full health, stripped of all items and armies.</div>
     </div>
     <div class="orders-char-body"></div>`;
@@ -3868,7 +3869,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
     </div>
     <div style="padding:5px 10px 6px;background:#eaf6f8;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
       <div style="color:#2a7a8a">These orders only take effect if the Charm succeeds. If the cast fails,
-      or another kingdom charms ${wanderer.name} first, they are simply ignored.</div>
+      or another realm charms ${wanderer.name} first, they are simply ignored.</div>
       <div style="color:var(--stone);margin-top:2px">${isEnemy
         ? 'Their command is seized for the rest of this turn; at the season\u2019s end they return to their own lord (who still pays their wages).'
         : 'Joins your service at no hiring cost (you still pay their upkeep).'}</div>
@@ -4226,7 +4227,7 @@ function updateAlignmentDesc(){
   const desc=document.getElementById('join-alignment-desc');
   if(!sel||!desc) return;
   const DESCS={
-    Divine:'✨ <strong>Divine:</strong> All heroes heal 3× more from Rest (6–15 HP vs 2–5). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king himself casts it. <strong>Consecrate</strong> one province: +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%, resurrections return there. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
+    Divine:'✨ <strong>Divine:</strong> All heroes heal 3× more from Rest (6–15 HP vs 2–5). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king casts it in person. <strong>Consecrate</strong> one province: +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%, resurrections return there. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
     Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
     Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, gain +25% fanaticism, and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
     Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 2g less. Sage discoveries twice as often.',
@@ -4281,7 +4282,7 @@ const UNIT_ABILITIES={
 };
 function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // Item 1: the unit ability descriptions were removed from the map pop-ups; instead they surface as a
-// hover tooltip on the unit's icon+label wherever units are listed in Your Kingdom and Your
+// hover tooltip on the unit's icon+label wherever units are listed in Your Realm and Your
 // Provinces. Only wraps when the unit actually has an always-on ability.
 function unitAbilityTip(type, inner){
   const ab=unitAbilityText(type);
@@ -4295,8 +4296,8 @@ function updateRaceDesc(){
   if(!sel||!desc) return;
   const DESCS={
     Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit the broadest roster — Shieldwall Levies, Free Lances and Yeoman Longbows, heavily-armoured Gilded Lances, and flying Noble Griffons — plus the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you: the most flexible race for any strategy. A commander leading troops of their own race fights at +20% and needs no Druid skill to command them. Feud: Humans and Orcs bear an ancient animosity — an Orc commanding Human troops (or the reverse) fights at −20%. Heroes of your own race cost 2g/turn to keep.',
-    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, fighting best in forest and jungle. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. An Elven kingdom\u2019s own troops fight at +50% in forest and jungle (Woodland Mastery). Homeward Flight: an Elven unit that would fall in battle may instead slip away and return home — chance by terrain (30% desert/mountain, 45% plains, 60% forest/jungle); the survivors reach the king\u2019s home (or wealthiest province) as the turn closes. A commander leading their own race fights at +20% with no Druid requirement. Feud: Elves and Dwarves are old rivals — either leading the other\u2019s troops fights at −20%. You win through mobility and missile fire, not brute force.',
-    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough Dwarven Guard and Ironwood Crossbows anchor the line, and Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flyers, and armoured Dwarf Ironclads dominate coastal waters. Every Dwarven character of a Dwarven kingdom is issued MITHRIL ARMOUR — melee and arrow blows against them deal 2 less damage. Dwarves are deadliest defending or fighting in mountains (but move slowly). Own-race command gives +20% and no Druid penalty. Feud: Dwarves and Elves fight at −20% under a rival-kin commander.',
+    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, fighting best in forest and jungle. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. An Elven realm\u2019s own troops fight at +50% in forest and jungle (Woodland Mastery). Homeward Flight: an Elven unit that would fall in battle may instead slip away and return home — chance by terrain (30% desert/mountain, 45% plains, 60% forest/jungle); the survivors reach the king\u2019s home (or wealthiest province) as the turn closes. A commander leading their own race fights at +20% with no Druid requirement. Feud: Elves and Dwarves are old rivals — either leading the other\u2019s troops fights at −20%. You win through mobility and missile fire, not brute force.',
+    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough Dwarven Guard and Ironwood Crossbows anchor the line, and Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flyers, and armoured Dwarf Ironclads dominate coastal waters. Every Dwarven character of a Dwarven realm is issued MITHRIL ARMOUR — melee and arrow blows against them deal 2 less damage. Dwarves are deadliest defending or fighting in mountains (but move slowly). Own-race command gives +20% and no Druid penalty. Feud: Dwarves and Elves fight at −20% under a rival-kin commander.',
     Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) thrive in forest, jungle and mountains. A commander leading their own race fights at +20% with no Druid requirement. Feud: Orcs and Humans loathe one another — either leading the other\u2019s troops fights at −20%. Orcs overwhelm through numbers and speed rather than quality.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
@@ -4424,7 +4425,7 @@ async function doSubmitOrders(){
       const action=document.getElementById(`po-action-${c.id}-${ph}`)?.value||'Defend';
       const target=getOrderTarget(c.id,ph);
       const extra=getOrderExtra(c.id,ph);
-      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'');
+      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'&&action!=='Research'?` — ${target}`:'');
       return{action,target,extra,desc};
     });
     // Collect encounter plan
@@ -4953,14 +4954,14 @@ function buildTargetField(c, ph, saved){
     case 'Defend':{
       if((c.armies||[]).length===0){
         return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
-          <div style="font-size:.72rem;color:var(--forest)">🗡 Lies in wait around ${curProv_?curProv_.name:'the province he stands in'} and its neighbours.</div>
-          <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at his back he cannot bar a road, but he will try to <em>ambush</em> any enemy character who marches into his province or one adjacent — springing a personal battle. His <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is himself a king. Cancelled by a later Move or Encounter order.</div>`;
+          <div style="font-size:.72rem;color:var(--forest)">🗡 Lies in wait around ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
+          <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at their back they cannot bar a road, but they will try to <em>ambush</em> any enemy character who marches into their province or one adjacent — springing a personal battle. Their <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is also a king. Cancelled by a later Move or Encounter order.</div>`;
       }
       // Defend no longer takes a target — it always guards the province the character stands in.
       // The engine reads no target for Defend; a hidden field keeps the order shape consistent.
       return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
-        <div style="font-size:.72rem;color:var(--forest)">🛡 Guards ${curProv_?curProv_.name:'the province he stands in'} and its neighbours.</div>
-        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn. He rides out to meet <em>any</em> incursion into an adjacent province — however strong — to force the battle. Cancelled by a later Move or Pursue order, or by losing a battle.</div>`;
+        <div style="font-size:.72rem;color:var(--forest)">🛡 Guards ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn. They ride out to meet <em>any</em> incursion into an adjacent province — however strong — to force the battle. Cancelled by a later Move or Pursue order, or by losing a battle.</div>`;
     }
 
     // ── PURSUE (AK [3.16]) ──
@@ -4975,7 +4976,7 @@ function buildTargetField(c, ph, saved){
       if(targets.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
       const opts=targets.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if he runs out of movement). When he catches them: two columns give battle; otherwise it is a personal duel (a quarry leading troops won't break ranks for one). Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if they run out of movement). When they catch up: two columns give battle; otherwise it is a personal duel (a quarry leading troops won't break ranks for one). Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
     }
 
     // ── STEAL ──
@@ -5041,7 +5042,7 @@ function buildTargetField(c, ph, saved){
     // ── DIVINE: CONSECRATE ──
     case 'Consecrate':{
       if(report.kingdom?.alignment!=='Divine')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine kingdoms may consecrate" disabled>`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine realms may consecrate" disabled>`;
       if(!c.isKing)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc=predictedLocation(c.id,ph);
@@ -5076,7 +5077,7 @@ function buildTargetField(c, ph, saved){
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good kingdoms may call the folk to arms" disabled>`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good realms may call the folk to arms" disabled>`;
       if(!c.isKing)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
       const human=(report.ownedProvinces||[]).filter(p=>p.terrain!=='sea'&&!(p.race||'').startsWith('Primal'));
@@ -5087,7 +5088,7 @@ function buildTargetField(c, ph, saved){
     // ── NEUTRAL: BROKER ──
     case 'Broker':{
       if(report.kingdom?.alignment!=='Neutral')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral kingdoms keep brokers" disabled>`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral realms keep brokers" disabled>`;
       if(!c.isKing)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
       const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
@@ -5099,7 +5100,7 @@ function buildTargetField(c, ph, saved){
         `<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Buy word from ${p.name} (2g — full Spy result)</option>`).join('');
       if(!hireOpts&&!spyOpts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
       return`<select id="po-target-${c.id}-${ph}">${hireOpts}${spyOpts}</select>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the kingdom can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the kingdom has seen — 2g.</div>`;}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the realm can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the realm has seen — 2g.</div>`;}
     // ── DRUIDIC: AWAKEN THE WILD ──
     case 'Awaken the Wild':{
       if(report.kingdom?.alignment!=='Druidic')
@@ -5114,7 +5115,7 @@ function buildTargetField(c, ph, saved){
     // ── UNDEAD: HARVEST THE FIELD ──
     case 'Harvest the Field':{
       if(report.kingdom?.alignment!=='Undead')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead kingdoms keep corpse-carters" disabled>`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead realms keep corpse-carters" disabled>`;
       const loc=predictedLocation(c.id,ph);
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc?loc.name:'current province'}" readonly>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">No magic required: 2g raises ONE random battlefield grave in the province ${c.name} stands in as a Skeletal unit (keeps its type and quality; 1g upkeep). Needs battlefield dead present — fields where armies have fallen.</div>`;}
@@ -5122,7 +5123,7 @@ function buildTargetField(c, ph, saved){
       // PAGAN only — rites are performed at a DISCOVERED ritual site (Standing Stones and their
       // kin) in the province the character will be standing in this phase.
       if((report.kingdom?.alignment||'Neutral')!=='Pagan')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan kingdoms keep the old rites" disabled>`;
+        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
       const loc=predictedLocation(c.id,ph);
       const pd=loc?(report.provinceOrderData||{})[loc.id]:null;
       const site=(pd?.features||[]).find(f=>f.ritualSite);
@@ -5242,6 +5243,17 @@ function buildTargetField(c, ph, saved){
     case 'Practice Skill':{
       const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${target===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select>`;}
+
+    // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
+    case 'Research':{
+      const sg=Math.min(5,(c.skills||{}).sage||0);
+      const disc=(report.discoveries||[]);
+      const per=disc.some(d=>d.id==='sd30')?10:5;
+      const neutral=(report.kingdom?.alignment==='Neutral')?sg*5:0;
+      const chance=sg*per+neutral;
+      return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+        <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${per===10?', Library':''}${neutral?', Neutral scholars':''}).</div>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`;}
 
     // ── RECRUIT ARMIES ──
     case 'Recruit Armies':{
@@ -5645,7 +5657,7 @@ function neutralCharLabel(c){
   const base=String(c&&c.name||'').replace(/\s*\(wandering\)/gi,'').trim();
   return `${base} (${c&&c.isNeutralGuard?'local chieftain':'wandering'})`;
 }
-// Item 6: the map tooltip has a very dark background, so a dark kingdom colour (e.g. navy) would be
+// Item 6: the map tooltip has a very dark background, so a dark realm colour (e.g. navy) would be
 // hard to read. Lighten only low-luminance colours (mix toward white); bright ones pass through.
 function _tintForDarkTooltip(hex){
   if(!hex||typeof hex!=='string'||hex[0]!=='#'||hex.length!==7) return hex;
@@ -5685,7 +5697,7 @@ function popupKnownChars(pd, deadHeroes){
   const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer && !deadIds.has(c.id));
   const wand=chars.filter(c=>c.isWanderer && !deadIds.has(c.id));
   let s='';
-  // Item 6: colour character names by owner — own & enemy in their kingdom colour (lightened if
+  // Item 6: colour character names by owner — own & enemy in their realm colour (lightened if
   // needed for the dark tooltip), wandering heroes and local chieftains (neutral) in grey.
   const NEUTRAL_GREY='#9a9a9a';
   if(own.length)   s+=own.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#f2e8d0';return `<br>\u{1F464} <span style="color:${col}">${(c.isKing?'\u265B ':'')}${c.name}</span>${cnt(c)}`;}).join('');
@@ -5713,7 +5725,7 @@ function renderMapIntoSvg(svgEl, report){
   if(!provs||provs.length===0) return;
 
   // ── HORIZONTAL CENTRING ON THE FOUNDING CAPITAL ─────────────────────────────
-  // The world wraps east-west. Drawn at its true column, a kingdom founded near column 0 sits hard
+  // The world wraps east-west. Drawn at its true column, a realm founded near column 0 sits hard
   // against the left edge with its own western neighbours appearing on the far right, which is
   // miserable to read. The GM report supplies centreCol (the capital's column, frozen at world gen
   // and never updated as land changes hands), and every province is drawn at a DISPLAY column
@@ -5874,7 +5886,7 @@ function renderMapIntoSvg(svgEl, report){
     if((isOwned||isVisited)&&pd.characters?.length>0){
       const ownChars=pd.characters.filter(c=>c.isOwn);
       // Neutral characters — wandering heroes AND the sworn guardians of neutral provinces — render
-      // grey. An "enemy" is only a character that belongs to another PLAYER (has a real kingdom
+      // grey. An "enemy" is only a character that belongs to another PLAYER (has a real realm
       // colour); guards have no ownerColor, so they can never fall into the red enemy bucket (item 9).
       const enemyChars=pd.characters.filter(c=>!c.isOwn&&!c.isWanderer&&!c.isNeutralGuard&&c.ownerColor);
       const wanderers=pd.characters.filter(c=>!c.isOwn&&(c.isWanderer||c.isNeutralGuard||!c.ownerColor));
@@ -6011,7 +6023,7 @@ function renderMapIntoSvg(svgEl, report){
       btxt.setAttribute('class','sym-battle'); symbolLayer.appendChild(btxt);
     }
 
-    // DIVINE — Consecrate: a ✨ at the TOP-RIGHT marks the kingdom's holy ground so the player can
+    // DIVINE — Consecrate: a ✨ at the TOP-RIGHT marks the realm's holy ground so the player can
     // confirm at a glance that the blessing is active (+50% tax, doubly-fanatical defenders, −15% to
     // Undead/Evil attackers, and resurrection anchor all key off this province).
     if(pd.consecrated){
@@ -6040,8 +6052,8 @@ function renderMapIntoSvg(svgEl, report){
     }
 
     // Ritual sites: a 🌙 at the bottom-left of any hex where THIS player has DISCOVERED a ritual site —
-    // shown to every kingdom that has found it (like a lair's star), and persisting on remembered
-    // provinces regardless of who owns the ground. Only Pagan kingdoms may actually Perform Rites here
+    // shown to every realm that has found it (like a lair's star), and persisting on remembered
+    // provinces regardless of who owns the ground. Only Pagan realms may actually Perform Rites here
     // (the popup notes this); anyone who found the stones can still see them on their map.
     if((pd.features||[]).some(f=>f.ritualSite)){
       const hasFlag=pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
@@ -6198,6 +6210,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-2124</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-2141</div>
 </body>
 </html>
