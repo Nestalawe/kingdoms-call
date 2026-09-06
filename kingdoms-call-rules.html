@@ -374,7 +374,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Remembered</strong> — a province one of your characters has seen before but cannot see now. Shown frozen at its last-seen state; no live units or characters.</li>
     <li><strong>Spied</strong> — a province you ran a <em>Spy</em> action on this turn. Reveals its defenders, owner, lairs and the characters present, including unit types and qualities.</li>
   </ul>
-  <p>The <strong>Messenger Birds</strong> Sage discovery extends passive sight to provinces two steps out from those you own.</p>
+  <p>Certain Sage discoveries can widen this passive sight further.</p>
 
   <h3>Seeing other players' characters</h3>
   <p>Whether an <strong>enemy</strong> character standing in a province is shown to you depends on how you see that province:</p>
@@ -469,7 +469,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Spy</strong></td><td>A Spy <em>action</em> succeeds at <strong>20% + 20% per level</strong> (level 5 is effectively certain). Intelligence accuracy scales too: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying and helps you run down a quarry.</td></tr>
     <tr><td><strong>Thief</strong></td><td>Raises Steal success: a Steal attempt lands at <strong>50% + 10% per level</strong> (Cowardly heroes add a further +15), <strong>halved</strong> if the target is leading troops.</td></tr>
     <tr><td><strong>Druid</strong></td><td>Lets you LEAD non-native races and wild units. The level required varies by unit (see the <a href="#armies">roster's Druid column</a>): tamer creatures need Druid 2–3, the mightiest monsters need Druid 5. Druidic kingdoms lead all Creatures without any Druid skill; a Pagan Wild Hunt binds creatures or monsters without it.</td></tr>
-    <tr><td><strong>Sage</strong></td><td>Chance of a kingdom Discovery each turn: <strong>5% per level</strong>, so <strong>25% at level 5</strong> (the chance <strong>caps at 5</strong>). <strong>Neutral</strong> kingdoms roll at double, and the <em>Library</em> discovery doubles the rate again. Each discovery is a permanent kingdom-wide upgrade.</td></tr>
+    <tr><td><strong>Sage</strong></td><td>Chance of a kingdom Discovery each turn: <strong>5% per level</strong>, so <strong>25% at level 5</strong> (the chance <strong>caps at 5</strong>). <strong>Neutral</strong> kingdoms roll at double. Each discovery is a permanent kingdom-wide upgrade.</td></tr>
     <tr><td><strong>Explorer</strong></td><td>Charts the map faster — each Explore order adds <strong>(terrain base) × (Explorer level + 1)%</strong>, so Explorer 4 maps five times as fast as Explorer 0. Terrain base per Explore: plains 35, desert/sea 25, forest/mountain 20, jungle 15 (percentage points).</td></tr>
     <tr class="grp"><td colspan="2"><strong>Magic (each school)</strong></td></tr>
     <tr><td><strong>White · Psychic · Illusory · Elemental · Necromancy</strong></td><td>Your level in a school is <strong>how many of its spells you know</strong> (level 1 = the first spell … level 5 = all five), and it raises your per-turn casting chance. The <strong>per-turn casting benefit caps at level 5</strong>; levels 6–9 unlock mastery spells and count toward the Archmage title.</td></tr>
@@ -535,7 +535,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Cast Spell</strong> — work one of your school's spells (see <a href="#spells">The Spellbook</a>).</li>
     <li><strong>Use Item</strong> — activate a magic item's power.</li>
     <li><strong>Equip Items</strong> — choose which weapon, armour, cloak, helm, rings and amulet the character wears (one per slot, two rings). Unslotted items are always active.</li>
-    <li><strong>Practice Skill</strong> — train a skill toward level 5 on the practice ground. Success is a die roll each turn, and the chance to gain the next level <strong>falls as the skill rises</strong> (mastery is harder): practising <strong>on your own</strong>, the chance is <strong>25%</strong> from level 0→1, <strong>20%</strong> 1→2, <strong>15%</strong> 2→3, <strong>10%</strong> 3→4 and <strong>5%</strong> 4→5. If two or more of your characters practise the <strong>same skill in the same province</strong>, they drill together: characters at the <strong>same level</strong> gain a <strong>+50% group bonus</strong> (so those rates become 37.5% / 30% / 22.5% / 15% / 7.5%), and any character training under a <strong>more-skilled mentor present</strong> (a co-trainer who was already a higher level in that skill at the start of the phase) improves <strong>automatically — a guaranteed level</strong>. (The <em>Astronomical Tables</em> discovery adds a flat +5% to all Practice rolls.)</li>
+    <li><strong>Practice Skill</strong> — train a skill toward level 5 on the practice ground. Success is a die roll each turn, and the chance to gain the next level <strong>falls as the skill rises</strong> (mastery is harder): practising <strong>on your own</strong>, the chance is <strong>25%</strong> from level 0→1, <strong>20%</strong> 1→2, <strong>15%</strong> 2→3, <strong>10%</strong> 3→4 and <strong>5%</strong> 4→5. If two or more of your characters practise the <strong>same skill in the same province</strong>, they drill together: characters at the <strong>same level</strong> gain a <strong>+50% group bonus</strong> (so those rates become 37.5% / 30% / 22.5% / 15% / 7.5%), and any character training under a <strong>more-skilled mentor present</strong> (a co-trainer who was already a higher level in that skill at the start of the phase) improves <strong>automatically — a guaranteed level</strong>.</li>
     <li><strong>Rest</strong> — recover hit points.</li>
   </ul>
 
@@ -702,7 +702,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td>Slow (base move 1–2)</td><td class="num">+0</td><td class="num">+0</td><td class="num">+1</td><td class="num">+1</td><td class="num">+2</td></tr>
     <tr><td>Fast (base move 3+)</td><td class="num">+1</td><td class="num">+1</td><td class="num">+2</td><td class="num">+2</td><td class="num">+2</td></tr>
   </table></div>
-  <p>So a March-5 general leading base-2 Dwarven Guard moves at <strong>4</strong>; leading base-3 levies, at <strong>5</strong>. The <em>Road Network</em> Sage discovery adds a further <strong>+1</strong> to slow (move 1–2) land columns, and the <em>Boots of the Wind</em> / <em>Traveller's Cloak</em> items add March levels outright. <strong>Flyers ignore March</strong> — they already move at 5 and cross any terrain.</p>
+  <p>So a March-5 general leading base-2 Dwarven Guard moves at <strong>4</strong>; leading base-3 levies, at <strong>5</strong>. Certain Sage discoveries can add to this, and the <em>Boots of the Wind</em> / <em>Traveller's Cloak</em> items add March levels outright. <strong>Flyers ignore March</strong> — they already move at 5 and cross any terrain.</p>
 
   <h3>Sea movement &amp; the Naval skill</h3>
   <p>Sea points are a <strong>separate pool</strong>, spent only when a move touches the water — sailing into a sea province, or making a <strong>coastal landing</strong> from sea onto an adjacent shore. Both cost <strong>one sea point</strong>. A fleet's sea pool is set by its <strong>slowest ship</strong>, improved by the leader's <strong>Naval</strong> skill on the very same ladder as March (+0/0/1/1/2 for slow hulls of base ≤2, +1/1/2/2/2 for faster ones). A lone hero with no ships still gets the flat 5 sea points of light travel — but <strong>Naval buys them nothing</strong>, because Naval is the command of a fleet, not of a rowing boat you're a passenger on.</p>
@@ -830,7 +830,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Battle-magic</strong> spells are cast into a full army battle to swing it. Certain combat spells double as battle-magic, weakening whole enemy contingents.</li>
   </ul>
   <h4>Your chance to cast</h4>
-  <p>Every cast is a roll. Your chance of success is <strong>20% + 10% per level in that school</strong>, capped at <strong>95%</strong> — so level 1 casts at 30%, level 3 at 50%, level 5 at 70%. Bonuses stack on top (still under the 95% ceiling): the <em>Arcane Codex</em> discovery adds <strong>+5%</strong> to every cast; mastery of a school beyond level 5 brings further casting bonuses you discover in play. The <em>Wailing Phylactery</em> relic makes your <strong>first Necromancy spell each turn succeed automatically</strong>.</p>
+  <p>Every cast is a roll. Your chance of success is <strong>20% + 10% per level in that school</strong>, capped at <strong>95%</strong> — so level 1 casts at 30%, level 3 at 50%, level 5 at 70%. Bonuses stack on top (still under the 95% ceiling): some Sage discoveries add to it; mastery of a school beyond level 5 brings further casting bonuses you discover in play. The <em>Wailing Phylactery</em> relic makes your <strong>first Necromancy spell each turn succeed automatically</strong>.</p>
 
   <h4>How many you may cast</h4>
   <p>How many spells of a school you can work depends on your level in it:</p>
@@ -845,7 +845,7 @@ footer.book .v{color:var(--gold-deep);}
 <!-- 14 ──────────────────────────────────────────────── -->
 <section id="spells">
   <h2>The Spellbook</h2>
-  <p>The twenty-five core spells, by school. A character with at least <strong>level 1</strong> in a school can cast <em>any</em> of that school's five core spells — you don't unlock them one by one. Higher levels make your spells more potent and let you cast more of them per turn. Remember each cast can fail: your success chance is <strong>20% + 10% per school level</strong>, +5% with the Arcane Codex discovery, hard cap 95%. Spell <em>effects</em> never scale beyond level 5 — past that you gain the mastery perks instead — see <a href="#magic">How spells are cast</a>. <span class="pill">A</span> = action, <span class="pill">C</span> = combat, <span class="pill">B</span> = battle-magic.</p>
+  <p>The twenty-five core spells, by school. A character with at least <strong>level 1</strong> in a school can cast <em>any</em> of that school's five core spells — you don't unlock them one by one. Higher levels make your spells more potent and let you cast more of them per turn. Remember each cast can fail: your success chance is <strong>20% + 10% per school level</strong>, hard cap 95% (some discoveries raise it). Spell <em>effects</em> never scale beyond level 5 — past that you gain the mastery perks instead — see <a href="#magic">How spells are cast</a>. <span class="pill">A</span> = action, <span class="pill">C</span> = combat, <span class="pill">B</span> = battle-magic.</p>
 
   <h3>✨ White — healing, blessing, holiness</h3>
   <div class="wrap"><table class="tbl">
@@ -915,12 +915,13 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Strengthen the armies</strong> a hero leads, or ease their movement.</li>
     <li><strong>Enrich your economy</strong> — extra tax, or gold per province.</li>
     <li><strong>Legendary specials</strong> — unique, powerful effects, and each relic held at the Reckoning is worth a victory point.</li>
+    <li><strong>Spell items</strong> — a growing family of charms, rods and reliquaries, two for every action spell. Any character holding one may order <strong>Use Item</strong> to cast that spell at a flat <strong>95%</strong>, with no skill in the school and no casting slot spent (it works as at least a level-3 casting).</li>
   </ul>
   <p>Every item is <strong>one of a kind</strong>: the world holds at most a single copy of each, so no two heroes will ever bear the same blade. A few relics are never found in lairs at all but <strong>granted</strong> — chief among them a dwarf kingdom's <strong>Mithril Armour</strong>, worn by every dwarven character as their birthright.</p>
 
   <h3>Sage discoveries</h3>
   <p>The <strong>Sage</strong> skill unlocks <strong>kingdom-wide discoveries</strong> — permanent upgrades that apply to your whole realm, in military, economy, espionage, scholarship and more (better recruit quality, richer provinces, stronger spies, and so on). They compound over the whole game, and the earliest ones you claim are the most valuable, so a little Sage from turn one pays for itself many times over. Rival spies can steal discoveries you haven't protected.</p>
-  <div class="note"><span class="lbl">Battlefield Surgery</span>Kingdoms holding this Heroic discovery give every character (kings included) a <strong>20%</strong> chance to survive any killing blow with 1 HP. Arcane Observatory charts one unexplored province in full every turn.</div>
+  <div class="note"><span class="lbl">Kept secret</span>What the discoveries are — their names, effects and how many there are — is not written here. Each one is revealed to your kingdom only when your Sages uncover it (and to a rival only if their spies steal it).</div>
 
   <a class="totop" href="#overview">↑ top</a>
 </section>
@@ -1080,7 +1081,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.06-2107</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.06-2124</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
