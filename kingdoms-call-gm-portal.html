@@ -1458,7 +1458,7 @@ async function createGame(){
 // ── GAME DETAIL ───────────────────────────────────────
 // ── LEGACY UNIT-TYPE MIGRATION ────────────────────────────────────────────────
 // Army type is stored as a raw string on every army object, inside the game_state JSON in Supabase.
-// The five Human/Dwarven units below were renamed in v2026.08.13-1614. Any game saved before that
+// The five Human/Dwarven units below were renamed in v2026.09.06-1601. Any game saved before that
 // still carries the old strings, and every lookup table (cost, speed, strength, terrain, druid
 // level, missile/flying/sea sets, name pools) is keyed by the new ones — so an unmigrated save
 // would silently fall back to default stats. This walks a loaded state and rewrites them.
@@ -12812,22 +12812,23 @@ const BATTLE_ARMY_SPELLS={
     if(!c||c.id==null) return;
     const oldLandMax=(moveMax[c.id]!=null?moveMax[c.id]:(movePoints[c.id]??0));
     const oldSeaMax =(seaMoveMax[c.id]!=null?seaMoveMax[c.id]:(seaMovePoints[c.id]??0));
-    let landSpent=Math.max(0, oldLandMax-(movePoints[c.id]??0));
-    let seaSpent =Math.max(0, oldSeaMax -(seaMovePoints[c.id]??0));
+    const oldLandRem=(movePoints[c.id]!=null?movePoints[c.id]:oldLandMax);
+    const oldSeaRem =(seaMovePoints[c.id]!=null?seaMovePoints[c.id]:oldSeaMax);
     const m=computeMovePoolMax(c);
-    // LIGHT-TRAVEL / ARMY transition fix. A hero with no armies "takes passage" on a generous 5-move
-    // pool; those free-passage moves must NOT be charged against a real army's much smaller marching
-    // allowance when the hero later picks up troops. Without this, one light move plus a slow recruit
-    // (e.g. a speed-1 garrison) zeroed the whole pool — "no movement points remaining" even though the
-    // army had not yet marched. So when the NEW composition leads armies, discount the light-travel
-    // moves already made from the carried spend. Total moves stay capped by the 5-phase turn structure
-    // (one move per phase), so this can never let a character exceed 5 provinces in a turn.
-    if((c.armies||[]).length>0){
-      landSpent=Math.max(0, landSpent-(lightLandMoves[c.id]||0));
-      seaSpent =Math.max(0, seaSpent -(lightSeaMoves[c.id]||0));
-    }
-    movePoints[c.id]=Math.max(0, m.land-landSpent);
-    seaMovePoints[c.id]=Math.max(0, m.sea-seaSpent);
+    // Composition-change accounting WITHOUT retroactive penalties. Remaining points are carried forward
+    // and adjusted only by the CHANGE in the pool's maximum:
+    //   • ADDING a slower unit (newMax < oldMax): the fresh unit just mustered/joined and has not
+    //     marched, so the moves already made are NOT charged against its allowance —
+    //     remaining = min(newMax, oldRemaining). (Fixes: recruiting or picking up a speed-1 garrison
+    //     after an earlier march wrongly reported "no movement points left".)
+    //   • DROPPING a slow unit (newMax > oldMax): the freed reach is handed back — remaining rises by
+    //     the max increase (still capped at newMax), so shedding a slow unit speeds the column up.
+    //   • No change (newMax == oldMax): remaining is untouched.
+    // This also subsumes the old light-travel discount (a no-army hero's generous 5-move pool dropping
+    // to an army pace is just the "added a slower unit" case). Total moves stay capped by the 5-phase
+    // turn (one move per phase), so a character can still never exceed 5 provinces in a turn.
+    movePoints[c.id]   =Math.max(0, Math.min(m.land, oldLandRem+Math.max(0, m.land-oldLandMax)));
+    seaMovePoints[c.id]=Math.max(0, Math.min(m.sea,  oldSeaRem +Math.max(0, m.sea -oldSeaMax)));
     seaMoveActive[c.id]=m.seaActive; seaCap[c.id]=m.cap;
     moveMax[c.id]=m.land; seaMoveMax[c.id]=m.sea;
   }
@@ -15688,6 +15689,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.05-2358</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.06-1601</div>
 </body>
 </html>

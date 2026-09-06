@@ -3943,6 +3943,12 @@ function updateBloodOffering(charId, ph){
     else if(sac.length!==ben.length){ hint.textContent=`⚠ ${sac.length} to sacrifice vs ${ben.length} to empower — only ${Math.min(sac.length,ben.length)} pair(s) will take effect (each sacrifice funds one empowerment).`; hint.style.color='#b04a4a'; }
     else { hint.textContent=`✓ ${sac.length} unit(s) sacrificed to empower ${ben.length} other(s) by +2 tiers.`; hint.style.color='#2d6a2d'; }
   }
+  // Persist the selection into the saved draft immediately. Without this, the per-unit choices live
+  // ONLY in the DOM: any later full re-render of the orders form (e.g. heir-skill allocation) or a
+  // reload rebuilds this field from the saved draft, resetting every unit to "Keep" and emptying the
+  // hidden field — so only the engine's 1-for-1 fallback fired. Saving on each change keeps the draft
+  // (and currentGamePlayer.orders, used by rebuilds) in step with what the player actually chose.
+  if(typeof doSaveOrders==='function') doSaveOrders();
 }
 
 
@@ -6075,6 +6081,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.05-2358</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-1601</div>
 </body>
 </html>
