@@ -319,6 +319,23 @@ function disbandLine(owner,a){
   return `— ${owner?owner+"'s ":''}${a.unitName?a.unitName+' ('+a.type+')':a.type} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
 }
 
+
+// ── BATTLE RESULT MARGIN BANDS (Item 4, Sept 2026) ──────────────────────────────────────────
+// margRatio = |winner − loser| ÷ (winner + loser). Six bands replace the old three (narrow <10%,
+// clear 10–30%, decisive >30%): the middle three keep their exact old numbers; Pyrrhic splits off the
+// bottom of Narrow, Crushing and Annihilating split off the top of Decisive. Every band keeps at
+// least 1% winner death and 1% loser XP (a rout still costs the victor something, and even a
+// shattered army learns). Used by BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
+const BATTLE_MARGIN_BANDS=[
+  {label:'pyrrhic',      max:0.04, winDeath:0.15, loseDeath:0.12, winXP:0.60, loseXP:0.20, loseDemote:0.05},
+  {label:'narrow',       max:0.10, winDeath:0.12, loseDeath:0.12, winXP:0.50, loseXP:0.12, loseDemote:0.10},
+  {label:'clear',        max:0.30, winDeath:0.05, loseDeath:0.18, winXP:0.30, loseXP:0.06, loseDemote:0.20},
+  {label:'decisive',     max:0.55, winDeath:0.01, loseDeath:0.35, winXP:0.15, loseXP:0.02, loseDemote:0.30},
+  {label:'crushing',     max:0.75, winDeath:0.01, loseDeath:0.50, winXP:0.08, loseXP:0.01, loseDemote:0.45},
+  {label:'annihilating', max:9,    winDeath:0.01, loseDeath:0.60, winXP:0.05, loseXP:0.01, loseDemote:0.55},
+];
+function battleMarginBand(margRatio){ const r=Math.max(0,margRatio||0); return BATTLE_MARGIN_BANDS.find(b=>r<b.max)||BATTLE_MARGIN_BANDS[BATTLE_MARGIN_BANDS.length-1]; }
+
 const MISSILE_ARMIES_MASTER=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers',
   'Ironwood Crossbows','Mountain Guns','Goblin Horde']);
 
@@ -625,7 +642,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items','Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
 // Alignment-signature actions and king-only actions — mirrored from the player portal.
 const ALIGN_ACTIONS_G={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
 const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker','Consecrate']);
@@ -635,7 +652,7 @@ const ACTION_DISPLAY_ORDER_G=[
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
   'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
   'Spy','Steal','Practice Skill',
-  'Use Item','Send Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
+  'Use Item','Equip Items','Send Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
 ];
 const _actionRankG=(a)=>{ const i=ACTION_DISPLAY_ORDER_G.indexOf(a); return i<0?ACTION_DISPLAY_ORDER_G.length:i; };
 function actionsForG(ch){
@@ -3000,6 +3017,33 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
   if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
 }
+
+// ── EQUIPMENT SLOTS (Item 11, Sept 2026) ─────────────────────────────────────────────────────
+// Worn/wielded items occupy a slot; only ONE per slot (two rings) can be EQUIPPED, and only equipped
+// slot items give their effect. Everything without a slot is always active. `activeItems(c)` is the
+// single gate every effect read goes through; it normalises first (auto-equips an empty slot with the
+// first item held, trims any over-cap), so pre-existing saves and new pick-ups need no migration.
+const ITEM_SLOT_CAP={weapon:1,armour:1,cloak:1,helm:1,ring:2,amulet:1};
+const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (gauntlets, gloves, boots)',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant'};
+const ITEM_SLOT_OF={
+  'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
+  'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
+  "Traveller's Cloak":'cloak','Shadowcloak':'cloak','Veil of Illusions':'cloak','Cloak of Many Faces':'cloak',
+  "Sage's Crown":'helm','Crown of Command':'helm','Imperial Regalia':'helm',
+  'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
+  "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
+};
+function itemSlot(it){ if(!it) return null; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||null; }
+function normaliseEquipment(c){
+  if(!c||!Array.isArray(c.items)) return;
+  const count={};
+  c.items.forEach(it=>{ const sl=itemSlot(it); if(!sl){ if(it&&it.equipped!==undefined) delete it.equipped; return; }
+    if(it.equipped===true){ if((count[sl]||0)>=ITEM_SLOT_CAP[sl]) it.equipped=false; else count[sl]=(count[sl]||0)+1; } });
+  c.items.forEach(it=>{ const sl=itemSlot(it); if(!sl||it.equipped===true) return;
+    if((count[sl]||0)<ITEM_SLOT_CAP[sl]){ it.equipped=true; count[sl]=(count[sl]||0)+1; } else it.equipped=false; });
+}
+function activeItems(c){ if(!c||!Array.isArray(c.items)) return []; normaliseEquipment(c); return c.items.filter(it=>it&&(!itemSlot(it)||it.equipped===true)); }
+
 function dedupeItemsByName(items){
   const seen=new Set(); const out=[];
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
@@ -3061,6 +3105,9 @@ function pctSucceeds(chance){ return d100()<=chance; }
 // Item 10 (this session): ONE canonical way to show a percentage roll in the report — the success
 // CHANCE and the actual d100 ROLL, with a ✓/✗. Success is roll<=chance (the d100 convention above).
 // The displayed % is clamped to 0–100; the underlying test should use the raw chance.
+// Roll-display contract (Sept 2026): callers MUST compare an integer d100 roll against Math.round(chance)
+// — never the raw fractional chance — so the tick shown here always matches the outcome. fmtRoll rounds
+// both the same way.
 function fmtRoll(chance, roll){ const c=Math.max(0,Math.min(100,Math.round(chance))); return `${c}% [roll ${Math.round(roll)} ${roll<=chance?'✓':'✗'}]`; }
 
 const PRIMAL_UNIT_NAMES={
@@ -4831,7 +4878,7 @@ function _legendaryNames(){ return new Set((ITEMS_BY_TIER[3]||[]).map(it=>it.nam
 function _charTitleMerit(c){
   const tm=c.tm||{};
   const magic=_MAGIC_SCHOOLS.reduce((s,sc)=>s+_skillItem(c,sc),0);
-  const spellItems=(c.items||[]).filter(it=>it.effect&&_MAGIC_SCHOOLS.includes(it.effect.stat)).length;
+  const spellItems=activeItems(c).filter(it=>it.effect&&_MAGIC_SCHOOLS.includes(it.effect.stat)).length;
   return {
     marshal:(tm.marshal||0),
     sea:(tm.sea||0)+_skillItem(c,'naval'),
@@ -5084,7 +5131,7 @@ function buildTurnReport(gameState, playerIndex){
     }
     return{
       id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,
-      hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},aptitude:c.aptitude||{},armies,items:c.items||[],pay:c.pay||0,
+      hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},aptitude:c.aptitude||{},armies,items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it)}):it)),pay:c.pay||0,
       locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,
       effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,
       hiredInPhase:c.hiredInPhase??-1,  // -1 = was hired before this turn
@@ -5156,7 +5203,7 @@ function buildTurnReport(gameState, playerIndex){
   // cloaked (Veil / hidden-item) hero cannot be picked out at all. The Encounter order then chases
   // the quarry wherever they go, so the list need only reflect where they were last seen.
   const _encVisProv=new Set([...ownedProvIds, ...ownCharLocs, ...spiedThisTurn]);
-  const _encHidden=(ch)=>!!(ch&&(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden')); // Veil is phase-scoped (see isVeiled); by report time it has parted
+  const _encHidden=(ch)=>!!(ch&&activeItems(ch).some(it=>it.effect&&it.effect.stat==='hidden')); // Veil is phase-scoped (see isVeiled); by report time it has parted
   const encounterTargets=gameState.characters
     .filter(c=>c.alive&&c.player!==null&&c.player!==playerIndex&&_encVisProv.has(c.location)&&!_encHidden(c)
       && !(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(c.location)) && c._invisTurn!==gameState.turn)
@@ -5472,9 +5519,9 @@ function buildTurnReport(gameState, playerIndex){
     return s+t;
   },0);
   const _pChars=(gameState.characters||[]).filter(c=>c.player===playerIndex&&c.alive);
-  const _itemStat=(st)=>_pChars.reduce((s,c)=>s+((c.items||[]).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
+  const _itemStat=(st)=>_pChars.reduce((s,c)=>s+(activeItems(c).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
   const taxBonus=_pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+_itemStat('taxBonus'); // Ring of Wealth
-  const ledgers=_pChars.some(c=>(c.items||[]).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
+  const ledgers=_pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
   const perProvBonus=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
   const interestBonus=hasDiscR('sd12')?Math.min(3,Math.floor((player.gold||0)*0.05)):0; // Merchant Guilds
   const neutralTradeBonus=player.alignment==='Neutral'?Math.floor(provTaxIncome*0.20):0;
@@ -5573,7 +5620,7 @@ function buildTurnReport(gameState, playerIndex){
     // Faces stays anonymous, so nothing hidden leaks — and the portal only visibly tints names that
     // actually appear in the rendered text.
     allKingdoms:(gameState.players||[]).map((p,i)=>({index:i,name:(p&&p.name)||('Kingdom '+(i+1)),color:(p&&p.color)||null})),
-    nameColors:(gameState.characters||[]).filter(c=>c&&c.name&&(c.alive||c.killedThisTurn)&&!((c.items||[]).some(it=>it&&it.effect&&it.effect.stat==='hidden'))).map(c=>({name:c.name,color:(c.player!=null?(gameState.players[c.player]?.color||null):null),neutral:(c.player==null)})),
+    nameColors:(gameState.characters||[]).filter(c=>c&&c.name&&(c.alive||c.killedThisTurn)&&!(activeItems(c).some(it=>it&&it.effect&&it.effect.stat==='hidden'))).map(c=>({name:c.name,color:(c.player!=null?(gameState.players[c.player]?.color||null):null),neutral:(c.player==null)})),
     visitedProvinceIds:[...visitedProvIds],
     worldMeta, availableHeroesByProv, provinceOrderData,
     knownFeatures, heroSightings,
@@ -6298,17 +6345,17 @@ async function runTurn(){
   }
   function effStat(c,stat){
     let base=(c.skills||{})[stat]||0;
-    dedupeItemsByName(c.items).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;}); // item 6: no duplicate stacking
+    dedupeItemsByName(activeItems(c)).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;}); // item 6: no duplicate stacking; Item 11: only EQUIPPED slot items count
     base-=(c._curses||{})[stat]||0; // Curse spell reduces skill temporarily
     // Crown of Command: +1 to ALL skills if a co-located ally (or self) carries the aura item.
-    if(c&&c.location!=null&&(G.characters||[]).some(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&(o.items||[]).some(it=>it.effect&&it.effect.stat==='aura'))) base+=1;
+    if(c&&c.location!=null&&(G.characters||[]).some(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&activeItems(o).some(it=>it.effect&&it.effect.stat==='aura'))) base+=1;
     return Math.max(0,Math.min(5,base));
   }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
   // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character.
   // ILLUSORY L9 Veil — active only during the cast phase and the phase after it (two phases).
   function isVeiled(ch){ return !!(ch && ch._veilTurn===G.turn && _currentPhase!=null && ch._veilCastPhase!=null && _currentPhase>=ch._veilCastPhase && _currentPhase<=ch._veilCastPhase+1); }
-  function isHiddenChar(ch){ return !!(ch&&(isVeiled(ch)||(ch.items||[]).some(it=>it.effect&&it.effect.stat==='hidden'))); }
+  function isHiddenChar(ch){ return !!(ch&&(isVeiled(ch)||activeItems(ch).some(it=>it.effect&&it.effect.stat==='hidden'))); }
 
   // A hero's wage is a function of their skills, so it must be recomputed EVERYWHERE skills
   // change — not just in the Practice order. Experience-driven gains (trySkillGain) previously
@@ -6616,7 +6663,7 @@ function seaPenalty(armyType, terrain){
       let sp=seaPenalty(army.type,terrain);
       if(sp<1 && terrain==='sea' && ctx && (ctx.force||[]).some(a=>a&&a.type==='Elven Galleys')
          && MISSILE_ARMIES_MASTER.has(army.type)) sp=1.0;
-      if(sp<1 && terrain==='sea' && heroChar && (perkTier(heroChar,'naval')>=3 || (heroChar.items||[]).some(it=>it.landFullAtSea))) sp=1.0; // NAVAL L8 / Tide-Caller's Horn: land units led at sea take no penalty
+      if(sp<1 && terrain==='sea' && heroChar && (perkTier(heroChar,'naval')>=3 || activeItems(heroChar).some(it=>it.landFullAtSea))) sp=1.0; // NAVAL L8 / Tide-Caller's Horn: land units led at sea take no penalty
       let _tmod=terrainMod(army.type,terrain);
       if(heroChar && perkTier(heroChar,'march')>=3){ _tmod = _tmod>1 ? 1+(_tmod-1)*2 : Math.max(1,_tmod); } // MARCH L8: terrain bonuses doubled, no terrain penalties
       if(army._laNoTerrain && _tmod>1) _tmod=1; // MARCH L9 Lightning Advance: the ambushed side gets no terrain bonus
@@ -6640,7 +6687,7 @@ function seaPenalty(armyType, terrain){
     if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
     // Magic-item army bonuses carried by the leading commander.
     if(heroChar&&heroChar.items&&heroChar.items.length){
-      const has=(st)=>heroChar.items.some(it=>it.effect&&it.effect.stat===st);
+      const has=(st)=>activeItems(heroChar).some(it=>it.effect&&it.effect.stat===st);
       const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']);
       const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']);
       const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows']);
@@ -7074,7 +7121,7 @@ const BATTLE_ARMY_SPELLS={
       defBonus*=1.10;
       narrative.push(`✝ Righteous Defence — the defenders of ${prov.name} stand on ground they hold justly (+10% defence).`);
     }
-    if((c.items||[]).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${cName}'s siege mastery halves the defenders' fortifications.`); }
+    if(activeItems(c).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${cName}'s siege mastery halves the defenders' fortifications.`); }
     // ORC — Terror From Above. Neutral guards never roll for fanaticism, so there is no morale to
     // strip; the wyverns instead shake the defence itself, cutting the defenders' bonus by 10%.
     if((c.armies||[]).some(a=>a&&a.type==='Wyvern Riders')){
@@ -7204,7 +7251,7 @@ const BATTLE_ARMY_SPELLS={
     // Each attacker missile unit fires at a random defender
     // Quiver of Many Arrows = 2 volleys per unit
     // ══════════════════════════════════════════════════════
-    const hasQuiver=(c.items||[]).some(it=>it.name==='Quiver of the Hawk');
+    const hasQuiver=activeItems(c).some(it=>it.name==='Quiver of the Hawk');
     applyFlakScreen(armies, defenders, c.name, narrative);
     // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired.
     (function(){
@@ -7591,10 +7638,11 @@ const BATTLE_ARMY_SPELLS={
     // margRatio = how decisive the victory was (0=coin flip, 1=total annihilation)
     const totalStr=Math.max(1,finalAtk+finalDef);
     const margRatio=Math.abs(margin)/totalStr;
-    const isNarrow=margRatio<0.10;
-    const isDecisive=margRatio>0.30;
+    const _band=battleMarginBand(margRatio);
+    const isNarrow=_band.max<=0.10;                 // pyrrhic or narrow (kept for existing consumers)
+    const isDecisive=_band.max>0.30;                // decisive, crushing or annihilating
     // Severity label for narrative
-    const severity=isDecisive?'decisive':!isNarrow?'clear':'narrow';
+    const severity=_band.label;
 
     // XP tier multipliers — higher tiers harder to improve
     const xpMult=['Green','Average','Veteran','Crack','Elite'].map((_,i)=>[1.5,1.0,0.6,0.3,0][i]);
@@ -7607,13 +7655,13 @@ const BATTLE_ARMY_SPELLS={
     // A battle that carries on from phase to phase (or a chain of assaults on the same province) grows
     // bloodier each round for BOTH sides: _carryMult climbs +35% per carry-on round, capped at 2.5×.
     const _carryMult=Math.min(CARRYON_DEATH_CAP, 1+CARRYON_DEATH_STEP*(prov._carryOnRounds||0));
-    const winDeathChance=(isNarrow?0.12:isDecisive?0.01:0.05)*_carryMult;
-    const loseDeathChance=(isNarrow?0.12:isDecisive?0.35:0.18)*_carryMult;
+    const winDeathChance=_band.winDeath*_carryMult;
+    const loseDeathChance=_band.loseDeath*_carryMult;
     // XP gain chances
-    const winXPChance=isNarrow?0.50:isDecisive?0.15:0.30;
-    const loseXPChance=isNarrow?0.12:isDecisive?0.02:0.06;
+    const winXPChance=_band.winXP;
+    const loseXPChance=_band.loseXP;
     // XP loss chances (loser only)
-    const loseDemoteChance=isNarrow?0.10:isDecisive?0.30:0.20;
+    const loseDemoteChance=_band.loseDemote;
 
     // Steel Armour discovery: -15% death chance
     const steelArmour=hasDisc(c.player,'sd05');
@@ -7769,7 +7817,7 @@ const BATTLE_ARMY_SPELLS={
       const _retSc=getSeaCapability(c.armies||[],c);
       const friendlyAdj=adjProvs.filter(p2=>isFriendlyProvFor(p2,c.player)&&canEnterTerrain(c,p2.terrain,_retSc)); // Task 8: own OR allied provinces only; Task 2: legally-enterable terrain only
       prov._hadBattleThisTurn=true;
-      const infStay=(c.items||[]).some(it=>it.effect&&it.effect.stat==='infStay');
+      const infStay=activeItems(c).some(it=>it.effect&&it.effect.stat==='infStay');
       // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
       // there is water to reach. They withdraw to the ships rather than being cut down.
       const _seaEscape=_npcCorsairs&&adjProvs.some(p2=>p2&&p2.terrain==='sea');
@@ -7984,7 +8032,7 @@ const BATTLE_ARMY_SPELLS={
       tactics:((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME']).slice(),
       tacIdx:0, planExhausted:false, neverFlees:false,
       speedBonus:ch._speedBonus||0, specials:[],
-      mithril:(ch.items||[]).some(it=>it.effect&&it.effect.stat==='mithrilArmour'), // Item 3: −2 melee damage taken
+      mithril:activeItems(ch).some(it=>it.effect&&it.effect.stat==='mithrilArmour'), // Item 3: −2 melee damage taken
       status:pcNewStatus(),
       castSpells:[], castSchool:{}, // per-combat spell limits
       isUndead:(ch.alignment==='Undead'),
@@ -8060,7 +8108,7 @@ const BATTLE_ARMY_SPELLS={
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // A Cautious fighter rolls with the blow rather than taking it square on.
     dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
-    if(attacker.ref && (attacker.ref.items||[]).some(it=>it.name==='Warbringer Gauntlets')) dmg+=2; // Warbringer Gauntlets: +2 damage per successful melee attack
+    if(attacker.ref && activeItems(attacker.ref).some(it=>it.name==='Warbringer Gauntlets')) dmg+=2; // Warbringer Gauntlets: +2 damage per successful melee attack
     // (Mithril Armour is applied in pcTakeHit now — item 5 — so it also covers arrows.)
     return dmg;
   }
@@ -8187,7 +8235,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'Invisibility':{ caster.status.toHitReduce=Math.max(caster.status.toHitReduce||0,25); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — enemies suffer \u221225% to hit (min 40%), +30% flee.`); break; }
-      case 'Hand of Death':{ if(Math.random()*100<lvlEff*10){ const _dfMult=(caster.ref&&(caster.ref.items||[]).some(it=>it.name==="Death's Finger Ring"))?1.1:1; const d=Math.max(1,Math.round(target.maxHp*0.5*_dfMult)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${lvl*10}%]`); break; }
+      case 'Hand of Death':{ if(Math.random()*100<lvlEff*10){ const _dfMult=(caster.ref&&activeItems(caster.ref).some(it=>it.name==="Death's Finger Ring"))?1.1:1; const d=Math.max(1,Math.round(target.maxHp*0.5*_dfMult)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${lvl*10}%]`); break; }
       case 'Curse':{
         // Halve (round down) the target's best combat ability for the duration of the fight.
         const bestSchool=['white','psychic','illusory','elemental','necromancy'].reduce((b,s)=>(target.school[s]||0)>(target.school[b]||0)?s:b,'white');
@@ -8308,9 +8356,11 @@ const BATTLE_ARMY_SPELLS={
       return;
     }
     const hit=pcHitChance(actor,foe,50);
-    const roll=Math.random()*100;
-    narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hit.toFixed(0)}% to hit [roll ${Math.floor(roll)}]${roll<hit?' ✓':' ✗'})`);
-    if(roll<hit){
+    // Roll-display fix (Sept 2026): the shown target and the shown roll are BOTH the integers the
+    // engine actually compares (roll 1-100 <= rounded chance) — a displayed 82 vs target 82 succeeds.
+    const hitI=Math.round(hit), roll=d100();
+    narrative.push(`  ${actor.name} attacks (Melee ${actor.melee} vs ${foe.melee}, ${hitI}% to hit [roll ${roll}]${roll<=hitI?' ✓':' ✗'})`);
+    if(roll<=hitI){
       actor._didMelee=true;
       const dmg=pcMeleeDamage(actor,foe);
       const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow');
@@ -8433,14 +8483,14 @@ const BATTLE_ARMY_SPELLS={
         // A Fire action means: get to firing range, then shoot. Speed decides whether the
         // move succeeds — closing the gap, or breaking back out of a melee the foe is holding.
         if(state.range==='spell'){
-          const ch=pcMoveCheck(actor,foe,'advance'), roll=Math.random()*100;
-          narrative.push(`  ${actor.name} moves up to firing range (${ch.toFixed(0)}% [roll ${Math.floor(roll)}]${roll<ch?' ✓':' ✗'})`);
-          if(roll>=ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
+          const ch=Math.round(pcMoveCheck(actor,foe,'advance')), roll=d100();
+          narrative.push(`  ${actor.name} moves up to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
+          if(roll>ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
           state.range='bow';
         } else if(state.range==='melee'){
-          const ch=pcMoveCheck(actor,foe,'withdraw'), roll=Math.random()*100;
-          narrative.push(`  ${actor.name} tries to break away to firing range (${ch.toFixed(0)}% [roll ${Math.floor(roll)}]${roll<ch?' ✓':' ✗'})`);
-          if(roll>=ch){ narrative.push(`  ${foe.name} stays right on top of ${actor.name} — no room to draw.`); break; }
+          const ch=Math.round(pcMoveCheck(actor,foe,'withdraw')), roll=d100();
+          narrative.push(`  ${actor.name} tries to break away to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
+          if(roll>ch){ narrative.push(`  ${foe.name} stays right on top of ${actor.name} — no room to draw.`); break; }
           state.range='bow';
           narrative.push(`  ${actor.name} disengages to bow range.`);
         }
@@ -8475,9 +8525,9 @@ const BATTLE_ARMY_SPELLS={
         const base=foe.kind==='monster'?(pcSpeedOf(foe)===1?80:pcSpeedOf(foe)===3?20:50):50;
         let chance=Math.max(5,Math.min(95, base+temperOf(actor.temper).fleeMod+(actor.status.fleeBonus||0)-(actor.status.fleePenalty||0)));
         if(actor.status.fleeDoubled){ chance=Math.min(95, chance*2); } // Charm combat effect
-        const roll=Math.random()*100;
-        narrative.push(`  ${actor.name} attempts to flee (${chance.toFixed(0)}% [roll ${Math.floor(roll)}]${roll<chance?' ✓':' ✗'})`);
-        if(roll<chance){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
+        const chanceI=Math.round(chance), roll=d100();
+        narrative.push(`  ${actor.name} attempts to flee (${chanceI}% [roll ${roll}]${roll<=chanceI?' ✓':' ✗'})`);
+        if(roll<=chanceI){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
         else { const d=rng(1,4); const dealt=pcTakeHit(actor,d,narrative,foe.name,'parting blow'); narrative.push(`  ${actor.name} fails to escape and is struck for ${dealt} damage. (HP ${Math.max(0,Math.round(actor.hp))})`); }
         break;
       }
@@ -8789,7 +8839,7 @@ const BATTLE_ARMY_SPELLS={
   // each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
   const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','maxHp','white','black','pagan','psychic','elemental','necromancy','spellcasting']);
   function magicItemsLine(ch){
-    const its=(ch&&ch.items||[]).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
+    const its=activeItems(ch).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
     if(!its.length) return null;
     return `  ⚜ ${ch.name} bears ${its.map(it=>it.name+(it.tier===3?' (Legendary)':'')).join(', ')} into the fight.`;
   }
@@ -8895,8 +8945,8 @@ const BATTLE_ARMY_SPELLS={
       defBonus*=1.10;
       narrative.push(`✝ Righteous Defence — ${defName}'s host defends ground held justly (+10% defence).`);
     }
-    if(isHome && prov.owner===def.player && (def.items||[]).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`); }
-    if((atk.items||[]).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`); }
+    if(isHome && prov.owner===def.player && activeItems(def).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`); }
+    if(activeItems(atk).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`); }
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
     if(defTact>0) narrative.push(`📊 ${defName} leads the defense: Tactical ${defTact} (×${defTactBonus.toFixed(1)} for land armies).`);
 
@@ -9072,7 +9122,7 @@ const BATTLE_ARMY_SPELLS={
       const myMissile=abilityMissileUnits(myForce, pvpTerrain);
       if(!myMissile.length||!enemyArmies.length) return;
       const archLvl=effStat(heroChar,'archery');
-      const hasQ=(heroChar.items||[]).some(it=>it.name==='Quiver of the Hawk');
+      const hasQ=activeItems(heroChar).some(it=>it.name==='Quiver of the Hawk');
       const volleys=hasQ?2:1;
       narr.push(`🏹 ${heroChar.name}'s archery: ${myMissile.length} unit${myMissile.length!==1?'s':''}${hasQ?' (double volleys)':''}`);
       myMissile.forEach(a=>{
@@ -9259,9 +9309,10 @@ const BATTLE_ARMY_SPELLS={
     const margin=Math.abs(atkStr-defStr);
     const totalStrPvP=Math.max(1,atkStr+defStr);
     const margRatioPvP=margin/totalStrPvP;
-    const isNarrowPvP=margRatioPvP<0.10;
-    const isDecisivePvP=margRatioPvP>0.30;
-    const severity=isDecisivePvP?'decisive':!isNarrowPvP?'clear':'narrow';
+    const _bandPvP=battleMarginBand(margRatioPvP);
+    const isNarrowPvP=_bandPvP.max<=0.10;
+    const isDecisivePvP=_bandPvP.max>0.30;
+    const severity=_bandPvP.label;
     narrative.push(`📊 Final: ${atkName} ${n0(atkStr)} vs ${defName} ${n0(defStr)} — ${won?atk.name:def.name} wins (margin ${(margRatioPvP*100).toFixed(0)}% of total strength — ${severity})`);
     // Evil: a decisive victory by an Evil commander terrorises the battle province and all adjacent provinces (stacking).
     const _pvpWinner=won?atk:def;
@@ -9276,11 +9327,11 @@ const BATTLE_ARMY_SPELLS={
 
     // Margin-based chances
     const _carryMultPvP=Math.min(CARRYON_DEATH_CAP, 1+CARRYON_DEATH_STEP*(prov._carryOnRounds||0)); // item 3
-    const winDeathPvP=(isNarrowPvP?0.12:isDecisivePvP?0.01:0.05)*_carryMultPvP;
-    const loseDeathPvP=(isNarrowPvP?0.12:isDecisivePvP?0.35:0.18)*_carryMultPvP;
-    const winXPPvP=isNarrowPvP?0.50:isDecisivePvP?0.15:0.30;
-    const loseXPPvP=isNarrowPvP?0.12:isDecisivePvP?0.02:0.06;
-    const loseDemotePvP=isNarrowPvP?0.10:isDecisivePvP?0.30:0.20;
+    const winDeathPvP=_bandPvP.winDeath*_carryMultPvP;
+    const loseDeathPvP=_bandPvP.loseDeath*_carryMultPvP;
+    const winXPPvP=_bandPvP.winXP;
+    const loseXPPvP=_bandPvP.loseXP;
+    const loseDemotePvP=_bandPvP.loseDemote;
     const atkSteelMult=hasDisc(atk.player,'sd05')?0.75:1;
     const defSteelMult=hasDisc(def.player,'sd05')?0.75:1;
     const atkTacMult=perkTier(atk,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
@@ -9950,6 +10001,7 @@ const BATTLE_ARMY_SPELLS={
     'encounter':'encounter','encounter character':'encounter',
     'steal':'steal','steal item':'steal','steal from character':'steal',
     'use_item':'use_item','use item':'use_item','use magic item':'use_item',
+    'equip_items':'equip_items','equip items':'equip_items','equip':'equip_items','equip item':'equip_items',
     'pursue':'encounter','pursue character':'encounter', // Item 2: Pursue is folded into Encounter
     'rite':'rite','perform rite':'rite',
     'sabotage':'sabotage',
@@ -11181,7 +11233,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'spy':{
-        const hasCrystalOrb=(c.items||[]).some(it=>it.effect?.stat==='oracle');
+        const hasCrystalOrb=activeItems(c).some(it=>it.effect?.stat==='oracle');
         // sd21 Forgery Arts: +15% spy success chance
         const spyBonus=hasDisc(c.player,'sd21')?0.15:0;
         // sd19 Cipher Scripts: if target province owner has it, -25% to our spy
@@ -11502,6 +11554,22 @@ const BATTLE_ARMY_SPELLS={
         }
         break;
       }
+      case 'equip_items':{
+        // Item 11 (Sept 2026): choose which slot items are worn/wielded. target = comma-separated item
+        // names (or ids) to equip. Every slot item NOT named is unequipped; slot caps are enforced (first
+        // named wins), and normaliseEquipment then fills any slot left empty with the first item held.
+        const want=String(target||'').split(',').map(t=>t.trim()).filter(Boolean);
+        const slotItems=(c.items||[]).filter(it=>it&&itemSlot(it));
+        if(slotItems.length===0){log('system',`${c.name} carries nothing that can be worn or wielded.`,{actor:c.player,targets:[c.player]});break;}
+        slotItems.forEach(it=>{it.equipped=false;});
+        const cnt={}; const donned=[]; const refused=[];
+        want.forEach(w=>{ const it=slotItems.find(x=>String(x.id)===w||x.name===w); if(!it) return; const sl=itemSlot(it);
+          if((cnt[sl]||0)>=ITEM_SLOT_CAP[sl]){ refused.push(it.name); return; } it.equipped=true; cnt[sl]=(cnt[sl]||0)+1; donned.push(it.name); });
+        normaliseEquipment(c);
+        const worn=(c.items||[]).filter(it=>it&&itemSlot(it)&&it.equipped).map(it=>`${it.name} [${itemSlot(it)}]`);
+        log('system',`\u{1F6E1} ${c.name} arms and dresses for the season — now wearing: ${worn.join(', ')||'nothing'}.${refused.length?` Could not also wear ${refused.join(', ')} (slot already filled).`:''}`,{actor:c.player,targets:[c.player]});
+        break;
+      }
       case 'use_item':{
         // Trigger an ACTIVE magic item (one that must be invoked, not a passive bonus).
         const it=(c.items||[]).find(x=>String(x.id)===String(target)||x.name===target);
@@ -11530,7 +11598,7 @@ const BATTLE_ARMY_SPELLS={
         const baseHeal=rng(2,5);
         let heal=_medArts?Math.max(0,(c.maxHp||20)-c.hp):(isDivineKingdom?baseHeal*3:baseHeal);
         if(charMinor(c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
-        if((c.items||[]).some(it=>it.name==='Iron Heart Talisman')) heal+=Math.round((c.maxHp||20)*0.10); // Iron Heart Talisman: +10% of max HP recovered
+        if(activeItems(c).some(it=>it.name==='Iron Heart Talisman')) heal+=Math.round((c.maxHp||20)*0.10); // Iron Heart Talisman: +10% of max HP recovered
         c.hp=Math.min(c.maxHp||20,c.hp+heal);
         log('system',`${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom?' — Divine blessing triples healing':''}).`,{actor:c.player,targets:[c.player]});
         break;
@@ -11904,7 +11972,7 @@ const BATTLE_ARMY_SPELLS={
         // Cast chance: 20% + 10% per level; Arcane Codex discovery +5%
         const arcaneBonus=hasDisc(c.player,'sd27')?5:0;
         // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
-        const necroAuto = school==='necromancy' && !c._necroAutoUsed && (c.items||[]).some(it=>it.effect&&it.effect.stat==='necroAuto');
+        const necroAuto = school==='necromancy' && !c._necroAutoUsed && activeItems(c).some(it=>it.effect&&it.effect.stat==='necroAuto');
         const l8Bonus=magicL8CastBonus(c); // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
         const castChance=necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus+l8Bonus);
         if(necroAuto) c._necroAutoUsed=true;
@@ -14655,10 +14723,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           return s+t;
         },0);
         const pChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
-        const itemStat=(st)=>pChars.reduce((s,c)=>s+((c.items||[]).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
+        const itemStat=(st)=>pChars.reduce((s,c)=>s+(activeItems(c).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
         const taxBonus=pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+itemStat('taxBonus'); // Ring of Wealth
         // Merchant's Ledger: +1g per province owned (if any of the player's heroes carries one).
-        const ledgers=pChars.some(c=>(c.items||[]).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
+        const ledgers=pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
         const perProvBonus=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
         const interestBonus=hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0;
         const neutralTradeMult=p.alignment==='Neutral'?1.20:1.0;
@@ -15800,6 +15868,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.06-1739</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.06-2040</div>
 </body>
 </html>

@@ -531,6 +531,7 @@ footer.book .v{color:var(--gold-deep);}
   <ul>
     <li><strong>Cast Spell</strong> — work one of your school's spells (see <a href="#spells">The Spellbook</a>).</li>
     <li><strong>Use Item</strong> — activate a magic item's power.</li>
+    <li><strong>Equip Items</strong> — choose which weapon, armour, cloak, helm, rings and amulet the character wears (one per slot, two rings). Unslotted items are always active.</li>
     <li><strong>Practice Skill</strong> — train a skill toward level 5 on the practice ground. Success is a die roll each turn, and the chance to gain the next level <strong>falls as the skill rises</strong> (mastery is harder): practising <strong>on your own</strong>, the chance is <strong>25%</strong> from level 0→1, <strong>20%</strong> 1→2, <strong>15%</strong> 2→3, <strong>10%</strong> 3→4 and <strong>5%</strong> 4→5. If two or more of your characters practise the <strong>same skill in the same province</strong>, they drill together: characters at the <strong>same level</strong> gain a <strong>+50% group bonus</strong> (so those rates become 37.5% / 30% / 22.5% / 15% / 7.5%), and any character training under a <strong>more-skilled mentor present</strong> (a co-trainer who was already a higher level in that skill at the start of the phase) improves <strong>automatically — a guaranteed level</strong>. (The <em>Astronomical Tables</em> discovery adds a flat +5% to all Practice rolls.)</li>
     <li><strong>Rest</strong> — recover hit points.</li>
   </ul>
@@ -738,6 +739,18 @@ footer.book .v{color:var(--gold-deep);}
 <section id="battle">
   <h2>How a Battle Is Fought</h2>
   <p>When forces meet, the battle resolves in a fixed sequence. You don't roll anything — you set your forces and orders, and the engine fights it out — but knowing the shape of it helps you plan.</p>
+  <div class="wrap"><table class="tbl">
+    <caption>Result margin — |winner − loser| ÷ total strength — and what it does to each side</caption>
+    <tr><th>Band</th><th>Margin</th><th>Winner unit death</th><th>Loser unit death</th><th>Winner quality gain</th><th>Loser quality gain</th><th>Loser quality loss</th></tr>
+    <tr><td>Pyrrhic</td><td class="num">0–4%</td><td class="num">15%</td><td class="num">12%</td><td class="num">60%</td><td class="num">20%</td><td class="num">5%</td></tr>
+    <tr><td>Narrow</td><td class="num">4–10%</td><td class="num">12%</td><td class="num">12%</td><td class="num">50%</td><td class="num">12%</td><td class="num">10%</td></tr>
+    <tr><td>Clear</td><td class="num">10–30%</td><td class="num">5%</td><td class="num">18%</td><td class="num">30%</td><td class="num">6%</td><td class="num">20%</td></tr>
+    <tr><td>Decisive</td><td class="num">30–55%</td><td class="num">1%</td><td class="num">35%</td><td class="num">15%</td><td class="num">2%</td><td class="num">30%</td></tr>
+    <tr><td>Crushing</td><td class="num">55–75%</td><td class="num">1%</td><td class="num">50%</td><td class="num">8%</td><td class="num">1%</td><td class="num">45%</td></tr>
+    <tr><td>Annihilating</td><td class="num">&gt;75%</td><td class="num">1%</td><td class="num">60%</td><td class="num">5%</td><td class="num">1%</td><td class="num">55%</td></tr>
+  </table></div>
+  <p>Death chances are per unit, scaled by unit quality and by how long a battle has dragged on (+35% per carried-over round, to ×2.5). Evil Terror needs a Decisive result or better.</p>
+
   <ol>
     <li><strong>Pre-battle duel.</strong> Opposing commanders may face each other in single combat first, per the old traditions — a chance to wound or kill the enemy leader before a blow is struck.</li>
     <li><strong>Battle magic.</strong> Eligible spells cast into the battle take effect — weakening enemy units, shielding your own, turning undead, and so on.</li>
@@ -765,18 +778,28 @@ footer.book .v{color:var(--gold-deep);}
   </ul>
 
   <h3>The four tempers</h3>
-  <p>Temper governs how a character fights and when they run. All four are worth playing.</p>
+  <p>Temper governs how a character fights and when they run. All four are worth playing. Every number below is exactly what the engine applies.</p>
   <div class="wrap"><table class="tbl">
     <caption>To-hit and behaviour by temper (higher is better unless noted)</caption>
     <tr><th>Trait</th><th>Berserk</th><th>Brave</th><th>Cautious</th><th>Cowardly</th></tr>
     <tr><td>Melee to-hit</td><td class="num">+18</td><td class="num">+12</td><td class="num">0</td><td class="num">−10</td></tr>
     <tr><td>Archery to-hit</td><td class="num">0</td><td class="num">+8</td><td class="num">0</td><td class="num">+22</td></tr>
-    <tr><td>Defence (vs attackers)</td><td class="num">−10</td><td class="num">+4</td><td class="num">+14</td><td class="num">+6</td></tr>
+    <tr><td>Defence (subtracted from attackers' to-hit)</td><td class="num">−10</td><td class="num">+4</td><td class="num">+14</td><td class="num">+6</td></tr>
+    <tr><td>Break out of melee to firing range</td><td class="num">−10</td><td class="num">0</td><td class="num">+10</td><td class="num">+15</td></tr>
     <tr><td>Steal bonus</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">+15</td></tr>
     <tr><td>Flee chance</td><td class="num">−20</td><td class="num">+10</td><td class="num">+20</td><td class="num">+30</td></tr>
-    <tr><td>Special</td><td>+1 dmg, bonus HP each fight</td><td>Second wind once per fight</td><td>Soaks 1 damage</td><td>May beg for mercy when felled</td></tr>
+    <tr><td>Looks to flee below (share of max HP)</td><td class="num">15%</td><td class="num">25%*</td><td class="num">40%</td><td class="num">40%</td></tr>
+    <tr><td>Chance per round of actually bolting once below</td><td class="num">20%</td><td class="num">30%</td><td class="num">35%</td><td class="num">40%</td></tr>
   </table></div>
-  <p><strong>Berserk</strong> hits hardest and dies most. <strong>Brave</strong> is the complete soldier. <strong>Cautious</strong> is the hardest to kill. <strong>Cowardly</strong> is a poor swordsman but an excellent <em>archer, thief and spy</em> — and the safest temper for a king you cannot afford to lose.</p>
+  <p><strong>When a character tries to flee.</strong> While their encounter plan still has tactics, they follow it. Once the plan is spent they default to Melee every round — but if their HP has fallen below the temper's threshold above, each round there is the listed chance they break off and attempt to Flee instead (the Flee chance then decides whether the escape succeeds; a failed escape costs a parting blow of 1–4). <em>*Brave</em> only considers flight while actually behind their opponent on HP; ahead, they fight on regardless. Lair guardians and monsters never flee.</p>
+  <p><strong>The four special traits.</strong></p>
+  <ul>
+    <li><strong>Berserk — Rage.</strong> +1 damage on every melee hit, and shrugs off <strong>20%</strong> of every incoming melee or archery hit (damage taken ×0.8, rounded).</li>
+    <li><strong>Brave — Second Wind.</strong> Once per fight, the first time they drop below <strong>30%</strong> of max HP, they recover <strong>22%</strong> of their max HP on the spot.</li>
+    <li><strong>Cautious — Guarded.</strong> Every incoming melee hit is reduced by <strong>1</strong> (never below 1).</li>
+    <li><strong>Cowardly — Beg for Mercy.</strong> When felled, they may plead for their life: spared <strong>75%</strong> of the time by a Good, Divine or Druidic foe, <strong>50%</strong> by Neutral or Pagan, <strong>20%</strong> by Evil or Undead. If spared they escape with 1 HP, lose all remaining actions this turn, slink home by next turn, and hand the victor one random magic item. Never against a lair guardian.</li>
+  </ul>
+  <p><strong>Berserk</strong> hits hardest and dies most. <strong>Brave</strong> is the complete soldier. <strong>Cautious</strong> is the hardest to kill. <strong>Cowardly</strong> is a poor swordsman but an excellent archer, thief and spy — and the safest temper for a king you cannot afford to lose.</p>
 
   <h3>Your encounter plan</h3>
   <p>Going into a personal fight you can set a plan — which combat spells to ready, and when to try to flee or to steal. A few things aren't yours to choose: every duel <strong>opens at spell range</strong> before the fighters close to melee, and a hero always carries <strong>all of his magic items</strong> into the fight — there is no leaving them behind. Even so, a well-judged plan wins fights a raw stat comparison would lose.</p>
@@ -848,7 +871,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Illusory Terrain</strong> <span class="pill">A</span></td><td>A province shows enemies false terrain; foes fighting there fight at 80% strength.</td></tr>
     <tr><td><strong>Phantasmal Armies</strong> <span class="pill">A</span></td><td>Illusory soldiers swell a friendly leader's battle strength by 10% per your level.</td></tr>
     <tr><td><strong>Hide Features</strong> <span class="pill">A</span></td><td>Make discovered features in a province invisible to explorers.</td></tr>
-    <tr><td><strong>Invisibility</strong> <span class="pill">C</span></td><td>Become far harder to hit; big bonuses to Flee and to a Steal attempt this encounter.</td></tr>
+    <tr><td><strong>Invisibility</strong> <span class="pill">C</span> <span class="pill">A</span></td><td>In combat: −25% to enemy to-hit against you (to a floor of 40%), +30% Flee, +15% Steal. As an action, cast on yourself: 80% chance that no enemy player sees you for the rest of the turn — sightings, spies, the map and Encounter targeting all miss you.</td></tr>
     <tr><td><strong>Mirror Image</strong> <span class="pill">C</span></td><td>Send a phantom copy of the enemy to fight itself while you focus the illusion; they may disbelieve it round by round.</td></tr>
   </table></div>
 
@@ -882,6 +905,8 @@ footer.book .v{color:var(--gold-deep);}
   <h2>Magic Items &amp; Discoveries</h2>
   <h3>Magic items</h3>
   <p>Items are won from features, looted from the fallen, and stolen. They come in tiers, the rarest being the world's ten <strong>Legendary relics</strong>. A hero can carry several, and pass them to another character with <em>Give Item</em>. Broadly, items:</p>
+  <div class="note"><span class="lbl">Wearing and wielding</span>Weapons, armour, cloaks, helms/crowns, rings and amulets occupy <strong>slots</strong> — one item per slot (two rings) may be <strong>equipped</strong> at a time, and only equipped slot items give their power. A character auto-equips the first item held for each slot; the <strong>Equip Items</strong> order lets you choose exactly what is worn in every slot. Everything else you carry (horns, banners, ledgers, tomes, relics…) is always active. Equipped items can still be sent to other characters.</div>
+
   <ul>
     <li><strong>Boost a skill</strong> — adding levels of Melee, a magic school, Naval and so on (these levels even count toward the Titles).</li>
     <li><strong>Raise health</strong>, or heal.</li>
@@ -914,19 +939,22 @@ footer.book .v{color:var(--gold-deep);}
 <section id="alignments">
   <div class="eyebrow">Part Eight · Faith &amp; Blood</div>
   <h2>The Seven Alignments</h2>
-  <p>Alignment sets your battle fervour, who you can hire, and your signature action. Before each battle your force rolls for <strong>fanatical zeal</strong>; on a success it fights at <strong>×1.30</strong>. The table below runs down the moral spectrum from holiest to unholiest — the same order that decides your hiring costs — with each alignment's zeal chance and signature action.</p>
-  <div class="wrap"><table class="tbl">
-    <caption>The alignments, holy → unholy (zeal = chance to fight at ×1.30)</caption>
-    <tr><th>Alignment</th><th>Chance</th><th>Signature</th></tr>
-    <tr><td>✨ <strong>Divine</strong></td><td class="num">50%</td><td>Consecrate provinces; strongest holy magic; hardest fanatics.</td></tr>
-    <tr><td>⚔ <strong>Good</strong></td><td class="num">40%</td><td>Call to Arms for free militia; steadfast defenders.</td></tr>
-    <tr><td>🌿 <strong>Druidic</strong></td><td class="num">20%</td><td>Awaken the Wild; lead all Creatures without penalty.</td></tr>
-    <tr><td>⚖ <strong>Neutral</strong></td><td class="num">10%</td><td>Broker deals; +20% trade income; hires anyone cheaply.</td></tr>
-    <tr><td>🔥 <strong>Pagan</strong></td><td class="num">15%</td><td>Perform Rites at ritual sites; old powers and lore.</td></tr>
-    <tr><td>😈 <strong>Evil</strong></td><td class="num">25%</td><td>Enslave the conquered; Monster armies fight fiercely.</td></tr>
-    <tr><td>💀 <strong>Undead</strong></td><td class="num">0%</td><td>Never roll zeal — but their <em>skeletal</em> armies are permanently fanatical instead. Harvest graves into soldiers.</td></tr>
-  </table></div>
-  <p>Your alignment also sets <strong>hiring costs</strong>: heroes near your alignment on the moral spectrum are cheap to hire, distant ones dear or impossible. Neutral kingdoms sit in the middle and hire almost anyone at a bargain — their great strength.</p>
+  <p>Alignment sets your battle fervour, who you can hire, and your signature action. Before each battle your force rolls for <strong>fanatical zeal</strong>; on a success it fights at <strong>×1.30</strong>. The alignments run down the moral spectrum from holiest to unholiest — Divine, Good, Druidic, Neutral, Pagan, Evil, Undead — and that order sets <strong>hiring costs</strong>: a wandering hero costs <strong>2g/turn +1g for every two steps</strong> between your alignment and theirs (so 2g at 0–1 steps, 3g at 2–3, 4g at 4–5, 5g at the full 6), and the two ends of the spectrum (Divine ↔ Undead) will never serve each other. Every benefit of each alignment, with its numbers:</p>
+  <h3>✨ Divine <span style="font-weight:400;font-size:.85em">— zeal 50%</span></h3>
+  <ul><li><strong>Fanatical zeal 50%</strong> — the highest of any alignment (zeal = your force fights at ×1.30 for that battle).</li><li><strong>Rest heals ×3</strong>: heroes recover 6–15 HP per Rest instead of 2–5.</li><li><strong>Bless Province</strong> adds <strong>80%</strong> of a province's tax value (others 60%); when the <em>King</em> casts it the province yields <strong>+100%</strong>.</li><li><strong>Divine grace</strong>: a hero of yours slain in battle returns to life at the start of the next turn at half health in your wealthiest (or consecrated) province, without armies or items. Kings are not returned this way.</li><li><strong>Consecrate</strong> (king or hero): sanctify ONE owned province — never the home province or its neighbours. Consecrated ground gives <strong>+50% tax</strong>, defenders there roll zeal at <strong>double</strong> chance, Undead and Evil hosts attacking it fight at <strong>−15%</strong>, and resurrected heroes return there.</li><li>Your king starts with <strong>White Magic +1</strong>; an heir crowned later also gains White +1.</li><li>Hiring: you sit at the holy end of the spectrum — dark heroes cost up to <strong>5g/turn</strong>, and <strong>Undead heroes will never serve you</strong>.</li></ul>
+  <h3>⚔ Good <span style="font-weight:400;font-size:.85em">— zeal 40%</span></h3>
+  <ul><li><strong>Fanatical zeal 40%</strong>.</li><li><strong>Righteous Defence</strong>: any army defending a province you own fights at <strong>+10%</strong>.</li><li><strong>Banner of Fellowship</strong>: allied contingents converging on the same battle unify <strong>+15%</strong> more readily.</li><li><strong>Call to Arms</strong> (king, once per turn, from anywhere): a free <strong>Green</strong> garrison unit of the native type musters in any owned humanoid province.</li><li>A felled Cowardly enemy who begs your mercy is spared <strong>75%</strong> of the time (they flee with 1 HP, out of action for the turn, and hand you an item).</li><li>Hiring: close to the centre — most wandering heroes cost <strong>2–3g/turn</strong>.</li></ul>
+  <h3>🌿 Druidic <span style="font-weight:400;font-size:.85em">— zeal 20%</span></h3>
+  <ul><li><strong>Fanatical zeal 20%</strong>; Creature armies under your banner add <strong>+25%</strong> to that chance.</li><li>Your king starts with <strong>Druid +1</strong> (heirs too), and ALL <strong>Creature</strong> armies (Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort, Eagle Riders) follow your heroes with <strong>no Druid requirement</strong>.</li><li><strong>Home of the Wild</strong>: in forest and jungle your Creature armies fight at <strong>×1.5</strong>.</li><li><strong>Awaken the Wild</strong>: standing in an owned forest, jungle or primal province, call a Creature out of the land — Giant Eagles / Eagle Riders at Druid 1, Forest Ents / Noble Griffons at Druid 2, Stone Giants / Crimson Rocs at Druid 3 — for the unit's cost <strong>+2g</strong>, using no recruitment slot.</li><li>You begin beside a primal Creature province you can lead from turn one.</li><li>Hiring: central — most heroes <strong>2–3g/turn</strong>.</li></ul>
+  <h3>⚖ Neutral <span style="font-weight:400;font-size:.85em">— zeal 10%</span></h3>
+  <ul><li><strong>Fanatical zeal 10%</strong>.</li><li><strong>Trade</strong>: province tax income is <strong>+20%</strong>.</li><li><strong>Cheapest court</strong>: every wandering hero costs at most <strong>3g/turn</strong>, most the base <strong>2g</strong>; mercenary bands cost <strong>2g less</strong> than the going rate.</li><li><strong>Scholars</strong>: each Sage level adds a further <strong>+5%</strong> discovery chance (doubling the base rate).</li><li><strong>Broker</strong> (king): hire any wandering hero the kingdom can see without leaving his hall, or buy a guaranteed full Spy report on any province the kingdom has ever seen for <strong>2g</strong>.</li></ul>
+  <h3>🔥 Pagan <span style="font-weight:400;font-size:.85em">— zeal 15%</span></h3>
+  <ul><li><strong>Fanatical zeal 15%</strong>.</li><li>Your king starts with <strong>Explorer +1</strong> (heirs too), and you begin beside a primal forest or jungle province holding a <strong>ritual site</strong>.</li><li><strong>Perform Rite</strong> at a discovered ritual site: the <em>Wild Hunt</em> binds the province's creatures to your host; a <em>Blood Offering</em> sacrifices units to raise an equal number of others by <strong>+2 quality tiers</strong> (to Elite).</li><li><strong>Blood Harvest</strong>: <strong>+1g</strong> per enemy unit your characters destroy in a victory.</li><li>Hiring: central-to-dark — most heroes <strong>2–3g/turn</strong>.</li></ul>
+  <h3>😈 Evil <span style="font-weight:400;font-size:.85em">— zeal 25%</span></h3>
+  <ul><li><strong>Fanatical zeal 25%</strong>; Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) add <strong>+25%</strong> to that chance.</li><li><strong>Terror</strong>: after a decisive (or better) victory, the province and every adjacent province are terrorised — armies defending there in the next battle fight at <strong>−10%</strong> (stacking).</li><li><strong>Plunder</strong>: conquering a province immediately yields <strong>50%</strong> of its tax value in gold.</li><li>A felled Cowardly enemy begging your mercy is spared only <strong>20%</strong> of the time.</li><li>Undead and Evil hosts fight at <strong>−15%</strong> when attacking a consecrated province.</li><li>Hiring: dark end — righteous heroes cost up to <strong>5g/turn</strong>.</li></ul>
+  <h3>💀 Undead <span style="font-weight:400;font-size:.85em">— zeal 0%</span></h3>
+  <ul><li><strong>No zeal roll</strong> — instead every skeletal army under your banner is permanently fanatical: <strong>+30%</strong> with the King in person, <strong>+20%</strong> under any other commander.</li><li>Your king starts with <strong>Necromancy +1</strong> (heirs too) and a unit of Skeletal Shieldwall Levies.</li><li>Skeletal armies ignore the Druid penalty and cost only <strong>1g</strong> upkeep each.</li><li><strong>Harvest the Field</strong>: any character standing where armies have fallen raises one grave as a Skeletal unit for <strong>2g</strong> — no magic needed.</li><li><strong>Deathless March</strong>: a force of skeletons alone is never cut down in flight — with no line of retreat it stands and holds.</li><li>Battlefield graves in your provinces decay at <strong>5%</strong> per turn instead of 10%.</li><li>Hiring: the unholy end — righteous heroes cost up to <strong>5g/turn</strong>, and <strong>Divine heroes will never serve you</strong>.</li></ul>
+  <div class="note"><span class="lbl">Grand Design</span>The late-game Grand Design discovery adds an alignment-specific capstone (for example Good: +2 tax from every garrisoned province; Druidic: Creature and Monster recruits start Veteran; Undead: raised skeletons come one tier higher and never disband for unpaid wages; Divine: Bless Province needs no casting slot and the capital is permanently warded). The discovery card in play shows the exact text.</div>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -947,6 +975,8 @@ footer.book .v{color:var(--gold-deep);}
   <h2>How to Win: The Reckoning</h2>
   <p>There is no turn limit. The game ends when one power comes to dominate the world and lays claim to the vacant Imperial throne — <strong>the Reckoning</strong> — or when only one kingdom remains.</p>
 
+  <h3>Conceding</h3>
+  <p>A kingdom may <strong>concede</strong> with its orders (the button sits under Submit). This is permanent: from that turn its heroes only Defend and it can never rejoin. If only one un-conceded kingdom remains — or every kingdom still standing is one mutual alliance — the game ends at once: the sole survivor wins, or within an allied bloc the kingdom with the highest Legacy score, and the final standings are shown.</p>
   <h3>Calling the Reckoning</h3>
   <p>A <strong>king-only</strong> action, unlocked once your kingdom — or the mutually-allied <strong>bloc</strong> you belong to — controls more than a <strong>dominance threshold</strong> of the world's total tax base. A single dominant kingdom may Call it alone; an allied bloc may Call it jointly.</p>
 
@@ -1047,7 +1077,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.05-2332</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.06-2040</span> · Adventurer Kings ruleset
 </footer>
 
 <script>

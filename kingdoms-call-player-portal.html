@@ -530,10 +530,33 @@ const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+
+// ── EQUIPMENT SLOTS (Item 11, Sept 2026) — mirror of the GM engine's tables ──
+const ITEM_SLOT_CAP_P={weapon:1,armour:1,cloak:1,helm:1,ring:2,amulet:1};
+const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman'};
+const ITEM_SLOT_ORDER_P=['weapon','armour','cloak','helm','ring','amulet'];
+const ITEM_SLOT_OF_P={
+  'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
+  'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
+  "Traveller's Cloak":'cloak','Shadowcloak':'cloak','Veil of Illusions':'cloak','Cloak of Many Faces':'cloak',
+  "Sage's Crown":'helm','Crown of Command':'helm','Imperial Regalia':'helm',
+  'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
+  "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
+};
+function itemSlotP(it){ if(!it) return null; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
+// Small tag shown after an item name: its slot and whether it is currently worn/wielded.
+function itemSlotTag(it){ const sl=itemSlotP(it); if(!sl) return ''; return it.equipped===false?` <span style="color:#999;font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} — not equipped]</span>`:` <span style="color:#6b5a2a;font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} — equipped]</span>`; }
+function updateEquipTarget(charId, ph){
+  const wrap=document.getElementById(`po-equip-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
+  if(!wrap||!hidden) return;
+  const vals=[...wrap.querySelectorAll('select')].map(s=>s.value).filter(Boolean);
+  hidden.value=[...new Set(vals)].join(',');
+}
+
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
-  'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item',
+  'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items',
   'Spy','Practice Skill','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
@@ -593,7 +616,7 @@ const ACTION_DISPLAY_ORDER=[
   // ── Everyday orders — exact order requested (item 7) ──
   'Move','Practice Skill','Cast Spell','Explore','Search Lair','Recruit Armies',
   'Pick Up Army','Leave/Transfer Army','Disband Army','Hire Hero','Defend',
-  'Encounter Character','Spy','Send Item','Use Item','Steal','Rest',
+  'Encounter Character','Spy','Send Item','Use Item','Equip Items','Steal','Rest',
 ];
 const _actionRank=(a)=>{ const i=ACTION_DISPLAY_ORDER.indexOf(a); return i<0?ACTION_DISPLAY_ORDER.length:i; };
 function actionsFor(c){
@@ -1995,7 +2018,7 @@ function renderReportView(report){
           ${c.race} · ${c.alignment} · ${c.temper} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${i.desc?` (${i.desc})`:''}`).join('')}
+          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemSlotTag(i)}${i.desc?` (${i.desc})`:''}`).join('')}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -2942,7 +2965,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemSlotTag(it)}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -4870,6 +4893,24 @@ function buildTargetField(c, ph, saved){
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
 
     // ── USE ITEM (active magic items only) ──
+    case 'Equip Items':{
+      // Item 11: one select per slot (two for rings) listing the slot items this character will hold at
+      // this phase; target = comma-separated chosen item names. Unlisted slot items are unequipped;
+      // a slot left on '— none —' is auto-filled by the engine with the first item held for it.
+      const held=predictedItems(c.id,ph).filter(it=>it&&itemSlotP(it));
+      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, cloak, helm, ring or amulet items)" disabled>`;
+      const chosen=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
+      const rows=ITEM_SLOT_ORDER_P.map(sl=>{
+        const opts=held.filter(it=>itemSlotP(it)===sl); if(opts.length===0) return '';
+        const cap=ITEM_SLOT_CAP_P[sl]; const pre=chosen.length?chosen.filter(n=>opts.some(o=>o.name===n)):opts.filter(o=>o.equipped!==false).map(o=>o.name);
+        const sels=Array.from({length:cap},(_,k)=>`<select data-slot="${sl}" onchange="updateEquipTarget('${c.id}',${ph})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map(o=>`<option value="${o.name.replace(/"/g,'&quot;')}" ${pre[k]===o.name?'selected':''}>${o.name}${o.tier===3?' ✦':''}</option>`).join('')}</select>`).join('');
+        return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${ITEM_SLOT_LABEL_P[sl]}</span>${sels}</div>`;
+      }).join('');
+      const init=chosen.length?chosen:held.filter(o=>o.equipped!==false).map(o=>o.name);
+      return `<div id="po-equip-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
+        <div style="font-size:.68rem;color:#777;margin-top:3px">Only equipped items in these slots give their bonus; everything else you carry is always active. Equipped items can still be sent to other characters.</div>
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',').replace(/"/g,'&quot;')}"></div>`;
+    }
     case 'Use Item':{
       const ACTIVE_ITEM_STATS=new Set(['massPromote']);
       // Items received via Give Item in an earlier phase are usable here too.
@@ -6145,6 +6186,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-1739</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.06-2040</div>
 </body>
 </html>
