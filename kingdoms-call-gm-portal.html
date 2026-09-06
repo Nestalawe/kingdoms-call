@@ -3296,11 +3296,14 @@ function gameVisibility(game){
 // Alignment → four starting skill points, drawn from each alignment's Title signature lane
 // (see KC-design-victory-and-titles.md §5). Real engine skills only (SKILL_LABELS). Each totals 4.
 const BOT_SKILL_BUILD={
-  Divine:  {white:2, druid:1, melee:1},
+  // Sept 2026 (bot strategy batch): every build now carries Tactical >=1 so the bot king can drill
+  // his host (item 1) from turn 1 — Divine swaps druid->tactical, Neutral drops a Sage point, Pagan
+  // drops an Explorer point.
+  Divine:  {white:2, tactical:1, melee:1},
   Good:    {melee:1, tactical:1, march:1, white:1},
   Druidic: {druid:2, tactical:1, archery:1},
-  Neutral: {sage:2, spy:1, thief:1},
-  Pagan:   {explorer:2, elemental:1, melee:1},
+  Neutral: {sage:1, tactical:1, spy:1, thief:1},
+  Pagan:   {explorer:1, elemental:1, tactical:1, melee:1},
   Evil:    {melee:2, tactical:1, necromancy:1},
   Undead:  {necromancy:2, melee:1, tactical:1},
 };
@@ -3513,9 +3516,7 @@ function botPlanAssaults(G, pi, chars, assigned){
     const combined=free.reduce((s,{c})=>s+botForceStrength(c.armies),0);
     if(combined < def*ASSAULT_MARGIN) return;         // not worth throwing armies at
     free.forEach(({c})=>{
-      const orders=[{action:'move',target:String(X.id),extra:'',desc:'Assault'}]; // numeric id → engine can unify
-      for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
-      G.turnOrders[c.id]=orders;
+      G.turnOrders[c.id]=botFillOrders(c,[],[{action:'move',target:String(X.id),extra:'',desc:'Assault'}]); // numeric id → engine can unify
       assigned.add(c.id);
     });
   });
@@ -3564,12 +3565,12 @@ function botSeaCap(armies){
 // A force carrying land troops it can ferry (has fleets AND land armies) — the invasion package.
 function botIsLoadedFleet(armies){ armies=armies||[]; return armies.some(a=>a&&BOT_CARRIER_TYPES.has(a.type)) && armies.some(a=>a&&!BOT_AERIAL_TYPES.has(a.type)&&!BOT_SEA_ALL.has(a.type)); }
 function botEnemyChars(G, prov, pi){
-  let force=0, value=0, hasKing=false;
+  let force=0, value=0, hasKing=false, units=0;
   (prov.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id);
     if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy'){
-      force+=botForceStrength(e.armies); value+=(e.isKing?50:15); if(e.isKing)hasKing=true;
+      force+=botForceStrength(e.armies); value+=(e.isKing?50:15); if(e.isKing)hasKing=true; units+=(e.armies||[]).length;
     }});
-  return {force, value, hasKing};
+  return {force, value, hasKing, units};
 }
 // Items 3 & 4 — ALWAYS EXPAND / SCOUT. An interior character with nothing winnable on its doorstep
 // advances through friendly land toward the frontier (an owned neighbour that itself borders unowned or
@@ -3610,127 +3611,399 @@ function botRallyDir(G, P, c, pi, primaryLoc){
   }
   return bestDir;
 }
-// Write movement orders for every bot's armed characters. Called from runTurn after human orders are
-// merged into G.turnOrders and before the default-to-Defend pass.
+// ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ═══════════════════════════════════════════════
+// Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
+// offence and its defence. It expands as fast as its move pool allows (multi-hop turns), garrisons the
+// trail with single cheap units (garrisons only slow an enemy — they never hold ground), and every other
+// character is a FEEDER: it raises troops wherever it stands and marches them to the nearest field
+// army. When the realm grows too wide for the main army to cross in one turn, a second field army is
+// raised under the next-best general, and so on. Bots hire every wandering hero they can reach, drill
+// their hosts with Tactical while campaigning, and never war one another while a human king reigns.
+function botIsBotPlayer(G,j){ const p=(G.players||[])[j]; return !!(p&&(p._isBot||p.isBot)); }
+function botHumanKingAlive(G){ return (G.players||[]).some((p,j)=>p&&!botIsBotPlayer(G,j)&&(G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===j)); }
+// Land a column may march through freely: our own, or an ally's (free passage).
+function botPassable(G,pi,N){ return !!N && N.terrain!=='sea' && (N.owner===pi || (N.owner!=null && botRelationRaw(G,pi,N.owner)==='allied')); }
+// Hex distance with the map's east-west wrap — mirrors generateNewGame's cellDistRC.
+function botHexDist(G,a,b){ const cols=G.world.cols; let dc=Math.abs(a.col-b.col); dc=Math.min(dc,cols-dc); const dr=Math.abs(a.row-b.row); return Math.max(dc,dr,(dc+dr)>>1); }
+function botHomeId(G,pi){
+  const p=G.players[pi]||{}; const h=G.world.provinces[p.homeProvinceId];
+  if(h&&h.owner===pi) return h.id;
+  let best=null; (G.world.provinces||[]).forEach(x=>{ if(x&&x.owner===pi&&x.terrain!=='sea'&&(!best||(x.tax||0)>(best.tax||0))) best=x; });
+  return best?best.id:null;
+}
+// Hops per turn this column can march over land (mirror of computeMovePoolMax's land branch on base
+// stats — flyers ignore March; an unarmed character walks 5). `extraTypes` lets a planner include units
+// it is about to recruit this turn.
+function botLandReach(c, extraTypes){
+  const types=(c.armies||[]).filter(a=>a&&!BOT_SEA_ALL.has(a.type)).map(a=>a.type).concat(extraTypes||[]);
+  if(!types.length) return (c.armies||[]).length?0:5;
+  const ml=Math.min(((c.skills||{}).march||0),5);
+  const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
+  let mn=99; types.forEach(t=>{ const base=ARMY_SPEED_MASTER[t]||3; const sp=BOT_AERIAL_TYPES.has(t)?base:base+(base<=2?MB_SLOW[ml]:MB_FAST[ml]); if(sp<mn)mn=sp; });
+  return Math.max(0,Math.min(5,mn));
+}
+function botEmpireDiameter(G,pi){
+  const own=(G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea'); let d=0;
+  for(let i=0;i<own.length;i++) for(let j=i+1;j<own.length;j++){ const x=botHexDist(G,own[i],own[j]); if(x>d)d=x; }
+  return d;
+}
+// How good a field commander this character is. Tactical dominates (battle multiplier + drilling), March
+// (reach), then personal combat; the units already under command add a little so the current holder of
+// the host is not displaced by a marginally better tactician every turn.
+function botGeneralship(c){ const s=c.skills||{}; return (s.tactical||0)*4+(s.march||0)*2+(s.melee||0)+(s.archery||0)+Math.min(10,(c.armies||[]).length); }
+// Per-turn scratch state (roles + treasury ledger), keyed by the live game-state object so it never leaks
+// into the persisted game_state and never survives into the next turn.
+const _botTurnCache=new WeakMap();
+function botTurnCache(G){ let o=_botTurnCache.get(G); if(!o||o.turn!==G.turn){ o={turn:G.turn,roles:{},ledger:{}}; _botTurnCache.set(G,o); } return o; }
+// ROLES — field-army LEADERS (best generals; one per desired field army) vs FEEDERS (everyone else).
+// Desired field armies = 1 + floor(empire diameter / primary reach): once the realm is wider than the
+// main host can cross in a turn, a second host is raised, and so on (item 2).
+function botRoles(G,pi){
+  const cache=botTurnCache(G); if(cache.roles[pi]) return cache.roles[pi];
+  const chars=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
+  const ranked=[...chars].sort((a,b)=>botGeneralship(b)-botGeneralship(a));
+  const primary=ranked[0]||null;
+  const reach=Math.max(1, primary?(botLandReach(primary)||1):3);
+  const want=Math.max(1, Math.min(ranked.length, 1+Math.floor(botEmpireDiameter(G,pi)/reach)));
+  const r={leaders:ranked.slice(0,want).map(c=>c.id), primaryId:primary?primary.id:null, reach, want};
+  cache.roles[pi]=r; return r;
+}
+function botIsLeader(G,pi,id){ return botRoles(G,pi).leaders.includes(id); }
+// LEDGER — one treasury/upkeep budget per bot per turn, shared by the movement and economy passes so a
+// recruit written in phase 0 by a marching host is not double-spent by an idle holder later.
+function botLedger(G,pi){
+  const cache=botTurnCache(G); if(cache.ledger[pi]) return cache.ledger[pi];
+  const T=botTuning(G), player=G.players[pi]||{};
+  const income=botTaxIncome(G,pi);
+  // WAR FOOTING: at war (or facing a big enemy host) the bot spends its treasury down and lifts its
+  // sustainable army ceiling toward 100% of income; in peacetime it keeps the tuned cap + a small chest.
+  const warFooting=botAtWar(G,pi)||botMaxEnemyStack(G,pi)>5;
+  const effCapFrac=warFooting?Math.min(1.0,T.upkeepCapFrac+0.10):T.upkeepCapFrac;
+  const reserve=warFooting?Math.min(2,T.goldReserve):T.goldReserve;
+  const budget=(player.gold||0)-reserve;
+  // "As much as they can afford": wages are paid from the treasury, not just income, so a chest can carry
+  // a deficit. The cap is the income share PLUS a third of the free treasury — a host the realm can pay for
+  // three turns while the conquests it makes pay it back.
+  const L={income, warFooting, upkeepCap:Math.floor(income*effCapFrac+Math.max(0,budget)/3), upkeep:botUpkeep(G,pi), budget, recruitedByProv:{}};
+  cache.ledger[pi]=L; return L;
+}
+function botCanAfford(L,cost){ return L.budget>=cost && (L.upkeep+cost)<=L.upkeepCap; }
+function botSpend(L,cost){ L.budget-=cost; L.upkeep+=cost; }
+// GARRISONS (item 2): one cheap unit per province — enough to make an enemy stop and fight, never meant
+// to hold. Only once a player is actually on our doorstep (in or beside our land) do valuable provinces
+// get 2 and the capital 3.
+function botUnderAttack(G,pi){
+  return (G.characters||[]).some(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)==='enemy')) return false;
+    const P=G.world.provinces[e.location]; if(!P) return false; if(P.owner===pi) return true;
+    for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N&&N.owner===pi) return true; } return false; });
+}
+function botGarrisonTarget(G,prov,pi){
+  if(!prov||prov.owner!==pi||prov.terrain==='sea') return 0;
+  if(!botUnderAttack(G,pi)) return 1;
+  if(prov.id===botHomeId(G,pi)) return 3;
+  return botIsValuable(G,prov,pi)?2:1;
+}
+function botGarrisonType(prov){ return (prov.armyTypes||[]).find(x=>/garrison/i.test(x))||null; }
+function botGarrisonOrder(G,pi,prov,L){
+  const tgt=botGarrisonTarget(G,prov,pi), have=(prov.garrisonArmies||[]).length; if(have>=tgt) return null;
+  const gt=botGarrisonType(prov); if(!gt) return null;
+  const done=L.recruitedByProv[prov.id]=L.recruitedByProv[prov.id]||{}; if(done[gt]) return null;
+  const cost=ARMY_COST_MASTER[gt]||1; let q=0;
+  while(q<Math.min(2,tgt-have) && botCanAfford(L,cost)){ q++; botSpend(L,cost); }
+  if(!q) return null; done[gt]=1;
+  return {action:'recruit',target:`${gt}|${q},to:garrison`,extra:'',desc:`Garrison ${prov.name} (${q})`};
+}
+// FIELD RECRUITMENT — one Recruit order packing the strongest affordable, sustainable field units this
+// province offers (2 of a type where tax>=10 allows). Navy first when there is a naval reason here.
+function botFieldRecruitTokens(G,pi,c,prov,L){
+  if(!prov||!prov.armyTypes||prov.owner!==pi) return [];
+  const done=L.recruitedByProv[prov.id]=L.recruitedByProv[prov.id]||{};
+  const perTypeLimit=(prov.tax>=10?2:1);
+  const tokens=[];
+  const fleetType=botCoastalFleetType(prov);
+  // Sept 2026: a fleet pins a mixed host to the coast (it cannot march overland while leading ships), so
+  // hulls are bought only for a real naval reason — an at-war enemy coast across the water — or once the
+  // realm has no land frontier left to expand into.
+  const _navalNeed=fleetType && (botNavalEnemyCoast(G,prov,pi) || (!botIsEdge(G,pi,prov) && botFrontierTarget(G,pi,prov)==null));
+  if(_navalNeed && !done[fleetType] && botFleetHullCount(G,pi)<3){
+    const cost=ARMY_COST_MASTER[fleetType]||3;
+    if(botCanAfford(L,cost)){ tokens.push(`${fleetType}|1`); done[fleetType]=1; botSpend(L,cost); }
+  }
+  for(const t of botRecruitableTypes(prov)){
+    if(done[t]) continue; if(!botCanAfford(L,1)) break;
+    const cost=ARMY_COST_MASTER[t]||2; let q=0;
+    while(q<perTypeLimit && botCanAfford(L,cost)){ q++; botSpend(L,cost); }
+    if(q>0){ tokens.push(`${t}|${q}`); done[t]=1; }
+  }
+  return tokens;
+}
+function botRecruitOrder(tokens, destId){
+  if(!tokens.length) return null;
+  const n=tokens.reduce((s,tk)=>s+parseInt(tk.split('|')[1]||1),0);
+  return {action:'recruit',target:tokens.join(',')+(destId!=null?`,to:${destId}`:''),extra:'',desc:'Recruit '+n+' unit'+(n>1?'s':'')};
+}
+// HERO HIRING (item 3): a wandering (non-guard, not just-defeated) hero standing here that this crown may
+// hire, or null. Bots hire every hero they can — more commanders means more feeders and more hosts.
+function botHireableHeroAt(G,pi,provId){
+  const player=G.players[pi]||{};
+  return (G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===provId&&!h._isNeutralGuard&&!h._justDefeated&&heroHireWage(player.alignment||'Neutral',h.alignment,false)!=null)||null;
+}
+function botHireOrder(G,pi,c,L){
+  const hh=botHireableHeroAt(G,pi,c.location); if(!hh) return null;
+  const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral', hh.alignment, false);
+  if(wage==null||!botCanAfford(L,wage)) return null;
+  botSpend(L,wage);
+  return {action:'hire',target:String(hh.id),extra:'',desc:'Hire '+hh.name};
+}
+// DRILL (item 1): a commander leading 3+ land/air units practises Tactical in every spare phase (levels
+// the skill AND promotes unit quality); a fleet commander drills Naval. Else the phase is a Hold.
+function botDrillOrder(c){
+  const land=(c.armies||[]).filter(a=>a&&!BOT_SEA_ALL.has(a.type)&&!a._isSkeletal).length;
+  const sea=(c.armies||[]).filter(a=>a&&BOT_SEA_ALL.has(a.type)).length;
+  if(land>=3) return {action:'practice',target:'tactical',extra:'',desc:'Practice Tactical (drill the host)'};
+  if(sea>=3) return {action:'practice',target:'naval',extra:'',desc:'Practice Naval (drill the fleet)'};
+  return null;
+}
+// Fill a 5-phase order list: pre-orders, then moves, then a Defend watch if a phase is spare, then drill.
+function botFillOrders(c, pre, moves){
+  const out=[...pre, ...moves].slice(0,5);
+  if(out.length<5) out.push({action:'defend',target:'',extra:'',desc:'Hold'});
+  const drill=botDrillOrder(c);
+  while(out.length<5) out.push(drill?{...drill}:{action:'defend',target:'',extra:'',desc:'Hold'});
+  return out;
+}
+const botMoveOrder=(dirIdx,desc)=>({action:'move',target:'dir:'+BOT_HEX_DIRS[dirIdx],extra:'',desc:desc||'Advance'});
+// PATHING — shortest march from `from` to province `toId` through passable land (own/allied); the
+// destination itself may be anything. Returns up to maxHops direction indices, or null if unreachable.
+function botPathDirs(G,pi,from,toId,maxHops,unarmed){
+  if(!from||toId==null||from.id===toId) return [];
+  const prev={}; prev[from.id]=null; const dirOf={}; const q=[from];
+  const passable=N=>botPassable(G,pi,N) || (unarmed && N && N.terrain!=='sea' && N.owner==null);
+  while(q.length){ const cur=q.shift(); let found=false;
+    for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||prev[N.id]!==undefined) continue;
+      if(N.id!==toId && !passable(N)) continue;
+      prev[N.id]=cur.id; dirOf[N.id]=i; if(N.id===toId){ found=true; break; } q.push(N); }
+    if(found) break; }
+  if(prev[toId]===undefined) return null;
+  const dirs=[]; let id=toId; while(prev[id]!==null){ dirs.unshift(dirOf[id]); id=prev[id]; }
+  return dirs.slice(0,Math.max(0,maxHops));
+}
+// BFS distance through passable land (null = unreachable).
+function botPathLen(G,pi,from,toId,unarmed){ const d=botPathDirs(G,pi,from,toId,99,unarmed); return d?d.length:null; }
+// FRONTIER — nearest own/allied land province that borders unowned or at-war-enemy land (ties → the one
+// with the most such neighbours). null if `P` is itself on the edge or nothing is reachable.
+function botIsEdge(G,pi,prov){ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(!N||N.terrain==='sea')continue;
+  if(N.owner==null || (N.owner!==pi && botRelationRaw(G,pi,N.owner)==='enemy')) return true; } return false; }
+function botFrontierTarget(G,pi,P){
+  if(botIsEdge(G,pi,P)) return null;
+  const openCount=prov=>{ let n=0; for(let j=0;j<6;j++){ const K=botNeighbourProv(G,prov,j); if(!K||K.terrain==='sea')continue; if(K.owner==null||(K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy')) n++; } return n; };
+  const seen=new Set([P.id]); let q=[P], depth=0, best=null;
+  while(q.length && depth<8){ const next=[]; depth++;
+    q.forEach(cur=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||seen.has(N.id)||!botPassable(G,pi,N)) continue; seen.add(N.id);
+      const oc=openCount(N); if(oc>0 && (!best||oc>best.oc)) best={id:N.id,oc}; next.push(N); } });
+    if(best) return best.id; q=next; }
+  return null;
+}
+// HOME THREAT — the strongest at-war enemy host standing within 2 hops of the capital (a human massing
+// on the border). {force, provId} or null.
+function botHomeThreat(G,pi){
+  const hid=botHomeId(G,pi); const H=hid!=null?G.world.provinces[hid]:null; if(!H) return null;
+  let best=null;
+  (G.characters||[]).forEach(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)==='enemy')) return;
+    const P=G.world.provinces[e.location]; if(!P||botHexDist(G,P,H)>2) return;
+    const f=botForceStrength(e.armies); if(!best||f>best.force) best={force:f,provId:P.id}; });
+  return best;
+}
+// TARGET SCAN — from province P with a column of strength myStr: the best winnable adjacent target
+// (attack an at-war enemy province, take unowned land, hunt enemy leaders, put to sea), the strongest
+// at-war enemy host on the doorstep, and the neighbouring valuable province most in need of help.
+function botScanTargets(G,pi,c,P,myStr,T,visited){
+  const margin=c.isKing?T.kingAttackMargin:T.heroAttackMargin;
+  let best=null, reinforce=null, maxThreat=0, threatDir=-1;
+  for(let i=0;i<6;i++){
+    const N=botNeighbourProv(G,P,i); if(!N) continue;
+    let enemyForceInN=0;
+    (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botForceStrength(e.armies); });
+    if(enemyForceInN>maxThreat){ maxThreat=enemyForceInN; threatDir=i; }
+    if(visited&&visited.has(N.id)) continue;
+    if(N.terrain==='sea' && botSeaCap(c.armies)==='land') continue;      // no shipping — can't put to sea
+    if(N.owner===pi){
+      if(botIsValuable(G,N,pi)){ const need=botDefenceNeed(G,N,pi); if(need>0 && (!reinforce||need>reinforce.need)) reinforce={dirIdx:i,need}; }
+      continue;
+    }
+    if(N.owner!=null && botRelationRaw(G,pi,N.owner)==='allied') continue;  // an ally's land is not a target
+    let targetStr, enemyTarget=false;
+    const ec=botEnemyChars(G,N,pi);
+    if(N.owner==null){ targetStr=botGuardStrength(G,N)+ec.force; }
+    else { if(botRelationRaw(G,pi,N.owner)!=='enemy') continue; targetStr=botEnemyDefence(G,N,N.owner); enemyTarget=true; }
+    const effMargin=ec.hasKing?margin*0.9:margin;
+    if(targetStr>0 && myStr < targetStr*effMargin) continue;
+    // Item 2: a winnable enemy HOST is the prize — the bigger the stack we can smash, the better.
+    let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3;
+    if(N.terrain==='sea'){
+      score-=40;                                            // sea is only worth claiming when land is exhausted
+      if(botIsLoadedFleet(c.armies)) for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy'){ score+=40+T.rivalBias*2; break; } }
+    }
+    if(!best||score>best.score) best={dirIdx:i,score,N,targetStr};
+  }
+  return {best,reinforce,maxThreat,threatDir};
+}
+// CHAINED HOPS — continue a march from a predicted position: attack the next winnable neighbour, else
+// walk toward the frontier. Strength is discounted 15% per fight fought (losses) and each extra hop that
+// fights demands a stiffer margin; at most two fights per turn are chained.
+function botChainHops(G,pi,c,startProv,myStr,T,hopsLeft,visited,fights){
+  const moves=[]; let cur=startProv, str=myStr, fought=fights||0;
+  while(hopsLeft>0 && cur){
+    const scan=botScanTargets(G,pi,c,cur,str/(fought?1.2:1),T,visited);
+    if(scan.best){
+      moves.push(botMoveOrder(scan.best.dirIdx, scan.best.targetStr>0?'Attack':'Advance')); visited.add(scan.best.N.id); cur=scan.best.N; hopsLeft--;
+      if(scan.best.targetStr>0){ str*=0.85; fought++; if(fought>=2) break; }
+      continue;
+    }
+    const ft=botFrontierTarget(G,pi,cur); if(ft==null) break;
+    const path=botPathDirs(G,pi,cur,ft,hopsLeft); if(!path||!path.length) break;
+    for(const d of path){ const N=botNeighbourProv(G,cur,d); if(!N) break; moves.push(botMoveOrder(d,'Advance to frontier')); visited.add(N.id); cur=N; hopsLeft--; }
+  }
+  return moves;
+}
+// Write movement (and phase-0 muster) orders for every bot character. Called from runTurn after human
+// orders are merged into G.turnOrders and before the default-to-Defend pass.
 function runBotMovement(G, botIdxSet){
   const T=botTuning(G);
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
   G.turnOrders=G.turnOrders||{};
   botIdxSet.forEach(pi=>{
-    const chars=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&(c.armies||[]).length>0);
+    const L=botLedger(G,pi), roles=botRoles(G,pi);
+    const all=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
+    const chars=all.filter(c=>(c.armies||[]).length>0);
     const assigned=new Set();
-    botPlanAssaults(G, pi, chars, assigned);          // Phase 4b: concentrated assaults (gang up on strong provinces)
-    // Item 5 — identify this bot's PRIMARY stack (biggest; tie → the king) and whether the tax base is
-    // still thin, so early-game secondaries can rally to it rather than scatter.
-    const _solidBase = botTaxIncome(G,pi) >= BOT_STACK_SPLIT_INCOME;
-    let _primaryLoc=null; { let bestN=-1; chars.forEach(x=>{ const n=(x.armies||[]).length+(x.isKing?0.5:0); if(n>bestN){bestN=n;_primaryLoc=x.location;} }); }
-    chars.forEach(c=>{
-      if(assigned.has(c.id)) return;                  // already committed to a coordinated assault
+    botPlanAssaults(G, pi, chars, assigned);          // concentrated assaults (gang up on strong provinces)
+    const leaders=all.filter(c=>roles.leaders.includes(c.id));
+    const leaderAt=provId=>leaders.find(l=>l.location===provId)||null;
+    const homeId=botHomeId(G,pi);
+    const homeThreat=botHomeThreat(G,pi);
+    const heroClaimed=new Set();                      // one seeker per wandering hero
+    // Feeders and unarmed characters are planned after the leaders so a leader's muster claims the
+    // province's recruit slots first.
+    const ordered=[...leaders, ...all.filter(c=>!roles.leaders.includes(c.id))];
+    ordered.forEach(c=>{
+      if(assigned.has(c.id)) return;
       const P=G.world.provinces[c.location]; if(!P) return;
-      const myStr=botForceStrength(c.armies);
-      const margin=c.isKing?T.kingAttackMargin:T.heroAttackMargin; // king needs a clearer advantage before risking a fight
-      let best=null;
-      let reinforce=null;                             // Phase 4b: an adjacent friendly province about to fall
-      let maxThreat=0, threatDir=-1;                  // Phase 4b: strongest at-war enemy force on our doorstep
-      for(let i=0;i<6;i++){
-        const N=botNeighbourProv(G,P,i); if(!N) continue;
-        // THREAT scan: an at-war enemy force STANDING in N menaces P, whoever owns N.
-        let enemyForceInN=0;
-        (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botForceStrength(e.armies); });
-        if(enemyForceInN>maxThreat){ maxThreat=enemyForceInN; threatDir=i; }
-        // TARGET scan (attack / expand):
-        // NAVAL (item 1): a sea province is a valid target only for a sea-capable force (fleets/flyers,
-        // with hulls enough to carry any land troops aboard). A pure land force still skips the sea.
-        // A force already AT SEA targeting an adjacent LAND province is making a coastal landing.
-        if(N.terrain==='sea' && botSeaCap(c.armies)==='land') continue;   // no shipping — can't put to sea
-        if(N.owner===pi){
-          // REINFORCE candidate: an owned valuable neighbour an enemy could take as it stands. Pick the
-          // one in the most trouble; moving there adds this character's force to its defence next battle.
-          if(botIsValuable(G,N,pi)){
-            const need=botDefenceNeed(G,N,pi);
-            if(need>0 && (!reinforce||need>reinforce.need)) reinforce={dirIdx:i,need};
-          }
-          continue;                                    // already ours — not an attack/expand target
-        }
-        let targetStr, enemyTarget=false;
-        const ec=botEnemyChars(G,N,pi);                // item 7: enemy leaders standing here
-        if(N.owner==null){
-          targetStr=botGuardStrength(G,N)+ec.force;     // unowned land — the neutral guard (+ any enemy leader passing through)
-        } else {
-          // Owned by another player. Phase 4: press a rival we are AT WAR with; a player we're not at
-          // war with (neutral relation) has a closed border, so skip. (Bots never ally in v1.)
-          if(botRelationRaw(G,pi,N.owner)!=='enemy') continue;
-          targetStr=botEnemyDefence(G,N,N.owner);      // the enemy's defenders in that province (already counts their characters)
-          enemyTarget=true;
-        }
-        const effMargin=ec.hasKing?margin*0.9:margin;  // take a little more risk to assassinate a king
-        if(targetStr>0 && myStr < targetStr*effMargin) continue;   // not confidently winnable — don't march in
-        let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value; // + hunt bonus
-        // NAVAL invasion approach: a loaded fleet (troops aboard) prefers a sea tile that touches an
-        // at-war enemy coast, so next turn it can storm ashore there.
-        if(N.terrain==='sea' && botIsLoadedFleet(c.armies)){
-          for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy'){ score+=T.rivalBias*2; break; } }
-        }
-        if(!best||score>best.score) best={dirIdx:i,score};
+      const isLeader=roles.leaders.includes(c.id);
+      const armed=(c.armies||[]).length>0;
+      const pre=[];
+      const hire=botHireOrder(G,pi,c,L); if(hire) pre.push(hire);
+      // ── FEEDER standing with a leader: hand the whole column over, then drill/hold. ──
+      if(!isLeader && armed){
+        const ld=leaderAt(c.location);
+        if(ld){ G.turnOrders[c.id]=botFillOrders(c,[...pre,{action:'leave_army',target:'all',extra:String(ld.id),desc:'Hand column to '+ld.name}],[]); assigned.add(c.id); return; }
       }
-      // Phase 4b — DEFENCE: don't abandon a threatened capital or Rich province to raid elsewhere. If an
-      // at-war enemy on our doorstep could take THIS province once we leave, and our chosen move isn't the
-      // counter-attack that destroys that force, we stay and Defend instead. Scoped to home/Rich land so a
-      // lone scout can't pin a whole army on worthless dirt, and the remaining-defence check lets a surplus
-      // defender still sortie while enough force stays behind to hold.
+      // ── MUSTER before marching: a leader raises field troops where it stands; anyone leaves a
+      //    single-unit garrison behind (only when the march still keeps at least 2 hops). ──
+      let recruitTypes=[];
+      if(P.owner===pi){
+        if(isLeader){ const toks=botFieldRecruitTokens(G,pi,c,P,L); const ro=botRecruitOrder(toks,null); if(ro){ pre.push(ro); recruitTypes=toks.map(t=>t.split('|')[0]); } }
+      }
+      const reach=Math.min(3, armed?botLandReach(c,recruitTypes):5);
+      if(P.owner===pi && (5-pre.length-1)>=2 && reach>=2){ const go=botGarrisonOrder(G,pi,P,L); if(go) pre.push(go); }
+      const maxHops=Math.max(0, Math.min(reach, 5-pre.length));
+      const myStr=botForceStrength(c.armies);
+      // ── UNARMED: chase a wandering hero within 3 hops (hire on arrival); an unarmed LEADER goes home to
+      //    raise a host; a feeder with nothing to do here walks to a free muster province. ──
+      if(!armed){
+        let bestH=null;
+        (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated)) return;
+          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)==null) return;
+          if(h.location===c.location||heroClaimed.has(h.id)) return;
+          const d=botPathLen(G,pi,P,h.location,true); if(d==null||d>3) return; if(!bestH||d<bestH.d) bestH={h,d}; });
+        if(bestH && maxHops>0){
+          const path=botPathDirs(G,pi,P,bestH.h.location,maxHops,true);
+          if(path&&path.length===bestH.d){ heroClaimed.add(bestH.h.id); const mv=path.map(d=>botMoveOrder(d,'Seek '+bestH.h.name)); if(pre.length+mv.length<5) mv.push({action:'hire',target:String(bestH.h.id),extra:'',desc:'Hire '+bestH.h.name}); G.turnOrders[c.id]=botFillOrders(c,pre,mv); return; }
+        }
+        if(isLeader && homeId!=null && c.location!==homeId){ const path=botPathDirs(G,pi,P,homeId,maxHops,true); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(c,pre,path.map(d=>botMoveOrder(d,'Return to raise a host'))); return; } }
+        if(!isLeader && P.owner===pi && (leaderAt(c.location) || !(P.armyTypes||[]).length)){
+          // Find the nearest owned land province with recruitable units and no other friendly character.
+          let bestM=null; (G.world.provinces||[]).forEach(x=>{ if(!x||x.owner!==pi||x.terrain==='sea'||x.id===P.id||!(x.armyTypes||[]).length) return;
+            if(all.some(o=>o.id!==c.id&&o.location===x.id)) return; const d=botPathLen(G,pi,P,x.id,true); if(d==null||d>4) return;
+            const sc=(x.tax||0)-d*2; if(!bestM||sc>bestM.sc) bestM={x,sc,d}; });
+          if(bestM){ const path=botPathDirs(G,pi,P,bestM.x.id,maxHops,true); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(c,pre,path.map(d=>botMoveOrder(d,'March to muster at '+bestM.x.name))); return; } }
+        }
+        if(pre.length){ G.turnOrders[c.id]=botFillOrders(c,pre,[]); }
+        return; // else: idle — economy / actions passes give it work
+      }
+      // ── FEEDER with a column: march it to the nearest field army. ──
+      if(!isLeader){
+        let bestL=null; leaders.forEach(l=>{ const d=botPathLen(G,pi,P,l.location,false); if(d!=null&&(!bestL||d<bestL.d)) bestL={l,d}; });
+        if(bestL && maxHops>0){ const path=botPathDirs(G,pi,P,bestL.l.location,maxHops,false); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(c,pre,path.map(d=>botMoveOrder(d,'Bring troops to '+bestL.l.name))); return; } }
+        // no leader reachable — behave as a small host of its own (falls through)
+      }
+      // ── LEADER (or stranded feeder): threat / hold / reinforce / attack / expand. ──
+      const visited=new Set([P.id]);
+      const scan=botScanTargets(G,pi,c,P,myStr,T,visited);
+      const {best,reinforce,maxThreat,threatDir}=scan;
+      // DEFENCE: don't abandon a threatened capital or Rich province if it would fall the moment we leave
+      // and our move isn't the counter-attack that destroys that very force.
       if(P.owner===pi && botIsValuable(G,P,pi) && maxThreat>0){
-        let remaining=0;                               // defence that would REMAIN if this character left
+        let remaining=0;
         (P.characters||[]).forEach(id=>{ if(id===c.id) return; const f=(G.characters||[]).find(x=>x&&x.id===id); if(f&&f.alive&&f.player===pi) remaining+=botForceStrength(f.armies); });
         (P.garrisonArmies||[]).forEach(a=>{ remaining+=unitBaseStrength(a); });
-        const provinceWouldFall=maxThreat>=remaining;              // enemy could walk in behind us
-        const bestAttacksTheThreat=best && best.dirIdx===threatDir; // our move destroys that very force
-        if(provinceWouldFall && !bestAttacksTheThreat){ return; }   // hold & defend (leave to default-Defend)
+        const provinceWouldFall=maxThreat>=remaining;
+        const bestAttacksTheThreat=best && best.dirIdx===threatDir;
+        if(provinceWouldFall && !bestAttacksTheThreat){ G.turnOrders[c.id]=botFillOrders(c,pre,[]); return; }  // hold, drill, watch
       }
-      // Phase 4b — REINFORCE: our own province is safe enough to leave, but an adjacent valuable province
-      // is about to fall. March to its aid (unless a winnable counter-attack on the doorstep threat is the
-      // better move — destroying the attacking force defends everything at once).
-      if(reinforce){
-        const counterAttackAvailable = best && best.dirIdx===threatDir && maxThreat>0;
-        if(!counterAttackAvailable){
-          const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[reinforce.dirIdx],extra:'',desc:'Reinforce'}];
-          for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
-          G.turnOrders[c.id]=orders;
-          return;
+      // HOME THREAT (item 2): the PRIMARY host answers a human host massing within 2 hops of the capital —
+      // marches on it if it can win, otherwise falls back to stand on the capital. Only when the capital
+      // would actually fall as it stands.
+      if(c.id===roles.primaryId && homeThreat && homeId!=null && !(best&&best.dirIdx===threatDir&&maxThreat>0)){
+        const H=G.world.provinces[homeId];
+        if(homeThreat.force > botEnemyDefence(G,H,pi)-(c.location===homeId?myStr:0)){
+          const margin=c.isKing?T.kingAttackMargin:T.heroAttackMargin;
+          if(myStr >= homeThreat.force*margin){
+            // Path to a province adjacent to the threat, then strike.
+            const TP=G.world.provinces[homeThreat.provId]; let bestAdj=null;
+            for(let i=0;i<6;i++){ const N=botNeighbourProv(G,TP,i); if(!N||!botPassable(G,pi,N)) continue; const d=botPathLen(G,pi,P,N.id,false); if(d!=null&&(!bestAdj||d<bestAdj.d)) bestAdj={N,d}; }
+            if(bestAdj && bestAdj.d<maxHops){ const path=botPathDirs(G,pi,P,bestAdj.N.id,maxHops,false)||[]; const mv=path.map(d=>botMoveOrder(d,'March on the invader'));
+              for(let i=0;i<6;i++){ const K=botNeighbourProv(G,bestAdj.N,i); if(K&&K.id===TP.id){ mv.push(botMoveOrder(i,'Attack the invader')); break; } }
+              G.turnOrders[c.id]=botFillOrders(c,pre,mv); return; }
+          }
+          if(c.location!==homeId){ const path=botPathDirs(G,pi,P,homeId,maxHops,false); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(c,pre,path.map(d=>botMoveOrder(d,'Fall back to the capital'))); return; } }
+          else { G.turnOrders[c.id]=botFillOrders(c,pre,[]); return; } // stand on the capital
         }
       }
+      // REINFORCE a neighbouring valuable province about to fall (unless the counter-attack is available).
+      if(reinforce && !(best && best.dirIdx===threatDir && maxThreat>0)){
+        G.turnOrders[c.id]=botFillOrders(c,pre,[botMoveOrder(reinforce.dirIdx,'Reinforce')]); return;
+      }
+      if(maxHops<=0){ G.turnOrders[c.id]=botFillOrders(c,pre,[]); return; }
+      // A host carrying ships cannot march overland: leave the hulls in this province's garrison first
+      // (one phase) when the chosen move is land→land. They are picked up again if a naval move is chosen later.
+      const shedFleet=()=>{ if(P.terrain==='sea'||P.owner!==pi) return false; const hulls=(c.armies||[]).filter(a=>a&&BOT_SEA_ALL.has(a.type)); if(!hulls.length||hulls.length===(c.armies||[]).length) return false;
+        pre.push({action:'leave_army',target:hulls.map(a=>a.type).join(','),extra:'-1',desc:'Leave the fleet in harbour'}); return true; };
+      if(best && best.N.terrain!=='sea' && P.terrain!=='sea' && shedFleet() && pre.length>=5){ G.turnOrders[c.id]=botFillOrders(c,pre,[]); return; }
       if(best){
-        const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[best.dirIdx],extra:'',desc:'Advance'}];
-        for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
-        G.turnOrders[c.id]=orders;                     // overrides the Defend default for this mover
-        return;
+        const moves=[botMoveOrder(best.dirIdx, best.targetStr>0?'Attack':'Advance')]; visited.add(best.N.id);
+        let str=myStr, fights=0; if(best.targetStr>0){ str*=0.85; fights=1; }
+        moves.push(...botChainHops(G,pi,c,best.N,str,T,maxHops-1,visited,fights));
+        G.turnOrders[c.id]=botFillOrders(c,pre,moves); return;
       }
-      // Items 3 & 4 — no winnable target on the doorstep: an interior character advances toward the
-      // frontier (keeps expanding, scouts fog); a character already at the edge holds and builds.
-      // Item 8: first, if a beatable lair sits in our own adjacent land, go clear it (hoard + strength).
+      // A beatable lair in our own adjacent land — go clear it (hoard + strength).
       const ld=botLairDir(G,P,c,pi);
-      if(ld>=0){
-        const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[ld],extra:'',desc:'Raid lair'}];
-        for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
-        G.turnOrders[c.id]=orders;
-        return;
-      }
-      // Item 5 — early game, a secondary character rallies to the main stack instead of advancing alone.
-      if(!_solidBase && c.location!==_primaryLoc){
-        const rd=botRallyDir(G,P,c,pi,_primaryLoc);
-        if(rd>=0){
-          const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[rd],extra:'',desc:'Rally to main force'}];
-          for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
-          G.turnOrders[c.id]=orders;
-          return;
+      if(ld>=0){ const LP=botNeighbourProv(G,P,ld); const li=botBeatableLairIn(G,c,LP);
+        const mv=[botMoveOrder(ld,'Raid lair')]; if(li>=0) mv.push({action:'search',target:String(li),extra:'',desc:'Search Lair'});
+        G.turnOrders[c.id]=botFillOrders(c,pre,mv); return; }
+      // Nothing winnable here: march for the frontier (multi-hop) and strike from there if hops remain.
+      const ft=botFrontierTarget(G,pi,P);
+      if(ft!=null){
+        if(P.terrain!=='sea' && shedFleet() && pre.length>=5){ G.turnOrders[c.id]=botFillOrders(c,pre,[]); return; }
+        const path=botPathDirs(G,pi,P,ft,maxHops,false);
+        if(path&&path.length){
+          const moves=[]; let cur=P; for(const d of path){ const N=botNeighbourProv(G,cur,d); if(!N) break; moves.push(botMoveOrder(d,'Advance to frontier')); visited.add(N.id); cur=N; }
+          moves.push(...botChainHops(G,pi,c,cur,myStr,T,maxHops-moves.length,visited,0));
+          G.turnOrders[c.id]=botFillOrders(c,pre,moves); return;
         }
       }
-      const fd=botFrontierDir(G,P,pi);
-      if(fd>=0){
-        const orders=[{action:'move',target:'dir:'+BOT_HEX_DIRS[fd],extra:'',desc:'Advance'}];
-        for(let p=1;p<5;p++) orders.push({action:'defend',target:'',extra:'',desc:'Hold'});
-        G.turnOrders[c.id]=orders;
-      }
-      // else: at the frontier with nothing winnable — leave to the default-to-Defend pass (hold & build).
+      // At the edge with nothing winnable: hold, watch and drill (muster orders still apply).
+      G.turnOrders[c.id]=botFillOrders(c,pre,[]);
     });
   });
 }
@@ -3746,12 +4019,21 @@ function runBotMovement(G, botIdxSet){
 // more only as it expands — and prevents a wage spiral that would bankrupt it.
 const BOT_NAVAL_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
 function botRecruitableTypes(prov){
-  return (prov.armyTypes||[])
+  const all=(prov.armyTypes||[])
     .filter(t=>t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t))   // land field units only (v1)
     .sort((a,b)=>(UNIT_BASE_STR[b]||4)-(UNIT_BASE_STR[a]||4));         // strongest first
+  // Sept 2026 (bot strategy): a speed-1 unit (Mountain Guns, Stone Giants…) pins the whole host to one
+  // hop a turn, which costs far more conquest than its strength buys. Skip them when anything else exists.
+  const mobile=all.filter(t=>(ARMY_SPEED_MASTER[t]||3)>=2);
+  return mobile.length?mobile:all;
 }
 function botUpkeep(G, pi){
-  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ w+=(ARMY_COST_MASTER[a.type]||2); }); }); return w;
+  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ w+=(ARMY_COST_MASTER[a.type]||2); }); });
+  // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
+  // solvency guard must see them now that bots garrison every province.
+  (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi)(p.garrisonArmies||[]).forEach(a=>{ w+=(ARMY_COST_MASTER[a.type]||2); }); });
+  (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&!c.isKing) w+=(c.pay||0); });   // hero wages are real wages too
+  return w;
 }
 function botTaxIncome(G, pi){
   let inc=0; (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi) inc+=(p.tax||0); }); return inc;
@@ -3783,84 +4065,46 @@ function botNavalUseful(G, prov, pi){
   }
   return false;
 }
+// Sept 2026: an at-war ENEMY coast one sea-hop from this province (the only naval reason worth a fleet
+// while land remains to conquer).
+function botNavalEnemyCoast(G, prov, pi){
+  for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(!N||N.terrain!=='sea') continue;
+    for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy') return true; } }
+  return false;
+}
 // Item 5 — how many fleet hulls the bot already leads across its whole roster (so it stops over-building ships).
 function botFleetHullCount(G, pi){ let h=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ if(a&&BOT_CARRIER_TYPES.has(a.type))h++; }); }); return h; }
 function runBotEconomy(G, botIdxSet){
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
-  const T=botTuning(G);
   G.turnOrders=G.turnOrders||{};
-  const RESERVE_BASE=T.goldReserve;                          // keep this much gold on hand
   botIdxSet.forEach(pi=>{
     const player=G.players[pi]; if(!player) return;
-    const income=botTaxIncome(G,pi);
-    // Item 3 — WAR FOOTING: at war (or facing an enemy leading a big stack) the bot spends its treasury
-    // down and pushes its sustainable army ceiling toward 100% of income, building up to MATCH the foe;
-    // in peacetime it keeps the tuned cap and a small war chest.
-    const warFooting = botAtWar(G,pi) || botMaxEnemyStack(G,pi)>5;
-    const effCapFrac = warFooting ? Math.min(1.0, T.upkeepCapFrac+0.10) : T.upkeepCapFrac;
-    const upkeepCap=Math.floor(income*effCapFrac);
-    const RESERVE = warFooting ? Math.min(2,RESERVE_BASE) : RESERVE_BASE;   // item 3: aim for a lean (<10) treasury
-    let upkeep=botUpkeep(G,pi);
-    let budget=(player.gold||0)-RESERVE;                      // shared across this bot's recruiters
-    if(budget<1 || upkeep>=upkeepCap) return;                 // broke or already fully committed
-    // Item 5 — CONCENTRATION: with a thin tax base, only the PRIMARY character (biggest stack; tie → the
-    // king) raises field troops, so the army grows as ONE stack instead of scattering. A solid tax base
-    // lifts the restriction and every holder may recruit (multiple stacks).
-    const solidBase = income >= BOT_STACK_SPLIT_INCOME;
-    let primaryId=null;
-    if(!solidBase){ let bestN=-1; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&!c._isHeir){ const n=(c.armies||[]).length+(c.isKing?0.5:0); if(n>bestN){bestN=n;primaryId=c.id;} } }); }
-    const recruitedByProv={};                                // provId → Set(types) issued this turn
+    const L=botLedger(G,pi), roles=botRoles(G,pi);
+    if(L.budget<1 || L.upkeep>=L.upkeepCap) return;                 // broke or already fully committed
     // A holder is a bot character not doing anything yet. NOTE: runTurn pre-populates G.turnOrders[c.id]
-    // with an all-null array before the bot passes, and runBotMovement overwrites movers with a move in
-    // phase 0 — so "idle" means every phase is still null (or a plain Defend), never a real action.
+    // with an all-null array before the bot passes, and runBotMovement writes movers' plans — so "idle"
+    // means every phase is still null (or a plain Defend), never a real action.
     const isIdle=c=>{ const o=G.turnOrders[c.id]; return !o || o.every(x=>x==null || x.action==='defend'); };
-    const holders=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isIdle(c));
+    // Leaders first (their host is the priority), then feeders raising troops to carry to a host.
+    const holders=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isIdle(c))
+      .sort((a,b)=>(roles.leaders.includes(b.id)?1:0)-(roles.leaders.includes(a.id)?1:0));
     holders.forEach(c=>{
-      if(budget<1||upkeep>=upkeepCap) return;
       const prov=G.world.provinces[c.location];
       if(!prov||prov.owner!==pi) return;                      // must control the province to raise troops
       const orders=[null,null,null,null,null]; let ph=0;
-      // Opportunistic hire of a co-located wandering (non-guard) hero — adds a commander.
-      const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated);
-      if(hh){
-        const wage=heroHireWage(player.alignment||'Neutral', hh.alignment, false);
-        if(wage!=null && budget>=wage && (upkeep+wage)<=upkeepCap){
-          orders[ph++]={action:'hire',target:String(hh.id),extra:'',desc:'Hire '+hh.name};
-          budget-=wage; upkeep+=wage;
-        }
-      }
-      // Recruit the strongest affordable & sustainable field units in a SINGLE order (item 6): pack
-      // several types — and 2 of a type where the per-type turn limit allows (tax≥10) — into one Recruit
-      // order instead of dribbling one unit per phase. Musters faster when flush and frees other phases.
-      // Item 5: with a thin tax base only the primary character raises field troops (one growing stack).
-      const mayRecruit = solidBase || primaryId==null || c.id===primaryId;
-      if(mayRecruit && !recruitedByProv[prov.id] && prov.armyTypes){
-        const doneProv=recruitedByProv[prov.id]=new Set();
-        const perTypeLimit=(prov.tax>=10?2:1);
-        const tokens=[];
-        // Item 1a — NAVY FIRST: if there's a naval reason here (a sea province to take or an enemy coast
-        // one hop across the water) and we're short of hulls, buy a fleet before land units. A few hulls
-        // are enough to conquer sea regions and ferry a small landing force.
-        const fleetType=botCoastalFleetType(prov);
-        if(fleetType && botNavalUseful(G,prov,pi) && botFleetHullCount(G,pi)<3){
-          const cost=ARMY_COST_MASTER[fleetType]||3;
-          if(budget>=cost && upkeep+cost<=upkeepCap){ tokens.push(`${fleetType}|1`); doneProv.add(fleetType); budget-=cost; upkeep+=cost; }
-        }
-        for(const t of botRecruitableTypes(prov)){
-          if(ph>=5||budget<1||upkeep>=upkeepCap) break;
-          if(doneProv.has(t)) continue;
-          const cost=ARMY_COST_MASTER[t]||2;
-          let q=0;
-          while(q<perTypeLimit && budget>=cost && upkeep+cost<=upkeepCap){ q++; budget-=cost; upkeep+=cost; }
-          if(q>0){ tokens.push(`${t}|${q}`); doneProv.add(t); }
-        }
-        if(tokens.length && ph<5){
-          const nUnits=tokens.reduce((s,tk)=>s+parseInt(tk.split('|')[1]||1),0);
-          orders[ph++]={action:'recruit',target:tokens.join(','),extra:'',desc:'Recruit '+nUnits+' unit'+(nUnits>1?'s':'')};
-        }
-      }
+      const hire=botHireOrder(G,pi,c,L); if(hire) orders[ph++]=hire;
+      // Field troops muster to a co-located LEADER's banner when one stands here; else to the holder
+      // (a feeder, who then carries them to the nearest host next turn).
+      const ld=(G.characters||[]).find(l=>l&&l.alive&&l.player===pi&&roles.leaders.includes(l.id)&&l.location===c.location);
+      const dest=(ld&&ld.id!==c.id)?ld.id:null;
+      const toks=botFieldRecruitTokens(G,pi,c,prov,L);
+      const ro=botRecruitOrder(toks,dest); if(ro&&ph<5) orders[ph++]=ro;
+      // Item 2: keep a single-unit garrison in every province (2/3 for valuable land / the capital once a
+      // player is on our doorstep) — cheap tripwires, never a substitute for the field army.
+      const go=botGarrisonOrder(G,pi,prov,L); if(go&&ph<5) orders[ph++]=go;
       if(orders.some(o=>o)){
-        for(let p=0;p<5;p++) if(!orders[p]) orders[p]={action:'defend',target:'',extra:'',desc:'Hold'};
+        const drill=botDrillOrder(c);
+        for(let p=0;p<5;p++) if(!orders[p]) orders[p]=(p===ph)?{action:'defend',target:'',extra:'',desc:'Hold'}:(drill?{...drill}:{action:'defend',target:'',extra:'',desc:'Hold'});
         G.turnOrders[c.id]=orders;
       }
     });
@@ -3955,7 +4199,7 @@ function botActionCast(G, c){
 // member of the cluster independently picks the same focus and they all co-train.
 function botCrossTrainSkill(G, c, pi){
   const partners=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&x.location===c.location&&x.id!==c.id
-    && (()=>{const o=G.turnOrders[x.id]; return !o||o.every(y=>y==null||y.action==='defend'||y.action==='practice'||y.action==='research');})());
+    && (()=>{const o=G.turnOrders[x.id]; return !o||o.every(y=>y==null||['defend','practice','research','hire','recruit','leave_army'].includes(y.action));})());
   if(partners.length===0) return null;                       // need a training partner
   const group=[c,...partners];
   const SKILLS=['melee','tactical','march','archery','naval','white','psychic','illusory','elemental','necromancy','spy','thief','sage','druid','explorer'];
@@ -4021,8 +4265,9 @@ function botCanBeatGuardian(c, m){
   const charRating=(c.maxHp||20)+(sk.melee||0)*6+(sk.tactical||0)*3+(sk.archery||0)*2+battleMagic*4;
   return charRating >= monRating*1.5;                  // conservative — demand a clear edge (deaths are permanent)
 }
-function botBeatableLair(G, c){
-  const prov=G.world.provinces[c.location]; if(!prov||!prov.features) return -1;
+function botBeatableLair(G, c){ return botBeatableLairIn(G, c, G.world.provinces[c.location]); }
+function botBeatableLairIn(G, c, prov){
+  if(!prov||!prov.features) return -1;
   let bestIdx=-1, bestTreasure=-1;
   prov.features.forEach((f,idx)=>{
     if(!f||f.cleared||f.ritualSite) return;
@@ -4035,12 +4280,24 @@ function botBeatableLair(G, c){
 function runBotActions(G, botIdxSet){
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
   G.turnOrders=G.turnOrders||{};
-  const isIdle=c=>{ const o=G.turnOrders[c.id]; return !o || o.every(x=>x==null || x.action==='defend'); };
-  const fill=(cid,order)=>{ G.turnOrders[cid]=[0,1,2,3,4].map(()=>({...order})); };
+  // Sept 2026 (bot strategy): a character is "fillable" if it is not marching this turn — its remaining
+  // Hold phases (after any phase-0 hire / recruit / garrison / hand-over muster orders) get real work.
+  const MUSTER=new Set(['hire','recruit','leave_army']);
+  const isFillable=c=>{ const o=G.turnOrders[c.id]; return !o || o.every(x=>x==null || x.action==='defend' || MUSTER.has(x.action)); };
+  // Overlay a 5-phase plan onto the free (null / Hold) phases, in order, keeping muster orders in place.
+  const overlay=(cid,plan)=>{ const o=G.turnOrders[cid]||[null,null,null,null,null]; let k=0;
+    for(let p=0;p<5&&k<plan.length;p++){ if(o[p]==null||o[p].action==='defend'){ o[p]={...plan[k++]}; } }
+    G.turnOrders[cid]=o; };
+  const fill=(cid,order)=>{ overlay(cid,[0,1,2,3,4].map(()=>({...order}))); };
   botIdxSet.forEach(pi=>{
-    (G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isIdle(c)).forEach(c=>{
+    (G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isFillable(c)).forEach(c=>{
       const maxHp=c.maxHp||20, hp=(c.hp!=null?c.hp:maxHp);
       if(hp < maxHp*0.6){ fill(c.id,{action:'rest',target:'',extra:'',desc:'Rest & heal'}); return; }
+      // Item 1 — a commander of a host (5+ land/air units) always drills it: Practice Tactical raises the
+      // skill AND promotes unit quality (and at Tactical 5 still drills). 3-4 units: drill too unless the
+      // co-located cross-training group is converging on a different skill (mentor gains are guaranteed).
+      const _landUnits=(c.armies||[]).filter(a=>a&&!BOT_SEA_ALL.has(a.type)&&!a._isSkeletal).length;
+      const _drillPick=_landUnits>=5?'tactical':(_landUnits>=3&&((c.skills||{}).tactical||0)<5?'tactical':null);
       // Action-phase spell: cast once in phase 0, then practise (grow the school) or hold the rest.
       const castOrder=botActionCast(G,c);
       const OFFENSIVE_CAST=new Set(['Curse','Psychic Blast','Earthquake','Plague']);
@@ -4050,25 +4307,27 @@ function runBotActions(G, botIdxSet){
       const botSageOrResearch=(sk)=>{ const sg=((c.skills||{}).sage||0);
         if(sk==='sage'&&sg>=1&&(sg>=5||Math.random()<0.5)) return {action:'research',target:'',extra:'',desc:'Research'};
         return sk?{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)}:{action:'defend',target:'',extra:'',desc:'Hold'}; };
-      const practiceTail=()=>{ const sk=botCrossTrainSkill(G,c,pi)||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
+      const practiceTail=()=>{ const sk=(_landUnits>=5?'tactical':null)||botCrossTrainSkill(G,c,pi)||_drillPick||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
         return botSageOrResearch(sk); };
       // Offensive casts fire first (item 5) — hexing a nearby enemy beats anything peaceful.
       if(castOrder && OFFENSIVE_CAST.has(castOrder.target)){
-        const tail=practiceTail(); G.turnOrders[c.id]=[castOrder,{...tail},{...tail},{...tail},{...tail}]; return;
+        const tail=practiceTail(); overlay(c.id,[castOrder,{...tail},{...tail},{...tail},{...tail}]); return;
       }
+      // Item 1 — the commander of a HOST (5+ land/air units) drills it every spare phase.
+      if(_landUnits>=5){ fill(c.id,{action:'practice',target:'tactical',extra:'',desc:'Practice Tactical (drill the host)'}); return; }
       // Item 8 — raid a beatable lair standing here (hoard + permanent strength) before low-value self-buffs.
       const li=botBeatableLair(G,c);
       if(li>=0){
         const tail=practiceTail();
-        G.turnOrders[c.id]=[{action:'search',target:String(li),extra:'',desc:'Search Lair'},{...tail},{...tail},{...tail},{...tail}];
+        overlay(c.id,[{action:'search',target:String(li),extra:'',desc:'Search Lair'},{...tail},{...tail},{...tail},{...tail}]);
         return;
       }
       if(castOrder){
         const tail=practiceTail();
-        G.turnOrders[c.id]=[castOrder,{...tail},{...tail},{...tail},{...tail}];
+        overlay(c.id,[castOrder,{...tail},{...tail},{...tail},{...tail}]);
         return;
       }
-      const skill=botCrossTrainSkill(G,c,pi)||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
+      const skill=botCrossTrainSkill(G,c,pi)||_drillPick||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
       if(skill){ fill(c.id,botSageOrResearch(skill)); return; }
       const prov=G.world.provinces[c.location];
       const mapped=(prov&&prov.exploredBy)?(prov.exploredBy[pi]||0):0;
@@ -4750,7 +5009,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // homeProvinceId is the founding capital and is written ONCE, here. It is deliberately separate
     // from provinces[0], which shifts as land is won and lost — the player map is centred on this
     // province for the whole game, so it must never move under them mid-campaign.
-    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,color:['#c0392b','#1a3a6a','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
+    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:['#c0392b','#1a3a6a','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
       // ── Diplomacy (KC alliance system) ── players this king has ENCOUNTERED (seen a character or
       // province of). Only encountered players may be treated with. Accumulated in updateProvinceMemory.
       _encountered:[]};
@@ -5969,6 +6228,10 @@ async function runTurn(){
   // same cadence a human would: it reacts to what it knew going into the turn, the declaration is
   // applied at end of turn, and war stands next turn — reusing the existing human war tempo.
   const _botPlayerIdx=new Set((freshPlayers||[]).filter(isBotRow).map(p=>p.player_index));
+  // Sept 2026 (bot strategy batch): stamp the bot flag onto the persisted player objects so the
+  // module-level bot passes can tell bot realms from human ones (botIsBotPlayer) — bots never war
+  // one another while a human king still reigns, and coordinate against the humans instead.
+  (G.players||[]).forEach((p,i)=>{ if(p) p._isBot=_botPlayerIdx.has(i); });
   const _botEncounteredAtStart={};
   _botPlayerIdx.forEach(idx=>{ _botEncounteredAtStart[idx]=[...(((G.players||[])[idx]||{})._encountered||[])]; });
 
@@ -11532,7 +11795,13 @@ const BATTLE_ARMY_SPELLS={
         // order, RESEARCH (case 'research' below), open to any character with Sage 1+. Practising
         // Sage is now an ordinary practice: a chance to level the skill, nothing more.
         // Mastery: no further levels to gain, but the discovery roll above has already happened.
-        if(current>=5){log('system',`${c.name} has trained ${SKILL_LABELS[skill]||skill} as far as drilling can take them (level 5). Higher mastery (levels 6–9) is won only through experience in the field, never the practice ground.`,{actor:c.player,targets:[c.player]});break;}
+        // Sept 2026 (bot strategy batch): a maxed (5) skill no longer BREAKS out of the case — it skips the
+        // level roll but still falls through to the unit-drilling block below, so a Tactical-5 / Naval-5
+        // general practising their command skill drills their troops. (Previously the break here meant a
+        // level-5 commander could never drill.)
+        const _practiceMaxed=current>=5;
+        if(_practiceMaxed){log('system',`${c.name} has trained ${SKILL_LABELS[skill]||skill} as far as drilling can take them (level 5). Higher mastery (levels 6–9) is won only through experience in the field, never the practice ground.`,{actor:c.player,targets:[c.player]});}
+        if(!_practiceMaxed){
 
         // Group training bonus: find all other characters in the same province
         // who are also practising the same skill in this same phase
@@ -11596,6 +11865,7 @@ const BATTLE_ARMY_SPELLS={
           log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
         }
 
+        } // end !_practiceMaxed
         // ── Unit drilling: Tactical trains LAND/AIR units, Naval trains SEA units ──
         // Clean complements: a mixed land+fleet stack now advances its foot & flyers by practising
         // Tactical and its ships & sea-beasts by practising Naval. (Previously Tactical trained every
@@ -15081,8 +15351,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     let leader=-1, leaderShare=0;
     for(let pi=0; pi<nP; pi++){ if(!_kingAliveIdx.has(pi)) continue; let sh=0; try{ sh=reckoningBlocShare(G,pi); }catch(e){} if(sh>leaderShare){ leaderShare=sh; leader=pi; } }
     const claimBy=(G.reckoning && G.reckoning.by!=null)?G.reckoning.by:-1;
-    const coalitionLeader = claimBy>=0 ? claimBy
+    let coalitionLeader = claimBy>=0 ? claimBy
                           : (leader>=0 && nP>=3 && leaderShare>=botTuning(G).coalitionTriggerFrac*thr) ? leader : -1;
+    // Sept 2026 (bot strategy, item 3): while a HUMAN king still reigns, bots are one bloc — they never war
+    // each other, they Treat one another toward alliance, and the anti-leader coalition only forms against
+    // a human front-runner. In an all-bot (or humans-eliminated) game the old every-realm-for-itself rules
+    // apply, so self-play still produces a war.
+    const _botBloc = botHumanKingAlive(G);
+    if(_botBloc && coalitionLeader>=0 && _botPlayerIdx.has(coalitionLeader)) coalitionLeader=-1;
     _botPlayerIdx.forEach(idx=>{
       // A bot joins the coalition if it isn't the leader (and isn't already the leader's ally).
       const inCoalition = coalitionLeader>=0 && idx!==coalitionLeader && !areAllied(idx,coalitionLeader);
@@ -15090,6 +15366,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         if(rival==null||rival===idx) return;
         if(!(G.players||[])[rival]) return;
         if(!_kingAliveIdx.has(rival)&&!_hasLand(rival)) return;  // skip already-defeated realms
+        if(_botBloc && _botPlayerIdx.has(rival)){
+          if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';   // fellow bot: peace → alliance
+          return;
+        }
         if(inCoalition && rival!==coalitionLeader){
           // Fellow trailing realm: offer peace/alliance instead of warring, so we can unite on the leader.
           if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
@@ -15953,6 +16233,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.06-2141</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.07-0740</div>
 </body>
 </html>
