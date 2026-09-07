@@ -494,6 +494,7 @@ section{display:none;}.section-active{display:block;}
             </span>
           </h2>
           <div id="report-status-pill" style="padding:2px 0 6px"></div>
+          <div id="turn-deadline-line" style="display:none;font-size:.78rem;margin:0 0 8px;padding:6px 10px;border-radius:3px;background:#f3e9d2;border:1px solid #c9bd9e;color:#4a3a1a"></div>
           <div id="orders-form" style="flex:1"></div>
           <!-- Everything to do with SUBMITTING orders lives in this one sticky block at the foot of
                the column: the validation message, the buttons it raises ("Submit Anyway" / "Go
@@ -563,7 +564,7 @@ function updateEquipTarget(charId, ph){
 
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
-const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Encounter Character','Steal','Disband Army',
+const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Release Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items',
   'Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
@@ -623,7 +624,7 @@ const ACTION_DISPLAY_ORDER=[
   'Wild Calling','Grand Design',
   // ── Everyday orders — exact order requested (item 7) ──
   'Move','Practice Skill','Research','Cast Spell','Explore','Search Lair','Recruit Armies',
-  'Pick Up Army','Leave/Transfer Army','Disband Army','Hire Hero','Defend',
+  'Pick Up Army','Leave/Transfer Army','Disband Army','Hire Hero','Release Hero','Defend',
   'Encounter Character','Spy','Send Item','Use Item','Equip Items','Steal','Rest',
 ];
 const _actionRank=(a)=>{ const i=ACTION_DISPLAY_ORDER.indexOf(a); return i<0?ACTION_DISPLAY_ORDER.length:i; };
@@ -634,6 +635,7 @@ function actionsFor(c){
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
     if(L79_ORDERS[a]&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     if(a==='Research'&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
+    if(a==='Release Hero'&&c&&c.isKing) return false; // 2026-09-08: a king cannot release himself
     return true;
   }).sort((a,b)=>_actionRank(a)-_actionRank(b));
 }
@@ -1104,8 +1106,32 @@ async function loadMyGames(){
         Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
         Turn ${g.turn||0}
       </div>
+      ${(()=>{ const t=turnDeadlineText(g); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
     </div>`;
   }).join('');
+}
+
+// ── Turn running mode (mirror of the GM portal's turnMode; read-only here) ───────────────────
+// The GM chooses manual / automatic / automatic-with-deadline. Players are shown the deadline (in their
+// own local time) but never how many rivals have submitted.
+function turnModeOfGame(g){
+  let gs={}; try{ gs=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
+  const tm=(gs&&gs.turnMode&&typeof gs.turnMode==='object')?gs.turnMode:{};
+  return {mode:['manual','auto','deadline'].includes(tm.mode)?tm.mode:'manual',nextDeadlineAt:tm.nextDeadlineAt||null};
+}
+function fmtDeadlineP(iso){
+  if(!iso) return '';
+  try{ return new Date(iso).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso); }
+}
+function turnDeadlineText(g){
+  if(!g||g.status!=='active') return '';
+  const tm=turnModeOfGame(g);
+  if(tm.mode==='auto') return `⚙️ Turn ${g.turn} resolves automatically as soon as every realm has sent its orders.`;
+  if(tm.mode==='deadline'&&tm.nextDeadlineAt){
+    const late=Date.now()>=new Date(tm.nextDeadlineAt).getTime();
+    return `⏱ Turn ${g.turn} deadline: <strong>${fmtDeadlineP(tm.nextDeadlineAt)}</strong> (your local time)${late?' — passed; the turn is being resolved':''}. It resolves at that time, or sooner if every realm has sent its orders. Orders not in by then hold (Defend).`;
+  }
+  return '';
 }
 
 async function loadOpenGames(){
@@ -1918,6 +1944,7 @@ async function openReport(gamePlayerId){
     ?'<span class="pill pill-blue">✓ Orders submitted</span>'
     :g.status==='active'?'<span class="pill pill-amber">⏳ Orders needed</span>'
     :'<span class="pill pill-green">Waiting to start</span>';
+  { const _dl=document.getElementById('turn-deadline-line'); if(_dl){ const t=turnDeadlineText(g); _dl.style.display=t?'block':'none'; _dl.innerHTML=t; } }
 
   // Waiting for Turn 0
   if(report.waitingForTurn0||g.turn===0){
@@ -4696,8 +4723,9 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
       if(oAct==='Recruit Armies'&&oTgt.split(',').map(t=>t.trim()).includes('to:'+charId)){
         oTgt.split(',').map(t=>t.trim()).forEach(v=>{
           if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
-          const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
-          for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
+          // Item 3 (2026-09-07 batch 3): one recruit token = ONE unit (the `|n` suffix is not a quantity here).
+          const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v;
+          armies.push({type,quality:'Average'});
         });
       } else if(oAct==='Leave/Transfer Army'){
         const oExtra=document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value||'';
@@ -4721,8 +4749,10 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
           wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
             const v=cb.value||'';
             if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
-            const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v; const n=bar>=0?(parseInt(v.slice(bar+1))||1):1;
-            for(let k=0;k<n;k++) armies.push({type,quality:'Average'});
+            // Item 3 (2026-09-07 batch 3): one checked box = ONE unit. The `|n` suffix used to be read as a
+            // quantity, which is why two ticked garrison boxes projected THREE garrison units.
+            const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v;
+            armies.push({type,quality:'Average'});
           });
         }
       }
@@ -5418,9 +5448,15 @@ function buildTargetField(c, ph, saved){
           const remaining=at.maxPerTurn-done;
           if(remaining<=0) return[];
           const costEach=at.cost||2;
+          // 2026-09-07 batch 3 (item 3): every checkbox is ONE unit, so every token is `type|1`. The old
+          // `type|<slot>` values were read by the GM engine (and by projectedLedArmies) as a QUANTITY —
+          // ticking the 1st and 2nd garrison boxes sent `Garrison|1,Garrison|2` = three units. The k-th
+          // box is checked when the saved order holds at least k tokens of this type (legacy `type|n`
+          // tokens count as one each).
+          const _savedOfType=savedSels.filter(v=>v.split('|')[0].trim()===at.type).length;
           return Array.from({length:remaining},(_,i)=>{
-            const val=`${at.type}|${i+1}`;
-            const chk=savedSels.includes(val)?'checked':'';
+            const val=`${at.type}|1`;
+            const chk=_savedOfType>i?'checked':'';
             return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
               <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
               1× ${at.type} (${costEach}g)${
@@ -5457,7 +5493,13 @@ function buildTargetField(c, ph, saved){
         const costNote=d<=1?'(kindred outlook — base rate)':`(${d} steps from ${kAlign})`;
         return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
       }).join('');
-      return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${opts}</select>`;}
+      // Item 2 (2026-09-07 batch 3): never let the browser silently pre-select the FIRST hero. If the saved
+      // target is not one of the heroes listed here (e.g. an earlier-phase move was changed and this
+      // character's predicted province — and its heroes — changed with it), show an explicit
+      // "choose" placeholder so the player picks again rather than hiring someone they never chose.
+      const _hasPick=heroes.some(h=>String(h.id)===String(target)&&heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment)!=null);
+      const _ph=`<option value="" ${_hasPick?'':'selected'}>— choose a hero to hire —</option>`;
+      return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_ph}${opts}</select>`;}
 
     // ── GIVE ITEM ──
     case 'Send Item': case 'Give Item':{
@@ -5568,6 +5610,15 @@ function buildTargetField(c, ph, saved){
       <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
 
     // ── DISBAND ARMY ──
+    // ── RELEASE HERO (2026-09-08) ── dismiss this hero from your service; they become a wandering
+    // hero (keeping every magic item they carry) and take no further orders this turn. Refused if
+    // they lead any army at that phase — hand the troops off or disband them first.
+    case 'Release Hero':{
+      if(c.isKing) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="A king cannot release himself" disabled>`;
+      const led=projectedLedArmies(c.id, ph);
+      const warn=led.length?`<div style="font-size:.72rem;color:#a33;margin-top:2px">⚠ ${c.name} is still leading ${led.length} unit${led.length!==1?'s':''} at this phase — the release will be refused unless they are handed off (Leave/Transfer Army) or disbanded in an earlier phase.</div>`:'';
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Releases ${c.name} from your service — no wage from next turn" readonly>
+        <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${c.name} becomes a wandering hero, keeping their magic items, and cannot be re-hired this turn. Later phases' orders for them are dropped.</div>${warn}`;}
     case 'Disband Army':{
       // Item 7/11: the armies this character LEADS at this phase — including any PICKED UP or
       // RECRUITED earlier this turn, and minus any handed off or disbanded earlier this turn.
@@ -6294,6 +6345,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.07-2022</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.08-0031</div>
 </body>
 </html>

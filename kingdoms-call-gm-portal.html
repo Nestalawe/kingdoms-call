@@ -128,6 +128,7 @@ section{display:none;}.section-active{display:block;}
       </div>
     </div>
     <div id="msg-games"></div>
+    <div id="auto-turn-status" style="display:none;margin-bottom:10px;font-size:.78rem;color:var(--parchment);border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c"></div>
     <div id="games-list"></div>
   </section>
 
@@ -169,6 +170,22 @@ section{display:none;}.section-active{display:block;}
       </select>
       <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
 
+      <!-- Turn running: manual / automatic when all orders are in / automatic with a fixed clock deadline -->
+      <label style="margin-top:12px">Turn Running</label>
+      <select id="new-game-turnmode" onchange="updateTurnModeFields('new-game')">
+        <option value="manual" selected>Manual — the GM runs each turn</option>
+        <option value="auto">Automatic — the turn runs as soon as every realm's orders are in</option>
+        <option value="deadline">Automatic with deadline — runs when all orders are in, OR at a fixed clock time</option>
+      </select>
+      <div id="new-game-turnmode-fields" style="display:none;margin-top:6px;padding:8px 10px;border:1px solid var(--gold);border-radius:4px;background:#20160c;font-size:.84rem">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+          <label style="margin:0;font-weight:normal">Deadline time <input type="time" id="new-game-deadline-time" value="20:00" style="width:auto;margin-left:6px"></label>
+          <label style="margin:0;font-weight:normal">every <input type="number" id="new-game-deadline-days" min="1" max="30" value="1" style="width:60px;margin-left:6px"> day(s)</label>
+        </div>
+        <div style="font-size:.76rem;color:var(--stone);margin-top:6px">Times are read from this computer's clock (local time). Players see the deadline in their own local time. Realms that have not submitted by the deadline hold (Defend) for the turn.</div>
+      </div>
+      <div class="msg-info" id="new-game-turnmode-hint" style="margin-top:6px">Automatic modes only fire while a GM Portal tab is open and signed in — it watches your games and runs turns for you. Keep a tab open (a pinned tab on any always-on device will do). You can change the mode later from the game screen.</div>
+
       <!-- Visibility: Public (anyone can join) vs Private (only invited players see it) -->
       <label style="margin-top:12px">Who Can Join</label>
       <div style="display:flex;gap:18px;flex-wrap:wrap;font-weight:normal;font-size:.86rem">
@@ -206,6 +223,7 @@ section{display:none;}.section-active{display:block;}
       <h3>Players <span id="detail-player-count" style="font-size:.75rem;color:var(--stone)"></span></h3>
       <div id="detail-players-list"></div>
       <div id="detail-visibility-wrap" style="margin-top:12px"></div>
+      <div id="detail-turnmode-wrap" style="margin-top:12px"></div>
       <div id="detail-run-turn0-wrap" style="margin-top:12px;display:none">
         <div class="msg-info">All players have joined. You can now run Turn 0 to generate the map and starting turn reports.</div>
         <button class="btn btn-crimson btn-full" onclick="runTurn0()">⚡ Run Turn 0 — Generate Starting Reports</button>
@@ -645,7 +663,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items','Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Release Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items','Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
 // Alignment-signature actions and king-only actions — mirrored from the player portal.
 const ALIGN_ACTIONS_G={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
 const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker','Consecrate']);
@@ -655,7 +673,7 @@ const ACTION_DISPLAY_ORDER_G=[
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
   'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
   'Spy','Steal','Practice Skill','Research',
-  'Use Item','Equip Items','Send Item','Hire Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
+  'Use Item','Equip Items','Send Item','Hire Hero','Release Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
 ];
 const _actionRankG=(a)=>{ const i=ACTION_DISPLAY_ORDER_G.indexOf(a); return i<0?ACTION_DISPLAY_ORDER_G.length:i; };
 function actionsForG(ch){
@@ -664,6 +682,7 @@ function actionsForG(ch){
     if(ALIGN_ACTIONS_G[a]&&ALIGN_ACTIONS_G[a]!==align) return false;
     if(KING_ONLY_ACTIONS_G.has(a)&&!(ch&&ch.isKing)) return false;
     if(a==='Research'&&(((ch&&ch.skills)||{}).sage||0)<1) return false; // Research needs Sage 1+
+    if(a==='Release Hero'&&ch&&ch.isKing) return false; // a king cannot release himself
     return true;
   }).sort((a,b)=>_actionRankG(a)-_actionRankG(b));
 }
@@ -1035,6 +1054,8 @@ function buildTargetField(c,ph,saved){
         }).join('')}
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>`;}
+    case 'Release Hero':{
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Releases ${c.name} from service (must lead no armies)" readonly>`;}
     case 'Hire Hero':{
       const loc=predictedLocation(c.id,ph);
       const pd=loc?provOrderData[loc.id]:null;
@@ -1204,6 +1225,7 @@ function onSignedIn(){
   document.getElementById('gm-email-display').textContent=currentUser.email;
   show('sec-games');
   loadGames();
+  startAutoTurnWatcher(); // automatic turn modes only fire while a signed-in GM tab is open
 }
 
 // ── GAME LIST ─────────────────────────────────────────
@@ -1229,8 +1251,13 @@ async function loadGames(){
     else if(g.status==='active'){
       // Green once every joined human has submitted (submitted>=joined, including the all-bot
       // joined===0 case, where there are no human orders to wait on) — signals the turn is ready to run.
-      const _allIn=submitted>=joined;
-      pill=`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${submitted}/${joined} orders in${_allIn?' ✓':''}${_botTag}</span>`;
+      // Conceded / extinguished realms are exempt (they are never waited on), so count only the rest.
+      const _G=parseGameState(g);
+      const _need=(g.game_players||[]).filter(p=>p.user_id&&!isBotRow(p)&&!realmExemptFromOrders(_G,p.player_index));
+      const _in=_need.filter(p=>p.orders_submitted).length;
+      const _allIn=_in>=_need.length;
+      const _tm=turnModeOf(g);
+      pill=`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${_in}/${_need.length} orders in${_allIn?' ✓':''}${_botTag}</span>${_tm.mode!=='manual'?` <span class="pill pill-amber">${turnModeSummary(_tm)}</span>`:''}`;
     }
     else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
     // Visibility lives in the setup-phase game_state; active/complete games no longer carry it.
@@ -1257,6 +1284,7 @@ function showNewGame(){
   if(_pub) _pub.checked=true;
   _inviteSelected=new Set();
   const _search=document.getElementById('new-game-invite-search'); if(_search) _search.value='';
+  { const _tmSel=document.getElementById('new-game-turnmode'); if(_tmSel){ _tmSel.value='manual'; updateTurnModeFields('new-game'); } }
   const _wrap=document.getElementById('new-game-invite-wrap'); if(_wrap) _wrap.style.display='none';
   show('sec-new-game');
 }
@@ -1462,6 +1490,7 @@ async function createGame(){
   }
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
   const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
+  _cfg.turnMode=readTurnModeForm('new-game'); // manual / auto / deadline (deadline clock starts at Turn 0)
   if(isPrivate){ _cfg.visibility='private'; _cfg.invited=invited; }
   const {data:game,error}=await sb.from('games').insert({
     name, gm_user_id:currentUser.id,
@@ -1615,6 +1644,8 @@ async function openGame(gameId){
     }
   }
 
+  renderTurnModePanel(game); // manual / auto / deadline switcher (setup and active)
+
   // Turn 0: show run button when enough realms (humans + planned bots) exist
   if(game.status==='setup' && (joined + plannedBots) >= 2){
     document.getElementById('detail-run-turn0-wrap').style.display='block';
@@ -1636,19 +1667,22 @@ async function openGame(gameId){
 function renderOrdersStatus(game){
   const players=currentGamePlayers.filter(p=>p.user_id);
   const bots=currentGamePlayers.filter(isBotRow);
-  const submitted=players.filter(p=>p.orders_submitted).length;
   // Bots are auto-satisfied (Phase 1: they submit no orders and default to Defend). The run button
-  // shows once every HUMAN has submitted — and in an all-bot game (0 humans) it shows immediately.
-  const humansAllIn=players.length===0||submitted===players.length;
+  // shows once every non-exempt HUMAN has submitted — conceded / extinguished realms are never waited
+  // on — and in an all-bot game (0 humans) it shows immediately.
+  const _G=parseGameState(game);
+  const humansAllIn=ordersWaitingOn(players,_G).length===0;
   const allIn=humansAllIn&&(players.length+bots.length)>0;
+  const _tm=turnModeOf(game);
+  const _tmLine=_tm.mode==='manual'?'':`<div class="msg-info" style="margin-bottom:8px">${turnModeSummary(_tm)} — ${_tm.mode==='auto'?'the watcher runs the turn as soon as every realm\'s orders are in.':'the watcher runs the turn when every realm\'s orders are in, or at the deadline.'}</div>`;
 
-  document.getElementById('detail-orders-status').innerHTML=`
+  document.getElementById('detail-orders-status').innerHTML=`${_tmLine}
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      ${players.map(p=>`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
-        background:${p.orders_submitted?'#d4edda':'#fff3cd'};
-        border:1px solid ${p.orders_submitted?'#28a745':'#ffc107'}">
-        ${p.display_name}: ${p.orders_submitted?'✓ Orders submitted':'⏳ Awaiting orders'}
-      </div>`).join('')}
+      ${players.map(p=>{ const ex=realmExemptFromOrders(_G,p.player_index); return `<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
+        background:${p.orders_submitted?'#d4edda':ex?'#eae3d2':'#fff3cd'};
+        border:1px solid ${p.orders_submitted?'#28a745':ex?'#c9bd9e':'#ffc107'}">
+        ${p.display_name}: ${p.orders_submitted?'✓ Orders submitted':ex?'— exempt (conceded / no realm)':'⏳ Awaiting orders'}
+      </div>`;}).join('')}
       ${bots.map(b=>`<div style="padding:5px 12px;border-radius:2px;font-size:.8rem;
         background:#eae3d2;border:1px solid #c9bd9e">
         🤖 ${b.display_name}: auto
@@ -2278,6 +2312,8 @@ async function commitTurn0(){
     // 3. Generate the world.
     const gameState=await generateNewGame(setupPlayers,sz,maxTurns);
     gameState.botDifficulty=(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // Phase 6 difficulty tier
+    // Turn-running mode carries over from the setup config; a deadline clock starts now (Turn 0 = the first "run").
+    { const _tm=normalizeTurnMode(parseGameState(currentGame).turnMode); _tm.turnRanAt=new Date().toISOString(); _tm.nextDeadlineAt=_tm.mode==='deadline'?computeNextDeadline(_tm,new Date()):null; gameState.turnMode=_tm; }
     seedUsedArmyNames(gameState); seedUsedHeroNames(gameState);
     const {error:saveErr}=await sb.from('games').update({
       status:'active',turn:1,
@@ -2516,7 +2552,7 @@ function setFeatureTreasure(f, v){
 // Item 9: the gold a hero collects for CLEARING a feature guardian is a tier-band roll. We roll it
 // ONCE and cache it on the feature, so a Scout can report the EXACT figure a clearer will receive
 // and the victory branch pays out that same amount (rolled here if the site was never scouted).
-const ENCOUNTER_CLEAR_GOLD_BANDS={Weak:[3,8],Moderate:[8,16],Powerful:[18,25],Legendary:[26,40]};
+const ENCOUNTER_CLEAR_GOLD_BANDS={Weak:[5,12],Moderate:[14,28],Powerful:[30,50],Legendary:[55,90]}; // Sept 2026 redesign: raised with the guardian rescale (was 3–8 / 8–16 / 18–25 / 26–40)
 function encounterClearGold(feat){
   if(!feat) return 0;
   if(feat._hoardV2) return featureTreasure(feat); // item 4 (2026-09-07): the one hoard figure
@@ -2543,6 +2579,11 @@ function battleFortune(){
   return {S:0,atk:1,def:1};
 }
 function battleDie(){ return (Math.random()+Math.random()+Math.random())/3; } // retained for any other caller
+// Item 1 (2026-09-07 batch 3): unbiased Fisher-Yates shuffle (returns a NEW array). Every former
+// `.sort(()=>Math.random()-0.5)` now goes through here — that comparator is not a fair shuffle
+// (engine-dependent, and it leaves elements near their original positions far more often than
+// chance), which skewed "pick n at random" draws toward the front of the list.
+function shuffleP(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 const ABILITIES_P=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 // Hero names are themed by ALIGNMENT. Each alignment has a pool of given names and a pool of
 // alignment-flavoured epithets; a hero's name is composed "{Given} {Epithet}". The combinatorial
@@ -2595,7 +2636,7 @@ const _usedHeroEpithets=new Set();
 // Draw an unused entry: try the preferred (alignment) pool first, then the shared master list.
 function _pickUnusedNamePart(prefPool, masterPool, usedSet){
   for(const pool of [prefPool||[], masterPool]){
-    const shuffled=[...pool].sort(()=>Math.random()-0.5);
+    const shuffled=shuffleP(pool);
     for(const x of shuffled){ if(!usedSet.has(x)){ usedSet.add(x); return x; } }
   }
   return null;
@@ -2640,266 +2681,266 @@ function seedUsedHeroNames(gameState){
   });
 }
 const MONSTERS_P=[
-  // ── Weak (hp 6–12) — no spells ──
-  {name:'Goblin Skirmisher',cat:'humanoid',desc:'A wiry goblin cutthroat, quick with a rusted blade and quicker to bolt from a losing fight.',hp:8,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:2},
-  {name:'Dire Rat',cat:'vermin',desc:'A dog-sized rat with yellowed fangs, nesting in the ruins and defending its filth with feral spite.',hp:6,power:'Weak',melee:0,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Skeleton Sentinel',cat:'undead',desc:'A rattling revenant bound to this place, its hollow sockets lit with cold, tireless purpose.',hp:7,power:'Weak',melee:1,archery:1,speed:'medium',minG:1,maxG:2},
-  {name:'Dire Wolf',cat:'beast',desc:'A grey hunter the size of a pony, driven by hunger, circling low before it lunges.',hp:10,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Bandit Outlaw',cat:'humanoid',desc:'A hardened road-thief in patched leathers, holding this haunt for whatever coin it hides.',hp:9,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:3},
-  {name:'Giant Wasp',cat:'vermin',desc:'A hand-span wasp with a barbed sting, darting fast and near impossible to pin down.',hp:8,power:'Weak',melee:0,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Cave Bat',cat:'vermin',desc:'A leathery horror of the deep dark, blind but unerring, shrieking as it dives.',hp:6,power:'Weak',melee:0,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Swamp Lizard',cat:'beast',desc:'A cold-blooded ambusher lurking in the muck, striking with a slow but crushing bite.',hp:11,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Crag Harpy',cat:'fey',desc:'A shrieking woman-vulture that stoops from the crags talons-first, jealous of every trinket.',hp:12,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
-  {name:'Alley Cutthroat',cat:'humanoid',desc:'A knife-for-hire with dead eyes, guarding stolen loot from the shadows.',hp:9,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:4},
-  // ── Moderate (hp 13–22) — minor spells ──
-  {name:'Giant Spider',cat:'vermin',desc:'A bristling hunter the size of a warhorse, binding its prey in venom-slick silk.',hp:13,power:'Moderate',melee:1,archery:1,speed:'medium',minG:1,maxG:3,
+  // ── Weak (hp 8–14, melee 1–2) — Sept 2026 rescale vs the derived-HP hero curve — no spells ──
+  {name:'Goblin Skirmisher',cat:'humanoid',desc:'A wiry goblin cutthroat, quick with a rusted blade and quicker to bolt from a losing fight.',hp:10,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:2},
+  {name:'Dire Rat',cat:'vermin',desc:'A dog-sized rat with yellowed fangs, nesting in the ruins and defending its filth with feral spite.',hp:8,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Skeleton Sentinel',cat:'undead',desc:'A rattling revenant bound to this place, its hollow sockets lit with cold, tireless purpose.',hp:9,power:'Weak',melee:1,archery:1,speed:'medium',minG:1,maxG:2},
+  {name:'Dire Wolf',cat:'beast',desc:'A grey hunter the size of a pony, driven by hunger, circling low before it lunges.',hp:12,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Bandit Outlaw',cat:'humanoid',desc:'A hardened road-thief in patched leathers, holding this haunt for whatever coin it hides.',hp:11,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:3},
+  {name:'Giant Wasp',cat:'vermin',desc:'A hand-span wasp with a barbed sting, darting fast and near impossible to pin down.',hp:10,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Cave Bat',cat:'vermin',desc:'A leathery horror of the deep dark, blind but unerring, shrieking as it dives.',hp:8,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Swamp Lizard',cat:'beast',desc:'A cold-blooded ambusher lurking in the muck, striking with a slow but crushing bite.',hp:13,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Crag Harpy',cat:'fey',desc:'A shrieking woman-vulture that stoops from the crags talons-first, jealous of every trinket.',hp:14,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
+  {name:'Alley Cutthroat',cat:'humanoid',desc:'A knife-for-hire with dead eyes, guarding stolen loot from the shadows.',hp:11,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:4},
+  // ── Moderate (hp 16–26, melee 2–3) — minor spells ──
+  {name:'Giant Spider',cat:'vermin',desc:'A bristling hunter the size of a warhorse, binding its prey in venom-slick silk.',hp:20,power:'Moderate',melee:3,archery:1,speed:'medium',minG:1,maxG:3,
     spells:[{name:'Venom Web',school:'elemental',dmg:[3,6],effect:'hero -15% to hit for 1 round',castChance:35,flavour:'The spider hurls a web of crackling venom!'}]},
-  {name:'Bandit King',cat:'humanoid',desc:'A scarred outlaw chief who rules this haunt by fear; his war-cry alone can shake a hero.',hp:12,power:'Moderate',melee:2,archery:1,speed:'medium',minG:2,maxG:4,
+  {name:'Bandit King',cat:'humanoid',desc:'A scarred outlaw chief who rules this haunt by fear; his war-cry alone can shake a hero.',hp:16,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:4,
     spells:[{name:'Battle Cry',school:'psychic',dmg:[2,4],effect:'hero -20% to hit for 2 rounds',castChance:40,flavour:'The bandit king bellows a terrifying war cry — your nerves waver!'}]},
-  {name:'Stone Troll',cat:'giant',desc:'A lumbering brute of living rock whose wounds knit shut as fast as you can open them.',hp:17,power:'Moderate',melee:2,archery:1,speed:'slow',minG:2,maxG:5,
+  {name:'Stone Troll',cat:'giant',desc:'A lumbering brute of living rock whose wounds knit shut as fast as you can open them.',hp:21,power:'Moderate',melee:3,archery:1,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Stone Hide',school:'elemental',dmg:[0,0],effect:'troll gains +7 HP (regenerates)',castChance:40,flavour:'The troll\'s stony hide knits itself back together!'}]},
-  {name:'Sand Wurm',cat:'beast',desc:'A blind burrowing horror that erupts from the dunes in a storm of scouring sand.',hp:19,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Sand Wurm',cat:'beast',desc:'A blind burrowing horror that erupts from the dunes in a storm of scouring sand.',hp:23,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Sand Blast',school:'elemental',dmg:[5,10],effect:'',castChance:40,flavour:'The wurm exhales a scouring storm of razor sand!'}]},
-  {name:'Spiked Manticore',cat:'beast',desc:'A lion-bodied terror with a scorpion tail, raining iron spikes before it closes to maul.',hp:20,power:'Moderate',melee:2,archery:1,speed:'fast',minG:3,maxG:6,
+  {name:'Spiked Manticore',cat:'beast',desc:'A lion-bodied terror with a scorpion tail, raining iron spikes before it closes to maul.',hp:24,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Tail Volley',school:'elemental',dmg:[4,9],effect:'',castChance:40,flavour:'The manticore launches a volley of iron-hard tail spikes!'}]},
-  {name:'Ogre Chieftain',cat:'giant',desc:'A massive brute of a chieftain, slow-witted but strong enough to shatter stone with a fist.',hp:18,power:'Moderate',melee:2,archery:2,speed:'medium',minG:2,maxG:5,
+  {name:'Ogre Chieftain',cat:'giant',desc:'A massive brute of a chieftain, slow-witted but strong enough to shatter stone with a fist.',hp:22,power:'Moderate',melee:3,archery:2,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Earthshake',school:'elemental',dmg:[3,7],effect:'hero -1 melee for next round',castChance:35,flavour:'The ogre hammers the ground, throwing you off balance!'}]},
-  {name:'Moon-Cursed Werewolf',cat:'beast',desc:'A cursed shapechanger, savage beneath the moon, whose howl freezes the blood.',hp:15,power:'Moderate',melee:2,archery:0,speed:'fast',minG:2,maxG:5,
+  {name:'Moon-Cursed Werewolf',cat:'beast',desc:'A cursed shapechanger, savage beneath the moon, whose howl freezes the blood.',hp:19,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Howl of the Moon',school:'psychic',dmg:[2,5],effect:'hero loses next attack',castChance:30,flavour:'An unearthly howl fills the air — raw animal terror grips you!'}]},
-  {name:'Sea Serpent',cat:'beast',desc:'A coiling leviathan of the shallows, crushing hulls and heroes alike in its grip.',hp:22,power:'Moderate',melee:2,archery:0,speed:'fast',minG:3,maxG:6,
+  {name:'Sea Serpent',cat:'beast',desc:'A coiling leviathan of the shallows, crushing hulls and heroes alike in its grip.',hp:26,power:'Moderate',melee:3,archery:0,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Crushing Coils',school:'elemental',dmg:[6,11],effect:'',castChance:35,flavour:'The serpent wraps massive coils around you — bones creak under the pressure!'}]},
-  {name:'Dark Elf Assassin',cat:'humanoid',desc:'A shadow-cloaked killer who strikes from impossible angles with poisoned steel.',hp:14,power:'Moderate',melee:2,archery:2,speed:'fast',minG:3,maxG:6,
+  {name:'Dark Elf Assassin',cat:'humanoid',desc:'A shadow-cloaked killer who strikes from impossible angles with poisoned steel.',hp:18,power:'Moderate',melee:3,archery:2,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Shadow Step',school:'illusory',dmg:[1,4],effect:'hero loses next attack',castChance:30,flavour:'The assassin vanishes into shadow and strikes from an impossible angle!'},
             {name:'Poison Dart',school:'illusory',dmg:[2,4],effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:35,flavour:'A poisoned dart flies from the darkness!'}]},
-  {name:'Frost Bear',cat:'beast',desc:'A shaggy white giant of the high cold, its breath a killing gale of ice.',hp:20,power:'Moderate',melee:2,archery:0,speed:'medium',minG:2,maxG:5,
+  {name:'Frost Bear',cat:'beast',desc:'A shaggy white giant of the high cold, its breath a killing gale of ice.',hp:24,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Freezing Breath',school:'elemental',dmg:[4,9],effect:'hero -15% to hit',castChance:35,flavour:'A blast of bone-chilling cold washes over you!'}]},
-  // ── Powerful (hp 24–38) — significant spells ──
-  {name:'Acid Wyvern',cat:'dragon',desc:'A lesser dragon-kin that spits corrosive acid and batters foes flat with its wings.',hp:30,power:'Powerful',melee:3,archery:0,speed:'fast',minG:4,maxG:7,
+  // ── Powerful (hp 32–50, melee 3–5) — significant spells ──
+  {name:'Acid Wyvern',cat:'dragon',desc:'A lesser dragon-kin that spits corrosive acid and batters foes flat with its wings.',hp:40,power:'Powerful',melee:4,archery:0,speed:'fast',minG:4,maxG:7,
     spells:[{name:'Acid Spit',school:'elemental',dmg:[7,13],effect:'',castChance:40,flavour:'The wyvern rears back and spews a stream of corrosive acid!'},
             {name:'Wing Buffet',school:'elemental',dmg:[5,9],effect:'hero knocked prone: -20% to hit',castChance:35,flavour:'Massive wings beat the air into a battering storm!'}]},
-  {name:'Vampire Lord',cat:'undead',desc:'An undying noble of the night, draining life at a touch and snaring minds with its gaze.',hp:27,power:'Powerful',melee:3,archery:0,speed:'medium',minG:4,maxG:8,
+  {name:'Vampire Lord',cat:'undead',desc:'An undying noble of the night, draining life at a touch and snaring minds with its gaze.',hp:36,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
     spells:[{name:'Life Drain',school:'necromancy',dmg:[5,10],effect:'vampire heals half the damage dealt',castChance:45,flavour:'The vampire\'s eyes glow crimson as it drains your vitality — you feel your life force flowing away!'},
             {name:'Charm Gaze',school:'psychic',dmg:[2,5],effect:'hero loses one attack round (entranced)',castChance:35,flavour:'The vampire\'s hypnotic gaze locks onto yours — your mind goes blank!'},
             {name:'Bat Swarm',school:'necromancy',dmg:[6,12],effect:'',castChance:45,flavour:'A shrieking cloud of bats erupts from the shadows!'}]},
-  {name:'Rock Giant',cat:'giant',desc:'A cliff-shouldered giant that hurls boulders and stamps the earth into tremors.',hp:35,power:'Powerful',melee:3,archery:2,speed:'slow',minG:4,maxG:7,
+  {name:'Rock Giant',cat:'giant',desc:'A cliff-shouldered giant that hurls boulders and stamps the earth into tremors.',hp:46,power:'Powerful',melee:4,archery:2,speed:'slow',minG:4,maxG:7,
     spells:[{name:'Boulder Hurl',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'The giant wrenches a boulder from the earth and hurls it with bone-crushing force!'},
             {name:'Tremor Stomp',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:30,flavour:'The giant\'s foot strikes the earth — a shockwave tears through the ground!'}]},
-  {name:'Crested Basilisk',cat:'beast',desc:'A crested serpent whose gaze turns flesh to stone — do not meet its eyes.',hp:22,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
+  {name:'Crested Basilisk',cat:'beast',desc:'A crested serpent whose gaze turns flesh to stone — do not meet its eyes.',hp:26,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Petrifying Gaze',school:'illusory',dmg:[0,0],effect:'hero loses next attack (limbs stiffening)',castChance:40,flavour:'The basilisk\'s terrible eyes meet yours — your limbs begin to stiffen!'},
             {name:'Stone Spit',school:'elemental',dmg:[5,9],effect:'',castChance:35,flavour:'Streams of petrifying slime fly from the basilisk\'s maw!'}]},
-  {name:'Marsh Hydra',cat:'dragon',desc:'A many-headed serpent that regrows every head you sever; a battle of attrition you may lose.',hp:38,power:'Powerful',melee:3,archery:0,speed:'slow',minG:4,maxG:8,
+  {name:'Marsh Hydra',cat:'dragon',desc:'A many-headed serpent that regrows every head you sever; a battle of attrition you may lose.',hp:50,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
     spells:[{name:'Multi-Bite',school:'elemental',dmg:[3,7],effect:'hits twice if roll succeeds',castChance:50,flavour:'Three heads lunge simultaneously from different angles!'},
             {name:'Regenerate Head',school:'necromancy',dmg:[0,0],effect:'hydra regains 11 HP',castChance:40,flavour:'A severed head grows back in seconds — the hydra laughs at your wounds!'}]},
-  {name:'Chaos Knight',cat:'fiend',desc:'A warped champion sheathed in living darkness, its blade crackling with raw chaos.',hp:28,power:'Powerful',melee:3,archery:2,speed:'medium',minG:5,maxG:8,
+  {name:'Chaos Knight',cat:'fiend',desc:'A warped champion sheathed in living darkness, its blade crackling with raw chaos.',hp:37,power:'Powerful',melee:4,archery:2,speed:'medium',minG:5,maxG:8,
     spells:[{name:'Chaos Bolt',school:'elemental',dmg:[7,13],effect:'',castChance:40,flavour:'A bolt of writhing chaotic energy crackles from the knight\'s blade!'},
             {name:'Dark Blessing',school:'necromancy',dmg:[0,0],effect:'knight gains +2 melee',castChance:40,flavour:'The Chaos Knight roars a dark benediction — black light floods its armour!'}]},
-  {name:'Greater Demon',cat:'fiend',desc:'A hulking fiend wreathed in hellfire, its psychic scream shredding reason itself.',hp:33,power:'Powerful',melee:3,archery:0,speed:'medium',minG:5,maxG:9,
+  {name:'Greater Demon',cat:'fiend',desc:'A hulking fiend wreathed in hellfire, its psychic scream shredding reason itself.',hp:44,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
     spells:[{name:'Hellfire',school:'elemental',dmg:[7,13],effect:'',castChance:45,flavour:'Columns of hellfire erupt from the ground at your feet!'},
             {name:'Soul Scream',school:'psychic',dmg:[6,11],effect:'hero -15% to hit for 3 rounds',castChance:35,flavour:'The demon unleashes a psychic scream that shreds rational thought!'},
             {name:'Brimstone Shield',school:'elemental',dmg:[0,0],effect:'demon reflects 3 dmg back each time hero hits',castChance:30,flavour:'A shell of burning brimstone encases the demon!'}]},
-  {name:'Kraken Spawn',cat:'aberration',desc:'A young leviathan of ink and tentacle, dragging the unwary down into the dark.',hp:36,power:'Powerful',melee:3,archery:0,speed:'medium',minG:4,maxG:8,
+  {name:'Kraken Spawn',cat:'aberration',desc:'A young leviathan of ink and tentacle, dragging the unwary down into the dark.',hp:47,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
     spells:[{name:'Ink Cloud',school:'illusory',dmg:[3,6],effect:'hero -25% to hit',castChance:40,flavour:'A cloud of black ink fills the air — you can\'t see a thing!'},
             {name:'Tentacle Slam',school:'elemental',dmg:[7,13],effect:'',castChance:45,flavour:'A massive tentacle slams down like a falling tree!'}]},
-  {name:'Storm Eagle',cat:'beast',desc:'A vast raptor crowned in lightning, striking down from the thunderheads.',hp:24,power:'Powerful',melee:2,archery:0,speed:'fast',minG:3,maxG:7,
+  {name:'Storm Eagle',cat:'beast',desc:'A vast raptor crowned in lightning, striking down from the thunderheads.',hp:42,power:'Powerful',melee:4,archery:0,speed:'fast',minG:3,maxG:7,
     spells:[{name:'Lightning Strike',school:'elemental',dmg:[6,12],effect:'',castChance:45,flavour:'The eagle calls down a spear of lightning from storm clouds above!'},
             {name:'Gale Force',school:'elemental',dmg:[4,8],effect:'hero loses all Archery this round',castChance:35,flavour:'Screaming winds make it impossible to aim!'}]},
-  {name:'Lich Acolyte',cat:'undead',desc:'A robed apprentice of the death-arts, mending its own bones with stolen life.',hp:21,power:'Moderate',melee:2,archery:0,speed:'slow',minG:3,maxG:6,
+  {name:'Lich Acolyte',cat:'undead',desc:'A robed apprentice of the death-arts, mending its own bones with stolen life.',hp:25,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Necrotic Bolt',school:'necromancy',dmg:[6,11],effect:'',castChance:40,flavour:'A bolt of necrotic energy strips the life from your flesh!'},
             {name:'Bone Shield',school:'necromancy',dmg:[0,0],effect:'acolyte absorbs next 10 dmg',castChance:30,flavour:'A swirling shield of animated bones snaps into place!'},
             {name:'Raise Fallen',school:'necromancy',dmg:[0,0],effect:'acolyte regains 10 HP',castChance:35,flavour:'The acolyte chants and draws life-force from the bodies of the fallen!'}]},
-  // ── Legendary (hp 40–70) — powerful multi-spell casters ──
-  {name:'Elder Dragon',cat:'dragon',desc:'An ancient winged tyrant whose fire and terror have ended a hundred would-be heroes.',hp:48,power:'Legendary',melee:4,archery:2,speed:'fast',minG:7,maxG:10,
+  // ── Legendary (hp 55–90, melee 5–6) — powerful multi-spell casters ──
+  {name:'Elder Dragon',cat:'dragon',desc:'An ancient winged tyrant whose fire and terror have ended a hundred would-be heroes.',hp:71,power:'Legendary',melee:5,archery:2,speed:'fast',minG:7,maxG:10,
     spells:[{name:'Fire Breath',school:'elemental',dmg:[9,17],effect:'',castChance:55,flavour:'The dragon inhales — then a torrent of searing dragonfire engulfs you!'},
             {name:'Wing Storm',school:'elemental',dmg:[7,12],effect:'hero knocked back',castChance:35,flavour:'Wings the size of sails create a hurricane blast!'},
             {name:'Dragon Terror',school:'psychic',dmg:[0,0],effect:'hero must pass courage test or flee',castChance:45,flavour:'The dragon\'s ancient gaze radiates primal terror — your every instinct screams to run!'}]},
-  {name:'Lich Sovereign',cat:'undead',desc:'An undead archmage of terrible power, pointing a bony finger that carries instant death.',hp:42,power:'Legendary',melee:3,archery:0,speed:'slow',minG:6,maxG:10,
-    spells:[{name:'Finger of Death',school:'necromancy',dmg:[9,17],effect:'10% instant kill',castChance:45,flavour:'A bony finger points — black death magic surges towards you!'},
+  {name:'Lich Sovereign',cat:'undead',desc:'An undead archmage of terrible power, pointing a bony finger that carries instant death.',hp:70,power:'Legendary',melee:6,archery:0,speed:'slow',minG:6,maxG:10,
+    spells:[{name:'Finger of Death',school:'necromancy',dmg:[9,17],effect:'20% halves current HP',castChance:45,flavour:'A bony finger points — black death magic surges towards you!'},
             {name:'Necrotic Burst',school:'necromancy',dmg:[6,12],effect:'hero -25% to hit for 3 rounds',castChance:45,flavour:'A wave of entropic energy corrodes your very essence!'},
             {name:'Undead Thralls',school:'necromancy',dmg:[0,0],effect:'lich regains 16 HP as it draws power from nearby dead',castChance:40,flavour:'The lich stretches its hands wide, drinking the death-energy of the battlefield!'},
             {name:'Paralyse',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:40,flavour:'Iron bands of psychic force clamp around your mind and body!'}]},
-  {name:'Ancient Wyrm',cat:'dragon',desc:'The eldest of dragons, its flame older than realms and its presence a crushing weight on the mind.',hp:48,power:'Legendary',melee:5,archery:3,speed:'fast',minG:8,maxG:10,
+  {name:'Ancient Wyrm',cat:'dragon',desc:'The eldest of dragons, its flame older than realms and its presence a crushing weight on the mind.',hp:71,power:'Legendary',melee:6,archery:3,speed:'fast',minG:8,maxG:10,
     spells:[{name:'Ancient Flame',school:'elemental',dmg:[10,18],effect:'',castChance:55,flavour:'Flame older than civilisation pours from the Ancient Wyrm\'s jaws!'},
             {name:'Psychic Roar',school:'psychic',dmg:[4,9],effect:'hero loses all Archery this round',castChance:45,flavour:'The wyrm\'s mindless roar shatters conscious thought!'},
             {name:'Tail Sweep',school:'elemental',dmg:[5,10],effect:'hero knocked back',castChance:40,flavour:'A tail like a castle wall sweeps everything aside!'},
             {name:'Draconic Presence',school:'psychic',dmg:[4,8],effect:'hero -30% to hit for encounter',castChance:40,flavour:'The wyrm\'s sheer age and power exerts a crushing mental weight!'}]},
-  {name:'Elder Titan',cat:'giant',desc:'A primordial colossus that shakes the world with a step and calls down divine fire.',hp:50,power:'Legendary',melee:5,archery:2,speed:'slow',minG:7,maxG:10,
+  {name:'Elder Titan',cat:'giant',desc:'A primordial colossus that shakes the world with a step and calls down divine fire.',hp:70,power:'Legendary',melee:6,archery:2,speed:'slow',minG:7,maxG:10,
     spells:[{name:'World-Shaker',school:'elemental',dmg:[8,15],effect:'hero knocked back',castChance:40,flavour:'The Elder Titan stamps — the very world shakes to its foundations!'},
             {name:'Divine Wrath',school:'white',dmg:[10,20],effect:'ignores all armour and defensive bonuses',castChance:40,flavour:'Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!'},
-            {name:'Time Stop',school:'illusory',dmg:[0,0],effect:'hero loses 3 rounds completely',castChance:30,flavour:'Reality stutters. You blink and three rounds have passed — you\'ve been standing frozen!'}]},
-  {name:'Kobold Skirmisher',cat:'humanoid',desc:'A cunning little reptile trap-setter, dangerous in its warren and cowardly outside it.',hp:7,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5},
-  {name:'Zombie Shambler',cat:'undead',desc:'A slow rotting corpse that feels no pain and will not stop, clawing with dead strength.',hp:10,power:'Weak',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+            {name:'Time Stop',school:'illusory',dmg:[0,0],effect:'hero loses 2 rounds completely',castChance:30,flavour:'Reality stutters. You blink and two rounds have passed — you\'ve been standing frozen!'}]},
+  {name:'Kobold Skirmisher',cat:'humanoid',desc:'A cunning little reptile trap-setter, dangerous in its warren and cowardly outside it.',hp:9,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5},
+  {name:'Zombie Shambler',cat:'undead',desc:'A slow rotting corpse that feels no pain and will not stop, clawing with dead strength.',hp:12,power:'Weak',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Rotting Grasp',school:'necromancy',dmg:[3,6],effect:'',castChance:40,flavour:'Cold dead hands claw at you with surprising strength.'}]},
-  {name:'Wild Boar',cat:'beast',desc:'A tusked forest brute, territorial and fearless, charging anything that nears its wallow.',hp:9,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:5},
-  {name:'Giant Centipede',cat:'vermin',desc:'A segmented horror as long as a spear, its bite dripping burning venom.',hp:8,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Wild Boar',cat:'beast',desc:'A tusked forest brute, territorial and fearless, charging anything that nears its wallow.',hp:11,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:5},
+  {name:'Giant Centipede',cat:'vermin',desc:'A segmented horror as long as a spear, its bite dripping burning venom.',hp:10,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Venom Bite',school:'elemental',dmg:[2,5],effect:'hero -10% to hit next round',castChance:40,flavour:'Its mandibles sink in, dripping burning venom.'}]},
-  {name:'Marsh Sprite',cat:'fey',desc:'A flickering bog-light that lures the unwary, stinging like a swarm of wasps.',hp:6,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5,
+  {name:'Marsh Sprite',cat:'fey',desc:'A flickering bog-light that lures the unwary, stinging like a swarm of wasps.',hp:8,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Will-o-Wisp',school:'illusory',dmg:[2,5],effect:'hero -10% to hit',castChance:45,flavour:'Ghostly lights dart in and sting like wasps.'}]},
-  {name:'Bandit Scout',cat:'humanoid',desc:'A lean outrider with a keen eye and keener bow, picking off intruders from the treeline.',hp:8,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
+  {name:'Bandit Scout',cat:'humanoid',desc:'A lean outrider with a keen eye and keener bow, picking off intruders from the treeline.',hp:10,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
   // ── SEA GUARDIANS (item: sea provinces get sea-themed features & guardians; good variety) ──
   // Weak sea (hp 6–12, no spells)
-  {name:'Giant Crab',cat:'vermin',desc:'A boulder-shelled crab the size of a rowboat, claws that shear through oar and arm alike.',hp:11,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Shark Pack',cat:'beast',desc:'A frenzy of grey hunters circling the shallows, drawn to the first drop of blood.',hp:9,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Reef Piranha Swarm',cat:'vermin',desc:'A living cloud of needle-toothed fish that strips a swimmer to bone in moments.',hp:7,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Drowned Deckhand',cat:'undead',desc:'A bloated, barnacle-crusted sailor still lurching about the wreck that killed him.',hp:10,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Giant Barnacle',cat:'vermin',desc:'A crusted maw fixed to the rock, lashing out with a sudden sticky tongue at anything close.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Giant Crab',cat:'vermin',desc:'A boulder-shelled crab the size of a rowboat, claws that shear through oar and arm alike.',hp:13,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Shark Pack',cat:'beast',desc:'A frenzy of grey hunters circling the shallows, drawn to the first drop of blood.',hp:11,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Reef Piranha Swarm',cat:'vermin',desc:'A living cloud of needle-toothed fish that strips a swimmer to bone in moments.',hp:9,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Drowned Deckhand',cat:'undead',desc:'A bloated, barnacle-crusted sailor still lurching about the wreck that killed him.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Giant Barnacle',cat:'vermin',desc:'A crusted maw fixed to the rock, lashing out with a sudden sticky tongue at anything close.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
   // Moderate sea (hp 13–22, minor spells)
-  {name:'Reef Siren',cat:'fey',desc:'A beautiful voice on the rocks whose song turns keels — and crews — onto the reef.',hp:15,power:'Moderate',melee:1,archery:1,speed:'medium',minG:2,maxG:5,
+  {name:'Reef Siren',cat:'fey',desc:'A beautiful voice on the rocks whose song turns keels — and crews — onto the reef.',hp:19,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Luring Song',school:'psychic',dmg:[2,5],effect:'hero loses next attack (entranced)',castChance:40,flavour:'A song of impossible sweetness drifts across the water — your grip on your weapon slackens.'}]},
-  {name:'Sea Hag',cat:'fey',desc:'A brine-witch of the tide-caves, hurling curdled seawater that blisters and blinds.',hp:17,power:'Moderate',melee:1,archery:1,speed:'slow',minG:2,maxG:5,
+  {name:'Sea Hag',cat:'fey',desc:'A brine-witch of the tide-caves, hurling curdled seawater that blisters and blinds.',hp:21,power:'Moderate',melee:3,archery:1,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Brine Curse',school:'elemental',dmg:[4,9],effect:'hero -15% to hit',castChance:40,flavour:'She flings a fistful of stinging brine that sears the eyes!'}]},
-  {name:'Merrow Raider',cat:'humanoid',desc:'A tusked sea-folk warrior with a barbed trident, striking from beneath the waves.',hp:16,power:'Moderate',melee:2,archery:1,speed:'fast',minG:2,maxG:5,
+  {name:'Merrow Raider',cat:'humanoid',desc:'A tusked sea-folk warrior with a barbed trident, striking from beneath the waves.',hp:20,power:'Moderate',melee:3,archery:1,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Trident Lunge',school:'elemental',dmg:[5,10],effect:'',castChance:38,flavour:'The merrow bursts from the surf and drives its trident home!'}]},
-  {name:'Anglerfish Horror',cat:'beast',desc:'A vast deep-water fish, all teeth and a swaying lure of ghostly light.',hp:19,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Anglerfish Horror',cat:'beast',desc:'A vast deep-water fish, all teeth and a swaying lure of ghostly light.',hp:23,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Deep Lure',school:'illusory',dmg:[3,7],effect:'hero -20% to hit',castChance:40,flavour:'A cold light sways hypnotically — and jaws the size of a door yawn open beneath it!'}]},
-  {name:'Electric Eel Swarm',cat:'beast',desc:'A knot of writhing eels that fills the water with crackling, muscle-locking current.',hp:14,power:'Moderate',melee:1,archery:0,speed:'medium',minG:2,maxG:5,
+  {name:'Electric Eel Swarm',cat:'beast',desc:'A knot of writhing eels that fills the water with crackling, muscle-locking current.',hp:21,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Shock Field',school:'elemental',dmg:[4,8],effect:'hero loses next attack',castChance:40,flavour:'The water erupts in white sparks — every muscle seizes at once!'}]},
   // Powerful sea (hp 24–38, significant spells)
-  {name:'Pirate Captain',cat:'humanoid',desc:'A scarred reaver in a dead admiral\u2019s coat, cutlass in one hand and a barking crew at his back.',hp:26,power:'Powerful',melee:3,archery:2,speed:'medium',minG:4,maxG:8,
+  {name:'Pirate Captain',cat:'humanoid',desc:'A scarred reaver in a dead admiral\u2019s coat, cutlass in one hand and a barking crew at his back.',hp:42,power:'Powerful',melee:4,archery:2,speed:'medium',minG:4,maxG:8,
     spells:[{name:'Broadside',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'"Give \u2019em the guns!" \u2014 a ragged broadside thunders across the deck!'},
             {name:'Cutlass Rush',school:'elemental',dmg:[4,8],effect:'hero -15% to hit',castChance:32,flavour:'The captain and his crew swarm forward in a howling rush of steel!'}]},
-  {name:'Ghost Galleon Crew',cat:'undead',desc:'The drowned company of a lost ship, still working the rigging of a hull that sank an age ago.',hp:30,power:'Powerful',melee:2,archery:2,speed:'medium',minG:4,maxG:8,
+  {name:'Ghost Galleon Crew',cat:'undead',desc:'The drowned company of a lost ship, still working the rigging of a hull that sank an age ago.',hp:40,power:'Powerful',melee:4,archery:2,speed:'medium',minG:4,maxG:8,
     spells:[{name:'Spectral Volley',school:'necromancy',dmg:[6,12],effect:'',castChance:44,flavour:'Ghostly muskets flash along the phantom rail!'},
             {name:'Drowning Grasp',school:'necromancy',dmg:[4,9],effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:35,flavour:'Cold dead hands close around your ankles, dragging you under!'}]},
-  {name:'Deep One Priest',cat:'humanoid',desc:'A robed abomination of the abyssal cults, chanting to things that should not wake.',hp:28,power:'Powerful',melee:2,archery:0,speed:'slow',minG:4,maxG:8,
+  {name:'Deep One Priest',cat:'humanoid',desc:'A robed abomination of the abyssal cults, chanting to things that should not wake.',hp:42,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
     spells:[{name:'Abyssal Chant',school:'psychic',dmg:[6,11],effect:'hero -15% to hit for 3 rounds',castChance:40,flavour:'A droning, wrong chant fills your skull \u2014 the horizon seems to bend.'},
             {name:'Crushing Deep',school:'elemental',dmg:[7,12],effect:'',castChance:42,flavour:'The pressure of a mile of black water slams down on you!'}]},
-  {name:'Abyssal Horror',cat:'aberration',desc:'A nightmare of eyes and groping arms that boils up from the lightless deep.',hp:34,power:'Powerful',melee:3,archery:0,speed:'medium',minG:5,maxG:9,
+  {name:'Abyssal Horror',cat:'aberration',desc:'A nightmare of eyes and groping arms that boils up from the lightless deep.',hp:45,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
     spells:[{name:'Enveloping Arms',school:'elemental',dmg:[8,14],effect:'',castChance:44,flavour:'A dozen slick limbs lash out of the dark all at once!'},
             {name:'Maddening Gaze',school:'psychic',dmg:[3,7],effect:'hero loses next attack',castChance:33,flavour:'A ring of pale eyes fixes on you \u2014 reason falters.'}]},
-  {name:'Deep Leviathan',cat:'beast',desc:'The old terror of the deep water \u2014 a serpent vast enough to swallow a longship whole.',hp:38,power:'Powerful',melee:3,archery:0,speed:'medium',minG:5,maxG:9,
+  {name:'Deep Leviathan',cat:'beast',desc:'The old terror of the deep water \u2014 a serpent vast enough to swallow a longship whole.',hp:50,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
     spells:[{name:'Sounding Dive',school:'elemental',dmg:[8,14],effect:'',castChance:45,flavour:'The leviathan rolls and its flukes come down like a falling cliff!'},
             {name:'Tidal Surge',school:'elemental',dmg:[5,10],effect:'hero -20% to hit',castChance:35,flavour:'Its passing throws up a wall of water that hurls you off your feet!'}]},
   // ── NEW GUARDIANS (2026-09-07, item 4: the bestiary doubled — 55 new, 14 of them undead) ──
   // Weak land
-  {name:'Barrow Wight',cat:'undead',desc:'A grave-cold thing in rusted mail that rises from its mound to defend the tomb-gold it was buried with.',hp:10,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
-  {name:'Grave Hound',cat:'undead',desc:'A skeletal mastiff still chained to its dead master\'s cairn, snapping at anyone who nears it.',hp:8,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Ghoul Scavenger',cat:'undead',desc:'A hunched corpse-eater with a hyena\'s grin, quick to bite and quicker to burrow into the bone-pile.',hp:9,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3,
+  {name:'Barrow Wight',cat:'undead',desc:'A grave-cold thing in rusted mail that rises from its mound to defend the tomb-gold it was buried with.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
+  {name:'Grave Hound',cat:'undead',desc:'A skeletal mastiff still chained to its dead master\'s cairn, snapping at anyone who nears it.',hp:10,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Ghoul Scavenger',cat:'undead',desc:'A hunched corpse-eater with a hyena\'s grin, quick to bite and quicker to burrow into the bone-pile.',hp:11,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3,
     spells:[{name:'Paralysing Bite',school:'necromancy',dmg:[2,4],effect:'hero loses next attack',castChance:30,flavour:'Its teeth close on you and a numbing cold spreads from the wound.'}]},
-  {name:'Hobgoblin Warden',cat:'humanoid',desc:'A disciplined goblin-kin sergeant in scavenged plate, holding the doorway with spear and shield.',hp:11,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
-  {name:'Orc Deserter',cat:'humanoid',desc:'A broken-tusked outcast from some warband, squatting in the ruins with a stolen axe and nothing to lose.',hp:12,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
-  {name:'Gnoll Raider',cat:'humanoid',desc:'A hyena-headed marauder that cackles as it circles, waiting for you to turn your back.',hp:10,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
-  {name:'Giant Toad',cat:'beast',desc:'A warty bog-beast broad as a cart, swallowing lesser intruders whole with a lash of its tongue.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Cliff Vulture',cat:'beast',desc:'A carrion bird with a wingspan wider than a door, tearing at anything that climbs to its nest.',hp:7,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Rust-Mite Swarm',cat:'vermin',desc:'A glittering carpet of iron-eating mites that pours over steel and skin alike.',hp:6,power:'Weak',melee:0,archery:0,speed:'medium',minG:1,maxG:2,
+  {name:'Hobgoblin Warden',cat:'humanoid',desc:'A disciplined goblin-kin sergeant in scavenged plate, holding the doorway with spear and shield.',hp:13,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
+  {name:'Orc Deserter',cat:'humanoid',desc:'A broken-tusked outcast from some warband, squatting in the ruins with a stolen axe and nothing to lose.',hp:14,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
+  {name:'Gnoll Raider',cat:'humanoid',desc:'A hyena-headed marauder that cackles as it circles, waiting for you to turn your back.',hp:12,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
+  {name:'Giant Toad',cat:'beast',desc:'A warty bog-beast broad as a cart, swallowing lesser intruders whole with a lash of its tongue.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Cliff Vulture',cat:'beast',desc:'A carrion bird with a wingspan wider than a door, tearing at anything that climbs to its nest.',hp:9,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Rust-Mite Swarm',cat:'vermin',desc:'A glittering carpet of iron-eating mites that pours over steel and skin alike.',hp:8,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:2,
     spells:[{name:'Corroding Tide',school:'elemental',dmg:[2,5],effect:'hero -10% to hit',castChance:40,flavour:'The mites swarm up your blade and your grip goes slick with rust.'}]},
-  {name:'Blood Leech Cluster',cat:'vermin',desc:'Fist-sized leeches that drop from the cave roof in dozens, drinking a hero pale in minutes.',hp:7,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
+  {name:'Blood Leech Cluster',cat:'vermin',desc:'Fist-sized leeches that drop from the cave roof in dozens, drinking a hero pale in minutes.',hp:9,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
     spells:[{name:'Sanguine Drain',school:'necromancy',dmg:[2,5],effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:35,flavour:'A dozen mouths fasten on and will not let go.'}]},
-  {name:'Pixie Trickster',cat:'fey',desc:'A knee-high sprite with a needle-thin rapier, laughing as it dances just out of reach.',hp:6,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4,
+  {name:'Pixie Trickster',cat:'fey',desc:'A knee-high sprite with a needle-thin rapier, laughing as it dances just out of reach.',hp:8,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4,
     spells:[{name:'Faerie Dust',school:'illusory',dmg:[1,3],effect:'hero -15% to hit for 1 round',castChance:40,flavour:'A puff of glittering dust and the world swims.'}]},
-  {name:'Clay Sentinel',cat:'construct',desc:'A crude man-shape of fired clay, slow and mindless, set to guard this place by a long-dead hand.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
-  {name:'Dust Devil',cat:'elemental',desc:'A living whirl of grit and hot wind that scours flesh and flings sand in the eyes.',hp:8,power:'Weak',melee:0,archery:1,speed:'fast',minG:1,maxG:3,
+  {name:'Clay Sentinel',cat:'construct',desc:'A crude man-shape of fired clay, slow and mindless, set to guard this place by a long-dead hand.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
+  {name:'Dust Devil',cat:'elemental',desc:'A living whirl of grit and hot wind that scours flesh and flings sand in the eyes.',hp:10,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:3,
     spells:[{name:'Stinging Gust',school:'elemental',dmg:[2,4],effect:'hero -10% to hit',castChance:40,flavour:'Grit lashes your face and you cannot see to strike.'}]},
-  {name:'Troll Whelp',cat:'giant',desc:'A half-grown troll, all knuckles and appetite, already too stubborn to stay down.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
-  {name:'Harpy Matriarch',cat:'fey',desc:'The shrieking queen of a harpy roost, hoarding every bright thing her daughters have snatched.',hp:14,power:'Moderate',melee:2,archery:1,speed:'fast',minG:3,maxG:6,
+  {name:'Troll Whelp',cat:'giant',desc:'A half-grown troll, all knuckles and appetite, already too stubborn to stay down.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
+  {name:'Harpy Matriarch',cat:'fey',desc:'The shrieking queen of a harpy roost, hoarding every bright thing her daughters have snatched.',hp:18,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Deafening Shriek',school:'psychic',dmg:[3,6],effect:'hero -15% to hit for 2 rounds',castChance:40,flavour:'A scream like tearing metal leaves your ears ringing.'}]},
   // Weak sea
-  {name:'Drowned Oarsman',cat:'undead',desc:'A waterlogged galley slave still chained to his bench, dragging his oar like a club.',hp:9,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Stinging Jellyfish Bloom',cat:'vermin',desc:'A drifting field of translucent bells trailing yards of burning tendrils.',hp:6,power:'Weak',melee:0,archery:0,speed:'slow',minG:1,maxG:2,
+  {name:'Drowned Oarsman',cat:'undead',desc:'A waterlogged galley slave still chained to his bench, dragging his oar like a club.',hp:11,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Stinging Jellyfish Bloom',cat:'vermin',desc:'A drifting field of translucent bells trailing yards of burning tendrils.',hp:8,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
     spells:[{name:'Venom Tendrils',school:'elemental',dmg:[2,5],effect:'hero -10% to hit next round',castChance:40,flavour:'Tendrils brush your arm and it burns like fire.'}]},
-  {name:'Wreck Moray',cat:'beast',desc:'A thick-bodied eel coiled in the ribs of a sunken hull, jaws lined with needle teeth.',hp:10,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3},
-  {name:'Smuggler Lookout',cat:'humanoid',desc:'A wiry sea-thief watching the cove from the rocks, with a sling and a very sharp knife.',hp:8,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:4},
+  {name:'Wreck Moray',cat:'beast',desc:'A thick-bodied eel coiled in the ribs of a sunken hull, jaws lined with needle teeth.',hp:12,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3},
+  {name:'Smuggler Lookout',cat:'humanoid',desc:'A wiry sea-thief watching the cove from the rocks, with a sling and a very sharp knife.',hp:10,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:4},
   // Moderate land
-  {name:'Wraith of the Barrow',cat:'undead',desc:'A shrouded shade that drifts through stone, its touch stealing warmth and will alike.',hp:15,power:'Moderate',melee:1,archery:0,speed:'medium',minG:3,maxG:6,
+  {name:'Wraith of the Barrow',cat:'undead',desc:'A shrouded shade that drifts through stone, its touch stealing warmth and will alike.',hp:19,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
     spells:[{name:'Chilling Touch',school:'necromancy',dmg:[4,8],effect:'hero -1 melee for next round',castChance:38,flavour:'Its hand passes through your guard and into your chest.'}]},
-  {name:'Mummified Champion',cat:'undead',desc:'A bandaged warrior-king of a forgotten dynasty, still swinging the bronze khopesh it was entombed with.',hp:18,power:'Moderate',melee:2,archery:0,speed:'slow',minG:3,maxG:6,
+  {name:'Mummified Champion',cat:'undead',desc:'A bandaged warrior-king of a forgotten dynasty, still swinging the bronze khopesh it was entombed with.',hp:22,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Curse of the Tomb',school:'necromancy',dmg:[3,6],effect:'hero takes 2 dmg at start of each round for 3 rounds',castChance:35,flavour:'Dust pours from its wrappings and settles on your skin like a sickness.'}]},
-  {name:'Ghast Packleader',cat:'undead',desc:'The largest of a ghoul pack, reeking of the charnel pit and shrieking its kin into a frenzy.',hp:16,power:'Moderate',melee:2,archery:0,speed:'fast',minG:2,maxG:5,
+  {name:'Ghast Packleader',cat:'undead',desc:'The largest of a ghoul pack, reeking of the charnel pit and shrieking its kin into a frenzy.',hp:20,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Charnel Stench',school:'necromancy',dmg:[2,5],effect:'hero -15% to hit for 2 rounds',castChance:40,flavour:'The stink of the grave doubles you over.'}]},
-  {name:'Hill Giant Youngling',cat:'giant',desc:'A giant not yet grown, but already twelve feet tall and armed with an uprooted sapling.',hp:20,power:'Moderate',melee:2,archery:1,speed:'slow',minG:3,maxG:6,
+  {name:'Hill Giant Youngling',cat:'giant',desc:'A giant not yet grown, but already twelve feet tall and armed with an uprooted sapling.',hp:24,power:'Moderate',melee:3,archery:1,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Sapling Swing',school:'elemental',dmg:[5,9],effect:'',castChance:38,flavour:'The whole tree comes round in a great sweeping arc!'}]},
-  {name:'Minotaur Warden',cat:'humanoid',desc:'A bull-headed brute that knows every turn of its maze and charges down the corridors head-first.',hp:19,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
+  {name:'Minotaur Warden',cat:'humanoid',desc:'A bull-headed brute that knows every turn of its maze and charges down the corridors head-first.',hp:23,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
     spells:[{name:'Goring Charge',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:35,flavour:'Horns lowered, it thunders down the passage at you!'}]},
-  {name:'Goblin Shaman',cat:'humanoid',desc:'A cackling hunchback in a feathered headdress, hurling curses and fungus-smoke from behind its bodyguards.',hp:13,power:'Moderate',melee:1,archery:1,speed:'medium',minG:3,maxG:6,
+  {name:'Goblin Shaman',cat:'humanoid',desc:'A cackling hunchback in a feathered headdress, hurling curses and fungus-smoke from behind its bodyguards.',hp:17,power:'Moderate',melee:3,archery:1,speed:'medium',minG:3,maxG:6,
     spells:[{name:'Spore Cloud',school:'illusory',dmg:[3,6],effect:'hero -15% to hit',castChance:40,flavour:'A puffball bursts and choking spores fill the air.'},
             {name:'Hex of Weakness',school:'necromancy',dmg:[2,4],effect:'hero -1 melee for next round',castChance:30,flavour:'It rattles a bone fetish and your arm goes leaden.'}]},
-  {name:'Wyvern Hatchling',cat:'dragon',desc:'A young wyvern, all wings and venomous tail, guarding a clutch of eggs with hysterical fury.',hp:17,power:'Moderate',melee:2,archery:0,speed:'fast',minG:3,maxG:6,
+  {name:'Wyvern Hatchling',cat:'dragon',desc:'A young wyvern, all wings and venomous tail, guarding a clutch of eggs with hysterical fury.',hp:21,power:'Moderate',melee:3,archery:0,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Tail Sting',school:'elemental',dmg:[4,8],effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:38,flavour:'The barbed tail whips round and punches through your armour.'}]},
-  {name:'Owlbear',cat:'beast',desc:'A shrieking mass of feathers, fur and hooked beak that hugs its prey to death.',hp:20,power:'Moderate',melee:2,archery:0,speed:'medium',minG:2,maxG:5,
+  {name:'Owlbear',cat:'beast',desc:'A shrieking mass of feathers, fur and hooked beak that hugs its prey to death.',hp:24,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Crushing Hug',school:'elemental',dmg:[5,9],effect:'',castChance:38,flavour:'It wraps you in a bone-cracking embrace!'}]},
-  {name:'Cockatrice',cat:'beast',desc:'A rooster-headed horror whose peck turns living flesh slowly to stone.',hp:14,power:'Moderate',melee:1,archery:0,speed:'fast',minG:2,maxG:5,
+  {name:'Cockatrice',cat:'beast',desc:'A rooster-headed horror whose peck turns living flesh slowly to stone.',hp:21,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Petrifying Peck',school:'illusory',dmg:[2,5],effect:'hero loses next attack (limbs stiffening)',castChance:35,flavour:'A single peck and your leg turns grey and heavy.'}]},
-  {name:'Dryad Warden',cat:'fey',desc:'A bark-skinned guardian of the old grove, calling roots and thorns up out of the earth.',hp:16,power:'Moderate',melee:1,archery:1,speed:'medium',minG:2,maxG:5,
+  {name:'Dryad Warden',cat:'fey',desc:'A bark-skinned guardian of the old grove, calling roots and thorns up out of the earth.',hp:20,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:5,
     spells:[{name:'Grasping Roots',school:'elemental',dmg:[3,6],effect:'hero loses next attack',castChance:35,flavour:'Roots burst from the soil and wrap your ankles.'},
             {name:'Thorn Lash',school:'elemental',dmg:[4,8],effect:'',castChance:35,flavour:'A whip of thorned vine cracks across your face.'}]},
-  {name:'Imp Swarm',cat:'fiend',desc:'A dozen cackling little devils with pitchforks, too many to swat and too quick to catch.',hp:14,power:'Moderate',melee:1,archery:1,speed:'fast',minG:3,maxG:6,
+  {name:'Imp Swarm',cat:'fiend',desc:'A dozen cackling little devils with pitchforks, too many to swat and too quick to catch.',hp:21,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
     spells:[{name:'Pitchfork Prods',school:'elemental',dmg:[4,8],effect:'',castChance:40,flavour:'They come at you from every side at once!'}]},
-  {name:'Iron Golem Shard',cat:'construct',desc:'The animated torso of a shattered war-golem, dragging itself forward on two enormous arms.',hp:21,power:'Moderate',melee:2,archery:0,speed:'slow',minG:3,maxG:6,
+  {name:'Iron Golem Shard',cat:'construct',desc:'The animated torso of a shattered war-golem, dragging itself forward on two enormous arms.',hp:25,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
     spells:[{name:'Iron Fist',school:'elemental',dmg:[5,10],effect:'',castChance:35,flavour:'A fist of solid iron comes down like a dropped anvil!'}]},
-  {name:'Lesser Fire Elemental',cat:'elemental',desc:'A roaring pillar of flame that sets the very stones alight as it moves.',hp:15,power:'Moderate',melee:2,archery:0,speed:'fast',minG:2,maxG:5,
+  {name:'Lesser Fire Elemental',cat:'elemental',desc:'A roaring pillar of flame that sets the very stones alight as it moves.',hp:19,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
     spells:[{name:'Scorching Embrace',school:'elemental',dmg:[4,8],effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:38,flavour:'It wraps you in fire and your cloak goes up like tinder.'}]},
   // Moderate sea
-  {name:'Drowned Bosun',cat:'undead',desc:'The bloated mate of a lost ship, still barking orders to a crew of the dead as he swings his boathook.',hp:16,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Drowned Bosun',cat:'undead',desc:'The bloated mate of a lost ship, still barking orders to a crew of the dead as he swings his boathook.',hp:20,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Dead Man\'s Hail',school:'necromancy',dmg:[3,6],effect:'hero -15% to hit for 2 rounds',castChance:38,flavour:'A voice full of seawater bellows and your nerve falters.'}]},
-  {name:'Sea Troll',cat:'giant',desc:'A barnacled troll wallowing in the shallows, its rubbery hide knitting shut as you cut it.',hp:19,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Sea Troll',cat:'giant',desc:'A barnacled troll wallowing in the shallows, its rubbery hide knitting shut as you cut it.',hp:23,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Brine Mending',school:'elemental',dmg:[0,0],effect:'troll gains +7 HP (regenerates)',castChance:40,flavour:'Its wounds foam and seal over.'}]},
-  {name:'Giant Sea Turtle',cat:'beast',desc:'An ancient turtle the size of a longboat, guarding its nesting reef with a beak that shears through planks.',hp:22,power:'Moderate',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+  {name:'Giant Sea Turtle',cat:'beast',desc:'An ancient turtle the size of a longboat, guarding its nesting reef with a beak that shears through planks.',hp:26,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
     spells:[{name:'Shell Ram',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:35,flavour:'The whole reef seems to lurch as it slams into you!'}]},
-  {name:'Wreckers\' Gang',cat:'humanoid',desc:'False-light shore-thieves who lure ships onto the rocks and finish the survivors with cudgels.',hp:15,power:'Moderate',melee:2,archery:1,speed:'medium',minG:3,maxG:6,
+  {name:'Wreckers\' Gang',cat:'humanoid',desc:'False-light shore-thieves who lure ships onto the rocks and finish the survivors with cudgels.',hp:19,power:'Moderate',melee:3,archery:1,speed:'medium',minG:3,maxG:6,
     spells:[{name:'Cudgel Rush',school:'elemental',dmg:[4,8],effect:'hero -10% to hit',castChance:38,flavour:'They come out of the surf swinging!'}]},
   // Powerful land
-  {name:'Death Knight',cat:'undead',desc:'A fallen paladin in blackened plate, bound to unlife by a broken oath, its greatsword rimed with frost.',hp:30,power:'Powerful',melee:3,archery:0,speed:'medium',minG:5,maxG:8,
+  {name:'Death Knight',cat:'undead',desc:'A fallen paladin in blackened plate, bound to unlife by a broken oath, its greatsword rimed with frost.',hp:40,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:8,
     spells:[{name:'Unholy Cleave',school:'necromancy',dmg:[7,13],effect:'',castChance:42,flavour:'The black blade comes down in a hissing arc!'},
             {name:'Aura of Despair',school:'necromancy',dmg:[3,7],effect:'hero -20% to hit for 3 rounds',castChance:33,flavour:'Hope drains out of you like blood from a wound.'}]},
-  {name:'Banshee',cat:'undead',desc:'The wailing ghost of a murdered queen, whose scream stops hearts and whose touch withers flesh.',hp:24,power:'Powerful',melee:2,archery:0,speed:'fast',minG:4,maxG:7,
+  {name:'Banshee',cat:'undead',desc:'The wailing ghost of a murdered queen, whose scream stops hearts and whose touch withers flesh.',hp:32,power:'Powerful',melee:3,archery:0,speed:'fast',minG:4,maxG:7,
     spells:[{name:'Death Wail',school:'necromancy',dmg:[6,12],effect:'hero must pass courage test or flee',castChance:35,flavour:'A scream that is not a sound tears through your mind!'},
             {name:'Withering Touch',school:'necromancy',dmg:[5,9],effect:'hero -1 melee for next round',castChance:40,flavour:'Her fingers brush your cheek and the skin beneath goes grey.'}]},
-  {name:'Bone Colossus',cat:'undead',desc:'A towering thing lashed together from a thousand skeletons, lurching forward on a dozen legs.',hp:36,power:'Powerful',melee:3,archery:0,speed:'slow',minG:5,maxG:9,
+  {name:'Bone Colossus',cat:'undead',desc:'A towering thing lashed together from a thousand skeletons, lurching forward on a dozen legs.',hp:47,power:'Powerful',melee:4,archery:0,speed:'slow',minG:5,maxG:9,
     spells:[{name:'Skeletal Avalanche',school:'necromancy',dmg:[8,14],effect:'',castChance:40,flavour:'A wall of bone crashes down on top of you!'},
             {name:'Reknit',school:'necromancy',dmg:[0,0],effect:'colossus regains 12 HP',castChance:35,flavour:'Loose bones rattle back into place across its frame.'}]},
-  {name:'Frost Giant Jarl',cat:'giant',desc:'A blue-skinned lord of the high ice, swinging an axe of frozen iron taller than a man.',hp:34,power:'Powerful',melee:4,archery:1,speed:'slow',minG:5,maxG:8,
+  {name:'Frost Giant Jarl',cat:'giant',desc:'A blue-skinned lord of the high ice, swinging an axe of frozen iron taller than a man.',hp:45,power:'Powerful',melee:4,archery:1,speed:'slow',minG:5,maxG:8,
     spells:[{name:'Glacier Axe',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'The frozen axe shears the air with a shriek of ice!'},
             {name:'Winter\'s Breath',school:'elemental',dmg:[4,8],effect:'hero -20% to hit',castChance:35,flavour:'A killing cold pours from his lungs and your fingers stop answering.'}]},
-  {name:'Hill Giant Chieftain',cat:'giant',desc:'A boulder-shouldered chief of the hill clans, hurling rocks and roaring challenges from his cairn-throne.',hp:33,power:'Powerful',melee:3,archery:2,speed:'slow',minG:4,maxG:8,
+  {name:'Hill Giant Chieftain',cat:'giant',desc:'A boulder-shouldered chief of the hill clans, hurling rocks and roaring challenges from his cairn-throne.',hp:44,power:'Powerful',melee:4,archery:2,speed:'slow',minG:4,maxG:8,
     spells:[{name:'Rock Throw',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'A boulder the size of a barrel whistles past — and the next one doesn\'t miss!'},
             {name:'Ground Slam',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:30,flavour:'Both fists hammer the earth and you are thrown off your feet!'}]},
-  {name:'Orc Warlord',cat:'humanoid',desc:'A one-eyed warlord in trophy-hung plate, veteran of a hundred raids, roaring for blood.',hp:29,power:'Powerful',melee:4,archery:1,speed:'medium',minG:5,maxG:8,
+  {name:'Orc Warlord',cat:'humanoid',desc:'A one-eyed warlord in trophy-hung plate, veteran of a hundred raids, roaring for blood.',hp:38,power:'Powerful',melee:5,archery:1,speed:'medium',minG:5,maxG:8,
     spells:[{name:'Whirling Cleaver',school:'elemental',dmg:[7,12],effect:'',castChance:42,flavour:'The great cleaver spins in a circle of death!'},
             {name:'Blood Roar',school:'psychic',dmg:[0,0],effect:'warlord gains +2 melee',castChance:35,flavour:'He bellows to his war-gods and his eyes go red!'}]},
-  {name:'Medusa',cat:'humanoid',desc:'A serpent-haired sorceress whose gaze alone has filled her lair with stone statues of the bold.',hp:26,power:'Powerful',melee:2,archery:2,speed:'medium',minG:5,maxG:8,
+  {name:'Medusa',cat:'humanoid',desc:'A serpent-haired sorceress whose gaze alone has filled her lair with stone statues of the bold.',hp:44,power:'Powerful',melee:4,archery:2,speed:'medium',minG:5,maxG:8,
     spells:[{name:'Stone Gaze',school:'illusory',dmg:[0,0],effect:'hero loses 2 rounds completely (turning to stone)',castChance:35,flavour:'You meet her eyes for an instant — and cannot look away.'},
             {name:'Serpent Bite',school:'elemental',dmg:[5,9],effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:40,flavour:'Her hair strikes as one, a dozen fangs at once.'}]},
-  {name:'Chimera',cat:'beast',desc:'Lion, goat and dragon fused in one raging beast, each head hungrier than the last.',hp:32,power:'Powerful',melee:3,archery:0,speed:'fast',minG:4,maxG:8,
+  {name:'Chimera',cat:'beast',desc:'Lion, goat and dragon fused in one raging beast, each head hungrier than the last.',hp:42,power:'Powerful',melee:4,archery:0,speed:'fast',minG:4,maxG:8,
     spells:[{name:'Dragon-Head Flame',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'The dragon head rears back and vomits fire!'},
             {name:'Triple Maul',school:'elemental',dmg:[3,7],effect:'hits twice if roll succeeds',castChance:40,flavour:'Three heads strike from three directions!'}]},
-  {name:'Stone Golem',cat:'construct',desc:'A statue of black granite that steps down from its plinth to crush whatever crosses the threshold.',hp:38,power:'Powerful',melee:3,archery:0,speed:'slow',minG:4,maxG:8,
+  {name:'Stone Golem',cat:'construct',desc:'A statue of black granite that steps down from its plinth to crush whatever crosses the threshold.',hp:50,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
     spells:[{name:'Granite Fist',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'A fist of solid stone comes down like a falling wall!'},
             {name:'Unyielding',school:'elemental',dmg:[0,0],effect:'golem absorbs next 10 dmg',castChance:30,flavour:'Cracks across its surface seal and vanish.'}]},
-  {name:'Night Hag',cat:'fey',desc:'A crooked crone who rides sleepers\' dreams, wringing nightmares into venom.',hp:25,power:'Powerful',melee:2,archery:0,speed:'medium',minG:5,maxG:8,
+  {name:'Night Hag',cat:'fey',desc:'A crooked crone who rides sleepers\' dreams, wringing nightmares into venom.',hp:38,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:8,
     spells:[{name:'Nightmare Weave',school:'psychic',dmg:[6,11],effect:'hero -15% to hit for 3 rounds',castChance:40,flavour:'Every fear you have ever had crawls up out of the dark.'},
             {name:'Soul Sip',school:'necromancy',dmg:[4,8],effect:'hag heals half the damage dealt',castChance:40,flavour:'She breathes in and something inside you goes thin.'}]},
   // Powerful sea
-  {name:'Drowned Admiral',cat:'undead',desc:'A dead fleet-lord in weed-hung finery, still commanding a rotting flagship\'s crew from beneath the waves.',hp:28,power:'Powerful',melee:3,archery:1,speed:'medium',minG:5,maxG:8,
+  {name:'Drowned Admiral',cat:'undead',desc:'A dead fleet-lord in weed-hung finery, still commanding a rotting flagship\'s crew from beneath the waves.',hp:42,power:'Powerful',melee:4,archery:1,speed:'medium',minG:5,maxG:8,
     spells:[{name:'Ghost Broadside',school:'necromancy',dmg:[7,13],effect:'',castChance:42,flavour:'Phantom guns thunder along a hull that sank a century ago!'},
             {name:'Undertow Curse',school:'necromancy',dmg:[4,8],effect:'flee chance reduced',castChance:35,flavour:'The water itself seems to close around your legs.'}]},
-  {name:'Sea Wyrm',cat:'dragon',desc:'A finned dragon of the deep trenches, breathing scalding steam and lashing with a rudder-like tail.',hp:34,power:'Powerful',melee:3,archery:0,speed:'fast',minG:5,maxG:9,
+  {name:'Sea Wyrm',cat:'dragon',desc:'A finned dragon of the deep trenches, breathing scalding steam and lashing with a rudder-like tail.',hp:45,power:'Powerful',melee:4,archery:0,speed:'fast',minG:5,maxG:9,
     spells:[{name:'Scalding Breath',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'A gout of boiling steam erupts from its jaws!'},
             {name:'Tail Lash',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:33,flavour:'The great tail sweeps across the deck!'}]},
-  {name:'Giant Octopus',cat:'aberration',desc:'A boulder-headed monster of the kelp forest, eight crushing arms and a beak that opens hulls.',hp:30,power:'Powerful',melee:3,archery:0,speed:'medium',minG:4,maxG:8,
+  {name:'Giant Octopus',cat:'aberration',desc:'A boulder-headed monster of the kelp forest, eight crushing arms and a beak that opens hulls.',hp:46,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
     spells:[{name:'Eightfold Grip',school:'elemental',dmg:[6,11],effect:'hero loses next attack',castChance:38,flavour:'Arms wrap you from every side and squeeze!'},
             {name:'Ink Jet',school:'illusory',dmg:[2,5],effect:'hero -20% to hit',castChance:35,flavour:'The water goes black around you.'}]},
   // Legendary land
-  {name:'Dread Vampire Sovereign',cat:'undead',desc:'The eldest of the night-nobles, a thousand years dead and lord of every shadow in the land.',hp:46,power:'Legendary',melee:4,archery:0,speed:'fast',minG:7,maxG:10,
+  {name:'Dread Vampire Sovereign',cat:'undead',desc:'The eldest of the night-nobles, a thousand years dead and lord of every shadow in the land.',hp:82,power:'Legendary',melee:6,archery:0,speed:'fast',minG:7,maxG:10,
     spells:[{name:'Sanguine Feast',school:'necromancy',dmg:[8,15],effect:'vampire heals half the damage dealt',castChance:48,flavour:'It is on you before you can blink, and the world goes red.'},
             {name:'Dominating Gaze',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:38,flavour:'Its eyes hold yours and your body simply stops obeying.'},
             {name:'Cloud of Bats',school:'necromancy',dmg:[6,12],effect:'',castChance:45,flavour:'The night comes apart into ten thousand shrieking wings!'}]},
-  {name:'Dracolich',cat:'undead',desc:'A dragon that cheated death — bare bone and green witchfire, its breath a wind of corruption.',hp:52,power:'Legendary',melee:4,archery:2,speed:'medium',minG:8,maxG:10,
+  {name:'Dracolich',cat:'undead',desc:'A dragon that cheated death — bare bone and green witchfire, its breath a wind of corruption.',hp:85,power:'Legendary',melee:6,archery:2,speed:'medium',minG:8,maxG:10,
     spells:[{name:'Corpse Breath',school:'necromancy',dmg:[9,17],effect:'',castChance:50,flavour:'Green fire pours from the skull\'s empty jaws!'},
             {name:'Bone Storm',school:'necromancy',dmg:[6,12],effect:'hero -25% to hit for 3 rounds',castChance:40,flavour:'Splinters of its own ribs whirl around you like a blizzard!'},
             {name:'Deathless',school:'necromancy',dmg:[0,0],effect:'dracolich regains 16 HP',castChance:35,flavour:'Witchfire flares in every joint and the shattered bone knits.'}]},
-  {name:'Archdemon',cat:'fiend',desc:'A prince of the pit, crowned in horns and wrapped in the screams of the damned.',hp:50,power:'Legendary',melee:4,archery:0,speed:'medium',minG:8,maxG:10,
+  {name:'Archdemon',cat:'fiend',desc:'A prince of the pit, crowned in horns and wrapped in the screams of the damned.',hp:77,power:'Legendary',melee:5,archery:0,speed:'medium',minG:8,maxG:10,
     spells:[{name:'Infernal Blade',school:'elemental',dmg:[9,17],effect:'',castChance:50,flavour:'A sword of liquid fire carves the air!'},
             {name:'Damnation',school:'psychic',dmg:[5,10],effect:'hero must pass courage test or flee',castChance:40,flavour:'It speaks your name and every sin you have ever committed.'},
             {name:'Hellfire Mantle',school:'elemental',dmg:[0,0],effect:'demon reflects 3 dmg back each time hero hits',castChance:35,flavour:'It wraps itself in a cloak of burning brimstone!'}]},
-  {name:'Storm Titan',cat:'giant',desc:'A primordial giant who walks in thunderheads and throws lightning as a man throws stones.',hp:48,power:'Legendary',melee:4,archery:3,speed:'medium',minG:7,maxG:10,
+  {name:'Storm Titan',cat:'giant',desc:'A primordial giant who walks in thunderheads and throws lightning as a man throws stones.',hp:71,power:'Legendary',melee:5,archery:3,speed:'medium',minG:7,maxG:10,
     spells:[{name:'Thunderbolt',school:'elemental',dmg:[9,16],effect:'',castChance:50,flavour:'Lightning leaps from its outstretched hand!'},
             {name:'Hurricane Grasp',school:'elemental',dmg:[6,11],effect:'hero knocked back',castChance:40,flavour:'A wind like a falling mountain hurls you across the ground!'},
             {name:'Deafening Peal',school:'psychic',dmg:[4,8],effect:'hero loses all Archery this round',castChance:40,flavour:'The thunder of its voice leaves you reeling and blind!'}]},
-  {name:'Sphinx',cat:'beast',desc:'A winged lion with a woman\'s face, guarding a riddle-locked treasury with claws and mind alike.',hp:44,power:'Legendary',melee:4,archery:1,speed:'fast',minG:7,maxG:10,
+  {name:'Sphinx',cat:'beast',desc:'A winged lion with a woman\'s face, guarding a riddle-locked treasury with claws and mind alike.',hp:74,power:'Legendary',melee:6,archery:1,speed:'fast',minG:7,maxG:10,
     spells:[{name:'Riddle of Madness',school:'psychic',dmg:[6,12],effect:'hero loses 2 rounds completely (lost in the riddle)',castChance:38,flavour:'She asks a question and your mind folds in on itself trying to answer.'},
             {name:'Talon Sweep',school:'elemental',dmg:[8,14],effect:'',castChance:48,flavour:'Claws like scythes rake across you!'},
             {name:'Mind Lock',school:'psychic',dmg:[3,7],effect:'hero -30% to hit for encounter',castChance:35,flavour:'Her gaze settles on you and you feel every move being read before you make it.'}]},
   // Legendary sea
-  {name:'Kraken',cat:'aberration',desc:'The full-grown terror of the abyss — a mountain of tentacles that drags whole fleets to the sea floor.',hp:55,power:'Legendary',melee:5,archery:0,speed:'medium',minG:8,maxG:10,
+  {name:'Kraken',cat:'aberration',desc:'The full-grown terror of the abyss — a mountain of tentacles that drags whole fleets to the sea floor.',hp:82,power:'Legendary',melee:6,archery:0,speed:'medium',minG:8,maxG:10,
     spells:[{name:'Crushing Tentacles',school:'elemental',dmg:[9,17],effect:'',castChance:50,flavour:'A tentacle thick as a mainmast smashes down!'},
             {name:'Maelstrom',school:'elemental',dmg:[6,12],effect:'hero loses next attack',castChance:40,flavour:'The sea spins into a whirlpool and drags you under!'},
             {name:'Abyssal Ink',school:'illusory',dmg:[3,6],effect:'hero -25% to hit',castChance:40,flavour:'Blackness swallows the light.'}]},
@@ -2940,8 +2981,8 @@ function guardianCanUseItem(m, it){
 }
 // ── PAGAN TUNING ──
 const RITUAL_SITE_NAMES=['Standing Stones','Blood Altar','Circle of the Old Gods'];
-const RITUAL_SITE_CHANCE_PRIMAL=0.60;   // share of primal land provinces with a ritual site (was 0.35)
-const RITUAL_SITE_CHANCE_HUMANOID=0.20; // share of humanoid land provinces with one (was 0.08)
+const RITUAL_SITE_CHANCE_PRIMAL=1.0;    // EVERY primal land province holds a ritual site (2026-09-07 batch 3; was 0.60)
+const RITUAL_SITE_CHANCE_HUMANOID=0.25; // share of humanoid land provinces with one (Blood Offering only there)
 const WILD_HUNT_COST=6;                 // gold to bind the province's wild creatures
 const WILD_HUNT_UNITS=2;                // units bound per rite
 const WILD_HUNT_TURNS=1;                // extra full turns the bound creatures serve beyond this one
@@ -3387,7 +3428,7 @@ function rollMagicItem(monsterPower, taken){
 // turns them on the challenger; a thief may lift one (`_stolenItems` remembers what went); a slain challenger's
 // kit joins the hoard. Legendary lairs are stocked first so the rarest tiers go to the toughest guardians; once
 // the treasury is exhausted a lair simply holds gold.
-const LAIR_ITEM_ODDS={Weak:{itemChance:0.25,bonusItem:0},Moderate:{itemChance:0.60,bonusItem:0},Powerful:{itemChance:1.0,bonusItem:0.15},Legendary:{itemChance:1.0,bonusItem:0.50}};
+const LAIR_ITEM_ODDS={Weak:{itemChance:0.40,bonusItem:0,thirdItem:0},Moderate:{itemChance:0.80,bonusItem:0.15,thirdItem:0},Powerful:{itemChance:1.0,bonusItem:0.40,thirdItem:0},Legendary:{itemChance:1.0,bonusItem:1.0,thirdItem:0.50}}; // Sept 2026 redesign (was 25/0, 60/0, 100/15, 100/50)
 function ensureLairHoard(f, gs){
   if(!f||f.ritualSite) return;
   f.hoardItems=Array.isArray(f.hoardItems)?f.hoardItems:[];
@@ -3406,6 +3447,7 @@ function ensureLairHoard(f, gs){
   const roll=()=>{ const base=rollMagicItem(power,taken); if(!base) return; taken.add(base.name); gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1; f.hoardItems.push({...base,effect:{...base.effect},id}); };
   if(Math.random()<T.itemChance) roll();
   if(Math.random()<T.bonusItem) roll();
+  if(Math.random()<(T.thirdItem||0)) roll();
 }
 function ensureAllLairHoards(gs){
   const provs=(gs&&gs.world&&gs.world.provinces)||[];
@@ -3519,14 +3561,89 @@ function dedupeItemsByName(items){
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
   return out;
 }
-// Item 6: apply a maxHp item's bonus ONLY if the character isn't already wearing one of the same name
-// (maxHp is applied at grant-time, not summed, so duplicates would otherwise stack permanently).
+// ── MAXIMUM HP (Sept 2026 redesign) ── a character's maximum HP is a DERIVED stat, recomputed from
+// their skills and equipment whenever either changes. There is no earned pool and no cap to gate:
+//   toughness points P = Melee×4 + Archery×2 + every other skill (1 per level for L1–3, 2 per level L4–9)
+//   max HP = 15 + max(0, P − 8), with the part of that gain above 50 counting at half, hard stop 100;
+//   Orcish characters of an Orcish realm ×1.2 (so up to 120); magic-item max-HP bonuses add on top.
+// The −8 offset keeps fresh characters (3–4 starting skill points) at ~15. Kill-hardening, lair
+// HP rewards, Orc Vigour and the old skill-based ceiling (hpCapFor/raiseMaxHp) are all gone —
+// fighting now trains Melee/Archery (see awardKillXP), and the skill drives the HP.
+const MAXHP_BASE=15, MAXHP_OFFSET=8, MAXHP_SOFT=50, MAXHP_HARD=100, MAXHP_ORC_MULT=1.2;
+let _MAXHP_PLAYERS=null; // set by runTurn / generateNewGame so module-level callers can see the realm races
+function maxHpPoints(ch){
+  let P=0;
+  ALL_SKILLS.forEach(sk=>{ const L=skillLevel(ch,sk); if(sk==='melee') P+=L*4; else if(sk==='archery') P+=L*2; else P+=Math.min(L,3)+2*Math.max(0,L-3); });
+  return P;
+}
+function maxHpIsOrc(ch, players){
+  const pl=players||_MAXHP_PLAYERS||[];
+  return !!(ch&&ch.race==='Orcish'&&ch.player!=null&&pl[ch.player]&&pl[ch.player].race==='Orcish');
+}
+function itemMaxHpBonus(ch){
+  const seen=new Set(); let b=0;
+  activeItems(ch).forEach(it=>{ if(it&&it.effect&&it.effect.stat==='maxHp'&&!seen.has(it.name)){ seen.add(it.name); b+=(it.effect.bonus||0); } });
+  return b;
+}
+function computeMaxHp(ch, players){
+  if(!ch) return MAXHP_BASE;
+  let gained=Math.max(0, maxHpPoints(ch)-MAXHP_OFFSET);
+  if(gained>MAXHP_SOFT) gained=MAXHP_SOFT+(gained-MAXHP_SOFT)/2;
+  let hp=Math.min(MAXHP_HARD, MAXHP_BASE+gained);
+  if(maxHpIsOrc(ch,players)) hp*=MAXHP_ORC_MULT;
+  return Math.round(hp)+itemMaxHpBonus(ch);
+}
+// Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
+// filled); a fall clamps current HP to the new maximum (never below 1 for a living character).
+// Returns the change (0 when nothing moved).
+function syncMaxHp(ch, players){
+  if(!ch) return 0;
+  const nu=computeMaxHp(ch,players), old=(ch.maxHp!=null?ch.maxHp:nu);
+  if(nu===old){ if(ch.maxHp==null) ch.maxHp=nu; return 0; }
+  ch.maxHp=nu;
+  if(ch.hp!=null){
+    if(nu>old) ch.hp=Math.min(nu, ch.hp+(nu-old));
+    else ch.hp=Math.max(ch.alive===false?0:Math.min(1,ch.hp), Math.min(ch.hp, nu));
+  }
+  return nu-old;
+}
+// One-time migration for saves made under the old earned-HP system: recompute every character, and
+// leave a note in each affected character's chronicle so the change is explained. Later turns only
+// resync silently here (the end-of-turn pass announces genuine changes).
+function migrateMaxHpV2(gs){
+  if(!gs) return;
+  _MAXHP_PLAYERS=gs.players||[];
+  const first=!gs._maxHpV2;
+  (gs.characters||[]).forEach(ch=>{
+    if(!ch||!ch.alive) return;
+    const old=ch.maxHp||15, d=syncMaxHp(ch,gs.players);
+    if(first&&d!==0&&ch.player!=null&&typeof gs.log!=='undefined'){
+      gs._maxHpMigration=gs._maxHpMigration||[];
+      gs._maxHpMigration.push({charId:ch.id,player:ch.player,old,nu:ch.maxHp});
+    }
+  });
+  gs._maxHpV2=true;
+  migrateLairGuardiansV2(gs);
+}
+// Sept 2026 redesign: guardians were rescaled against the new hero HP curve. Uncleared lairs in older
+// saves adopt the current table stats for their creature (matched by name) — once only.
+const GUARDIAN_TABLE_VER=3; // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+function migrateLairGuardiansV2(gs){
+  if(!gs||!gs.world) return;
+  if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
+  const byName={}; MONSTERS_P.forEach(m=>{ byName[m.name]=m; });
+  (gs.world.provinces||[]).forEach(p=>(p.features||[]).forEach(f=>{
+    if(!f||f.cleared||!f.monster) return;
+    const t=byName[f.monster.name]; if(!t) return;
+    f.monster.hp=t.hp; f.monster.melee=t.melee; f.monster.archery=t.archery; delete f.monster._hpFull;
+  }));
+  gs._guardiansV2=true; gs._guardiansVer=GUARDIAN_TABLE_VER;
+}
+// Legacy name kept for the item-grant call sites: granting (or losing) a max-HP item just resyncs.
 function applyItemMaxHp(ch, item){
-  if(!ch||!item||item.effect?.stat!=='maxHp') return;
-  if(!itemUsableBy(item,ch)) return; // race/alignment-bound: inert in the wrong hands
-  if((ch.items||[]).some(x=>x&&x!==item&&x.name===item.name)) return; // already have this item's type
-  ch.maxHp=(ch.maxHp||20)+item.effect.bonus;
-  if(ch.hp!=null) ch.hp=Math.min(ch.maxHp, ch.hp+item.effect.bonus);
+  if(!ch) return;
+  if(item&&item.effect&&item.effect.stat!=='maxHp') return;
+  syncMaxHp(ch);
 }
 function grantMithrilTo(ch, gs){
   if(!ch||ch.alive===false) return;
@@ -3685,6 +3802,197 @@ function isBotRow(p){
   try{ const r=typeof p.turn_report==='string'?JSON.parse(p.turn_report):p.turn_report; if(r&&r.isBot===true) return true; }catch(e){}
   return false;
 }
+// ══════════════════════════════════════════════════════════════════════════════
+// TURN RUNNING MODES (Sept 2026) — manual / auto / deadline.
+// The mode lives inside game_state (setup cfg before Turn 0, then G.turnMode once the game is active) so
+// no schema change is needed and the player portal can read it too.
+//   {mode:'manual'|'auto'|'deadline', time:'HH:MM', everyDays:N, nextDeadlineAt:ISO|null, turnRanAt:ISO|null}
+// 'auto'     : the watcher in this GM tab runs the turn as soon as every non-exempt human realm has submitted.
+// 'deadline' : as 'auto', OR once the fixed clock deadline has passed (whichever comes first). The deadline is
+//              the first HH:MM (this computer's clock) strictly after the last run + (everyDays-1) days.
+// Exempt realms (never waited on): bots, conceded realms, extinguished dynasties (_eliminated), and realms with
+// neither a living character nor a province.
+// ══════════════════════════════════════════════════════════════════════════════
+const TURN_MODES={manual:'Manual — GM runs each turn',auto:'Automatic — runs when all orders are in',deadline:'Automatic with deadline'};
+function parseGameState(game){
+  if(!game) return {};
+  try{ const gs=typeof game.game_state==='string'?JSON.parse(game.game_state):game.game_state; return gs||{}; }catch(e){ return {}; }
+}
+function normalizeTurnMode(tm){
+  tm=(tm&&typeof tm==='object')?tm:{};
+  const mode=['manual','auto','deadline'].includes(tm.mode)?tm.mode:'manual';
+  const time=/^\d{2}:\d{2}$/.test(tm.time||'')?tm.time:'20:00';
+  const everyDays=Math.max(1,Math.min(30,parseInt(tm.everyDays)||1));
+  return {mode,time,everyDays,nextDeadlineAt:tm.nextDeadlineAt||null,turnRanAt:tm.turnRanAt||null};
+}
+function turnModeOf(game){ return normalizeTurnMode(parseGameState(game).turnMode); }
+// First HH:MM (local clock) strictly after `from` + (everyDays-1) days.
+function computeNextDeadline(tm,from){
+  tm=normalizeTurnMode(tm);
+  const base=new Date((from instanceof Date?from:new Date(from||Date.now())).getTime()+(tm.everyDays-1)*86400000);
+  const [hh,mm]=tm.time.split(':').map(n=>parseInt(n)||0);
+  const d=new Date(base.getFullYear(),base.getMonth(),base.getDate(),hh,mm,0,0);
+  if(d.getTime()<=base.getTime()) d.setDate(d.getDate()+1);
+  return d.toISOString();
+}
+function fmtDeadline(iso){
+  if(!iso) return '—';
+  try{ return new Date(iso).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(iso); }
+}
+// Human slots the turn is still waiting on. `rows` = game_players; G = parsed active state (may be {}).
+function realmExemptFromOrders(G,idx){
+  const pl=((G&&G.players)||[])[idx];
+  if(!pl) return false;
+  if(pl.conceded||pl._eliminated) return true;
+  const hasProv=((pl.provinces)||[]).length>0;
+  const hasChar=((G&&G.characters)||[]).some(c=>c&&c.alive&&c.player===idx);
+  return !hasProv&&!hasChar;
+}
+function ordersWaitingOn(rows,G){
+  return (rows||[]).filter(p=>p.user_id&&!isBotRow(p)&&!realmExemptFromOrders(G,p.player_index)&&!p.orders_submitted);
+}
+// {ready, reason} for the auto-turn watcher. Requires an active game with at least one realm.
+function autoTurnReady(game,rows,tm){
+  if(!game||game.status!=='active') return {ready:false,reason:'not active'};
+  tm=tm||turnModeOf(game);
+  if(tm.mode==='manual') return {ready:false,reason:'manual'};
+  const G=parseGameState(game);
+  const humans=(rows||[]).filter(p=>p.user_id&&!isBotRow(p));
+  const bots=(rows||[]).filter(isBotRow);
+  if(humans.length+bots.length===0) return {ready:false,reason:'no realms'};
+  const waiting=ordersWaitingOn(rows,G);
+  if(waiting.length===0) return {ready:true,reason:'all orders in'};
+  if(tm.mode==='deadline'&&tm.nextDeadlineAt&&Date.now()>=new Date(tm.nextDeadlineAt).getTime()) return {ready:true,reason:'deadline passed'};
+  return {ready:false,reason:`waiting on ${waiting.length}`};
+}
+function turnModeSummary(tm){
+  tm=normalizeTurnMode(tm);
+  if(tm.mode==='manual') return '🧑‍⚖️ Manual';
+  if(tm.mode==='auto') return '⚙️ Auto (all orders in)';
+  return `⏱ Auto · deadline ${fmtDeadline(tm.nextDeadlineAt)} (${tm.time}${tm.everyDays>1?' every '+tm.everyDays+' days':' daily'})`;
+}
+function updateTurnModeFields(prefix){
+  const sel=document.getElementById(prefix+'-turnmode'), f=document.getElementById(prefix+'-turnmode-fields');
+  if(sel&&f) f.style.display=sel.value==='deadline'?'block':'none';
+}
+function readTurnModeForm(prefix){
+  return normalizeTurnMode({
+    mode:document.getElementById(prefix+'-turnmode')?.value,
+    time:document.getElementById(prefix+'-deadline-time')?.value,
+    everyDays:document.getElementById(prefix+'-deadline-days')?.value,
+  });
+}
+function turnModeFormHtml(prefix,tm){
+  tm=normalizeTurnMode(tm);
+  return `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <select id="${prefix}-turnmode" onchange="updateTurnModeFields('${prefix}')" style="flex:1;min-width:220px">
+        ${Object.entries(TURN_MODES).map(([k,v])=>`<option value="${k}" ${tm.mode===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+    <div id="${prefix}-turnmode-fields" style="display:${tm.mode==='deadline'?'block':'none'};margin-top:6px;font-size:.84rem">
+      <label style="margin:0;font-weight:normal">Deadline time <input type="time" id="${prefix}-deadline-time" value="${tm.time}" style="width:auto;margin-left:6px"></label>
+      <label style="margin:0 0 0 14px;font-weight:normal">every <input type="number" id="${prefix}-deadline-days" min="1" max="30" value="${tm.everyDays}" style="width:60px;margin-left:6px"> day(s)</label>
+    </div>`;
+}
+// Game-detail panel: shows the current mode and lets the GM switch it (setup or active).
+function renderTurnModePanel(game){
+  const wrap=document.getElementById('detail-turnmode-wrap'); if(!wrap) return;
+  if(!game||game.status==='complete'){ wrap.innerHTML=''; return; }
+  const tm=turnModeOf(game);
+  const watcherNote=tm.mode==='manual'?'':`<div style="font-size:.76rem;color:var(--stone);margin-top:6px">${_autoWatcherTimer?'✅ This tab is watching and will run the turn automatically':'⚠ Watcher not running in this tab'} — automatic turns only fire while a signed-in GM Portal tab is open.${tm.mode==='deadline'&&tm.turnRanAt?` Last run ${fmtDeadline(tm.turnRanAt)}.`:''}</div>`;
+  wrap.innerHTML=`<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <span style="color:var(--parchment);font-weight:600">Turn running</span>
+        <span class="pill pill-blue">${turnModeSummary(tm)}</span>
+        <button class="btn btn-gold" style="margin-left:auto;font-size:.72rem;padding:4px 10px" onclick="saveTurnMode()">💾 Save</button>
+      </div>
+      ${turnModeFormHtml('detail',tm)}
+      ${watcherNote}
+      <div id="detail-turnmode-msg" style="font-size:.78rem;margin-top:4px"></div>
+    </div>`;
+}
+async function saveTurnMode(){
+  const msg=document.getElementById('detail-turnmode-msg');
+  if(!currentGame) return;
+  const prev=turnModeOf(currentGame);
+  const tm=readTurnModeForm('detail');
+  // Reset the clock from now whenever the deadline settings change (or a deadline is first set).
+  if(tm.mode==='deadline'){
+    const changed=prev.mode!=='deadline'||prev.time!==tm.time||prev.everyDays!==tm.everyDays||!prev.nextDeadlineAt;
+    tm.nextDeadlineAt=changed?computeNextDeadline(tm,new Date()):prev.nextDeadlineAt;
+  }else tm.nextDeadlineAt=null;
+  tm.turnRanAt=prev.turnRanAt||null;
+  const gs=parseGameState(currentGame); gs.turnMode=tm;
+  if(msg) msg.innerHTML='<span style="color:var(--stone)">Saving…</span>';
+  // Optimistic-concurrency guard: refuse to overwrite a state the watcher (in another tab) has just advanced.
+  const {data,error}=await sb.from('games').update({game_state:JSON.stringify(gs)}).eq('id',currentGame.id).eq('turn',currentGame.turn).select('id').maybeSingle();
+  if(error){ if(msg) msg.innerHTML=`<span style="color:#e88">${error.message}</span>`; return; }
+  if(!data){ if(msg) msg.innerHTML='<span style="color:#e88">The turn advanced while you were editing — reload the game and try again.</span>'; return; }
+  currentGame.game_state=JSON.stringify(gs);
+  if(msg) msg.innerHTML='<span style="color:#8c8">Saved.</span>';
+  renderTurnModePanel(currentGame);
+  if(currentGame.status==='active') renderOrdersStatus(currentGame);
+}
+
+// ── AUTO-TURN WATCHER ─────────────────────────────────────────────────────────
+// Polls this GM's active games once a minute and runs any whose mode condition is met. Two guards against a
+// double run: a same-browser localStorage lease (two tabs of the same browser) and the conditional save in
+// runTurn (`.eq('turn',expected)`), which also covers two different devices.
+const AUTO_WATCH_MS=60000;
+let _autoWatcherTimer=null, _autoRunBusy=false;
+const _tabId=Math.random().toString(36).slice(2);
+function _autoLease(gameId,take){
+  try{
+    const key='kc_autorun_'+gameId;
+    if(!take){ localStorage.removeItem(key); return true; }
+    const cur=JSON.parse(localStorage.getItem(key)||'null');
+    if(cur&&cur.tab!==_tabId&&Date.now()-cur.at<20*60000) return false; // another tab holds a fresh lease
+    localStorage.setItem(key,JSON.stringify({tab:_tabId,at:Date.now()}));
+    return true;
+  }catch(e){ return true; } // no localStorage — fall back to the conditional save alone
+}
+function setAutoTurnStatus(html){
+  const el=document.getElementById('auto-turn-status'); if(!el) return;
+  el.style.display=html?'block':'none'; el.innerHTML=html||'';
+}
+function startAutoTurnWatcher(){
+  if(_autoWatcherTimer) return;
+  _autoWatcherTimer=setInterval(autoTurnTick,AUTO_WATCH_MS);
+  setTimeout(autoTurnTick,3000);
+}
+function stopAutoTurnWatcher(){ if(_autoWatcherTimer){ clearInterval(_autoWatcherTimer); _autoWatcherTimer=null; } }
+async function autoTurnTick(){
+  if(!currentUser||_autoRunBusy) return;
+  _autoRunBusy=true;
+  try{
+    const {data,error}=await sb.from('games').select('*, game_players(*)').eq('gm_user_id',currentUser.id).eq('status','active');
+    if(error||!data) return;
+    const watched=data.map(g=>({g,tm:turnModeOf(g)})).filter(x=>x.tm.mode!=='manual');
+    if(!watched.length){ setAutoTurnStatus(''); return; }
+    const lines=[];
+    for(const {g,tm} of watched){
+      const rows=g.game_players||[];
+      const r=autoTurnReady(g,rows,tm);
+      if(!r.ready){
+        lines.push(`${g.name}: Turn ${g.turn} — ${r.reason}${tm.mode==='deadline'?` · deadline ${fmtDeadline(tm.nextDeadlineAt)}`:''}`);
+        continue;
+      }
+      if(!_autoLease(g.id,true)){ lines.push(`${g.name}: another GM tab is running Turn ${g.turn}`); continue; }
+      lines.push(`${g.name}: ⏳ running Turn ${g.turn} (${r.reason})…`);
+      setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()}<br>${lines.join('<br>')}`);
+      try{
+        if(currentGame&&currentGame.id===g.id) currentGame=Object.assign(currentGame,{turn:g.turn,game_state:g.game_state});
+        await runTurn({auto:true,game:g,reason:r.reason});
+      }catch(e){ console.error('auto-turn error',e); lines[lines.length-1]=`${g.name}: ⚠ ${e.message}`; }
+      finally{ _autoLease(g.id,false); }
+      // One turn per tick: the next tick re-reads fresh rows (and the next game).
+      break;
+    }
+    setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()} · keep this tab open<br>${lines.join('<br>')}`);
+  }catch(e){ console.error('autoTurnTick',e); }
+  finally{ _autoRunBusy=false; }
+}
+
 // Read {botCount, allBot} from a game's setup-phase config (stored in game_state at creation).
 function botConfigFor(game){
   let cfg={}; try{ cfg=typeof game.game_state==='string'?JSON.parse(game.game_state):game.game_state||{}; }catch(e){}
@@ -4999,7 +5307,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   homeCells.forEach((home,ki)=>{
     constraint[home.id]={terrain:pickLand(),taxBand:null,isHome:true}; // home is land (race/pool set later)
     const ring=neighbourCells(home.r,home.c).filter(n=>!homeIdSet.has(n.id) && !constraint[n.id]); // free cells only
-    const shuffled=[...ring].sort(()=>Math.random()-0.5);
+    const shuffled=shuffleP(ring);
     let i=0;
     if(navalLevelOf(setupPlayers[ki])>=1 && i<shuffled.length){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; i++; }
     if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'poor'}; i++; }        // one poor land
@@ -5021,7 +5329,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // Provisional race, replaced wholesale by the terrain-weighted allocation pass below. The pass
   // needs every province's terrain decided first, so the loop cannot make the final call itself.
   const nextHumanoidRace=()=>{
-    if(_raceDeck.length===0) _raceDeck=[...RACES_P].sort(()=>Math.random()-0.5);
+    if(_raceDeck.length===0) _raceDeck=shuffleP(RACES_P);
     return _raceDeck.pop();
   };
   for(let row=0;row<rows;row++){
@@ -5106,7 +5414,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         const nonGarrison=fullPool.filter(t=>!t.toLowerCase().includes('garrison'));
         const garrison=fullPool.filter(t=>t.toLowerCase().includes('garrison'));
         const poolCount=Math.min(nonGarrison.length,rP(2,3));
-        const shuffled=[...nonGarrison].sort(()=>Math.random()-0.5).slice(0,poolCount);
+        const shuffled=shuffleP(nonGarrison).slice(0,poolCount);
         armyPool=[...shuffled,...garrison];
       }
       // Features (land provinces only): 2-4 explorable features each.
@@ -5131,9 +5439,11 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         // NO guardian monster and are never "cleared"; discovery works like any other feature
         // (Explore thresholds). Non-Pagans can find them; only Pagans can use them. Skipped entirely
         // when no player is Pagan, so a Pagan-less game is never littered with unusable sites.
-        // Task 3: ritual sites belong to the old wild faith — they appear ONLY in Primal (creature or
-        // monster) country, never in humanoid provinces. (RITUAL_SITE_CHANCE_HUMANOID retired.)
-        if(hasPaganPlayer && isPrimal && Math.random()<RITUAL_SITE_CHANCE_PRIMAL){
+        // 2026-09-07 batch 3 (Toby): EVERY primal (creature or monster) land province holds a ritual site —
+        // both rites can be performed there. 25% of humanoid land provinces also hold one, but with
+        // no wild creatures to bind only the Blood Offering is possible there (the Wild Hunt option
+        // is gated on the province's primal armyTypes in both the order form and the engine).
+        if(hasPaganPlayer && (isPrimal || Math.random()<RITUAL_SITE_CHANCE_HUMANOID)){
           features.push({name:RITUAL_SITE_NAMES[Math.floor(Math.random()*RITUAL_SITE_NAMES.length)],
             ritualSite:true, monster:null, discovered:false, cleared:false, treasure:0});
         }
@@ -5179,8 +5489,8 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     const humanoidProvs=provinces.filter(p=>p.terrain!=='sea'&&HUMANOID_RACES_GEN.has(p.race));
     const n=humanoidProvs.length;
     const quota={}; RACES_P.forEach(r=>{quota[r]=Math.floor(n/4);});
-    [...RACES_P].sort(()=>Math.random()-0.5).slice(0,n-Math.floor(n/4)*4).forEach(r=>{quota[r]++;});
-    for(const p of [...humanoidProvs].sort(()=>Math.random()-0.5)){
+    shuffleP(RACES_P).slice(0,n-Math.floor(n/4)*4).forEach(r=>{quota[r]++;});
+    for(const p of shuffleP(humanoidProvs)){
       const pool=RACES_P.filter(r=>quota[r]>0);
       const cands=pool.length?pool:[...RACES_P];
       const weights=cands.map(r=>(SIGNATURE_TERRAIN_P[r]===p.terrain?SIGNATURE_WEIGHT_P:1)*Math.max(1,quota[r]));
@@ -5548,7 +5858,19 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // more useful — one skill at level 2 and one at level 1, dealt round-robin from NEUTRAL_SKILL_POOL
   // so the skills are spread evenly across the whole neutral-hero population rather than clustered.
   const NEUTRAL_SKILL_POOL=['melee','archery','tactical','march','explorer','naval','sage','spy','thief','druid','white','psychic','illusory','elemental','necromancy'];
-  let _neutralSkillCursor=0;
+  // Item 1 (2026-09-07 batch 3): neutral-hero traits are DEALT FROM RESHUFFLED DECKS rather than rolled.
+  // The old round-robin cursor spread skills evenly but in province-id order, so the same skill
+  // recurred in a fixed stride down the map; alignment/race/temper were independent rolls, which on
+  // a normal map easily produced runs of identical results. A deck guarantees the intended
+  // proportions over every pass and a fresh random ORDER each pass.
+  const _mkDeck=(cards)=>{ let d=[]; return ()=>{ if(!d.length) d=shuffleP(cards); return d.pop(); }; };
+  const _dealPrimary=_mkDeck(NEUTRAL_SKILL_POOL);
+  const _dealSecondary=_mkDeck(NEUTRAL_SKILL_POOL);
+  // Alignment mix (Toby 2026-07-24): Divine/Undead 5%, Good/Evil 10%, Druidic/Pagan 20%, Neutral 30% —
+  // encoded as a 20-card deck (1/2/4/6/4/2/1) so every 20 neutral heroes hit the mix exactly.
+  const _dealAlign=_mkDeck([...Array(1).fill('Divine'),...Array(2).fill('Good'),...Array(4).fill('Druidic'),...Array(6).fill('Neutral'),...Array(4).fill('Pagan'),...Array(2).fill('Evil'),...Array(1).fill('Undead')]);
+  const _dealRace=_mkDeck(RACES_P);
+  const _dealTemper=_mkDeck(TEMPERS_P.slice(0,4));
   // ── SECRET Easter egg: reserve Garreth the Independent and pick which neutral LAND province he
   // guards. Reserving his name parts BEFORE the loop keeps "Garreth"/"the Independent" out of every
   // other hero's draw (item: unique names). He is otherwise an ordinary neutral guard.
@@ -5561,26 +5883,19 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // sea or primal (Creature/Monster) province. The monster class belongs to the ARMIES they lead,
     // never to the hero. (Previously sea guards wore a 'Creature'/'Monster' pseudo-race, which then
     // read absurdly once they wandered onto land — "Marigold the True (Creature, Good)".)
-    const hrace=RACES_P[Math.floor(Math.random()*RACES_P.length)];
+    const hrace=_dealRace();
     const hSkills={};
-    // Item 7: deal one level-2 skill and one level-1 skill, round-robin from the pool. The two
-    // cursors are offset (and the offset itself rotates each full pass) so that, across all neutral
-    // heroes, every skill appears roughly equally as both the L2 pick and the L1 pick — an even
-    // spread rather than a cluster. Magic schools are in the pool, so some neutral heroes can cast.
-    const _pool=NEUTRAL_SKILL_POOL, _pl=_pool.length;
-    const _i=_neutralSkillCursor++;
-    const _primary=_pool[_i%_pl];
-    let _secondary=_pool[(_i+1+Math.floor(_i/_pl))%_pl];
-    if(_secondary===_primary) _secondary=_pool[(_i+2)%_pl];
+    // Item 7 / Item 1: deal one level-2 skill and one level-1 skill from two independent reshuffled
+    // decks, so across all neutral heroes every skill appears equally often as the L2 pick and as the
+    // L1 pick, with no positional pattern. Magic schools are in the pool, so some neutral heroes can cast.
+    const _primary=_dealPrimary();
+    let _secondary=_dealSecondary();
+    if(_secondary===_primary){ const _alt=_dealSecondary(); if(_alt!==_primary) _secondary=_alt; else _secondary=NEUTRAL_SKILL_POOL[(NEUTRAL_SKILL_POOL.indexOf(_primary)+1)%NEUTRAL_SKILL_POOL.length]; }
     hSkills[_primary]=2;
     hSkills[_secondary]=(hSkills[_secondary]||0)+1;
     // Druidic neutral heroes are guaranteed the Druid skill (needed to lead primal armies without
-    // penalty); if the round-robin didn't already give it, fold it into the level-1 slot.
-    // Wandering-hero alignment mix (Toby 2026-07-24): Neutral-centred bell —
-    // Divine/Undead 5%, Good/Evil 10%, Druidic/Pagan 20%, Neutral 30%.
-    const AWTS=[['Divine',5],['Good',10],['Druidic',20],['Neutral',30],['Pagan',20],['Evil',10],['Undead',5]];
-    const aRoll=Math.random()*100;let aCum=0,wAlign='Neutral';
-    for(const[al,wt] of AWTS){aCum+=wt;if(aRoll<aCum){wAlign=al;break;}}
+    // penalty); if the deal didn't already give it, fold it into the level-1 slot.
+    let wAlign=_dealAlign();
     if(wAlign==='Druidic'&&!hSkills.druid) hSkills.druid=1;
     const _isGarreth=(lp.id===_garrethProvId);
     if(_isGarreth) wAlign='Neutral'; // Garreth/the Independent are Neutral-pool names — keep it consistent
@@ -5589,7 +5904,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       id:hid,name:baseName,isKing:false,player:null,
       _unkillable:_isGarreth,  // SECRET: never dies (see _escapesTheEnd / handleHeroDeath)
       race:hrace,alignment:wAlign,
-      temper:TEMPERS_P[Math.floor(Math.random()*4)],
+      temper:_dealTemper(),
       hp:15,maxHp:0,skills:hSkills,aptitude:{},
       // Neutral heroes carry the province's neutral armies
       armies:[...(lp.neutralDefenders||[])],
@@ -5629,6 +5944,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
   grantMithrilToDwarves(_newGameState); // Item 3: dwarf characters of a dwarf realm start suited in mithril
   ensureAllLairHoards(_newGameState);   // Item 4 (2026-09-07): every lair's gold and magic decided now
+  // Sept 2026 redesign: max HP is derived from skills — set every starting character to the formula, at full health.
+  _MAXHP_PLAYERS=players;
+  allChars.forEach(c=>{ c.maxHp=computeMaxHp(c,players); c.hp=c.maxHp; });
+  _newGameState._maxHpV2=true; _newGameState._guardiansV2=true; _newGameState._guardiansVer=GUARDIAN_TABLE_VER;
   return _newGameState;
 }
 
@@ -6411,9 +6730,15 @@ function buildTurnReport(gameState, playerIndex){
   // availableHeroes: per province, wandering heroes visible to this player
   const availableHeroesByProv={};
   gameState.world.provinces.forEach(p=>{
+    // Item 2 (2026-09-07 batch 3): use the SAME visibility rule as the map / Wandering Heroes sightings —
+    // a province you OWN or where one of your characters stands right now, and never a hero who moved
+    // unspotted / invisible this turn. Previously this list also covered every province you had EVER
+    // visited (heroes no longer on your map) and ignored stealth, so the Hire dropdown and the map
+    // disagreed about who was where.
     const provHeroes=gameState.characters.filter(c=>
       c.player===null && c.alive && c.location===p.id && !c._isNeutralGuard && !c._justDefeated &&
-      (ownedProvIds.has(p.id)||visitedProvIds.has(p.id))
+      (ownedProvIds.has(p.id)||playerCharLocations.has(p.id)) &&
+      !(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(p.id)) && c._invisTurn!==gameState.turn
     );
     if(provHeroes.length>0){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
@@ -6586,7 +6911,7 @@ const SAGE_DISCOVERIES_P=[
   // ── Heroic ──
   {id:'sd33',name:'Duelling Code',category:'Heroic',desc:'Your characters gain +10% to hit in all personal duels and encounters.',effect:{type:'duelBonus',pct:0.10}},
   {id:'sd34',name:'Mounted Couriers',category:'Heroic',desc:'Newly hired heroes may act from the phase they are hired (not the next phase).',effect:{type:'immediateHire'}},
-  {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king gains double the usual permanent HP for slaying enemy commanders.',effect:{type:'kingKillHpX2'}},
+  {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king learns twice as much from each kill: the fighting-skill experience roll for slaying an enemy commander or lair guardian is doubled.',effect:{type:'kingKillHpX2'}},
   {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Characters who are slain in encounters have a 20% chance to survive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
   {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters\' Melee and Archery treated as 1 level higher in personal combat.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
   {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'The wages of all your heroes are halved.',effect:{type:'halveHeroWages'}},
@@ -6895,20 +7220,32 @@ const ENCOUNTER_SPELLS_P=new Set([
 // Spells available in encounters as CA tactic (subset of above)
 
 
-async function runTurn(){
-  const msg=document.getElementById('detail-msg');
+// opts.auto  — called by the auto-turn watcher: no confirm dialog, status goes to the watcher banner
+// opts.game  — the game row to run (defaults to currentGame); the watcher may run a game the GM isn't viewing
+async function runTurn(opts){
+  opts=opts||{};
+  const auto=!!opts.auto;
+  const gameRow=opts.game||currentGame;
+  const viewing=!!(currentGame&&gameRow&&currentGame.id===gameRow.id);
+  const _detailMsg=document.getElementById('detail-msg');
+  // In auto mode the detail panel may be showing another game (or not at all) — route status to the watcher
+  // banner, and mirror it into the detail panel only when the GM is looking at this very game.
+  const msg=(!auto&&_detailMsg)?_detailMsg:{
+    _v:'', get innerHTML(){ return this._v; },
+    set innerHTML(v){ this._v=v; if(v) setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · ${gameRow.name||''} (${opts.reason||'auto'})<br>${v}`); if(viewing&&_detailMsg) _detailMsg.innerHTML=v; }
+  };
 
   // Confirm before running — prevent accidental double-runs
-  const expectedTurnToRun=currentGame.turn;
-  if(!confirm(`Run Turn ${expectedTurnToRun}? This will resolve all submitted orders and advance the game. This cannot be undone.`)){
+  const expectedTurnToRun=gameRow.turn;
+  if(!auto && !confirm(`Run Turn ${expectedTurnToRun}? This will resolve all submitted orders and advance the game. This cannot be undone.`)){
     msg.innerHTML='';return;
   }
 
   msg.innerHTML='<div class="msg-info">⏳ Loading game state and player orders…</div>';
 
   // 1. Load fresh data
-  const {data:freshGame,error:gErr}=await sb.from('games').select('*').eq('id',currentGame.id).single();
-  const {data:freshPlayers,error:pErr}=await sb.from('game_players').select('*').eq('game_id',currentGame.id);
+  const {data:freshGame,error:gErr}=await sb.from('games').select('*').eq('id',gameRow.id).single();
+  const {data:freshPlayers,error:pErr}=await sb.from('game_players').select('*').eq('game_id',gameRow.id);
   if(gErr||pErr||!freshGame){
     msg.innerHTML=`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;return;
   }
@@ -6922,6 +7259,7 @@ async function runTurn(){
   try{
     G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;
     seedUsedArmyNames(G); seedUsedHeroNames(G);
+    migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
   }catch(e){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
@@ -7094,7 +7432,8 @@ async function runTurn(){
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
   msg.innerHTML=`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   // Clear orders from DB now — restored below if resolution fails
-  await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',currentGame.id);
+  await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',gameRow.id);
+  let _saveConflict=false; // set if the conditional state save finds the turn already advanced elsewhere
 
   // NOTE (Sept 2026): the bot passes and the default-to-Defend pass now run INSIDE the resolution try-block
   // (below) so the bot hunters' duel forecast can call the engine's personal-combat resolver, whose function
@@ -7291,45 +7630,8 @@ async function runTurn(){
     else          { TM(defChar)[bucket]+=atkLost; TM(atkChar)[bucket]-=atkLost; }
   }
 
-  // ── Task 12: MAXIMUM-HP CAP ───────────────────────────────────────────────
-  // A character's maximum HP may not be raised beyond  15 + Melee×4 + (every OTHER skill summed)×2 . The
-  // cap GATES INCREASES only — it never retroactively cuts HP a character already holds, so a starting
-  // hero whose maxHp already exceeds their skill-based ceiling keeps it, but cannot grow further until
-  // they train new skills (which raises the ceiling). All EARNED maxHp growth — kill-hardening, the
-  // magic-cast perk, Search-Lair rewards, Orc Vigour — flows through raiseMaxHp so the ceiling is
-  // enforced uniformly and, when a gain is withheld, the player is told why. (Magic-item maxHp bonuses
-  // are static, reversible equipment and sit OUTSIDE this cap — see applyItemMaxHp.)
-  // Sept 2026 (item 3): cap = 15 base + Melee×4 + other skills×2. ORCISH characters serving an
-  // ORCISH realm are hardier: 15 base + Melee×5 + other skills×3 (a racial gift, in the rulebook).
-  function hpCapIsOrc(ch){ return !!(ch&&ch.race==='Orcish'&&ch.player!=null&&G.players[ch.player]&&G.players[ch.player].race==='Orcish'); }
-  function hpCapFormula(ch){ return hpCapIsOrc(ch)?'15 + Melee×5 + other skills×3':'15 + Melee×4 + other skills×2'; }
-  function hpCapFor(ch){
-    if(!ch) return Infinity;
-    const melee=skillLevel(ch,'melee');
-    let others=0;
-    ALL_SKILLS.forEach(sk=>{ if(sk!=='melee') others+=skillLevel(ch,sk); });
-    const orc=hpCapIsOrc(ch);
-    return 15 + melee*(orc?5:4) + others*(orc?3:2);
-  }
-  // Raise ch.maxHp by up to `amount` (healing current HP by whatever is actually granted), clamped to
-  // the cap. Returns the amount granted. `reason` is a short clause for the Chronicle line.
-  function raiseMaxHp(ch, amount, reason){
-    if(!ch||!(amount>0)) return 0;
-    const cap=hpCapFor(ch);
-    const cur=ch.maxHp||0;
-    const prov=(ch.location!=null)?G.world.provinces[ch.location]:null;
-    const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
-    if(cur>=cap){
-      log('system',`${ch.name} — ${reason} — would grow tougher, but has reached the limit of what their skills can sustain: maximum HP is capped at ${cap} (${hpCapFormula(ch)}). Training new skills will raise the ceiling.`,tgt);
-      return 0;
-    }
-    const granted=Math.min(amount, cap-cur);
-    ch.maxHp=cur+granted;
-    if(ch.hp!=null) ch.hp=Math.min(ch.maxHp, ch.hp+granted);
-    const capNote=(granted<amount)?` (${amount-granted} more withheld — the skill cap of ${cap} is reached)`:'';
-    log('system',`💪 ${ch.name}: ${reason} — maximum HP rises by ${granted} to ${ch.maxHp}${capNote}.`,tgt);
-    return granted;
-  }
+  // (Sept 2026: the Task-12 max-HP cap, raiseMaxHp and hpCapFor were removed — maximum HP is now a
+  // derived stat; see computeMaxHp / syncMaxHp at module level.)
 
   // ── LIVE TITLE PERKS + MINOR TITLES ── Determine who holds each Title going into this turn (once,
   // so a perk applies all turn). Function declarations (hoisted) + an EARLY computation so even the
@@ -7469,8 +7771,8 @@ async function runTurn(){
   // flushed at the END of the phase, so a line like "…Explorer rises to level 1…" reads as the
   // consequence it is — reported after the move/action that earned it, not jumping ahead of it.
   let _deferredSkillLogs=[];
-  function trySkillGain(char, skill, base, narr){
-    if(!char) return;
+  function trySkillGain(char, skill, base, narr, mult){
+    if(!char) return; mult=(mult>0?mult:1);
     const real=(char.id!=null && G.characters[char.id]) ? G.characters[char.id] : char;
     if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
     const lvl=(real.skills||{})[skill]||0;
@@ -7506,7 +7808,7 @@ async function runTurn(){
     // this turn, the next chance to raise it the same way is ×0.8 (cumulative). Reset each turn with _sgLog.
     const _gainsThisTurn=(real._sgLog.turnGains&&real._sgLog.turnGains[skill])||0;
     const _diminish=Math.pow(0.8,_gainsThisTurn);
-    if(Math.random()<Math.min(1,chance*_humanLearn*_diminish)){
+    if(Math.random()<Math.min(1,chance*_humanLearn*_diminish*mult)){
       real._sgLog.turnGains=real._sgLog.turnGains||{}; real._sgLog.turnGains[skill]=_gainsThisTurn+1;
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
       // Item 3: record the raise so this skill can't rise again this phase, nor again in this
@@ -7516,10 +7818,11 @@ async function runTurn(){
       const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
       const _payAfter=real.pay||0;
+      const _hpRise=syncMaxHp(real,G.players); // Sept 2026 redesign: skill drives max HP — apply the rise now
       // A March/Naval rise increases pace immediately: recompute this character's move pool so the
       // extra reach is available for the rest of THIS turn (preserving points already spent).
       if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
-      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience.`;
+      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle.
       // Item 2 (this session): the deferred (non-battle) skill-rise carries the character's id and the
@@ -8308,7 +8611,7 @@ const BATTLE_ARMY_SPELLS={
           } else if(spellName==='Lightning Bolt'){
             // A number of enemy armies equal to the caster's level lose 20% of their base strength for the battle.
             const n=Math.min(defenders.length, Math.max(1,Math.min(spellLvl,5)));
-            const picks=defenders.slice().sort(()=>Math.random()-0.5).slice(0,n);
+            const picks=shuffleP(defenders).slice(0,n);
             picks.forEach(d=>{ d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20)); });
             narrative.push(`  ⚡ Lightning Bolt sears ${n} enemy unit${n!==1?'s':''} — each loses 20% of its strength this battle.`);
           } else if(spellName==='Curse'){
@@ -8476,7 +8779,7 @@ const BATTLE_ARMY_SPELLS={
               narrative.push(`  🔥 Fireball halves the attackers' strongest unit, ${tgt.unitName||tgt.type} (−${cut}).`);
             } else if(defSpellName==='Lightning Bolt'){
               const n=Math.min(armies.length,Math.max(1,defSpellLvl));
-              armies.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(a=>{ a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(a)*0.20)); });
+              shuffleP(armies).slice(0,n).forEach(a=>{ a._tempStrReduction=(a._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(a)*0.20)); });
               narrative.push(`  ⚡ Lightning Bolt sears ${n} attacking unit${n!==1?'s':''} — each loses 20% of its strength.`);
             } else if(defSpellName==='Psychic Blast'){
               if(c){ c._druidNegated=true; narrative.push(`  🧠 Psychic Blast severs ${cName}'s bond with their beasts — their Druid skill is negated this battle.`); }
@@ -9172,6 +9475,7 @@ const BATTLE_ARMY_SPELLS={
       // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
       melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
       archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
+      meleeRaw:skillLevel(ch,'melee'), archeryRaw:skillLevel(ch,'archery'), // Sept 2026 redesign: damage scales on the raw 1–9 level
       temper:effTemper(ch), alignment:ch.alignment, // Item 7: an equipped temper item overrides the wearer's own
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
               elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
@@ -9253,7 +9557,12 @@ const BATTLE_ARMY_SPELLS={
   }
   function pcMeleeDamage(attacker, defender){
     const diff=(attacker.melee||0)-(defender.melee||0);
-    let dmg=Math.max(1, rng(2,5)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
+    // Sept 2026 redesign: blows scale with the striker's OWN skill (+ceil(Melee/2)) as well as the
+    // skill gap, so high-level fights end in a sane number of rounds now that max HP runs to 100.
+    // For characters the bonus reads the RAW skill level (1–9, `meleeRaw`) — combat hit-chance stays on the
+    // 0–5 scale, but mastery past 5 lands heavier blows. Guardians use their melee stat.
+    const _dsk=(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0));
+    let dmg=Math.max(1, rng(2,5)+Math.ceil(_dsk/2)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // A Cautious fighter rolls with the blow rather than taking it square on.
     dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
@@ -9466,6 +9775,12 @@ const BATTLE_ARMY_SPELLS={
     const ab=eff.match(/absorbs next (\d+) dmg/i);
     if(ab){ actor.status.absorb=(actor.status.absorb||0)+parseInt(ab[1]); narrative.push(`  A ward shrouds the ${actor.name}, ready to drink ${actor.status.absorb} damage.`); }
     if(/ignores all armour/i.test(eff)) foe.status.incomingDmgBonus=(foe.status.incomingDmgBonus||0)+3;
+    // ── Halving (Sept 2026: replaced Finger of Death's 10% instant kill) — a chance to cut the foe's CURRENT HP in half.
+    const hv=eff.match(/(\d+)% halves current hp/i);
+    if(hv && foe.hp>1 && Math.random()*100<parseInt(hv[1])){
+      const _cut=Math.floor(foe.hp/2); foe.hp-=_cut;
+      narrative.push(`  ☠ Death's touch takes hold — ${foe.name}'s strength is torn in half (−${_cut}). (HP ${Math.max(0,Math.round(foe.hp))})`);
+    }
     // ── Instant kill ──
     const ik=eff.match(/(\d+)% instant kill/i);
     if(ik && Math.random()*100<parseInt(ik[1])){
@@ -9541,7 +9856,7 @@ const BATTLE_ARMY_SPELLS={
   // failed withdrawal consumes the whole Fire action.
   const ARCHERY_VOLLEY_AT=3;   // arrows per Fire action becomes 2 at this skill level
   function pcVolleySize(cbt){ return (cbt.archery||0)>=ARCHERY_VOLLEY_AT ? 2 : 1; }
-  function pcArrowDamage(cbt){ return rng(2,5)+Math.floor((cbt.archery||0)/3); }
+  function pcArrowDamage(cbt){ const _ask=(cbt.archeryRaw!=null?cbt.archeryRaw:(cbt.archery||0)); return rng(2,5)+Math.ceil(_ask/2); } // Sept 2026 redesign: was floor(Archery/3); raw skill (1–9) for characters
   function pcFireShot(actor, foe, narrative){
     // ARCHERY L8 (Trueshot) aftermath: a crippled foe's whole volley goes to nothing.
     if(actor.status && actor.status.nextAttackFails>0){
@@ -9846,7 +10161,7 @@ const BATTLE_ARMY_SPELLS={
   // plan, the faster/higher-initiative side going first — a strict back-and-forth.
   // opts: {maxRounds, feature}. Returns {winner, loser, fledBy, parley, stoleBy, aHp, bHp, narrative}
   function resolvePersonalCombat(A, B, opts){
-    opts=opts||{}; const maxRounds=opts.maxRounds||16;
+    opts=opts||{}; const maxRounds=opts.maxRounds||20;
     const narrative=[];
     const state={fledBy:null, parley:false, stoleBy:null, range:'spell', mirror:null, feature:opts.feature||null}; // all combats begin at Spell range
     // Initiative: speed first, then raw martial skill; ties broken at random.
@@ -9969,7 +10284,7 @@ const BATTLE_ARMY_SPELLS={
             cbt.ref._mercyFledTurn=G.turn;                 // out of action this turn; relocated home at end of turn
             if(foe && foe.kind==='character' && foe.ref && Array.isArray(cbt.ref.items) && cbt.ref.items.length>0){
               const _idx=Math.floor(Math.random()*cbt.ref.items.length);
-              const _lost=cbt.ref.items.splice(_idx,1)[0];
+              const _lost=cbt.ref.items.splice(_idx,1)[0]; applyItemMaxHp(cbt.ref,_lost);
               foe.ref.items=foe.ref.items||[]; foe.ref.items.push(_lost);
               narrative.push(`  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
             }
@@ -10087,7 +10402,7 @@ const BATTLE_ARMY_SPELLS={
     if(_ia) narrative.push(_ia);
     if(_ib) narrative.push(_ib);
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
-    const res=resolvePersonalCombat(A, B, {maxRounds:16});
+    const res=resolvePersonalCombat(A, B, {maxRounds:20});
     narrative.push(...res.narrative);
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
@@ -10303,7 +10618,7 @@ const BATTLE_ARMY_SPELLS={
         if(enemyCmdr){ enemyCmdr._druidNegated=true; narr.push(`  🧠 Psychic Blast severs ${enemyCmdr.name}'s bond with their beasts — their Druid skill is negated this battle.`); }
       } else if(spellName==='Lightning Bolt'){
         const n=Math.min(targets.length,Math.max(1,Math.min(spellLvl,5)));
-        targets.slice().sort(()=>Math.random()-0.5).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20));});
+        shuffleP(targets).slice(0,n).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.max(1,Math.round(unitBaseStrength(d)*0.20));});
         narr.push(`  ⚡ Lightning Bolt: ${n} enemy unit${n!==1?'s':''} lose 20% strength.`);
       } else if(spellName==='Curse'){
         if(enemyCmdr){ enemyCmdr._curseHalveStat=bestCurseSkill(enemyCmdr); narr.push(`  ☠ Curse withers ${enemyCmdr.name}'s ${curseSkillLabel(enemyCmdr._curseHalveStat)} — halved for this battle.`); }
@@ -10854,7 +11169,7 @@ const BATTLE_ARMY_SPELLS={
     if(Array.isArray(atkTactics)&&atkTactics.length) A.tactics=atkTactics.slice();
     if(Array.isArray(defTactics)&&defTactics.length) B.tactics=defTactics.slice();
 
-    const res=resolvePersonalCombat(A, B, {maxRounds:16});
+    const res=resolvePersonalCombat(A, B, {maxRounds:20});
     narrative.push(...res.narrative);
 
     // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
@@ -10902,11 +11217,14 @@ const BATTLE_ARMY_SPELLS={
     const flyer=/harpy|wasp|bat|wyvern|eagle|roc\b|manticore|dragon|wyrm|drake|griffon|sprite|pixie|storm eagle|vulture|chimera|sphinx|banshee|dracolich|imp/.test(n);
     const armoured=cat==='giant'||cat==='construct'||/knight|basilisk|rock|stone|gargoyle|ironclad|carapace|turtle|crab|colossus|mummif/.test(n);
     const beast=cat==='beast'||cat==='vermin';
+    // Sept 2026 guardian balance pass: the melee swings were the main driver of tier outliers (armoured giants and
+    // constructs at ×0.65 melee were effectively 50% tougher than their HP; beasts at ×1.2 were paper). Narrowed to
+    // ×0.8 / ×1.1; the spell and arrow swings keep their flavour.
     if(undead){ mods.spell+=0.5; mods.archery-=0.3; }      // magic-vulnerable, arrows pass through bone
     if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×2)
-    if(flyer){ mods.archery+=0.5; }                        // shot out of the sky
-    if(armoured){ mods.melee-=0.35; mods.spell+=0.3; }     // blades turn aside; magic ignores armour
-    if(beast&&!undead){ mods.melee+=0.2; }                 // soft-bodied, blades bite
+    if(flyer){ mods.archery+=0.4; }                        // shot out of the sky
+    if(armoured){ mods.melee-=0.2; mods.spell+=0.3; }      // blades turn aside; magic ignores armour
+    if(beast&&!undead){ mods.melee+=0.1; }                 // soft-bodied, blades bite
     for(const k in mods) mods[k]=Math.max(0.4, Math.min(1.8, mods[k]));
     const pacifiable=beast&&!undead&&!demon;
     const closeRounds={fast:2, medium:3, slow:4}[m.speed||'medium']||3;
@@ -10978,7 +11296,7 @@ const BATTLE_ARMY_SPELLS={
     mon.pacifiable=!!traits.pacifiable;
     narrative.push(`The ${m.name} is ${mon.speedName}-moving${pcHasRanged(mon)?', and fights at range as well as close':''}. Its plan: ${mon.tactics.slice(0,6).join(', ')}…`);
 
-    const res=resolvePersonalCombat(hero, mon, {maxRounds:16, feature});
+    const res=resolvePersonalCombat(hero, mon, {maxRounds:20, feature});
     narrative.push(...res.narrative);
 
     // ── Outcome ──
@@ -11021,7 +11339,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng}; }catch(e){}
+  try{ if(typeof window!=='undefined') window._kcTest={resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain}; }catch(e){}
 
   // When a player's character visits/spies a province, record any dead heroes there as seen
   function recordDeadHeroSighting(playerIdx, provId){
@@ -11044,24 +11362,15 @@ const BATTLE_ARMY_SPELLS={
   // pushed there; otherwise it is logged.
   function awardKillXP(killer, victim, narrative){
     if(!killer || !victim || killer===victim || (killer.hp||0)<=0) return;
-    if(victim.alive===true && !victim.killedThisTurn) return; // Item 15: the victim was saved (Battlefield Surgery / unkillable) — no kill, no hardening
+    if(victim.alive===true && !victim.killedThisTurn) return; // Item 15: the victim was saved (Battlefield Surgery / unkillable) — no kill, no lesson
+    // Sept 2026 redesign: no permanent-HP reward. A kill is a hard lesson in the killer's fighting
+    // skill instead — one extra experience roll in Melee (or Archery for a bowman), weighted by how
+    // tough the fallen foe was. Skill drives max HP, so seasoned killers still end up the hardiest.
     const vHp=victim.maxHp||20;
-    let hpGain=vHp>=36?rng(4,8):vHp>=21?rng(3,6):vHp>=13?rng(2,4):rng(1,3);
-    if(killer.isKing && hasDisc(killer.player,'sd35')) hpGain*=2; // sd35 Order of the Golden Shield: the king hardens twice as fast from his kills
-    // Task 12: clamp the hardening to the skill-based max-HP ceiling.
-    const cap=hpCapFor(killer), cur=killer.maxHp||20;
-    if(cur>=cap){
-      const msg=`⚔ ${killer.name} cuts down ${victim.name}, but is already as hardened as their skills allow — maximum HP is capped at ${cap} (${hpCapFormula(killer)}).`;
-      if(narrative){ narrative.push(msg); } else { const kp=G.world.provinces[killer.location]; log('combat',msg,{actor:killer.player,targets:[killer.player].filter(x=>x!==null),provinceId:kp?.id,public:true}); }
-      return;
-    }
-    const granted=Math.min(hpGain, cap-cur);
-    killer.maxHp=cur+granted;
-    killer.hp=Math.min(killer.maxHp,(killer.hp||0)+granted);
-    const capNote=(granted<hpGain)?` (the rest withheld — skill cap of ${cap} reached)`:'';
-    const msg=`⚔ ${killer.name} grows hardened from slaying ${victim.name} — maximum HP permanently increases by ${granted} (now ${killer.maxHp} max HP)${capNote}.`;
-    if(narrative){ narrative.push(msg); }
-    else { const kp=G.world.provinces[killer.location]; log('combat',msg,{actor:killer.player,targets:[killer.player].filter(x=>x!==null),provinceId:kp?.id,public:true}); }
+    let mult=vHp>=60?3:vHp>=40?2.5:vHp>=25?2:1.5;
+    if(killer.isKing && hasDisc(killer.player,'sd35')) mult*=2; // sd35 Order of the Golden Shield: the king learns twice as much from his kills
+    const sk=(skillLevel(killer,'archery')>skillLevel(killer,'melee'))?'archery':'melee';
+    trySkillGain(killer, sk, SKILLGAIN_STD, narrative, mult);
   }
 
   // ── Dispersal of a dead character's armies ──
@@ -11264,6 +11573,7 @@ const BATTLE_ARMY_SPELLS={
     'search':'search','search lair':'search','search feature':'search', // 'search feature' kept as a backward-compat alias for orders written before the Lair rename
     'recruit':'recruit','recruit armies':'recruit',
     'hire':'hire','hire hero':'hire',
+    'release':'release','release hero':'release','dismiss hero':'release',
     'leave_army':'leave_army','leave/transfer army':'leave_army','leave army':'leave_army','transfer army':'leave_army',
     'disband_army':'disband_army','disband army':'disband_army','disband':'disband_army',
     'pickup_army':'pickup_army','pick up army':'pickup_army','pick_up_army':'pickup_army',
@@ -12305,29 +12615,24 @@ const BATTLE_ARMY_SPELLS={
           if(f.monster) TM(c).monster += Math.round((f.monster.hp||0)*(encounter.pacified?0.5:1));
           const tier=f.monster?.power||'Weak';
           // Reward ladder — tougher monsters are meaningfully more worthwhile (gold + item odds + HP).
-          const T=({Weak:{gold:[3,8],hp:[1,3],itemChance:0.25,bonusItem:0},
-                    Moderate:{gold:[8,16],hp:[2,4],itemChance:0.60,bonusItem:0},
-                    Powerful:{gold:[18,25],hp:[3,6],itemChance:1.0,bonusItem:0.15},
-                    Legendary:{gold:[26,40],hp:[5,9],itemChance:1.0,bonusItem:0.50}})[tier]
-                    ||{gold:[1,5],hp:[1,3],itemChance:0.25,bonusItem:0};
+          const T={gold:ENCOUNTER_CLEAR_GOLD_BANDS[tier]||[1,5]}; // Sept 2026 redesign: one gold table; no HP reward
           // Item 9: pay out the cached clear-gold roll so a scouted figure is exactly honoured; if the
           // site was never scouted, encounterClearGold rolls it now from the same tier band (T.gold).
           const gold=encounterClearGold(f);
           const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct'))); // Item 5: lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
-          // Permanent max-HP growth (the main power curve alongside magic items).
-          const preHpMax=c.maxHp||20;
-          const rawHpGain=rng(T.hp[0],T.hp[1]);
-          const _capHere=hpCapFor(c); // Task 12: skill-based max-HP ceiling
-          const hpGain=Math.max(0, Math.min(rawHpGain, _capHere-preHpMax));
-          c.maxHp=preHpMax+hpGain;
+          // Sept 2026 redesign: no permanent-HP reward. The victory is a lesson in the hero's fighting
+          // skill — an extra experience roll weighted by the guardian's tier (skill drives max HP).
+          { let _lm=({Weak:1.5,Moderate:2,Powerful:2.5,Legendary:3})[tier]||1.5;
+            if(c.isKing&&hasDisc(c.player,'sd35')) _lm*=2; // sd35: the king learns twice as much from his kills
+            const _lsk=(skillLevel(c,'archery')>skillLevel(c,'melee'))?'archery':'melee';
+            trySkillGain(c,_lsk,SKILLGAIN_STD,null,_lm); }
           const postHp=(encounter.heroHpAfter!=null?encounter.heroHpAfter:c.hp);
-          const hpLost=Math.max(0,preHpMax-postHp);
-          const healAmt=Math.ceil(hpLost*0.5)+hpGain;
-          c.hp=Math.min(c.maxHp, postHp+healAmt);
-          const _capNoteLair=(hpGain<rawHpGain)?(hpGain>0?` (part of the gain withheld — skill cap ${_capHere})`:` (no max-HP gain — already at the skill cap of ${_capHere})`):'';
-          log('explore',`⚔ ${c.name} grows hardened — max HP +${hpGain} (now ${c.maxHp})${_capNoteLair}, and catches their breath to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          const hpLost=Math.max(0,(c.maxHp||20)-postHp);
+          const healAmt=Math.ceil(hpLost*0.5);
+          c.hp=Math.min(c.maxHp||20, postHp+healAmt);
+          log('explore',`⚔ ${c.name} catches their breath after the fight, recovering to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           // Item drops — chance/quantity scale with tier, and item QUALITY scales with tier too.
           // Item 2 (this session): uniqueness. `_taken` seeds from the game-wide roll of items already
           // found (G._awardedItems) and grows as each drop is chosen, so no lair — this one or any
@@ -12477,7 +12782,7 @@ const BATTLE_ARMY_SPELLS={
           _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
           if(!HUMANOID_RACES_SG.has(recruitRace)&&!_destGarrison) trySkillGain(_destChar,'druid',SKILLGAIN_STD); // Druid: led a non-humanoid recruit
           }
-          recordRecruit(armyType,prov.id);
+          recordRecruit(armyType,prov.id,actualQty);
           recruited.push(`${actualQty}× ${armyType}`);
         }
         if(recruited.length>0){
@@ -12496,10 +12801,13 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'hire':{
-        const heroId=parseInt(target);const h=G.characters[heroId];
+        // Item 2 (2026-09-07 batch 3): resolve the hero by id, not by array position (defensive — the id==index
+        // invariant holds today, but a positional lookup would silently hire the WRONG hero if it ever broke).
+        const heroId=parseInt(target);const h=Number.isInteger(heroId)?((G.characters||[]).find(x=>x&&x.id===heroId)||null):null;
         if(!h||h.player!==null||h.location!==c.location){log('hire',`${c.name} tries to hire a hero but none matching that description are available in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
         if(h._isNeutralGuard){log('hire',`${h.name} is sworn to defend ${prov.name} and will not abandon their post — the guardian of a neutral province cannot be hired away. You must defeat them in battle to take the province.`,{actor:c.player,targets:[c.player]});break;}
         if(h._justDefeated){log('hire',`${h.name} is furious at being driven from their home — they refuse to work with you this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;}
+        if(h._releasedTurn===G.turn){log('hire',`${h.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;}
         // ── Alignment-distance wages (2026-07-24) ── replaces the old race-based 2g/3g system.
         // Wage = 2g + 1g per 2 steps between the hero's alignment and the hiring KINGDOM's
         // alignment on the Divine…Undead spectrum. Divine realms cannot hire Undead heroes and
@@ -12832,8 +13140,9 @@ const BATTLE_ARMY_SPELLS={
           c._practiceFailStreak={turn:G.turn,n:0}; // Item 7: success resets the streak
           c.skills[skill]=(c.skills[skill]||0)+1;
           recalcHeroPay(c);
+          const _prHp=syncMaxHp(c,G.players); // Sept 2026 redesign: skill drives max HP
           // Item 2 (2026-09-07 batch 2): a mentored improvement is guaranteed — no roll to show.
-          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}`,{actor:c.player,targets:[c.player]});
+          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}${_prHp>0?` (Max HP +${_prHp} → ${c.maxHp}.)`:''}`,{actor:c.player,targets:[c.player]});
         } else {
           c._practiceFailStreak={turn:G.turn,n:_streak+1}; // Item 7: the next practice this turn is ×1.2 likelier
           log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
@@ -12950,7 +13259,7 @@ const BATTLE_ARMY_SPELLS={
         const uniq=[...new Set(idxs)].sort((a,b)=>b-a);
         if(uniq.length===0){log('item',`${c.name}: cannot send item.`,{actor:c.player,targets:[c.player]});break;}
         const given=[];
-        uniq.forEach(i=>{ given.push(...c.items.splice(i,1)); });
+        uniq.forEach(i=>{ given.push(...c.items.splice(i,1)); }); applyItemMaxHp(c,null);
         const _names=given.map(it=>it.name).join(', ');
         const _sameProv=(recip.location===c.location);
         if(_sameProv){
@@ -13037,6 +13346,26 @@ const BATTLE_ARMY_SPELLS={
         if((c.armies||[]).length===0){
           log('move',`${c.name} left all armies behind in ${prov.name} — now travelling light (land ${movePoints[c.id]}, sea ${seaMovePoints[c.id]} move points).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
+        break;
+      }
+      case 'release':{
+        // ── RELEASE HERO (Toby, 2026-09-08) ── dismiss a hero from the realm's service. They become an
+        // ordinary wandering hero (player===null, not a guard), keep every magic item they carry, keep
+        // their skills/HP, and can be hired by anyone from NEXT turn (never re-hired the same turn they
+        // were let go). Refused for kings and for a hero still leading any army — the troops must be
+        // transferred, garrisoned or disbanded first. The hero's remaining orders this turn are dropped.
+        if(c.isKing){log('system',`${c.name} wears the crown — a king cannot release himself from his own service.`,{actor:c.player,targets:[c.player]});break;}
+        if(c.player==null){break;}
+        if((c.armies||[]).length>0){
+          log('system',`${c.name} cannot be released while leading ${c.armies.length} unit${c.armies.length!==1?'s':''} — transfer, garrison or disband the troops first.`,{actor:c.player,targets:[c.player]});break;}
+        const _relPi=c.player, _relPl=player;
+        const _itemNote=(c.items||[]).length?` They take ${(c.items||[]).map(it=>it&&it.name).filter(Boolean).join(', ')} with them.`:'';
+        if(_relPl){ _relPl.heroes=(_relPl.heroes||[]).filter(id=>id!==c.id); }
+        c.player=null; c._isNeutralGuard=false; delete c._isHeir; delete c.hiredInPhase; delete c._pursuit;
+        c._releasedTurn=G.turn; c._releasedBy=_relPi;
+        c.pay=Math.max(1,Math.ceil(Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0)/4)); // wandering default; the real hire wage is alignment-based
+        if(G.turnOrders[c.id]) for(let p2=ph+1;p2<5;p2++) G.turnOrders[c.id][p2]=null;
+        log('hire',`🕊 ${c.name} is released from ${_relPl?_relPl.name:'the realm'}'s service in ${prov.name} and takes up the wanderer's life.${_itemNote} They may be hired again from next turn.`,{actor:_relPi,targets:[_relPi],provinceId:prov.id,charId:c.id,phase:ph});
         break;
       }
       case 'disband_army':{
@@ -13194,7 +13523,7 @@ const BATTLE_ARMY_SPELLS={
             log('system',`${c.name} successfully picks ${victim.name}'s pockets but finds nothing of value.`,{actor:c.player,targets:[c.player]});
           } else {
             const idx=Math.floor(Math.random()*items.length);
-            const stolen=items.splice(idx,1)[0];
+            const stolen=items.splice(idx,1)[0]; applyItemMaxHp(victim,stolen);
             c.items=(c.items||[]);c.items.push(stolen);
             applyItemMaxHp(c,stolen); /* item 6 */
             c.merits=(c.merits||0)+2;
@@ -13502,6 +13831,8 @@ const BATTLE_ARMY_SPELLS={
           };
           if(t.player===null){
             // Wandering hero — enters your service permanently for free (you still pay upkeep).
+            // A hero released from service this turn cannot be charmed straight back by the same realm.
+            if(t._releasedTurn===G.turn&&t._releasedBy===c.player){ log('system',`${c.name}'s Charm finds ${t.name} unmoved — a hero only just dismissed will not be drawn back the same season.`,{actor:c.player,targets:[c.player]}); break; }
             // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
             const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'));
             if(_chWage==null){
@@ -13609,7 +13940,7 @@ const BATTLE_ARMY_SPELLS={
           const armies=(targetChar.armies||[]);
           if(armies.length===0){log('combat',`✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const n=Math.min(spellLevelEff, armies.length);
-          const picks=armies.slice().sort(()=>Math.random()-0.5).slice(0,n);
+          const picks=shuffleP(armies).slice(0,n);
           let demoted=0, destroyed=0;
           // Every tested unit is affected (100%). A Green unit is torn apart outright; any other unit fights
           // one experience level lower, and that reduction now persists for the REST OF THE TURN (across every
@@ -13652,7 +13983,7 @@ const BATTLE_ARMY_SPELLS={
           if(_elig.length===0){log('system',`${c.name}: ${t===c?'you have':t.name+' has'} no humanoid armies for Phantasmal Armies to duplicate.`,{actor:c.player,targets:[c.player]});break;}
           const _n=Math.min(_elig.length, Math.max(1, Math.floor(0.15*Math.min(spellLevel,5)*_realForce.length)));
           t._phantoms=t._phantoms||[];
-          [..._elig].sort(()=>Math.random()-0.5).slice(0,_n).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); t._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
+          shuffleP(_elig).slice(0,_n).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); t._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
           log('explore',`✨ ${c.name} conjures phantasmal duplicates of ${_n} of ${t===c?'their':t.name+"'s"} humanoid ${_n===1?'army':'armies'} — spectral doubles that march and fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:t.location,public:true});
         }
         else if(fn==='illusory_hide_feature'){
@@ -13791,7 +14122,7 @@ const BATTLE_ARMY_SPELLS={
           const dmg=10+spellLevelEff*3;
           targetChar.hp=Math.max(1,(targetChar.hp||20)-dmg);
           const src=targetChar.armies||[]; const kills=Math.min(src.length,2+Math.floor(spellLevelEff/2));
-          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,kills).sort((a,b)=>b-a);
+          const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
           idxs.forEach(i=>src.splice(i,1));
           log('combat',`⚡ ${c.name} calls down Divine Judgment on ${targetChar.name} — ${dmg} holy damage${kills>0?`, and ${kills} of their unit${kills!==1?'s':''} are smitten to ash`:''}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
           notifyTarget(targetChar,`⚡ Divine Judgment falls on ${targetChar.name} from ${c.name} — ${dmg} holy damage${kills>0?`, ${kills} unit${kills!==1?'s':''} smitten`:''}.`,ph,'combat');
@@ -13810,7 +14141,7 @@ const BATTLE_ARMY_SPELLS={
           const src=targetChar.armies||[];
           if(src.length===0){log('combat',`✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const take=Math.max(1,Math.floor(src.length*0.25));
-          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,take).sort((a,b)=>b-a);
+          const idxs=shuffleP(src.map((_,i)=>i)).slice(0,take).sort((a,b)=>b-a);
           const seized=idxs.map(i=>src.splice(i,1)[0]);
           c.armies=(c.armies||[]).concat(seized);
           log('hire',`✨ ${c.name} Dominates ${targetChar.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
@@ -13824,7 +14155,7 @@ const BATTLE_ARMY_SPELLS={
           if(_eligH.length===0){log('system',`${c.name}: you lead no monsters or creatures for Phantom Host to duplicate.`,{actor:c.player,targets:[c.player]});break;}
           const _nH=Math.min(_eligH.length, Math.max(1, Math.floor(0.15*Math.min(spellLevel,5)*_realForceH.length)));
           c._phantoms=c._phantoms||[];
-          [..._eligH].sort(()=>Math.random()-0.5).slice(0,_nH).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); c._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
+          shuffleP(_eligH).slice(0,_nH).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); c._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
           log('explore',`✨ ${c.name} conjures a Phantom Host — spectral doubles of ${_nH} of their ${_nH===1?'beast':'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         }
         else if(fn==='illusory_invisibility'){
@@ -13847,7 +14178,7 @@ const BATTLE_ARMY_SPELLS={
           if(src.length===0){log('combat',`✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const pool=Math.floor(src.length*0.30);
           if(pool<=0){log('combat',`⚡ ${c.name}'s Chain Lightning crackles around ${targetChar.name}'s handful of troops but earths out without a kill.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
-          const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,pool).sort((a,b)=>b-a);
+          const idxs=shuffleP(src.map((_,i)=>i)).slice(0,pool).sort((a,b)=>b-a);
           let killed=0;
           idxs.forEach(i=>{ if(Math.random()<0.5){ src.splice(i,1); killed++; } });
           log('combat',`⚡ ${c.name}'s Chain Lightning arcs through ${targetChar.name}'s ranks — of ${pool} unit${pool!==1?'s':''} caught in the arc, ${killed} ${killed===1?'is':'are'} blasted apart!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
@@ -13863,7 +14194,7 @@ const BATTLE_ARMY_SPELLS={
           const _ccVictims=new Set();
           (G.characters||[]).filter(ch=>ch.alive&&ch.location===targetProv.id&&ch.player!==c.player&&(ch.armies||[]).length>0).forEach(ch=>{
             const n=Math.min(ch.armies.length,1+Math.floor(spellLevelEff/2));
-            const idxs=ch.armies.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,n).sort((a,b)=>b-a);
+            const idxs=shuffleP(ch.armies.map((_,i)=>i)).slice(0,n).sort((a,b)=>b-a);
             idxs.forEach(i=>ch.armies.splice(i,1)); totalDestroyed+=n;
             if(ch.player!=null) _ccVictims.add(ch.player);
           });
@@ -13923,7 +14254,7 @@ const BATTLE_ARMY_SPELLS={
         let msg='';
         if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; msg=`${take}g spirited away`; }
         // Chance to also lift a magic item.
-        if((victim.items||[]).length>0 && Math.random()<0.5){ const it=victim.items.splice(Math.floor(Math.random()*victim.items.length),1)[0]; c.items=(c.items||[]); c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ msg=(msg?msg+' — and ':'')+`the ${it.name} lifted`; }
+        if((victim.items||[]).length>0 && Math.random()<0.5){ const it=victim.items.splice(Math.floor(Math.random()*victim.items.length),1)[0]; applyItemMaxHp(victim,it); c.items=(c.items||[]); c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ msg=(msg?msg+' — and ':'')+`the ${it.name} lifted`; }
         c.merits=(c.merits||0)+2;
         log('hire',`💰 ${c.name} pulls off a Grand Heist against ${victim.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player,vp].filter(x=>x!=null),provinceId:prov.id});
         if(vp!=null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) robbed ${victim.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
@@ -14047,7 +14378,7 @@ const BATTLE_ARMY_SPELLS={
         if(!foe||(foe.armies||[]).length===0){log('combat',`${c.name} finds no enemy force to fall upon in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
         if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rampage would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const src=foe.armies; const kills=Math.min(src.length,2+Math.floor(skillLevel(c,'melee')/2));
-        const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,kills).sort((a,b)=>b-a);
+        const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
         idxs.forEach(i=>src.splice(i,1));
         const hd=6+skillLevel(c,'melee'); foe.hp=Math.max(1,(foe.hp||20)-hd);
         log('combat',`🗡 ${c.name} goes on a Rampage through ${foe.name}'s ranks — ${kills} unit${kills!==1?'s':''} cut down and their commander bloodied!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
@@ -14061,7 +14392,7 @@ const BATTLE_ARMY_SPELLS={
         if(!foe||(foe.armies||[]).length===0){log('combat',`${c.name} finds no enemy force to volley in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
         if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Rain of Arrows would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const src=foe.armies; const kills=Math.min(src.length,1+Math.floor(skillLevel(c,'archery')/2));
-        const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,kills).sort((a,b)=>b-a);
+        const idxs=shuffleP(src.map((_,i)=>i)).slice(0,kills).sort((a,b)=>b-a);
         idxs.forEach(i=>src.splice(i,1));
         log('combat',`🏹 ${c.name} looses a Rain of Arrows on ${foe.name}'s host — ${kills} unit${kills!==1?'s':''} fall to the volley.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
         trySkillGain(c,'archery',SKILLGAIN_STD);
@@ -14117,7 +14448,7 @@ const BATTLE_ARMY_SPELLS={
         const isPrimal=String(prov.race||'').startsWith('Primal');
         if(!isPrimal||!((prov.neutralDefenders||[]).length)){log('explore',`${c.name} sounds a Wild Calling, but ${prov.name} holds no primal host to answer.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const src=prov.neutralDefenders; const take=Math.min(src.length,2+Math.floor(skillLevel(c,'druid')/2));
-        const idxs=src.map((_,i)=>i).sort(()=>Math.random()-0.5).slice(0,take).sort((a,b)=>b-a);
+        const idxs=shuffleP(src.map((_,i)=>i)).slice(0,take).sort((a,b)=>b-a);
         const won=idxs.map(i=>src.splice(i,1)[0]);
         c.armies=(c.armies||[]).concat(won.map(u=>Object.assign({},u,{_pacified:true})));
         log('explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${won.length} primal beast${won.length!==1?'s':''} answer and fall in behind your banner!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -14406,9 +14737,11 @@ const BATTLE_ARMY_SPELLS={
   function canRecruit(armyType, provId, prov, playerIndex){
     return (recruitedThisTurn[`${provId}:${armyType}`]||0) < getRecruitLimit(armyType,prov,playerIndex);
   }
-  function recordRecruit(armyType, provId){
+  function recordRecruit(armyType, provId, qty){
+    // Item 3 (2026-09-07 batch 3): count the units actually raised, not the tokens — a `type|2` token used
+    // to record ONE recruit, leaving room for a later token to breach the per-turn cap.
     const key=`${provId}:${armyType}`;
-    recruitedThisTurn[key]=(recruitedThisTurn[key]||0)+1;
+    recruitedThisTurn[key]=(recruitedThisTurn[key]||0)+(qty!=null?qty:1);
   }
 
   // ── STALLED-BATTLE RESOLVER ───────────────────────────────────────────────
@@ -15899,7 +16232,7 @@ const BATTLE_ARMY_SPELLS={
         const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','FI','FIRE','CA','SPELL','FL','FLEE']);
         const filt=pl=>(pl||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase()));
         const A=pcCharCombatant(a), B=pcCharCombatant(b); A.tactics=filt(a.encounterPlan.tactics); B.tactics=filt(b.encounterPlan.tactics); if(!A.tactics.length)A.tactics=['ME']; if(!B.tactics.length)B.tactics=['ME'];
-        const res=resolvePersonalCombat(A,B,{maxRounds:16});
+        const res=resolvePersonalCombat(A,B,{maxRounds:20});
         if(res.winner===A) win++; if(res.aHp<=0 && res.winner!==A) felled++;
       }
       return {win:win/n, felled:felled/n};
@@ -16165,8 +16498,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const interestBonus=(hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0)+discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((p.gold||0)*(e.pct||0))),0); // Item 5: interest discoveries
         const neutralTradeMult=p.alignment==='Neutral'?1.20:1.0;
         const neutralTradeBonus=p.alignment==='Neutral'?Math.floor(income*(neutralTradeMult-1)):0;
-        // ── LIVE TITLE PERKS (economy) ── Throne: imperial revenues +3g. Vaultkeeper: interest =
-        // 10% of treasury (capped 5g). Applied to the title-holding realm.
+        // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g per 5 provinces.
+        // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
         let titlePerkGold=0, titlePerkNote='';
         pChars.forEach(pc=>{ if(charMinor(pc,'cutpurse')){ titlePerkGold+=2; titlePerkNote+=` (+2g the Cutpurse)`; } if(charMinor(pc,'champion')){ titlePerkGold+=2; titlePerkNote+=` (+2g Champion of the People)`; } if(charMinor(pc,'castellan')){ const cg=Math.floor((G.world.provinces||[]).filter(pv=>pv.owner===pi).length/5); if(cg>0){ titlePerkGold+=cg; titlePerkNote+=` (+${cg}g the Castellan)`; } } });
         // THIEF L6: +5g income per Thief-6 character. This was previously only shown in the player's
@@ -16385,15 +16718,22 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     });
   }
 
-  // ── ORC VIGOUR (this session, item 4) ── Orcish characters of an Orcish realm grow tougher with
-  // every year of war: their MAXIMUM hp rises by 1-2 each turn (Task 5). This is growth, not healing —
-  // current hp is left untouched (the extra headroom is filled by Rest or other healing). The rise is
-  // now announced in the character's Chronicle so the player can see it happen. (Task 12: subject to
-  // the max-HP cap — raiseMaxHp reports and withholds the gain if the ceiling is already reached.)
+  // ── MAX-HP SYNC (Sept 2026 redesign) ── every living character's maximum HP is recomputed from
+  // their skills and kit at the close of the turn and any change is announced in their Chronicle.
+  // (Replaces Orc Vigour — the Orcish ×1.2 now lives inside the formula.)
+  _MAXHP_PLAYERS=G.players;
+  (G._maxHpMigration||[]).forEach(r=>{ // one-time note for saves migrated from the old earned-HP system
+    const ch=(G.characters||[]).find(c=>c&&c.id===r.charId); if(!ch) return;
+    log('system',`📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now set by skill and equipment alone — ${r.old} becomes ${r.nu}. Training and hard-won experience will raise it from here.`,{actor:r.player,targets:[r.player],charId:ch.id,public:true});
+  });
+  delete G._maxHpMigration;
   (G.characters||[]).forEach(ch=>{
-    if(ch&&ch.alive&&ch.race==='Orcish'&&ch.player!=null&&G.players[ch.player]&&G.players[ch.player].race==='Orcish'){
-      raiseMaxHp(ch, rP(1,2), 'another year of war hardens their sinews', {orc:true});
-    }
+    if(!ch||!ch.alive) return;
+    const d=syncMaxHp(ch,G.players);
+    if(d===0) return;
+    const prov=(ch.location!=null)?G.world.provinces[ch.location]:null;
+    const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
+    log('system', d>0?`💪 ${ch.name}'s hard-won skill tells: maximum HP rises by ${d} to ${ch.maxHp}.`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
   });
 
   // ── Spared cowards slink home ── A Cowardly commander who begged for mercy this turn abandons the
@@ -16667,8 +17007,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(p._turnStrReduction) delete p._turnStrReduction;
   });
 
-  // 7c2. sd35 Order of the Golden Shield: the king gains DOUBLE the usual permanent HP for slaying
-  // enemy commanders (applied in awardKillXP), so there is no per-turn effect to run here.
+  // 7c2. sd35 Order of the Golden Shield: the king's kill-experience roll is doubled (applied in
+  // awardKillXP and the lair clear), so there is no per-turn effect to run here.
 
   // GRAND DESIGN — Evil (Iron Throne of Skulls): apply this turn's queued skeleton-rises to the real winners.
   (G._pendingRises||[]).forEach(r=>{ const _ch=(G.characters||[]).find(c=>c&&c.id===r.charId); if(_ch&&_ch.alive){ _ch.armies=_ch.armies||[]; _ch.armies.push(r.unit); } });
@@ -16947,14 +17287,21 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     G._titleLossesByPlayer=lossesByPlayer;
     G._titlesSnapshot={major:curMajor,minor:curMinor,wasPublic:nowPublic};
   })();
-  const {error:saveErr}=await sb.from('games').update({
+  // Turn-running clock: stamp the run and, in deadline mode, schedule the next fixed-clock deadline from now
+  // (an early "all orders in" run also resets the clock, so the next deadline is always relative to the last run).
+  { const _tm=normalizeTurnMode(G.turnMode); _tm.turnRanAt=new Date().toISOString();
+    _tm.nextDeadlineAt=_tm.mode==='deadline'?computeNextDeadline(_tm,new Date()):null; G.turnMode=_tm; }
+  // Conditional save (.eq turn): if another GM tab / device already advanced this turn, 0 rows match and we
+  // abort WITHOUT restoring orders (the other run consumed them) — the double-run guard for automatic modes.
+  const {data:_savedRow,error:saveErr}=await sb.from('games').update({
     game_state:JSON.stringify(G),
     turn:G.turn,
     // Victory (#7): no turn limit. The game is complete only when decided by the Reckoning or by
     // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
     status:(G.gameOver || (G.maxTurns&&G.maxTurns>0&&G.turn>G.maxTurns&&G.maxTurnsHardStop))?'complete':'active'
-  }).eq('id',currentGame.id);
+  }).eq('id',gameRow.id).eq('turn',expectedTurnToRun).select('id').maybeSingle();
   if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
+  if(!_savedRow){ _saveConflict=true; throw new Error(`Turn ${expectedTurnToRun} was already run elsewhere (another GM tab or device) — this run was discarded.`); }
 
   // 10. Generate and push new turn reports to each player
   msg.innerHTML='<div class="msg-info">⏳ Generating turn reports…</div>';
@@ -17222,7 +17569,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // (player_index = this player) — the GM full log uses player_index = -1.
     try{
       await sb.from('turn_logs').insert({
-        game_id:currentGame.id,
+        game_id:gameRow.id,
         player_index:gp.player_index,
         turn:G.turn-1,
         entries:report
@@ -17235,7 +17582,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // 11. Save full log to turn_logs table
   await sb.from('turn_logs').insert({
-    game_id:currentGame.id,
+    game_id:gameRow.id,
     player_index:-1, // -1 = full GM log
     turn:G.turn-1,
     entries:turnLog
@@ -17254,10 +17601,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }
 
   } catch(e){
-    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>Check browser console (F12) for full details. Your orders have been restored.</small></div>`;
+    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_saveConflict?'Nothing was changed by this run.':'Check browser console (F12) for full details. Your orders have been restored.'}</small></div>`;
     console.error('runTurn error:', e);
-    // Restore orders to DB so players don't lose their submissions
-    if(ordersSnapshot&&ordersSnapshot.length>0){
+    // Restore orders to DB so players don't lose their submissions — unless another run already consumed
+    // them (restoring would re-flag stale orders as submitted for the NEW turn).
+    if(!_saveConflict&&ordersSnapshot&&ordersSnapshot.length>0){
       await Promise.all(ordersSnapshot.map(snap=>
         sb.from('game_players').update({orders:snap.orders,orders_submitted:true}).eq('id',snap.id)
       ));
@@ -17265,10 +17613,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     return;
   }
 
-  // Refresh UI
-  currentGame.turn=G.turn;
-  currentGame.status=G.gameOver?'complete':'active';
-  setTimeout(()=>openGame(currentGame.id),2000);
+  // Refresh UI (only the game the GM is looking at; a watcher run of another game just refreshes the list)
+  if(viewing){
+    currentGame.turn=G.turn;
+    currentGame.status=G.gameOver?'complete':'active';
+    setTimeout(()=>openGame(currentGame.id),2000);
+  }else if(auto&&document.getElementById('sec-games')?.classList.contains('section-active')){
+    loadGames();
+  }
 }
 
 init();
@@ -17277,6 +17629,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.07-2022</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.08-0031</div>
 </body>
 </html>
