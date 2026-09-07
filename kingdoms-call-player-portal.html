@@ -162,8 +162,12 @@ section{display:none;}.section-active{display:block;}
   #rp-layout.mv-orders #rp-report-col{display:none!important;}
   /* Map panel: scroll & pan inside the panel; the SVG is drawn large enough to read. The ⛶ Fullscreen
      button remains for a bigger view, and native browser pinch-zoom is left enabled. */
-  #rp-map-col{background:#0e0a04;}
-  #report-map-container{height:60vh!important;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
+  /* Map fix 2 (2026-09-08): the column is a BLOCK on phones. Its inline desktop styles make it a column
+     flexbox and give #report-map-container `flex:1 1 0;min-height:0`; in an auto-height column flexbox that
+     flex-basis:0 item collapses to 0px (flex-basis beats height:60vh), so the map panel had no height at
+     all - only the header row with the Fullscreen button was visible. */
+  #rp-map-col{background:#0e0a04;display:block!important;}
+  #report-map-container{display:block!important;flex:none!important;height:60vh!important;min-height:60vh!important;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
   #map-zoom-bar{display:none!important;} /* Item 8: phone map is sized by CSS + native pinch-zoom; the desktop zoom buttons are inert here */
   #report-map-zoomwrap{width:700px!important;height:auto!important;max-width:none!important;}
   /* Map fix (2026-09-08): NO height:auto here. Phone browsers resolve an inline <svg>'s auto height to the
@@ -905,12 +909,17 @@ function applyMapZoom(){
   // was re-applying desktop inline sizes to the wrapper/SVG every time — leave the phone layout alone.
   // Map fix (2026-09-08): the SVG gets an explicit pixel height from its viewBox at the 700px phone
   // width (CSS height:auto was resolving to 150px on phones, leaving the map as a tiny strip).
-  if(window.innerWidth<821){ if(wrap){ wrap.style.width=''; wrap.style.height=''; } svg.style.width=''; svg.style.maxWidth=''; svg.style.maxHeight=''; if(cont) cont.style.overflow=''; fitMapSvgHeight(svg,MOBILE_MAP_WIDTH); return; }
+  if(window.innerWidth<821){
+    if(wrap){ wrap.style.width=''; wrap.style.height=''; }
+    svg.style.width=''; svg.style.maxWidth=''; svg.style.maxHeight='';
+    // Map fix 2: kill the desktop flex sizing inline as well (flex:1 1 0 + min-height:0 collapsed the panel to 0px on phones)
+    if(cont){ cont.style.overflow=''; cont.style.flex='none'; cont.style.minHeight='60vh'; cont.style.height='60vh'; }
+    fitMapSvgHeight(svg,MOBILE_MAP_WIDTH); return; }
   // Item 6 (this session): the scroll container is a flex child; without min-height/min-width:0 it
   // GREW to fit the zoomed map instead of scrolling (flex items default to min-size:auto) — which is
   // why the bars never appeared. The map is now zoomed via an explicitly sized WRAPPER block, so the
   // container's content is a plain oversized div and overflow:auto scrolls on both axes.
-  if(cont){ cont.style.minHeight='0'; cont.style.minWidth='0'; cont.style.overflow='auto'; }
+  if(cont){ cont.style.minHeight='0'; cont.style.minWidth='0'; cont.style.overflow='auto'; cont.style.flex=''; cont.style.flexGrow='1'; cont.style.flexShrink='1'; cont.style.flexBasis='0'; cont.style.height=''; }
   const setW=(w,h)=>{ if(wrap){ wrap.style.width=w; wrap.style.height=h; } svg.style.width='100%'; svg.style.height='100%'; svg.style.maxWidth='none'; svg.style.maxHeight='none'; };
   if(_mapZoom<=1){ setW('100%','100%'); return; }
   const pad=12; // container padding (6px each side)
@@ -6369,6 +6378,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.08-0049</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.08-0842</div>
 </body>
 </html>
