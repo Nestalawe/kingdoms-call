@@ -17,6 +17,10 @@ body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--i
    rules are OUTSIDE any media query so the bars are styled and always-visible on every platform —
    otherwise overlay-scrollbar systems (macOS, some mobile) hide them until hover, reading as "no
    scroll bars". `overflow:auto` on both axes; a corner box where they meet. */
+/* Item 8 (2026-09-07): these always-visible bars were meant for DESKTOP only. Left global, Android
+   Chrome (which honours ::-webkit-scrollbar) drew classic 13px bars inside the phone map panel and the
+   forced overflow fought the touch-scrolling map — phones now keep their native overlay scrolling. */
+@media (min-width:821px){
 #report-map-container,#map-fullscreen-modal .kc-map-scroll{
   overflow:auto!important; scrollbar-width:auto; scrollbar-color:#8a6a2a #1a1208; min-height:0; min-width:0;
 }
@@ -25,6 +29,7 @@ body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--i
 #report-map-container::-webkit-scrollbar-thumb:hover,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-thumb:hover{ background:#c8922a; }
 #report-map-container::-webkit-scrollbar-track,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-track{ background:#1a1208; }
 #report-map-container::-webkit-scrollbar-corner,#map-fullscreen-modal .kc-map-scroll::-webkit-scrollbar-corner{ background:#1a1208; }
+}
 .masthead{text-align:center;padding:28px 0 20px;border-bottom:1px solid var(--gold);margin-bottom:24px;}
 .masthead h1{font-family:'Cinzel',serif;font-size:2rem;font-weight:800;color:var(--gold-light);letter-spacing:.06em;}
 .masthead .sub{font-family:'Cinzel',serif;font-size:.8rem;color:var(--stone);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;}
@@ -158,7 +163,8 @@ section{display:none;}.section-active{display:block;}
   /* Map panel: scroll & pan inside the panel; the SVG is drawn large enough to read. The ⛶ Fullscreen
      button remains for a bigger view, and native browser pinch-zoom is left enabled. */
   #rp-map-col{background:#0e0a04;}
-  #report-map-container{height:60vh!important;overflow:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
+  #report-map-container{height:60vh!important;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
+  #map-zoom-bar{display:none!important;} /* Item 8: phone map is sized by CSS + native pinch-zoom; the desktop zoom buttons are inert here */
   #report-map-zoomwrap{width:700px!important;height:auto!important;max-width:none!important;}
   #report-map-svg{width:100%!important;height:auto!important;max-width:none!important;}
   /* Orders: stack each phase row's fields full-width; 16px inputs stop iOS auto-zoom on focus. */
@@ -503,8 +509,7 @@ section{display:none;}.section-active{display:block;}
               </button>
             </div>
             <div id="save-msg" style="font-size:.76rem;color:var(--forest);padding:4px 0;display:none">✓ Draft saved — you can return and update your orders before submitting.</div>
-            <!-- Item 7 (this session): concede the game -->
-            <div id="concede-wrap" style="margin-top:6px;font-size:.72rem"></div>
+            <!-- Item 9 (2026-09-07): the Concede control moved to the realm block at the top of the orders form -->
           </div>
         </div><!-- end orders-card -->
       </div><!-- end orders column -->
@@ -545,6 +550,9 @@ const ITEM_SLOT_OF_P={
 };
 function itemSlotP(it){ if(!it) return null; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded.
+// Item 4 (2026-09-07): race/alignment-bound items are inert in the wrong hands.
+function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==it.race)) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
+function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${it.race} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#a33;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
 function itemSlotTag(it){ const sl=itemSlotP(it); if(!sl) return ''; return it.equipped===false?` <span style="color:#999;font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} — not equipped]</span>`:` <span style="color:#6b5a2a;font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} — equipped]</span>`; }
 function updateEquipTarget(charId, ph){
   const wrap=document.getElementById(`po-equip-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
@@ -638,7 +646,7 @@ let joinSkills = {};
 let currentGamePlayer = null;
 let currentReport = null;
 // Diplomacy (alliance system): pending declarations for THIS turn, keyed by rival realm index →
-// 'treat' (propose alliance/peace) | 'enemy' (declare war). Submitted with orders; applied at end of turn.
+// 'treat' (propose alliance/peace) | 'enemy' (declare war). Submitted with orders; applied at end of turn (Evil/Undead war: at the start of the turn).
 let diploChoices = {};
 // Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant). Submitted with orders.
 let reckoningCall = false;
@@ -680,7 +688,7 @@ function _dispatchEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'
 function renderDispatchCompose(){
   const wrap=document.getElementById('dispatch-compose'); if(!wrap) return;
   const known=_dispatchKnown();
-  let head=`<div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--parchment-dark)">
+  let head=`<div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:6px 0">
       <span style="font-size:1rem">📨</span><span style="font-weight:600">Dispatches to other realms</span></div>`;
   if(!known.length){
     wrap.innerHTML=head+`<div style="font-size:.78rem;color:var(--stone);padding:2px 2px 8px">You have not encountered another realm yet — once you have, you can send them dispatches here.</div>`;
@@ -872,6 +880,10 @@ function applyMapZoom(){
   const cont=document.getElementById('report-map-container');
   const wrap=document.getElementById('report-map-zoomwrap');
   if(!svg) return;
+  // Item 8 (2026-09-07): on phones the map is sized purely by the mobile CSS (700px wrapper, native
+  // pinch-zoom). Android fires `resize` whenever the URL bar collapses or the keyboard opens, and this
+  // was re-applying desktop inline sizes to the wrapper/SVG every time — leave the phone layout alone.
+  if(window.innerWidth<821){ if(wrap){ wrap.style.width=''; wrap.style.height=''; } svg.style.width=''; svg.style.height=''; svg.style.maxWidth=''; svg.style.maxHeight=''; if(cont) cont.style.overflow=''; return; }
   // Item 6 (this session): the scroll container is a flex child; without min-height/min-width:0 it
   // GREW to fit the zoomed map instead of scrolling (flex items default to min-size:auto) — which is
   // why the bars never appeared. The map is now zoomed via an explicitly sized WRAPPER block, so the
@@ -1431,7 +1443,10 @@ function buildChronicle(log, chars_for_log){
       // Item 8: environmental province events (earthquake / flood / plague / blessing / part-sea /
       // consecrate) are shown in their own Province Reports section, so keep them OUT of the
       // Chronicle character blocks and Realm Events here.
-      if(e.env) return;
+      // Item 3 (2026-09-07): ...EXCEPT when the entry is one of this viewer's own characters' doing
+      // (the caster of an Earthquake / Flood / Plague / Bless / Part Sea) — the target and outcome of
+      // your own spell belongs under that hero, directly after its "📊 … casts …" roll line.
+      if(e.env && !(e.charId!=null && (e.charId in charEntries))) return;
       const ph=(e.phase!=null&&e.phase>=0&&e.phase<=4)?e.phase:99;
       const _txt=e.text||'';
       const isIntel=_txt.startsWith('[Intelligence]');
@@ -1542,7 +1557,7 @@ function buildChronicle(log, chars_for_log){
       const col=f.neutral?NEUTRAL_COLOR:(f.color||NEUTRAL_COLOR);
       const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
       const rows=(f.armies||[]).length
-        ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem">${unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
+        ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem${a.phantom?';opacity:.75;font-style:italic':''}">${a.phantom?'✨':unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
         : `<div style="padding-left:16px;font-size:.82rem;opacity:.7">— no armies —</div>`;
       return `<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px"><div>${header}</div>${rows}</div>`;
     }
@@ -2016,10 +2031,10 @@ function renderReportView(report){
           <span style="font-size:.7rem;color:var(--stone)">HP ${c.hp}/${c.maxHp}</span>
         </div>
         <div class="char-detail">
-          ${c.race} · ${c.alignment} · ${c.temper} · 📍 ${c.locationName||'Unknown'}<br>
+          ${c.race} · ${c.alignment} · ${c.temper}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemSlotTag(i)}${i.desc?` (${i.desc})`:''}`).join('')}
+          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i):''}${i.desc?` (${i.desc})`:''}`).join('')}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -2360,8 +2375,15 @@ function renderReportView(report){
 // ── DIPLOMACY PANEL (alliance system) ─────────────────
 // Renders the realms this player has encountered with the current relation and the declarations
 // available. A pending choice is stored in diploChoices and submitted with the turn's orders.
+// Item 9 (2026-09-07): the report card keeps the INFORMATION (relations, pending declarations); the
+// Declare War / Propose Peace / Propose Alliance BUTTONS now live at the top of the Orders column
+// (#orders-diplomacy), beside the dispatch composer and the Concede control.
 function renderDiplomacy(report){
-  const el=document.getElementById('report-diplomacy'); if(!el) return;
+  _renderDiplomacyInto(document.getElementById('report-diplomacy'), report, false);
+  _renderDiplomacyInto(document.getElementById('orders-diplomacy'), report, true);
+}
+function _renderDiplomacyInto(el, report, withControls){
+  if(!el) return;
   const known=(report&&report.diplomacy&&report.diplomacy.known)||[];
   const alliancesAllowed=!report||!report.diplomacy||report.diplomacy.alliancesAllowed!==false;
   if(!known.length){
@@ -2383,7 +2405,9 @@ function renderDiplomacy(report){
   el.innerHTML = known.map(k=>{
     const pending=diploChoices[k.index];
     let controls;
-    if(pending){
+    if(!withControls){
+      controls=pending?`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#999">(change it at the top of your Orders)</span></div>`:'';
+    } else if(pending){
       controls=`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;`
         +`<button onclick="setDiploChoice(${k.index},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
     } else if(k.relation==='neutral'){
@@ -2402,9 +2426,9 @@ function renderDiplomacy(report){
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
   }).join('')
-   + `<div style="font-size:.72rem;color:#999;margin-top:6px">${alliancesAllowed
+   + (withControls?`<div style="font-size:.72rem;color:#999;margin-top:6px">${alliancesAllowed
        ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
-       : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn. Submit your orders to lodge these declarations.</div>`;
+       : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. Submit your orders to lodge these declarations.</div>`:'');
 }
 function setDiploChoice(idx, val){
   if(val==null||val==='null') delete diploChoices[idx]; else diploChoices[idx]=val;
@@ -2776,7 +2800,8 @@ const rawMagicLvl=(charObj,school)=>((charObj&&charObj.skills)||{})[school]||0;
 // dropdowns in step so those spells can actually be selected.
 function effMagicLvl(charObj, school){
   const base=((charObj&&charObj.skills)||{})[school]||0;
-  const bonus=((charObj&&charObj.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school)?(it.effect.bonus||0):0),0);
+  // Item 2 (2026-09-07): only EQUIPPED slot items count (unslotted items are always active).
+  const bonus=((charObj&&charObj.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school&&itemUsableByP(it,charObj)&&(!itemSlotP(it)||it.equipped!==false))?(it.effect.bonus||0):0),0);
   return Math.max(0,Math.min(5,base+bonus));
 }
 
@@ -3022,7 +3047,25 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   if(rawSaved.callReckoning===true) reckoningCall=true;
   concedeGame=(rawSaved.concede===true); setTimeout(renderConcede,0);
 
-  el.innerHTML=heirSelectorHTML(chars)+chars.filter(c=>c.alive!==false).map(c=>{
+  // Item 9 (2026-09-07): realm-level controls FIRST — dispatches to other realms, the diplomacy
+  // declarations (moved here from the report's Diplomacy card, which keeps the information) and the
+  // Concede control (moved up from the sticky submit block, where it was easy to miss on a phone).
+  const _realmTop=`<div id="orders-realm-top" class="orders-char-block" style="background:#fdf8ee">
+      <div class="orders-char-head" style="background:var(--parchment-dark)">
+        <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
+        🏰 Realm — dispatches, diplomacy &amp; concession
+      </div>
+      <div style="padding:6px 10px 10px">
+        <div id="dispatch-compose"></div>
+        <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
+          <span style="font-size:1rem">🤝</span><span style="font-weight:600">Diplomacy — declarations this turn</span></div>
+        <div id="orders-diplomacy"></div>
+        <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
+          <span style="font-size:1rem">🏳</span><span style="font-weight:600">Concede</span></div>
+        <div id="concede-wrap" style="font-size:.72rem"></div>
+      </div>
+    </div>`;
+  el.innerHTML=_realmTop+heirSelectorHTML(chars)+chars.filter(c=>c.alive!==false).map(c=>{
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
     const currentTactics=savedEP.tactics||['ME'];
@@ -3078,7 +3121,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemSlotTag(it)}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -3173,10 +3216,11 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     </div>`;
   }).join('');
 
-  // Task 10: player-to-player dispatch composer at the foot of the orders form.
+  // Task 10 / Item 9: player-to-player dispatch composer — now at the TOP of the orders form.
   pendingDispatches = Array.isArray(rawSaved.messages) ? rawSaved.messages.map(m=>({to:m.to,text:m.text||''})) : [];
-  el.insertAdjacentHTML('beforeend', `<div id="dispatch-compose" style="margin-top:16px"></div>`);
   renderDispatchCompose();
+  renderDiplomacy(report); // Item 9: the declaration buttons live in #orders-diplomacy
+  renderConcede();
 
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
@@ -3581,6 +3625,7 @@ function onActionChange(charId, ph, charIdx){
     ||(currentReport?.characters||[])[charIdx]||{};
   const saved={action};
   wrap.innerHTML=buildTargetField(char, ph, saved);
+  setTimeout(refreshExploreNotes,0); // Item 10: earlier/later Explore projections depend on every order
 
   // Sync the hired-hero future-order card. syncHiredHeroCard injects it when this is a Hire Hero
   // order with a hero selected, and tears it down (and unregisters the placeholder) the moment the
@@ -3601,6 +3646,7 @@ function onActionChange(charId, ph, charIdx){
 // Re-picking a flagged later move clears its own note and cascades to the moves after it.
 function onMoveEdited(charId, ph){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId)); if(!char) return;
+  setTimeout(refreshExploreNotes,0); // Item 10: a changed path moves where later Explore orders land
   // The player just addressed THIS move — clear its own flag.
   const ownNote=document.getElementById(`po-move-note-${charId}-${ph}`);
   if(ownNote){ ownNote.style.display='none'; ownNote.innerHTML=''; }
@@ -4425,7 +4471,7 @@ async function doSubmitOrders(){
       const action=document.getElementById(`po-action-${c.id}-${ph}`)?.value||'Defend';
       const target=getOrderTarget(c.id,ph);
       const extra=getOrderExtra(c.id,ph);
-      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'&&action!=='Research'?` — ${target}`:'');
+      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'');
       return{action,target,extra,desc};
     });
     // Collect encounter plan
@@ -4703,6 +4749,55 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
   return armies;
 }
 
+// Item 10 (2026-09-07): projected exploration gain for ONE Explore order — mirror of the GM engine's
+// explore formula (terrainBase × (Explorer+1) × Scouts&Rangers × Compass × race/alignment explore
+// discoveries × Loremaster/Trailblazer, capped at 100). Explorer-boosting items aren't visible here.
+function exploreGainFor(c, terr){
+  const report=currentReport||{};
+  const BASIC_EXPLORE_P={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
+  const basicRate=BASIC_EXPLORE_P[terr]||15;
+  const disc=(report.discoveries||[]);
+  const hasSD=(id)=>disc.some(d=>d.id===id);
+  const explorerSkill=Math.min(5,((c.skills||{}).explorer||0));
+  const scoutBonus=hasSD('sd10')?1.20:1;
+  const compass=hasSD('sd24')?1.40:1;
+  let discMult=1; disc.forEach(d=>{ const m=/map(?:s)? (\d+)% more/i.exec(d.desc||''); if(m&&(!/mountain/i.test(d.desc)||terr==='mountain')) discMult*=1+parseInt(m[1])/100; });
+  const hasLore=(c.titlesHeld||[]).some(t=>/Loremaster/i.test(t.name||''));
+  const hasTrail=(c.minorHeld||[]).some(t=>/Trailblazer/i.test(t.name||''));
+  const loreMult=(hasLore?1.05:1)*(hasTrail?1.05:1);
+  return Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*compass*discMult*loreMult));
+}
+// Sum of exploration already queued for a province by EARLIER Explore orders (this hero's earlier
+// phases, and every other hero's orders in this phase or earlier).
+function exploreQueuedBefore(charId, ph, provId){
+  let sum=0; const chars=(currentReport&&currentReport.characters)||[];
+  chars.forEach(o=>{ if(!o||o.alive===false) return;
+    for(let p=0;p<=4;p++){
+      const isSelf=String(o.id)===String(charId);
+      if(isSelf&&p>=ph) break; if(!isSelf&&p>ph) break;
+      const act=document.getElementById(`po-action-${o.id}-${p}`)?.value; if(act!=='Explore') continue;
+      const loc=predictedLocation(o.id,p); if(!loc||loc.id!==provId) continue;
+      const pd=((currentReport&&currentReport.provinceOrderData)||{})[provId]; sum+=exploreGainFor(o,(pd&&pd.terrain)||null);
+    } });
+  return sum;
+}
+function exploreProjectionNote(c, ph){
+  const loc=predictedLocation(c.id,ph);
+  const pd=loc?((currentReport&&currentReport.provinceOrderData)||{})[loc.id]:null;
+  const terr=(pd&&pd.terrain)||null;
+  if(!terr) return `🧭 Explores the province ${c.name} stands in.`;
+  const gain=exploreGainFor(c,terr);
+  const known=Math.min(100,pd.explored||0);
+  const queued=exploreQueuedBefore(c.id,ph,loc.id);
+  const before=Math.min(100,known+queued);
+  const after=Math.min(100,before+gain);
+  const q=queued>0?` — ${known}% now, about ${before}% after earlier Explore orders this turn`:'';
+  return `🧭 Maps about <strong>+${gain}%</strong> of ${loc.name} (${capitalise(terr)}): <strong>${before}% → ${after}%</strong>${after>=100?' — fully explored':''}${q}.`;
+}
+function refreshExploreNotes(){
+  const chars=(currentReport&&currentReport.characters)||[];
+  chars.forEach(c=>{ if(!c||c.alive===false) return; for(let p=0;p<=4;p++){ const el=document.getElementById(`po-explore-note-${c.id}-${p}`); if(el) el.innerHTML=exploreProjectionNote(c,p); } });
+}
 function predictedLocation(charId, upToPhaseExclusive){
   const report=currentReport;
   if(!report) return null;
@@ -4916,30 +5011,12 @@ function buildTargetField(c, ph, saved){
     }
 
     // ── EXPLORE ── show how much of the province this order will map (item 3b)
+    // Item 10 (2026-09-07): the projection now also counts every EARLIER Explore order in the same
+    // province — this hero's own earlier phases and other heroes' orders — so the "→ after" figure is
+    // the province's exploration once this order resolves. Recomputed live by refreshExploreNotes().
     case 'Explore':{
-      const loc=predictedLocation(c.id,ph);
-      const pd=loc?provOrderData[loc.id]:null;
-      const terr=(pd&&pd.terrain)||null;
-      // Mirror of the GM engine's explore formula (see 'case explore'): terrainBase × (Explorer+1)
-      // × Scouts&Rangers × Loremaster/Trailblazer, capped at 100. Explorer-boosting ITEMS aren't
-      // visible on this side, so a rare item hero may map a little more than shown — hence "about".
-      const BASIC_EXPLORE_P={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
-      const basicRate=BASIC_EXPLORE_P[terr]||15;
-      const disc=(report.discoveries||[]);
-      const hasSD=(id)=>disc.some(d=>d.id===id);
-      const explorerSkill=Math.min(5,((c.skills||{}).explorer||0)+(hasSD('sd24')?1:0));
-      const scoutBonus=hasSD('sd10')?1.20:1;
-      const hasLore=(c.titlesHeld||[]).some(t=>/Loremaster/i.test(t.name||''));
-      const hasTrail=(c.minorHeld||[]).some(t=>/Trailblazer/i.test(t.name||''));
-      const loreMult=(hasLore?1.05:1)*(hasTrail?1.05:1);
-      const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult));
-      const before=pd?Math.min(100,pd.explored||0):0;
-      const after=Math.min(100,before+gain);
-      const note=terr
-        ? `🧭 Maps about <strong>+${gain}%</strong> of ${loc.name} (${capitalise(terr)}, ${before}% → ${after}%${after>=100?' — fully explored':''}).`
-        : `🧭 Explores the province ${c.name} stands in.`;
       return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
-        <div style="font-size:.72rem;color:var(--forest)">${note}</div>
+        <div id="po-explore-note-${c.id}-${ph}" style="font-size:.72rem;color:var(--forest)">${exploreProjectionNote(c,ph)}</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Higher Explorer skill and better terrain reveal more each time; lairs surface as the map fills.</div>`;}
 
     // ── SPY / REST ──
@@ -5012,7 +5089,7 @@ function buildTargetField(c, ph, saved){
       // Item 11: one select per slot (two for rings) listing the slot items this character will hold at
       // this phase; target = comma-separated chosen item names. Unlisted slot items are unequipped;
       // a slot left on '— none —' is auto-filled by the engine with the first item held for it.
-      const held=predictedItems(c.id,ph).filter(it=>it&&itemSlotP(it));
+      const held=predictedItems(c.id,ph).filter(it=>it&&itemSlotP(it)&&itemUsableByP(it,c)); // Item 4: bound items you can't use aren't offered
       if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, cloak, helm, ring or amulet items)" disabled>`;
       const chosen=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
       const rows=ITEM_SLOT_ORDER_P.map(sl=>{
@@ -5251,7 +5328,10 @@ function buildTargetField(c, ph, saved){
       const per=disc.some(d=>d.id==='sd30')?10:5;
       const neutral=(report.kingdom?.alignment==='Neutral')?sg*5:0;
       const chance=sg*per+neutral;
-      return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+      // Item 6 (2026-09-07): choose a FIELD of study. Categories with every discovery already made are greyed out.
+      const cats=(report.researchCategories||[]);
+      const catOpts=`<option value="" ${!target?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${target===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
+      return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
         <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${per===10?', Library':''}${neutral?', Neutral scholars':''}).</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`;}
 
@@ -5673,8 +5753,12 @@ function _tintForDarkTooltip(hex){
 function _lairStar(f){
   // Task 5 (this session): use the SAME difficulty palette as the Known Lairs card and the Chronicle
   // (POWER_COLORS) — the old star used a different orange/red set — and tint the lair name too.
-  const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[f.power]||'#7a5510';
-  return `<span style="color:${col}">\u2b50 ${f.name}</span>`;
+  // Item 5 (2026-09-07): province feature data carries `monsterPower` (not `power`) — every popup lair
+  // was falling through to the default brown. Difficulty now colours the map popup as everywhere else.
+  const _pw=f.monsterPower||f.power;
+  const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[_pw]||'#7a5510';
+  const _tag=_pw?` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
+  return `<span style="color:${col}">\u2b50 ${f.name}${_tag}</span>`;
 }
 // Task 5 (this session): tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
 // lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain text.
@@ -6210,6 +6294,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.07-0740</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.07-1809</div>
 </body>
 </html>
