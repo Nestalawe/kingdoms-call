@@ -222,7 +222,16 @@ footer.book .v{color:var(--gold-deep);}
   <p>Every character in the world acts in the same phase before the next phase begins. Movement, battles, spells, recruiting and everything else for phase 1 resolve, then phase 2, and so on. This is why <strong>when</strong> you do something matters as much as what you do: a hero who moves in phase 1 can be somewhere useful by phase 3; a spell cast in phase 2 can shape a battle in phase 4.</p>
 
   <h3>Order matters — dependency and initiative</h3>
-  <p>The engine resolves interacting orders in a sensible sequence (for instance, a hero must arrive in a province before they can fight for it), and clashing actions are decided by the characters' relevant skills. You don't manage this yourself — you just need to know that a plan spread sensibly across the phases beats one crammed into a single phase.</p>
+  <p>Within a phase, everything happens in a fixed sequence. You don't manage it yourself, but knowing it lets you plan a phase with confidence:</p>
+  <ol>
+    <li><strong>Unfinished battles resume.</strong> Any province still contested from the previous phase is fought over again before anyone new acts.</li>
+    <li><strong>Invasions are announced and defenders react.</strong> A general whose province is about to be invaded by a faster enemy is pinned in place to fight (unless on Defend). Generals on <em>Defend</em> ride out to meet incursions into their watch, and characters ordered to reinforce a threatened province arrive early, so they are all standing there <em>before</em> the invader marches in.</li>
+    <li><strong>Orders resolve, in three tiers.</strong> First every order that does <em>not</em> relocate a character — casting, recruiting, practising, researching, searching lairs, spying, giving and using items, hiring, disbanding and the like — settles while everyone still stands where the phase began. Then every <strong>Move</strong> and <strong>Encounter Character</strong> resolves, and the battles they start are fought on arrival. Characters on <strong>Defend</strong> are counted last. So a co-located caster always gets to act before a fast general marches out of the province.</li>
+    <li><strong>Within a tier, initiative decides.</strong> Characters act from highest <strong>initiative</strong> to lowest: initiative is the sum of all a character's skill levels, with <strong>March counting three times</strong>. Ties go to the older character (the lower character number). A hero with the higher initiative recruits, casts or marches before a slower one — which matters when two forces race for the same province, or two casters target the same hero.</li>
+    <li><strong>Dependencies override the tiers.</strong> A few pairings are ordered by need rather than speed: a character handing an item or troops to a co-located ally acts <em>before</em> that ally; a character marching in to receive something arrives <em>before</em> the giver gives; a Pick Up waits for any Leave in the same province; and a pursuer (Encounter Character) acts immediately <em>after</em> the character they are chasing, wherever they went.</li>
+    <li><strong>After all orders.</strong> Generals on Defend ride out against any enemy host that appeared in their watch <em>without marching</em> (raised, summoned or charmed there); lone characters on Defend spring their ambushes; then the phase's incidental skill-rises are reported and the next phase begins.</li>
+  </ol>
+  <p>The practical upshot: a plan spread sensibly across the phases beats one crammed into a single phase, and where two characters must interact in the same phase, put the giver's action in the same phase as the receiver's and the engine will sequence them.</p>
 
   <h3>End of turn</h3>
   <p>After phase 5, the season closes: <strong>tax is collected and wages are paid</strong> (in that combined step), diplomacy declarations take effect, titles are re-awarded, and temporary effects expire. Then your chronicle is written and the next turn opens.</p>
@@ -504,7 +513,7 @@ footer.book .v{color:var(--gold-deep);}
   <h4>Movement &amp; positioning</h4>
   <ul>
     <li><strong>Move</strong> — travel to a single adjacent province. One Move order always advances you exactly one province, no matter how many movement points you have; points instead govern how many such steps you can make across the whole turn. Moving into a defended enemy or neutral province triggers a battle. Bringing armies lets you conquer.</li>
-    <li><strong>Defend</strong> — stand ready to meet an assault for the rest of the turn. You hold your own province, and you also watch over its <strong>neighbours</strong>: if an enemy invades an adjacent province in your assigned zone, your general marches there to fight alongside its defenders (this costs a movement point, and a defeat ends their watch for the year).</li>
+    <li><strong>Defend</strong> — stand ready to meet an assault for the rest of the turn. You hold your own province, and you also watch over its <strong>neighbours</strong>: if an enemy invades an adjacent province of yours, your general marches there to fight alongside its defenders (this costs a movement point, and a defeat ends their watch for the year). The watch is kept from the <strong>very phase the order is given</strong>, and it also answers an enemy host that <em>appears</em> in the watch without marching — skeletons raised, an elemental summoned or troops charmed into a neighbouring province of yours; if such a force takes an empty province of yours, your general rides out that same phase to win it back.</li>
   </ul>
 
   <h4>Scouting &amp; knowledge</h4>
@@ -721,6 +730,7 @@ footer.book .v{color:var(--gold-deep);}
 
   <h3>Flying — over anything, including the sea</h3>
   <p>Flyers cross <strong>every terrain</strong>, and cross <strong>open sea without a fleet</strong>. There's more: if humanoid flyers can lift <em>every</em> foot soldier in the column (one liftable foot unit per flyer; cavalry, siege, ships and beasts are too heavy), the <strong>whole column takes to the air</strong> — it stops marching at the infantry's plodding pace and instead moves at the <strong>flyers' own speed</strong>, crossing sea freely like an all-flying host. A single grounded horse or wagon anchors everyone back to the earth.</p>
+  <div class="note warn"><span class="lbl">Airborne over open water</span>A column carried by its flyers is a poor thing to fight with at sea. Land troops aboard a <em>fleet</em> fight a sea battle at ×0.75; land troops dangling from griffons or wyverns, with no ship beneath them, fight at only <strong>×0.25</strong>, and the humanoid flyers carrying them at <strong>×0.5</strong>. Primal winged beasts (which carry nothing) and a force of flyers alone are unaffected. Use the air to <em>cross</em> the sea, not to fight on it.</div>
 
   <h3>Crossing water by magic</h3>
   <p>Two Elemental/White spells reshape the map for a turn. <strong>Part Sea</strong> turns a sea province to plains so land armies may walk across it (no fleet may pass while it holds); <strong>Flood</strong> does the reverse, turning a land province to open sea so only fleets and flyers may enter and any land army caught there is stranded. Each cancels the other. Naval mastery beyond level 5 adds further ways to shape the sea lanes, revealed in play.</p>
@@ -730,7 +740,7 @@ footer.book .v{color:var(--gold-deep);}
   <ul>
     <li><strong>Attacking costs a move.</strong> Marching into a defended enemy or neutral province is a Move like any other — it spends <strong>one point</strong> and triggers the battle on arrival. A lone hero (no army) can walk into an <em>empty</em> province and take it, but <strong>cannot conquer a defended one</strong> — conquest needs armies.</li>
     <li><strong>A contested province can take more than one phase.</strong> Beaten defenders don't always vanish; a fight can carry on into later phases, and each carry-on round it grows bloodier for both sides (up to ×2.5 the casualty rate). Each phase you press the assault spends another movement point <em>if you have one</em> — but a carry-on battle is fought whether or not points remain, so an attacker who has run dry still finishes what they started.</li>
-    <li><strong>A standing <em>Defend</em> can march to a neighbour.</strong> A general on Defend who answers an assault in an adjacent province in their watch <strong>spends a movement point</strong> to march there and fight — and a defeat there ends their watch for the rest of the year.</li>
+    <li><strong>A standing <em>Defend</em> can march to a neighbour.</strong> A general on Defend who answers an assault in an adjacent province in their watch <strong>spends a movement point</strong> to march there and fight — and a defeat there ends their watch for the rest of the year. The watch begins in the phase the Defend order is given (so a phase-2 Defend meets a phase-2 invasion), and covers enemy hosts that are raised or summoned into a neighbouring province of yours as well as those that march in.</li>
     <li><strong>Chasing spends points too.</strong> An <em>Encounter</em> order runs a quarry down one province per phase at <strong>one point per step</strong>, and stalls when the pool hits zero.</li>
     <li><strong>Picking up slow troops slows you.</strong> Take command of a plodding garrison mid-turn (<em>Pick Up Army</em>) and your column immediately moves at that slower unit's pace for the rest of the turn; drop a slow unit and you speed back up. Points already spent are never refunded or double-charged.</li>
   </ul>
@@ -864,7 +874,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Charm</strong> <span class="pill">A</span> <span class="pill">C</span></td><td>Action: recruit a wandering hero at no hiring cost, or seize a lone enemy hero's service for the turn (kings are immune). Combat: your next Flee attempt is at <strong>double</strong> chance.</td></tr>
     <tr><td><strong>Oratory</strong> <span class="pill">A</span></td><td>Hearten a friendly character's armies to fight <strong>one quality tier higher</strong> for the turn.</td></tr>
     <tr><td><strong>Clairvoyance</strong> <span class="pill">A</span></td><td>See everything that happens to any character you've ever spotted, and learn their full skills. One active at a time.</td></tr>
-    <tr><td><strong>Psychic Blast</strong> <span class="pill">A</span> <span class="pill">C</span> <span class="pill">B</span></td><td>Action: the target permanently loses a level in a random skill. Combat: the foe's <strong>next 3 actions are cancelled</strong>. Battle: negate the enemy commander's Druid.</td></tr>
+    <tr><td><strong>Psychic Blast</strong> <span class="pill">A</span> <span class="pill">C</span> <span class="pill">B</span></td><td>Action: the target permanently loses a level in a random skill. Combat: the foe is <strong>helpless for their next 3 rounds</strong> — no blow, arrow, spell, item, and no fleeing, not even the panic of a Cowardly temper. Battle: negate the enemy commander's Druid.</td></tr>
     <tr><td><strong>Telekinetic Storm</strong> <span class="pill">A</span> <span class="pill">C</span> <span class="pill">B</span></td><td>Action: several of an army-leader's units fight as if a level lower in their next battle. Combat: <strong>25% of the target's max HP</strong> in damage, and you take a quarter of that as recoil. Battle: negate the enemy's Tactical.</td></tr>
   </table></div>
 
@@ -875,7 +885,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Phantasmal Armies</strong> <span class="pill">A</span></td><td>Spectral doubles of some of a friendly leader's humanoid armies (15% per your level, at least one) march and fight with the real host for the rest of the turn. They are named as <em>spectral doubles</em> in every battle report, and melt away if their originals fall or the force is beaten.</td></tr>
     <tr><td><strong>Hide Lairs</strong> <span class="pill">A</span></td><td>Make discovered lairs in a province invisible to explorers.</td></tr>
     <tr><td><strong>Invisibility</strong> <span class="pill">C</span> <span class="pill">A</span></td><td>In combat: −25% to enemy to-hit against you (to a floor of 40%), +30% Flee, +15% Steal. As an action, cast on yourself: 80% chance that no enemy player sees you for the rest of the turn — sightings, spies, the map and Encounter targeting all miss you.</td></tr>
-    <tr><td><strong>Mirror Image</strong> <span class="pill">C</span></td><td>Combat: a phantom copy of the enemy fights them while you concentrate (no other actions); each round they may disbelieve it at <strong>4% per total skill level</strong>. Casting it again dissipates both images.</td></tr>
+    <tr><td><strong>Mirror Image</strong> <span class="pill">C</span></td><td>Combat: a phantom copy of the enemy fights them while you concentrate (no other actions). Both the victim and their reflection fight with the victim's own Encounter Plan — spells, arrows and all — and there is no fleeing one's own reflection; wounds it deals are real. Each round they may disbelieve it at <strong>4% per total skill level</strong>. Casting it again dissipates both images.</td></tr>
   </table></div>
 
   <h3>🔥 Elemental — destruction</h3>
@@ -1086,7 +1096,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.07-1313</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.07-2022</span> · Adventurer Kings ruleset
 </footer>
 
 <script>

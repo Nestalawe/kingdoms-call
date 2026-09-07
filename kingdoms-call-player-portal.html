@@ -3794,7 +3794,7 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
         <div class="phase-label">${season}</div>
         <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
           <option value="">\u2014 Choose \u2014</option>
-          ${actionsFor(null).map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(fakeChar).map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
         <div id="po-target-wrap-${fakeId}-${phIdx}">
           <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
@@ -3936,7 +3936,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
         <div class="phase-label">${season}</div>
         <select id="po-action-${fakeId}-${phIdx}" onchange="onActionChange('${fakeId}',${phIdx},99)">
           <option value="">\u2014 Choose \u2014</option>
-          ${actionsFor(null).map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(fakeChar).map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
         <div id="po-target-wrap-${fakeId}-${phIdx}">
           <input id="po-target-${fakeId}-${phIdx}" type="text" placeholder="Details">
@@ -4087,7 +4087,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
         <div class="phase-label">${season}</div>
         <select id="${actionSelId}" onchange="onActionChange('${hiredCharId}',${phIdx},99)">
           <option value="">— Choose —</option>
-          ${actionsFor(null).map(a=>`<option value="${a}">${a}</option>`).join('')}
+          ${actionsFor(fakeChar).map(a=>`<option value="${a}">${a}</option>`).join('')}
         </select>
         <div id="${targetWrapId}">
           <input id="po-target-${hiredCharId}-${phIdx}" type="text" placeholder="Details">
@@ -6294,6 +6294,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.07-1842</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.07-2022</div>
 </body>
 </html>

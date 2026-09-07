@@ -7710,6 +7710,17 @@ function applyMissileHit(target, archSkill, firer, opts){
 // Sea penalty for non-flying land units fighting in sea provinces
 // ×0.75 = roughly one quality tier lower
 const SEA_LAND_PENALTY=0.75;
+// Item 1 (2026-09-07 batch 2): a force at sea is AIRBORNE when it contains at least one land unit
+// (neither flying nor naval) and NO naval unit at all — the land units can only be there because the
+// flyers carried them. Carried land units then fight at ×0.25 and the carrying humanoid flyers at ×0.5
+// (applied in armStr). Module-level so both battle paths and the narrative lines can share it.
+const SEA_AIRBORNE_LAND_PENALTY=0.25, SEA_AIRBORNE_FLYER_PENALTY=0.5;
+function isAirborneAtSea(force){
+  const f=(force||[]).filter(Boolean);
+  if(!f.length) return false;
+  if(f.some(a=>SEA_TYPES.has(a.type))) return false;
+  return f.some(a=>!FLYING_TYPES.has(a.type)&&!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
+}
 function seaPenalty(armyType, terrain){
   if(terrain!=='sea') return 1.0;
   if(FLYING_TYPES.has(armyType)||SEA_TYPES.has(armyType)) return 1.0;
@@ -7759,6 +7770,16 @@ function seaPenalty(armyType, terrain){
       // ELF — Sea Archers: elven missile troops aboard galleys shoot from steady decks and do not
       // suffer the usual land-unit penalty at sea.
       let sp=seaPenalty(army.type,terrain);
+      // Item 1 (2026-09-07 batch 2): AIRBORNE AT SEA. A force fighting in a sea province with NO naval
+      // hull or sea-beast among it is there only because its flyers carried the foot soldiers. Those
+      // dangling land units fight at QUARTER strength (×0.25, not the usual ×0.75 for troops aboard
+      // ships), and the humanoid flyers doing the carrying fight at HALF strength (×0.5). Primal winged
+      // beasts (AERIAL_TYPES) carry nothing and keep full strength. A pure-flyer force (nothing carried)
+      // is unaffected.
+      if(terrain==='sea' && ctx && isAirborneAtSea(ctx.force)){
+        if(FLYING_TYPES.has(army.type)) sp=0.5;
+        else if(!AERIAL_TYPES.has(army.type)&&!SEA_TYPES.has(army.type)) sp=0.25;
+      }
       if(sp<1 && terrain==='sea' && ctx && (ctx.force||[]).some(a=>a&&a.type==='Elven Galleys')
          && MISSILE_ARMIES_MASTER.has(army.type)) sp=1.0;
       if(sp<1 && terrain==='sea' && heroChar && (perkTier(heroChar,'naval')>=3 || activeItems(heroChar).some(it=>it.landFullAtSea))) sp=1.0; // NAVAL L8 / Tide-Caller's Horn: land units led at sea take no penalty
@@ -8551,8 +8572,10 @@ const BATTLE_ARMY_SPELLS={
       else if(combined>1.05) terrainNotable.push(`${a.type} +${Math.round((combined-1)*100)}%`);
     });
     if(terrainNotable.length>0) narrative.push(`📊 Terrain (${prov.terrain}): ${terrainNotable.join(', ')}`);
-    if(!isLandBattle&&armies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type)))
-      narrative.push(`⚠ Land units at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+    if(!isLandBattle&&armies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))){
+      if(isAirborneAtSea(armies)) narrative.push(`⚠ Airborne over open water: land units carried by flyers fight at ×${SEA_AIRBORNE_LAND_PENALTY}, and the flyers carrying them at ×${SEA_AIRBORNE_FLYER_PENALTY}.`);
+      else narrative.push(`⚠ Land units at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+    }
 
     // ── BATTLE LINES ──
     if(atkCount>defCount&&defCount>0){
@@ -9336,7 +9359,7 @@ const BATTLE_ARMY_SPELLS={
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvlEff*10*(holy?2:1); target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
       case 'Spiritwrack':{ target.status.silenceRounds=Math.max(target.status.silenceRounds,3); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,3); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for 3 phases it cannot cast or use archery, and its melee is halved.`); break; }
-      case 'Psychic Blast':{ const _stunN=3+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0); target.status.stun=(target.status.stun||0)+_stunN; narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — their next ${_stunN} actions (melee, archery or spell) are cancelled.`); break; }
+      case 'Psychic Blast':{ const _stunN=3+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0); target.status.stun=(target.status.stun||0)+_stunN; narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
       case 'Telekinetic Storm':{ const d=Math.max(1,Math.round(target.maxHp*0.25)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
       case 'Mirror Image':{
         if(!state){ narrative.push(`  ${caster.name} conjures a Mirror Image.`); break; }
@@ -9356,7 +9379,7 @@ const BATTLE_ARMY_SPELLS={
         const ph={ ...target, kind:'phantasm', name:target.name+"'s mirror image", ref:target.ref,
           hp:target.hp, maxHp:target.maxHp,
           school:{...(target.school||{})}, specials:(target.specials||[]).slice(),
-          tactics:_phTactics, tacIdx:0, planExhausted:false, neverFlees:false,
+          tactics:_phTactics, tacIdx:0, planExhausted:false, neverFlees:true, // Item 6 (batch 2): an illusion never runs
           castSpells:[], castSchool:{}, status:pcNewStatus() };
         state.mirror={ caster, victim:target, phantasm:ph };
         narrative.push(`  🪞 ${caster.name} conjures a perfect phantom of ${target.name} — ${target.name} must fight their own mirror while ${caster.name} concentrates, taking no other action.`);
@@ -9854,8 +9877,17 @@ const BATTLE_ARMY_SPELLS={
           // fall through to a normal round below
         } else {
           // Victim fights their mirror (an even duel); the caster does nothing this round.
-          narrative.push(`  🪞 ${victim.name} trades blows with their own mirror image while ${caster.name} concentrates.`);
-          if(Math.random()*100<pcHitChance(victim,phantasm,50)){ const d=pcMeleeDamage(victim,phantasm); phantasm.hp-=d; narrative.push(`    ${victim.name} strikes the phantom for ${d} damage. (Phantom HP ${Math.max(0,Math.round(phantasm.hp))})`); }
+          narrative.push(`  🪞 ${victim.name} fights their own mirror image while ${caster.name} concentrates.`);
+          // Item 6 (2026-09-07 batch 2): the VICTIM fights the phantom with their own Encounter Plan too
+          // (spells, arrows, tactics), not a bare sword-swing — "the two mirror images fight it out" on
+          // equal terms. The victim's plan pointer, spell limits and status are their real ones (to them
+          // the phantom IS the enemy), but the fight runs in an isolated state so a flee/parley/steal
+          // against the phantom can never end or re-range the real duel. A stunned victim stands helpless.
+          { const _vstate={fledBy:null,parley:false,stoleBy:null,range:'melee',mirror:null,feature:null};
+            pcAct(victim, phantasm, narrative, _vstate);
+            if(_vstate.fledBy) narrative.push(`    …but there is no escaping one's own reflection — the phantom is on ${victim.name} again at once.`);
+            if(_vstate.mirror) narrative.push(`    …but an illusion cast upon an illusion finds no purchase, and fades.`);
+          }
           // Item 5 (this session): the phantom fights back exactly as the mirrored character would —
           // it runs THEIR Encounter Plan (from the start), so a spell-caster's reflection hurls the
           // same spells, an archer's looses arrows, and so on. It acts in its own isolated combat
@@ -9902,6 +9934,7 @@ const BATTLE_ARMY_SPELLS={
       if(!state.fledBy&&!state.parley&&!state.stoleBy){
         for(const cbt of [A,B]){
           if(cbt.hp<=0||cbt.neverFlees) continue;
+          if(cbt.status&&cbt.status.stun>0) continue; // Item 7 (2026-09-07 batch 2): a Psychic-Blasted mind cannot even run
           const foe=cbt===A?B:A; if(foe.hp<=0) continue;
           const tt=temperOf(cbt.temper);
           const ratio=cbt.hp/(cbt.maxHp||20);
@@ -10394,8 +10427,11 @@ const BATTLE_ARMY_SPELLS={
       }
     });
     if(pvpTerrainNotes.length>0) narrative.push(`📊 Terrain (${pvpTerrain}): ${pvpTerrainNotes.join(', ')}`);
-    if(!pvpIsLand&&(atkArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))||defArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))))
-      narrative.push(`⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+    if(!pvpIsLand&&(atkArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))||defArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type)))){
+      const _airA=isAirborneAtSea(atkArmies), _airD=isAirborneAtSea(defArmies);
+      if(_airA||_airD) narrative.push(`⚠ ${_airA&&_airD?'Both hosts are':(_airA?atkName:defName)+"'s host is"} airborne over open water: land units carried by flyers fight at ×${SEA_AIRBORNE_LAND_PENALTY}, and the flyers carrying them at ×${SEA_AIRBORNE_FLYER_PENALTY}.`);
+      if((atkArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))&&!_airA)||(defArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))&&!_airD)) narrative.push(`⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+    }
 
     // Battle lines for PvP — front-line width (pvpFront) is declared above as the single source of truth.
     const pvpAtkCt=atkArmies.length; const pvpDefCt=defArmies.length;
@@ -10985,7 +11021,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={resolveEncounter,resolvePersonalCombat,effStat,rng}; }catch(e){}
+  try{ if(typeof window!=='undefined') window._kcTest={resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng}; }catch(e){}
 
   // When a player's character visits/spies a province, record any dead heroes there as seen
   function recordDeadHeroSighting(playerIdx, provId){
@@ -12796,7 +12832,8 @@ const BATTLE_ARMY_SPELLS={
           c._practiceFailStreak={turn:G.turn,n:0}; // Item 7: success resets the streak
           c.skills[skill]=(c.skills[skill]||0)+1;
           recalcHeroPay(c);
-          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}! ${fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}`,{actor:c.player,targets:[c.player]});
+          // Item 2 (2026-09-07 batch 2): a mentored improvement is guaranteed — no roll to show.
+          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}`,{actor:c.player,targets:[c.player]});
         } else {
           c._practiceFailStreak={turn:G.turn,n:_streak+1}; // Item 7: the next practice this turn is ×1.2 likelier
           log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
@@ -13195,8 +13232,11 @@ const BATTLE_ARMY_SPELLS={
         // he rides out to meet any incursion into an adjacent province. Any target still supplied by
         // an older saved order is ignored. Persists for the rest of the turn.
         const centreProv=prov;
+        // Item 4 (2026-09-07 batch 2): if the watch was pre-activated at the top of this phase (and may
+        // already have ridden out once), keep its one-reaction-per-phase marker.
+        const _preSet=!!(c._defend&&c._defend.active&&c._defend.setPhase===ph&&c._defend.preActivated);
         c._defend={centre:centreProv.id,active:true,setPhase:ph};
-        delete c._defendReactedPhase;
+        if(!_preSet) delete c._defendReactedPhase;
         if((c.armies||[]).length===0){
           log('move',`${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(centreProv.id===prov.id){
@@ -13230,7 +13270,7 @@ const BATTLE_ARMY_SPELLS={
             return SPELL_DEFS_P[o.target]?.school===_school;
           }).length;
           if(_castsSoFar>=_limit&&_lvl>0&&!(spellName==='Bless'&&_divCath)){
-            log('system',`${c.name}: ${SKILL_LABELS[_school]||_school} Lv${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,{actor:c.player,targets:[c.player]});break;
+            log('system',`${c.name}: ${SKILL_LABELS[_school]||_school} level ${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,{actor:c.player,targets:[c.player]});break;
           }
         }
 
@@ -14873,6 +14913,10 @@ const BATTLE_ARMY_SPELLS={
     const hasDefenders=!!enemyChar || (neutralGuard&&(neutralGuard.armies||[]).length>0) || garrison.length>0 || llDefs.length>0;
 
     const claim=()=>{
+      // Item 4 (2026-09-07 batch 2): remember who lost this province to a force that materialised here
+      // this phase, so a neighbouring general on Defend may still ride out to contest it (see
+      // runDefendMaterializedReactions).
+      if(prov.owner!=null&&prov.owner!==c.player) prov._takenByUnitGain={turn:G.turn,ph:ph,from:prov.owner};
       G.players.forEach((p,pi)=>{if(pi!==c.player){const i=(p.provinces||[]).indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
       prov.owner=c.player; prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
       if(!player.provinces.includes(prov.id)) player.provinces.push(prov.id);
@@ -15452,7 +15496,10 @@ const BATTLE_ARMY_SPELLS={
         // Item 2 (this session): a general on Defend only rides out to fight in ADJACENT provinces HE
         // CONTROLS — never into a neutral province or one another player holds. (A force that
         // materialises in the very province he stands on is still met where he stands.)
-        if(P.id!==c.location && P.owner!==c.player) continue;
+        // Item 4 (2026-09-07 batch 2): …or one that was HIS until an enemy force materialised in it this
+        // very phase (Skeletal Armies, Summon Elemental, …) and took it unopposed — he rides out to win it back.
+        const _justTaken=!!(P._takenByUnitGain&&P._takenByUnitGain.turn===G.turn&&P._takenByUnitGain.ph===ph&&P._takenByUnitGain.from===c.player);
+        if(P.id!==c.location && P.owner!==c.player && !_justTaken) continue;
         const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(c.player,e.player)
           &&e.location===P.id&&(e.armies||[]).length>0);
         if(!foes.length) continue;
@@ -15507,6 +15554,17 @@ const BATTLE_ARMY_SPELLS={
         }
       }
       prov._hadBattleThisTurn=true;
+      // Item 4 (2026-09-07 batch 2): if the defender won and no armed enemy remains, the province is his
+      // again (a spell-conquest is undone the same phase it was made).
+      if(battle&&battle.won&&c.alive&&c.location===prov.id&&prov.owner!==c.player&&!prov._battleUnresolved){
+        const _enemyLeft=(G.characters||[]).some(e=>e&&(e.alive||e._leaderlessHost)&&e.location===prov.id&&(e.armies||[]).length>0&&e.player!=null&&e.player!==c.player&&areEnemies(c.player,e.player));
+        if(!_enemyLeft){
+          G.players.forEach((p,pi)=>{if(pi!==c.player){const i=(p.provinces||[]).indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
+          prov.owner=c.player; const wp=G.players[c.player]; if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
+          delete prov._takenByUnitGain;
+          log('combat',`${c.name} drives the interlopers out and secures ${prov.name} for ${wp?wp.name:'their realm'}!`,{actor:c.player,targets:[],provinceId:prov.id,public:true});
+        }
+      }
       _combatSkillProv=null; // item 3: this reaction's battle series is closed
     });
   }
@@ -15949,6 +16007,20 @@ const BATTLE_ARMY_SPELLS={
 
     // ── STAGE 2b: Defending generals react, and ordered reinforcements arrive, before the
     //             invasions that provoked them resolve ──
+    // Item 4 (2026-09-07 batch 2): a Defend order given THIS phase is on watch from the start of the
+    // phase — the general answers incursions in the same phase he is ordered to Defend, not only from
+    // the next. Pre-activate it here (the 'defend' case later re-stamps the same watch; it keeps the
+    // one-reaction-per-phase marker if this pre-activation already spent it). Pinned/rewritten orders,
+    // characters with no order at all (which default to Defend only in name), and live pursuits are
+    // left alone.
+    intents.forEach(it=>{
+      if(it.cancelled||it.action!=='defend'||!it.order||it.order._pinned) return;
+      const c=it.c; if(!c||!c.alive||c.player==null) return;
+      if(c._pursuit&&c._pursuit.active) return;
+      if(c._defend&&c._defend.active&&c._defend.setPhase===ph) return;
+      c._defend={centre:c.location,active:true,setPhase:ph,preActivated:true};
+      delete c._defendReactedPhase;
+    });
     runDefendReactions(ph,intents);
     runReinforcementArrivals(ph,intents);
     intents.forEach(it=>{
@@ -16785,8 +16857,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     let STD; try{ STD=computeStandings(G); }catch(e){ return; }
     const TH=STD.titles||{}; const provs=G.world.provinces||[];
     const holder=key=>{ const h=TH[key]; return (h&&h.playerIndex!=null)?h.playerIndex:null; };
-    const pnm=pi=>G.players[pi]?.name||('Player '+pi);
+    const pnm=pi=>(pi==null?'no realm':(G.players[pi]?.name||('Player '+(pi+1))));
     const prn=id=>provs[id]?.name||'unknown';
+    // Item 3 (2026-09-07 batch 2): name a character with their realm, or — for an unsworn hero — the
+    // province they guard. `lvl` (optional) prints as "Level N", never the old "L2" shorthand.
+    const who=(ch,lvl)=>{ const lv=(lvl!=null)?` (Level ${lvl})`:''; return ch.player!=null?`${ch.name}${lv} of ${pnm(ch.player)}`:`${ch.name}${lv}, an independent hero guarding ${prn(ch.location)}`; };
     const isNaval=t=>SEA_TYPES.has(t);
     const kindStr=(ch,naval)=>(ch.armies||[]).filter(a=>naval?isNaval(a.type):!isNaval(a.type)).reduce((s,a)=>s+unitBaseStrength(a),0);
     // Strongest land/sea force for a rival → the COMMANDING character, so we can name them AND give
@@ -16802,13 +16877,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
     { const pi=holder('sea'); if(pi!=null){ let any=false; G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)}.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
     // THE MONSTER-BANE — the runner-up for this title: name + province.
-    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; log('system',`[The Monster-Bane] Your closest rival for the title: ${sec.name} of ${pnm(sec.player)}, last seen in ${prn(sec.location)}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; log('system',`[The Monster-Bane] Your closest rival for the title: ${who(sec)}${sec.player!=null?`, last seen in ${prn(sec.location)}`:''}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
     // THE LOREMASTER — each rival discovery this turn (own line), then copy one for free.
     { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const found=[]; G.players.forEach((pl,i)=>{ if(i===pi)return; (pl.discoveries||[]).forEach(d=>{ if(d.turnDiscovered===tt) found.push({d,i}); }); }); if(found.length){ found.forEach(f=>log('system',`[The Loremaster] ${pnm(f.i)} discovered ${f.d.name} this turn.`,{actor:pi,targets:[pi]})); const lp=G.players[pi]; if(lp){ const owned=new Set((lp.discoveries||[]).map(d=>d.id)); const learn=found.filter(f=>!owned.has(f.d.id)); if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d; (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn}); log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's notes — you now hold this discovery.`,{actor:pi,targets:[pi]}); } } } else log('system',`[The Loremaster] No rival made a new discovery this turn.`,{actor:pi,targets:[pi]}); } }
     // THE ARCHMAGE — foremost mage of each school (own line): name + province.
-    { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0); [['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].forEach(([sk,lab])=>{ let best=null,bl=-1,bt=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } }); if(best&&bl>0) log('system',`[The Archmage] ${lab}: ${best.name} of ${pnm(best.player)} (L${bl}) in ${prn(best.location)}.`,{actor:pi,targets:[pi]}); else log('system',`[The Archmage] ${lab}: no mage of note.`,{actor:pi,targets:[pi]}); }); } }
+    { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0); [['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].forEach(([sk,lab])=>{ let best=null,bl=-1,bt=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } }); if(best&&bl>0) log('system',`[The Archmage] ${lab}: ${who(best,bl)}${best.player!=null?` in ${prn(best.location)}`:''}.`,{actor:pi,targets:[pi]}); else log('system',`[The Archmage] ${lab}: no mage of note.`,{actor:pi,targets:[pi]}); }); } }
     // THE HIEROPHANT — the largest skeletal army: name + province.
-    { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${best.name} of ${pnm(best.player)} in ${prn(best.location)} — ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${who(best)}${best.player!=null?` in ${prn(best.location)}`:''} — ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
     // THE DEATHPRIEST — Grave-sight: each province with Crack/Elite dead (own line).
     { const pi=holder('necro'); if(pi!=null){ let any=false; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const n=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')).length; if(n>0){ any=true; log('system',`[The Deathpriest] Grave-sight: ${prn(pv.id)} holds ${n} crack/elite dead.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
   })();
@@ -17202,6 +17277,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.07-1842</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.07-2022</div>
 </body>
 </html>
