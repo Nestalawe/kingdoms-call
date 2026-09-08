@@ -2107,6 +2107,8 @@ function renderReportView(report){
             if(arr.length===0) return head+`<div style="font-size:.75rem;color:#999">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel=(c.skills||{}).druid||0;
             const isDruidic=((kingdom.alignment)==='Druidic');
+            const hasDragonTamingUI=(report.discoveries||[]).some(d=>d&&d.id==='sd40');
+            const TAMED_FLYERS_UI=new Set(['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons']);
             const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Noble Griffons':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
             let totalStr=0,totalCost=0,druidUnits=0,druidShort=0;
             const lines=arr.map(a=>{
@@ -2128,6 +2130,7 @@ function renderReportView(report){
               let req=DRUID_REQ[a.type]||0;
               if(a.skeletal) req=0;              // skeletons are exempt from the Druid penalty
               if(isDruidic&&creature) req=0;      // Druidic realms lead Creatures with no Druid
+              if(hasDragonTamingUI&&TAMED_FLYERS_UI.has(a.type)) req=0; // sd40 Dragon Taming: winged beasts need no Druid (mirrors GM TAMED_FLYER_TYPES_D)
               if(req>0) druidUnits++;
               const sameRace=leadRaceMatch;
               const effDru=sameRace?Math.max(1,druLevel):druLevel;
@@ -2905,7 +2908,9 @@ function roundReportNumbers(text){
   // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
   // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
   // '2026.07' inside it. Only a decimal that is not adjacent to another dot or digit is rounded.
-  return String(text||'').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d])/g,(m,mult,whole,frac)=>
+  // 2026-09-08: a decimal FOLLOWED by × ("a 6.1× edge") is a multiplier too and is kept. (Root cause of the
+  // "× fortune 1" report: the old "fortune 0.50" had no × directly before it and was rounded to 1.)
+  return String(text||'').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g,(m,mult,whole,frac)=>
     mult?m:String(Math.round(Number(whole+'.'+frac))));
 }
 
@@ -6378,6 +6383,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.08-0842</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.08-1634</div>
 </body>
 </html>

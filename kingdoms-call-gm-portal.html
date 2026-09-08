@@ -2435,6 +2435,9 @@ const DRUID_ARMY_LEVELS_P={
   5:new Set(['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods']),
 };
 
+// sd40 Dragon Taming: the winged beasts a realm with the discovery leads without any Druid penalty
+// (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
+const TAMED_FLYER_TYPES_D=new Set(['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons']);
 // Returns the Druid level required to lead a given army type
 function getDruidLevel(armyType){
   for(const [lvl, armies] of Object.entries(DRUID_ARMY_LEVELS_P)){
@@ -2445,7 +2448,7 @@ function getDruidLevel(armyType){
 
 // Returns the effective quality after druid shortfall penalty
 // shortfall of N = -N quality tiers (each missing level = 20% str penalty)
-function druIdPenaltyMult(heroChar, army, playerAlignment){
+function druIdPenaltyMult(heroChar, army, playerAlignment, tamed){
   // Skeletal armies never suffer Druid penalties — they are already dead
   if(army._isSkeletal) return 1.0;
   // Neutral guard heroes natively command their province's armies — no Druid penalty
@@ -2473,6 +2476,9 @@ function druIdPenaltyMult(heroChar, army, playerAlignment){
   const CREATURE_ARMIES_D=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
   if(CREATURE_ARMIES_D.has(armyType)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic')) return 1.0;
 
+  // sd40 Dragon Taming: the caller (inside runTurn, where G is visible) passes tamed=true when the
+  // commander's realm holds the discovery and the army is a winged beast — no Druid penalty at all.
+  if(tamed) return 1.0;
   const required=getDruidLevel(armyType);
   if(required===0) return 1.0;
 
@@ -2579,6 +2585,39 @@ function battleFortune(){
   return {S:0,atk:1,def:1};
 }
 function battleDie(){ return (Math.random()+Math.random()+Math.random())/3; } // retained for any other caller
+// ── FORTUNE NARRATIVE (2026-09-08) ── the report no longer prints "strength × fortune 0.50 = …" per side (players read
+// that as their army being weakened). Strengths are shown untouched; fortune is described as what it did to the EDGE:
+// the pre-fortune ratio and win chance, which side luck ran with and how rare the roll was, and the post-fortune edge.
+function fortuneCdf(x){ const C=FORTUNE_CURVE; if(x<=C[0][0]) return 0; for(let i=1;i<C.length;i++){ const [a,fa]=C[i-1],[b,fb]=C[i]; if(x<=b) return fa+(fb-fa)*((x-a)/(b-a)); } return 1; }
+// Attacker's win chance for a strength ratio r = atk/def: P(S > -ln r).
+function fortuneWinChance(r){ if(!(r>0)) return 0; if(!isFinite(r)) return 1; return 1-fortuneCdf(-Math.log(r)); }
+function fortuneEdgeNum(r){ const e=r>=1?r:(r>0?1/r:Infinity); return !isFinite(e)?'∞×':`${e>=10?e.toFixed(0):e.toFixed(1)}×`; }
+function fortuneEdgeText(r){ const e=r>=1?r:(r>0?1/r:Infinity); if(!isFinite(e)) return 'total superiority'; if(e<1.05) return 'an even match'; return `a ${fortuneEdgeNum(r)} edge`; }
+function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort){
+  if(!(defBase>0)) return `${atkLabel} meets no effective resistance — **${atkLabel} wins**.`;
+  if(!(atkBase>0)) return `${atkLabel} brings no effective strength — **${defLabel} wins**.`;
+  const r0=atkBase/defBase, r1=(atkBase*fort.atk)/(defBase*fort.def);
+  const favoured=r0>=1?atkLabel:defLabel, winner=r1>=1?atkLabel:defLabel;
+  const pAtk=fortuneWinChance(r0), pFav=r0>=1?pAtk:1-pAtk;
+  const edge=`${favoured} holds ${fortuneEdgeText(r0)} (${Math.round(pFav*100)}% to win)`;
+  const S=fort.S||0, small=Math.abs(S)<Math.log(1.15);
+  let luck;
+  if(small) luck=`Fortune of battle: an even roll — luck played little part`;
+  else {
+    const side=S>0?atkLabel:defLabel, tail=S>0?1-fortuneCdf(S):fortuneCdf(S);
+    const adv=tail<=0.05?'strongly':tail<=0.20?'firmly':'mildly';
+    const rare=tail<0.25?` (a 1-in-${Math.min(1000,Math.max(4,Math.round(1/Math.max(tail,1e-4))))} roll)`:'';
+    luck=`Fortune of battle: luck ran ${adv} with ${side}${rare}`;
+  }
+  let outcome;
+  if(winner===favoured){
+    const luckWithWinner=(S>0)===(winner===atkLabel);
+    outcome=small?` — **${winner} wins**.`
+      :(luckWithWinner?` and widened the edge to ${fortuneEdgeNum(r1)} — **${winner} wins**.`
+                      :` and trimmed the edge to ${fortuneEdgeNum(r1)} — not enough: **${winner} wins**.`);
+  } else outcome=` and overturned it — ${winner} finishes ${fortuneEdgeNum(r1)} ahead and **wins**.`;
+  return `${edge}. ${luck}${outcome}`;
+}
 // Item 1 (2026-09-07 batch 3): unbiased Fisher-Yates shuffle (returns a NEW array). Every former
 // `.sort(()=>Math.random()-0.5)` now goes through here — that comparator is not a fair shuffle
 // (engine-dependent, and it leaves elements near their original positions far more often than
@@ -6877,9 +6916,9 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd02',name:'War Drums',category:'Military',desc:'All your armies gain +10% strength in every battle.',effect:{type:'globalArmyBonus',pct:0.10}},
   {id:'sd03',name:'Siege Engines',category:'Military',desc:'Province defender bonus reduced from ×1.25 to ×1.10 when you attack.',effect:{type:'reduceSiegeBonus',factor:0.10}},
   {id:'sd04',name:'Signal Fires',category:'Military',desc:'Friendly forces invading the same province always unify (100% at any distance).',effect:{type:'fullUnify'}},
-  {id:'sd05',name:'Steel Armour',category:'Military',desc:'All your land armies have 25% less chance of dying in battle.',effect:{type:'deathReduction',pct:0.25}},
+  {id:'sd05',name:'Steel Armour',category:'Military',desc:'All your armies and fleets have 25% less chance of dying in battle.',effect:{type:'deathReduction',pct:0.25}},
   {id:'sd06',name:'Military Discipline',category:'Military',desc:'Armies you lead have a 20% higher chance of promotion after a battle.',effect:{type:'promotionBonus',pct:0.20}},
-  {id:'sd07',name:'Fire Arrows',category:'Military',desc:'All archer and missile units you lead gain an additional +10% strength bonus.',effect:{type:'archerBonus',pct:0.10}},
+  {id:'sd07',name:'Fire Arrows',category:'Military',desc:'Missile units (longbows, bowmen, archers, crossbows, guns, goblin hordes) led by your characters fight at an extra +10% strength, attacking or defending.',effect:{type:'archerBonus',pct:0.10}},
   {id:'sd08',name:'War Academy',category:'Military',desc:'Each army in your home province has a 50% chance of being promoted one tier at the end of each turn.',effect:{type:'homePromotion'}},
   {id:'sd09',name:'Flanking Tactics',category:'Military',desc:'In battles where you have more armies than enemy, excess armies fight at 75% instead of 25%.',effect:{type:'flankBonus'}},
   {id:'sd10',name:'Scouts & Rangers',category:'Military',desc:'+20% exploration bonus on every Explore order across all your characters.',effect:{type:'exploreBonus',pct:0.20}},
@@ -6900,11 +6939,11 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd23',name:'Disguise Techniques',category:'Espionage',desc:'Heroes you send on Spy orders cannot be detected by enemy intrusion notifications.',effect:{type:'spyDisguise'}},
   // ── Magic & Scholarship ──
   {id:'sd24',name:'The Compass',category:'Scholarship',desc:'All your Explore actions map 40% more of the province.',effect:{type:'exploreBonus',pct:0.40}},
-  {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'+10% chance of finding a magic item in any lair your characters clear.',effect:{type:'itemChanceBonus',pct:0.10}},
+  {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'Whenever your characters clear a lair there is an extra 10% chance of an additional magic item on top of its usual hoard.',effect:{type:'itemChanceBonus',pct:0.10}},
   {id:'sd26',name:'Astronomical Tables',category:'Scholarship',desc:'All Practice orders for your characters have +5% success chance.',effect:{type:'practiceBonus',pct:0.05}},
   {id:'sd27',name:'Arcane Codex',category:'Scholarship',desc:'All spells cast by your characters have a +5% chance of success (still capped at 95%).',effect:{type:'spellBonus',pct:0.05}},
   {id:'sd28',name:'Medical Arts',category:'Scholarship',desc:'A single Rest order restores a character to full HP.',effect:{type:'restFull'}},
-  {id:'sd29',name:'Herbal Lore',category:'Scholarship',desc:'Characters who take damage in encounters or battles recover 1 HP automatically next phase.',effect:{type:'autoHeal',hp:1}},
+  {id:'sd29',name:'Herbal Lore',category:'Scholarship',desc:'Any of your characters who loses HP in a phase recovers 1 HP automatically at the start of the next.',effect:{type:'autoHeal',hp:1}},
   {id:'sd30',name:'Library',category:'Scholarship',desc:'Research discovery chance increased to 10% per Sage level (instead of 5%).',effect:{type:'sageDiscoveryBonus',pct:0.10}},
   {id:'sd31',name:'Diplomatic Protocols',category:'Scholarship',desc:'The Divine/Undead hiring ban is waived for your realm — even heroes from the far end of the alignment spectrum may be hired (at the maximum 5g/turn).',effect:{type:'alignmentHire'}},
   {id:'sd32',name:'Ancient Lore',category:'Scholarship',desc:'Every Explore action also maps 10% of each adjacent province.',effect:{type:'adjacentReveal'}},
@@ -6912,12 +6951,12 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd33',name:'Duelling Code',category:'Heroic',desc:'Your characters gain +10% to hit in all personal duels and encounters.',effect:{type:'duelBonus',pct:0.10}},
   {id:'sd34',name:'Mounted Couriers',category:'Heroic',desc:'Newly hired heroes may act from the phase they are hired (not the next phase).',effect:{type:'immediateHire'}},
   {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king learns twice as much from each kill: the fighting-skill experience roll for slaying an enemy commander or lair guardian is doubled.',effect:{type:'kingKillHpX2'}},
-  {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Characters who are slain in encounters have a 20% chance to survive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
-  {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters\' Melee and Archery treated as 1 level higher in personal combat.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
+  {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Any of your characters who would be slain — in a duel, an encounter, or a battle — has a 20% chance to be dragged from the field alive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
+  {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters fight in personal combat (duels, encounters, lair fights) as if their Melee and Archery were 1 level higher.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
   {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'The wages of all your heroes are halved.',effect:{type:'halveHeroWages'}},
   // ── Special ──
   {id:'sd39',name:'Arcane Observatory',category:'Special',desc:'Each turn, a random province you have not yet fully explored is charted in full (100% explored).',effect:{type:'turnReveal'}},
-  {id:'sd40',name:'Dragon Taming',category:'Special',desc:'Your characters may lead Eagle Riders and other flying units without Druidic ability.',effect:{type:'flyingNoDruid'}},
+  {id:'sd40',name:'Dragon Taming',category:'Special',desc:'Your characters lead winged beasts — Eagle Riders, Noble Griffons, Wyvern Riders, Giant Eagles, Manticore Pride, Crimson Rocs and Elder Dragons — at full strength whatever their Druid skill: no Druid shortfall penalty ever applies to a flyer under your banner.',effect:{type:'flyingNoDruid'}},
   // ── RACE-SPECIFIC (Item 5, 2026-09-07): only a realm whose king is of that race can discover these ──
   {id:"rh01",name:"Free Companies",category:"Human Heritage",race:"Human",desc:"Free Lances and Gilded Lances led by your characters fight at +15% strength.",effect:{"kind": "unitStr", "pct": 0.15, "types": ["Free Lances", "Gilded Lances"]}},
   {id:"rh02",name:"Yeoman Musters",category:"Human Heritage",race:"Human",desc:"Shieldwall Levies and Yeoman Longbows cost 1g less to recruit (minimum 1g).",effect:{"kind": "recruitCost", "delta": -1, "types": ["Shieldwall Levies", "Yeoman Longbows"]}},
@@ -8044,7 +8083,7 @@ function seaPenalty(armyType, terrain){
     // Apply Druid penalty
     let str=baseStr;
     if(heroChar){
-      const penalty=druIdPenaltyMult(heroChar,army,playerAlignment);
+      const penalty=druIdPenaltyMult(heroChar,army,playerAlignment,dragonTamed(heroChar,army));
       if(penalty<1) str=Math.floor(str*penalty);
     }
     // ── RACE CONTEXT (computed once for all race modifiers) ──
@@ -8939,7 +8978,7 @@ const BATTLE_ARMY_SPELLS={
       const req=getDruidLevel(a.type);
       const shortfall=Math.max(0,req-druIdLvl);
       if(shortfall>0){
-        const penalty=druIdPenaltyMult(c,a,playerAlign);
+        const penalty=druIdPenaltyMult(c,a,playerAlign,dragonTamed(c,a));
         // Only warn if a penalty actually applies (skeletal/exempt units return 1.0 = no penalty)
         if(penalty<1){
           narrative.push(`⚠ ${cName} lacks Druid skill to lead ${a.unitName||a.type} (needs ${req}, has ${druIdLvl}): −${Math.round((1-penalty)*100)}% strength penalty.`);
@@ -8954,7 +8993,7 @@ const BATTLE_ARMY_SPELLS={
     // (defHero — a leaderless garrison passes null), their Archery lifts the garrison's bow and
     // crossbow units by +10% per level, exactly as it does for an attacker.
     const archSkillDef=defHero?effStat(defHero,'archery'):0;
-    const defArchMissileBonus=1+(archSkillDef*0.10);
+    const defArchMissileBonus=1+(archSkillDef*0.10)+((defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd07'))?0.10:0); // sd07 Fire Arrows (defender side, wired 2026-09-08)
     const defLineWidth=terrainFront;
     const defsWithStr=(prov.neutralDefenders||[]).map(a=>{
       let base=armStr(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null)});
@@ -9060,7 +9099,9 @@ const BATTLE_ARMY_SPELLS={
     if(homeBonus>1) _defInc.push(`home ×${homeBonus.toFixed(1)}`);
     if(_npcDefMorale!==1) _defInc.push(`morale ×${_npcDefMorale.toFixed(2)}`);
     if(defOrdN!==1) _defInc.push(`orders ×${defOrdN.toFixed(2)}`);
-    narrative.push(`📊 **Battle stats:** Attacker effective strength ${n0(atkBaseStr)}${_atkInc.length?` (incl. ${_atkInc.join(', ')})`:''} × fortune ${atkRoll.toFixed(2)} = **${n0(finalAtk)}** | Defender effective strength ${n0(defBaseStr)}${_defInc.length?` (incl. ${_defInc.join(', ')})`:''} × fortune ${defRoll.toFixed(2)} = **${n0(finalDef)}** | Margin: ${n0(finalAtk-finalDef)} (attacker ${finalAtk>=finalDef?'wins':'loses'})`);
+    // 2026-09-08: strengths shown untouched; fortune described as its effect on the edge (see fortuneNarrative).
+    const _defLabelStat=defHero?defHero.name:`the defenders of ${prov.name}`;
+    narrative.push(`📊 **Battle stats:** ${cName} strength **${n0(atkBaseStr)}**${_atkInc.length?` (incl. ${_atkInc.join(', ')})`:''} vs ${_defLabelStat} strength **${n0(defBaseStr)}**${_defInc.length?` (incl. ${_defInc.join(', ')})`:''}. ${fortuneNarrative(cName,_defLabelStat,atkBaseStr,defBaseStr,_fort)}`);
 
     // Combat result narrative
     const margin=finalAtk-finalDef;
@@ -9473,8 +9514,8 @@ const BATTLE_ARMY_SPELLS={
       kind:'character', ref:ch, name:ch.name, player:ch.player,
       hp:(ch.hp!=null?ch.hp:maxHp)+rageHp, maxHp:maxHp+rageHp,
       // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
-      melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
-      archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0),
+      melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training (wired 2026-09-08)
+      archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training
       meleeRaw:skillLevel(ch,'melee'), archeryRaw:skillLevel(ch,'archery'), // Sept 2026 redesign: damage scales on the raw 1–9 level
       temper:effTemper(ch), alignment:ch.alignment, // Item 7: an equipped temper item overrides the wearer's own
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
@@ -10564,8 +10605,8 @@ const BATTLE_ARMY_SPELLS={
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
-    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*0.10);
-    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*0.10);
+    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*0.10)+((atk.player!=null&&hasDisc(atk.player,'sd07'))?0.10:0); // sd07 Fire Arrows (PvP, wired 2026-09-08)
+    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*0.10)+((def.player!=null&&hasDisc(def.player,'sd07'))?0.10:0);
     let atkNav=atkCmdrSlain?0:effStat(atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
     let defNav=defCmdrSlain?0:effStat(def,'naval'); if(def._curseHalveStat==='naval') defNav=Math.floor(defNav/2); const defNavBonus=1+(defNav*0.2);
     const atkAlign2=G.players[atk.player]?.alignment||'Neutral';
@@ -10790,8 +10831,8 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`${defName}'s Naval ${defNav}: +${(defNav*20)}% to fleet units.`);
 
     // Druid shortfall warnings — only when a penalty actually applies (skeletal/exempt units are free)
-    atkArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(atk,'druid'));if(sf>0){const pen=druIdPenaltyMult(atk,a,atkAlign2);if(pen<1)narrative.push(`⚠ ${atkName} Druid shortfall on ${a.unitName||a.type}: −${Math.round((1-pen)*100)}%`);}});
-    defArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(def,'druid'));if(sf>0){const pen=druIdPenaltyMult(def,a,defAlign2);if(pen<1)narrative.push(`⚠ ${defName} Druid shortfall on ${a.unitName||a.type}: −${Math.round((1-pen)*100)}%`);}});
+    atkArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(atk,'druid'));if(sf>0){const pen=druIdPenaltyMult(atk,a,atkAlign2,dragonTamed(atk,a));if(pen<1)narrative.push(`⚠ ${atkName} Druid shortfall on ${a.unitName||a.type}: −${Math.round((1-pen)*100)}%`);}});
+    defArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(def,'druid'));if(sf>0){const pen=druIdPenaltyMult(def,a,defAlign2,dragonTamed(def,a));if(pen<1)narrative.push(`⚠ ${defName} Druid shortfall on ${a.unitName||a.type}: −${Math.round((1-pen)*100)}%`);}});
 
     // Discovery bonus
     const atkDiscBonus=1+discoveryArmyBonus(atk.player);
@@ -10863,9 +10904,10 @@ const BATTLE_ARMY_SPELLS={
     if(defSanct<1) _pDefInc.push('sanctuary ×0.75');
     if(defOrd!==1) _pDefInc.push(`orders ×${defOrd.toFixed(2)}`);
     narrative.push(`📊 **Battle stats:**`);
-    narrative.push(`  Attacker (${atkName}): ${atkArmies.length} units, effective strength ${n0(atkBaseStr)}${_pAtkInc.length?` (incl. ${_pAtkInc.join(', ')})`:''} × fortune ${atkDice.toFixed(2)} = **${n0(atkStr)}**`);
-    narrative.push(`  Defender (${defName}): ${defArmies.length} units, effective strength ${n0(defBaseStr)}${_pDefInc.length?` (incl. ${_pDefInc.join(', ')})`:''} × fortune ${defDice.toFixed(2)} = **${n0(defStr)}**`);
-    narrative.push(`  Before the dice: ${atkName} ${n0(atkBaseStr)} vs ${defName} ${n0(defBaseStr)} — ${atkBaseStr>=defBaseStr?atkName:defName} leads by ${n0(Math.abs(atkBaseStr-defBaseStr))}.`);
+    // 2026-09-08: strengths shown untouched; fortune described as its effect on the edge (see fortuneNarrative).
+    narrative.push(`  Attacker (${atkName}): ${atkArmies.length} units, strength **${n0(atkBaseStr)}**${_pAtkInc.length?` (incl. ${_pAtkInc.join(', ')})`:''}`);
+    narrative.push(`  Defender (${defName}): ${defArmies.length} units, strength **${n0(defBaseStr)}**${_pDefInc.length?` (incl. ${_pDefInc.join(', ')})`:''}`);
+    narrative.push(`  ${fortuneNarrative(atkName,defName,atkBaseStr,defBaseStr,_fortP)}`);
 
     const won=atkStr>=defStr;
     // Tactical gain deferred to the end of the battle narrative — see the return below.
@@ -10879,7 +10921,7 @@ const BATTLE_ARMY_SPELLS={
     const isNarrowPvP=_bandPvP.max<=0.10;
     const isDecisivePvP=_bandPvP.max>0.30;
     const severity=_bandPvP.label;
-    narrative.push(`📊 Final: ${atkName} ${n0(atkStr)} vs ${defName} ${n0(defStr)} — ${won?atk.name:def.name} wins (margin ${(margRatioPvP*100).toFixed(0)}% of total strength — ${severity})`);
+    narrative.push(`📊 Outcome: **${won?atk.name:def.name} wins** — ${severity} (margin ${(margRatioPvP*100).toFixed(0)}% of combined strength after fortune)`);
     // Evil: a decisive victory by an Evil commander terrorises the battle province and all adjacent provinces (stacking).
     const _pvpWinner=won?atk:def;
     if(isDecisivePvP&&G.players[_pvpWinner.player]?.alignment==='Evil'&&((_pvpWinner.encounterPlan?.evilMode)||'terror')==='terror'){
@@ -14653,6 +14695,10 @@ const BATTLE_ARMY_SPELLS={
   function hasDisc(playerIdx, discId){
     return (G.players[playerIdx]?.discoveries||[]).some(d=>d.id===discId);
   }
+  // sd40 Dragon Taming: true when this commander's realm leads this winged beast without Druid penalty.
+  function dragonTamed(heroChar, army){
+    return !!(heroChar&&heroChar.player!=null&&army&&TAMED_FLYER_TYPES_D.has(army.type)&&hasDisc(heroChar.player,'sd40'));
+  }
   // Item 5 (2026-09-07): data-driven discovery effects (race / alignment discoveries).
   function discEff(pi, kind){ return (pi==null)?[]:discEffectsOf(G.players[pi], kind); }
   function discSum(pi, kind, field, pred){ return (pi==null)?0:discSumOf(G.players[pi], kind, field, pred); }
@@ -16258,6 +16304,16 @@ const BATTLE_ARMY_SPELLS={
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // Item 6: reliable phase for skill-rises earned outside processOrder
     log('system',`— ${SEASONS[ph]} —`);
+    // sd29 Herbal Lore (wired 2026-09-08): a character who lost HP during the previous phase recovers 1 HP
+    // at the start of this one. `_hpAtPhaseStart` is the HP snapshot taken here each phase; it persists in
+    // the saved state, so damage taken in the final phase of a turn heals at the start of the next turn.
+    (G.characters||[]).forEach(c=>{
+      if(c.alive&&c.player!=null&&c.hp!=null&&c._hpAtPhaseStart!=null&&c.hp<c._hpAtPhaseStart&&c.hp<(c.maxHp||20)&&hasDisc(c.player,'sd29')){
+        c.hp=Math.min(c.maxHp||20,c.hp+1);
+        log('system',`🌿 Herbal Lore: ${c.name}'s wounds are dressed with healing herbs. +1 HP (${c.hp}/${c.maxHp||20}).`,{actor:c.player,targets:[c.player],provinceId:(c.location!=null?c.location:undefined)});
+      }
+      c._hpAtPhaseStart=(c.alive&&c.hp!=null)?c.hp:null;
+    });
     // Snapshot presence at phase start (before this phase's moves/battles).
     presenceByPhase[ph]=new Map();
     (G.characters||[]).forEach(c=>{
@@ -17629,6 +17685,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.08-0842</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.08-1634</div>
 </body>
 </html>
