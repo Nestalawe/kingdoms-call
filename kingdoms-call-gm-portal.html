@@ -710,7 +710,7 @@ const MASTERY_UNLOCKS={
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
-  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
+  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, rob an enemy hero in your province of a quarter of their realm\'s treasury and a magic item.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) are restored to full HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
@@ -3511,6 +3511,9 @@ function ensureLairHoard(f, gs){
   const gold=(f._clearGold!=null)?f._clearGold:(Math.floor(Math.random()*(band[1]-band[0]+1))+band[0]);
   delete f._clearGold;
   setFeatureTreasure(f, gold);
+  // Thief revision (Toby 2026-09-09): remember the hoard as it stood at generation — a thief's cut is
+  // a share of the ORIGINAL pile, so each successive theft takes a like amount until it runs dry.
+  if(f._hoardGoldOrig==null) f._hoardGoldOrig=gold;
   if(f.cleared||!gs) return;
   if(!Array.isArray(gs._awardedItems)) gs._awardedItems=[];
   const taken=new Set(gs._awardedItems);
@@ -6309,6 +6312,7 @@ function buildTurnReport(gameState, playerIndex){
 
   const ownedProvinces=gameState.world.provinces.filter(p=>ownedProvIds.has(p.id)).map(p=>({
     id:p.id,name:p.name,terrain:p.terrain,tax:p.tax,race:p.race,population:p.population,
+    owner:p.owner,   // 2026-09-09: the Steal form needs to know whose garrison stands here (paymaster target)
     // Only show features that have been discovered based on exploration threshold
     // At 100% explored all features visible; threshold = 100/totalFeatures per feature
     features:(()=>{
@@ -8252,8 +8256,16 @@ function seaPenalty(armyType, terrain){
     if(heroChar){
       // Grand Marshal / Sea Lord combat bonuses removed — those titles are now end-of-turn intel lines.
     }
-    // ── Druid creature-leading ── the strength benefit CAPS at level 5 (via effStat elsewhere);
-    // levels 6+ grant the Druid's distinct L7/L9 orders, not further strength scaling. (item 6)
+    // ── Druid creature-leading (Toby 2026-09-09) ── the commander's bond with the wild is worth +5%
+    // per Druid level to every Creature / Monster / primal unit they lead. CAPS at level 5 (+25%);
+    // levels 6+ grant the Druid's distinct L7/L9 orders, not further strength scaling. A commander
+    // whose Druid has been negated (Psychic Blast) or halved (Curse) loses it in the same measure —
+    // effStat already reflects items, and the negation flags are honoured here explicitly.
+    if(heroChar&&!heroChar._druidNegated&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type)||PRIMAL_ARMY_DEFS_P[army.type])){
+      let _druLvl=Math.min(5,effStat(heroChar,'druid'));
+      if(heroChar._curseHalveStat==='druid') _druLvl=Math.floor(_druLvl/2);
+      if(_druLvl>0) str=Math.round(str*(1+0.05*_druLvl));
+    }
     // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%; Ironclad: heavy & fleet +5%.
     if(heroChar){
       const _prim=CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type);
@@ -9706,6 +9718,13 @@ const BATTLE_ARMY_SPELLS={
     }
     // Monster nature: armoured hides turn blades, bone shrugs off arrows, magic ignores plate.
     if(target.vuln){ const ch=PC_CHANNEL[kind]||'spell'; d=Math.max(1, Math.round(d*(target.vuln[ch]||1))); }
+    // ── DRUID 3+ (Toby 2026-09-09) ── a druid of standing reads a beast's every move: damage dealt TO them
+    // BY a natural creature (beast / vermin category) in a personal encounter is HALVED, never below 1. It
+    // does not blunt undead, fiends, constructs, dragons or anything wielding a spell against them.
+    if(target.druidBeastWard && d>1){
+      const _bw=d; d=Math.max(1,Math.round(d/2));
+      if(d<_bw) narrative.push(`  🍃 ${target.name} reads the beast's every move — ${_bw-d} of the ${PC_CHANNEL[kind]==='archery'?'strike':'blow'} turned aside (Druid ${target.druidBeastWard}).`);
+    }
     if(target.status && target.status.incomingDmgBonus>0) d+=target.status.incomingDmgBonus; // Melt Armour
     // ── Temper: Rage ── A Berserk shrugs off a fifth of every blow and arrow that lands. Spells
     // bypass it entirely (rage is a tolerance for pain, not a ward), and it can never reduce a
@@ -10285,6 +10304,21 @@ const BATTLE_ARMY_SPELLS={
     opts=opts||{}; const maxRounds=opts.maxRounds||20;
     const narrative=[];
     const state={fledBy:null, parley:false, stoleBy:null, range:'spell', mirror:null, feature:opts.feature||null}; // all combats begin at Spell range
+    // ── DRUID 3+ beast ward (Toby 2026-09-09) ── decided once, at the joining of the fight: a character of
+    // Druid 3 or better facing a NATURAL creature (beast or vermin) takes half damage from it. Undead,
+    // fiends, constructs, dragons, giants, fey and aberrations are outside a druid's understanding, and a
+    // commander whose Druid has been severed (Psychic Blast) loses the ward with it.
+    const _PC_BEAST_CATS=new Set(['beast','vermin']);
+    const _wardOf=(me,foe)=>{
+      if(!me||me.kind!=='character'||!me.ref||me.ref._druidNegated) return 0;
+      if(!foe||foe.kind!=='monster'||!_PC_BEAST_CATS.has(String(foe.cat||''))) return 0;
+      let lvl=Math.min(5,effStat(me.ref,'druid'));
+      if(me.ref._curseHalveStat==='druid') lvl=Math.floor(lvl/2);
+      return lvl>=3?lvl:0;
+    };
+    A.druidBeastWard=_wardOf(A,B); B.druidBeastWard=_wardOf(B,A);
+    if(A.druidBeastWard) narrative.push(`  🍃 ${A.name} has hunted this kind before — the beast's blows will land at half force (Druid ${A.druidBeastWard}).`);
+    if(B.druidBeastWard) narrative.push(`  🍃 ${B.name} has hunted this kind before — the beast's blows will land at half force (Druid ${B.druidBeastWard}).`);
     // Initiative: speed first, then raw martial skill; ties broken at random.
     const initA=pcSpeedOf(A)*10+(A.melee||0)+(A.archery||0)+Math.random();
     const initB=pcSpeedOf(B)*10+(B.melee||0)+(B.archery||0)+Math.random();
@@ -11301,7 +11335,13 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(...res.narrative);
 
     // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
-    if(res.stoleBy===A && def.player!==null && atk.player!==null){
+    // THIEF L8 (Toby 2026-09-09): a master thief's own purse cannot be picked.
+    const _pickProof=(x)=>perkTier(x,'thief')>=3;
+    if(res.stoleBy===A && def.player!==null && atk.player!==null && _pickProof(def)){
+      narrative.push(`${atk.name} goes for ${def.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`);
+    } else if(res.stoleBy===B && atk.player!==null && def.player!==null && _pickProof(atk)){
+      narrative.push(`${def.name} goes for ${atk.name}'s purse and comes away with nothing — a master thief keeps their own coin far better hidden.`);
+    } else if(res.stoleBy===A && def.player!==null && atk.player!==null){
       const purse=G.players[def.player]?.gold||0;
       const stolen=Math.min(purse, rng(1,5));
       if(stolen>0){
@@ -11783,6 +11823,46 @@ const BATTLE_ARMY_SPELLS={
       const _sit=(c.items||[]).find(x=>x&&(String(x.id)===String(target)||x.name===target));
       if(_sit&&_sit.effect&&_sit.effect.stat==='castSpell'&&SPELL_DEFS_P[_sit.effect.spell]){ _itemCast={item:_sit.name,spell:_sit.effect.spell}; action='cast_spell'; }
     }
+    // ── THIEF: caught in the act (2026-09-09 thief revision) ──────────────────────────────────
+    // A thief detected mid-theft is set upon by the victim: a PERSONAL duel on both encounter plans
+    // (the thief is well advised to lead with FLEE), unless the victim's duel stance is REFUSE — then
+    // the victim lets the thief go and merely raises the alarm. A Vanished thief (Thief 9) is never
+    // brought to bay at all.
+    const thiefCaughtScuffle=(thief, victim, what)=>{
+      const targetsPi=[thief.player,victim.player].filter(x=>x!=null);
+      if(thief._vanishTurn===G.turn){
+        log('system',`${victim.name} raises the alarm, but ${thief.name} has already melted into the shadows. (Vanish)`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:[thief.id,victim.id]});
+        return;
+      }
+      ensureEncounterPlan(victim);
+      if(duelStanceOf(victim)==='refuse'){
+        log('system',`${victim.name} catches ${thief.name} ${what}, but wants no part in a brawl — the thief is driven off empty-handed.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:false,charIds:[thief.id,victim.id]});
+        return;
+      }
+      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase())||String(t).toUpperCase().startsWith('CA:'));
+      ensureEncounterPlan(thief);
+      const atkPlan=filterPlan(thief.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
+      const defPlan=filterPlan(victim.encounterPlan); if(!defPlan.length) defPlan.push('ME');
+      const _duelChars=[thief.id,victim.id];
+      log('combat',`⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
+      const enc=resolveCharVsChar(thief,victim,atkPlan,defPlan,prov,effStat,rng,G);
+      enc.narrative.forEach(line=>log('combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      thief.hp=Math.max(1,enc.atkHp);
+      if(victim.player!==null) victim.hp=Math.max(1,enc.defHp);
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(thief,victim); awardKillXP(victim,thief); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(victim)){ if(victim.hp!=null&&victim.hp<=0) victim.hp=1; log('combat',_garrethEscapeLine(victim),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${victim.name} is slain by the cornered thief!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(victim,thief); awardKillXP(thief,victim); } }
+    };
+    // Shared: lift a random magic item from a victim (null if none, or if the victim is a master thief).
+    const liftRandomItem=(thief, victim)=>{
+      const items=victim.items||[];
+      if(!items.length) return null;
+      if(perkTier(victim,'thief')>=3) return {guarded:true}; // THIEF L8 (Toby 2026-09-09): a master thief's own pockets cannot be picked
+      const it=items.splice(Math.floor(Math.random()*items.length),1)[0]; applyItemMaxHp(victim,it);
+      thief.items=(thief.items||[]); thief.items.push(it); applyItemMaxHp(thief,it);
+      return it;
+    };
+
     switch(action){
       case 'move':{
         // Safety net: if this owned hero never had a move pool computed (both pools undefined) —
@@ -12567,7 +12647,9 @@ const BATTLE_ARMY_SPELLS={
         prov.exploredBy[c.player]=Math.min(100,before+gain);
         prov.explored=prov.exploredBy[c.player]; // keep legacy field for compatibility
         // EXPLORER L8 — surveying the ground sometimes reveals richer land: 50% chance to +2 tax base (max 10), permanent.
-        if(perkTier(c,'explorer')>=3 && Math.random()<0.5){ const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
+        // EXPLORER L8 (capped Toby 2026-09-09): the rich-land survey can only pay off ONCE per province —
+        // repeated Explore orders on the same ground no longer keep rolling the tax base upward.
+        if(perkTier(c,'explorer')>=3 && !prov._richSurveyed && Math.random()<0.5){ prov._richSurveyed=true; const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
         // ANCIENT LORE (sd32) — the same Explore action also maps 10% of each adjacent province.
         if(hasDisc(c.player,'sd32')){
           getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+10); nb.explored=nb.exploredBy[c.player]; });
@@ -12719,17 +12801,22 @@ const BATTLE_ARMY_SPELLS={
           // is nothing left to lift. (Winning the fight still pays the full tiered reward below;
           // that is separate, and the treasure the guardian sat on is spoils of victory.)
           if(f.monster) delete f.monster._treasureStolen;
+          ensureLairHoard(f,G);
           const hoard=featureTreasure(f);
+          if(f._hoardGoldOrig==null) f._hoardGoldOrig=hoard; // back-compat for pre-revision saves
           if(hoard<=0){
             log('explore',`${c.name} slips past the ${f.monster?.name||'guardian'} of the ${f.name}, but the hoard is already picked clean — nothing left to steal.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           } else {
-            const pct=rng(10,25)/100;
-            const gold=Math.max(1, Math.min(hoard, Math.round(hoard*pct)));
+            // Thief revision (Toby 2026-09-09): the cut is 10% PER THIEF LEVEL (capped at 5 → 50%) of the
+            // hoard's ORIGINAL size, so skill decides the haul and a full-strength thief empties a lair in two
+            // visits. Never more than what is actually left.
+            const _thLvl=Math.min(5,effStat(c,'thief'));
+            const gold=Math.max(1, Math.min(hoard, Math.round((f._hoardGoldOrig||hoard)*0.10*_thLvl)));
             setFeatureTreasure(f, hoard-gold);
             player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
             const left=featureTreasure(f);
             const _dregs=left<=0?` They have cleaned out the last of it — the hoard is empty.`:` (~${left}g still hidden here.)`;
-            log('explore',`${c.name} escapes with ${gold}g lifted from the ${f.name}'s hoard! The ${f.monster?.name||'guardian'} still guards the site.${_dregs}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('explore',`${c.name} escapes with ${gold}g lifted from the ${f.name}'s hoard (Thief ${_thLvl}: ${_thLvl*10}% of the original hoard)! The ${f.monster?.name||'guardian'} still guards the site.${_dregs}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
           // Item 4 (2026-09-07): a thief may also lift ONE of the hoard's magic items — 30% + 10% per Thief level (max 80%).
           { ensureLairHoard(f,G); const _hi=(f.hoardItems||[]);
@@ -13624,6 +13711,9 @@ const BATTLE_ARMY_SPELLS={
         }
         // A mutual pair of Encounter orders (each hunting the other) resolves as ONE meeting.
         if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ break; }
+        // THIEF L9 Vanish: no Encounter can be forced on someone who has melted into the shadows.
+        if(quarry._vanishTurn===G.turn&&quarry.player!==c.player){
+          log('move',`${c.name} sets out after ${quarry.name}, but there is no trail to follow — the quarry has vanished into the shadows.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         c._pursuit={targetId:quarry.id, active:true, setPhase:ph};
         delete c._defend; // a chase cancels a standing Defend (AK [3.15])
         log('move',`${c.name} sets out to run down ${quarry.name} and will not turn aside until the matter is settled.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -13632,52 +13722,67 @@ const BATTLE_ARMY_SPELLS={
       }
 
       case 'steal':{
-        // Steal action: target another character in the same province
+        // ── STEAL (Thief revision, Toby 2026-09-09) ──
+        // Needs Thief 1+. Targets: a character in the province (magic item, or 5% of their realm's treasury —
+        // the player chooses via `extra`, defaulting to an item when one is carried), or the province GARRISON
+        // paymaster (target 'garrison': 1g per garrison unit from the owning realm). Success: 50% + 10%/Thief
+        // (cap L5), halved against a commander leading troops (or the guarded paymaster). A failed attempt is
+        // noticed unless the thief slips away (Thief × 20%, cap 95%); a noticed thief is brought to a duel
+        // unless the victim's duel stance is REFUSE (thiefCaughtScuffle above).
+        const thiefLevel=effStat(c,'thief');
+        if(thiefLevel<1){log('system',`${c.name} has no Thief skill — light fingers take training.`,{actor:c.player,targets:[c.player]});break;}
+        const _tgtRaw=String(target||'').trim().toLowerCase();
+        const stealBase=50+10*Math.min(thiefLevel,5);
+        const escapeChance=Math.min(95,thiefLevel*20); // chance to slip away unnoticed on a failure
+        if(_tgtRaw==='garrison'){
+          // (e) The garrison paymaster: 1g per unit standing garrison here, from the province's owner.
+          const _gN=(prov.garrisonArmies||[]).length;
+          if(prov.owner==null||prov.owner===c.player||_gN===0){log('system',`${c.name} finds no enemy paymaster to rob in ${prov.name} — it needs a rival's garrison standing here.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const ownerP=G.players[prov.owner]; const chance=Math.floor(stealBase/2); const roll=d100();
+          log('system',`📊 Steal — ${c.name} (Thief ${thiefLevel}) goes for the garrison paymaster of ${prov.name} (${_gN} unit${_gN!==1?'s':''}, guarded — halved): ${fmtRoll(chance,roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(roll<=chance){
+            const take=Math.min(ownerP.gold||0,_gN);
+            if(take>0){ ownerP.gold-=take; player.gold=(player.gold||0)+take; c.merits=(c.merits||0)+1; }
+            log('hire',`💰 ${c.name} lifts ${take}g from the garrison paymaster's strongbox in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            if(take>0) log('system',`[Intelligence] The garrison paymaster of ${prov.name} was robbed of ${take}g — ${c.name} (${G.players[c.player]?.name}) is suspected.`,{actor:c.player,targets:[prov.owner],provinceId:prov.id});
+            trySkillGain(c,'thief',SKILLGAIN_STD);
+          } else if(Math.random()*100>=escapeChance){
+            const dmg=rng(1,4); c.hp=Math.max(1,c.hp-dmg);
+            log('combat',`${c.name} is caught by the garrison guards of ${prov.name} and beaten back — ${dmg} damage taken.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) was caught trying to rob the garrison paymaster of ${prov.name}.`,{actor:c.player,targets:[prov.owner],provinceId:prov.id});
+          } else log('system',`${c.name}'s attempt on the paymaster of ${prov.name} fails, but the thief slips away unnoticed.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          break;
+        }
         const targetId=parseInt(target);
         const victim=G.characters.find(ch=>ch.alive&&ch.id===targetId&&ch.location===c.location);
         if(!victim){log('system',`${c.name} finds no suitable target to steal from in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
-        const thiefLevel=effStat(c,'thief');
-        // Steal only works if victim has magic items to steal
-        if((victim.items||[]).length===0){log('system',`${c.name} attempts to steal from ${victim.name} but they carry no magic items.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        // Base 50% + 10% per Thief level (level counted up to 5, so 50–100%); halved if victim leads armies.
+        if(victim.player===c.player){log('system',`${c.name} will not rob a comrade.`,{actor:c.player,targets:[c.player]});break;}
+        const hasItems=(victim.items||[]).length>0;
+        const wantGold=(String(extra||'').toLowerCase()==='gold')||!hasItems;
+        if(wantGold&&victim.player==null){log('system',`${c.name} finds ${victim.name} carries no purse worth the risk and no magic to lift.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const leadsArmies=(victim.armies||[]).length>0;
-        let stealChance=50+10*Math.min(thiefLevel,5);
-        if(leadsArmies) stealChance=Math.floor(stealChance/2);
+        let stealChance=stealBase; if(leadsArmies) stealChance=Math.floor(stealChance/2);
         const stealRoll=d100();
-        const escapeChance=thiefLevel*20; // chance to avoid detection if caught
-        log('system',`📊 Steal — ${c.name} (Thief ${thiefLevel}) targets ${victim.name}: ${fmtRoll(stealChance, stealRoll)}${leadsArmies?' (halved — target leads armies)':''}`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!==null),provinceId:prov.id});
+        log('system',`📊 Steal — ${c.name} (Thief ${thiefLevel}) targets ${victim.name} (${wantGold?'gold':'a magic item'}): ${fmtRoll(stealChance, stealRoll)}${leadsArmies?' (halved — target leads armies)':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(stealRoll<=stealChance){
-          // Success — steal a random item
-          const items=victim.items||[];
-          if(items.length===0){
-            log('system',`${c.name} successfully picks ${victim.name}'s pockets but finds nothing of value.`,{actor:c.player,targets:[c.player]});
+          if(wantGold){
+            const purse=G.players[victim.player]?.gold||0; const take=Math.min(purse,Math.max(1,Math.floor(purse*0.05)));
+            if(purse<=0){ log('system',`${c.name} picks ${victim.name}'s purse — and finds it empty.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
+            else { G.players[victim.player].gold-=take; player.gold=(player.gold||0)+take; c.merits=(c.merits||0)+1;
+              log('hire',`💰 ${c.name} deftly lifts ${take}g from ${victim.name}'s strongbox (5% of the realm's treasury).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+              log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen ${take}g from ${victim.name}!`,{actor:c.player,targets:[victim.player],provinceId:prov.id,charId:victim.id}); }
           } else {
-            const idx=Math.floor(Math.random()*items.length);
-            const stolen=items.splice(idx,1)[0]; applyItemMaxHp(victim,stolen);
-            c.items=(c.items||[]);c.items.push(stolen);
-            applyItemMaxHp(c,stolen); /* item 6 */
-            c.merits=(c.merits||0)+2;
-            log('hire',`${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!==null),provinceId:prov.id,public:false});
-            if(victim.player!==null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[victim.player],provinceId:prov.id});
+            const stolen=liftRandomItem(c,victim);
+            if(stolen&&stolen.guarded){ log('system',`${c.name}'s fingers find nothing — ${victim.name} keeps every trinket sewn tight; a master thief cannot be robbed of their own.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
+            else { c.merits=(c.merits||0)+2;
+              log('hire',`${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
+              if(victim.player!==null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[victim.player],provinceId:prov.id,charId:victim.id}); }
           }
-          // Thief skill-on-use chance
-          trySkillGain(c,'thief',SKILLGAIN_STD); // Item 3: successful theft trains Thief through the standard experience path (was a separate 15% roll capped at 5)
+          trySkillGain(c,'thief',SKILLGAIN_STD);
         } else {
           const caught=Math.random()*100>=escapeChance;
-          if(caught){
-            log('combat',`${c.name} is caught attempting to steal from ${victim.name}! A scuffle breaks out.`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!==null),provinceId:prov.id,public:true});
-            // Brief combat: victim retaliates
-            const atkMelee=effStat(c,'melee'),defMelee=effStat(victim,'melee');
-            const diff=atkMelee-defMelee;
-            const hitChance=Math.max(10,Math.min(90,50+diff*10));
-            const hit=Math.random()*100;
-            if(hit<hitChance){const dmg=rng(1,4);victim.hp=Math.max(1,victim.hp-dmg);log('combat',`${c.name} fights back! ${victim.name} takes ${dmg} damage.`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!==null)});}
-            const mHit=Math.random()*100;
-            const mHitChance=Math.max(10,Math.min(90,50-diff*10));
-            if(mHit<mHitChance){const mDmg=rng(1,4);c.hp=Math.max(1,c.hp-mDmg);log('combat',`${victim.name} strikes back! ${c.name} takes ${mDmg} damage.`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!==null)});}
-          } else {
-            log('system',`${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`,{actor:c.player,targets:[c.player]});
-          }
+          if(caught) thiefCaughtScuffle(c,victim,`with a hand in their ${wantGold?'strongbox':'pack'}`);
+          else log('system',`${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`,{actor:c.player,targets:[c.player]});
         }
         break;
       }
@@ -14376,22 +14481,40 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'grand_heist':{
+        // ── GRAND HEIST (Thief 7; revised Toby 2026-09-09) ── once per turn per thief. A ROLL, not a
+        // certainty: 60% + 5% per Thief level past 5 (L7 70, L9 80), halved if the victim leads troops. Success
+        // lifts one magic item (guaranteed if any are carried — unless the victim is a master thief) AND 25%
+        // of the victim realm's treasury (THIEF L8 doubles the gold; the victim is floored at 0). A failed
+        // heist is noticed unless the thief slips away (Thief × 20%, cap 95%) — and then it's a duel.
         if(skillLevel(c,'thief')<7){log('system',`${c.name} lacks the Thief mastery (7) for a Grand Heist.`,{actor:c.player,targets:[c.player]});break;}
+        if(c._grandHeistTurn===G.turn){log('system',`${c.name} has already staged a Grand Heist this turn — one great job a season is all the nerves will bear.`,{actor:c.player,targets:[c.player]});break;}
         const victim=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!victim){log('system',`${c.name} finds no enemy hero to rob in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
         if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
+        c._grandHeistTurn=G.turn;
         const vp=victim.player;
-        const purse=(vp!=null)?(G.players[vp]?.gold||0):0;
-        let take=Math.max(5, Math.floor(purse*0.4));
-        if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — thief gains the full amount even if the victim cannot cover it (victim floored at 0 below)
-        let msg='';
-        if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; msg=`${take}g spirited away`; }
-        // Chance to also lift a magic item.
-        if((victim.items||[]).length>0 && Math.random()<0.5){ const it=victim.items.splice(Math.floor(Math.random()*victim.items.length),1)[0]; applyItemMaxHp(victim,it); c.items=(c.items||[]); c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ msg=(msg?msg+' — and ':'')+`the ${it.name} lifted`; }
-        c.merits=(c.merits||0)+2;
-        log('hire',`💰 ${c.name} pulls off a Grand Heist against ${victim.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player,vp].filter(x=>x!=null),provinceId:prov.id});
-        if(vp!=null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) robbed ${victim.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
-        trySkillGain(c,'thief',SKILLGAIN_STD);
+        const _hLvl=skillLevel(c,'thief'); const _hArmed=(victim.armies||[]).length>0;
+        let _hChance=Math.min(95,60+5*(_hLvl-5)); if(_hArmed) _hChance=Math.floor(_hChance/2);
+        const _hRoll=d100();
+        log('system',`📊 Grand Heist — ${c.name} (Thief ${_hLvl}) against ${victim.name}: ${fmtRoll(_hChance,_hRoll)}${_hArmed?' (halved — target leads armies)':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        if(_hRoll<=_hChance){
+          const purse=(vp!=null)?(G.players[vp]?.gold||0):0;
+          let take=Math.floor(purse*0.25);
+          if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — thief gains the full amount even if the victim cannot cover it (victim floored at 0 below)
+          const parts=[];
+          if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; parts.push(`${take}g spirited away`); }
+          const it=liftRandomItem(c,victim);
+          if(it&&it.guarded) parts.push(`${victim.name}'s trinkets prove sewn too tight to lift`); else if(it) parts.push(`the ${it.name} lifted`);
+          c.merits=(c.merits||0)+2;
+          const msg=parts.join(' — and ');
+          log('hire',`💰 ${c.name} pulls off a Grand Heist against ${victim.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(vp!=null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) robbed ${victim.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id,charId:victim.id});
+          trySkillGain(c,'thief',SKILLGAIN_STD);
+        } else {
+          const caught=Math.random()*100>=Math.min(95,_hLvl*20);
+          if(caught) thiefCaughtScuffle(c,victim,`in the middle of a Grand Heist`);
+          else log('system',`${c.name}'s Grand Heist against ${victim.name} comes to nothing, but the thief slips away undetected.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        }
         break;
       }
       case 'awaken_grove':{
@@ -14481,7 +14604,7 @@ const BATTLE_ARMY_SPELLS={
       case 'vanish':{
         if(skillLevel(c,'thief')<9){log('system',`${c.name} lacks the Thief mastery (9) to Vanish.`,{actor:c.player,targets:[c.player]});break;}
         c._vanishTurn=G.turn;
-        log('move',`🌫 ${c.name} melts into the shadows — no pursuit will run them down for the rest of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('move',`🌫 ${c.name} melts into the shadows — for the rest of the turn no pursuit, Encounter or ambush can bring them to bay.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         trySkillGain(c,'thief',SKILLGAIN_STD);
         break;
       }
@@ -14577,14 +14700,40 @@ const BATTLE_ARMY_SPELLS={
       }
       // ══ L7/L9 MASTERY ORDERS (batch 2c-iii — specials) ═══════════════════════════
       case 'wild_calling':{
+        // ── WILD CALLING (Druid 9; revised Toby 2026-09-09) ── every primal creature or monster in this
+        // province that does not already serve you — a neutral primal host, an enemy commander's beasts, or
+        // unled garrison beasts — has a 50% chance to defect and fall in behind the caller. Humanoid troops,
+        // fleets, machines and the walking dead are deaf to it.
         if(skillLevel(c,'druid')<9){log('system',`${c.name} lacks the Druid mastery (9) to sound a Wild Calling.`,{actor:c.player,targets:[c.player]});break;}
-        const isPrimal=String(prov.race||'').startsWith('Primal');
-        if(!isPrimal||!((prov.neutralDefenders||[]).length)){log('explore',`${c.name} sounds a Wild Calling, but ${prov.name} holds no primal host to answer.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        const src=prov.neutralDefenders; const take=Math.min(src.length,2+Math.floor(skillLevel(c,'druid')/2));
-        const idxs=shuffleP(src.map((_,i)=>i)).slice(0,take).sort((a,b)=>b-a);
-        const won=idxs.map(i=>src.splice(i,1)[0]);
-        c.armies=(c.armies||[]).concat(won.map(u=>Object.assign({},u,{_pacified:true})));
-        log('explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${won.length} primal beast${won.length!==1?'s':''} answer and fall in behind your banner!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        const _wcIsBeast=(u)=>!!u&&!u._isSkeletal&&(CREATURE_ARMIES.has(u.type)||MONSTER_ARMIES.has(u.type)||!!PRIMAL_ARMY_DEFS_P[u.type]);
+        const _wcWon=[]; const _wcHeard=[]; let _wcCalled=0;
+        const _wcSift=(arr,label)=>{
+          if(!Array.isArray(arr)) return;
+          for(let i=arr.length-1;i>=0;i--){
+            const u=arr[i]; if(!_wcIsBeast(u)) continue;
+            _wcCalled++;
+            if(d100()<=50){ _wcWon.push(Object.assign({},arr.splice(i,1)[0],{_pacified:true})); if(label&&!_wcHeard.includes(label)) _wcHeard.push(label); }
+          }
+        };
+        _wcSift(prov.neutralDefenders,null);                            // the wild host of a primal province
+        if(prov.owner!=null&&prov.owner!==c.player) _wcSift(prov.garrisonArmies,`the garrison of ${prov.name}`);
+        else if(prov.owner==null) _wcSift(prov.garrisonArmies,null);
+        (G.characters||[]).forEach(o=>{
+          if(!o||!o.alive||o.id===c.id||o.location!==c.location) return;
+          if(o.player===c.player) return;                               // never poached from your own commanders
+          if(o.player!=null&&!areEnemies(c.player,o.player)) return;     // and never from a realm you are not at war with
+          const before=_wcWon.length; _wcSift(o.armies,o.name);
+          if(_wcWon.length>before&&o.player!=null){
+            log('system',`🐾 The beasts of ${o.name}'s host break their bonds and answer a Wild Calling in ${prov.name} — ${_wcWon.length-before} unit${_wcWon.length-before!==1?'s':''} lost.`,{actor:o.player,targets:[o.player],provinceId:prov.id,charId:o.id});
+            if(typeof refreshMovePool==='function') refreshMovePool(o);
+          }
+        });
+        if(_wcCalled===0){log('explore',`${c.name} sounds a Wild Calling, but nothing wild stands in ${prov.name} to answer it.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        if(_wcWon.length===0){log('explore',`🐾 ${c.name} sounds a Wild Calling over ${_wcCalled} wild creature${_wcCalled!==1?'s':''} in ${prov.name} — not one of them breaks for the call.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});trySkillGain(c,'druid',SKILLGAIN_STD);break;}
+        c.armies=(c.armies||[]).concat(_wcWon);
+        const _wcFrom=_wcHeard.length?` (torn from ${_wcHeard.join(' and ')})`:'';
+        log('explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        if(typeof refreshMovePool==='function') refreshMovePool(c);
         resolveUnitGainInProvince(c, prov, ph);
         trySkillGain(c,'druid',SKILLGAIN_STD);
         break;
@@ -16065,6 +16214,7 @@ const BATTLE_ARMY_SPELLS={
         if(e.location==null||!zoneIds.has(e.location)) return false;
         if(e._enteredProvThisPhase!==e.location) return false; // must have MARCHED IN this phase (a real incursion)
         if(e._encounteredThisPhase!=null) return false;
+        if(e._vanishTurn===G.turn) return false;             // THIEF L9 Vanish: no ambush lands on a vanished quarry
         if(e.isKing && !c.isKing) return false;              // a crowned head is not waylaid by a lone hero — only a king may ambush a king
         if(isHiddenChar(e)) return false;                    // Cloak of Many Faces & the like leave no trail
         return true;
@@ -16207,6 +16357,8 @@ const BATTLE_ARMY_SPELLS={
       log('move',`${c.name} follows the trail of ${quarry.name} into ${here?here.name:'the wilds'} and loses it utterly — the man seems to leave no track at all.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       endPursuit(c); return;
     }
+    // THIEF L9 Vanish (Toby 2026-09-09): a Vanished character cannot be run down NOR brought to an
+    // Encounter — the chase simply ends, wherever in it we are.
     if(quarry._vanishTurn===G.turn&&quarry.player!==c.player){
       log('move',`${c.name} presses the chase after ${quarry.name}, but the quarry melts into the shadows and is gone. (Vanish)`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       endPursuit(c); return;
@@ -17783,6 +17935,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-0831</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-0948</div>
 </body>
 </html>

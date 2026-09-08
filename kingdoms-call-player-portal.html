@@ -593,14 +593,14 @@ const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker','Consecrate']);
 const L79_ORDERS={
   'Sabotage':{skill:'spy',lvl:7,target:'province',provKind:'enemy',hint:'Spy 7: wreck an enemy province you can see — it yields no tax next turn and loses a garrison unit.'},
   'Forced March':{skill:'march',lvl:7,target:'province',provKind:'move_adjacent',hint:'March 7: march to an adjacent province — if an enemy army or a Defend order awaits, a 50% chance to slip in without a battle this phase (the fight comes next phase if you stay, or at turn end).'},
-  'Grand Heist':{skill:'thief',lvl:7,target:'character',hint:'Thief 7: rob an enemy hero in your province of a large sum of gold (and perhaps a magic item).'},
+  'Grand Heist':{skill:'thief',lvl:7,target:'character',hint:'Thief 7: once per turn — rob an enemy hero in your province of 25% of their realm\'s treasury and one magic item. 60% + 5% per level past 5, halved if they lead troops; if you fail and are spotted, they draw steel.'},
   'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
   'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
   'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden lair or treasure site, if any remain.'},
   'Blockade':{skill:'naval',lvl:7,target:'province',provKind:'sea_adjacent',hint:'Naval 7: seal a sea province you are in or adjacent to — enemy fleets may not cross it this turn.'},
   'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your realm).'},
   'Assassinate':{skill:'spy',lvl:9,target:'character',hint:'Spy 9: attempt to slay an enemy hero in the province you stand in — a spy-level chance to kill.'},
-  'Vanish':{skill:'thief',lvl:9,target:'none',hint:'Thief 9: melt into the shadows — any enemy pursuit of you fails for the rest of this turn.'},
+  'Vanish':{skill:'thief',lvl:9,target:'none',hint:'Thief 9: melt into the shadows — for the rest of this turn no pursuit, Encounter or ambush can bring you to bay, and no thief caught in the act can be cornered.'},
   'Challenge':{skill:'melee',lvl:7,target:'character',hint:'Melee 7: call out a LONE enemy hero in your province to single combat — the loser is wounded, or slain.'},
   'Rampage':{skill:'melee',lvl:9,target:'character',hint:'Melee 9: hurl yourself at an enemy force in your province — cut down several of its units and wound its commander.'},
   'Rain of Arrows':{skill:'archery',lvl:7,target:'character',hint:'Archery 7: loose a volley on an enemy force in your province, felling several of its units.'},
@@ -643,6 +643,7 @@ function actionsFor(c){
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
     if(L79_ORDERS[a]&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     if(a==='Research'&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
+    if(a==='Steal'&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only (2026-09-09) — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // 2026-09-08: a king cannot release himself
     return true;
   }).sort((a,b)=>_actionRank(a)-_actionRank(b));
@@ -1306,8 +1307,8 @@ const SKILL_INFO={
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
   sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance (10% with the Library discovery) per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
-  thief:'Larceny. Improves success when stealing gold or magic items — both via the Steal order and by pickpocketing during encounters.',
-  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. Higher Druid unlocks the most powerful primal beasts.',
+  thief:'Larceny. Improves success when stealing gold or magic items — via the Steal order (a hero\'s pack, their strongbox, or a garrison paymaster), by pickpocketing during encounters, and when lifting a lair\'s hoard (10% of the original hoard per level, capped at 5).',
+  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength — and every level adds +5% strength to the primal armies you lead (capped at 5). From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful primal beasts.',
   explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
   white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine realms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
@@ -2550,7 +2551,7 @@ const MASTERY_EFFECTS={
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
-  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: steal gold (or a magic item) from an enemy hero in your province.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it.',9:'New order — Vanish: automatically escape any Pursue or capture this turn.'},
+  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, rob an enemy hero in your province of a quarter of their realm\'s treasury and a magic item.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
@@ -5192,18 +5193,28 @@ function buildTargetField(c, ph, saved){
 
     // ── STEAL ──
     case 'Steal':{
+      // Thief revision (2026-09-09): a thief may lift a MAGIC ITEM, skim 5% of the target realm's
+      // TREASURY, or rob the province's garrison paymaster (1g per garrison unit). The choice of
+      // prize rides in `extra` ('item' | 'gold'); 'garrison' is a target value of its own.
       const thiefLvl=(c.skills||{}).thief||0;
-      // Only target visible enemy characters (not own, not wandering neutrals with no player)
       const visibleEnemyChars=(report.visibleChars||[]).filter(x=>x.player!==null&&x.player!==c.player);
-      const others=visibleEnemyChars;
-      if(others.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No visible enemy characters to steal from" disabled>`;
-      const opts=others.map(x=>{
+      const loc=predictedLocation(c.id,ph);
+      const pdS=loc?provOrderData[loc.id]:null;
+      const garrN=(pdS&&pdS.owner!=null&&pdS.owner!==c.player)?((pdS.garrisonArmies||[]).length):0;
+      if(visibleEnemyChars.length===0&&garrN===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from here — you need a rival character or an enemy garrison" disabled>`;
+      const base=50+10*Math.min(thiefLvl,5);
+      const opts=visibleEnemyChars.map(x=>{
         const hasItems=(x.items||[]).length>0;
-        const chance=50+10*Math.min(thiefLvl,5); // base 50% + 10%/level (cap L5)
-        return`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${hasItems?` (${x.items.length} item${x.items.length!==1?'s':''})`:' (no items)'}— ~${chance}% base chance</option>`;
+        return`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${hasItems?` (${x.items.length} item${x.items.length!==1?'s':''})`:' (no items)'} — ~${base}% base chance</option>`;
       }).join('');
-      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in same province. Success: ${50+10*Math.min(thiefLvl,5)}% base (Thief ${thiefLvl}), halved if the target leads troops. If caught, a fight may break out.</div>`;
+      const garrOpt=garrN>0?`<option value="garrison" ${target==='garrison'?'selected':''}>The garrison paymaster of ${pdS.name||'this province'} (${garrN} unit${garrN!==1?'s':''}) — ~${Math.floor(base/2)}%</option>`:'';
+      const prize=String(extra||'item').toLowerCase()==='gold'?'gold':'item';
+      return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}${garrOpt}</select>
+        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">
+          <option value="item" ${prize==='item'?'selected':''}>Lift a magic item</option>
+          <option value="gold" ${prize==='gold'?'selected':''}>Pick their strongbox — 5% of their treasury</option>
+        </select>
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in the same province. Success: <strong>${base}%</strong> (Thief ${thiefLvl}), halved if the target leads troops or you go for a guarded paymaster. A target with no items is robbed of gold instead. <strong>If you fail and are spotted (${Math.min(95,thiefLvl*20)}% to slip away unseen), the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight. A Thief 8 master's own pockets cannot be picked.</div>`;
     }
 
     // ── SEARCH LAIR ──
@@ -6459,6 +6470,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-0831</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-0948</div>
 </body>
 </html>
