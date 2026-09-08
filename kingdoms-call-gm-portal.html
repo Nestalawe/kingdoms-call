@@ -3631,6 +3631,31 @@ function hasItemBase(c, base){ return activeItems(c).some(it=>it&&it.name&&((_IT
 // Item 7 (2026-09-07): the temper a character FIGHTS with — an equipped temper item overrides their own.
 function effTemper(c){ if(!c) return 'Brave'; const it=activeItems(c).find(x=>x&&x.effect&&x.effect.stat==='temper'&&x.effect.temper); return (it&&it.effect.temper)||c.temper||'Brave'; }
 
+// ── EFFECTIVE SKILL (single source of truth, 2026-09-09e) ─────────────────────────────────────
+// Every bonus that changes what a character's skill IS: equipped items, the Crown of Command aura
+// (+1 to all skills while the bearer — or a co-located ally of the same realm — carries it), and the
+// Curse spell's temporary reduction. Capped 0..5, as skills always are for effect purposes.
+// runTurn's effStat() delegates here, and the player report renders from the SAME function, so what a
+// player is shown can never drift from what the engine actually uses. `chars` is the character list to
+// search for an aura bearer (runTurn passes G.characters, the report passes gameState.characters).
+function skillBonusBreakdown(c, stat, chars){
+  const out={base:(c&&c.skills||{})[stat]||0, items:0, aura:0, curse:0, sources:[]};
+  if(!c) return out;
+  dedupeItemsByName(activeItems(c)).forEach(it=>{
+    if(it.effect&&it.effect.stat===stat&&it.effect.bonus){ out.items+=it.effect.bonus; out.sources.push({label:it.name||'an item',delta:it.effect.bonus}); }
+  });
+  const _cur=(c._curses||{})[stat]||0;
+  if(_cur){ out.curse=-_cur; out.sources.push({label:'Curse',delta:-_cur}); }
+  if(c.location!=null&&Array.isArray(chars)){
+    const bearer=chars.find(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&activeItems(o).some(it=>it.effect&&it.effect.stat==='aura'));
+    if(bearer){ out.aura=1; out.sources.push({label:bearer.id===c.id?'Crown of Command':`Crown of Command (${bearer.name})`,delta:1}); }
+  }
+  out.total=Math.max(0,Math.min(5,out.base+out.items+out.aura+out.curse));
+  out.bonus=out.total-Math.max(0,Math.min(5,out.base)); // what the extras are actually WORTH after the cap
+  return out;
+}
+function effSkillOf(c, stat, chars){ return skillBonusBreakdown(c,stat,chars).total; }
+
 function dedupeItemsByName(items){
   const seen=new Set(); const out=[];
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
@@ -6361,8 +6386,10 @@ function buildTurnReport(gameState, playerIndex){
   const charReports=chars.map(c=>{
     const prov=gameState.world.provinces[c.location];
     const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName,race:a.race||null,cost:(a._temporary?0:(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2))),skeletal:!!a._isSkeletal,temporary:!!a._temporary}));
-    const marchLvl=(c.skills?.march)||0;
-    const navalLvl=(c.skills?.naval)||0;
+    // 2026-09-09e: these were read RAW, so an item granting March or Naval was left out of the speed
+    // the player was shown while the engine moved them at the higher rate. Same stack as setMovePool.
+    const marchLvl=effSkillOf(c,'march',gameState.characters||[]);
+    const navalLvl=effSkillOf(c,'naval',gameState.characters||[]);
     const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
     function repSpd(a){
       const base=a.speed||3;
@@ -6408,7 +6435,28 @@ function buildTurnReport(gameState, playerIndex){
     }
     return{
       id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,temperEff:effTemper(c), // Item 7
-      hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},aptitude:c.aptitude||{},armies,items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it)}):it)),pay:c.pay||0,
+      hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},aptitude:c.aptitude||{},armies,
+      // 2026-09-09e: the EFFECTIVE skill of each ability and where the difference comes from, computed
+      // by skillBonusBreakdown — the very function the engine's effStat uses — so the player's own
+      // character card can show exactly the numbers the turn will be resolved with.
+      skillEff:(()=>{ const out={};
+        ABILITIES_P.forEach(k=>{ const b=skillBonusBreakdown(c,k,gameState.characters||[]);
+          if(b.base>0||b.total>0) out[k]={base:b.base,total:b.total,bonus:b.bonus,sources:b.sources}; });
+        return out; })(),
+      // Bonuses that apply only in PERSONAL COMBAT (they never change the skill itself): minor titles,
+      // the Veteran Training discovery, and any others wired into pcCharCombatant.
+      combatSkillBonus:(()=>{
+        const out={melee:[],archery:[]};
+        // Prefer this report's freshly-computed holders; fall back to the set the last turn resolved
+        // with, so a character sees their own combat bonus even before titles become public.
+        const _mt=(key)=>{ const h=(_minT&&_minT[key])||((gameState._minorHolders||{})[key]); return !!(h&&h.charId===c.id); };
+        const _mtName=(key)=>((MINOR_TITLES.find(t=>t.key===key)||{}).name)||key;
+        [['duelist',['melee']],['marksman',['archery']],['widowmaker',['melee','archery']],['relichunter',['melee','archery']]]
+          .forEach(([key,stats])=>{ if(_mt(key)) stats.forEach(st=>out[st].push({label:_mtName(key),delta:1})); });
+        if(c.player!=null&&(gameState.players[c.player]?.discoveries||[]).some(d=>d&&d.id==='sd37'))
+          { out.melee.push({label:'Veteran Training',delta:1}); out.archery.push({label:'Veteran Training',delta:1}); }
+        if(!out.melee.length) delete out.melee; if(!out.archery.length) delete out.archery;
+        return out; })(),items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it)}):it)),pay:c.pay||0,
       locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,
       effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,
       hiredInPhase:c.hiredInPhase??-1,  // -1 = was hired before this turn
@@ -7861,19 +7909,19 @@ async function runTurn(opts){
     const s=c.skills||{};
     return (s.melee||0)+(s.archery||0)+(s.tactical||0)+((s.march||0)*3)+(s.naval||0)+(s.sage||0)+(s.spy||0)+(s.thief||0)+(s.druid||0)+(s.explorer||0)+(s.white||0)+(s.psychic||0)+(s.illusory||0)+(s.elemental||0)+(s.necromancy||0);
   }
-  function effStat(c,stat){
-    let base=(c.skills||{})[stat]||0;
-    dedupeItemsByName(activeItems(c)).forEach(it=>{if(it.effect?.stat===stat)base+=it.effect.bonus;}); // item 6: no duplicate stacking; Item 11: only EQUIPPED slot items count
-    base-=(c._curses||{})[stat]||0; // Curse spell reduces skill temporarily
-    // Crown of Command: +1 to ALL skills if a co-located ally (or self) carries the aura item.
-    if(c&&c.location!=null&&(G.characters||[]).some(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&activeItems(o).some(it=>it.effect&&it.effect.stat==='aura'))) base+=1;
-    return Math.max(0,Math.min(5,base));
-  }
+  // Delegates to the module-level implementation (see skillBonusBreakdown) so the engine and the
+  // player report cannot disagree about what a character's skills actually are. Equipped items only
+  // (item 6: no duplicate stacking), minus any Curse, plus the Crown of Command aura; capped 0..5.
+  function effStat(c,stat){ return effSkillOf(c,stat,G.characters||[]); }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
   // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character.
   // ILLUSORY L9 Veil — active only during the cast phase and the phase after it (two phases).
   function isVeiled(ch){ return !!(ch && ch._veilTurn===G.turn && _currentPhase!=null && ch._veilCastPhase!=null && _currentPhase>=ch._veilCastPhase && _currentPhase<=ch._veilCastPhase+1); }
   function isHiddenChar(ch){ return !!(ch&&(isVeiled(ch)||activeItems(ch).some(it=>it.effect&&it.effect.stat==='hidden'))); }
+  // THIEF L9 Vanish (Toby 2026-09-09d): a vanished character is untouchable for the REST OF THE TURN —
+  // nothing may bring them to bay and nothing may harm them. Distinct from Veil, which is phase-scoped
+  // and shields the whole host: Vanish protects the man alone, and lasts the season.
+  function isVanished(ch){ return !!(ch && ch._vanishTurn===G.turn); }
 
   // A hero's wage is a function of their skills, so it must be recomputed EVERYWHERE skills
   // change — not just in the Practice order. Experience-driven gains (trySkillGain) previously
@@ -8093,7 +8141,9 @@ function illusoryTerrainMult(armyType){
 // Battle-magic Curse: pick the commander's best combat-affecting skill to halve.
 // Candidates are Tactical (land battles), Druid (army penalties/creature buffs) and Naval (sea battles).
 function bestCurseSkill(hero){
-  const tac=effStat(hero,'tactical'), dru=(hero.skills?.druid||0), nav=effStat(hero,'naval');
+  // 2026-09-09e: Druid was read RAW here while Tactical and Naval were item-boosted, so a commander
+  // whose Druid came from an item had the wrong skill chosen for the Curse. All three now use the same stack.
+  const tac=effStat(hero,'tactical'), dru=effStat(hero,'druid'), nav=effStat(hero,'naval');
   if(nav>=tac && nav>=dru && nav>0) return 'naval';
   return (tac>=dru)?'tactical':'druid';
 }
@@ -9609,7 +9659,11 @@ const BATTLE_ARMY_SPELLS={
       // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
       melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training (wired 2026-09-08)
       archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training
-      meleeRaw:skillLevel(ch,'melee'), archeryRaw:skillLevel(ch,'archery'), // Sept 2026 redesign: damage scales on the raw 1–9 level
+      // Damage scales on the raw 1–9 level (levels 6–9 exist above the effStat cap of 5) — but an item,
+      // aura or title that raises the skill now counts too, so a "+2 Melee" blade is felt in the DAMAGE
+      // as well as the hit chance (2026-09-09e). Whichever is higher wins; nothing is lost either way.
+      meleeRaw:Math.max(skillLevel(ch,'melee'), effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)),
+      archeryRaw:Math.max(skillLevel(ch,'archery'), effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)),
       temper:effTemper(ch), alignment:ch.alignment, // Item 7: an equipped temper item overrides the wearer's own
       school:{white:effStat(ch,'white'),psychic:effStat(ch,'psychic'),illusory:effStat(ch,'illusory'),
               elemental:effStat(ch,'elemental'),necromancy:effStat(ch,'necromancy')},
@@ -10490,6 +10544,8 @@ const BATTLE_ARMY_SPELLS={
     // leaderless host that fought on) cannot ride out, and nobody is shamed for not answering
     // a challenge from a corpse.
     if(atk.alive===false||def.alive===false) return{atkMorale,defMorale};
+    // THIEF L9 Vanish: no one rides out against a commander who is not there, and none may call him out.
+    if(isVanished(atk)||isVanished(def)) return{atkMorale,defMorale};
     const demoralise=(who,why)=>{
       if(who===atk) atkMorale=DUEL_MORALE_PENALTY; else defMorale=DUEL_MORALE_PENALTY;
       narrative.push(`\u{1F4C9} ${who.name}'s force is demoralised — ${why} (−20% strength this battle).`);
@@ -11624,6 +11680,14 @@ const BATTLE_ARMY_SPELLS={
       } }
     // SECRET Easter egg: the unkillable wanderer never actually dies — no graveyard, no lost
     // items, no crown succession. Safety net for any death path not intercepted at its call site.
+    // THIEF L9 Vanish: no killing blow lands on a man who is not there. Catches every death path —
+    // battle, duel, assassination, execution — for the rest of the turn he vanished.
+    if(isVanished(deadChar)){
+      if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
+      deadChar.alive=true; deadChar.killedThisTurn=false;
+      log('combat',`🌫 The blow meant for ${deadChar.name} passes through shadow — they vanished, and cannot be touched this season.`,{actor:(killerChar&&killerChar.player!=null)?killerChar.player:null,targets:(deadChar.player!=null?[deadChar.player]:[]),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+      return false;
+    }
     if(_escapesTheEnd(deadChar)){
       if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
       deadChar.alive=true; deadChar.killedThisTurn=false;
@@ -13765,6 +13829,7 @@ const BATTLE_ARMY_SPELLS={
         const victim=G.characters.find(ch=>ch.alive&&ch.id===targetId&&ch.location===c.location);
         if(!victim){log('system',`${c.name} finds no suitable target to steal from in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
         if(victim.player===c.player){log('system',`${c.name} will not rob a comrade.`,{actor:c.player,targets:[c.player]});break;}
+        if(isVanished(victim)){log('system',`${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const hasItems=(victim.items||[]).length>0;
         const wantGold=(String(extra||'').toLowerCase()==='gold')||!hasItems;
         if(wantGold&&victim.player==null){log('system',`${c.name} finds ${victim.name} carries no purse worth the risk and no magic to lift.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
@@ -13897,6 +13962,10 @@ const BATTLE_ARMY_SPELLS={
         const extraId=parseInt(extra)||0;
         const targetProv=extraId>=0&&G.world.provinces[extraId]?G.world.provinces[extraId]:prov;
         const targetChar=G.characters.find(ch=>ch.alive&&ch.id===extraId);
+        // THIEF L9 Vanish: a vanished character cannot be reached by ANY hostile spell for the rest of the turn.
+        if(targetChar&&targetChar.player!==c.player&&isVanished(targetChar)){
+          log('system',`${c.name}'s ${spellName} gropes after ${targetChar.name} and finds only shadow — they have vanished, and nothing may touch them this season.`,{actor:c.player,targets:[c.player]});break;
+        }
         // ILLUSORY L9 Veil: a veiled character (and the host they lead) cannot be reached by ANY hostile spell while the veil holds.
         if(targetChar&&targetChar.player!==c.player&&isVeiled(targetChar)){
           log('system',`${c.name}'s ${spellName} cannot reach ${targetChar.name} — they and their host are veiled from all hostile magic.`,{actor:c.player,targets:[c.player]});break;
@@ -14579,26 +14648,57 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'chart_unknown':{
+        // Explorer L7 (target widened, Toby 2026-09-09d): the survey may be run on the province the
+        // character stands in OR any province adjacent to it — a cartographer works a horizon, not just
+        // the ground under their boots. An empty or unrecognised target still means "here".
         if(skillLevel(c,'explorer')<7){log('system',`${c.name} lacks the Explorer mastery (7) to Chart the Unknown.`,{actor:c.player,targets:[c.player]});break;}
-        if(!prov.exploredBy) prov.exploredBy={};
-        prov.exploredBy[c.player]=100; prov.explored=100;
-        (prov.features||[]).forEach(f=>{ if(!featDiscovered(f,c.player)){ discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1; } });
-        // Reveal neighbours at a glance (partial sighting).
-        const nbrs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(Boolean);
+        const _cuHereNbrs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(Boolean);
+        const _cuId=parseInt(target);
+        let _cuProv=prov;
+        if(Number.isInteger(_cuId)&&_cuId!==prov.id){
+          const _cand=G.world.provinces[_cuId];
+          if(!_cand||!_cuHereNbrs.some(nb=>nb.id===_cuId)){
+            log('system',`${c.name} cannot chart that ground from ${prov.name} — Chart the Unknown reaches this province or one bordering it.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          _cuProv=_cand;
+        }
+        if(!_cuProv.exploredBy) _cuProv.exploredBy={};
+        _cuProv.exploredBy[c.player]=100; _cuProv.explored=100;
+        (_cuProv.features||[]).forEach(f=>{ if(!featDiscovered(f,c.player)){ discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1; } });
+        // Reveal the CHARTED province's neighbours at a glance (partial sighting).
+        const nbrs=getNeighborsP(_cuProv,G.world.cols,G.world.rows,G.world.provinces).filter(Boolean);
         let revealed=0;
         nbrs.forEach(nb=>{ if(!nb.exploredBy) nb.exploredBy={}; if((nb.exploredBy[c.player]||0)<25){ nb.exploredBy[c.player]=25; nb.explored=Math.max(nb.explored||0,nb.exploredBy[c.player]); revealed++; } });
-        log('explore',`🧭 ${c.name} charts ${prov.name} in full and scouts its ${nbrs.length} neighbour${nbrs.length!==1?'s':''}${revealed?` (${revealed} newly glimpsed)`:''}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('explore',`🧭 ${c.name} charts ${_cuProv.name}${_cuProv!==prov?` from across the border in ${prov.name}`:''} in full and scouts its ${nbrs.length} neighbour${nbrs.length!==1?'s':''}${revealed?` (${revealed} newly glimpsed)`:''}.`,{actor:c.player,targets:[c.player],provinceId:_cuProv.id});
         trySkillGain(c,'explorer',SKILLGAIN_STD);
         break;
       }
       case 'discover_ruin':{
+        // Explorer L9 (reworked, Toby 2026-09-09d): the order now names a CLASS of lair — Weak, Moderate,
+        // Powerful or Legendary — and lays bare EVERY lair of that class in this province and in each
+        // province bordering it. A ritual site counts as its own class ('Ritual'). A rival's Hide Lairs
+        // glamour still holds against it; those lairs stay concealed.
         if(skillLevel(c,'explorer')<9){log('system',`${c.name} lacks the Explorer mastery (9) to Discover a Lost Ruin.`,{actor:c.player,targets:[c.player]});break;}
-        const hidden=(prov.features||[]).filter(f=>!featDiscovered(f,c.player));
-        if(hidden.length===0){log('explore',`${c.name} combs ${prov.name} for lost ruins, but every secret here is already laid bare.`,{actor:c.player,targets:[c.player],provinceId:prov.id});trySkillGain(c,'explorer',SKILLGAIN_STD);break;}
-        const f=hidden[Math.floor(Math.random()*hidden.length)];
-        discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1;
-        if(!prov.exploredBy) prov.exploredBy={};
-        log('explore',`🏛 ${c.name} uncovers a lost site in ${prov.name} — ${f.name||'a hidden lair'} is revealed!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
+        const _drTiers=['Weak','Moderate','Powerful','Legendary','Ritual'];
+        const _drWant=_drTiers.find(t=>t.toLowerCase()===String(target||'').trim().toLowerCase())||'Weak';
+        const _drClassOf=(f)=>f&&f.ritualSite?'Ritual':((f&&f.monster&&f.monster.power)||'Weak');
+        const _drScope=[prov,...getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(Boolean)];
+        const _drFound=[];
+        _drScope.forEach(pv=>{
+          (pv.features||[]).forEach(f=>{
+            if(!f||featDiscovered(f,c.player)) return;
+            if(f._hidden&&f._hiddenBy!==c.player) return;      // a rival's Hide Lairs glamour still holds
+            if(_drClassOf(f)!==_drWant) return;
+            discoverFeat(f,c.player); c.merits=(c.merits||0)+1; TM(c).featuresFound+=1;
+            _drFound.push({name:f.name||'a hidden lair',prov:pv});
+          });
+        });
+        if(_drFound.length===0){
+          log('explore',`${c.name} combs ${prov.name} and the country about it for ${_drWant==='Ritual'?'ritual sites':`${_drWant.toLowerCase()} lairs`}, but every such secret hereabouts is already laid bare.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          trySkillGain(c,'explorer',SKILLGAIN_STD);break;}
+        const _drByProv={};
+        _drFound.forEach(x=>{ (_drByProv[x.prov.id]=_drByProv[x.prov.id]||{name:x.prov.name,list:[]}).list.push(x.name); });
+        const _drTxt=Object.values(_drByProv).map(g=>`${g.list.join(', ')} in ${g.name}`).join('; ');
+        log('explore',`🏛 ${c.name} reads the land for ${_drWant==='Ritual'?'the old stones':`${_drWant.toLowerCase()} lairs`} and lays bare ${_drFound.length} site${_drFound.length!==1?'s':''} across ${Object.keys(_drByProv).length} province${Object.keys(_drByProv).length!==1?'s':''} — ${_drTxt}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
         trySkillGain(c,'explorer',SKILLGAIN_STD);
         break;
       }
@@ -14637,6 +14737,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'spy')<9){log('system',`${c.name} lacks the Spy mastery (9) to Assassinate.`,{actor:c.player,targets:[c.player]});break;}
         const victim=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!victim){log('system',`${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
+        if(isVanished(victim)){log('spy',`${c.name} stalks ${victim.name} through ${prov.name} and never once catches sight of them — the mark has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
         const roll=d100();
@@ -14654,7 +14755,7 @@ const BATTLE_ARMY_SPELLS={
       case 'vanish':{
         if(skillLevel(c,'thief')<9){log('system',`${c.name} lacks the Thief mastery (9) to Vanish.`,{actor:c.player,targets:[c.player]});break;}
         c._vanishTurn=G.turn;
-        log('move',`🌫 ${c.name} melts into the shadows — for the rest of the turn no pursuit, Encounter or ambush can bring them to bay.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('move',`🌫 ${c.name} melts into the shadows — for the rest of the turn nothing can bring them to bay and nothing can harm them: no pursuit, Encounter or ambush, no hostile spell, no blade, no assassin's knife.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         trySkillGain(c,'thief',SKILLGAIN_STD);
         break;
       }
@@ -18022,6 +18123,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1030</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1105</div>
 </body>
 </html>

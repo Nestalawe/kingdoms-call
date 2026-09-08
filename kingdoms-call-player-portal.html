@@ -595,8 +595,8 @@ const L79_ORDERS={
   'Forced March':{skill:'march',lvl:7,target:'province',provKind:'move_adjacent',hint:'March 7: march to an adjacent province — if an enemy army or a Defend order awaits, a 50% chance to slip in without a battle this phase (the fight comes next phase if you stay, or at turn end).'},
   'Grand Heist':{skill:'thief',lvl:7,target:'here',hint:'Thief 7 · ONE attempt per thief per turn (spent win or lose). You crack the vaults of THE PROVINCE YOU STAND IN — no hero is targeted. Where: the province must be held by a realm you are AT WAR with, and be their HOME CAPITAL or RICH country (tax 7+). Take: 25% of that realm\'s treasury (doubled at Thief 8, even past what they can cover) AND one magic item — cut from a courier still on the road inside their realm, from a Send Item order made earlier this turn (a heist never touches what a hero carries in their own pack — that is the Steal order). Odds: 60% +5% per Thief level past 5, halved if the vaults are guarded (a garrison stands there, or an enemy commander of that realm is present with troops). Fail and you are seen unless you slip away (Thief × 20%) — then a hero of that realm draws steel on you (lead with Flee in your Encounter Plan if you would rather not fight), or if none is there the guards beat you off.'},
   'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
-  'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
-  'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden lair or treasure site, if any remain.'},
+  'Chart the Unknown':{skill:'explorer',lvl:7,target:'here_or_adjacent',hint:'Explorer 7: fully chart the province you stand in OR one bordering it — 100% mapped, every lair in it revealed, and all ITS neighbours glimpsed at 25%.'},
+  'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'lair_tier',hint:'Explorer 9: name a class of lair. EVERY lair of that class in your province and in each bordering province is laid bare at once. A rival\'s Hide Lairs glamour still conceals what it covers.'},
   'Blockade':{skill:'naval',lvl:7,target:'province',provKind:'sea_adjacent',hint:'Naval 7: seal a sea province you are in or adjacent to — enemy fleets may not cross it this turn.'},
   'Research Breakthrough':{skill:'sage',lvl:7,target:'none',hint:'Sage 7: a guaranteed scholarly discovery this turn (if any remain undiscovered by your realm).'},
   'Assassinate':{skill:'spy',lvl:9,target:'character',hint:'Spy 9: attempt to slay an enemy hero in the province you stand in — a spy-level chance to kill.'},
@@ -2085,7 +2085,9 @@ function renderReportView(report){
     </div>
     ${chars.filter(c=>c.alive!==false).map(c=>{
       const hpPct=Math.round((c.hp/c.maxHp)*100)||0;
-      const skillTags=Object.entries(c.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`<span class="skill-tag">${k} ${v}</span>`).join('');
+      // 2026-09-09e: was the raw trained level only — item, aura and Curse changes never showed, so this
+      // card disagreed with both the orders column and the engine. Now the shared renderer.
+      const skillTags=skillRowHTML(c,'tags');
       const effSpd=(c.armies||[]).length===0?5:(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...(c.armies||[]).map(a=>a.speed||3)));
       return`<div class="char-card">
         <div class="char-card-head">
@@ -2113,7 +2115,7 @@ function renderReportView(report){
             const arr=c.armies||[];
             const head=`<div style="margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
             if(arr.length===0) return head+`<div style="font-size:.75rem;color:#999">No armies led — moves 5 provinces/turn on its own.</div></div>`;
-            const druLevel=(c.skills||{}).druid||0;
+            const druLevel=effSkillP(c,'druid');
             const isDruidic=((kingdom.alignment)==='Druidic');
             const hasDragonTamingUI=(report.discoveries||[]).some(d=>d&&d.id==='sd40');
             const TAMED_FLYERS_UI=new Set(['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons']);
@@ -3110,6 +3112,19 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
 
   let rawSaved={};
   try{rawSaved=typeof existingOrders==='string'?JSON.parse(existingOrders||'{}'):existingOrders||{};}catch(e){rawSaved={};}
+  // STALE-DRAFT GUARD (2026-09-09). Drafts are stamped with the turn they were written for, exactly as
+  // submissions are. A draft left over from a turn the GM has since resolved must NOT be poured into
+  // this turn's form: its move orders were written from last turn's positions, so every later phase
+  // would be projected from the wrong ground. (Submissions were already turn-stamped and rejected by
+  // the engine; drafts carried no stamp at all, so they were silently reused.)
+  { const _liveTurn=(currentReport&&(currentReport._liveTurn||currentReport.turn))||turnNum||1;
+    if(rawSaved.forTurn!=null && rawSaved.forTurn!==_liveTurn){
+      const _staleTurn=rawSaved.forTurn;
+      console.warn('Discarding draft written for turn',_staleTurn,'— this is turn',_liveTurn);
+      rawSaved={};
+      const _m=document.getElementById('orders-msg');
+      if(_m) _m.innerHTML=`<div class="msg-info">Your saved draft was written for Turn ${_staleTurn} and has been set aside — the GM has resolved that turn since. These orders start fresh.</div>`;
+    } }
   const savedOrders=rawSaved.orders||rawSaved; // unwrap {orders:{...}, encounterPlans:{...}}
   const savedEncounterPlans=rawSaved.encounterPlans||{};
   // Restore any diplomacy declarations saved in this turn's draft so they survive a re-render.
@@ -3157,28 +3172,11 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
       <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px;line-height:1.6">
         <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}</span>
         <span><strong>HP:</strong> ${c.hp||'?'}/${c.maxHp||'?'}</span>
-        ${(()=>{
-          const skills=c.skills||{};
-          const items=c.items||[];
-          // Calculate item bonuses per skill
-          const itemBonuses={};
-          const _seenItemNames=new Set();
-          items.forEach(it=>{ if(!it) return; const _k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(_seenItemNames.has(_k)) return; _seenItemNames.add(_k); if(it.effect?.stat&&it.effect?.bonus)itemBonuses[it.effect.stat]=(itemBonuses[it.effect.stat]||0)+it.effect.bonus;}); // item 6: no duplicate stacking
-          const allSkills=Object.keys({...skills,...itemBonuses}).filter(k=>((skills[k]||0)+(itemBonuses[k]||0))>0);
-          if(allSkills.length===0) return '<span style="color:#aaa">No skills</span>';
-          return allSkills.map(k=>{
-            const base=skills[k]||0;
-            const bonus=itemBonuses[k]||0;
-            const eff=base+bonus;
-            const label=SKILL_LABELS[k]||k;
-            const bonusStr=bonus>0?`<span style="color:var(--gold)">+${bonus}</span>`:'';
-            return`<span style="color:var(--forest)"><strong>${label}:</strong> ${base}${bonusStr}</span>`;
-          }).join('');
-        })()}
+        ${skillRowHTML(c,'inline')}
         ${(()=>{
           const armies=c.armies||[];
           if(armies.length===0) return '<span style="color:#aaa">No armies</span>';
-          const druLevel=(c.skills||{}).druid||0;
+          const druLevel=effSkillP(c,'druid');
           // Druid requirement thresholds (matches server table)
           const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Noble Griffons':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
           return armies.map(a=>{
@@ -3291,6 +3289,40 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   renderDispatchCompose();
   renderDiplomacy(report); // Item 9: the declaration buttons live in #orders-diplomacy
   renderConcede();
+
+  // ── SECOND PASS: rebuild every target field now the DOM actually exists ──────────────────────
+  // (Root cause of the "reopened draft comes back muddled" report, 2026-09-09.)
+  // The whole form above is assembled as ONE innerHTML string, and buildTargetField() for a later
+  // phase asks predictedLocation() / projectedLedArmies() / projectedGarrison() where the character
+  // will be standing — all of which read the phase-0..n-1 <select> elements out of the DOM. While the
+  // string is still being built NONE of those elements exist, so every field for phases 1-4 was built
+  // against the START-OF-TURN province: wrong direction lists (an option pointing off-map from the
+  // start province is dropped entirely), wrong recruit/leave/pick-up/search lists, wrong Blood
+  // Offering army list — and any saved value that wasn't among those wrong options was silently lost.
+  // Editing by hand hid the bug, because onActionChange() rebuilds one wrap when the DOM is live.
+  // Now that the form is in the document, rebuild each field IN PHASE ORDER from the same saved
+  // order, so each phase sees the resolved position of every earlier one. Two passes: the first
+  // settles each character's own chain, the second settles fields that depend on OTHER characters'
+  // orders (a garrison left by an ally, an army transferred in). buildTargetField is a pure function
+  // of (character, phase, saved order) plus current DOM, so re-running it is idempotent.
+  const _liveChars=chars.filter(c=>c.alive!==false);
+  for(let pass=0;pass<2;pass++){
+    for(let ph=0;ph<SEASONS.length;ph++){
+      _liveChars.forEach(c=>{
+        const hiredPh=c.hiredInPhase??-1;
+        if(hiredPh>=0&&ph<=hiredPh) return;              // locked phase — no field was rendered
+        const wrap=document.getElementById(`po-target-wrap-${c.id}-${ph}`);
+        if(!wrap) return;
+        const saved=(savedOrders[c.id]||[])[ph]||{};
+        const action=document.getElementById(`po-action-${c.id}-${ph}`)?.value||saved.action||'';
+        if(!action) return;                               // "— Choose —": nothing to rebuild
+        try{ wrap.innerHTML=buildTargetField(c, ph, {...saved, action}); }
+        catch(e){ console.warn('target field rebuild failed', c.id, ph, e); }
+      });
+    }
+  }
+  // Any projection note that reads the finished form is refreshed once the fields are settled.
+  if(typeof refreshExploreNotes==='function') refreshExploreNotes();
 
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
@@ -3487,7 +3519,7 @@ function addEncounterTactic(charId, code){
   // ST (Steal) requires at least one level of Thief skill.
   if(code==='ST'){
     const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
-    const thiefLvl=(char?.skills||{}).thief||0;
+    const thiefLvl=effSkillP(char,'thief');
     if(thiefLvl<1){
       alert('This character has no Thief skill and cannot attempt to steal.\n\nThe Steal tactic requires at least Thief level 1. Practise the Thief skill first.');
       return;
@@ -4505,7 +4537,10 @@ async function doSaveOrders(){
   }
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
-  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages()});
+  // Stamp the draft with the turn it belongs to, as a submission is — so neither this form nor the GM
+  // engine can mistake last turn's draft for this turn's orders (2026-09-09).
+  const _draftTurn=currentReport?._liveTurn||currentReport?.turn||1;
+  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),forTurn:_draftTurn});
   const {error:saveErr}=await sb.from('game_players').update({
     orders:_payload,
     orders_submitted:false
@@ -4653,6 +4688,51 @@ async function doSubmitOrders(){
   setOrdersSubmittedUI(true);
   // On mobile, drop the player back to the Turn Report now their orders are in.
   setMobileView('report');
+}
+
+// ── SKILL ROW (2026-09-09e) ───────────────────────────────────────────────────────────────────
+// One renderer for both places a character's abilities are listed: the report's character card and
+// the orders column. The GM ships `skillEff` for each character — base level, EFFECTIVE level, and
+// the sources of the difference — computed by the same function the engine resolves turns with, so
+// what is shown here IS what the turn will use. `combatSkillBonus` carries bonuses that apply only in
+// personal combat (minor titles, Veteran Training); those are shown separately, because they do not
+// change the skill itself. Falls back to the raw skills for an older report with no breakdown.
+// style: 'tags' — the compact pills on the report card; 'inline' — the orders column's label list.
+// The EFFECTIVE level of a skill as the engine will use it — base plus items, aura and any Curse,
+// straight from the breakdown the GM shipped. Every success-chance preview in the order forms reads
+// this, so a "+2 Thief" blade shows in the odds the player is quoted (2026-09-09e). Falls back to the
+// raw level for an older report.
+function effSkillP(c, k){
+  const e=c&&c.skillEff&&c.skillEff[k];
+  if(e&&typeof e.total==='number') return e.total;
+  return ((c&&c.skills)||{})[k]||0;
+}
+
+function skillRowHTML(c, style){
+  const eff=c&&c.skillEff, raw=(c&&c.skills)||{};
+  const combat=(c&&c.combatSkillBonus)||{};
+  const keys=eff?Object.keys(eff):Object.keys(raw).filter(k=>(raw[k]||0)>0);
+  const rows=keys.map(k=>{
+    const e=eff?eff[k]:null;
+    const base=e?e.base:(raw[k]||0);
+    const bonus=e?(e.bonus||0):0;
+    const cb=(combat[k]||[]).reduce((sm,x)=>sm+(x.delta||0),0);
+    if(base<=0&&bonus<=0&&cb<=0) return '';
+    const label=SKILL_LABELS[k]||k;
+    // Tooltip: every source, named, so a player can see WHERE a bonus comes from.
+    const parts=[];
+    if(e&&e.sources) e.sources.forEach(x=>parts.push(`${x.delta>0?'+':''}${x.delta} ${x.label}`));
+    (combat[k]||[]).forEach(x=>parts.push(`${x.delta>0?'+':''}${x.delta} ${x.label} (personal combat only)`));
+    if(e&&e.total>=5&&((e.items||0)+(e.aura||0))>0&&e.bonus<((e.items||0)+(e.aura||0))) parts.push('capped at 5');
+    const tip=parts.length?` title="${(label+' '+base+' — '+parts.join(', ')).replace(/"/g,'&quot;')}"`:'';
+    const bonusStr=bonus>0?`<span style="color:var(--gold)">+${bonus}</span>`:(bonus<0?`<span style="color:var(--crimson)">${bonus}</span>`:'');
+    const combatStr=cb>0?`<span style="color:#6a4a9a">(+${cb}\u2694)</span>`:'';
+    return style==='tags'
+      ? `<span class="skill-tag"${tip}>${label} ${base}${bonusStr}${combatStr}</span>`
+      : `<span style="color:var(--forest)"${tip}><strong>${label}:</strong> ${base}${bonusStr}${combatStr}</span>`;
+  }).filter(Boolean);
+  if(!rows.length) return style==='tags'?'':'<span style="color:#aaa">No skills</span>';
+  return rows.join('');
 }
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
@@ -4907,7 +4987,7 @@ function exploreGainFor(c, terr){
   const basicRate=BASIC_EXPLORE_P[terr]||15;
   const disc=(report.discoveries||[]);
   const hasSD=(id)=>disc.some(d=>d.id===id);
-  const explorerSkill=Math.min(5,((c.skills||{}).explorer||0));
+  const explorerSkill=Math.min(5,effSkillP(c,'explorer'));
   const scoutBonus=hasSD('sd10')?1.20:1;
   const compass=hasSD('sd24')?1.40:1;
   let discMult=1; disc.forEach(d=>{ const m=/map(?:s)? (\d+)% more/i.exec(d.desc||''); if(m&&(!/mountain/i.test(d.desc)||terr==='mountain')) discMult*=1+parseInt(m[1])/100; });
@@ -5114,6 +5194,26 @@ function buildTargetField(c, ph, saved){
         ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy province in view to strike" disabled>${hintHtml}`;
     }
+    // ── 'here_or_adjacent' — this province or one bordering it (Chart the Unknown). ──
+    if(cfg.target==='here_or_adjacent'){
+      const here=predictedLocation(c.id,ph)?.id??c.locationId;
+      const wm=(report.worldMeta?.provinces)||[];
+      const hp=wm.find(p=>p.id===here);
+      const ids=[here,...((hp&&hp.neighbors)||[])];
+      const opts=ids.map(pid=>{
+        const p=wm.find(x=>x.id===pid);
+        const nm=(p&&p.name)||(pid===here?'this province':`Unknown province (${provDirectionLabel(here,pid,wm,report.worldMeta?.cols)||'?'})`);
+        const sel=(String(target)===String(pid)||(!target&&pid===here))?'selected':'';
+        return`<option value="${pid}" ${sel}>${nm}${pid===here?' (here)':''}${p&&p.explored!=null?` — ${Math.min(100,p.explored)}% mapped`:''}</option>`;
+      }).join('');
+      return`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
+    }
+    // ── 'lair_tier' — name a class of lair (Discover Lost Ruin). ──
+    if(cfg.target==='lair_tier'){
+      const TIERS=[['Weak','Weak lairs'],['Moderate','Moderate lairs'],['Powerful','Powerful lairs'],['Legendary','Legendary lairs'],['Ritual','Ritual sites (the old stones)']];
+      const opts=TIERS.map(([v,lbl])=>`<option value="${v}" ${(target===v||(!target&&v==='Weak'))?'selected':''}>${lbl}</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
+    }
     // ── 'here' — the order acts on the province this character stands in (Grand Heist). No target is
     // chosen; the field simply reports whether this ground can be robbed and why.
     if(cfg.target==='here'){
@@ -5246,7 +5346,7 @@ function buildTargetField(c, ph, saved){
       // Thief revision (2026-09-09): a thief may lift a MAGIC ITEM, skim 5% of the target realm's
       // TREASURY, or rob the province's garrison paymaster (1g per garrison unit). The choice of
       // prize rides in `extra` ('item' | 'gold'); 'garrison' is a target value of its own.
-      const thiefLvl=(c.skills||{}).thief||0;
+      const thiefLvl=effSkillP(c,'thief');
       const visibleEnemyChars=(report.visibleChars||[]).filter(x=>x.player!==null&&x.player!==c.player);
       const loc=predictedLocation(c.id,ph);
       const pdS=loc?provOrderData[loc.id]:null;
@@ -5328,7 +5428,7 @@ function buildTargetField(c, ph, saved){
       // or it would wrongly block your placements / inflate your consecrated count.
       const consecIds=new Set(wmP.filter(p=>p.consecrated&&p.tier==='owned').map(p=>p.id));
       const nbrs=(curP&&curP.neighbors)||[];
-      const white=(c.skills||{}).white||0;
+      const white=effSkillP(c,'white');
       // Task 8: reflect the placement rules — owned, not home / home-adjacent, not already consecrated,
       // not adjacent to another consecrated province, and within the White-skill limit.
       let warn='';
@@ -5378,7 +5478,7 @@ function buildTargetField(c, ph, saved){
       if(report.kingdom?.alignment!=='Druidic')
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="The wild answers only Druidic crowns" disabled>`;
       const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
-      const dru=(c.skills||{}).druid||0;
+      const dru=effSkillP(c,'druid');
       const wOpts=Object.entries(AWAKEN_TIERS).map(([t,need])=>
         `<option value="${t}" ${target===t?'selected':''} ${dru<need?'disabled':''}>${t} — Druid ${need}+${dru<need?` (you: ${dru})`:''}</option>`).join('');
       const loc=predictedLocation(c.id,ph);
@@ -5523,7 +5623,7 @@ function buildTargetField(c, ph, saved){
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
     case 'Research':{
-      const sg=Math.min(5,(c.skills||{}).sage||0);
+      const sg=Math.min(5,effSkillP(c,'sage'));
       const disc=(report.discoveries||[]);
       const per=disc.some(d=>d.id==='sd30')?10:5;
       const neutral=(report.kingdom?.alignment==='Neutral')?sg*5:0;
@@ -6520,6 +6620,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1030</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1105</div>
 </body>
 </html>
