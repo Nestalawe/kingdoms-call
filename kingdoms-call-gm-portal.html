@@ -9586,7 +9586,8 @@ const BATTLE_ARMY_SPELLS={
     const rg=temperOf(effTemper(ch)).rageHp; const rageHp=rg?rng(rg[0],rg[1]):0;
     return {
       kind:'character', ref:ch, name:ch.name, player:ch.player,
-      hp:(ch.hp!=null?ch.hp:maxHp)+rageHp, maxHp:maxHp+rageHp,
+      // 2026-09-09: the unkillable wanderer never enters a fight at 0 HP (a stale 0 from a past escape would end it before round 1).
+      hp:((ch.hp!=null?ch.hp:maxHp)<=0&&_escapesTheEnd(ch)?Math.max(1,Math.round(maxHp/2)):(ch.hp!=null?ch.hp:maxHp))+rageHp, maxHp:maxHp+rageHp,
       // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
       melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training (wired 2026-09-08)
       archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training
@@ -9772,8 +9773,10 @@ const BATTLE_ARMY_SPELLS={
     // Item 10: narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader
     // sees the character reach for the spell, then whether the weave holds or collapses.
     const _schoolWeave={white:'sacred',psychic:'psychic',illusory:'illusory',elemental:'elemental',necromancy:'necromantic'}[school]||school;
-    narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to hold).`);
-    if(Math.random()*100>=castChance){ narrative.push(`  …but the spell guts and fizzles, coming to nothing.`); return false; }
+    // Item 1 (2026-09-09): show the roll alongside the chance, and say what the chance IS (a cast, not a "hold").
+    const _castRoll=Math.floor(Math.random()*100);
+    narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully) [roll ${_castRoll} ${_castRoll<castChance?'✓':'✗'}].`);
+    if(_castRoll>=castChance){ narrative.push(`  …but the spell guts and fizzles, coming to nothing.`); return false; }
     caster.castSpells.push(spellName); caster.castSchool[school]=(caster.castSchool[school]||0)+1;
 
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
@@ -9826,7 +9829,10 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'Control Undead':{ if(target.isUndead){ target.status.stun=(target.status.stun||0)+Math.max(1,lvlEff); narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${Math.max(1,lvl)} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
-      case 'Charm':{ caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
+      case 'Charm':{
+        // Item 4 (2026-09-09): a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
+        if(target&&target.kind==='character'&&target.ref&&target.ref.isKing){ narrative.push(`  ${caster.name}'s Charm washes over ${target.name} and finds nothing to grip — a crowned will cannot be swayed.`); break; }
+        caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
       default: narrative.push(`  ${caster.name} casts ${spellName}.`);
     }
     // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
@@ -10473,6 +10479,12 @@ const BATTLE_ARMY_SPELLS={
       // his host is NOT left leaderless; being driven from the field still shakes his troops.
       if(_escapesTheEnd(realLoser)){
         narrative.push(_garrethEscapeLine(realLoser));
+        // 2026-09-09: this path left him at 0 HP (every other escape path clamps it), so his NEXT encounter
+        // ended before round 1 on the hp<=0 check and printed the escape line without a fight.
+        const _gHp=Math.max(1,realLoser.maxHp?Math.round(realLoser.maxHp/2):1);
+        if(realLoser.hp==null||realLoser.hp<=0) realLoser.hp=_gHp;
+        if(loser!==realLoser&&(loser.hp==null||loser.hp<=0)) loser.hp=realLoser.hp;
+        realLoser.alive=true; realLoser.killedThisTurn=false;
         demoralise(loser, `their commander was driven from the field`);
         return{atkMorale,defMorale};
       }
@@ -11455,7 +11467,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain}; }catch(e){}
+  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain}; }catch(e){} // (G exposed 2026-09-09 for harness reads of the live turn state)
 
   // When a player's character visits/spies a province, record any dead heroes there as seen
   function recordDeadHeroSighting(playerIdx, provId){
@@ -12625,11 +12637,13 @@ const BATTLE_ARMY_SPELLS={
           c.armies=c.armies||[];
           const _boundNames=[];
           for(let wi=0;wi<WILD_HUNT_UNITS;wi++){
-            const _u={type:_wildType,quality:'Average',race:prov.race||'Primal',
+            // Item 2 (2026-09-09): the bound beasts are VETERAN. _wildHuntUntilTurn is the LAST turn they serve
+            // (released by the end-of-turn sweep once G.turn has advanced PAST it).
+            const _u={type:_wildType,quality:'Veteran',race:prov.race||'Primal',
               unitName:armyUnitName(_wildType),_wildHuntUntilTurn:G.turn+WILD_HUNT_TURNS};
             c.armies.push(_u);_boundNames.push(`${_u.unitName} (${_wildType})`);
           }
-          log('combat',`\u{1F525} ${c.name} performs the Rite of the Wild Hunt at the ${_riteSite.name} (${WILD_HUNT_COST}g). The old gods answer: ${_boundNames.join(' and ')} come down from the wilds to serve — until the end of next turn, when the binding fails.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          log('combat',`\u{1F525} ${c.name} performs the Rite of the Wild Hunt at the ${_riteSite.name} (${WILD_HUNT_COST}g). The old gods answer: ${_boundNames.join(' and ')} come down from the wilds to serve as veterans — until the end of next turn, when the binding fails.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           // Gaining a force in a province you don't own is resolved like any other unit gain:
           // defenders present means a battle, none means the character takes control.
           resolveUnitGainInProvince(c, prov, ph);
@@ -13980,7 +13994,10 @@ const BATTLE_ARMY_SPELLS={
             if(typeof setMovePool==='function') setMovePool(t);
             const applied=_applyCharmOrders(t);
             log('hire',`✨ ${c.name}'s Charm grips ${t.name} — they fall under ${player.name}'s command until the season turns, when they return to their own lord (who still pays their wages).${applied>0?` ${applied} phase${applied!==1?'s':''} of orders await them.`:''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-            log('system',`⚠ ${t.name} is ensorcelled by an enemy Charm and slips your command until the season turns.`,{actor:_origOwner,targets:[_origOwner]});
+            // Item 4 (2026-09-09): file this under the CHARMED HERO (charId) — without it the entry inherited the
+            // caster's charId from _logCtx, and the report's own-character rule handed the victim's warning to the
+            // caster. After the ph-4 revert the hero belongs to _origOwner again, so it lands in THEIR section only.
+            log('system',`⚠ ${t.name} is ensorcelled by an enemy Charm and slips your command until the season turns.`,{actor:_origOwner,targets:[_origOwner],charId:t.id,provinceId:prov.id});
           }
         }
         else if(fn==='psychic_oratory'){
@@ -17088,9 +17105,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       log('explore',`\u2728 As the season turns, ${_names} ${_gone.length===1?'is':'are'} released from ${_gone.length===1?'its':'their'} bonds and ${_gone.length===1?'returns':'return'} to the Elemental Realm, leaving ${c.name}'s host.`,{actor:c.player,targets:[c.player].filter(x=>x!==null),provinceId:c.location});
     }
     // PAGAN: Wild Hunt bindings outlast elementals by WILD_HUNT_TURNS full turns, then break.
-    if((c.armies||[]).some(a=>a._wildHuntUntilTurn!=null&&G.turn>=a._wildHuntUntilTurn)){
-      const _wild=c.armies.filter(a=>a._wildHuntUntilTurn!=null&&G.turn>=a._wildHuntUntilTurn);
-      c.armies=c.armies.filter(a=>!(a._wildHuntUntilTurn!=null&&G.turn>=a._wildHuntUntilTurn));
+    // Item 2 (2026-09-09): G.turn has ALREADY been advanced (step 7 above) by the time this sweep runs, so
+    // the old `>=` released the beasts at the end of the very turn they were bound. `>` = they serve
+    // through the whole of turn _wildHuntUntilTurn and are released only when that turn ends.
+    if((c.armies||[]).some(a=>a._wildHuntUntilTurn!=null&&G.turn>a._wildHuntUntilTurn)){
+      const _wild=c.armies.filter(a=>a._wildHuntUntilTurn!=null&&G.turn>a._wildHuntUntilTurn);
+      c.armies=c.armies.filter(a=>!(a._wildHuntUntilTurn!=null&&G.turn>a._wildHuntUntilTurn));
       const _wnames=_wild.map(a=>`${a.unitName||a.type} (${a.type})`).join(', ');
       log('explore',`\u{1F43E} The Wild Hunt is done — ${_wnames} slip the binding and melt back into the wilds, leaving ${c.name}'s host.`,{actor:c.player,targets:[c.player].filter(x=>x!==null),provinceId:c.location});
     }
@@ -17763,6 +17783,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-0016</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-0831</div>
 </body>
 </html>

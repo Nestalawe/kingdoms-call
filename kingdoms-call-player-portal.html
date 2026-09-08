@@ -4744,6 +4744,50 @@ function predictedItems(charId, upToPhaseExclusive){
 // recipient and garrison-eligibility lists reflect where the character will actually be.)
 // Known limitation: armies TRANSFERRED to this character by ANOTHER character earlier this turn are
 // not yet projected in — the GM still resolves the transfer correctly, it just isn't previewed here.
+// Item 3 (2026-09-09): the unled GARRISON of a province at a given phase, projected by replaying this
+// player's earlier orders in the SAME order the GM engine resolves them — Leave/Transfer-to-garrison and
+// Recruit "to:garrison" APPEND (in army/checkbox order), Pick Up REMOVES (by index, highest first). The
+// engine makes a Pick Up wait for any Leave in the same province in the same phase, so leaves at
+// `phase` itself by OTHER characters are included when includeSamePhase is set (the Pick Up form);
+// pick-ups are only replayed for strictly earlier phases. This keeps the `g:i` indices the form emits
+// aligned with the engine's live garrison. Rival/neutral changes to the garrison can't be foreseen.
+function projectedGarrison(provId, phase, includeSamePhase, excludeCharId){
+  const report=currentReport||{};
+  const pd=(report.provinceOrderData||{})[provId];
+  let garr=((pd&&pd.garrisonArmies)||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName,race:a.race}));
+  const chars=(report.characters||[]).filter(x=>x&&x.alive!==false);
+  const lastPh=includeSamePhase?phase:phase-1;
+  for(let ph=0;ph<=lastPh;ph++){
+    // (1) additions this phase
+    chars.forEach(o=>{
+      if(ph===phase&&String(o.id)===String(excludeCharId)) return;
+      const act=document.getElementById(`po-action-${o.id}-${ph}`)?.value||'';
+      const tgt=document.getElementById(`po-target-${o.id}-${ph}`)?.value||'';
+      const loc=predictedLocation(o.id,ph); if(!loc||loc.id!==provId) return;
+      if(act==='Leave/Transfer Army'){
+        const extra=document.getElementById(`po-extra-${o.id}-${ph}`)?.value;
+        if(extra!==''&&extra!=null&&String(extra)!=='-1') return; // handed to a character, not the garrison
+        const led=projectedLedArmies(o.id,ph);
+        if(tgt.split(',').map(t=>t.trim()).includes('all')) led.forEach(a=>garr.push(a));
+        else { const pool=led.slice(); tgt.split(',').map(t=>t.trim()).filter(Boolean).forEach(val=>{ const i=pool.findIndex(a=>a.type===val||a.unitName===val); if(i>=0) garr.push(pool.splice(i,1)[0]); }); }
+      } else if(act==='Recruit Armies'){
+        const wrap=document.getElementById(`po-target-wrap-${o.id}-${ph}`); if(!wrap) return;
+        const destSel=wrap.querySelector('.po-recruit-dest'); if(!destSel||destSel.value!=='to:garrison') return;
+        wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{ const v=cb.value||''; if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return; const bar=v.indexOf('|'); garr.push({type:bar>=0?v.slice(0,bar):v,quality:'Average'}); });
+      }
+    });
+    // (2) removals this phase — only strictly earlier phases (same-phase pick-ups race on initiative)
+    if(ph<phase) chars.forEach(o=>{
+      const act=document.getElementById(`po-action-${o.id}-${ph}`)?.value||''; if(act!=='Pick Up Army') return;
+      const loc=predictedLocation(o.id,ph); if(!loc||loc.id!==provId) return;
+      const tgt=document.getElementById(`po-target-${o.id}-${ph}`)?.value||'';
+      if(tgt.split(',').map(t=>t.trim()).includes('all')){ garr=[]; return; }
+      const idxs=[...new Set(tgt.split(',').map(t=>t.trim()).filter(t=>/^(g:|-1:)\d+$/.test(t)).map(t=>parseInt(t.slice(t.indexOf(':')+1))))].filter(i=>i>=0&&i<garr.length).sort((a,b)=>b-a);
+      idxs.forEach(i=>garr.splice(i,1));
+    });
+  }
+  return garr;
+}
 function projectedLedArmies(charId, upToPhaseExclusive, _depth){
   const report=currentReport||{};
   const char=(report.characters||[]).find(x=>x.id===charId);
@@ -4799,7 +4843,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
       }
     } else if(prevAction==='Pick Up Army'){
       const ploc=predictedLocation(charId,prevPh);
-      const pgarr=(ploc?provOrderData[ploc.id]:null)?.garrisonArmies||[];
+      const pgarr=ploc?projectedGarrison(ploc.id,prevPh,true,charId):[]; // Item 3 (2026-09-09): garrison as it stands at THAT phase
       if(prevTarget==='all'){ pgarr.forEach(a=>armies.push({type:a.type,quality:a.quality,unitName:a.unitName})); }
       else prevTarget.split(',').filter(Boolean).forEach(sel=>{
         sel=sel.trim();
@@ -5317,7 +5361,7 @@ function buildTargetField(c, ph, saved){
             </select></div>`).join('')
         : `<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
       return`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering('${c.id}',${ph})">
-        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 wild creatures (6g, serve until end of NEXT turn)</option>`:''}
+        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 VETERAN wild creatures (6g, serve until end of NEXT turn)</option>`:''}
         <option value="Blood Offering" ${target==='Blood Offering'||!target?'selected':''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+2 tiers each)</option>
       </select>
       <input id="po-extra-${c.id}-${ph}" type="hidden" value="${(extra||'').replace(/"/g,'&quot;')}">
@@ -5717,8 +5761,9 @@ function buildTargetField(c, ph, saved){
       // helpers) via the same po-leave-all-… id. Mercenaries are still hired through Recruit Armies;
       // armies led by another of your characters move via Leave/Transfer Army.
       const loc2=predictedLocation(c.id,ph);
-      const pd2=loc2?provOrderData[loc2.id]:null;
-      const garrArr=(pd2?.garrisonArmies||[]);
+      // Item 3 (2026-09-09): the garrison as it will stand at THIS phase — armies left to the garrison in an
+      // earlier phase (or by another of your characters in this very phase) are now offered for pick-up.
+      const garrArr=loc2?projectedGarrison(loc2.id,ph,true,c.id):[];
       if(garrArr.length===0)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;
       const savedTgts=(target||'').split(',').filter(Boolean);
@@ -6414,6 +6459,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-0016</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-0831</div>
 </body>
 </html>
