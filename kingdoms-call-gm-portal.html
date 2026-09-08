@@ -1929,6 +1929,23 @@ function homeProvinceIdFor(gs, playerIndex){
   return fallback;
 }
 
+// Neutral trade bonus: +20% of province tax income, rounded down. Exact integer division so the
+// end-of-turn collector and the Tax Income forecast can never disagree by a floating-point hair.
+function neutralTradeGold(pl, income){ return (pl&&pl.alignment==='Neutral')?Math.floor((income||0)/5):0; }
+
+// Existing saves: every king's home province recruits his race's FULL land roster (Toby, 2026-09-08).
+// Idempotent - appends any missing land type to the home's armyTypes, keeping fleets and order.
+// Runs at the top of every runTurn; a no-op once the roster is complete.
+function backfillHomeRosters(gs){
+  (gs&&gs.players||[]).forEach((pl,pi)=>{
+    if(!pl) return;
+    const hid=homeProvinceIdFor(gs,pi); const h=hid!=null?(gs.world&&gs.world.provinces||[])[hid]:null;
+    if(!h||h.terrain==='sea'||!pl.race||h.race!==pl.race) return;
+    if(!Array.isArray(h.armyTypes)) h.armyTypes=[];
+    fullRaceLandRoster(pl.race).forEach(u=>{ if(!h.armyTypes.includes(u)) h.armyTypes.push(u); });
+  });
+}
+
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
 // wealthiest remaining province. Returns null only if the dynasty holds no land at all (extinct).
@@ -2396,6 +2413,21 @@ function buildHumanoidPool(terrain, race, count, rnd){
   const garrison=full.filter(t=>t.toLowerCase().includes('garrison'));
   const local=full.filter(t=>!t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t));
   return{types:[...local].sort(()=>rnd()-0.5).slice(0,count), garrison};
+}
+// A king's home province recruits EVERY land unit of his race (Toby, 2026-09-08) — not just the
+// roster of the home's own terrain. Union of the race's PROVINCE_ARMIES_P cells across all land
+// terrains, non-garrison types first (in table order), the racial garrison last. Fleets are never
+// added here: a coastal home earns its racial fleet through the coastal / Naval-skill rules.
+function fullRaceLandRoster(race){
+  const seen=new Set(), types=[], garrison=[];
+  LAND_TERRAINS_GEN.forEach(t=>{
+    ((PROVINCE_ARMIES_P[t]||{})[race]||[]).forEach(u=>{
+      if(seen.has(u)||SEA_TYPES_GEN.has(u)) return;
+      seen.add(u);
+      (u.toLowerCase().includes('garrison')?garrison:types).push(u);
+    });
+  });
+  return [...types,...garrison];
 }
 // ── WORLD-GEN TUNING ──
 // Share of LAND provinces that are Primal (wild Creature / Monster country). The remainder is split
@@ -5343,14 +5375,26 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   //   sea IF that king started with Naval>=1. Everything else is filled by the general rule.
   // constraint[id] = { terrain, taxBand:'poor'|'prosperous'|null, isHome:bool }
   const constraint={};
+  // Sea cap (Toby, 2026-09-08): a home never borders more than HOME_MAX_SEA sea provinces. Every free
+  // ring cell is decided HERE (sea at the general-fill base rate while under the cap, land otherwise)
+  // rather than left to the random fill, so the cap is exact. The open-water guarantee for coastal
+  // homes is applied after the sea post-pass below (see "home coastal guarantee").
+  const HOME_MAX_SEA=2;
+  const HOME_RING_SEA_CHANCE=0.28; // == the general fill's non-clustered sea rate
   homeCells.forEach((home,ki)=>{
     constraint[home.id]={terrain:pickLand(),taxBand:null,isHome:true}; // home is land (race/pool set later)
-    const ring=neighbourCells(home.r,home.c).filter(n=>!homeIdSet.has(n.id) && !constraint[n.id]); // free cells only
+    const ringAll=neighbourCells(home.r,home.c).filter(n=>!homeIdSet.has(n.id));
+    let seaCount=ringAll.filter(n=>constraint[n.id]&&constraint[n.id].terrain==='sea').length; // pre-set by an overlapping ring
+    const ring=ringAll.filter(n=>!constraint[n.id]); // free cells only
     const shuffled=shuffleP(ring);
     let i=0;
-    if(navalLevelOf(setupPlayers[ki])>=1 && i<shuffled.length){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; i++; }
+    if(navalLevelOf(setupPlayers[ki])>=1 && i<shuffled.length && seaCount<HOME_MAX_SEA){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; i++; seaCount++; }
     if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'poor'}; i++; }        // one poor land
     if(i<shuffled.length){ constraint[shuffled[i].id]={terrain:pickLand(),taxBand:'prosperous'}; i++; }  // one prosperous land
+    for(;i<shuffled.length;i++){
+      if(seaCount<HOME_MAX_SEA && Math.random()<HOME_RING_SEA_CHANCE){ constraint[shuffled[i].id]={terrain:'sea',taxBand:null}; seaCount++; }
+      else constraint[shuffled[i].id]={terrain:pickLand(),taxBand:null};
+    }
   });
 
   // ── PHASE 3: generate every province ──
@@ -5641,6 +5685,16 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     });
   }
 
+  // ── Home coastal guarantee (Toby, 2026-09-08): a home that borders any sea borders at least one
+  // OPEN-WATER sea (no neutral defenders), so a king's first fleet always has somewhere to sail
+  // without a fight. Sea features/guardians (lairs) are untouched - they never block movement.
+  homeCells.forEach(home=>{
+    const seas=neighbourCells(home.r,home.c).map(n=>provinces[n.id]).filter(p=>p&&p.terrain==='sea');
+    if(!seas.length||seas.some(p=>!(p.neutralDefenders||[]).length)) return;
+    const p=seas[Math.floor(Math.random()*seas.length)];
+    p.armyTypes=[]; p.neutralDefenders=[]; p.npcArmies=0; p.tax=1; p.race=null;
+  });
+
   // Player starts were already chosen up front (Phase 1) and their neighbourhoods tailored
   // (Phase 2). Here we simply take each king's pre-selected home province in order.
   const playerStarts=[];
@@ -5656,7 +5710,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // with his race's complete land roster. Restoring it here overwrites anything the coastal pass
     // added, so a coastal capital is re-offered its racial fleet on the same terms as any other
     // coastal humanoid province.
-    best.armyTypes=(PROVINCE_ARMIES_P[best.terrain]||{})[sp.race]||['Shieldwall Levies'];
+    best.armyTypes=fullRaceLandRoster(sp.race); if(!best.armyTypes.length) best.armyTypes=['Shieldwall Levies'];
     {
       const hOffs=best.row%2===0?offEven:offOdd;
       const homeCoastal=hOffs.some(([dr,dc])=>{
@@ -6723,16 +6777,27 @@ function buildTurnReport(gameState, playerIndex){
   const hasDiscR=(id)=>(player.discoveries||[]).some(d=>d.id===id);
   // Item 3: track each income modifier separately so the Tax Income box can itemise WHAT is lifting
   // (or cutting) the realm's revenue — mirroring the end-of-turn collection engine.
-  let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0;
+  let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0,_sdCreed=0,_enslaveReduction=0;
+  // 2026-09-09 (Toby: Neutral king saw 11g +1 trade in Kingdom Events but 12g +2 trade in the Tax Income
+  // box). The box is a NEXT-turn projection and had drifted from the collector: it ignored the Enslave
+  // resentment (-1 tax for 3 turns, persistent) and every heritage / creed `tax` and `interest`
+  // discovery. Any base difference shifts the floor(base x 20%) Neutral bonus by a gold too. All of those
+  // are persistent, so they belong in the forecast; the deliberate omissions are still only the
+  // SAME-TURN transients (Bless, Consecrate, Earthquake no-tax, Sabotage). Keep this loop and the
+  // end-of-turn collector in step.
+  const _creedTax=discEffectsOf(player,'tax');
+  const _nextTurn=(gameState.turn||0); // reports are built AFTER the turn counter advances, so gameState.turn is already the turn whose end-of-turn collection this forecasts
   const provTaxIncome=(player.provinces||[]).reduce((s,pid)=>{
     const pv=gameState.world.provinces[pid]; if(!pv) return s;
     let t=pv.tax||0;
+    if(pv._enslavedUntil!=null&&pv._enslavedUntil>=_nextTurn){ const _e0=t; t=Math.max(0,t-1); _enslaveReduction+=(_e0-t); } // EVIL — Enslave resentment
     const _t0=t;
     if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0)); // lingering earthquake damage
     _eqReduction+=(_t0-t);                                        // gold lost to earthquakes (positive)
     if(hasDiscR('sd11')&&pv.tax>=3){ t+=1; _sdAgri+=1; }          // Advanced Agriculture
     if(hasDiscR('sd15')&&pv.terrain==='mountain'){ t+=2; _sdMining+=2; }            // Mining Techniques
     if(hasDiscR('sd18')&&(pv.terrain==='plain'||pv.terrain==='desert')){ t+=1; _sdAqueduct+=1; } // Aqueducts
+    _creedTax.forEach(e=>{ if(e.minTax!=null&&(pv.tax||0)<e.minTax) return; if(e.terrains&&!e.terrains.includes(pv.terrain)) return; t+=(e.bonus||0); _sdCreed+=(e.bonus||0); }); // heritage / creed tax discoveries
     if(hasDiscR('gd')&&player.alignment==='Good'&&(pv.garrisonArmies||[]).length>0){ t+=2; _sdGrand+=2; } // GRAND DESIGN — Good: +2 tax per garrisoned province
     return s+t;
   },0);
@@ -6741,8 +6806,8 @@ function buildTurnReport(gameState, playerIndex){
   const taxBonus=_pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+_itemStat('taxBonus'); // Ring of Wealth
   const ledgers=_pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
   const perProvBonus=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
-  const interestBonus=hasDiscR('sd12')?Math.min(3,Math.floor((player.gold||0)*0.05)):0; // Merchant Guilds
-  const neutralTradeBonus=player.alignment==='Neutral'?Math.floor(provTaxIncome*0.20):0;
+  const interestBonus=(hasDiscR('sd12')?Math.min(3,Math.floor((player.gold||0)*0.05)):0)+discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
+  const neutralTradeBonus=neutralTradeGold(player,provTaxIncome);
   // Item 3: title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings
   // / computeMinorTitles are module-level and already used above, so the report builder can read the
   // live holders without runTurn's G-scoped helpers. Each perk is tracked separately for itemisation.
@@ -6832,7 +6897,7 @@ function buildTurnReport(gameState, playerIndex){
   const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ let w=(h.pay||0); if(_inspiringR) w=Math.floor(w*0.5); return s+w; },0);
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
     discoveries:(player.discoveries||[]).map(d=>({id:d.id,name:d.name,category:d.category,desc:d.desc,turnDiscovered:d.turnDiscovered})),
     // Item 6 (2026-09-07): the Research order's category dropdown — every category this realm is eligible for,
     // with how many of its discoveries are already known (the portal greys out exhausted ones). Names and
@@ -7299,6 +7364,7 @@ async function runTurn(opts){
     G=typeof freshGame.game_state==='string'?JSON.parse(freshGame.game_state):freshGame.game_state;
     seedUsedArmyNames(G); seedUsedHeroNames(G);
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
+    backfillHomeRosters(G); // 2026-09-08: home provinces recruit the king's full racial land roster
   }catch(e){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
@@ -7337,6 +7403,14 @@ async function runTurn(opts){
   // CRITICAL: reset turnOrders completely first — stale orders from a previous turn
   // must NEVER carry over. Every character starts this turn with a clean slate (Defend).
   G.turnOrders={};
+  // Per-turn scratch lists persisted inside game_state. These were never cleared, so a hero raised
+  // in an earlier turn stayed in _resurrectedThisTurn for the rest of the game — and if they later
+  // died again, every future Resurrect (even a successful roll) was refused with "has already been
+  // raised this turn" while the body stayed in the graveyard (player report, Sept 2026). Stale
+  // pending pre-orders for a resurrect/charm target could likewise be re-applied turns later.
+  G._resurrectedThisTurn=[];
+  G._pendingResurrectOrders=[];
+  G._pendingCharmOrders=[];
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
     G.turnOrders[c.id]=[null,null,null,null,null];
   });
@@ -16552,8 +16626,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const ledgers=pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
         const perProvBonus=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
         const interestBonus=(hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0)+discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((p.gold||0)*(e.pct||0))),0); // Item 5: interest discoveries
-        const neutralTradeMult=p.alignment==='Neutral'?1.20:1.0;
-        const neutralTradeBonus=p.alignment==='Neutral'?Math.floor(income*(neutralTradeMult-1)):0;
+        // Neutral trade: +20% of province income, rounded down. Integer maths on purpose (2026-09-09):
+        // this used to be floor(income*(1.20-1)), and 1.20-1 is 0.19999999999999996 in floating point,
+        // so any income that is a multiple of 5 paid one gold LESS than the Tax Income forecast promised
+        // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
+        const neutralTradeBonus=neutralTradeGold(p,income);
         // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g per 5 provinces.
         // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
         let titlePerkGold=0, titlePerkNote='';
@@ -17236,6 +17313,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // plans are intentionally KEPT so a player's chosen combat plan carries over turn to turn
   // until they change it.
   G.turnOrders={};
+  delete G._resurrectedThisTurn; delete G._pendingResurrectOrders; delete G._pendingCharmOrders; // per-turn scratch — never persist
   // Final reconcile before the state is persisted AND before reports are built. Steps 7-9 (Raise
   // Hero, Divine resurrection, wandering-hero drift) all relocate characters, and the turn report
   // reads province.characters for the map. Rebuilding here means what is saved, what is rendered
@@ -17685,6 +17763,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.08-1634</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-0016</div>
 </body>
 </html>

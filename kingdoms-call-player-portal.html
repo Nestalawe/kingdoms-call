@@ -2059,6 +2059,7 @@ function renderReportView(report){
         if((kingdom.sdMining||0)>0) parts.push(`+${kingdom.sdMining}g Mining Techniques`);
         if((kingdom.sdAqueduct||0)>0) parts.push(`+${kingdom.sdAqueduct}g Aqueducts`);
         if((kingdom.sdGrand||0)>0) parts.push(`+${kingdom.sdGrand}g Grand Design`);
+        if((kingdom.sdCreed||0)>0) parts.push(`+${kingdom.sdCreed}g heritage/creed discoveries`);
         // Item 3: Imperial Title / minor-title perks that add tax-season gold.
         if((kingdom.throneG||0)>0) parts.push(`+${kingdom.throneG}g the Throne`);
         if((kingdom.vaultG||0)>0) parts.push(`+${kingdom.vaultG}g Vaultkeeper interest`);
@@ -2068,7 +2069,13 @@ function renderReportView(report){
         const incl=parts.length?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">incl. ${parts.join(', ')}</div>`:'';
         const eq=(kingdom.earthquakeReduction||0);
         const eqLine=eq>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${eq}g lost to earthquake damage</div>`:'';
-        return incl+eqLine;
+        const ens=(kingdom.enslaveReduction||0);
+        const ensLine=ens>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${ens}g enslaved provinces seethe</div>`:'';
+        // The box projects NEXT turn's collection from the realm as it stands now; what was actually
+        // banked this turn (with any one-turn Bless / Consecrate / Earthquake / Sabotage effects) is the
+        // "collects ...g in taxes" line under Kingdom Events.
+        const noteLine=`<div style="font-size:.6rem;color:var(--stone);margin-top:2px;line-height:1.3">projected for next turn — this turn's actual take is under Kingdom Events</div>`;
+        return incl+eqLine+ensLine+noteLine;
       })()}</div>
       <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div></div>
@@ -4970,6 +4977,25 @@ function movedInWithArmyBy(charId, provId, upToPhaseExclusive){
   return !!(arriveLoc && arriveLoc.id===provId);
 }
 
+// Skill another of this realm's characters is practising in phase `ph` in the province `c` is
+// predicted to be in that phase (mirrors the engine's co-trainer rule: same realm, same province,
+// same phase). Reads the live order form, so it reflects what the player has entered so far. If
+// several companions drill different skills, the most common one wins (first seen on a tie).
+function practiceCompanionSkill(c, ph){
+  const report=currentReport||{};
+  const here=predictedLocation(c.id,ph); const hereId=here?here.id:c.locationId;
+  const counts={}; let best='', bestN=0;
+  (report.characters||[]).forEach(o=>{
+    if(!o||o.id===c.id||o.alive===false) return;
+    const act=document.getElementById(`po-action-${o.id}-${ph}`)?.value;
+    if(act!=='Practice Skill') return;
+    const sk=getOrderTarget(o.id,ph); if(!sk||!ALL_SKILLS.includes(sk)) return;
+    const loc=predictedLocation(o.id,ph); if((loc?loc.id:o.locationId)!==hereId) return;
+    counts[sk]=(counts[sk]||0)+1;
+    if(counts[sk]>bestN){ bestN=counts[sk]; best=sk; }
+  });
+  return best;
+}
 function buildTargetField(c, ph, saved){
   const action=saved.action||'';
   const target=saved.target||'';
@@ -5382,7 +5408,12 @@ function buildTargetField(c, ph, saved){
 
     // ── PRACTICE SKILL ──
     case 'Practice Skill':{
-      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${target===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
+      // Default (Toby, 2026-09-08): when no skill is saved yet, pre-select whatever another of this
+      // realm's characters is already practising in the SAME province (predicted for this phase) in
+      // the SAME phase - the engine's co-trainer rule - so a group drill takes one click to line up.
+      // All skills stay listed; an explicitly saved target always wins.
+      const defaultSk=target||practiceCompanionSkill(c,ph)||'';
+      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select>`;}
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
@@ -6383,6 +6414,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.08-1634</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-0016</div>
 </body>
 </html>
