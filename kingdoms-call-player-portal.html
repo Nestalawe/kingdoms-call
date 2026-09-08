@@ -593,7 +593,7 @@ const KING_ONLY_ACTIONS=new Set(['Call to Arms','Broker','Consecrate']);
 const L79_ORDERS={
   'Sabotage':{skill:'spy',lvl:7,target:'province',provKind:'enemy',hint:'Spy 7: wreck an enemy province you can see — it yields no tax next turn and loses a garrison unit.'},
   'Forced March':{skill:'march',lvl:7,target:'province',provKind:'move_adjacent',hint:'March 7: march to an adjacent province — if an enemy army or a Defend order awaits, a 50% chance to slip in without a battle this phase (the fight comes next phase if you stay, or at turn end).'},
-  'Grand Heist':{skill:'thief',lvl:7,target:'character',hint:'Thief 7: once per turn — rob an enemy hero in your province of 25% of their realm\'s treasury and one magic item. 60% + 5% per level past 5, halved if they lead troops; if you fail and are spotted, they draw steel.'},
+  'Grand Heist':{skill:'thief',lvl:7,target:'here',hint:'Thief 7 · ONE attempt per thief per turn (spent win or lose). You crack the vaults of THE PROVINCE YOU STAND IN — no hero is targeted. Where: the province must be held by a realm you are AT WAR with, and be their HOME CAPITAL or RICH country (tax 7+). Take: 25% of that realm\'s treasury (doubled at Thief 8, even past what they can cover) AND one magic item — cut from a courier still on the road inside their realm, from a Send Item order made earlier this turn (a heist never touches what a hero carries in their own pack — that is the Steal order). Odds: 60% +5% per Thief level past 5, halved if the vaults are guarded (a garrison stands there, or an enemy commander of that realm is present with troops). Fail and you are seen unless you slip away (Thief × 20%) — then a hero of that realm draws steel on you (lead with Flee in your Encounter Plan if you would rather not fight), or if none is there the guards beat you off.'},
   'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
   'Chart the Unknown':{skill:'explorer',lvl:7,target:'none',hint:'Explorer 7: fully chart the province you stand in and reveal all its neighbours at a glance.'},
   'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'none',hint:'Explorer 9: comb the province you stand in and uncover a hidden lair or treasure site, if any remain.'},
@@ -2551,7 +2551,7 @@ const MASTERY_EFFECTS={
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
-  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, rob an enemy hero in your province of a quarter of their realm\'s treasury and a magic item.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
+  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
@@ -2786,11 +2786,12 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
           // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
           // (The engine enforces all of this — this list simply matches it.)
+          // A hero charmed last turn is closed to Charm for the whole of this one (2026-09-09).
           const targets=(report.visibleChars||[]).filter(x=>
-            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 &&
+            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 && !x.charmImmune &&
             (x.player===null || x.player!==c.player));
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune)</option>';
+          if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune, and so is anyone charmed last turn)</option>';
         } else if(selSpell==='Oratory'){
           // Oratory: self, or own characters predicted to be in the same province this phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
@@ -4447,6 +4448,20 @@ function normalSubmitWrapHtml(verb){
       ${verb||'Submit'} Orders for Turn ${turn}
     </button>`;
 }
+// ── SUBMITTED-STATE INDICATOR (2026-09-09) ───────────────────────────────────
+// The "✓ Orders submitted" pill was written ONCE when a report opened and never revised, so every
+// path that un-submits a turn in the database left it standing: Revise Orders, and — the one that
+// actually misleads — saving a draft after hitting Resubmit, which writes orders_submitted=false
+// while the pill still claims the orders are in. This is the single place the flag and its indicator
+// are changed together; call it instead of touching either by hand.
+function setOrdersSubmittedUI(submitted){
+  if(currentGamePlayer) currentGamePlayer.orders_submitted=!!submitted;
+  const pill=document.getElementById('report-status-pill');
+  if(pill) pill.innerHTML=submitted
+    ?'<span class="pill pill-blue">✓ Orders submitted</span>'
+    :'<span class="pill pill-amber">⏳ Orders needed</span>';
+}
+
 function restoreSubmitWrap(verb){
   const w=document.getElementById('orders-submit-wrap');
   if(!w) return;
@@ -4497,6 +4512,10 @@ async function doSaveOrders(){
   }).eq('id',gp.id);
   if(saveErr){console.error('Save draft error:',saveErr.message);return;}
   if(currentGamePlayer) currentGamePlayer.orders=_payload; // keep the in-memory draft fresh for light re-renders
+  // Saving a draft writes orders_submitted=false, so the turn is NOT submitted from this moment on —
+  // the indicator has to say so, or a player who saves a draft after a Resubmit walks away believing
+  // orders are with the GM when they are not.
+  setOrdersSubmittedUI(false);
   const msg=document.getElementById('save-msg');
   if(msg){msg.style.display='block';setTimeout(()=>{msg.style.display='none';},3000);}
 }
@@ -4508,7 +4527,7 @@ async function reviseOrders(){
   const {error}=await sb.from('game_players').update({orders_submitted:false}).eq('id',gp.id);
   if(error){console.error(error);return;}
   // Update local state and rebuild form with existing orders pre-filled
-  gp.orders_submitted=false;
+  setOrdersSubmittedUI(false);   // the turn is no longer submitted — say so at the top of the column
   const chars=currentReport?.characters||[];
   buildOrdersForm(chars, false, gp.orders, currentReport?.turn||1);
   document.getElementById('orders-msg').innerHTML='<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
@@ -4631,7 +4650,7 @@ async function doSubmitOrders(){
       <span style="color:var(--forest);font-size:.85rem;flex:1">✓ Orders submitted successfully! The GM will be notified.</span>
       <button class="btn btn-ghost" style="padding:8px 16px;font-size:.8rem" onclick="resubmitOrders()">↺ Resubmit Orders</button>
     </div>`;
-  document.getElementById('report-status-pill').innerHTML='<span class="pill pill-blue">✓ Orders submitted</span>';
+  setOrdersSubmittedUI(true);
   // On mobile, drop the player back to the Turn Report now their orders are in.
   setMobileView('report');
 }
@@ -4745,6 +4764,29 @@ function predictedItems(charId, upToPhaseExclusive){
 // recipient and garrison-eligibility lists reflect where the character will actually be.)
 // Known limitation: armies TRANSFERRED to this character by ANOTHER character earlier this turn are
 // not yet projected in — the GM still resolves the transfer correctly, it just isn't previewed here.
+// The units a Recruit order actually produces, in the ORDER the engine creates them: mercenary bands
+// first (hired from the province's roaming bands, keeping their own name and quality), then native
+// recruits at Average. Blood Offering, Leave/Transfer and Disband all address units by INDEX into the
+// character's army list, so a projection that skipped mercenaries — as this one did until 2026-09-09 —
+// both hid a band hired earlier in the turn and shifted every index after it.
+function _projRecruitUnits(tokens){
+  const out=[]; const mercs=((currentReport||{}).mercIntel)||[];
+  const toks=(tokens||[]).map(t=>String(t||'').trim()).filter(Boolean);
+  // The engine walks the PROVINCE'S band list and hires whichever are ticked, so bands join in that
+  // list's order — not the order the boxes happen to be ticked in. Mirror that exactly.
+  const _picked=new Set(toks.filter(t=>t.startsWith('merc:')));
+  mercs.forEach(m=>{ if(_picked.has('merc:'+m.id)) out.push({type:m.type,quality:m.quality||'Average',unitName:m.unitName,race:m.race||null,_merc:true}); });
+  const _known=new Set(mercs.map(m=>'merc:'+m.id));
+  _picked.forEach(t=>{ if(!_known.has(t)) out.push({type:'Mercenary band',quality:'Average',unitName:'a hired band',_merc:true}); }); // band no longer in view — still occupies its slot
+  toks.forEach(v=>{
+    if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
+    // Item 3 (2026-09-07 batch 3): one recruit token = ONE unit (the `|n` suffix is not a quantity here).
+    const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v;
+    out.push({type,quality:'Average'});
+  });
+  return out;
+}
+
 // Item 3 (2026-09-09): the unled GARRISON of a province at a given phase, projected by replaying this
 // player's earlier orders in the SAME order the GM engine resolves them — Leave/Transfer-to-garrison and
 // Recruit "to:garrison" APPEND (in army/checkbox order), Pick Up REMOVES (by index, highest first). The
@@ -4774,7 +4816,7 @@ function projectedGarrison(provId, phase, includeSamePhase, excludeCharId){
       } else if(act==='Recruit Armies'){
         const wrap=document.getElementById(`po-target-wrap-${o.id}-${ph}`); if(!wrap) return;
         const destSel=wrap.querySelector('.po-recruit-dest'); if(!destSel||destSel.value!=='to:garrison') return;
-        wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{ const v=cb.value||''; if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return; const bar=v.indexOf('|'); garr.push({type:bar>=0?v.slice(0,bar):v,quality:'Average'}); });
+        _projRecruitUnits([...wrap.querySelectorAll('input[type="checkbox"]:checked')].map(cb=>cb.value||'')).forEach(u=>garr.push(u));
       }
     });
     // (2) removals this phase — only strictly earlier phases (same-phase pick-ups race on initiative)
@@ -4807,12 +4849,9 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
       const oAct=document.getElementById(`po-action-${o.id}-${prevPh}`)?.value||'';
       const oTgt=document.getElementById(`po-target-${o.id}-${prevPh}`)?.value||'';
       if(oAct==='Recruit Armies'&&oTgt.split(',').map(t=>t.trim()).includes('to:'+charId)){
-        oTgt.split(',').map(t=>t.trim()).forEach(v=>{
-          if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
-          // Item 3 (2026-09-07 batch 3): one recruit token = ONE unit (the `|n` suffix is not a quantity here).
-          const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v;
-          armies.push({type,quality:'Average'});
-        });
+        // The engine hires MERCENARIES first and appends native recruits after, so the projection must
+        // use the same order or the Blood Offering S:/E: indices would point at the wrong units.
+        _projRecruitUnits(oTgt.split(',').map(t=>t.trim())).forEach(u=>armies.push(u));
       } else if(oAct==='Leave/Transfer Army'){
         const oExtra=document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value||'';
         if(String(oExtra)!==String(charId)) return;
@@ -4832,14 +4871,8 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
         const destTok=destSel?destSel.value:'to:self';
         const goesToThisHero=!(destTok==='to:garrison'||(destTok&&destTok.startsWith('to:')&&destTok!=='to:self'));
         if(goesToThisHero){
-          wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(cb=>{
-            const v=cb.value||'';
-            if(!v||v==='all'||v.startsWith('to:')||v.startsWith('merc:')) return;
-            // Item 3 (2026-09-07 batch 3): one checked box = ONE unit. The `|n` suffix used to be read as a
-            // quantity, which is why two ticked garrison boxes projected THREE garrison units.
-            const bar=v.indexOf('|'); const type=bar>=0?v.slice(0,bar):v;
-            armies.push({type,quality:'Average'});
-          });
+          const _ticks=[...wrap.querySelectorAll('input[type="checkbox"]:checked')].map(cb=>cb.value||'');
+          _projRecruitUnits(_ticks).forEach(u=>armies.push(u));
         }
       }
     } else if(prevAction==='Pick Up Army'){
@@ -5081,6 +5114,23 @@ function buildTargetField(c, ph, saved){
         ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy province in view to strike" disabled>${hintHtml}`;
     }
+    // ── 'here' — the order acts on the province this character stands in (Grand Heist). No target is
+    // chosen; the field simply reports whether this ground can be robbed and why.
+    if(cfg.target==='here'){
+      const here=predictedLocation(c.id,ph)?.id??c.locationId;
+      const wm=(report.worldMeta?.provinces)||[];
+      const hp=wm.find(p=>p.id===here);
+      const atWar=(pi)=>((report.diplomacy&&report.diplomacy.known)||[]).some(k=>k.index===pi&&k.relation==='enemy');
+      const owner=hp?hp.owner:null;
+      const rich=!!hp&&(hp.wealth==='Rich'||(hp.tax!=null&&hp.tax>=7));
+      const home=!!(hp&&hp.isHomeCapitalOfOwner);
+      const no=(why)=>`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>${hintHtml}`;
+      if(owner==null||owner===c.player) return no('A Grand Heist needs enemy ground — this province is not held by a rival realm');
+      if(!atWar(owner)) return no(`You are not at war with ${hp.ownerName||'this realm'} — declare war first`);
+      if(!rich&&!home) return no(`${hp.name||'This province'} is not worth robbing — a heist needs their capital or rich country (tax 7+)`);
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${hp.name} — ${hp.ownerName||'the enemy realm'}" readonly>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">🏦 You will crack the vaults of <strong>${hp.name}</strong> — ${home?`${hp.ownerName||'the enemy'}'s home capital`:'rich country'}.</div>${hintHtml}`;
+    }
     if(cfg.target==='character'){
       const here=predictedLocation(c.id,ph)?.id??c.locationId;
       const foes=(report.visibleChars||[]).filter(x=>x.locationId===here&&(x.player===null||x.player!==c.player));
@@ -5214,7 +5264,7 @@ function buildTargetField(c, ph, saved){
           <option value="item" ${prize==='item'?'selected':''}>Lift a magic item</option>
           <option value="gold" ${prize==='gold'?'selected':''}>Pick their strongbox — 5% of their treasury</option>
         </select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in the same province. Success: <strong>${base}%</strong> (Thief ${thiefLvl}), halved if the target leads troops or you go for a guarded paymaster. A target with no items is robbed of gold instead. <strong>If you fail and are spotted (${Math.min(95,thiefLvl*20)}% to slip away unseen), the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight. A Thief 8 master's own pockets cannot be picked.</div>`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in the same province. Success: <strong>${base}%</strong> (Thief ${thiefLvl}), halved if the target leads troops or you go for a guarded paymaster. A target with no items is robbed of gold instead. <strong>If you fail and are spotted (${Math.min(95,thiefLvl*20)}% to slip away unseen), the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>`;
     }
 
     // ── SEARCH LAIR ──
@@ -6470,6 +6520,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-0948</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1030</div>
 </body>
 </html>

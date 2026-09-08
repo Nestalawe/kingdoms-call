@@ -710,7 +710,7 @@ const MASTERY_UNLOCKS={
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
-  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, rob an enemy hero in your province of a quarter of their realm\'s treasury and a magic item.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
+  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) are restored to full HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
@@ -942,7 +942,7 @@ function buildTargetField(c,ph,saved){
           // Charm / Psychic Blast / Telekinetic Storm / Curse / Control Undead
           const others=(report.gmOtherChars||[]).filter(x=>{
             if(x.locationId!==casterLocG) return false;
-            if(selSpell==='Charm') return !x.isKing&&(x.armies||0)===0&&(x.player===null||x.player!==c.player);
+            if(selSpell==='Charm') return !x.isKing&&(x.armies||0)===0&&!x.charmImmune&&(x.player===null||x.player!==c.player); // charmed last turn → immune this turn
             if(selSpell==='Telekinetic Storm') return (x.armies||0)>0;
             return true;
           });
@@ -3056,6 +3056,7 @@ const RITUAL_SITE_CHANCE_PRIMAL=1.0;    // EVERY primal land province holds a ri
 const RITUAL_SITE_CHANCE_HUMANOID=0.25; // share of humanoid land provinces with one (Blood Offering only there)
 const WILD_HUNT_COST=6;                 // gold to bind the province's wild creatures
 const WILD_HUNT_UNITS=2;                // units bound per rite
+const GRAND_HEIST_RICH_TAX=7;          // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
 const WILD_HUNT_TURNS=1;                // extra full turns the bound creatures serve beyond this one
 const BLOOD_HARVEST_PER_UNIT=1;         // gold per enemy unit destroyed in a Pagan victory
 const FEATURE_POOLS_P={
@@ -6433,6 +6434,9 @@ function buildTurnReport(gameState, playerIndex){
     // portal can build a Charm order card for them. They're standing unarmed in a province where you
     // have a character — close enough for your hero to take their measure. A hero leading troops isn't
     // charmable, so gets none of this (no intel leak on a fielded commander).
+    // A hero charmed last turn is closed to Charm for the whole of this one — surfaced so the order form
+    // can grey them out rather than let the player spend a cast on a mind that cannot be swayed.
+    charmImmune:(c._charmImmuneTurn===(gameState.turn||1)),
     ...((!c.isKing&&(c.armies||[]).length===0)?{skills:{...(c.skills||{})},temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
   }));
 
@@ -6727,6 +6731,7 @@ function buildTurnReport(gameState, playerIndex){
       if(isOwned){
         // Full live info — your own province.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,tier:'owned',
+          isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // 2026-09-09: Grand Heist needs to know a capital when it sees one
           tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor', ownArmyHere:_ownArmyHere,
           consecrated:isConsecrated(gameState.players[playerIndex],p.id), // DIVINE — Consecrate: mark the realm's holy ground so the player can confirm it is active
           hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
@@ -6738,6 +6743,7 @@ function buildTurnReport(gameState, playerIndex){
       } else if(isLive){
         // You have a character standing here right now — full current info + line-of-sight characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'live',race:p.race,
+          isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // 2026-09-09: Grand Heist eligibility
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           consecrated:provinceConsecrated(gameState,p), // Item 4: holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
@@ -9851,6 +9857,8 @@ const BATTLE_ARMY_SPELLS={
       case 'Charm':{
         // Item 4 (2026-09-09): a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
         if(target&&target.kind==='character'&&target.ref&&target.ref.isKing){ narrative.push(`  ${caster.name}'s Charm washes over ${target.name} and finds nothing to grip — a crowned will cannot be swayed.`); break; }
+        // ...and so is a mind swayed only last season (Toby 2026-09-09c) — the same immunity the action-phase Charm honours.
+        if(target&&target.kind==='character'&&target.ref&&target.ref._charmImmuneTurn===G.turn){ narrative.push(`  ${caster.name}'s Charm slides off ${target.name} — a mind so lately swayed is closed to enchantment for a season.`); break; }
         caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
       default: narrative.push(`  ${caster.name} casts ${spellName}.`);
     }
@@ -14043,6 +14051,12 @@ const BATTLE_ARMY_SPELLS={
           if(!t||t.location!==c.location){log('system',`Charm: no valid target hero stands in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(t.player===c.player){log('system',`Charm cannot be used on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           if(t.isKing){log('system',`Charm cannot sway a king.`,{actor:c.player,targets:[c.player]});break;}
+          // A mind that has been swayed shuts against the next enchanter: a hero charmed on one turn is
+          // IMMUNE to Charm for the whole of the following turn. `_charmImmuneTurn` is the turn on which
+          // the immunity holds; it deliberately survives the end-of-turn flag sweep, and is cleared lazily
+          // once it has passed.
+          if(t._charmImmuneTurn!=null&&t._charmImmuneTurn<G.turn) delete t._charmImmuneTurn;
+          if(t._charmImmuneTurn===G.turn){log('system',`${c.name}'s Charm slides off ${t.name} — a mind so lately swayed is closed to enchantment for a season.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
           // Charm cannot reach the dead. (targetChar is already alive-filtered at resolution, so a
           // hero who fell earlier this turn never arrives here — this makes the rule explicit and
           // guards any future path that might resolve a target without the alive check.)
@@ -14078,6 +14092,7 @@ const BATTLE_ARMY_SPELLS={
             t.player=c.player; t.hiredInPhase=ph;    // hiredInPhase gates acting to ph+1 (permanent join)
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
             if(typeof setMovePool==='function') setMovePool(t);
+            t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
             log('hire',`✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             const applied=_applyCharmOrders(t);
             if(applied>0) log('system',`${t.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player]});
@@ -14094,6 +14109,7 @@ const BATTLE_ARMY_SPELLS={
             t._charmedForPhase=ph;
             t._charmTempControl=true;
             t._charmControlFrom=ph;
+            t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
             t.player=c.player;
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase; // drop any watch/chase set under their old lord
             if(typeof setMovePool==='function') setMovePool(t);
@@ -14481,39 +14497,73 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'grand_heist':{
-        // ── GRAND HEIST (Thief 7; revised Toby 2026-09-09) ── once per turn per thief. A ROLL, not a
-        // certainty: 60% + 5% per Thief level past 5 (L7 70, L9 80), halved if the victim leads troops. Success
-        // lifts one magic item (guaranteed if any are carried — unless the victim is a master thief) AND 25%
-        // of the victim realm's treasury (THIEF L8 doubles the gold; the victim is floored at 0). A failed
-        // heist is noticed unless the thief slips away (Thief × 20%, cap 95%) — and then it's a duel.
+        // ── GRAND HEIST (Thief 7; province-target revision, Toby 2026-09-09c) ───────────────────────
+        // The TARGET is the PROVINCE the thief is standing in, not any one hero — the job is breaking
+        // into a realm's vaults, and the realm robbed is whoever holds the ground.
+        //   • PLACE — the province must be held by a realm you are at WAR with, and be either their
+        //     HOME CAPITAL or RICH country (tax base ≥ GRAND_HEIST_RICH_TAX).
+        //   • ONCE per turn per thief — the attempt is spent whether it succeeds or fails.
+        //   • ODDS — 60% + 5% per Thief level past 5, HALVED if the vaults are guarded: a garrison
+        //     stands here, or an enemy commander of that realm is here at the head of troops.
+        //   • TAKE — 25% of the realm's treasury (THIEF L8 doubles it; the realm is floored at 0), plus
+        //     ONE magic item taken from that realm's COURIER TRAFFIC — a parcel sent by a Send Item
+        //     order earlier this turn and still on the road. What a hero carries in their own pack is
+        //     never touched by a heist; that is the Steal order's business.
+        //   • CAUGHT — a failed heist is noticed unless the thief slips away (Thief × 20%, cap 95%).
+        //     If a hero of the robbed realm is standing here they run the thief down (a duel, unless
+        //     their stance is Refuse); otherwise the garrison guards beat him off.
         if(skillLevel(c,'thief')<7){log('system',`${c.name} lacks the Thief mastery (7) for a Grand Heist.`,{actor:c.player,targets:[c.player]});break;}
-        if(c._grandHeistTurn===G.turn){log('system',`${c.name} has already staged a Grand Heist this turn — one great job a season is all the nerves will bear.`,{actor:c.player,targets:[c.player]});break;}
-        const victim=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
-        if(!victim){log('system',`${c.name} finds no enemy hero to rob in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
-        if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
-        c._grandHeistTurn=G.turn;
-        const vp=victim.player;
-        const _hLvl=skillLevel(c,'thief'); const _hArmed=(victim.armies||[]).length>0;
-        let _hChance=Math.min(95,60+5*(_hLvl-5)); if(_hArmed) _hChance=Math.floor(_hChance/2);
+        if(c._grandHeistTurn===G.turn){log('system',`${c.name} has already attempted a Grand Heist this turn — one great job a season is all the nerves will bear.`,{actor:c.player,targets:[c.player]});break;}
+        const vp=prov.owner;
+        if(vp==null||vp===c.player){log('system',`${c.name} looks for vaults to crack in ${prov.name}, but no rival crown holds this ground — a Grand Heist is staged in an enemy's own country.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        if(!areEnemies(c.player,vp)){log('system',`${c.name}: you are not at war with ${G.players[vp]?.name||'this realm'} — a Grand Heist would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        const _ghHome=(homeProvinceIdFor(G,vp)===prov.id);
+        const _ghRich=(prov.tax||0)>=GRAND_HEIST_RICH_TAX;
+        if(!_ghHome&&!_ghRich){log('system',`${c.name} casts an eye over ${prov.name} and finds nothing worth the risk — a Grand Heist is staged in an enemy's home capital or in rich country (tax ${GRAND_HEIST_RICH_TAX}+; this province: ${prov.tax||0}).`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        c._grandHeistTurn=G.turn;   // the attempt is spent, win or lose
+        // Who could catch him, and how well watched are the vaults?
+        const _ghWardens=(G.characters||[]).filter(x=>x&&x.alive&&x.player===vp&&x.location===prov.id);
+        const _ghGuarded=((prov.garrisonArmies||[]).length>0)||_ghWardens.some(x=>(x.armies||[]).length>0);
+        const _hLvl=skillLevel(c,'thief');
+        let _hChance=Math.min(95,60+5*(_hLvl-5)); if(_ghGuarded) _hChance=Math.floor(_hChance/2);
         const _hRoll=d100();
-        log('system',`📊 Grand Heist — ${c.name} (Thief ${_hLvl}) against ${victim.name}: ${fmtRoll(_hChance,_hRoll)}${_hArmed?' (halved — target leads armies)':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('system',`📊 Grand Heist — ${c.name} (Thief ${_hLvl}) cracks the vaults of ${_ghHome?'the enemy capital of ':'the rich province of '}${prov.name} (${G.players[vp]?.name||'an enemy realm'}): ${fmtRoll(_hChance,_hRoll)}${_ghGuarded?' (halved — the vaults are guarded)':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(_hRoll<=_hChance){
-          const purse=(vp!=null)?(G.players[vp]?.gold||0):0;
+          const purse=G.players[vp]?.gold||0;
           let take=Math.floor(purse*0.25);
-          if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — thief gains the full amount even if the victim cannot cover it (victim floored at 0 below)
+          if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — the thief takes the full amount even if the realm cannot cover it (floored at 0 below)
           const parts=[];
-          if(vp!=null&&take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; parts.push(`${take}g spirited away`); }
-          const it=liftRandomItem(c,victim);
-          if(it&&it.guarded) parts.push(`${victim.name}'s trinkets prove sewn too tight to lift`); else if(it) parts.push(`the ${it.name} lifted`);
+          if(take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; parts.push(`${take}g lifted from the vaults`); }
+          // ── COURIER INTERCEPT ── one item from a parcel still on the road inside the robbed realm.
+          const _ghParcels=(G._itemDeliveries||[]).filter(d=>{
+            if(!d||!Array.isArray(d.items)||!d.items.length) return false;
+            const dest=(G.characters||[]).find(ch=>ch&&ch.id===d.toId);
+            return !!dest&&dest.player===vp;
+          });
+          if(_ghParcels.length){
+            const _p=_ghParcels[Math.floor(Math.random()*_ghParcels.length)];
+            const _it=_p.items.splice(Math.floor(Math.random()*_p.items.length),1)[0];
+            c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
+            parts.push(`the ${_it.name} cut from a courier's satchel on the road`);
+            const _dest=(G.characters||[]).find(ch=>ch&&ch.id===_p.toId);   // the parcel's intended recipient
+            log('system',`📦 A courier of ${G.players[vp]?.name} is waylaid on the road — ${_it.name}${_p.fromName?`, sent by ${_p.fromName}`:''}${_dest?` and bound for ${_dest.name}`:''}, never arrives.`,{actor:null,targets:[vp],provinceId:prov.id,charId:_dest?_dest.id:null,phase:ph});
+          } else parts.push(`though no courier of theirs was on the road to waylay`);
           c.merits=(c.merits||0)+2;
           const msg=parts.join(' — and ');
-          log('hire',`💰 ${c.name} pulls off a Grand Heist against ${victim.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-          if(vp!=null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) robbed ${victim.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id,charId:victim.id});
+          log('hire',`💰 ${c.name} pulls off a Grand Heist in ${prov.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
           trySkillGain(c,'thief',SKILLGAIN_STD);
         } else {
           const caught=Math.random()*100>=Math.min(95,_hLvl*20);
-          if(caught) thiefCaughtScuffle(c,victim,`in the middle of a Grand Heist`);
-          else log('system',`${c.name}'s Grand Heist against ${victim.name} comes to nothing, but the thief slips away undetected.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(!caught){ log('system',`${c.name}'s Grand Heist in ${prov.name} comes to nothing, but the thief slips away undetected.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
+          // A hero of the robbed realm gives chase; failing that, the guards do.
+          const _ghCatcher=_ghWardens.find(x=>!x.isKing)||_ghWardens[0]||null;
+          if(_ghCatcher) thiefCaughtScuffle(c,_ghCatcher,`breaking into the vaults of ${prov.name}`);
+          else {
+            const dmg=rng(1,4); c.hp=Math.max(1,c.hp-dmg);
+            log('combat',`${c.name} is caught at the vaults of ${prov.name} and beaten back by the guards — ${dmg} damage taken.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`[Intelligence] A thief — ${c.name} (${G.players[c.player]?.name}) — was driven off the vaults of ${prov.name}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
+          }
         }
         break;
       }
@@ -16544,6 +16594,24 @@ const BATTLE_ARMY_SPELLS={
     G.turnOrders[c.id]=G.turnOrders[c.id].map(o=>o||{action:'defend',target:'',extra:'',desc:'Defend'});
   });
 
+  // ── ENEMY STAND-OFF SWEEP ──────────────────────────────────────────────────
+  // Any province where the armed, UNVEILED forces of two warring realms stand together is a battle
+  // waiting to happen: flag it so resolveStalledBattles joins the fight and the province shows as
+  // contested. Run at the START of every phase (catching a fight skipped while a force was veiled)
+  // and ONCE MORE AT THE END OF THE TURN (2026-09-09): a stand-off created by movement in the LAST
+  // phase used to survive into the saved state unflagged — no contested marker on anyone's map, and
+  // the forces unpinned — until the next turn's first sweep caught it. This is the intermittent
+  // "holds armed forces of 2 players but is NOT flagged _battleUnresolved" failure in scenario.js.
+  function flagEnemyStandoffs(){
+    (G.world.provinces||[]).forEach(pv=>{
+      if(!pv||pv._battleUnresolved) return;
+      const _vf=(G.characters||[]).filter(ch=>ch.alive&&ch.location===pv.id&&(ch.armies||[]).length>0&&ch.player!=null&&!isVeiled(ch));
+      const _vpl=[...new Set(_vf.map(ch=>ch.player))];
+      let _vep=false; for(let i=0;i<_vpl.length&&!_vep;i++) for(let j=i+1;j<_vpl.length;j++) if(areEnemies(_vpl[i],_vpl[j])){ _vep=true; break; }
+      if(_vep) pv._battleUnresolved=true;
+    });
+  }
+
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // Item 6: reliable phase for skill-rises earned outside processOrder
     log('system',`— ${SEASONS[ph]} —`);
@@ -16578,13 +16646,7 @@ const BATTLE_ARMY_SPELLS={
     // ILLUSORY L9 VEIL — post-veil re-trigger: once a veil parts, a fight that was skipped while the
     // force was hidden must be joined. Flag any province where two enemy players' armed, UNVEILED forces
     // now stand together and it is not already contested; resolveStalledBattles (next) resolves it.
-    (G.world.provinces||[]).forEach(pv=>{
-      if(!pv||pv._battleUnresolved) return;
-      const _vf=(G.characters||[]).filter(ch=>ch.alive&&ch.location===pv.id&&(ch.armies||[]).length>0&&ch.player!=null&&!isVeiled(ch));
-      const _vpl=[...new Set(_vf.map(ch=>ch.player))];
-      let _vep=false; for(let i=0;i<_vpl.length&&!_vep;i++) for(let j=i+1;j<_vpl.length;j++) if(areEnemies(_vpl[i],_vpl[j])){ _vep=true; break; }
-      if(_vep) pv._battleUnresolved=true;
-    });
+    flagEnemyStandoffs();
     resolveStalledBattles(ph);
     settleRalliedGarrisons(); // return rallied garrisons to their province if the contest is won, else keep them with the hero
     _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
@@ -16916,6 +16978,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   _currentPhase=null; // Item 6: the phase loop is over — any later gain belongs to END OF TURN
 
+  // A stand-off struck in the final phase is still a stand-off: flag it now so the state that is
+  // SAVED (and every player's map) shows the province as contested, and the fight is joined at the
+  // first sweep of next turn rather than being invisible for a whole season.
+  flagEnemyStandoffs();
+
   // ── Item 1: DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's
   // hands this turn (captured by an enemy, or otherwise no longer owned) loses its blessing — which
   // also frees a slot so the king may hallow new ground next turn (up to his White skill level).
@@ -16938,6 +17005,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // If the recipient fell this turn the parcel routes to their king (if one lives), else it is lost.
   if(Array.isArray(G._itemDeliveries) && G._itemDeliveries.length){
     G._itemDeliveries.forEach(d=>{
+      // A parcel whose contents were cut out by a Grand Heist is no parcel at all — skip it rather than
+      // announce an empty courier arriving.
+      if(!d||!Array.isArray(d.items)||d.items.length===0) return;
       let dest=(G.characters||[]).find(ch=>ch&&ch.id===d.toId&&ch.alive);
       if(!dest){
         const _orig=(G.characters||[]).find(ch=>ch&&ch.id===d.toId);
@@ -17090,13 +17160,28 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           else next=wouldBe;
         }
         const na=G.players[a]?.name||('Realm '+(a+1)), nb=G.players[b]?.name||('Realm '+(b+1));
+        // ── OVERTURES RECEIVED (Toby 2026-09-09c) ── A realm that is offered peace or an alliance is
+        // TOLD SO, whether or not it answered in kind. Previously only the offerer heard anything back
+        // from an unreciprocated Treat, so a player could be courted all game and never know it. The
+        // word used matches what the offer would actually achieve from the current relation.
+        const _offerWord=(cur==='enemy'?'peace':'an alliance');
+        const _mutual=(da==='treat'&&db==='treat');
+        const _tellOffered=(to,fromName)=>{
+          // When both sides treated and the relation actually moved, the pact announcement below says it
+          // all — no need to also report the overture that produced it.
+          if(_mutual&&next!==cur) return;
+          log('system',`🕊 ${fromName} has sent you an overture of ${_offerWord}.${_mutual?' You answered in kind.':` Declare a Treat toward ${fromName} with next turn's orders to answer it.`}`,{actor:null,targets:[to],system:true});
+        };
+        if(da==='treat') _tellOffered(b,na);
+        if(db==='treat') _tellOffered(a,nb);
         if(blockedAlliance){
           log('system',`${na} and ${nb} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[a],system:true});
           log('system',`${nb} and ${na} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[b],system:true});
           continue;
         }
         if(next===cur){
-          // Unreciprocated overture: let the offerer(s) know nothing changed.
+          // Unreciprocated overture: let the offerer(s) know nothing changed. (The party who was courted
+          // has already been told of the overture itself, just above.)
           if(da==='treat') log('system',`${na}'s overture of ${cur==='enemy'?'peace':'alliance'} to ${nb} went unanswered this year — relations are unchanged.`,{actor:null,targets:[a],system:true});
           if(db==='treat') log('system',`${nb}'s overture of ${cur==='enemy'?'peace':'alliance'} to ${na} went unanswered this year — relations are unchanged.`,{actor:null,targets:[b],system:true});
           continue;
@@ -17272,6 +17357,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     delete c._curses;
     delete c._mirrorImages;
     delete c._invisible;
+    // (_charmImmuneTurn is deliberately NOT cleared here — it names NEXT turn, and is dropped lazily
+    //  by the Charm cast itself once the season it guards has passed.)
     delete c._charmedByPlayer;
     delete c._charmedForPhase;
     delete c._charmOriginalPlayer;
@@ -17935,6 +18022,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-0948</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1030</div>
 </body>
 </html>
