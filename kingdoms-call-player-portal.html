@@ -2067,19 +2067,20 @@ function renderReportView(report){
         if((kingdom.cutpurseG||0)>0) parts.push(`+${kingdom.cutpurseG}g the Cutpurse`);
         if((kingdom.championG||0)>0) parts.push(`+${kingdom.championG}g Champion of the People`);
         if((kingdom.castellanG||0)>0) parts.push(`+${kingdom.castellanG}g the Castellan`);
+        if((kingdom.consecG||0)>0) parts.push(`+${kingdom.consecG}g consecrated ground`);
         const incl=parts.length?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">incl. ${parts.join(', ')}</div>`:'';
         const eq=(kingdom.earthquakeReduction||0);
         const eqLine=eq>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${eq}g lost to earthquake damage</div>`:'';
         const ens=(kingdom.enslaveReduction||0);
         const ensLine=ens>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${ens}g enslaved provinces seethe</div>`:'';
         // The box projects NEXT turn's collection from the realm as it stands now; what was actually
-        // banked this turn (with any one-turn Bless / Consecrate / Earthquake / Sabotage effects) is the
+        // banked this turn (with any one-turn Bless / Earthquake / Sabotage effects) is the
         // "collects ...g in taxes" line under Kingdom Events.
         const noteLine=`<div style="font-size:.6rem;color:var(--stone);margin-top:2px;line-height:1.3">projected for next turn — this turn's actual take is under Kingdom Events</div>`;
         return incl+eqLine+ensLine+noteLine;
       })()}</div>
-      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div></div>
-      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div></div>
+      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}</div>
       <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
     </div>
@@ -2257,6 +2258,8 @@ function renderReportView(report){
       }).join('');
     }
     if(enemies.length>0){
+      // 2026-09-09 (item 5): enemy sightings get their own heading — they used to run on under "Wandering Heroes".
+      otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a1c1c;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Enemy Heroes</div>`;
       otherForcesHtml+=enemies.map(s=>{
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
@@ -5634,7 +5637,10 @@ function buildTargetField(c, ph, saved){
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No known ritual site in ${loc.name} — Explore to find standing stones`:'Province unknown'}" disabled>`;
       // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
       // still holds a primal unit (Creature or Monster country).
-      const canHunt=(pd?.armyTypes||[]).some(a=>CREATURE_ARMIES_UI.has(a.type)||MONSTER_ARMIES_UI.has(a.type));
+      // The GM report names the exact type the engine will bind and its price (the cost of ONE
+      // beast, however many answer), so this form never has to re-derive it and drift from the engine.
+      const canHunt=!!pd?.wildHuntType;
+      const huntCost=pd?.wildHuntCost;
       // Item 5 (this session): list the armies this character will be LEADING at this phase — start-of-
       // turn units plus anything recruited, picked up, transferred in or otherwise gained earlier in the
       // turn (the engine resolves the S:/E: indices against the actual army list at that phase, which
@@ -5653,7 +5659,7 @@ function buildTargetField(c, ph, saved){
             </select></div>`).join('')
         : `<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
       return`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering('${c.id}',${ph})">
-        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 VETERAN wild creatures (6g, serve until end of NEXT turn)</option>`:''}
+        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>\u{1F525} Rite of the Wild Hunt — bind 2 VETERAN ${pd?.wildHuntType||'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of NEXT turn)</option>`:''}
         <option value="Blood Offering" ${target==='Blood Offering'||!target?'selected':''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+2 tiers each)</option>
       </select>
       <input id="po-extra-${c.id}-${ph}" type="hidden" value="${(extra||'').replace(/"/g,'&quot;')}">
@@ -6328,7 +6334,11 @@ function renderMapIntoSvg(svgEl, report){
   // Province data lookup
   const provById={};
   provs.forEach(p=>provById[p.id]=p);
-  (report.ownedProvinces||[]).forEach(op=>{provById[op.id]={...provById[op.id],...op};});
+  // 2026-09-09 (item 5): keep the worldMeta character list when it exists — it is the stealth-filtered,
+  // fully attributed one (owner colour/name, wanderer/chieftain flags). The ownedProvinces list used to
+  // overwrite it with bare {id,name,isOwn,isKing} entries, so enemy heroes in your OWN provinces drew as
+  // grey "?" wanderers with no realm in the tooltip while the report correctly called them enemies.
+  (report.ownedProvinces||[]).forEach(op=>{const _wm=provById[op.id]; provById[op.id]={..._wm,...op, characters:(_wm&&Array.isArray(_wm.characters))?_wm.characters:op.characters};});
 
   // Shared tooltip
   let tt=document.getElementById('map-tooltip');
@@ -6772,6 +6782,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1703</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-2156</div>
 </body>
 </html>

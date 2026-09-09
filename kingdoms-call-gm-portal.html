@@ -997,9 +997,10 @@ function buildTargetField(c,ph,saved){
       const site=(pd?.features||[]).find(f=>f.ritualSite);
       if(!site)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No known ritual site in ${loc.name}`:'Province unknown'}" disabled>`;
-      const canHunt=(pd?.armyTypes||[]).some(a=>PRIMAL_ARMY_DEFS_P[a.type]);
+      const canHunt=!!pd?.wildHuntType;
+      const huntCost=pd?.wildHuntCost;
       return`<select id="po-target-${c.id}-${ph}">
-        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>Rite of the Wild Hunt — bind 2 wild creatures (6g, until end of next turn)</option>`:''}
+        ${canHunt?`<option value="Wild Hunt" ${target==='Wild Hunt'?'selected':''}>Rite of the Wild Hunt — bind ${WILD_HUNT_UNITS} wild creatures (${huntCost}g, no wages, until end of next turn)</option>`:''}
         <option value="Blood Offering" ${target==='Blood Offering'?'selected':''}>Blood Offering — sacrifice units to empower an equal number (+2 tiers each)</option>
       </select>`;
     }
@@ -1886,6 +1887,10 @@ function buildGMProvinceOrderData(gs, playerIndex){
 
       // Recruit native armies only in provinces you control (mercenaries are handled separately)
       canRecruit:isOwned,
+      // Rite of the Wild Hunt: resolve the type the ENGINE will bind (first primal type in the
+      // province's pool) and its price here, so neither order form has to re-derive it and drift.
+      wildHuntType:((p.armyTypes||[]).find(t=>PRIMAL_ARMY_DEFS_P[t])||null),
+      wildHuntCost:(()=>{ const t=(p.armyTypes||[]).find(x=>PRIMAL_ARMY_DEFS_P[x]); return t?wildHuntPrice(t):null; })(),
       armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({type:at,cost:realmRecruitCost((gs.players||[])[playerIndex],at,ARMY_COST_GM[at]||2),maxPerTurn:at.toLowerCase().includes('garrison')?2:isHome?2:1})),
       features:(()=>{
         // Match the province panel's visibility (discovered OR explored past its threshold) and
@@ -3064,8 +3069,13 @@ function guardianCanUseItem(m, it){
 const RITUAL_SITE_NAMES=['Standing Stones','Blood Altar','Circle of the Old Gods'];
 const RITUAL_SITE_CHANCE_PRIMAL=1.0;    // EVERY primal land province holds a ritual site (2026-09-07 batch 3; was 0.60)
 const RITUAL_SITE_CHANCE_HUMANOID=0.25; // share of humanoid land provinces with one (Blood Offering only there)
-const WILD_HUNT_COST=6;                 // gold to bind the province's wild creatures
+const WILD_HUNT_COST=6;                 // fallback price if a bound type is missing from ARMY_COST_MASTER
 const WILD_HUNT_UNITS=2;                // units bound per rite
+// 2026-09-09: the rite is priced at the cost of ONE of the beasts bound, however many answer the
+// horn — bind two Stone Giants (5g each) and the offering is 5g, not 6g and not 10g. Declared as a
+// function so the ARMY_COST_MASTER lookup happens at call time, not at load (see the ITEMS_BY_TIER
+// temporal-dead-zone gotcha).
+function wildHuntPrice(type){ return ARMY_COST_MASTER[type]||WILD_HUNT_COST; }
 const GRAND_HEIST_RICH_TAX=7;          // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
 const WILD_HUNT_TURNS=1;                // extra full turns the bound creatures serve beyond this one
 const BLOOD_HARVEST_PER_UNIT=1;         // gold per enemy unit destroyed in a Pagan victory
@@ -3568,6 +3578,26 @@ function consecratedIds(pl){
   return pl.consecratedProvIds;
 }
 function isConsecrated(pl, provId){ return consecratedIds(pl).includes(provId); }
+// 2026-09-09: a neutral province guard becomes an ordinary wandering hero (hireable, listed under
+// Wandering Heroes, labelled "(wandering)"). Used when a guard survives the loss of his last unit, and
+// by the turn-start / pre-report safety net for any guard left troopless or standing in a player's land.
+function demoteGuardToWanderer(h){
+  if(!h) return;
+  h._isNeutralGuard=false; // (armies are left as they are — the combat site has already emptied them)
+  const base=String(h.name||'').replace(/\s*\(wandering\)/gi,'').trim();
+  h.name=base+' (wandering)';
+}
+// Safety net: every living neutral "guard" who leads no troops, or who stands in a province a player
+// now owns, is really a wanderer — normalise them. Returns the number repaired.
+function normaliseStrandedGuards(gs){
+  let n=0;
+  (gs.characters||[]).forEach(c=>{
+    if(!c||c.player!==null||!c.alive||!c._isNeutralGuard) return;
+    const pv=(gs.world&&gs.world.provinces||[])[c.location];
+    if((c.armies||[]).length===0 || (pv&&pv.owner!=null)){ demoteGuardToWanderer(c); n++; }
+  });
+  return n;
+}
 // Item 4 (this session): consecration is holy ground anyone can SEE (altars, standing stones), not a
 // private fact of the owner. This tells us whether a province is consecrated by its CURRENT owner, so
 // the map can mark it for every player who can see the province — not only the Divine king who blessed it.
@@ -4957,10 +4987,10 @@ function botRecruitableTypes(prov){
   return mobile.length?mobile:all;
 }
 function botUpkeep(G, pi){
-  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ w+=(ARMY_COST_MASTER[a.type]||2); }); });
+  let w=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi)(c.armies||[]).forEach(a=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return; w+=(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2)); }); });
   // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
   // solvency guard must see them now that bots garrison every province.
-  (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi)(p.garrisonArmies||[]).forEach(a=>{ w+=(ARMY_COST_MASTER[a.type]||2); }); });
+  (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi)(p.garrisonArmies||[]).forEach(a=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return; w+=(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2)); }); });
   (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&!c.isKing) w+=(c.pay||0); });   // hero wages are real wages too
   return w;
 }
@@ -6469,7 +6499,17 @@ function buildTurnReport(gameState, playerIndex){
       // character circle. This owned-province list omitted the c.alive filter that liveChars() applies,
       // so a corpse lying in your own province drew a second, colourless (grey) character icon on top
       // of its skull. Filter the dead out here to match liveChars().
-      return (c&&c.alive)?{id:c.id,name:c.name,isOwn:c.player===playerIndex,isKing:c.isKing}:null;
+      // 2026-09-09 (item 5): carry the SAME fields as the worldMeta liveChars() list (owner name/colour,
+      // wanderer/chieftain flags, army count). The player-portal map used to spread this bare list over the
+      // worldMeta one for owned provinces, so an enemy hero in your own province lost its realm colour and
+      // was drawn as a grey "?" wanderer. The portal now keeps the worldMeta list; this is belt-and-braces.
+      if(!(c&&c.alive)) return null;
+      const _own=c.player===playerIndex;
+      return{id:c.id,name:c.name,isOwn:_own,isKing:c.isKing,
+        isWanderer:c.player===null, isNeutralGuard:!!c._isNeutralGuard,
+        ownerName:c.player!=null&&!_own?(gameState.players[c.player]?.name||null):null,
+        armyCount:(c.armies||[]).length,
+        ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
     }).filter(Boolean),
   }));
 
@@ -6477,7 +6517,7 @@ function buildTurnReport(gameState, playerIndex){
 
   const charReports=chars.map(c=>{
     const prov=gameState.world.provinces[c.location];
-    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName,race:a.race||null,cost:(a._temporary?0:(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2))),skeletal:!!a._isSkeletal,temporary:!!a._temporary}));
+    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName,race:a.race||null,cost:((a._temporary||a._wildHuntUntilTurn!=null)?0:(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2))),skeletal:!!a._isSkeletal,temporary:!!a._temporary}));
     // 2026-09-09e: these were read RAW, so an item granting March or Naval was left out of the speed
     // the player was shown while the engine moved them at the higher rate. Same stack as setMovePool.
     const marchLvl=effSkillOf(c,'march',gameState.characters||[]);
@@ -6973,7 +7013,7 @@ function buildTurnReport(gameState, playerIndex){
   const hasDiscR=(id)=>(player.discoveries||[]).some(d=>d.id===id);
   // Item 3: track each income modifier separately so the Tax Income box can itemise WHAT is lifting
   // (or cutting) the realm's revenue — mirroring the end-of-turn collection engine.
-  let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0,_sdCreed=0,_enslaveReduction=0;
+  let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0,_sdCreed=0,_enslaveReduction=0,_consecG=0;
   // 2026-09-09 (Toby: Neutral king saw 11g +1 trade in Kingdom Events but 12g +2 trade in the Tax Income
   // box). The box is a NEXT-turn projection and had drifted from the collector: it ignored the Enslave
   // resentment (-1 tax for 3 turns, persistent) and every heritage / creed `tax` and `interest`
@@ -6986,6 +7026,10 @@ function buildTurnReport(gameState, playerIndex){
   const provTaxIncome=(player.provinces||[]).reduce((s,pid)=>{
     const pv=gameState.world.provinces[pid]; if(!pv) return s;
     let t=pv.tax||0;
+    // 2026-09-09: Consecrate is PERSISTENT (player.consecratedProvIds — broken only when the province
+    // changes hands), not a one-turn effect, so it belongs in the forecast. Same position and rounding
+    // as the collector: after Bless (a transient we still skip), before Enslave / earthquake damage.
+    if(isConsecrated(player,pv.id)){ const _cb=t; t=Math.round(t*1.5); _consecG+=(t-_cb); }
     if(pv._enslavedUntil!=null&&pv._enslavedUntil>=_nextTurn){ const _e0=t; t=Math.max(0,t-1); _enslaveReduction+=(_e0-t); } // EVIL — Enslave resentment
     const _t0=t;
     if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0)); // lingering earthquake damage
@@ -7007,7 +7051,7 @@ function buildTurnReport(gameState, playerIndex){
   // Item 3: title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings
   // / computeMinorTitles are module-level and already used above, so the report builder can read the
   // live holders without runTurn's G-scoped helpers. Each perk is tracked separately for itemisation.
-  let throneG=0,vaultG=0,cutpurseG=0,championG=0,castellanG=0;
+  let throneG=0,vaultG=0,cutpurseG=0,championG=0,castellanG=0,_hostLeaderChar=null;
   try{
     if(!_titlesPublic) throw 'titles-hidden'; // Item: title perks (incl. their tax gold) take effect only once Titles are revealed at turn 5 — matching the gated end-of-turn collection.
     const _std=(computeStandings(gameState).titles)||{};
@@ -7017,6 +7061,7 @@ function buildTurnReport(gameState, playerIndex){
     if(_charHasMinor('cutpurse')) cutpurseG=2;
     if(_charHasMinor('champion')) championG=2;
     if(_charHasMinor('castellan')){ const _owned=(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length; castellanG=Math.floor(_owned/5); }
+    if(_charHasMinor('hostleader')) _hostLeaderChar=_pChars.find(c=>c.id===_min.hostleader.charId)||null; // 2026-09-09: wage forecast mirror
   }catch(e){}
   const titlePerkGold=throneG+vaultG+cutpurseG+championG+castellanG;
   const baseTaxIncome=provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)
@@ -7069,6 +7114,11 @@ function buildTurnReport(gameState, playerIndex){
       // exploredBy[playerIndex], never the legacy shared p.explored (that holds whichever player
       // explored the province most recently, so it leaks/misreports across realms).
       explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,
+      // Rite of the Wild Hunt: resolve the type the ENGINE will bind (first primal type in the
+      // province's pool) and its price — the cost of ONE beast — so the player's order form
+      // displays exactly what will be charged instead of re-deriving it and drifting.
+      wildHuntType:((p.armyTypes||[]).find(t=>PRIMAL_ARMY_DEFS_P[t])||null),
+      wildHuntCost:(()=>{ const t=(p.armyTypes||[]).find(x=>PRIMAL_ARMY_DEFS_P[x]); return t?wildHuntPrice(t):null; })(),
       canRecruit:isOwned,
       // Primal sea beasts are only offered where they can actually be summoned: at sea.
       armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({
@@ -7094,12 +7144,22 @@ function buildTurnReport(gameState, playerIndex){
 
   const _druidHalfWageR=new Set();
   playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0||(hasDiscR('gd')&&player.alignment==='Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 + GRAND DESIGN Druidic (report mirror)
-  const armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); return s+w; },0);
+  let armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return s; /* Wild Hunt beasts serve the old gods, not a paymaster */ if(a._isSkeletal) return s+1; /* skeletons are a flat 1g everywhere */ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); return s+w; },0);
+  // 2026-09-09 (Toby: Realm Events wages ≠ Your Realm wages). The forecast skipped three PERSISTENT
+  // discounts the collector applies — the Host-Leader minor title (−1g per unit he leads, floor 0 on
+  // the total), Granaries sd17 (−1g per hero) and every heritage/creed `heroWage` discovery (−Ng per
+  // hero), all with the collector's max(1,…) floor. The only wage effect still left out on purpose is
+  // the same-turn Orc war-spoils half-wage (depends on a battle not yet fought). Keep in step with ~17220.
+  let hostLeaderG=0;
+  if(_hostLeaderChar){ const led=(_hostLeaderChar.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null).length; hostLeaderG=Math.min(armyWages,led); armyWages=Math.max(0,armyWages-led); }
   const _inspiringR=hasDiscR('sd38'); // Inspiring Leadership (report mirror)
-  const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ let w=(h.pay||0); if(_inspiringR) w=Math.floor(w*0.5); return s+w; },0);
+  const _granR=hasDiscR('sd17')?1:0;
+  const _dHWR=discSumOf(player,'heroWage','amount');
+  let heroWageDisc=0;
+  const heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ const raw=(h.pay||0); let w=Math.max(1,raw-_granR-_dHWR); if(_inspiringR) w=Math.floor(w*0.5); heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,armyWages,heroWages,alignment:player.alignment,race:player.race,color:player.color},
     discoveries:(player.discoveries||[]).map(d=>({id:d.id,name:d.name,category:d.category,desc:d.desc,turnDiscovered:d.turnDiscovered})),
     // Item 6 (2026-09-07): the Research order's category dropdown — every category this realm is eligible for,
     // with how many of its discoveries are already known (the portal greys out exhausted ones). Names and
@@ -7599,6 +7659,10 @@ async function runTurn(opts){
       c.race=RACES_P[((c.id||0)%RACES_P.length+RACES_P.length)%RACES_P.length];
     }
   });
+  // 2026-09-09: repair any guard stranded troopless or inside a player's province (see
+  // normaliseStrandedGuards) so this turn's move-in / hire / sightings all treat him as the wanderer
+  // he really is. This also heals saves carrying the pre-fix case.
+  normaliseStrandedGuards(G);
 
   // 2. Merge all player orders into G.turnOrders + apply encounter plans
   // CRITICAL: reset turnOrders completely first — stale orders from a previous turn
@@ -9558,6 +9622,17 @@ const BATTLE_ARMY_SPELLS={
       if(defLost.length>0) recordBattleGraves(prov,defLost);
       // Update guard armies if applicable
       if(defHero) defHero.armies=defSurv;
+      // 2026-09-09 (Toby: province "captured without a battle" and a chieftain left standing in it).
+      // A guard can WIN this engagement and still lose every unit to the casualty rolls above. He
+      // used to keep _isNeutralGuard with an empty host; the move-in check only counts a guard who
+      // leads troops, so the next armed hero simply claimed the land and the troopless "guard"
+      // stayed inside a player-owned province — filed as a local chieftain (not hireable, absent
+      // from Wandering Heroes) while the map showed him there. A guard with no host is a guard no
+      // more: demote him to a plain wanderer on the spot.
+      if(defHero && defHero._isNeutralGuard && defHero.alive!==false && defSurv.length===0){
+        demoteGuardToWanderer(defHero);
+        narrative.push(`— but every soldier of ${defHero.name.replace(' (wandering)','')}'s band lies dead. With no host left to command, they are ${prov.name}'s guardian no more — a masterless hero now.`);
+      }
       // Sync the province's defender array too. Callers re-read prov.neutralDefenders to restore
       // the guard's army after the battle — without this line a defender who died holding the
       // ground was silently restored to life by that resync (graves recorded, unit still marching).
@@ -12555,7 +12630,9 @@ const BATTLE_ARMY_SPELLS={
             _leaderlessHosts.forEach(dc=>dc.armies.forEach(a=>{a._fromLeaderless=dc.id;}));
             const _rallied=[..._garrisonHere,..._leaderlessHosts.flatMap(dc=>dc.armies)];
             if(_rallied.length>0){
-              const _bits=[]; if(_garrisonHere.length>0)_bits.push(`the garrison (${_garrisonHere.length})`); _leaderlessHosts.forEach(dc=>_bits.push(`${dc.name}'s leaderless host`));
+              // 2026-09-09 (item 1): say how many units rally and what they are — "(1)" read as a bare number.
+              const _bits=[]; if(_garrisonHere.length>0)_bits.push(`the garrison (${_garrisonHere.length} unit${_garrisonHere.length!==1?'s':''} — ${describeArmy(_garrisonHere)})`);
+              _leaderlessHosts.forEach(dc=>_bits.push(`${dc.name}'s leaderless host (${dc.armies.length} unit${dc.armies.length!==1?'s':''} — ${describeArmy(dc.armies)})`));
               _defFormupLines.push(`🛡 The standing troops of ${toProv.name} rally to ${defChar.name}: ${_bits.join(', ')} join the defence.`);
             }
             const combinedAtk={...c,armies:[...(c.armies||[]),...pvpReinforcements.flatMap(a=>a.armies||[])]};
@@ -12939,9 +13016,10 @@ const BATTLE_ARMY_SPELLS={
           const _wildType=(prov.armyTypes||[]).find(t=>PRIMAL_ARMY_DEFS_P[t]);
           if(!_wildType){
             log('system',`${c.name} calls the Wild Hunt at the ${_riteSite.name}, but nothing wild answers in ${prov.name} — the rite needs a province where primal creatures still roam.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-          if((player.gold||0)<WILD_HUNT_COST){
-            log('system',`${c.name} cannot afford the Wild Hunt offerings (${WILD_HUNT_COST}g).`,{actor:c.player,targets:[c.player]});break;}
-          player.gold-=WILD_HUNT_COST;
+          const _huntCost=wildHuntPrice(_wildType);
+          if((player.gold||0)<_huntCost){
+            log('system',`${c.name} cannot afford the Wild Hunt offerings (${_huntCost}g).`,{actor:c.player,targets:[c.player]});break;}
+          player.gold-=_huntCost;
           c.armies=c.armies||[];
           const _boundNames=[];
           for(let wi=0;wi<WILD_HUNT_UNITS;wi++){
@@ -12951,7 +13029,7 @@ const BATTLE_ARMY_SPELLS={
               unitName:armyUnitName(_wildType),_wildHuntUntilTurn:G.turn+WILD_HUNT_TURNS};
             c.armies.push(_u);_boundNames.push(`${_u.unitName} (${_wildType})`);
           }
-          log('combat',`\u{1F525} ${c.name} performs the Rite of the Wild Hunt at the ${_riteSite.name} (${WILD_HUNT_COST}g). The old gods answer: ${_boundNames.join(' and ')} come down from the wilds to serve as veterans — until the end of next turn, when the binding fails.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          log('combat',`\u{1F525} ${c.name} performs the Rite of the Wild Hunt at the ${_riteSite.name} (${_huntCost}g — the price of a single beast, whatever number answer). The old gods answer: ${_boundNames.join(' and ')} come down from the wilds to serve as veterans — they draw no wages, and hold until the end of next turn, when the binding fails.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           // Gaining a force in a province you don't own is resolved like any other unit gain:
           // defenders present means a battle, none means the character takes control.
           resolveUnitGainInProvince(c, prov, ph);
@@ -13071,11 +13149,10 @@ const BATTLE_ARMY_SPELLS={
             if(c.isKing&&hasDisc(c.player,'sd35')) _lm*=2; // sd35: the king learns twice as much from his kills
             const _lsk=(skillLevel(c,'archery')>skillLevel(c,'melee'))?'archery':'melee';
             trySkillGain(c,_lsk,SKILLGAIN_STD,null,_lm); }
-          const postHp=(encounter.heroHpAfter!=null?encounter.heroHpAfter:c.hp);
-          const hpLost=Math.max(0,(c.maxHp||20)-postHp);
-          const healAmt=Math.ceil(hpLost*0.5);
-          c.hp=Math.min(c.maxHp||20, postHp+healAmt);
-          log('explore',`⚔ ${c.name} catches their breath after the fight, recovering to ${c.hp}/${c.maxHp} HP.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          // 2026-09-09 (item 4): the automatic "catches their breath" heal (half of the HP lost) after a
+          // lair win is REMOVED. The hero leaves the fight at the HP the encounter left them on; recovery
+          // now comes only from Rest, Herbal Lore (sd29), Mass Healing (White L6+) and in-fight items/spells.
+          // (c.hp already holds the post-fight value — resolveEncounter writes it back; nothing to add here.)
           // Item drops — chance/quantity scale with tier, and item QUALITY scales with tier too.
           // Item 2 (this session): uniqueness. `_taken` seeds from the game-wide roll of items already
           // found (G._awardedItems) and grows as each drop is chosen, so no lair — this one or any
@@ -16686,15 +16763,17 @@ const BATTLE_ARMY_SPELLS={
   //  targeted character." Chance of running the quarry down comes from the Spy Table: doubled if
   //  the quarry leads an army (a column is easy to follow), divided by the distance between them,
   //  and automatic if the quarry belongs to the pursuer's own realm.
-  const SPY_PURSUE_PCT=[50,100,150,200,250,250];
-
+  // 2026-09-09 (item 2): the old AK Spy-table (50/100/150/200/250%) is retired. The catch roll is now a
+  // Spy CONTEST: 50% base, +5% per Spy level of the pursuer, −5% per Spy level of the quarry, then
+  // doubled if the quarry leads an army (a column leaves a plain trail). The roll is only ever made once
+  // the two stand in the same province (advancePursuit), so the old divide-by-distance was dead code.
+  // Clamped 5–100. A friendly quarry is always caught (a rendezvous, not a hunt).
   function pursuitCatchChance(c,quarry){
     if(quarry.player!=null&&quarry.player===c.player) return 100;
-    const spy=effStat(c,'spy');
-    let pct=SPY_PURSUE_PCT[Math.min(spy,5)];
+    const spy=effStat(c,'spy'), qSpy=effStat(quarry,'spy');
+    let pct=50+5*spy-5*qSpy;
     if((quarry.armies||[]).length>0) pct*=2;
-    const dist=Math.max(1,provDistance(c.location,quarry.location));
-    return Math.max(5,Math.min(100,Math.round(pct/dist)));
+    return Math.max(5,Math.min(100,Math.round(pct)));
   }
 
   function endPursuit(c){ if(c._pursuit) c._pursuit.active=false; }
@@ -16762,7 +16841,7 @@ const BATTLE_ARMY_SPELLS={
     if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ endPursuit(c); return; }
     const chance=pursuitCatchChance(c,quarry);
     const roll=d100();
-    log('system',`📊 Pursuit — ${c.name} closing on ${quarry.name}: chance ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})`,
+    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name} (Spy ${effStat(quarry,'spy')}${(quarry.armies||[]).length>0?', leading an army — doubled':''}): ${fmtRoll(chance,roll)}`,
       {actor:c.player,targets:[c.player]});
     if(roll>chance){
       log('move',`${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -17213,6 +17292,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0||(hasDisc(p.id,'gd')&&G.players[p.id]&&G.players[p.id].alignment==='Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); }); // + GRAND DESIGN Druidic
         let armyWages=allKingdomArmies.reduce((s,a)=>{
           if(a._temporary) return s;
+          // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
+          // the two turns they serve, and are never disbanded for non-payment (see the loop below).
+          if(a._wildHuntUntilTurn!=null) return s;
           if(a._isSkeletal) return s+1;
           let w=ARMY_COST[a.type]||2;
           if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn) w=Math.max(1,Math.round(w*0.5));
@@ -17220,7 +17302,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           return s+w;
         },0);
         // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he leads (min 1/unit).
-        { const hl=playerChars.find(c=>charMinor(c,'hostleader')); if(hl){ const led=(hl.armies||[]).filter(a=>!a._temporary).length; armyWages=Math.max(0,armyWages-led); } }
+        { const hl=playerChars.find(c=>charMinor(c,'hostleader')); if(hl){ const led=(hl.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null).length; armyWages=Math.max(0,armyWages-led); } }
 
         // Hero wages
         const heroes=playerChars.filter(c=>!c.isKing);
@@ -17254,6 +17336,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
             // Item 8: elementals and other temporary summons are never disbanded for non-payment —
             // they dissolve on their own at turn's end (and no longer draw a wage above).
             if(army._temporary)return;
+            if(army._wildHuntUntilTurn!=null)return; // Wild Hunt beasts draw no wage, so they cannot be disbanded for one
             if(army._isSkeletal&&hasDisc(p.id,'gd')&&G.players[p.id]&&G.players[p.id].alignment==='Undead')return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
             // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons) still free
             const cost=army._isSkeletal?1:(ARMY_COST[army.type]||2);
@@ -17899,6 +17982,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // reads province.characters for the map. Rebuilding here means what is saved, what is rendered
   // and where characters actually are can never disagree.
   reconcileProvinceCharacters();
+  normaliseStrandedGuards(G); // 2026-09-09: a guard whose last unit fell this turn, or whose land changed hands, reports as a wanderer
   // ── IMPERIAL TITLE INTEL (Items 1, 2, 4) ── Titles are AWARDED here, AFTER all turn resolution
   // (combat, conquest, tax, resurrection, wandering-drift) and the final reconcile — so this ONE
   // end-of-turn standings computation is what every title benefit reports from. The intel lines,
@@ -18343,6 +18427,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1703</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-2156</div>
 </body>
 </html>
