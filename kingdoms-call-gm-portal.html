@@ -1887,7 +1887,7 @@ function buildGMProvinceOrderData(gs, playerIndex){
           if(f.cleared) return false;
           const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
           return featDiscovered(f,playerIndex)||(exploredHere>=threshold)||(isOwned&&!!f.ritualSite);
-        }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||'',monster:(f.monster&&f.monster.name)||''}));
+        }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||f.tier||'',monster:(f.monster&&f.monster.name)||''}));
       })(),
       availableHeroes:(gs.characters||[]).filter(c=>c.player===null&&c.alive&&c.location===p.id&&!c._justDefeated&&!c._isNeutralGuard).map(h=>({
         id:h.id,name:h.name,race:h.race,alignment:h.alignment,temper:h.temper,skills:h.skills||{},pay:h.pay||1,locationId:p.id,locationName:p.name,
@@ -5530,6 +5530,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         armyPool=[...shuffled,...garrison];
       }
       // Features (land provinces only): 2-4 explorable features each.
+      // Difficulty weighting for a new lair — see LAIR DIFFICULTY below.
       const features=[];
       if(terrain!=='sea'){
         const pool=FEATURE_POOLS_P[terrain]||FEATURE_POOLS_P.plain;
@@ -5541,8 +5542,18 @@ function generateNewGame(setupPlayers, sz, maxTurns){
           used.add(fname);
           // Land features: exclude EVERY sea guardian (item 2) so land lairs never get sea beasts.
           const landMonsters=MONSTERS_P.filter(m=>!SEA_GUARDIAN_NAMES.has(m.name));
-          const m={...(landMonsters.length>0?landMonsters:MONSTERS_P)[Math.floor(Math.random()*(landMonsters.length||MONSTERS_P.length))]};
-          features.push({name:fname,monster:{...m},discovered:false,cleared:false,treasure:Math.max(1,Math.round(rP(1,10)*(0.4+Math.random()*0.6)))});
+          // ── LAIR DIFFICULTY (Toby 2026-09-09g) ──────────────────────────────────────────────
+          // A lair now HAS a difficulty of its own, rolled first, and its guardian is drawn from the
+          // beasts of that same standing. Previously the guardian was picked uniformly from every
+          // land monster, so a lair's difficulty was whatever beast happened to fall into it — which
+          // is why the tiers a player saw looked arbitrary. The tier is stored on the feature as
+          // `tier`, so the difficulty shown never depends on whether the guardian has been
+          // identified yet. Weighted toward the easier end: most country holds modest dangers.
+          const _tier=LAIR_TIER_ROLL();
+          const _pool=landMonsters.filter(mm=>mm.power===_tier);
+          const _from=_pool.length?_pool:(landMonsters.length?landMonsters:MONSTERS_P);
+          const m={..._from[Math.floor(Math.random()*_from.length)]};
+          features.push({name:fname,tier:m.power||_tier,monster:{...m},discovered:false,cleared:false,treasure:Math.max(1,Math.round(rP(1,10)*(0.4+Math.random()*0.6)))});
         }
         // ── PAGAN: ritual sites ──
         // Standing stones of the old gods, where Pagan characters may Perform Rites. Weighted
@@ -5709,7 +5720,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         const tier=_pickTier(p.tax||1);
         const pool=_byTier[tier].length?_byTier[tier]:_seaMons;
         const m={...pool[Math.floor(Math.random()*pool.length)]};
-        p.features.push({name:fname,discovered:false,cleared:false,monster:{...m},treasure:Math.max(1,rP(m.minG,m.maxG))});
+        p.features.push({name:fname,tier:m.power||'',discovered:false,cleared:false,monster:{...m},treasure:Math.max(1,rP(m.minG,m.maxG))});
       }
     });
   }
@@ -5861,9 +5872,12 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         best.features=best.features||[];
         if(best.features.length===0){
           const wpool=FEATURE_POOLS_P[best.terrain]||FEATURE_POOLS_P.plain;
-          best.features.push({name:wpool[Math.floor(Math.random()*wpool.length)],monster:{...weakMons[Math.floor(Math.random()*weakMons.length)]},discovered:true,discoveredBy:[pi],cleared:false,treasure:Math.max(1,rP(1,6))});
+          best.features.push({name:wpool[Math.floor(Math.random()*wpool.length)],tier:'Weak',monster:{...weakMons[Math.floor(Math.random()*weakMons.length)]},discovered:true,discoveredBy:[pi],cleared:false,treasure:Math.max(1,rP(1,6))});
         } else if(!best.features.some(f=>f.monster&&f.monster.power==='Weak')){
+          // 2026-09-09g: softening a starting lair swaps its guardian, so its own difficulty must
+          // follow — otherwise this one lair in the world reads Powerful while a Weak beast sits in it.
           best.features[0].monster={...weakMons[Math.floor(Math.random()*weakMons.length)]};
+          best.features[0].tier='Weak';
         }
       }
     }
@@ -6172,7 +6186,31 @@ function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
 // schools (five schools → up to +50%). Applied at EVERY point a character rolls to cast a spell:
 // phase-action casts, personal-combat spells, and pre-battle/battle magic. Each call site keeps its
 // own hard 95% cap. Safe on any object (raw skills via skillLevel); returns 0 for monsters/undefined.
+// A lair's difficulty, rolled before its guardian is chosen so the two always agree (2026-09-09g).
+// Weighted toward the easier end: most country holds modest dangers, legendary ones are rare.
+function LAIR_TIER_ROLL(){
+  const r=Math.random()*100;
+  return r<40?'Weak':r<72?'Moderate':r<92?'Powerful':'Legendary';
+}
 const MAGIC_L8_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
+// ── CAST CHANCE (single source of truth, 2026-09-09f) ─────────────────────────────────────────
+// 20% + 10% per school level, + the Arcane Codex discovery, + 10% per school mastered to level 8,
+// + any alignment/Sage cast discoveries; hard cap 95%. A spell worked from an ITEM is a flat 95%
+// (the item carries the craft, and counts as at least level 3), and the Wailing Phylactery makes a
+// realm's FIRST Necromancy spell each turn a certainty. The action-phase caster reads this, and so
+// does the player's order form — so the odds a player is quoted are the odds that will be rolled.
+// `chars` is the character list used to resolve the Crown of Command aura (see skillBonusBreakdown).
+function castChanceFor(c, school, player, opts){
+  opts=opts||{};
+  const lvl=opts.itemCast?Math.max(3,effSkillOf(c,school,opts.chars)):effSkillOf(c,school,opts.chars);
+  if(lvl<=0&&!opts.itemCast) return {level:0,chance:0,reason:'no skill'};
+  if(opts.itemCast) return {level:lvl,chance:95,reason:'item'};
+  if(opts.necroAuto) return {level:lvl,chance:100,reason:'necroAuto'};
+  const arcane=(player&&(player.discoveries||[]).some(d=>d&&d.id==='sd27'))?5:0;
+  const l8=(typeof magicL8CastBonus==='function')?magicL8CastBonus(c):0;
+  const disc=discSumOf(player,'cast','pct',e=>!e.school||e.school===school);
+  return {level:lvl,chance:Math.min(95,20+lvl*10+arcane+l8+disc),arcane,l8,disc};
+}
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
 function _legendaryNames(){ return new Set((ITEMS_BY_TIER[3]||[]).map(it=>it.name)); }
 // Per-character raw merit for the six non-realm titles (before alignment boost).
@@ -6353,7 +6391,7 @@ function buildTurnReport(gameState, playerIndex){
         // it), so the map crescent and pop-up never fired on your own land.
         const canSee=known||(explored>=threshold)||!!f.ritualSite;
         if(!canSee) return null;
-        return{name:f.name,discovered:canSee,cleared:f.cleared,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||'',treasure:known?f.treasure:null};
+        return{name:f.name,discovered:canSee,cleared:f.cleared,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||f.tier||'',treasure:known?f.treasure:null};
       }).filter(Boolean);
     })(),
     neutralDefenders:(()=>{
@@ -6443,6 +6481,52 @@ function buildTurnReport(gameState, playerIndex){
         ABILITIES_P.forEach(k=>{ const b=skillBonusBreakdown(c,k,gameState.characters||[]);
           if(b.base>0||b.total>0) out[k]={base:b.base,total:b.total,bonus:b.bonus,sources:b.sources}; });
         return out; })(),
+      // Cast chance per school, exactly as the action phase will roll it (see castChanceFor). Includes
+      // the flat 95% of a spell worked from an ITEM and whether a Wailing Phylactery still has its
+      // free Necromancy casting in hand this turn, so the order form can quote either.
+      castChance:(()=>{
+        const out={};
+        MAGIC_L8_SCHOOLS.forEach(sc=>{
+          const r=castChanceFor(c,sc,gameState.players[c.player],{chars:gameState.characters||[]});
+          if(r.level>0) out[sc]={level:r.level,chance:r.chance,arcane:r.arcane||0,mastery:r.l8||0,discovery:r.disc||0};
+        });
+        return out; })(),
+      castFromItem:95,
+      // ── ORDER SUCCESS CHANCES (2026-09-09g) ───────────────────────────────────────────────────
+      // The odds the action phase will roll for this character, by the engine's own formulas, so an
+      // order form can quote them before the turn is filed. Where an unknowable factor applies — an
+      // enemy realm's counter-espionage, a guarded vault, a mentor practising alongside — the note
+      // in the portal says so rather than pretending the figure is final.
+      orderChance:(()=>{
+        const pl=gameState.players[c.player]||{};
+        const has=(id)=>(pl.discoveries||[]).some(d=>d&&d.id===id);
+        const eff=(k)=>effSkillOf(c,k,gameState.characters||[]);
+        const raw=(k)=>Math.max(0,Math.min(9,((c.skills||{})[k])||0));
+        const items=activeItems(c);
+        const out={};
+        // SPY — 20% + 20% per level, + Forgery Arts and any spy discoveries. Automatic with a
+        // Crystal Orb or at Spy 6+. An enemy's Cipher Scripts can cut it by up to 25%.
+        out.spy={ auto:(items.some(it=>it.effect&&it.effect.stat==='oracle')||raw('spy')>=6),
+                  autoWhy:items.some(it=>it.effect&&it.effect.stat==='oracle')?'Crystal Orb':(raw('spy')>=6?'Master Spy':''),
+                  level:eff('spy'),
+                  chance:Math.round((0.2+eff('spy')*0.2+(has('sd21')?0.15:0)+discSumOf(pl,'spy','pct'))*100) };
+        // RESEARCH — Sage level x 5% (10% with a Library), doubled for Neutral realms, + Loreseeker.
+        { const per=has('sd30')?10:5;
+          out.research={ level:eff('sage'), rawLevel:raw('sage'),
+            chance:eff('sage')*per+((pl.alignment==='Neutral')?eff('sage')*5:0)
+                   +((( _minT&&_minT.loreseeker)||((gameState._minorHolders||{}).loreseeker)||{}).charId===c.id?per:0)
+                   +discSumOf(pl,'research','pct') }; }
+        // ASSASSINATE (Spy 9) — 25% + 6% per RAW Spy level, cap 80, less 25 against a king.
+        out.assassinate={ level:raw('spy'), chance:Math.min(80,25+raw('spy')*6), kingPenalty:25 };
+        // STEAL / GRAND HEIST — the thief's own odds before the target's circumstances.
+        out.steal={ level:eff('thief'), chance:50+10*Math.min(eff('thief'),5), escape:Math.min(95,eff('thief')*20) };
+        out.grandHeist={ level:raw('thief'), chance:Math.min(95,60+5*Math.max(0,raw('thief')-5)), escape:Math.min(95,raw('thief')*20) };
+        // PRACTICE — the solo chance at each level; a peer adds half as much again, a mentor makes it certain.
+        out.practice={ byLevel:[25,20,15,10,5], astro:has('sd26')?5:0, discovery:discSumOf(pl,'practice','pct')*100 };
+        // BLOCKADE (Naval 7) — the blockade forms half the time.
+        out.blockade={ chance:50 };
+        return out; })(),
+      necroAutoReady:!!(!c._necroAutoUsed&&activeItems(c).some(it=>it.effect&&it.effect.stat==='necroAuto')),
       // Bonuses that apply only in PERSONAL COMBAT (they never change the skill itself): minor titles,
       // the Veteran Training discovery, and any others wired into pcCharCombatant.
       combatSkillBonus:(()=>{
@@ -6566,7 +6650,7 @@ function buildTurnReport(gameState, playerIndex){
       knownFeatures.push({province:p.name,name:f.name,cleared:f.cleared,
       ritualSite:!!f.ritualSite,
       monster:f.ritualSite?'':(f.monster?.name||'unknown guardian'),
-      monsterPower:f.monster?.power||'',
+      monsterPower:(f.monster&&f.monster.power)||f.tier||'',
       isOwned:ownedProvIds.has(p.id)});
     });
   });
@@ -6938,7 +7022,7 @@ function buildTurnReport(gameState, playerIndex){
           if(f.cleared) return false;
           const threshold=total>0?Math.ceil(100/total)*(idx+1):100;
           return featDiscovered(f,playerIndex)||(exploredHere>=threshold)||(isOwned&&!!f.ritualSite);
-        }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||'',monster:(f.monster&&f.monster.name)||''}));
+        }).map(({f,idx})=>({name:f.name,idx,ritualSite:!!f.ritualSite,monsterPower:(f.monster&&f.monster.power)||f.tier||'',monster:(f.monster&&f.monster.name)||''}));
       })(),
       availableHeroes:availableHeroesByProv[p.id]||[],
       // Item 1: don't leak an ADJACENT enemy province's garrison composition — only owned/visited
@@ -13937,12 +14021,11 @@ const BATTLE_ARMY_SPELLS={
           c._masterySpellUsed[spellName]=G.turn;
         }
 
-        // Cast chance: 20% + 10% per level; Arcane Codex discovery +5%
-        const arcaneBonus=hasDisc(c.player,'sd27')?5:0;
+        // Cast chance — computed by the shared castChanceFor() so the player's order form can quote
+        // exactly what will be rolled here (see the helper beside MAGIC_L8_SCHOOLS).
         // Wailing Phylactery: the first Necromancy spell each turn cannot fail.
         const necroAuto = school==='necromancy' && !c._necroAutoUsed && activeItems(c).some(it=>it.effect&&it.effect.stat==='necroAuto');
-        const l8Bonus=magicL8CastBonus(c); // MAGIC L8 PERK: +10% cast chance per L8 school (stacks; hard 95% cap)
-        const castChance=_itemCast?95:(necroAuto?100:Math.min(95,20+spellLevel*10+arcaneBonus+l8Bonus+discSum(c.player,'cast','pct',e=>!e.school||e.school===school))); // Item 5: cast discoveries
+        const castChance=castChanceFor(c,school,G.players[c.player],{chars:G.characters||[],itemCast:!!_itemCast,necroAuto}).chance;
         if(necroAuto&&!_itemCast) c._necroAutoUsed=true;
         const castRoll=d100();
         if(_itemCast) log('system',`🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -18123,6 +18206,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1105</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1408</div>
 </body>
 </html>

@@ -2853,6 +2853,92 @@ const SPELLS_BY_SCHOOL={
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon','Chain Lightning','Cataclysm'],
   necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague','Raise Wraiths',"Death's Dominion"],
 };
+// ── CAST CHANCE NOTE (2026-09-09f) ────────────────────────────────────────────────────────────
+// What the player is quoted before ordering a spell. The GM ships `castChance` per school, computed
+// by the same castChanceFor() the action phase rolls against, so this is not an estimate — it is the
+// number. A spell worked from an ITEM is a flat 95%; a Wailing Phylactery makes the realm's first
+// Necromancy spell of the turn certain. Falls back to the plain formula for an older report.
+function castChanceNote(c, spellName, opts){
+  opts=opts||{};
+  const school=SPELL_TO_SCHOOL[spellName];
+  if(!school) return '';
+  const rec=(c&&c.castChance&&c.castChance[school])||null;
+  if(opts.itemCast) return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>95%</strong> — worked from the item, whatever your own skill.</div>`;
+  const lvl=rec?rec.level:effMagicLvl(c,school);
+  if(lvl<=0) return `<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${SKILL_LABELS[school]||school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
+  if(school==='necromancy'&&c&&c.necroAutoReady)
+    return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>100%</strong> — your Wailing Phylactery makes this turn's first Necromancy spell certain.</div>`;
+  const chance=rec?rec.chance:Math.min(95,20+lvl*10);
+  // Name what lifted it above the base, so the number is explainable.
+  const bits=[`${SKILL_LABELS[school]||school} ${lvl}`];
+  if(rec&&rec.arcane) bits.push(`+${rec.arcane}% Arcane Codex`);
+  if(rec&&rec.mastery) bits.push(`+${rec.mastery}% school mastery`);
+  if(rec&&rec.discovery) bits.push(`+${rec.discovery}% discoveries`);
+  const capped=chance>=95?' — the 95% cap':'';
+  return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
+}
+
+// ── ORDER SUCCESS CHANCE (2026-09-09g) ────────────────────────────────────────────────────────
+// Quotes the odds the engine will roll for an order, from the `orderChance` block the GM ships (its
+// own formulas, computed from the same effective skills the turn resolves with). Where a factor
+// cannot be known at order time — an enemy's counter-espionage, whether a vault is guarded, who ends
+// up practising alongside — the note says so instead of pretending the number is final.
+function chanceLine(txt, tone){
+  const col=tone==='bad'?'var(--crimson)':(tone==='sure'?'#2d6a2d':'var(--forest)');
+  return `<div style="font-size:.72rem;color:${col};margin-top:2px">🎲 ${txt}</div>`;
+}
+// Rebuild one order's target field in place — used when a choice within the field changes the odds
+// quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
+function rebuildTargetWrap(charId, ph){
+  const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
+  const c=((currentReport&&currentReport.characters)||[]).find(x=>String(x.id)===String(charId));
+  if(!wrap||!c) return;
+  const saved={action:document.getElementById(`po-action-${charId}-${ph}`)?.value||'',
+               target:getOrderTarget(charId,ph), extra:getOrderExtra(charId,ph)};
+  try{ wrap.innerHTML=buildTargetField(c, ph, saved); }catch(e){ console.warn('target rebuild failed',e); }
+}
+function orderChanceNote(c, action, ph){
+  const oc=(c&&c.orderChance)||null; if(!oc) return '';
+  const pct=(n)=>`<strong>${Math.max(0,Math.min(100,Math.round(n)))}%</strong>`;
+  switch(action){
+    case 'Spy':{
+      const o=oc.spy||{};
+      if(o.auto) return chanceLine(`Success is <strong>certain</strong> — ${o.autoWhy||'your craft'} never fails. Only an enemy's counter-espionage could trouble it.`,'sure');
+      if(!o.level) return chanceLine(`No Spy skill — ${pct(o.chance||20)} at best. Espionage rewards training.`,'bad');
+      return chanceLine(`Success: ${pct(o.chance)} (Spy ${o.level}). A realm with Cipher Scripts is up to 25% harder to spy on.`);
+    }
+    case 'Research':{
+      const o=oc.research||{};
+      if((o.rawLevel||0)<1) return chanceLine('Research needs Sage 1+ — without it the archives yield nothing.','bad');
+      return chanceLine(`Discovery: ${pct(o.chance)} (Sage ${o.level}). A failed search still passes the season; nothing else is lost.`);
+    }
+    case 'Assassinate':{
+      const o=oc.assassinate||{};
+      return chanceLine(`Success: ${pct(o.chance)} (Spy ${o.level}) — but only ${pct(Math.max(0,o.chance-(o.kingPenalty||25)))} against a king, who is heavily guarded. Failure is noticed.`);
+    }
+    case 'Steal':{
+      const o=oc.steal||{};
+      return chanceLine(`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the target leads troops or the paymaster is guarded. Fail and you are seen unless you slip away (${pct(o.escape)}).`);
+    }
+    case 'Grand Heist':{
+      const o=oc.grandHeist||{};
+      return chanceLine(`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the vaults are guarded — a garrison, or an enemy commander here with troops. Fail and you are seen unless you slip away (${pct(o.escape)}).`);
+    }
+    case 'Blockade':
+      return chanceLine(`The blockade forms ${pct((oc.blockade||{}).chance||50)} of the time — wind and tide decide the rest.`);
+    case 'Practice Skill':{
+      const o=oc.practice||{}; const by=o.byLevel||[25,20,15,10,5];
+      const sel=document.getElementById(`po-target-${c.id}-${ph}`)?.value||'';
+      const lvl=sel?Math.min(4,((c.skills||{})[sel]||0)):null;
+      const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0);
+      const scale=`Chance falls as mastery grows: ${by.map((v,i)=>`${v}% at ${i}`).join(', ')}.`;
+      const extra=`Practising alongside someone of equal level adds half again; anyone of HIGHER level teaches you, and the lesson cannot fail. A run of failures makes the next attempt likelier.`;
+      return chanceLine(base==null?`${scale} ${extra}`:`Improvement: ${pct(base)} at ${SKILL_LABELS[sel]||sel} ${lvl}. ${extra}`);
+    }
+    default: return '';
+  }
+}
+
 // Encounter-only (CA tactic): Mirror Image
 const ENCOUNTER_ONLY_SPELLS=new Set(['Mirror Image']);
 
@@ -5010,18 +5096,52 @@ function exploreQueuedBefore(charId, ph, provId){
     } });
   return sum;
 }
+// Exploration a character gains simply by MARCHING INTO a province — the engine grants it on every
+// move in, before any Explore order resolves (10% + 5% per Explorer level, + a Traveller's Cloak,
+// + 2% per army led at March 6+). Mirrors the engine's explGainMove so the projection below counts
+// ground the hero will have mapped on arrival. Returns 0 if they do not move in during `upTo` phases.
+function exploreMoveGainBefore(c, upToPhaseExclusive, provId){
+  let gain=0;
+  for(let p=0;p<upToPhaseExclusive;p++){
+    const act=document.getElementById(`po-action-${c.id}-${p}`)?.value;
+    if(act!=='Move') continue;
+    const dest=predictedLocation(c.id,p+1);          // where this move LANDS them
+    const from=predictedLocation(c.id,p);
+    if(!dest||!from||dest.id===from.id||dest.id!==provId) continue;
+    const lvl=Math.min(5,effSkillP(c,'explorer'));
+    const cloak=(c.items||[]).some(it=>it&&/Traveller's Cloak/i.test(it.name||''))?20:0;
+    const marchPerk=((c.skills||{}).march||0)>=6?2*((c.armies||[]).length):0;
+    gain+=(10+5*lvl)+cloak+marchPerk;
+  }
+  return gain;
+}
 function exploreProjectionNote(c, ph){
   const loc=predictedLocation(c.id,ph);
-  const pd=loc?((currentReport&&currentReport.provinceOrderData)||{})[loc.id]:null;
-  const terr=(pd&&pd.terrain)||null;
-  if(!terr) return `🧭 Explores the province ${c.name} stands in.`;
+  const report=currentReport||{};
+  const pd=loc?((report.provinceOrderData)||{})[loc.id]:null;
+  // Fall back to the map's own record when the province has no order-data entry — a hero who marches
+  // two provinces this turn can end up somewhere that is neither owned, visited nor adjacent, and the
+  // note used to give up and print no figures at all.
+  const wm=loc?((report.worldMeta&&report.worldMeta.provinces)||[]).find(x=>x.id===loc.id):null;
+  const terr=(pd&&pd.terrain)||(wm&&wm.terrain)||null;
+  if(!loc) return `🧭 Explores the province ${c.name} stands in.`;
+  if(!terr) return `🧭 Explores ${loc.name||'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
   const gain=exploreGainFor(c,terr);
-  const known=Math.min(100,pd.explored||0);
+  // Everything already mapped, or that WILL be mapped before this order resolves:
+  //   known   — what this realm has charted of the province so far
+  //   moved   — what marching in this turn adds on arrival
+  //   queued  — earlier Explore orders this turn, this hero's and every other's
+  const known=Math.min(100,(pd?pd.explored:(wm&&wm.explored))||0);
+  const moved=exploreMoveGainBefore(c,ph,loc.id);
   const queued=exploreQueuedBefore(c.id,ph,loc.id);
-  const before=Math.min(100,known+queued);
+  const before=Math.min(100,known+moved+queued);
   const after=Math.min(100,before+gain);
-  const q=queued>0?` — ${known}% now, about ${before}% after earlier Explore orders this turn`:'';
-  return `🧭 Maps about <strong>+${gain}%</strong> of ${loc.name} (${capitalise(terr)}): <strong>${before}% → ${after}%</strong>${after>=100?' — fully explored':''}${q}.`;
+  const priorBits=[];
+  if(moved>0) priorBits.push(`+${moved}% from marching in`);
+  if(queued>0) priorBits.push(`+${queued}% from earlier Explore orders this turn`);
+  const prior=priorBits.length?` (${known}% mapped now, ${priorBits.join(', ')})`:'';
+  if(before>=100) return `🧭 ${loc.name} is already fully mapped${prior?` ${prior}`:''} — this Explore order would add nothing.`;
+  return `🧭 ${loc.name} (${capitalise(terr)}) is <strong>${before}%</strong> mapped; this order adds about <strong>+${gain}%</strong> → <strong>${after}%</strong>${after>=100?' — fully explored':''}${prior}.`;
 }
 function refreshExploreNotes(){
   const chars=(currentReport&&currentReport.characters)||[];
@@ -5164,7 +5284,10 @@ function buildTargetField(c, ph, saved){
   // ── L7/L9 MASTERY ORDERS — generic target field by declared target type ──
   if(L79_ORDERS[action]){
     const cfg=L79_ORDERS[action];
-    const hintHtml=`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${cfg.hint}</div>`;
+    // Every mastery-order branch appends hintHtml, so folding the odds in here covers them all at
+    // once — Assassinate, Blockade, Grand Heist and any future one. orderChanceNote returns '' for
+    // an order with no roll behind it, so the deterministic masteries are unaffected. (2026-09-09g)
+    const hintHtml=`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${cfg.hint}</div>${orderChanceNote(c,action,ph)}`;
     if(cfg.target==='none'){
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${action} — no target needed" readonly>${hintHtml}`;
     }
@@ -5306,6 +5429,9 @@ function buildTargetField(c, ph, saved){
 
     // ── SPY / REST ──
     case 'Spy':
+      // 2026-09-09g: Spy takes no target, but it DOES have odds — quote them (split out of the
+      // shared Rest case, which has none).
+      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>${orderChanceNote(c,'Spy',ph)}`;
     case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
 
@@ -5364,7 +5490,7 @@ function buildTargetField(c, ph, saved){
           <option value="item" ${prize==='item'?'selected':''}>Lift a magic item</option>
           <option value="gold" ${prize==='gold'?'selected':''}>Pick their strongbox — 5% of their treasury</option>
         </select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in the same province. Success: <strong>${base}%</strong> (Thief ${thiefLvl}), halved if the target leads troops or you go for a guarded paymaster. A target with no items is robbed of gold instead. <strong>If you fail and are spotted (${Math.min(95,thiefLvl*20)}% to slip away unseen), the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in the same province. A target with no items is robbed of gold instead. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${orderChanceNote(c,'Steal',ph)}`;
     }
 
     // ── SEARCH LAIR ──
@@ -5406,7 +5532,7 @@ function buildTargetField(c, ph, saved){
       const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.tier===3?'✦ Legendary — ':''}${it.name} — ${it.desc}</option>`).join('');
       // Item 12: a spell item needs the spell's own target (province / character) — same field as Cast Spell.
       const selIt=active.find(it=>String(it.id)===String(target))||active[0];
-      const sec=(selIt&&selIt.effect&&selIt.effect.stat==='castSpell')?spellSecondaryHtml(report,c,ph,selIt.effect.spell,extra,selIt.effect.spell):'';
+      const sec=(selIt&&selIt.effect&&selIt.effect.stat==='castSpell')?castChanceNote(c,selIt.effect.spell,{itemCast:true})+spellSecondaryHtml(report,c,ph,selIt.effect.spell,extra,selIt.effect.spell):'';
       return `<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${opts}</select>${sec}`;
     }
 
@@ -5609,7 +5735,7 @@ function buildTargetField(c, ph, saved){
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s])))[0]||'';
       const selSpell=target||firstSpell;
       const secondaryHtml=spellSecondaryHtml(report,c,ph,selSpell,extra,target);
-      return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${spells}</select>${secondaryHtml}`;}
+      return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${spells}</select>${castChanceNote(c,selSpell)}${secondaryHtml}`;}
 
     // ── PRACTICE SKILL ──
     case 'Practice Skill':{
@@ -5619,7 +5745,7 @@ function buildTargetField(c, ph, saved){
       // All skills stay listed; an explicitly saved target always wins.
       const defaultSk=target||practiceCompanionSkill(c,ph)||'';
       const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
-      return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select>`;}
+      return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
     case 'Research':{
@@ -5633,7 +5759,7 @@ function buildTargetField(c, ph, saved){
       const catOpts=`<option value="" ${!target?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${target===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
         <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${per===10?', Library':''}${neutral?', Neutral scholars':''}).</div>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`;}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`+orderChanceNote(c,'Research',ph);}
 
     // ── RECRUIT ARMIES ──
     case 'Recruit Armies':{
@@ -6620,6 +6746,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1105</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1408</div>
 </body>
 </html>
