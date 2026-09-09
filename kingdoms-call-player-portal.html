@@ -2079,8 +2079,8 @@ function renderReportView(report){
         const noteLine=`<div style="font-size:.6rem;color:var(--stone);margin-top:2px;line-height:1.3">projected for next turn — this turn's actual take is under Kingdom Events</div>`;
         return incl+eqLine+ensLine+noteLine;
       })()}</div>
-      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}</div>
-      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}${(kingdom.orcSpoilsG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.orcSpoilsG}g Orcish war-spoils</div>`:''}${(kingdom.nextArmyWages!=null&&kingdom.nextArmyWages!==kingdom.armyWages)?`<div style="font-size:.62rem;color:#666;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextArmyWages}g</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}${(kingdom.nextHeroWages!=null&&kingdom.nextHeroWages!==kingdom.heroWages)?`<div style="font-size:.62rem;color:#666;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextHeroWages}g</div>`:''}</div>
       <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
     </div>
@@ -2101,7 +2101,7 @@ function renderReportView(report){
           ${c.race} · ${c.alignment} · ${c.temper}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${i.name}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i):''}${i.desc?` (${i.desc})`:''}`).join('')}
+          ${(c.items||[]).map(i=>`<br>🔮 ${itemLoreTip(i,i.name)}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i):''}${i.desc?` (${i.desc})`:''}`).join('')}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -3278,7 +3278,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -4521,6 +4521,13 @@ function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // Item 1: the unit ability descriptions were removed from the map pop-ups; instead they surface as a
 // hover tooltip on the unit's icon+label wherever units are listed in Your Realm and Your
 // Provinces. Only wraps when the unit actually has an always-on ability.
+// Item 1 (2026-09-09): magic-item lore — the engine attaches `lore` (a short narrative that states the effect in
+// plain words) to every item in the report; hovering the item's name shows it, like a unit's ability tip.
+function itemLoreTip(it, inner){
+  const t=(it&&(it.lore||it.desc))||'';
+  if(!t) return inner;
+  return `<span title="${String(t).replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--stone)">${inner}</span>`;
+}
 function unitAbilityTip(type, inner){
   const ab=unitAbilityText(type);
   if(!ab) return inner;
@@ -6782,6 +6789,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-2300</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-0939</div>
 </body>
 </html>
