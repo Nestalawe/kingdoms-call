@@ -13585,14 +13585,59 @@ const BATTLE_ARMY_SPELLS={
         if(it._spent){log('system',`The ${it.name} has already been used.`,{actor:c.player,targets:[c.player]});break;}
         const st=it.effect?.stat;
         if(st==='massPromote'){
-          // Philosopher's Stone — once per game: promote all your armies one quality tier.
-          // Skeletal armies are excluded — the dead don't advance in experience.
+          // ── PHILOSOPHER'S STONE (audited & fixed 2026-09-09h) ───────────────────────────────
+          // Once per game: promote EVERY unit of the realm one quality tier — those marching under
+          // your commanders AND those standing in your garrisons. Skeletal armies are excluded; the
+          // dead do not advance in experience.
+          //   BUG FIXED: the garrison sweep read `pv.garrison`, a field that does not exist — the
+          //   engine's unled units live in `pv.garrisonArmies` everywhere else. Garrison troops were
+          //   therefore NEVER promoted, and a realm whose strength sat in its garrisons could invoke
+          //   the Stone and see almost nothing happen.
           const UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
-          let n=0;
-          (G.characters||[]).filter(ch=>ch.alive&&ch.player===c.player).forEach(ch=>{(ch.armies||[]).forEach(a=>{if(!a._isSkeletal&&UP[a.quality]&&UP[a.quality]!==a.quality){a.quality=UP[a.quality];n++;}});});
-          (G.world.provinces||[]).forEach(pv=>{if(pv.owner===c.player){(pv.garrison||[]).forEach(a=>{if(!a._isSkeletal&&UP[a.quality]&&UP[a.quality]!==a.quality){a.quality=UP[a.quality];n++;}});}});
-          it._spent=true;
-          log('explore',`✨ ${c.name} invokes the ${it.name} — a wave of power sweeps the realm and ${n} army unit${n!==1?'s':''} advance one quality tier! (Once per game.)`,{actor:c.player,targets:[c.player],public:true});
+          const _promote=(arr)=>{ let k=0; (arr||[]).forEach(a=>{ if(a&&!a._isSkeletal&&UP[a.quality]&&UP[a.quality]!==a.quality){ a.quality=UP[a.quality]; k++; } }); return k; };
+          let led=0, garr=0, already=0;
+          const _count=(arr)=>(arr||[]).filter(a=>a&&!a._isSkeletal).length;
+          let total=0;
+          (G.characters||[]).filter(ch=>ch.alive&&ch.player===c.player).forEach(ch=>{ total+=_count(ch.armies); led+=_promote(ch.armies); });
+          (G.world.provinces||[]).forEach(pv=>{ if(pv&&pv.owner===c.player){ total+=_count(pv.garrisonArmies); garr+=_promote(pv.garrisonArmies); } });
+          const n=led+garr;
+          already=total-n;
+          // A once-per-game treasure is not spent on nothing: if there is not a single unit it could
+          // raise, the Stone stays unused and the player is told why.
+          if(n===0){
+            log('system',`${c.name} raises the ${it.name}, but there is nothing for it to work on — ${total===0?'your realm has no armies in the field or in garrison':'every unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`,{actor:c.player,targets:[c.player]});
+            break;
+          }
+          // ── CONSUMED (Toby 2026-09-09i) ── the Stone is not merely spent, it is GONE: the working
+          // destroys it. Struck from the bearer's pack so it can never be used, sent, stolen, looted
+          // from a corpse or equipped again, and its name stays on G._awardedItems (the permanent
+          // ledger every item roll checks) so no lair can ever yield another.
+          const _stoneName=it.name;
+          c.items=(c.items||[]).filter(x=>x!==it&&String(x.id)!==String(it.id));
+          syncMaxHp(c);   // an item leaving the pack can change derived stats; re-sync to be safe
+          if(!Array.isArray(G._awardedItems)) G._awardedItems=[];
+          if(!G._awardedItems.includes(_stoneName)) G._awardedItems.push(_stoneName);
+          // Lair hoards are decided at world generation, so an unfound copy could still be lying in
+          // the ground. The narrative below tells every realm the Stone is gone from the world for
+          // good — so make that true: strike any undiscovered copy from every hoard as well. (A copy
+          // already carried by a character is left alone; that one exists and was won.)
+          let _purged=0;
+          (G.world.provinces||[]).forEach(pv=>{ if(!pv) return;
+            (pv.features||[]).forEach(f=>{ if(!f||!Array.isArray(f.hoardItems)) return;
+              const before=f.hoardItems.length;
+              f.hoardItems=f.hoardItems.filter(x=>!(x&&x.name===_stoneName));
+              _purged+=before-f.hoardItems.length; }); });
+          if(_purged>0) log('system',`(GM note: ${_purged} undiscovered ${_stoneName}${_purged!==1?'s were':' was'} struck from the world's lair hoards — the artefact is destroyed.)`,{actor:null,targets:[],gmOnly:true});
+          G._destroyedItems=(G._destroyedItems||[]).concat([{name:_stoneName,turn:G.turn,by:c.name,player:c.player}]);
+          const _parts=[`${led} marching under your commanders`,`${garr} in your garrisons`].filter((_,i)=>(i===0?led:garr)>0);
+          // The owner's own account — what it did for them, and what it cost.
+          log('explore',`✨ ${c.name} invokes the ${_stoneName} — a wave of power sweeps the realm and ${n} army unit${n!==1?'s':''} advance one quality tier (${_parts.join(', ')}${already>0?`; ${already} already Elite and unchanged`:''}). The Stone crumbles to grey dust in ${c.name}'s hands: its work is done, and there is not another in the world.`,{actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id});
+          // ...and the whole world sees the sky change. Every realm is told, by name — an artefact of
+          // this order leaving the world is news, and its loss is a fact all players should know.
+          (G.players||[]).forEach((_pl,_pi)=>{
+            if(_pl==null) return;
+            log('system',`🌍 A light passes over the world: somewhere in ${prov.name}, ${_pi===c.player?`your own ${c.name}`:`${G.players[c.player]?.name||'a distant realm'}`} has worked the ${_stoneName} and burned it out. Every soldier of that realm stands a little taller tonight — and the Stone itself is gone from the world for good. No lair will yield another.`,{actor:null,targets:[_pi],public:true});
+          });
         } else {
           log('system',`The ${it.name} is a passive item and does not need to be used — its power is always active.`,{actor:c.player,targets:[c.player]});
         }
@@ -18206,6 +18251,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1408</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1434</div>
 </body>
 </html>
