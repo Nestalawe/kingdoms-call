@@ -1777,7 +1777,7 @@ function renderGMCharOrders(player, char, existingOrders){
     kingdom:{gold:(gs.players||[])[char.player]?.gold||0,alignment:(gs.players||[])[char.player]?.alignment||'Neutral'},
     ownedProvinces:(gs.world?.provinces||[]).filter(p=>p.owner===char.player).map(p=>({
       id:p.id,name:p.name,terrain:p.terrain,tax:p.tax,race:p.race||null,armyTypes:p.armyTypes||[],
-      explored:p.explored||0,features:(p.features||[]).filter(f=>featDiscovered(f,char.player)&&!f.cleared).map(f=>({name:f.name})),
+      explored:(p.exploredBy&&p.exploredBy[char.player])||0,features:(p.features||[]).filter(f=>featDiscovered(f,char.player)&&!f.cleared).map(f=>({name:f.name})),
       availableHeroes:[]
     })),
     visitedProvinceIds:(gs.world?.provinces||[]).filter(p=>(p.visitedBy||[]).includes(char.player)).map(p=>p.id),
@@ -1972,7 +1972,7 @@ function buildGMWorldMeta(gs, playerIndex){
   return{cols,rows,centreCol:mapCentreColFor(gs,playerIndex),provinces:(provinces||[]).map(p=>{
     const offsets=p.row%2===0?offsets_even:offsets_odd;
     const neighbors=offsets.map(([dr,dc])=>{const nr=p.row+dr;if(nr<0||nr>=rows)return null;const nc=((p.col+dc)%cols+cols)%cols;return nr*cols+nc;}).filter(n=>n!==null);
-    return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,neighbors};
+    return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,neighbors,explored:(p.exploredBy&&p.exploredBy[playerIndex])||0};
   })};
 }
 
@@ -7029,6 +7029,12 @@ function buildTurnReport(gameState, playerIndex){
     provinceOrderData[p.id]={
       name:p.name, terrain:p.terrain, race:p.race, tax:p.tax,
       isOwned, isVisited, isAdjacent, isHome,
+      // 2026-09-09 (explore-% mismatch): the Explore order note reads pd.explored, but this builder
+      // never emitted it — so the orders section always showed "0% mapped" while the map pop-up
+      // (worldMeta, which DOES carry it) showed the true figure. Same per-player source as the map:
+      // exploredBy[playerIndex], never the legacy shared p.explored (that holds whichever player
+      // explored the province most recently, so it leaks/misreports across realms).
+      explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,
       canRecruit:isOwned,
       // Primal sea beasts are only offered where they can actually be summoned: at sea.
       armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({
@@ -18303,6 +18309,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1525</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1601</div>
 </body>
 </html>

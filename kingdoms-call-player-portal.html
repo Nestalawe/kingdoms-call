@@ -5131,7 +5131,12 @@ function exploreProjectionNote(c, ph){
   //   known   — what this realm has charted of the province so far
   //   moved   — what marching in this turn adds on arrival
   //   queued  — earlier Explore orders this turn, this hero's and every other's
-  const known=Math.min(100,(pd?pd.explored:(wm&&wm.explored))||0);
+  // 2026-09-09 (explore-% mismatch): test pd.explored, NOT pd. The old ternary keyed on whether the
+  // order-data entry existed at all, so whenever it did (owned/visited/adjacent — i.e. almost always)
+  // it read pd.explored and never fell through to the map's figure. Reports snapshotted before the GM
+  // portal began emitting pd.explored therefore showed "0% mapped" in the orders section while the map
+  // pop-up showed the truth. Keying on the value itself makes old reports fall back to worldMeta.
+  const known=Math.min(100,(pd&&pd.explored!=null?pd.explored:(wm&&wm.explored))||0);
   const moved=exploreMoveGainBefore(c,ph,loc.id);
   const queued=exploreQueuedBefore(c.id,ph,loc.id);
   const before=Math.min(100,known+moved+queued);
@@ -6767,6 +6772,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1525</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1601</div>
 </body>
 </html>
