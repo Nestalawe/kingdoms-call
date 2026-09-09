@@ -1305,7 +1305,7 @@ const SKILL_INFO={
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
-  sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance (10% with the Library discovery) per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
+  sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — via the Steal order (a hero\'s pack, their strongbox, or a garrison paymaster), by pickpocketing during encounters, and when lifting a lair\'s hoard (10% of the original hoard per level, capped at 5).',
   druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength — and every level adds +5% strength to the primal armies you lead (capped at 5). From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful primal beasts.',
@@ -5751,14 +5751,14 @@ function buildTargetField(c, ph, saved){
     case 'Research':{
       const sg=Math.min(5,effSkillP(c,'sage'));
       const disc=(report.discoveries||[]);
-      const per=disc.some(d=>d.id==='sd30')?10:5;
+      const per=5; // (the Library discovery was retired 2026-09-09)
       const neutral=(report.kingdom?.alignment==='Neutral')?sg*5:0;
       const chance=sg*per+neutral;
       // Item 6 (2026-09-07): choose a FIELD of study. Categories with every discovery already made are greyed out.
       const cats=(report.researchCategories||[]);
       const catOpts=`<option value="" ${!target?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${target===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
-        <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${per===10?', Library':''}${neutral?', Neutral scholars':''}).</div>
+        <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`+orderChanceNote(c,'Research',ph);}
 
     // ── RECRUIT ARMIES ──
@@ -5911,10 +5911,14 @@ function buildTargetField(c, ph, saved){
       const _giSaved=(target||'').split(',').filter(Boolean);
       const _giAll=_giSaved.includes('all');
       const _giBoxes=items.map((it,i)=>{
-        const chk=(_giAll||_giSaved.includes(String(i)))?'checked':'';
-        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
-          <input type="checkbox" value="${i}" ${chk} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
-          🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${startNames.has(it.name)?'':' (received earlier this turn)'}
+        // A granted Mithril suit is forged to its wearer and cannot be sent on. The row still has to
+        // be RENDERED — the tick values are indices into the engine's own item list — so it is shown
+        // greyed and disabled rather than dropped, which would slide every later index by one.
+        const _bound=!!(it&&it.effect&&it.effect.stat==='mithrilArmour');
+        const chk=(!_bound&&(_giAll||_giSaved.includes(String(i))))?'checked':'';
+        return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound?'not-allowed':'pointer'};${_bound?'opacity:.55':''}">
+          <input type="checkbox" value="${i}" ${chk} ${_bound?'disabled':''} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+          🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${_bound?' <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>':(startNames.has(it.name)?'':' (received earlier this turn)')}
         </label>`;
       }).join('');
       const _giWrap=`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
@@ -6207,6 +6211,21 @@ function _lairStar(f){
   const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[_pw]||'#7a5510';
   const _tag=_pw?` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
   return `<span style="color:${col}">\u2b50 ${f.name}${_tag}</span>`;
+}
+// ── LAIRS CLEARED (2026-09-09, Toby) ─────────────────────────────────────────────────────────
+// The popup lists only lairs that still STAND, so a province whose lairs have all been cleared looked
+// exactly like one where none was ever found — the player had no way to tell "nothing here" from
+// "nothing left". Once the ground is FULLY MAPPED (100%, at which point the engine has revealed every
+// feature it will show you) that ambiguity can be settled, so the popup says so outright.
+// Knowledge only: `pd.features` is already filtered to what THIS realm has discovered, and `cleared`
+// is the world's own flag — so a lair another realm cleared counts, and a lair a rival has hidden
+// behind a Veil of Illusions is not known to be there at all. The note reports what the player knows.
+function _lairsClearedNote(pd){
+  if(!pd || (pd.explored==null) || pd.explored<100) return '';
+  const lairs=(pd.features||[]).filter(f=>f&&!f.ritualSite);
+  if(lairs.length===0) return `<br><span style="color:#6a7f5a;font-style:italic">\u{1F5FA} Fully mapped \u2014 no lair was ever found in this province.</span>`;
+  if(lairs.some(f=>!f.cleared)) return '';
+  return `<br><span style="color:#4a8a4a;font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length===1?'its lair has':`all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
 }
 // Task 5 (this session): tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
 // lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain text.
@@ -6613,6 +6632,7 @@ function renderMapIntoSvg(svgEl, report){
           const kf=(pd.features||[]).filter(f=>!f.cleared);
           const kfLairs=kf.filter(f=>!f.ritualSite), kfRituals=kf.filter(f=>f.ritualSite);
           if(kfLairs.length) h+=`<br>${kfLairs.map(_lairStar).join(' &nbsp; ')}`;
+          h+=_lairsClearedNote(pd);
           if(kfRituals.length) h+=`<br>\u{1F319} ${kfRituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kfRituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
@@ -6627,6 +6647,7 @@ function renderMapIntoSvg(svgEl, report){
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
           if(kf2Lairs.length) h+=`<br>${kf2Lairs.map(_lairStar).join(' &nbsp; ')}`;
+          h+=_lairsClearedNote(pd);
           if(kf2Rituals.length) h+=`<br>\u{1F319} ${kf2Rituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kf2Rituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
@@ -6746,6 +6767,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1434</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.09-1525</div>
 </body>
 </html>

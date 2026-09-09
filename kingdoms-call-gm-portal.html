@@ -3752,10 +3752,30 @@ function grantMithrilTo(ch, gs){
   const id=(gs.nextItemId||0); gs.nextItemId=(gs.nextItemId||0)+1;
   ch.items.push({...MITHRIL_ARMOUR, effect:{...MITHRIL_ARMOUR.effect}, id});
 }
+// ── MITHRIL IS NOT LOOT (2026-09-09) ──────────────────────────────────────────────────────────
+// A suit is a PERSONAL granted relic: every qualifying dwarf is re-issued one at the start of each
+// turn. So if a suit ever CHANGES HANDS the original wearer simply receives a fresh one next turn
+// and the copies multiply — that is how a dwarven king came to be wearing two. The suit is now
+// untransferable on every path (inheritance, a killer's spoils, mercy-price, theft, Send Item), and
+// the sweep below is the self-healing net for saves made before that was true: at most ONE suit per
+// character, and none at all in hands that do not qualify.
+function isMithril(it){ return !!(it&&it.effect&&it.effect.stat==='mithrilArmour'); }
+// The part of a pack that is free to change hands — everything except the granted relics.
+function transferableItems(items){ return (items||[]).filter(it=>!isMithril(it)); }
+function mithrilQualifies(ch, gs){
+  return !!(ch&&ch.alive!==false&&ch.race==='Dwarven'&&ch.player!=null&&gs&&gs.players&&gs.players[ch.player]&&gs.players[ch.player].race==='Dwarven');
+}
 function grantMithrilToDwarves(gs){
   if(!gs||!gs.characters||!gs.players) return;
   gs.characters.forEach(ch=>{
-    if(ch&&ch.alive!==false&&ch.race==='Dwarven'&&ch.player!=null&&gs.players[ch.player]&&gs.players[ch.player].race==='Dwarven') grantMithrilTo(ch, gs);
+    if(!ch) return;
+    const ok=mithrilQualifies(ch, gs);
+    if(Array.isArray(ch.items)){
+      let kept=false; const before=ch.items.length;
+      ch.items=ch.items.filter(it=>{ if(!isMithril(it)) return true; if(ok&&!kept){ kept=true; return true; } return false; });
+      if(ch.items.length!==before) applyItemMaxHp(ch,null);
+    }
+    if(ok) grantMithrilTo(ch, gs);
   });
 }
 
@@ -6510,8 +6530,8 @@ function buildTurnReport(gameState, playerIndex){
                   autoWhy:items.some(it=>it.effect&&it.effect.stat==='oracle')?'Crystal Orb':(raw('spy')>=6?'Master Spy':''),
                   level:eff('spy'),
                   chance:Math.round((0.2+eff('spy')*0.2+(has('sd21')?0.15:0)+discSumOf(pl,'spy','pct'))*100) };
-        // RESEARCH — Sage level x 5% (10% with a Library), doubled for Neutral realms, + Loreseeker.
-        { const per=has('sd30')?10:5;
+        // RESEARCH — Sage level x 5%, doubled for Neutral realms, + Loreseeker.
+        { const per=5;
           out.research={ level:eff('sage'), rawLevel:raw('sage'),
             chance:eff('sage')*per+((pl.alignment==='Neutral')?eff('sage')*5:0)
                    +((( _minT&&_minT.loreseeker)||((gameState._minorHolders||{}).loreseeker)||{}).charId===c.id?per:0)
@@ -7143,15 +7163,14 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd20',name:'Messenger Birds',category:'Espionage',desc:'You receive [Intelligence] notifications even from provinces two steps away from yours.',effect:{type:'extendedIntel',range:2}},
   {id:'sd21',name:'Forgery Arts',category:'Espionage',desc:'+15% to all Spy order success chances for your characters.',effect:{type:'spyBonus',pct:0.15}},
   {id:'sd22',name:'Informant Network',category:'Espionage',desc:'Once per turn, you learn the location of one random enemy character you cannot already see.',effect:{type:'informants'}},
-  {id:'sd23',name:'Disguise Techniques',category:'Espionage',desc:'Heroes you send on Spy orders cannot be detected by enemy intrusion notifications.',effect:{type:'spyDisguise'}},
+  {id:'sd23',name:'Disguise Techniques',category:'Espionage',desc:'Your spies are half as likely to be discovered — enemy counter-intelligence catches them only 50% of the time.',effect:{type:'spyDisguise',pct:0.50}},
   // ── Magic & Scholarship ──
   {id:'sd24',name:'The Compass',category:'Scholarship',desc:'All your Explore actions map 40% more of the province.',effect:{type:'exploreBonus',pct:0.40}},
   {id:'sd25',name:'Alchemical Theory',category:'Scholarship',desc:'Whenever your characters clear a lair there is an extra 10% chance of an additional magic item on top of its usual hoard.',effect:{type:'itemChanceBonus',pct:0.10}},
   {id:'sd26',name:'Astronomical Tables',category:'Scholarship',desc:'All Practice orders for your characters have +5% success chance.',effect:{type:'practiceBonus',pct:0.05}},
   {id:'sd27',name:'Arcane Codex',category:'Scholarship',desc:'All spells cast by your characters have a +5% chance of success (still capped at 95%).',effect:{type:'spellBonus',pct:0.05}},
   {id:'sd28',name:'Medical Arts',category:'Scholarship',desc:'A single Rest order restores a character to full HP.',effect:{type:'restFull'}},
-  {id:'sd29',name:'Herbal Lore',category:'Scholarship',desc:'Any of your characters who loses HP in a phase recovers 1 HP automatically at the start of the next.',effect:{type:'autoHeal',hp:1}},
-  {id:'sd30',name:'Library',category:'Scholarship',desc:'Research discovery chance increased to 10% per Sage level (instead of 5%).',effect:{type:'sageDiscoveryBonus',pct:0.10}},
+  {id:'sd29',name:'Herbal Lore',category:'Scholarship',desc:'Your characters have their wounds dressed after a fight, recovering 40% of the damage they took (at least 1 HP).',effect:{type:'autoHeal',pct:0.40}},
   {id:'sd31',name:'Diplomatic Protocols',category:'Scholarship',desc:'The Divine/Undead hiring ban is waived for your realm — even heroes from the far end of the alignment spectrum may be hired (at the maximum 5g/turn).',effect:{type:'alignmentHire'}},
   {id:'sd32',name:'Ancient Lore',category:'Scholarship',desc:'Every Explore action also maps 10% of each adjacent province.',effect:{type:'adjacentReveal'}},
   // ── Heroic ──
@@ -7952,9 +7971,15 @@ async function runTurn(opts){
         rcpts=[...new Set(rcpts)];
         if(rcpts.length===0) return;
         const rcptNames=rcpts.map(i=>G.players[i]?.name||('Player '+(i+1)));
+        // The addressee's copy must NOT name the sender as `actor`: the report filter shows a player
+        // every entry where actor===them, so the sender was being handed the incoming-dispatch line as
+        // well as their own sent-confirmation — reading their own words as though addressed to them.
+        // charId is nulled for the same reason (log() falls back to _logCtx.charId when it is null).
+        const _savedDispatchChar=_logCtx.charId; _logCtx.charId=null;
         rcpts.forEach(rpi=>{
-          log('message',`📨 Dispatch from ${senderName}: “${text}”`,{actor:senderPi,targets:[rpi],phase:99,public:false});
+          log('message',`📨 Dispatch from ${senderName}: “${text}”`,{actor:null,targets:[rpi],phase:99,public:false});
         });
+        _logCtx.charId=_savedDispatchChar;
         // Sender's own copy (confirmation of what they sent, and to whom).
         log('message',`📨 You sent to ${rcptNames.join(', ')}: “${text}”`,{actor:senderPi,targets:[senderPi],phase:99,public:false});
       });
@@ -10583,9 +10608,10 @@ const BATTLE_ARMY_SPELLS={
           // random magic item to the victor as the price of their life.
           if(cbt.ref){
             cbt.ref._mercyFledTurn=G.turn;                 // out of action this turn; relocated home at end of turn
-            if(foe && foe.kind==='character' && foe.ref && Array.isArray(cbt.ref.items) && cbt.ref.items.length>0){
-              const _idx=Math.floor(Math.random()*cbt.ref.items.length);
-              const _lost=cbt.ref.items.splice(_idx,1)[0]; applyItemMaxHp(cbt.ref,_lost);
+            const _giveable=transferableItems(cbt.ref.items); // a granted Mithril suit is never surrendered
+            if(foe && foe.kind==='character' && foe.ref && _giveable.length>0){
+              const _lost=_giveable[Math.floor(Math.random()*_giveable.length)];
+              cbt.ref.items.splice(cbt.ref.items.indexOf(_lost),1); applyItemMaxHp(cbt.ref,_lost);
               foe.ref.items=foe.ref.items||[]; foe.ref.items.push(_lost);
               narrative.push(`  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
             }
@@ -11817,7 +11843,9 @@ const BATTLE_ARMY_SPELLS={
     if(!opts.keepArmies&&!_fellInBattle) disperseDeadCharArmies(deadChar);
 
     // 2. Items: go to killer if there is one, else to the player's king
-    const deadItems=(deadChar.items||[]);
+    // A Mithril suit is buried with its wearer — it is a granted relic, not spoils (see
+    // grantMithrilToDwarves). Passing it on was the route by which a second suit reached a king.
+    const deadItems=transferableItems(deadChar.items||[]);
     if(deadItems.length>0){
       let recipient=killerChar;
       if(!recipient&&deadChar.player!==null){
@@ -12012,9 +12040,11 @@ const BATTLE_ARMY_SPELLS={
     // Shared: lift a random magic item from a victim (null if none, or if the victim is a master thief).
     const liftRandomItem=(thief, victim)=>{
       const items=victim.items||[];
-      if(!items.length) return null;
+      const pool=transferableItems(items); // a granted Mithril suit cannot be lifted off its wearer
+      if(!pool.length) return null;
       if(perkTier(victim,'thief')>=3) return {guarded:true}; // THIEF L8 (Toby 2026-09-09): a master thief's own pockets cannot be picked
-      const it=items.splice(Math.floor(Math.random()*items.length),1)[0]; applyItemMaxHp(victim,it);
+      const it=pool[Math.floor(Math.random()*pool.length)];
+      items.splice(items.indexOf(it),1); applyItemMaxHp(victim,it);
       thief.items=(thief.items||[]); thief.items.push(it); applyItemMaxHp(thief,it);
       return it;
     };
@@ -13226,6 +13256,9 @@ const BATTLE_ARMY_SPELLS={
         const cipherPenalty=((targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player)?((hasDisc(targetProvForSpy.owner,'sd19')?0.25:0)+discSum(targetProvForSpy.owner,'counterSpy','pct')):0); // Item 5: counterSpy discoveries
         // LEVEL 6+ SKILL PERK — Master Spy: at Spy 6+, espionage never fails (as the Crystal Orb).
         const masterSpy=perkTier(c,'spy')>0;
+        // Disguise is decided fresh for EVERY spy order — the flag lives on the character record and
+        // persists in the save, so leaving it set once made a spy invisible for the rest of the game.
+        c._spyDisguised=false;
         if(charMinor(c,'shadow')) c._spyDisguised=true; // MINOR TITLE — The Shadow: spies never detected
         // Item 10: show the spy's success chance and the actual roll (previously neither was reported).
         const _spyChance=Math.round((0.2+effStat(c,'spy')*0.2+spyBonus-cipherPenalty)*100);
@@ -13233,8 +13266,13 @@ const BATTLE_ARMY_SPELLS={
         const _spyRoll=d100();
         const success=_autoSpy||(_spyRoll<=_spyChance);
         log('system',`📊 Spy — ${c.name} (Spy ${effStat(c,'spy')}) in ${prov.name}: ${_autoSpy?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_spyChance,_spyRoll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        // sd23 Disguise Techniques: this spy cannot be detected by intrusion notifications
-        if(success&&hasDisc(c.player,'sd23')) c._spyDisguised=true;
+        // sd23 Disguise Techniques (revised 2026-09-09, Toby): 50% HARDER to be discovered — the
+        // counter-intelligence alert that would otherwise always fire is turned aside half the time.
+        if(success&&!c._spyDisguised&&hasDisc(c.player,'sd23')){
+          const _dgRoll=d100();
+          if(_dgRoll<=50) c._spyDisguised=true;
+          log('system',`📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(50,_dgRoll)} — ${c._spyDisguised?'the disguise holds; no alarm is raised.':'the disguise slips; the province\u2019s watch will report the intrusion.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        }
         if(success){
           applySpySuccess(c, prov);
         } else log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]});
@@ -13393,8 +13431,7 @@ const BATTLE_ARMY_SPELLS={
         const sageLevel=effStat(c,'sage');
         // Neutral alignment: double sage discovery chance (pragmatic scholars)
         const neutralSageBonus=G.players[c.player]?.alignment==='Neutral'?sageLevel*5:0;
-        // Library (sd30): 10% per Sage level instead of 5%.
-        const perLevel=hasDisc(c.player,'sd30')?10:5;
+        const perLevel=5; // (the Library discovery was retired 2026-09-09)
         // The discovery-chance benefit CAPS at level 5 (via effStat); levels 6+ grant the Sage's
         // distinct mastery orders instead of a further per-level climb.
         const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct'); // + Loreseeker minor title; Item 5 research discoveries
@@ -13405,7 +13442,7 @@ const BATTLE_ARMY_SPELLS={
           if(_rcat&&_rcat.toLowerCase()!=='any'&&!discAvailableFor(c.player,_knownPre).some(_catFilter)){
             log('system',`${c.name}: every ${_rcat} discovery has already been made by your realm — choose another field of study.`,{actor:c.player,targets:[c.player]});break; } }
         const dRoll=d100();
-        log('system',`📊 Research${_rcat&&_rcat.toLowerCase()!=='any'?` (${_rcat})`:''} — Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${perLevel===10?', Library ×2':''}${neutralSageBonus>0?', Neutral ×2':''}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
+        log('system',`📊 Research${_rcat&&_rcat.toLowerCase()!=='any'?` (${_rcat})`:''} — Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${neutralSageBonus>0?', Neutral ×2':''}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
         if(dRoll<=discoveryChance){
           if(!player.discoveries) player.discoveries=[];
           const known=new Set(player.discoveries.map(d=>d.id));
@@ -13674,7 +13711,12 @@ const BATTLE_ARMY_SPELLS={
         let idxs;
         if(String(target||'').trim().toLowerCase()==='all'){ idxs=_held.map((_,i)=>i); }
         else{ idxs=String(target||'').split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<_held.length); }
-        const uniq=[...new Set(idxs)].sort((a,b)=>b-a);
+        let uniq=[...new Set(idxs)].sort((a,b)=>b-a);
+        // A granted Mithril suit is forged to its wearer and cannot be sent on.
+        if(uniq.some(i=>isMithril(_held[i]))){
+          uniq=uniq.filter(i=>!isMithril(_held[i]));
+          log('item',`${c.name}: Mithril Armour is forged to its wearer and cannot be sent — it stays in their pack.`,{actor:c.player,targets:[c.player]});
+        }
         if(uniq.length===0){log('item',`${c.name}: cannot send item.`,{actor:c.player,targets:[c.player]});break;}
         const given=[];
         uniq.forEach(i=>{ given.push(...c.items.splice(i,1)); }); applyItemMaxHp(c,null);
@@ -16778,6 +16820,10 @@ const BATTLE_ARMY_SPELLS={
   // heroes hired last turn, resurrected dwarves, charm-reverts, and any path the inline grants miss.
   grantMithrilToDwarves(G);
 
+  // ── RETIRED DISCOVERIES ── the Library (sd30) was removed from the game on 2026-09-09. Strike it
+  // from any realm that had already found it, so no live save keeps a dead entry on its sheet.
+  (G.players||[]).forEach(pl=>{ if(pl&&Array.isArray(pl.discoveries)) pl.discoveries=pl.discoveries.filter(d=>d&&d.id!=='sd30'); });
+
   // GRAND DESIGN — Divine (Grand Cathedral): the capital is permanently warded (Plague/Earthquake/Flood/Part Sea turned aside).
   (G.players||[]).forEach((pl,pi)=>{ if(pl&&pl.alignment==='Divine'&&hasDisc(pi,'gd')){ const _cap=G.world.provinces[homeProvinceIdFor(G,pi)]; if(_cap){ _cap._blessWardTurn=G.turn; _cap._blessWardBy=pi; _cap._blessWardPct=100; } } });
   // ── BOT DECISIONS + default-to-Defend ── run here, after every helper const in this block is initialised
@@ -16844,13 +16890,19 @@ const BATTLE_ARMY_SPELLS={
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // Item 6: reliable phase for skill-rises earned outside processOrder
     log('system',`— ${SEASONS[ph]} —`);
-    // sd29 Herbal Lore (wired 2026-09-08): a character who lost HP during the previous phase recovers 1 HP
-    // at the start of this one. `_hpAtPhaseStart` is the HP snapshot taken here each phase; it persists in
-    // the saved state, so damage taken in the final phase of a turn heals at the start of the next turn.
+    // sd29 Herbal Lore (revised 2026-09-09, Toby): a character who took wounds in the PREVIOUS phase
+    // has them dressed at the start of this one, recovering 40% of the damage that fight cost them
+    // (rounded, never less than 1). `_hpAtPhaseStart` is the HP snapshot taken here each phase; it
+    // persists in the saved state, so wounds taken in the final phase of a turn heal at the start of
+    // the next. Only the wounds of that one fight are treated — it is not a standing regeneration.
     (G.characters||[]).forEach(c=>{
       if(c.alive&&c.player!=null&&c.hp!=null&&c._hpAtPhaseStart!=null&&c.hp<c._hpAtPhaseStart&&c.hp<(c.maxHp||20)&&hasDisc(c.player,'sd29')){
-        c.hp=Math.min(c.maxHp||20,c.hp+1);
-        log('system',`🌿 Herbal Lore: ${c.name}'s wounds are dressed with healing herbs. +1 HP (${c.hp}/${c.maxHp||20}).`,{actor:c.player,targets:[c.player],provinceId:(c.location!=null?c.location:undefined)});
+        const _dmg=c._hpAtPhaseStart-c.hp;
+        const _heal=Math.min(Math.max(1,Math.round(_dmg*0.40)),(c.maxHp||20)-c.hp);
+        if(_heal>0){
+          c.hp=c.hp+_heal;
+          log('system',`🌿 Herbal Lore: ${c.name}'s wounds are dressed with healing herbs — 40% of the ${_dmg} damage taken in the fighting is mended. +${_heal} HP (${c.hp}/${c.maxHp||20}).`,{actor:c.player,targets:[c.player],provinceId:(c.location!=null?c.location:undefined)});
+        }
       }
       c._hpAtPhaseStart=(c.alive&&c.hp!=null)?c.hp:null;
     });
@@ -18251,6 +18303,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1434</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-1525</div>
 </body>
 </html>
