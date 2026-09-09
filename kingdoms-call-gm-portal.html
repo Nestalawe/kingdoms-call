@@ -5944,8 +5944,24 @@ function generateNewGame(setupPlayers, sz, maxTurns){
             cand.features.push({name:RITUAL_SITE_NAMES[Math.floor(Math.random()*RITUAL_SITE_NAMES.length)],ritualSite:true,monster:null,discovered:false,cleared:false,treasure:0});
           }
           cand.name=null; // re-named thematically by the naming pass
+          best._alignPrimalId=cand.id;
         }
       }
+    }
+
+    // ── 2026-09-09 (item 2): at most ONE primal province may border a home province ──
+    // World gen scatters primal (creature/monster) provinces freely, so a home could open ringed by two
+    // or three of them — unconquerable ground for a new realm. Keep one (the alignment-placed one if
+    // there is one, else the first found) and re-race every other primal land neighbour as a humanoid
+    // province of a random race (own-race guarantee above is untouched — it never picks a primal).
+    {
+      const _ringPrimal=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null&&String(n.race||'').startsWith('Primal'));
+      if(_ringPrimal.length>1){
+        const keepId=(best._alignPrimalId!=null&&_ringPrimal.some(n=>n.id===best._alignPrimalId))?best._alignPrimalId:_ringPrimal[0].id;
+        const HUM=['Human','Elven','Dwarven','Orcish'];
+        _ringPrimal.filter(n=>n.id!==keepId).forEach(n=>{ _reRaceProvince(n, HUM[Math.floor(Math.random()*HUM.length)]); });
+      }
+      delete best._alignPrimalId;
     }
 
     // ── Guarantee: at least one WEAK feature in every player's home province ──
@@ -12651,7 +12667,14 @@ const BATTLE_ARMY_SPELLS={
               let _mi=battle.narrative.findIndex(l=>typeof l==='string' && l.includes('a battle is initiated'));
               battle.narrative.splice(_mi>=0?_mi+1:0, 0, ..._defFormupLines);
             }
-            emitBattle(battle, toProv, ph, targets, {actor:c.player}); // item 5
+            // 2026-09-09 (item 1): charIds names EVERY commander who fought — attacker + his reinforcements,
+            // defender + his. Without it the DEFENDING player's copy of the battle inherited the attacker's
+            // log context (a charId not in their Chronicle) and fell into Realm Events, leaving the defending
+            // hero's own phase block empty. Each extra same-side commander also gets a pointer line.
+            const _battleChars=[c.id,...pvpReinforcements.map(r=>r.id),defChar.id,...defReinforcements.map(d=>d.id)];
+            emitBattle(battle, toProv, ph, targets, {actor:c.player, charIds:_battleChars}); // item 5
+            defReinforcements.forEach(d=>notifyTarget(d,`⚔ ${d.name} stands in the battle line beside ${defChar.name} in the defence of ${toProv.name} — the full account is under ${defChar.name}.`,ph,'combat'));
+            pvpReinforcements.forEach(r=>notifyTarget(r,`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
             // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
             // with _died on the shared army objects. Write those casualties back to the real
             // characters and their reinforcements so destroyed armies are actually removed
@@ -15759,7 +15782,7 @@ const BATTLE_ARMY_SPELLS={
         // sync the real characters' locations from the copies.
         if(atkCopy.location!==attacker.location){ attacker.location=atkCopy.location; const np=G.world.provinces[attacker.location]; if(np) attacker.locationName=np.name; }
         if(defCopy.location!==defender.location){ defender.location=defCopy.location; const np=G.world.provinces[defender.location]; if(np) defender.locationName=np.name; }
-        emitBattle(battle, prov, ph, [attacker.player,defender.player], {actor:attacker.player, charId:_ctxCharId}); // item 5
+        emitBattle(battle, prov, ph, [attacker.player,defender.player], {actor:attacker.player, charId:_ctxCharId, charIds:[attacker.id,defender.id]}); // item 5; 2026-09-09 item 1: both sections
         const winner=battle.won?attacker:defender;
         const enemyStillHere=(G.characters||[]).some(ch=>ch.alive&&ch.location===prov.id&&(ch.armies||[]).length>0&&ch.player!==winner.player);
         if(!enemyStillHere && prov.owner!==winner.player){
@@ -15998,7 +16021,7 @@ const BATTLE_ARMY_SPELLS={
       const combinedDef={...enemyChar,armies:[...(enemyChar.armies||[]),...defReinf.flatMap(d=>d.armies||[])]};
       battle=combatVsChar(c, combinedDef, prov);
       creditBattle(c,enemyChar,battle,c.armies,combinedDef.armies,prov);
-      emitBattle(battle, prov, ph, targets, {actor:c.player}); // item 5
+      emitBattle(battle, prov, ph, targets, {actor:c.player, charIds:[c.id,enemyChar.id,...defReinf.map(d=>d.id)]}); // item 5; 2026-09-09 item 1
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       // Same pooled-copy sync as the move handler: combatVsChar retreats the COPY, so the real
@@ -16468,7 +16491,7 @@ const BATTLE_ARMY_SPELLS={
       // if he can move by sea (a fleet, or an all-flying force). A land host on drowned ground stays put;
       // the Defend order must not let it march out over water it cannot cross.
       if(here.terrain==='sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id]??0)>0)){
-        log('move',`${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,{actor:c.player,targets:[c.player],provinceId:here.id,public:false});
+        log('move',`${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,{actor:c.player,targets:[c.player],provinceId:here.id,public:false,charId:c.id,phase:ph});
         return;
       }
 
@@ -16476,7 +16499,7 @@ const BATTLE_ARMY_SPELLS={
       // between two fronts isn't representable, so the garrison of the spot he stands on wins.
       if(threat.has(c.location)){
         log('move',`${c.name} holds ${here.name} rather than march to its neighbours — the enemy is already at this gate.`,
-          {actor:c.player,targets:[c.player],provinceId:here.id});
+          {actor:c.player,targets:[c.player],provinceId:here.id,charId:c.id,phase:ph});
         return;
       }
 
@@ -16516,7 +16539,7 @@ const BATTLE_ARMY_SPELLS={
       c._defendReactedPhase=ph;
       c._attackedFrom=here.id;
       log('move',`🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length>1?'are':'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
-        {actor:c.player,targets:[c.player],provinceId:P.id,public:true});
+        {actor:c.player,targets:[c.player],provinceId:P.id,public:true,charId:c.id,phase:ph}); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
       // Reacting is a march: the same skill gain a normal move would give.
       trySkillGain(c,'march',SKILLGAIN_COMMON);
     });
@@ -16540,7 +16563,7 @@ const BATTLE_ARMY_SPELLS={
       if(!here) return;
       // Task 4: a defender flooded into a sea province cannot ride out unless he can move by sea.
       if(here.terrain==='sea' && !(seaMoveActive[c.id] && (seaMovePoints[c.id]??0)>0)){
-        log('move',`${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,{actor:c.player,targets:[c.player],provinceId:here.id,public:false});
+        log('move',`${c.name} is stranded by the waters covering ${here.name} — without a fleet their troops cannot march out, and hold what ground remains.`,{actor:c.player,targets:[c.player],provinceId:here.id,public:false,charId:c.id,phase:ph});
         return;
       }
       const sc=seaCap[c.id]||'land';
@@ -16576,10 +16599,10 @@ const BATTLE_ARMY_SPELLS={
         c.location=prov.id; c.locationName=prov.name; c._attackedFrom=here.id;
         if(!prov.visitedBy) prov.visitedBy=[];
         if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
-        log('move',`🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        log('move',`🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
         trySkillGain(c,'march',SKILLGAIN_COMMON);
       } else {
-        log('move',`🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        log('move',`🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
       }
       c._defendReactedPhase=ph;
       // Force the battle: c attacks the heaviest enemy force here; the rest unify behind it (as in any
@@ -16589,10 +16612,10 @@ const BATTLE_ARMY_SPELLS={
       const combinedAtk={...c,armies:[...(c.armies||[])]};
       const combinedDef={...quarry,armies:[...(quarry.armies||[]),...defReinf.flatMap(d=>d.armies||[])]};
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
-      log('combat',`⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+      log('combat',`⚔ ${c.name} falls upon ${quarry.name}'s host in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:[c.id,quarry.id,...defReinf.map(d=>d.id)],phase:ph});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
       creditBattle(c,quarry,battle,combinedAtk.armies,combinedDef.armies,prov);
-      emitBattle(battle, prov, ph, targetsPi, {actor:c.player}); // item 5
+      emitBattle(battle, prov, ph, targetsPi, {actor:c.player, charIds:[c.id,quarry.id,...defReinf.map(d=>d.id)]}); // item 5; 2026-09-09 item 1
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [quarry,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       if(combinedAtk.location!==c.location){ c.location=combinedAtk.location; const np=G.world.provinces[c.location]; if(np) c.locationName=np.name; }
@@ -18007,15 +18030,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const strongestChar=(pi,naval)=>{ let best=-1,bc=null; (G.characters||[]).filter(c=>c.alive&&c.player===pi).forEach(c=>{ const st=kindStr(c,naval); if(st>best){best=st;bc=c;} }); return best>0?bc:null; };
     // THE THRONE — each rival's share of the world tax base. Uses the SAME denominator as the
     // Reckoning (STD.worldTax = every province, land AND sea), so these %s correlate across reports.
-    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; G.players.forEach((pl,i)=>{ if(i===pi)return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); } }
+    // 2026-09-09 (item 4): every comparative title report now opens with the holder's OWN figure, so the
+    // rivals' numbers can be read against something.
+    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; const own=Math.round(100*(STD.taxByPlayer[pi]||0)/world); log('system',`[The Throne] Your realm: ${own}% of the world tax base.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); } }
     // THE VAULTKEEPER — each rival's treasury (own line).
-    { const pi=holder('vault'); if(pi!=null){ G.players.forEach((pl,i)=>{ if(i===pi)return; log('system',`[The Vaultkeeper] ${pnm(i)}: ${pl.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); }); } }
+    { const pi=holder('vault'); if(pi!=null){ log('system',`[The Vaultkeeper] Your realm: ${G.players[pi]?.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; log('system',`[The Vaultkeeper] ${pnm(i)}: ${pl.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); }); } }
     // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
-    { const pi=holder('marshal'); if(pi!=null){ let any=false; G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,false); if(c){ any=true; log('system',`[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)}.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('marshal'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,false); log('system',`[The Grand Marshal] Your realm: ${oc?`strongest land army led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,false)})`:'no land army in the field'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,false); if(c){ any=true; log('system',`[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,false)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); } }
     // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
-    { const pi=holder('sea'); if(pi!=null){ let any=false; G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)}.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('sea'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,true); log('system',`[The Sea Lord] Your realm: ${oc?`strongest fleet led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,true)})`:'no fleet at sea'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,true)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
     // THE MONSTER-BANE — the runner-up for this title: name + province.
-    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; log('system',`[The Monster-Bane] Your closest rival for the title: ${who(sec)}${sec.player!=null?`, last seen in ${prn(sec.location)}`:''}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; const top=rank.find(r=>r.c.player===pi)||rank[0]; log('system',`[The Monster-Bane] Your champion: ${top.c.name} with ${top.m} monster-blood to their name.`,{actor:pi,targets:[pi]}); log('system',`[The Monster-Bane] Your closest rival for the title: ${who(sec)}${sec.player!=null?`, last seen in ${prn(sec.location)}`:''} — ${sec.m} monster-blood.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
     // THE LOREMASTER — each rival discovery this turn (own line), then copy one for free.
     { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const found=[]; G.players.forEach((pl,i)=>{ if(i===pi)return; (pl.discoveries||[]).forEach(d=>{ if(d.turnDiscovered===tt) found.push({d,i}); }); }); if(found.length){ found.forEach(f=>log('system',`[The Loremaster] ${pnm(f.i)} discovered ${f.d.name} this turn.`,{actor:pi,targets:[pi]})); const lp=G.players[pi]; if(lp){ const owned=new Set((lp.discoveries||[]).map(d=>d.id)); const learn=found.filter(f=>!owned.has(f.d.id)); if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d; (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn}); log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's notes — you now hold this discovery.`,{actor:pi,targets:[pi]}); } } } else log('system',`[The Loremaster] No rival made a new discovery this turn.`,{actor:pi,targets:[pi]}); } }
     // THE ARCHMAGE — foremost mage of each school (own line): name + province.
@@ -18427,6 +18452,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-2156</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.09-2300</div>
 </body>
 </html>
