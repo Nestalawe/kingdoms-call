@@ -7476,7 +7476,7 @@ function buildTurnReport(gameState, playerIndex){
     // Faces stays anonymous, so nothing hidden leaks — and the portal only visibly tints names that
     // actually appear in the rendered text.
     allKingdoms:(gameState.players||[]).map((p,i)=>({index:i,name:(p&&p.name)||('Realm '+(i+1)),color:(p&&p.color)||null})),
-    nameColors:(gameState.characters||[]).filter(c=>c&&c.name&&(c.alive||c.killedThisTurn)&&!(activeItems(c).some(it=>it&&it.effect&&it.effect.stat==='hidden'))).map(c=>({name:c.name,color:(c.player!=null?(gameState.players[c.player]?.color||null):null),neutral:(c.player==null)})),
+    nameColors:(gameState.characters||[]).filter(c=>c&&c.name&&(c.alive||c.killedThisTurn)&&!(activeItems(c).some(it=>it&&it.effect&&it.effect.stat==='hidden'))).map(c=>({name:c.name,color:(c.player!=null?(gameState.players[c.player]?.color||null):null),neutral:(c.player==null),guard:!!(c.player==null&&c._isNeutralGuard)})), // 2026-09-10: guard → chieftain-brown tint
     visitedProvinceIds:[...visitedProvIds],
     worldMeta, availableHeroesByProv, provinceOrderData,
     knownFeatures, heroSightings,
@@ -8925,12 +8925,13 @@ function seaPenalty(armyType, terrain){
   // Emits a single parseable log line the player Chronicle expands into: a header coloured in the
   // owner's map colour (neutral = dark grey) + one icon row per unit (same look as "Your Realm").
   // playerIdx null → neutral. role: 'attacker' | 'defender'. verbText overrides the default verb.
-  function forceMarker(name, playerIdx, role, armies, verbText){
+  function forceMarker(name, playerIdx, role, armies, verbText, opts){
     const color=(playerIdx!=null && G.players[playerIdx])?(G.players[playerIdx].color||null):null;
+    const guard=!!(opts&&opts.guard); // 2026-09-10: a local chieftain's force — the player portal tints it chieftain-brown
     const arr=(armies||[]).map(a=>({type:a.type, quality:a.quality, unitName:a.unitName||'', race:a.race||null, phantom:!!a._phantom, skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})); // item 2: Wild Hunt tag rides into battle rows too
     return '⚑FORCE⚑'+JSON.stringify({
       name:(name||'').replace(' (wandering)',''),
-      color, neutral:(playerIdx==null),
+      color, neutral:(playerIdx==null), guard,
       role:role||'', verb:verbText||'', armies:arr,
     });
   }
@@ -9239,7 +9240,7 @@ const BATTLE_ARMY_SPELLS={
       const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
     narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`)); // item 8: realm named, as in PvP
     if(neutralGuardHero){
-      narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
+      narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`, {guard:true}));
     } else {
       narrative.push(forceMarker(_npcOwnerName?`${_npcOwnerName}'s garrison at ${prov.name}`:`The defenders of ${prov.name}`, (prov.owner!=null?prov.owner:null), 'defender', defenders, `${DEF_VERBS[1]} the ground — ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
     }
@@ -18960,6 +18961,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1744</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1802</div>
 </body>
 </html>

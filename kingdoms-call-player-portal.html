@@ -1550,9 +1550,11 @@ function buildChronicle(log, chars_for_log){
     // every participant's name in the owner's map colour; neutral names go dark grey.
     const NEUTRAL_COLOR='#555';
     const nameColors=new Map(); // name (and bare/realm variants) → {color|null, neutral}
-    function _registerName(nm, color, neutral){
+    // 2026-09-10: a local chieftain (neutral-province guard) is registered with guard=true and is tinted
+    // CHIEFTAIN_MARKER_COLOR everywhere in the Chronicle — the same brown as their map marker.
+    function _registerName(nm, color, neutral, guard){
       if(!nm) return;
-      const add=(k)=>{ if(k && !nameColors.has(k)) nameColors.set(k,{color:neutral?null:color, neutral:!!neutral}); };
+      const add=(k)=>{ if(k && !nameColors.has(k)) nameColors.set(k,{color:guard?CHIEFTAIN_MARKER_COLOR:(neutral?null:color), neutral:(!!neutral&&!guard)}); };
       add(nm);
       add(String(nm).replace(/\s*\(.*?\)\s*$/,'').trim());            // strip trailing "(Realm)"
       const km=String(nm).match(/\(([^)]+)\)\s*$/); if(km) add(km[1]); // the realm name itself
@@ -1560,13 +1562,13 @@ function buildChronicle(log, chars_for_log){
     log.forEach(e=>{
       const t=e.text||'';
       if(t.startsWith('⚑FORCE⚑')){ try{ const f=JSON.parse(t.slice(7));
-        _registerName(f.name,f.color,f.neutral);
+        _registerName(f.name,f.color,f.neutral,!!f.guard);
         // Item 5: tint every custom-NAMED unit in the force too, so battle lines that reference a
         // unit by its name (archery, pre-battle magic, casualties, pursuit…) show whose it is.
         // Generic type names (e.g. "Elven Bowmen") can belong to either side and stay untinted.
         (f.armies||[]).forEach(a=>{
           const un=a&&a.unitName;
-          if(un && un!==a.type && !String(un).startsWith('undefined')) _registerName(un, f.color, f.neutral);
+          if(un && un!==a.type && !String(un).startsWith('undefined')) _registerName(un, f.color, f.neutral, !!f.guard);
         });
       }catch(_){} }
     });
@@ -1595,13 +1597,13 @@ function buildChronicle(log, chars_for_log){
     });
     (_chronRep.heroSightings||[]).forEach(s=>{
       if(s.type==='enemy') _registerName(s.name, s.kingdomColor||null, false);
-      else _registerName(s.name, null, true); // wandering / neutral_guard
+      else _registerName(s.name, null, true, s.type==='neutral_guard'); // wandering (grey) / neutral_guard (chieftain brown)
     });
     (((_chronRep.worldMeta&&_chronRep.worldMeta.provinces)||[])).forEach(p=>{
       (p.characters||[]).forEach(ch=>{
         if(ch.isOwn) return; // own already seeded in the realm colour
         if(ch.ownerColor && !ch.isWanderer && !ch.isNeutralGuard) _registerName(ch.name, ch.ownerColor, false);
-        else _registerName(ch.name, null, true); // neutral → grey
+        else _registerName(ch.name, null, true, !!ch.isNeutralGuard); // neutral → grey; chieftain → brown
       });
     });
     // Tasks 1 & 4: register EVERY player's realm name in that player's colour, and every named
@@ -1610,7 +1612,7 @@ function buildChronicle(log, chars_for_log){
     // (e.g. title-intel rivals, distant conquests). Registered AFTER the visible/guardian sources so
     // the more specific colours already set win (first-registered-wins).
     (_chronRep.allKingdoms||[]).forEach(k=>{ if(k&&k.name&&k.color) _registerName(k.name, k.color, false); });
-    (_chronRep.nameColors||[]).forEach(n=>{ if(n&&n.name) _registerName(n.name, n.color||null, !!n.neutral); });
+    (_chronRep.nameColors||[]).forEach(n=>{ if(n&&n.name) _registerName(n.name, n.color||null, !!n.neutral, !!n.guard); });
     function _escapeRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
     const _nameKeys=[...nameColors.keys()].filter(Boolean).sort((a,b)=>b.length-a.length);
     function colorizeNames(html, bold){
@@ -1625,7 +1627,7 @@ function buildChronicle(log, chars_for_log){
       return out;
     }
     function renderForceBlock(f){
-      const col=f.neutral?NEUTRAL_COLOR:(f.color||NEUTRAL_COLOR);
+      const col=f.guard?CHIEFTAIN_MARKER_COLOR:(f.neutral?NEUTRAL_COLOR:(f.color||NEUTRAL_COLOR));
       const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
       const rows=(f.armies||[]).length
         ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem${a.phantom?';opacity:.75;font-style:italic':''}">${a.phantom?'✨':unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
@@ -2267,7 +2269,7 @@ function renderReportView(report){
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
           : `Best skill: ${topStr}`;
         return`<div class="intel-entry" style="border-left-color:#8a6a2a">
-          🛡 <strong>${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
+          🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
           <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
@@ -2327,7 +2329,7 @@ function renderReportView(report){
         ? others.map(ch=>{
             const who=ch.category==='enemy'
               ? `<strong${ch.color?` style="color:${ch.color}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
-              : `<strong>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
+              : `<strong${ch.isNeutralGuard?` style="color:${CHIEFTAIN_MARKER_COLOR}"`:''}>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
             const force=(ch.armies&&ch.armies.length>0)
               ? ` — ${ch.armies.map(a=>armyLabel(a,{short:true})).join(', ')}`
               : (ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:'');
@@ -6322,7 +6324,7 @@ function popupKnownChars(pd, deadHeroes){
   const NEUTRAL_GREY='#9a9a9a';
   if(own.length)   s+=own.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#f2e8d0';return `<br>\u{1F464} <span style="color:${col}">${(c.isKing?'\u265B ':'')}${c.name}</span>${cnt(c)}`;}).join('');
   if(enemy.length) s+=enemy.map(c=>{const col=_tintForDarkTooltip(c.ownerColor)||'#e05050';return `<br>\u{1F441} <span style="color:${col}">${(c.isKing?'\u265B ':'')}${c.name}${c.ownerName?' of '+c.ownerName:''}</span>${cnt(c)}`;}).join('');
-  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:${NEUTRAL_GREY}">${neutralCharLabel(c)}</span>${cnt(c)}`).join('');
+  if(wand.length)  s+=wand.map(c=>`<br>\u2694 <span style="color:${c.isNeutralGuard?_tintForDarkTooltip(CHIEFTAIN_MARKER_COLOR):NEUTRAL_GREY}">${neutralCharLabel(c)}</span>${cnt(c)}`).join(''); // 2026-09-10: chieftains in their marker brown
   // Item 6: dead heroes whose bodies lie here — labelled '(dead)', mirroring the '(wandering)' tag.
   if(dead.length)  s+=dead.map(d=>`<br>\u{1F480} <span style="color:#8a6fb0">${(d.isKing?'\u265B ':'')}${d.name} (dead)</span>`).join('');
   return s;
@@ -6864,6 +6866,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1744</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1802</div>
 </body>
 </html>
