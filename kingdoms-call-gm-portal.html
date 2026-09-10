@@ -1907,7 +1907,7 @@ function buildGMProvinceOrderData(gs, playerIndex){
       availableHeroes:(gs.characters||[]).filter(c=>c.player===null&&c.alive&&c.location===p.id&&!c._justDefeated&&!c._isNeutralGuard).map(h=>({
         id:h.id,name:h.name,race:h.race,alignment:h.alignment,temper:h.temper,skills:h.skills||{},pay:h.pay||1,locationId:p.id,locationName:p.name,
       })),
-      garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality})),
+      garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||'',race:a.race||null,skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})),
     };
   });
   return data;
@@ -3643,6 +3643,38 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
   let chance=Math.max(5, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
   if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
+}
+
+// ── Items 1 & 12 (2026-09-10): ONE visibility rule for non-own characters ─────────────────────
+// The map, the Enemy/Wandering Heroes lists, the Hire list and the Encounter Character target list
+// each used to apply their own subset of the stealth rules, so a hero could be on the map but not
+// in the Encounter dropdown (king rule / Cloak of Many Faces) or in the dropdown but not on the map
+// (the map's Spy-contest vs the list's flat cloak). Every consumer now calls this.
+//   ctx: {ownedProvIds:Set, ownCharLocs:Set, spiedThisTurn:Set}  — all keyed by province id.
+// Returns true when viewer `viewerPi` can see character `c` where it stands right now.
+function enemyCharVisibleTo(gs, viewerPi, c, ctx){
+  if(!c||!c.alive) return false;
+  if(c.player===viewerPi) return true;
+  const p=gs.world.provinces[c.location]; if(!p) return false;
+  const coLoc=ctx.ownCharLocs.has(p.id), ownHere=ctx.ownedProvIds.has(p.id), spied=ctx.spiedThisTurn.has(p.id);
+  if(!coLoc&&!ownHere&&!spied) return false;                       // no line of sight at all
+  if(c._invisTurn===gs.turn) return false;                          // Invisibility beats even a spy
+  if(spied) return true;                                            // a deliberate Spy pierces stealth
+  const isEnemy=c.player!=null&&relOfReport(gs,viewerPi,c.player)==='enemy';
+  if(isEnemy&&ownHere&&!coLoc){
+    // Lurking in land you own with none of your characters present: Spy contest (a column can't hide).
+    if((c.armies||[]).length>0) return true;
+    return spotEnemyInOwnedProvince(gs,viewerPi,p,c);
+  }
+  if(c.player==null||!ownHere){
+    if(c._unspottedTurn===gs.turn) return false;                    // flat unspotted cloak
+  }
+  return true;
+}
+// Why a VISIBLE character still cannot be the target of an Encounter Character order (null = can).
+function encounterUntargetableReason(c){
+  if(c&&activeItems(c).some(it=>it&&it.effect&&it.effect.stat==='hidden')) return 'faceless';
+  return null;
 }
 
 // ── EQUIPMENT SLOTS (Item 11, Sept 2026) ─────────────────────────────────────────────────────
@@ -6734,7 +6766,7 @@ function buildTurnReport(gameState, playerIndex){
     armyTypes:p.armyTypes,
     // Unled (garrisoned) armies the player keeps in this province — recruited directly to the
     // garrison, or left behind here by one of their characters.
-    garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||''})),
+    garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||'',race:a.race||null,skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})),
     explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,
     characters:(p.characters||[]).map(cid=>{
       const c=gameState.characters[cid];
@@ -6760,7 +6792,7 @@ function buildTurnReport(gameState, playerIndex){
 
   const charReports=chars.map(c=>{
     const prov=gameState.world.provinces[c.location];
-    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName,race:a.race||null,cost:((a._temporary||a._wildHuntUntilTurn!=null)?0:(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2))),skeletal:!!a._isSkeletal,temporary:!!a._temporary}));
+    const armies=(c.armies||[]).map(a=>({type:a.type,quality:a.quality,speed:ARMY_SPEED_P[a.type]||3,unitName:a.unitName,race:a.race||null,cost:((a._temporary||a._wildHuntUntilTurn!=null)?0:(a._isSkeletal?1:(ARMY_COST_MASTER[a.type]||2))),skeletal:!!a._isSkeletal,temporary:!!a._temporary,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})); // item 2 (2026-09-10): Wild Hunt tag
     // 2026-09-09e: these were read RAW, so an item granting March or Naval was left out of the speed
     // the player was shown while the engine moved them at the higher rate. Same stack as setMovePool.
     const marchLvl=effSkillOf(c,'march',gameState.characters||[]);
@@ -6951,13 +6983,15 @@ function buildTurnReport(gameState, playerIndex){
   // who moved UNSPOTTED is hidden from passive sightings unless you spied where they now stand; a
   // cloaked (Veil / hidden-item) hero cannot be picked out at all. The Encounter order then chases
   // the quarry wherever they go, so the list need only reflect where they were last seen.
-  const _encVisProv=new Set([...ownedProvIds, ...ownCharLocs, ...spiedThisTurn]);
-  const _encHidden=(ch)=>!!(ch&&activeItems(ch).some(it=>it.effect&&it.effect.stat==='hidden')); // Veil is phase-scoped (see isVeiled); by report time it has parted
+  // Items 1 & 12 (2026-09-10): the list is exactly the characters the MAP shows (one shared rule,
+  // enemyCharVisibleTo). A visible character who still cannot be hunted (Cloak of Many Faces) is
+  // carried with `untargetable` so the order form can show WHY instead of silently dropping them.
+  const _visCtx={ownedProvIds,ownCharLocs,spiedThisTurn};
   const encounterTargets=gameState.characters
-    .filter(c=>c.alive&&c.player!==null&&c.player!==playerIndex&&_encVisProv.has(c.location)&&!_encHidden(c)
-      && !(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(c.location)) && c._invisTurn!==gameState.turn)
+    .filter(c=>c.alive&&c.player!==null&&c.player!==playerIndex&&enemyCharVisibleTo(gameState,playerIndex,c,_visCtx))
     .map(c=>({id:c.id,name:c.name,isKing:!!c.isKing,locationId:c.location,
-      locationName:gameState.world.provinces[c.location]?.name||'?',leadsArmy:(c.armies||[]).length>0}));
+      locationName:gameState.world.provinces[c.location]?.name||'?',leadsArmy:(c.armies||[]).length>0,
+      untargetable:encounterUntargetableReason(c)}));
 
   // Province-level intelligence (visited non-owned)
   gameState.world.provinces.filter(p=>visitedProvIds.has(p.id)&&!ownedProvIds.has(p.id)).forEach(p=>{
@@ -7061,12 +7095,8 @@ function buildTurnReport(gameState, playerIndex){
   const _armyBand=(n)=>n<=0?'leads no armies':n<=2?'leads a small escort (a few units)':n<=5?'leads a modest band':n<=9?'leads a sizeable host':n<=15?'leads a large host':'leads a vast host';
   gameState.characters.filter(c=>c.alive&&c.player!==playerIndex).forEach(c=>{
     const inOwned=ownedProvIds.has(c.location);
-    const inShared=playerCharLocations.has(c.location);
-    if(!inOwned&&!inShared) return;
-    // Item 5: a character who moved UNSPOTTED this turn is omitted from passive sightings — unless
-    // this player deliberately SPIED the province they stand in (a spy pierces stealth).
-    if(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(c.location)) return;
-    if(c._invisTurn===gameState.turn) return; // Item 18: Invisibility (action) — unseen by every enemy this turn, spies included
+    // Items 1 & 12 (2026-09-10): same rule as the map and the Encounter list (enemyCharVisibleTo).
+    if(!enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs:playerCharLocations,spiedThisTurn})) return;
     const prov=gameState.world.provinces[c.location];
     if(!prov) return;
     const ts=topSkill(c);
@@ -7169,23 +7199,11 @@ function buildTurnReport(gameState, playerIndex){
         const coLoc=ownCharLocs.has(p.id), ownHere=ownedProvIds.has(p.id);
         // Line of sight: a non-own character is visible only where you have a character (co-location)
         // or you OWN the province (your garrison/subjects report anyone in your land).
-        if(!isOwn && !coLoc && !ownHere) return null;
-        if(!isOwn && c._invisTurn===gameState.turn && c.player!=null && relOfReport(gameState,playerIndex,c.player)==='enemy') return null; // Item 18: Invisibility (action) — enemies never see them this turn
-        // Item 7 (this session): spotting an ENEMY in a province you OWN but have NO character in is a
-        // Spy contest (spotEnemyInOwnedProvince) — this REPLACES the flat _unspottedTurn cloak here.
-        // An enemy LEADING AN ARMY can't hide (that only happens mid-battle) → always seen. A deliberate
-        // Spy on the province this turn pierces stealth. Allies/neutral-realm characters are never hidden
-        // from you this way; wandering/guardian neutrals (no player) keep the old passive-stealth rule.
-        if(!isOwn){
-          if(c.player!=null && relOfReport(gameState,playerIndex,c.player)==='enemy' && ownHere && !coLoc && !spiedThisTurn.has(p.id)){
-            const leadsArmy=(c.armies||[]).length>0;
-            if(!leadsArmy && !spotEnemyInOwnedProvince(gameState,playerIndex,p,c)) return null;
-          } else if(c.player==null || !ownHere){
-            // Neutrals everywhere, and any non-own character seen only by non-owned line-of-sight:
-            // the flat unspotted cloak still applies.
-            if(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(p.id)) return null;
-          }
-        }
+        // Items 1 & 12 (2026-09-10): the map, the hero lists and the Encounter target list all use the
+        // ONE rule in enemyCharVisibleTo (line of sight, Invisibility, Spy pierce, Spy-contest in owned
+        // land, flat unspotted cloak elsewhere).
+        if(!isOwn && !enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs,spiedThisTurn})) return null;
+        void coLoc; void ownHere;
         return{id:c.id,name:c.name,isOwn,isKing:c.isKing,
           isWanderer:c.player===null,
           // A neutral character is either the sworn guardian of this province ("local chieftain")
@@ -7325,8 +7343,7 @@ function buildTurnReport(gameState, playerIndex){
     // disagreed about who was where.
     const provHeroes=gameState.characters.filter(c=>
       c.player===null && c.alive && c.location===p.id && !c._isNeutralGuard && !c._justDefeated &&
-      (ownedProvIds.has(p.id)||playerCharLocations.has(p.id)) &&
-      !(c._unspottedTurn===gameState.turn && !spiedThisTurn.has(p.id)) && c._invisTurn!==gameState.turn
+      enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs:playerCharLocations,spiedThisTurn}) // Items 1 & 12: one rule
     );
     if(provHeroes.length>0){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
@@ -7381,7 +7398,7 @@ function buildTurnReport(gameState, playerIndex){
       // Item 1: don't leak an ADJACENT enemy province's garrison composition — only owned/visited
       // provinces (which already exposed it) carry garrison detail; adjacent-only entries exist purely
       // to surface recruitable unit TYPES for a conditional recruit.
-      garrisonArmies:(isOwned||isVisited)?(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality})):[],
+      garrisonArmies:(isOwned||isVisited)?(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||'',race:a.race||null,skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})):[],
     };
   });
 
@@ -7419,7 +7436,7 @@ function buildTurnReport(gameState, playerIndex){
     // with how many of its discoveries are already known (the portal greys out exhausted ones). Names and
     // effects of the discoveries themselves are never sent.
     researchCategories:(()=>{ const known=new Set((player.discoveries||[]).map(d=>d.id)); const m={};
-      SAGE_DISCOVERIES_P.filter(d=>discEligible(d,player)).forEach(d=>{ const e=m[d.category]||(m[d.category]={name:d.category,total:0,known:0}); e.total++; if(known.has(d.id)) e.known++; });
+      SAGE_DISCOVERIES_P.filter(d=>discEligible(d,player)&&!RESEARCH_HIDDEN_CATS.has(d.category)).forEach(d=>{ const e=m[d.category]||(m[d.category]={name:d.category,total:0,known:0}); e.total++; if(known.has(d.id)) e.known++; }); // item 11: hidden fields never listed
       return Object.values(m); })(),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting
     // Any dead hero visible to this player can be resurrected — own or enemy
@@ -7491,6 +7508,9 @@ function buildTurnReport(gameState, playerIndex){
 // It processes all 5 phases for all characters, resolves actions, updates
 // the game state, generates new turn reports, and pushes everything to Supabase.
 
+// Item 11 (2026-09-10): fields of study a player can never choose or see listed — found only as a side
+// result of researching any other field (see case 'research').
+const RESEARCH_HIDDEN_CATS=new Set(['Heroic','Special']);
 const SAGE_DISCOVERIES_P=[
   // ── Military ──
   {id:'sd01',name:'Superior Forging',category:'Military',desc:'All recruited armies start at Veteran quality instead of Average.',effect:{type:'recruitQuality',quality:'Veteran'}},
@@ -8669,6 +8689,30 @@ function isAirborneAtSea(force){
   if(f.some(a=>SEA_TYPES.has(a.type))) return false;
   return f.some(a=>!FLYING_TYPES.has(a.type)&&!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
 }
+// Item 7 (2026-09-10): the race-affinity ("kin") bonus has always been applied inside armStr, but no
+// battle line ever said so, so players could not tell it was in effect. One line per side, before the
+// force rows. ownerRace = race of the OWNING king (the province owner's for a leaderless garrison).
+function kinNarrative(force, leader, ownerRace, sideName){
+  const f=(force||[]).filter(a=>a&&a.race);
+  if(!f.length) return null;
+  const lr=(leader&&leader.race)||null;
+  const both=f.filter(a=>ownerRace&&a.race===ownerRace&&lr&&a.race===lr).length;
+  const kingOnly=f.filter(a=>ownerRace&&a.race===ownerRace&&!(lr&&a.race===lr)).length;
+  const leadOnly=f.filter(a=>lr&&a.race===lr&&!(ownerRace&&a.race===ownerRace)).length;
+  if(!both&&!kingOnly&&!leadOnly) return null;
+  const parts=[];
+  if(both) parts.push(`${both} unit${both!==1?'s':''} of the king's own race under a commander of that blood (+44% strength)`);
+  if(kingOnly) parts.push(`${kingOnly} unit${kingOnly!==1?'s':''} of the king's race (+20%)`);
+  if(leadOnly) parts.push(`${leadOnly} unit${leadOnly!==1?'s':''} of their commander's race (+20%)`);
+  return `🤝 Kinship — ${sideName}: ${parts.join('; ')}.`;
+}
+// Item 8 (2026-09-10): ONE way of naming a unit in every casualty / promotion line, whichever battle
+// path wrote it: "Owner's Unit Name (Type, Quality)" — previously the NPC path omitted the owner and
+// the PvP path omitted type and quality.
+function unitRef(ownerName, a){
+  const core=a.unitName?`${a.unitName} (${a.type}, ${a.quality})`:`${a.quality} ${a.type}`;
+  return ownerName?`${ownerName}'s ${core}`:core;
+}
 function seaPenalty(armyType, terrain){
   if(terrain!=='sea') return 1.0;
   if(FLYING_TYPES.has(armyType)||SEA_TYPES.has(armyType)) return 1.0;
@@ -8854,7 +8898,7 @@ function seaPenalty(armyType, terrain){
   // playerIdx null → neutral. role: 'attacker' | 'defender'. verbText overrides the default verb.
   function forceMarker(name, playerIdx, role, armies, verbText){
     const color=(playerIdx!=null && G.players[playerIdx])?(G.players[playerIdx].color||null):null;
-    const arr=(armies||[]).map(a=>({type:a.type, quality:a.quality, unitName:a.unitName||'', race:a.race||null, phantom:!!a._phantom}));
+    const arr=(armies||[]).map(a=>({type:a.type, quality:a.quality, unitName:a.unitName||'', race:a.race||null, phantom:!!a._phantom, skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})); // item 2: Wild Hunt tag rides into battle rows too
     return '⚑FORCE⚑'+JSON.stringify({
       name:(name||'').replace(' (wandering)',''),
       color, neutral:(playerIdx==null),
@@ -9157,12 +9201,14 @@ const BATTLE_ARMY_SPELLS={
     const _npcHeldBy=neutralGuardHero?`${neutralGuardHero.name.replace(' (wandering)','')} and the local defenders`:(_npcOwnerName?`${_npcOwnerName}'s garrison`:`its neutral defenders`);
     // Items 6 & 11: the "moves into … a battle is initiated" line is ALWAYS the first line of a battle
     // report — before terror, flak or any other pre-battle note.
-    if(!c._resumeBattle) narrative.push(`➡️ ${c.name} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`);
+    if(!c._resumeBattle) narrative.push(`➡️ ${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`); // item 8: same opener as PvP
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders (stacking).
     consumeTerror(prov, defenders, narrative);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // item 5: commander's magic items in play
-    narrative.push(forceMarker(c.name, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`));
+    { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
+      const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
+    narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`)); // item 8: realm named, as in PvP
     if(neutralGuardHero){
       narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
     } else {
@@ -9586,7 +9632,7 @@ const BATTLE_ARMY_SPELLS={
       const flankCount=groundAtk.length-lineWidth;
       const frontTypes=groundAtk.slice(0,lineWidth).map(x=>x.a.unitName||x.a.type);
       const flankTypes=groundAtk.slice(lineWidth).map(x=>x.a.unitName||x.a.type);
-      narrative.push(`📊 ${prov.terrain} terrain — front line holds ${lineWidth} units: ${frontTypes.join(', ')}. Reserve (${flankCount} at ×${flankMultNPC}): ${flankTypes.join(', ')}.`);
+      narrative.push(`📊 ${prov.terrain} terrain — ${cName}'s front line holds ${lineWidth}: ${frontTypes.join(', ')}; reserve ${flankCount} at ×${flankMultNPC}.`); // item 8: same shape as PvP
     }
     if(archSkillAtk>0&&armies.some(a=>MISSILE_ARMIES.has(a.type))) narrative.push(`${cName}'s Archery ${archSkillAtk} grants +${(archSkillAtk*10)}% strength to missile units.`);
     // Show Druid shortfall warnings
@@ -9811,10 +9857,10 @@ const BATTLE_ARMY_SPELLS={
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathChance*steelMultOf(a)*(_npcWargs?0.5:1)){
-          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} suffered heavily and were destroyed in the fighting.`);
+          narrative.push(`— ${unitRef(cName,a)} were destroyed in the fighting.`);
           a._died=true; winEvents++;
         } else if(roll<winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMult,a.quality)*humanXPMult(a,c.player,G)){
-          if(idx>=0&&idx<4){a.quality=tiers[idx+1];narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} distinguished themselves and are promoted to ${a.quality}!`);winEvents++;}
+          if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);winEvents++;}
           else winSurv++;
         } else {
           winSurv++;
@@ -9834,12 +9880,13 @@ const BATTLE_ARMY_SPELLS={
       // emptied). They now roll unit-by-unit at the same rate a beaten player would, plus the
       // extra no-escape roll a trapped player takes — because neutrals genuinely cannot retreat.
       // Survivors stay in the province and contest it again next phase.
-      narrative.push(`🛡 **${defHero?defHero.name.replace(' (wandering)',''):('The defenders of '+prov.name)}'s forces** (defender):`);
+      const _defOwnerNm=defHero?defHero.name.replace(' (wandering)',''):('The defenders of '+prov.name);
+      narrative.push(`🛡 **${_defOwnerNm}'s forces** (defender):`);
       if(_npcRideAtk>0) narrative.push(`🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${Math.round(_npcRideAtk*100)}% losses).`);
       defenders.forEach(a=>{
         if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtk){
           a._died=true;
-          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} were destroyed in the rout!`);
+          narrative.push(`— ${unitRef(_defOwnerNm,a)} were destroyed in the rout!`);
         }
       });
       const _trapped=defenders.filter(a=>!a._died);
@@ -9875,7 +9922,7 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>{
         if(Math.random()<winDeathChance*0.5){ // defenders take lighter casualties when they win
           a._defDied=true;
-          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} fell defending ${prov.name}.`);
+          narrative.push(`— ${unitRef(defName2.replace(' (wandering)',''),a)} were destroyed in the fighting.`); // item 8
         }
       });
       if(defenders.some(a=>!a._defDied)) narrative.push(`— ${defenders.some(a=>a._defDied)?'All other':'All'} forces survive the engagement.`);
@@ -9908,15 +9955,15 @@ const BATTLE_ARMY_SPELLS={
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDef){
-          narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
+          narrative.push(`— ${unitRef(cName,a)} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
           a._died=true;
         } else if(!a._isSkeletal){
           const roll2=Math.random();
           if(roll2<loseDemoteChance*tacMultNPC){
             if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
-            else {a._notable=true;narrative.push(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} lost heart in defeat, reduced to ${a.quality}.`);}
+            else {a._notable=true;narrative.push(`— ${unitRef(cName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
           } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G)){
-            if(idx>=0&&idx<4){a.quality=tiers[idx+1];a._notable=true;narrative.push(`— Though beaten, ${a.unitName?a.unitName+' ('+a.type+')':a.type} learned from the engagement and improved to ${a.quality}!`);}
+            if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];a._notable=true;narrative.push(`— Despite defeat, ${unitRef(cName,{...a,quality:_q0})} improved to ${a.quality}!`);}
           }
         }
       });
@@ -9989,7 +10036,8 @@ const BATTLE_ARMY_SPELLS={
     if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative);       // Druid: won while leading primal armies
     // Item 5: a one-line result that onlookers (a char present but not fighting) may see instead of the
     // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows more.
-    const summaryText=`⚔ Battle at ${prov.name}: ${cName}'s forces ${won?'carry the field':'are thrown back'}.`;
+    const _sumDef=defHero?defHero.name.replace(' (wandering)',''):`the defenders of ${prov.name}`;
+    const summaryText=`⚔ Battle at ${prov.name}: ${won?`${cName}'s forces defeat ${_sumDef}`:`${_sumDef} hold against ${cName}`}.`; // item 8: same shape as PvP
     return{won,narrative,summaryText};
   }
 
@@ -11175,6 +11223,8 @@ const BATTLE_ARMY_SPELLS={
     if(!atk._resumeBattle) narrative.push(`➡️ ${atk.name} (${G.players[atk.player]?.name}) moves into ${prov.name}, held by ${_pvpHeldBy} — a battle is initiated.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     { const _ia=magicItemsLine(atk), _id=magicItemsLine(def); if(_ia)narrative.push(_ia); if(_id)narrative.push(_id); } // item 5
+    { const _kA=kinNarrative(atkArmies,atk,(G.players[atk.player]?.race||null),`${atk.name}'s host`); if(_kA) narrative.push(_kA); // item 7
+      const _kD=kinNarrative(defArmies,def,(G.players[def.player]?.race||null),`${def.name}'s host`); if(_kD) narrative.push(_kD); }
     narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''}, with`));
     narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''}, with`));
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now (stacking).
@@ -11691,9 +11741,9 @@ const BATTLE_ARMY_SPELLS={
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<winDeathPvP*atkSteelMultOf(a)){a._died=true;narrative.push(`— ${atkName}'s ${a.unitName||a.type} were destroyed in the fighting.`);}
+        if(roll<winDeathPvP*atkSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(atkName,a)} were destroyed in the fighting.`);}
         else if(roll<winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){
-          if(i<4){a.quality=tiers[i+1];narrative.push(`— ${atkName}'s ${a.unitName||a.type} earn promotion to ${a.quality}!`);}
+          if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— ${unitRef(atkName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);}
         }
       });
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
@@ -11705,11 +11755,11 @@ const BATTLE_ARMY_SPELLS={
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff){a._died=true;narrative.push(`— ${defName}'s ${a.unitName||a.type} were destroyed in the rout!`);}
+        if(roll<loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the rout!`);}
         else {
           const roll2=Math.random();
-          if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${defName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${defName}'s ${a.unitName||a.type} are reduced to ${a.quality} in defeat.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${defName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
+          if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${unitRef(defName,a)} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${unitRef(defName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(defName,a)} improved to ${a.quality}!`);}}
         }
       });
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
@@ -11782,11 +11832,11 @@ const BATTLE_ARMY_SPELLS={
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff){a._died=true;narrative.push(`— ${atkName}'s ${a.unitName||a.type} were annihilated!`);}
+        if(roll<loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff){a._died=true;narrative.push(`— ${unitRef(atkName,a)} were annihilated in the rout!`);}
         else {
           const roll2=Math.random();
-          if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${atkName}'s ${a.unitName||a.type} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${atkName}'s ${a.unitName||a.type} suffer in retreat, demoted to ${a.quality}.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Through adversity, ${atkName}'s ${a.unitName||a.type} improved to ${a.quality}!`);}}
+          if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${unitRef(atkName,a)} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${unitRef(atkName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(atkName,a)} improved to ${a.quality}!`);}}
         }
       });
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
@@ -11795,8 +11845,8 @@ const BATTLE_ARMY_SPELLS={
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<winDeathPvP*defSteelMultOf(a)){a._died=true;narrative.push(`— ${defName}'s ${a.unitName||a.type} were lost defending ${prov.name}.`);}
-        else if(roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${defName}'s ${a.unitName||a.type} are hardened by victory to ${a.quality}!`);}}
+        if(roll<winDeathPvP*defSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the fighting.`);}
+        else if(roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${unitRef(defName,a)} are hardened by victory to ${a.quality}!`);}}
       });
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -13663,6 +13713,52 @@ const BATTLE_ARMY_SPELLS={
         // sd19 Cipher Scripts: if target province owner has it, -25% to our spy
         const targetProvForSpy=G.world.provinces[parseInt(target)];
         const cipherPenalty=((targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player)?((hasDisc(targetProvForSpy.owner,'sd19')?0.25:0)+discSum(targetProvForSpy.owner,'counterSpy','pct')):0); // Item 5: counterSpy discoveries
+        // ── Item 10 (2026-09-10): SPY ON A CHARACTER ── target 'char:<id>' names a non-own character
+        // standing in the same province. Success 25% +10%/Spy level (Master Spy / Crystal Orb: automatic)
+        // reveals every skill level, every magic item and every army unit they lead. Success or not, the
+        // spy may be CAUGHT: 20% +10%/target Spy −10%/own Spy, +15% in the target realm's own land,
+        // −15% in this realm's own land (clamped 5–95; The Shadow is never caught). Caught → a personal
+        // combat, unless the target's Encounter Plan stance is Refuse (same scuffle as a caught thief).
+        if(String(target||'').startsWith('char:')){
+          const _tid=String(target).slice(5);
+          const _tgt=(G.characters||[]).find(x=>x&&String(x.id)===_tid&&x.alive);
+          if(!_tgt||_tgt.location!==c.location||_tgt.player===c.player){
+            log('system',`${c.name} looks for ${_tgt?_tgt.name:'their quarry'} in ${prov.name}, but they are not to be found here — the spying comes to nothing.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          if(activeItems(_tgt).some(it=>it&&it.effect&&it.effect.stat==='hidden')){
+            log('system',`${c.name} shadows ${_tgt.name} through ${prov.name}, but can never quite fix on a face — nothing is learned. (Cloak of Many Faces)`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          const _mySpy=effStat(c,'spy'), _tgSpy=effStat(_tgt,'spy');
+          const _masterSpy=perkTier(c,'spy')>0;
+          const _auto=hasCrystalOrb||_masterSpy;
+          const _chance=Math.max(5,Math.min(95,Math.round((0.25+0.10*_mySpy+spyBonus)*100)));
+          const _roll=d100();
+          const _ok=_auto||_roll<=_chance;
+          log('system',`📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_chance,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(_ok){
+            trySkillGain(c,'spy',SKILLGAIN_STD);
+            const _ap=G.players[c.player];
+            if(_ap){ _ap._spiedHeroSkills=_ap._spiedHeroSkills||{}; _ap._spiedHeroSkills[_tgt.id]={name:_tgt.name,isKing:!!_tgt.isKing,alignment:_tgt.alignment||null,race:_tgt.race||null,kingdom:(_tgt.player!=null)?(G.players[_tgt.player]?.name||null):null,skills:{...(_tgt.skills||{})},turn:G.turn}; }
+            const _sk=Object.entries(_tgt.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'no skills to speak of';
+            const _it=(_tgt.items||[]).map(it=>it.name).join(', ')||'no magic items';
+            const _ar=(_tgt.armies||[]).length?describeArmy(_tgt.armies):'no armies';
+            log('spy',`[Intelligence] 🔍 ${c.name}'s report on ${_tgt.name}${_tgt.player!=null?` of ${G.players[_tgt.player]?.name}`:''} (${_tgt.race||'?'}, ${_tgt.alignment||'?'}${_tgt.isKing?', king':''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,spy:true});
+          } else {
+            log('system',`${c.name} watches ${_tgt.name} closely in ${prov.name}, but learns nothing of use.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          }
+          // Caught?
+          if(!charMinor(c,'shadow')){
+            let _catch=20+10*_tgSpy-10*_mySpy;
+            const _tgRealmLand=(_tgt.player!=null&&prov.owner===_tgt.player), _myLand=(prov.owner===c.player);
+            if(_tgRealmLand) _catch+=15; if(_myLand) _catch-=15;
+            _catch=Math.max(5,Math.min(95,_catch));
+            const _cr=d100();
+            log('system',`📊 Detection — ${_tgt.name} (Spy ${_tgSpy}) noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${fmtRoll(_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            if(_cr<=_catch){
+              if(_tgt.player!=null) log('system',`[Intelligence] ${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''} was caught spying on ${_tgt.name} in ${prov.name}.`,{actor:c.player,targets:[_tgt.player],provinceId:prov.id,charId:_tgt.id});
+              thiefCaughtScuffle(c,_tgt,'spying on them');
+            }
+          } else log('system',`${c.name} slips away unseen. (The Shadow)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          break;
+        }
         // LEVEL 6+ SKILL PERK — Master Spy: at Spy 6+, espionage never fails (as the Crystal Orb).
         const masterSpy=perkTier(c,'spy')>0;
         // Disguise is decided fresh for EVERY spy order — the flag lives on the character record and
@@ -13847,8 +13943,11 @@ const BATTLE_ARMY_SPELLS={
         // distinct mastery orders instead of a further per-level climb.
         const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct'); // + Loreseeker minor title; Item 5 research discoveries
         // Item 6 (2026-09-07): the order names a CATEGORY (target); blank/'any' = the whole eligible table.
-        const _rcat=(target||'').trim();
-        const _catFilter=(d)=>!_rcat||_rcat.toLowerCase()==='any'||(d.category||'').toLowerCase()===_rcat.toLowerCase();
+        // Item 11 (2026-09-10): the Heroic and Special fields can no longer be named or seen — they are
+        // found only as an unlooked-for side result of researching any other field (roll below).
+        const _rcatRaw=(target||'').trim();
+        const _rcat=RESEARCH_HIDDEN_CATS.has(_rcatRaw)?'':_rcatRaw;
+        const _catFilter=(d)=>!RESEARCH_HIDDEN_CATS.has(d.category)&&(!_rcat||_rcat.toLowerCase()==='any'||(d.category||'').toLowerCase()===_rcat.toLowerCase());
         { const _knownPre=new Set((player.discoveries||[]).map(d=>d.id));
           if(_rcat&&_rcat.toLowerCase()!=='any'&&!discAvailableFor(c.player,_knownPre).some(_catFilter)){
             log('system',`${c.name}: every ${_rcat} discovery has already been made by your realm — choose another field of study.`,{actor:c.player,targets:[c.player]});break; } }
@@ -13871,6 +13970,22 @@ const BATTLE_ARMY_SPELLS={
         } else {
           log('system',`${c.name} researches hard but makes no new discovery this turn.`,{actor:c.player,targets:[c.player]});
         }
+        // Item 11 (2026-09-10): the hidden fields — an independent side roll at HALF the discovery
+        // chance whenever any research is done. Reported as an unexpected find; the field is never named
+        // as a choice anywhere the player can see.
+        { const _sRoll=d100(); const _sChance=Math.max(1,Math.floor(discoveryChance/2));
+          if(_sRoll<=_sChance){
+            if(!player.discoveries) player.discoveries=[];
+            const _known2=new Set(player.discoveries.map(d=>d.id));
+            const _side=discAvailableFor(c.player,_known2).filter(d=>RESEARCH_HIDDEN_CATS.has(d.category));
+            if(_side.length>0){
+              const disc=_side[Math.floor(Math.random()*_side.length)];
+              player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
+              if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; }
+              log('explore',`💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light. ${disc.desc}`,{actor:c.player,targets:[c.player]});
+              trySkillGain(c,'sage',SKILLGAIN_STD);
+            }
+          } }
         break;
       }
       case 'practice':{
@@ -15880,17 +15995,17 @@ const BATTLE_ARMY_SPELLS={
         G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
           location:prov.id,isSea:SEA_TYPES.has(a.type),
           id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
-        emit(`— ${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.quality+' '+a.type} break ranks and flee — they now roam as mercenaries near ${prov.name}.`);
+        emit(`— ${unitRef(gname,a)} break ranks and flee — they now roam as mercenaries near ${prov.name}.`); // item 8: unified unit naming
         return;
       }
       // Only some of those who stay are worn down a tier; the rest hold at their current quality.
       if(Math.random()<GUARD_DEMOTE_CHANCE){
         if(demoteOrDisband(a)){ emit(disbandLine(gname,a)); return; }
-        emit(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} bloodied, reduced to ${a.quality} — they rally around ${gname}.`);
+        emit(`— ${unitRef(gname,a)} lost heart in defeat, reduced to ${a.quality} — they rally around ${gname}.`);
         kept.push(a);
         return;
       }
-      emit(`— ${a.unitName?a.unitName+' ('+a.type+')':a.type} hold their ground unbroken and rally around ${gname}.`);
+      emit(`— ${unitRef(gname,a)} hold their ground unbroken and rally around ${gname}.`);
       kept.push(a);
     });
     return kept;
@@ -18737,6 +18852,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-0939</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1341</div>
 </body>
 </html>

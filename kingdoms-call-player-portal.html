@@ -562,7 +562,16 @@ function itemSlotP(it){ if(!it) return null; if(it.slot!==undefined) return it.s
 // Item 4 (2026-09-07): race/alignment-bound items are inert in the wrong hands.
 function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==it.race)) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
 function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${it.race} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#a33;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
-function itemSlotTag(it){ const sl=itemSlotP(it); if(!sl) return ''; return it.equipped===false?` <span style="color:#999;font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} — not equipped]</span>`:` <span style="color:#6b5a2a;font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} — equipped]</span>`; }
+function itemSlotTag(it,c){
+  // Item 6 (2026-09-10): name the slot AND how many of that slot the character still has free.
+  const sl=itemSlotP(it);
+  if(!sl) return ` <span style="color:#777;font-size:.72rem">[carried — needs no slot]</span>`;
+  const cap=ITEM_SLOT_CAP_P[sl]||1;
+  const used=c?((c.items||[]).filter(o=>o&&itemSlotP(o)===sl&&o.equipped!==false&&itemUsableByP(o,c)).length):(it.equipped===false?0:1);
+  const free=Math.max(0,cap-used);
+  const st=it.equipped===false?'not equipped':'equipped';
+  return ` <span style="color:${it.equipped===false?'#999':'#6b5a2a'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
+}
 function updateEquipTarget(charId, ph){
   const wrap=document.getElementById(`po-equip-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(!wrap||!hidden) return;
@@ -1446,8 +1455,8 @@ async function doJoinGame(gameId){
 }
 
 function buildChronicle(log, chars_for_log){
-  const PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
-  const PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a'];
+  const PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];
+  const PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555'];
 
   // ── Item 9 (this session): the Reckoning / endgame notice is pinned to the VERY TOP of the
   // Chronicle for EVERY player, above all phase events — it is the most consequential thing that can
@@ -1492,7 +1501,7 @@ function buildChronicle(log, chars_for_log){
     // Build char map keyed by id; king first
     const orderedChars=[...chars_for_log].sort((a,b)=>(b.isKing?1:0)-(a.isKing?1:0));
     orderedChars.forEach(c=>{
-      charEntries[c.id]={id:c.id,name:c.name,isKing:c.isKing,phases:[[], [], [], [], []]};
+      charEntries[c.id]={id:c.id,name:c.name,isKing:c.isKing,phases:[[], [], [], [], [], []]}; // item 3 (2026-09-10): [5] = End of Turn
     });
 
     log.forEach(e=>{
@@ -1522,7 +1531,9 @@ function buildChronicle(log, chars_for_log){
         intelByPhase[ph]=(intelByPhase[ph]||[]);
         intelByPhase[ph].push(e);
       } else if(hasChar){
-        charEntries[_secCharId].phases[ph>=0&&ph<=4?ph:0].push(e);
+        // Item 3 (2026-09-10): an explicit end-of-turn entry (phase 99 — couriers, escapes, observatory)
+        // files under "End of Turn" AFTER Early Winter, not in Spring. Unphased turn-START entries keep Spring.
+        charEntries[_secCharId].phases[(ph>=0&&ph<=4)?ph:(e.phase===99?5:0)].push(e);
       } else {
         systemByPhase[ph]=(systemByPhase[ph]||[]);
         systemByPhase[ph].push(e);
@@ -2101,7 +2112,7 @@ function renderReportView(report){
           ${c.race} · ${c.alignment} · ${c.temper}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${itemLoreTip(i,i.name)}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i):''}${i.desc?` (${i.desc})`:''}`).join('')}
+          ${(c.items||[]).map(i=>`<br>🔮 ${itemLoreTip(i,i.name)}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}`).join('')}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -2314,7 +2325,7 @@ function renderReportView(report){
               ? `<strong${ch.color?` style="color:${ch.color}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
               : `<strong>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
             const force=(ch.armies&&ch.armies.length>0)
-              ? ` — ${ch.armies.map(a=>a.unitName?`${a.unitName} (${a.quality})`:`${a.quality} ${a.type}`).join(', ')}`
+              ? ` — ${ch.armies.map(a=>armyLabel(a,{short:true})).join(', ')}`
               : (ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:'');
             const sk=(ch.spiedSkills&&Object.keys(ch.spiedSkills).some(k=>ch.spiedSkills[k]>0))
               ? `<br><span style="font-size:.72rem;color:#2d7a2d">🔍 Skills:</span> ${Object.entries(ch.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
@@ -3038,7 +3049,10 @@ function armyLabel(a, opts={}){
   const lead=primalWord||race; // humanoid keeps its race name; primal shows Creature/Monster
   const str=unitBaseStrengthP(a);
   const detail=[lead,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
-  return name?`${name} (${detail})`:`${detail}`;
+  // Item 2 (2026-09-10): beasts bound by the Rite of the Wild Hunt are flagged wherever an army line
+  // is rendered — they draw no wages and leave when the binding fails.
+  const wild=(a.wildHunt||a._wildHuntUntilTurn!=null)?` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil!=null?a.wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:'?')}, no wages]</span>`:'';
+  return (name?`${name} (${detail})`:`${detail}`)+wild;
 }
 
 // Item 5: an icon representing the *kind* of unit (land / sea / flying / creature / monster) so
@@ -3278,7 +3292,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -4524,9 +4538,8 @@ function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // Item 1 (2026-09-09): magic-item lore — the engine attaches `lore` (a short narrative that states the effect in
 // plain words) to every item in the report; hovering the item's name shows it, like a unit's ability tip.
 function itemLoreTip(it, inner){
-  const t=(it&&(it.lore||it.desc))||'';
-  if(!t) return inner;
-  return `<span title="${String(t).replace(/"/g,'&quot;')}" style="cursor:help;border-bottom:1px dotted var(--stone)">${inner}</span>`;
+  // Item 5 (2026-09-10): the description is printed after every item, so the hover pop-up is retired.
+  return inner;
 }
 function unitAbilityTip(type, inner){
   const ab=unitAbilityText(type);
@@ -4690,7 +4703,8 @@ async function doSubmitOrders(){
       const action=document.getElementById(`po-action-${c.id}-${ph}`)?.value||'Defend';
       const target=getOrderTarget(c.id,ph);
       const extra=getOrderExtra(c.id,ph);
-      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'');
+      const _spyName=(action==='Spy'&&String(target||'').startsWith('char:'))?(((currentReport||{}).visibleChars||[]).find(x=>String(x.id)===String(target).slice(5))?.name||null):null;
+      const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'')+(_spyName?` — on ${_spyName}`:'');
       return{action,target,extra,desc};
     });
     // Collect encounter plan
@@ -5289,6 +5303,14 @@ function practiceCompanionSkill(c, ph){
   });
   return best;
 }
+function practiceOwnEarlierSkill(c, ph){
+  for(let q=ph-1;q>=0;q--){
+    const act=document.getElementById(`po-action-${c.id}-${q}`)?.value;
+    if(act!=='Practice Skill') continue;
+    const sk=getOrderTarget(c.id,q); if(sk&&ALL_SKILLS.includes(sk)) return sk;
+  }
+  return '';
+}
 function buildTargetField(c, ph, saved){
   const action=saved.action||'';
   const target=saved.target||'';
@@ -5443,10 +5465,18 @@ function buildTargetField(c, ph, saved){
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Higher Explorer skill and better terrain reveal more each time; lairs surface as the map fills.</div>`;}
 
     // ── SPY / REST ──
-    case 'Spy':
-      // 2026-09-09g: Spy takes no target, but it DOES have odds — quote them (split out of the
-      // shared Rest case, which has none).
-      return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>${orderChanceNote(c,'Spy',ph)}`;
+    case 'Spy':{
+      // Item 10 (2026-09-10): spy on the PROVINCE (as before, target '') or on a non-own CHARACTER you can
+      // see standing in the same province (target 'char:<id>').
+      const here=predictedLocation(c.id,ph); const hereId=here?here.id:c.locationId;
+      const foes=(report.visibleChars||[]).filter(x=>x.id!==c.id&&x.locationId===hereId&&(x.player===null||x.player!==c.player));
+      const spyLvl=effSkillP(c,'spy');
+      const charPct=Math.max(5,Math.min(95,25+10*spyLvl));
+      const opts=foes.map(x=>`<option value="char:${x.id}" ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' ⚔ (king)':''}${x.isWandering?' (wandering)':''} — ~${charPct}% to learn their skills, items and army</option>`).join('');
+      return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})"><option value="" ${!target?'selected':''}>Spy on the province (${here?here.name:'here'})</option>${opts}</select>
+        ${String(target||'').startsWith('char:')
+          ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
+          :orderChanceNote(c,'Spy',ph)}`;}
     case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
 
@@ -5475,9 +5505,15 @@ function buildTargetField(c, ph, saved){
       // forces the meeting when he catches them (report.encounterTargets carries exactly these).
       // Item 6: only a king may run down an enemy king, so a common hero never sees enemy kings here
       // (the engine enforces the same rule server-side). Own-side characters are never in this list.
-      const targets=(report.encounterTargets||[]).filter(x=>x.id!==c.id && !(x.isKing && !c.isKing));
-      if(targets.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
-      const opts=targets.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}</option>`).join('');
+      // Items 1 & 12 (2026-09-10): the list is now exactly what the map shows. A hero you can SEE but
+      // cannot hunt is still listed — greyed out with the reason — so the dropdown never silently
+      // disagrees with the map.
+      const allSeen=(report.encounterTargets||[]).filter(x=>x.id!==c.id);
+      const reasonOf=(x)=>x.untargetable==='faceless'?'no face anyone can remember — cannot be hunted':(x.isKing&&!c.isKing)?'only your king may hunt a king':null;
+      const targets=allSeen.filter(x=>!reasonOf(x));
+      if(allSeen.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
+      const opts=allSeen.map(x=>{ const why=reasonOf(x); return `<option value="${why?'':x.id}" ${why?'disabled':''} ${(!why&&target==x.id)?'selected':''}>${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}${why?` — ${why}`:''}</option>`; }).join('');
+      if(targets.length===0) return`<select id="po-target-${c.id}-${ph}"><option value="" selected>— No character here can be hunted by ${c.name} —</option>${opts}</select>`;
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
         <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if they run out of movement). When they catch up: two columns give battle; otherwise it is a personal duel (a quarry leading troops won't break ranks for one). Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
     }
@@ -5658,7 +5694,7 @@ function buildTargetField(c, ph, saved){
       { const m=/S:([0-9,]*)\|E:([0-9,]*)/.exec(extra||''); if(m){ m[1].split(',').filter(Boolean).forEach(x=>_boSaved.S.add(+x)); m[2].split(',').filter(Boolean).forEach(x=>_boSaved.E.add(+x)); } }
       const _boRows=_boArmy.length
         ? _boArmy.map((a,i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
-            <span style="flex:1">${(typeof unitEmoji==='function'?unitEmoji(a.type):'')} ${a.unitName||a.type} (${a.quality})</span>
+            <span style="flex:1">${(typeof unitEmoji==='function'?unitEmoji(a.type):'')} ${armyLabel(a)}</span>
             <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering('${c.id}',${ph})" style="font-size:.7rem">
               <option value="K" ${(!_boSaved.S.has(i)&&!_boSaved.E.has(i))?'selected':''}>Keep</option>
               <option value="S" ${_boSaved.S.has(i)?'selected':''}>Sacrifice ✝</option>
@@ -5761,7 +5797,9 @@ function buildTargetField(c, ph, saved){
       // realm's characters is already practising in the SAME province (predicted for this phase) in
       // the SAME phase - the engine's co-trainer rule - so a group drill takes one click to line up.
       // All skills stay listed; an explicitly saved target always wins.
-      const defaultSk=target||practiceCompanionSkill(c,ph)||'';
+      // Item 4 (2026-09-10): failing a companion, default to whatever THIS character practised in an
+      // earlier phase this turn (the latest one), so a training week takes one click per phase.
+      const defaultSk=target||practiceCompanionSkill(c,ph)||practiceOwnEarlierSkill(c,ph)||'';
       const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
 
@@ -6789,6 +6827,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-0939</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1341</div>
 </body>
 </html>
