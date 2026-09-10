@@ -6166,8 +6166,12 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         conv.npcArmies=conv.neutralDefenders.length;
         conv.name=null; // re-named thematically by the naming pass below
     };
-    const homeLandNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
+    const _rawLandNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
     const _isHumanoid=(n)=>!!n&&!String(n.race||'').startsWith('Primal');
+    // 2026-09-10 (item 1): when a tax band has to be FORCED, prefer a cell that is not an earlier
+    // king's guaranteed pair member, so fixing this home can't silently break a neighbouring home's.
+    const _earlierPair=new Set(playerStarts.flatMap(h=>h._homePairIds||[]));
+    const homeLandNbrs=[..._rawLandNbrs.filter(n=>!_earlierPair.has(n.id)),..._rawLandNbrs.filter(n=>_earlierPair.has(n.id))];
     // Pick the poor neighbour: an existing poor humanoid, else an existing poor primal, else force one.
     let poorNbr=homeLandNbrs.find(n=>n.tax>=1&&n.tax<=3&&_isHumanoid(n))||homeLandNbrs.find(n=>n.tax>=1&&n.tax<=3)||null;
     if(!poorNbr&&homeLandNbrs.length>=1){ poorNbr=homeLandNbrs[0]; poorNbr.tax=rP(1,3); }
@@ -6193,9 +6197,14 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         const CBT={plain:['Giant Eagles','Stone Giants'],desert:['Stone Giants','Giant Eagles'],forest:['Forest Ents','Giant Eagles'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Giant Eagles']};
         const MBT={plain:['Titan Warbeasts','Manticore Pride'],desert:['Manticore Pride','Basilisk Brood'],forest:['Cave Trolls','Basilisk Brood'],jungle:['Basilisk Brood','Cave Trolls','Manticore Pride'],mountain:['Cave Trolls','Elder Dragons']};
         const _allFreeNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
-        // Item 17: keep the guaranteed poor/prosperous humanoid pair intact where any other neighbour exists.
-        const _nonPair=_allFreeNbrs.filter(n=>!(best._homePairIds||[]).includes(n.id));
-        const _freeNbrs=_nonPair.length?_nonPair:_allFreeNbrs;
+        // 2026-09-10 (item 1): the poor/prosperous pair must be HUMANOID for EVERY home, so this pass
+        // may never convert (a) this home's own pair, (b) an earlier king's pair, or (c) any cell in an
+        // earlier king's ring (that would push their ring over the one-primal cap after their cap pass
+        // has already run). Rings overlap on clustered starts, which is exactly where this used to break.
+        const _protectedIds=new Set(best._homePairIds||[]);
+        playerStarts.forEach(h=>{ (h._homePairIds||[]).forEach(id=>_protectedIds.add(id));
+          getNeighborsP(h,cols,rows,provinces).forEach(n=>{ if(n) _protectedIds.add(n.id); }); });
+        const _freeNbrs=_allFreeNbrs.filter(n=>!_protectedIds.has(n.id)); // may be empty -> no alignment neighbour; the pair wins
         // don't clobber the just-guaranteed own-race neighbour if we can help it
         const _pick=(list)=>{ const notOwn=list.filter(n=>n.race!==sp.race); return (notOwn.length?notOwn:list); };
         let cand=null;
@@ -8486,8 +8495,9 @@ async function runTurn(opts){
     // every chance-based path (practice, experience, moves…) flows through here, so all are covered.
     const _humanLearn=((real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1)
       *(1+discSum(real.player,'skillGain','pct')); // item 2 (2026-09-09): rh05 Schools of the Sword — every character of the realm learns faster
-    // Item 8 (2026-09-07): diminishing returns — every time this skill has ALREADY risen through experience
-    // this turn, the next chance to raise it the same way is ×0.8 (cumulative). Reset each turn with _sgLog.
+    // Item 8 (2026-09-07): diminishing returns — every time this skill has ALREADY risen this turn (through
+    // experience, or through a successful Practice — item 2, 2026-09-10), the next chance to raise it through
+    // experience is ×0.8 (cumulative). Reset each turn with _sgLog.
     const _gainsThisTurn=(real._sgLog.turnGains&&real._sgLog.turnGains[skill])||0;
     const _diminish=Math.pow(0.8,_gainsThisTurn);
     if(Math.random()<Math.min(1,chance*_humanLearn*_diminish*mult)){
@@ -14141,6 +14151,11 @@ const BATTLE_ARMY_SPELLS={
             if(_prRoll<=_prPct){
           c._practiceFailStreak={turn:G.turn,n:0}; // Item 7: success resets the streak
           c.skills[skill]=(c.skills[skill]||0)+1;
+          // 2026-09-10 (item 2): a practice rise counts toward the same per-turn tally that dampens
+          // EXPERIENCE gains (×0.8 per earlier rise of this skill this turn, see trySkillGain), so a
+          // skill drilled up in phase 1 is proportionally harder to raise again in the field later on.
+          if(!c._sgLog || c._sgLog.turn!==G.turn) c._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
+          c._sgLog.turnGains=c._sgLog.turnGains||{}; c._sgLog.turnGains[skill]=(c._sgLog.turnGains[skill]||0)+1;
           recalcHeroPay(c);
           const _prHp=syncMaxHp(c,G.players); // Sept 2026 redesign: skill drives max HP
           // Item 2 (2026-09-07 batch 2): a mentored improvement is guaranteed — no roll to show.
@@ -18945,6 +18960,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1730</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1744</div>
 </body>
 </html>

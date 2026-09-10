@@ -401,6 +401,8 @@ section{display:none;}.section-active{display:block;}
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8a2020" stroke="#fff" stroke-width="1"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4.2,11 Q8,7.5 11.8,11" fill="#fff"/></svg> Enemy hero</span>
           <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#888" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" fill="#fff">?</text></svg> Wandering hero</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#b08a5a" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚑</span> Your army in the field</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
@@ -6326,6 +6328,9 @@ function popupKnownChars(pd, deadHeroes){
   return s;
 }
 // Single function renders into any SVG element (inline or fullscreen)
+// 2026-09-10 (item 4): map marker colour for local chieftains (neutral-province guards). Wandering heroes
+// stay #888 grey with '?'; chieftains are light brown with '!'. Keep in step with the legend SVG above.
+const CHIEFTAIN_MARKER_COLOR='#b08a5a';
 function renderMapIntoSvg(svgEl, report){
   const svgNS='http://www.w3.org/2000/svg';
   svgEl.innerHTML='';
@@ -6511,7 +6516,10 @@ function renderMapIntoSvg(svgEl, report){
       // grey. An "enemy" is only a character that belongs to another PLAYER (has a real realm
       // colour); guards have no ownerColor, so they can never fall into the red enemy bucket (item 9).
       const enemyChars=pd.characters.filter(c=>!c.isOwn&&!c.isWanderer&&!c.isNeutralGuard&&c.ownerColor);
-      const wanderers=pd.characters.filter(c=>!c.isOwn&&(c.isWanderer||c.isNeutralGuard||!c.ownerColor));
+      // 2026-09-10 (item 4): local chieftains (sworn guards of neutral provinces) get their own marker —
+      // light brown with an exclamation mark — so they can be told apart from wandering heroes (grey, ?).
+      const chieftains=pd.characters.filter(c=>!c.isOwn&&c.isNeutralGuard);
+      const wanderers=pd.characters.filter(c=>!c.isOwn&&!c.isNeutralGuard&&(c.isWanderer||!c.ownerColor));
 
       let markerX=x+HS-11; // item: nudged inward so it clearly sits inside the hex
       // Own characters
@@ -6588,6 +6596,24 @@ function renderMapIntoSvg(svgEl, report){
         wlbl.setAttribute('fill','#fff');wlbl.setAttribute('pointer-events','none');
         wlbl.textContent='?';
         mg.appendChild(wc);mg.appendChild(wlbl);
+        mg.setAttribute('class','sym-char'); symbolLayer.appendChild(mg);
+        markerX-=8;
+      }
+      // Local chieftains (item 4, 2026-09-10) — light brown dot with an exclamation mark
+      if(chieftains.length>0){
+        const mx=markerX,my=y-HS+12;
+        const mg=document.createElementNS(svgNS,'g');
+        mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`);
+        const gc=document.createElementNS(svgNS,'circle');
+        gc.setAttribute('cx',mx);gc.setAttribute('cy',my);gc.setAttribute('r','4.5');
+        gc.setAttribute('fill',CHIEFTAIN_MARKER_COLOR);gc.setAttribute('stroke','#fff');gc.setAttribute('stroke-width','1');
+        gc.setAttribute('pointer-events','none');
+        const glbl=document.createElementNS(svgNS,'text');
+        glbl.setAttribute('x',mx);glbl.setAttribute('y',my+2);
+        glbl.setAttribute('text-anchor','middle');glbl.setAttribute('font-size','5');glbl.setAttribute('font-weight','700');
+        glbl.setAttribute('fill','#fff');glbl.setAttribute('pointer-events','none');
+        glbl.textContent='!';
+        mg.appendChild(gc);mg.appendChild(glbl);
         mg.setAttribute('class','sym-char'); symbolLayer.appendChild(mg);
       }
     }
@@ -6838,6 +6864,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1730</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1744</div>
 </body>
 </html>
