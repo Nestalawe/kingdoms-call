@@ -367,20 +367,26 @@ const BATTLE_LINE_NAMES=['front line','second line','third line','fourth line'];
 function battleFrontWidth(terrain){ return BATTLE_FRONT_WIDTH[terrain]??6; }
 function battleLineOf(groundRank,width){ return Math.min(BATTLE_LINE_MULTS.length-1, Math.floor(groundRank/Math.max(1,width))); }
 function battleLineMult(groundRank,width,flank){ return (flank?BATTLE_LINE_MULTS_FLANK:BATTLE_LINE_MULTS)[battleLineOf(groundRank,width)]; }
-// rows: [{base, fly, ...}] ALREADY sorted flyers-first then strongest-first. `extra(row,inFront)` lets a
-// caller fold in a per-row multiplier that depends on the line (none of the engine sites use it now —
-// Tactical applies to every land unit, whatever its line).
-function battleLineTotal(rows,width,flank,extra){
+// rows: [{base, fly, ...}] where `base` is the unit's FINAL per-unit strength — every modifier already
+// folded in (terrain, quality, Druid, Archery, Naval, Tactical, Illusory Terrain, items…). 2026-09-11
+// (Toby): the ordering must reflect that final figure, so battleLineTotal and battleLineNarrative sort
+// internally rather than trusting the caller. Two sites used to apply Tactical AFTER sorting (the NPC
+// defender and the bot model), which could push a strong tactical-boosted land unit behind a weaker
+// fleet; the old `extra(row,inFront)` hook that allowed it is gone. Non-mutating: callers keep their array.
+function battleLineSort(rows){ return [...rows].sort((x,y)=>(y.fly-x.fly)||(y.base-x.base)); }
+function battleLineTotal(rows,width,flank){
   let g=0,total=0;
-  rows.forEach(r=>{ let m=1,inFront=true; if(!r.fly){ m=battleLineMult(g,width,flank); inFront=g<width; g++; } total+=r.base*m*(extra?extra(r,inFront):1); });
+  battleLineSort(rows).forEach(r=>{ let m=1; if(!r.fly){ m=battleLineMult(g,width,flank); g++; } total+=r.base*m; });
   return total;
 }
 // Narrative line for a force that overflows its front, e.g.
 // "📊 mountain terrain — Aldric's front line holds 3: A, B, C; second line (×0.5): D, E, F; third line (×0.25): G; fourth line and beyond (×0.125): H."
 function battleLineNarrative(who,rows,width,flank,terrain){
-  const ground=rows.filter(r=>!r.fly); if(ground.length<=width) return null;
+  const ground=battleLineSort(rows).filter(r=>!r.fly); if(ground.length<=width) return null;
   const mults=flank?BATTLE_LINE_MULTS_FLANK:BATTLE_LINE_MULTS; const name=r=>(r.a&&(r.a.unitName||r.a.type))||r.name||'unit';
-  const parts=[`${who}'s front line holds ${width}: ${ground.slice(0,width).map(name).join(', ')}`];
+  // "The defenders" is already plural — don't glue an apostrophe-s onto it (2026-09-11).
+  const poss=/s$/i.test(who)?`${who}'`:`${who}'s`;
+  const parts=[`${poss} front line holds ${width}: ${ground.slice(0,width).map(name).join(', ')}`];
   for(let L=1;L<mults.length;L++){ const from=L*width, to=(L===mults.length-1)?ground.length:(L+1)*width; const seg=ground.slice(from,to); if(!seg.length) break;
     parts.push(`${BATTLE_LINE_NAMES[L]}${L===mults.length-1&&ground.length>(L+1)*width?' and beyond':''} (×${mults[L]}): ${seg.map(name).join(', ')}`); }
   return `📊 ${terrain} terrain — ${parts.join('; ')}.${flank?' (Flanking Tactics)':''}`;
@@ -4426,8 +4432,10 @@ function botBattleForce(G,c,armies,terrain){
   const width=battleFrontWidth(terrain);
   const tac=(terrain==='sea')?1:Math.min(2.0,1+0.2*Math.min(5,(c&&c.skills?c.skills.tactical:0)||0));
   const rows=armies.filter(a=>a).map(a=>{ let m=1; if(c){ try{ m=druIdPenaltyMult(c,a,align,tamed&&TAMED_FLYER_TYPES_D.has(a.type)); }catch(e){ m=1; } }
-    return {base:unitBaseStrength(a)*m, fly:BOT_AERIAL_TYPES.has(a.type), sea:BOT_SEA_ALL.has(a.type)}; }).sort((x,y)=>(y.fly-x.fly)||(y.base-x.base));
-  return battleLineTotal(rows,width,flank,(r)=>(!r.fly&&!r.sea)?tac:1);
+    const fly=BOT_AERIAL_TYPES.has(a.type), sea=BOT_SEA_ALL.has(a.type);
+    // Tactical folded in before battleLineTotal sorts (2026-09-11) — same reason as the NPC defender.
+    return {base:unitBaseStrength(a)*m*((!fly&&!sea)?tac:1), fly, sea}; });
+  return battleLineTotal(rows,width,flank);
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
 // (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
@@ -9687,15 +9695,15 @@ const BATTLE_ARMY_SPELLS={
     const defsWithStr=(prov.neutralDefenders||[]).map(a=>{
       let base=armStr(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null)});
       if(MISSILE_ARMIES.has(a.type)) base*=defArchMissileBonus;
+      // Tactical folded in HERE (2026-09-11) so the line order reflects final strength — it used to be
+      // applied after the sort, which could rank a tactical-boosted land unit behind a weaker fleet.
+      const landUnit=!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type);
+      if(landUnit&&prov.terrain!=='sea') base*=tacMulted(defTactBonus,defHero);
       return{a,base,fly:FLYING_TYPES.has(a.type)};
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
     if(archSkillDef>0&&(prov.neutralDefenders||[]).some(a=>MISSILE_ARMIES.has(a.type))) narrative.push(`${defHero.name}'s Archery ${archSkillDef} grants the defenders +${(archSkillDef*10)}% strength to missile units.`);
-    // Tactical on every land unit of a land battle — the same scope the attacker and both PvP sides use
-    // (the defender used to get it on the front line only).
-    const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc,(r)=>{
-      const landUnit=!FLYING_TYPES.has(r.a?.type)&&!SEA_TYPES.has(r.a?.type);
-      return (landUnit&&prov.terrain!=='sea')?tacMulted(defTactBonus,defHero):1;
-    });
+    // Tactical on every land unit of a land battle — the same scope the attacker and both PvP sides use.
+    const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc);
     { const _bl=battleLineNarrative(defHero?defHero.name:'The defenders',defsWithStr,defLineWidth,defFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
     // (Illusory Terrain is applied per-unit above, folded into each attacker's strength.)
     // L7/L9 MASTERY ORDER battle modifiers vs an NPC garrison (c is always the attacker here;
@@ -11741,10 +11749,13 @@ const BATTLE_ARMY_SPELLS={
     const atkSorted=[...atkArmies].map(a=>({a,s:pvpArmStr(a,atk,atkAlign2,atkTactBonus)*(_atkIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     const defSorted=[...defArmies].map(a=>({a,s:pvpArmStr(a,def,defAlign2,defTactBonus)*(_defIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     // Ground units fill four terrain-width lines (×1 / ×0.5 / ×0.25 / ×0.125); flyers always front.
-    const atkRaw=battleLineTotal(atkSorted.map(x=>({...x,base:x.s})),pvpFront,atkFlankPvp);
-    const defRaw=battleLineTotal(defSorted.map(x=>({...x,base:x.s})),pvpFront,defFlankPvp);
-    { const _a=battleLineNarrative(atkName,atkSorted,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
-      const _d=battleLineNarrative(defName,defSorted,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
+    // `s` is the final per-unit strength — renamed into `base` once, so the totals AND the narrative sort
+    // on the same figure (2026-09-11: the narrative used to be handed rows with no `base` field).
+    const atkRows=atkSorted.map(x=>({...x,base:x.s})), defRows=defSorted.map(x=>({...x,base:x.s}));
+    const atkRaw=battleLineTotal(atkRows,pvpFront,atkFlankPvp);
+    const defRaw=battleLineTotal(defRows,pvpFront,defFlankPvp);
+    { const _a=battleLineNarrative(atkName,atkRows,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
+      const _d=battleLineNarrative(defName,defRows,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
 
     // Archery/Naval notes
     if(atkArch>0&&atkArmies.some(a=>MISSILE_A.has(a.type)))
@@ -19128,6 +19139,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-0921</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-1034</div>
 </body>
 </html>
