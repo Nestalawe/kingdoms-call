@@ -6372,13 +6372,15 @@ function skillFameLabel(level){
   return l>=8?'Legendary for':l>=6?'Renowned for':l>=4?'Famous for':l>=2?'Known for':'Trained in';
 }
 // 2026-09-11 (item 4): bottom-right race badges. Keys are formatRace() outputs.
+// 2026-09-11 (Toby): no outline — the dark ring read as a black border at map scale. Fill + glyph only,
+// so `stroke` is deliberately absent from every entry (the draw code sets stroke:'none').
 const MAP_RACE_BADGE={
-  Human:   {glyph:'H',fill:'#c9a961',stroke:'#5a4310',text:'#1a1208'},
-  Elven:   {glyph:'E',fill:'#6fbf73',stroke:'#1f5a23',text:'#0c2a0e'},
-  Dwarven: {glyph:'D',fill:'#9fa8b8',stroke:'#3a4250',text:'#151a22'},
-  Orcish:  {glyph:'O',fill:'#b8433a',stroke:'#4d1410',text:'#fff'},
-  Creature:{glyph:'C',fill:'#4fa3c9',stroke:'#173f52',text:'#0a1f28'},
-  Monster: {glyph:'M',fill:'#7d4fb5',stroke:'#2d1550',text:'#fff'},
+  Human:   {glyph:'H',fill:'#c9a961',text:'#1a1208'},
+  Elven:   {glyph:'E',fill:'#6fbf73',text:'#0c2a0e'},
+  Dwarven: {glyph:'D',fill:'#9fa8b8',text:'#151a22'},
+  Orcish:  {glyph:'O',fill:'#b8433a',text:'#fff'},
+  Creature:{glyph:'C',fill:'#4fa3c9',text:'#0a1f28'},
+  Monster: {glyph:'M',fill:'#7d4fb5',text:'#fff'},
 };
 const CHIEFTAIN_MARKER_COLOR='#8f6a38'; // 2026-09-11 (Toby item 5): darkened from #b08a5a — luminance 111 stays just above the tooltip's 110 lightening threshold so the popup shows the same brown
 function renderMapIntoSvg(svgEl, report){
@@ -6696,7 +6698,7 @@ function renderMapIntoSvg(svgEl, report){
         const rg=document.createElementNS(svgNS,'g');
         const rc=document.createElementNS(svgNS,'circle');
         rc.setAttribute('cx',rx);rc.setAttribute('cy',ry);rc.setAttribute('r','3');
-        rc.setAttribute('fill',rb.fill);rc.setAttribute('stroke',rb.stroke);rc.setAttribute('stroke-width','0.5');
+        rc.setAttribute('fill',rb.fill);rc.setAttribute('stroke','none');
         rc.setAttribute('opacity',known&&!isOwned&&!isVisited?'0.7':'1');
         const rt=document.createElementNS(svgNS,'text');
         rt.setAttribute('x',rx);rt.setAttribute('y',ry+1.4);
@@ -6960,6 +6962,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-0912</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-0921</div>
 </body>
 </html>
