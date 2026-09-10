@@ -354,6 +354,38 @@ const BATTLE_MARGIN_BANDS=[
 ];
 function battleMarginBand(margRatio){ const r=Math.max(0,margRatio||0); return BATTLE_MARGIN_BANDS.find(b=>r<b.max)||BATTLE_MARGIN_BANDS[BATTLE_MARGIN_BANDS.length-1]; }
 
+// ── BATTLE LINES (2026-09-11, Toby) — ONE source of truth for every battle site (NPC attack, NPC
+// defence, PvP both sides, and the bot's battle model). Terrain sets the front width; a force's ground
+// units are sorted strongest-first and fill FOUR lines of that width. The front line fights at full
+// strength, the second at ×0.5, the third at ×0.25, the fourth at ×0.125 — and anything beyond the
+// fourth line also fights at ×0.125. Flyers always fight from the front and never take a slot.
+// sd09 Flanking Tactics lifts each rear line one step: ×0.75 / ×0.5 / ×0.25.
+const BATTLE_FRONT_WIDTH={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
+const BATTLE_LINE_MULTS=[1,0.5,0.25,0.125];
+const BATTLE_LINE_MULTS_FLANK=[1,0.75,0.5,0.25];
+const BATTLE_LINE_NAMES=['front line','second line','third line','fourth line'];
+function battleFrontWidth(terrain){ return BATTLE_FRONT_WIDTH[terrain]??6; }
+function battleLineOf(groundRank,width){ return Math.min(BATTLE_LINE_MULTS.length-1, Math.floor(groundRank/Math.max(1,width))); }
+function battleLineMult(groundRank,width,flank){ return (flank?BATTLE_LINE_MULTS_FLANK:BATTLE_LINE_MULTS)[battleLineOf(groundRank,width)]; }
+// rows: [{base, fly, ...}] ALREADY sorted flyers-first then strongest-first. `extra(row,inFront)` lets a
+// caller fold in a per-row multiplier that depends on the line (none of the engine sites use it now —
+// Tactical applies to every land unit, whatever its line).
+function battleLineTotal(rows,width,flank,extra){
+  let g=0,total=0;
+  rows.forEach(r=>{ let m=1,inFront=true; if(!r.fly){ m=battleLineMult(g,width,flank); inFront=g<width; g++; } total+=r.base*m*(extra?extra(r,inFront):1); });
+  return total;
+}
+// Narrative line for a force that overflows its front, e.g.
+// "📊 mountain terrain — Aldric's front line holds 3: A, B, C; second line (×0.5): D, E, F; third line (×0.25): G; fourth line and beyond (×0.125): H."
+function battleLineNarrative(who,rows,width,flank,terrain){
+  const ground=rows.filter(r=>!r.fly); if(ground.length<=width) return null;
+  const mults=flank?BATTLE_LINE_MULTS_FLANK:BATTLE_LINE_MULTS; const name=r=>(r.a&&(r.a.unitName||r.a.type))||r.name||'unit';
+  const parts=[`${who}'s front line holds ${width}: ${ground.slice(0,width).map(name).join(', ')}`];
+  for(let L=1;L<mults.length;L++){ const from=L*width, to=(L===mults.length-1)?ground.length:(L+1)*width; const seg=ground.slice(from,to); if(!seg.length) break;
+    parts.push(`${BATTLE_LINE_NAMES[L]}${L===mults.length-1&&ground.length>(L+1)*width?' and beyond':''} (×${mults[L]}): ${seg.map(name).join(', ')}`); }
+  return `📊 ${terrain} terrain — ${parts.join('; ')}.${flank?' (Flanking Tactics)':''}`;
+}
+// (Declared here at TRUE module level — the block at PREBATTLE_STR_FLOOR sits inside runTurn and the bot model cannot see it.)
 const MISSILE_ARMIES_MASTER=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers',
   'Ironwood Crossbows','Mountain Guns','Goblin Horde']);
 
@@ -713,7 +745,7 @@ const MASTERY_UNLOCKS={
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
-  white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) are restored to full HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
+  white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) heal half their maximum HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'Words of Awe — your Oratory raises the armies it inspires by TWO quality levels instead of one.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
   illusory:{6:'Shimmer — enemy players are half as likely to see or find this character.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: for two phases, you and your armies vanish from enemy sight and hostile magic.'},
   elemental:{6:'Elemental Armour — in combat, every attack that lands on you is reduced by 1-3 HP.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
@@ -4381,25 +4413,21 @@ function botEffForce(G,c,armies){
   return (armies||c.armies||[]).reduce((s,a)=>{ if(!a) return s; let m=1; try{ m=druIdPenaltyMult(c,a,align,tamed&&TAMED_FLYER_TYPES_D.has(a.type)); }catch(e){ m=1; } return s+unitBaseStrength(a)*m; },0);
 }
 // BATTLE MODEL (2026-09-10): mirror of the engine's land-battle arithmetic so a bot's estimate is honest:
-// per-unit Druid penalty, the terrain front line (plain/desert/sea 6, forest/jungle 4, mountain 3 — flyers
-// always up front, ground units beyond the line fight at ×0.5, ×0.75 with sd09 Flanking Tactics), and the
-// commander's Tactical multiplier (×1+0.2/level, capped ×2.0) on front-line land units. Before this bots
+// per-unit Druid penalty, the terrain battle lines (shared BATTLE_FRONT_WIDTH / battleLineMult — four lines
+// at ×1/×0.5/×0.25/×0.125, sd09 lifting each rear line a step, flyers always up front), and the
+// commander's Tactical multiplier (×1+0.2/level, capped ×2.0) on land units. Before this bots
 // summed raw base strength and so under-read a drilled host by 40–100% — they won 96% of the battles they
 // dared and declined the rest. Fortune (log-ratio CDF) and fanaticism stay random and are left out.
-const BOT_FRONT_WIDTH={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
 function botBattleForce(G,c,armies,terrain){
   armies=armies||(c?c.armies:null)||[]; if(!armies.length) return 0;
   const align=(c&&c.player!=null?((G.players||[])[c.player]||{}).alignment:null)||'Neutral';
   const tamed=!!(c&&c.player!=null&&botHasDisc(G,c.player,'sd40'));
-  const flank=(c&&c.player!=null&&botHasDisc(G,c.player,'sd09'))?0.75:0.5;
-  const width=BOT_FRONT_WIDTH[terrain]??6;
+  const flank=!!(c&&c.player!=null&&botHasDisc(G,c.player,'sd09'));
+  const width=battleFrontWidth(terrain);
   const tac=(terrain==='sea')?1:Math.min(2.0,1+0.2*Math.min(5,(c&&c.skills?c.skills.tactical:0)||0));
   const rows=armies.filter(a=>a).map(a=>{ let m=1; if(c){ try{ m=druIdPenaltyMult(c,a,align,tamed&&TAMED_FLYER_TYPES_D.has(a.type)); }catch(e){ m=1; } }
     return {base:unitBaseStrength(a)*m, fly:BOT_AERIAL_TYPES.has(a.type), sea:BOT_SEA_ALL.has(a.type)}; }).sort((x,y)=>(y.fly-x.fly)||(y.base-x.base));
-  let total=0, ground=0;
-  rows.forEach(r=>{ let inFront=true; if(!r.fly){ inFront=ground<width; ground++; }
-    const t=(inFront&&!r.fly&&!r.sea)?tac:1; total+=r.base*(inFront?1:flank)*t; });
-  return total;
+  return battleLineTotal(rows,width,flank,(r)=>(!r.fly&&!r.sea)?tac:1);
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
 // (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
@@ -4550,7 +4578,7 @@ const BOT_CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys'
 const BOT_PRIMAL_SEA_TYPES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
 const BOT_AERIAL_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
 const BOT_SEA_ALL=new Set([...BOT_CARRIER_TYPES,...BOT_PRIMAL_SEA_TYPES]);
-const BOT_LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers']);
+const BOT_LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns']); // mirrors LIGHT_ARMIES in getSeaCapability (Mountain Guns added 2026-09-11)
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
 const BOT_FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
@@ -6560,6 +6588,7 @@ function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
 // Primal (and special-unit) pre-battle strikes fire at 30% + 10% per Druid level of the commander,
 // plus any `primalStrike` item bonus the commander carries, hard cap 90%. Read by the NPC-attacker,
 // NPC-defender and PvP strike rolls so all three quote and roll the same odds.
+const MASS_HEALING_PCT=0.50; // WHITE L6 Mass Healing heals this share of max HP per character (2026-09-11)
 function primalStrikeItemBonus(c){
   if(!c||typeof activeItems!=='function') return 0;
   return activeItems(c).reduce((s,it)=>s+((it&&it.primalStrike)||0)+((it&&it.effect&&it.effect.stat==='primalStrike')?(it.effect.bonus||0):0),0);
@@ -6692,7 +6721,7 @@ const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
 // metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
-const MINOR_CAV=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']);
+const MINOR_CAV=new Set(['Free Lances','Gilded Lances','Warg Riders']); // 2026-09-11 (Toby item 9): flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
 const MINOR_HEAVY=new Set(['Mountain Guns','Dwarf Ironclads','Galleon Fleet','Corsair Fleet','Elven Galleys','Orcish Longships','Whale Cohort','Siege Towers']);
 const _BEST_SCHOOL=c=>Math.max(0,...['white','psychic','illusory','elemental','necromancy'].map(s=>skillLevel(c,s)));
 const MINOR_TITLES=[
@@ -7067,6 +7096,7 @@ function buildTurnReport(gameState, playerIndex){
     if(g.location!=null && visibleProvIds.has(g.location)) return true;
     return false;
   }).map(g=>({id:g.id,name:g.name,player:g.player,killedOnTurn:g.killedOnTurn,
+    race:g.race||null, alignment:g.alignment||null, topSkill:topSkill(g), // 2026-09-11 (Toby): the fallen keep their fame
     locationName:gameState.world.provinces[g.location]?.name||'unknown',
     locationId:g.location,
     isOwn:g.player===playerIndex,
@@ -7152,7 +7182,7 @@ function buildTurnReport(gameState, playerIndex){
       const enemyKingdom=gameState.players[c.player]?.name||'unknown realm';
       heroSightings.push({
         type:'enemy',
-        name:c.name,race:c.race,kingdom:enemyKingdom,kingdomColor:gameState.players[c.player]?.color||null,
+        name:c.name,race:c.race,alignment:c.alignment,kingdom:enemyKingdom,kingdomColor:gameState.players[c.player]?.color||null,
         locationName:prov.name,locationId:c.location,
         topSkill:ts,
         armyBand:_armyBand((c.armies||[]).length),
@@ -7542,7 +7572,7 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd06',name:'Military Discipline',category:'Military',desc:'Armies you lead have a 20% higher chance of promotion after a battle.',effect:{type:'promotionBonus',pct:0.20}},
   {id:'sd07',name:'Fire Arrows',category:'Military',desc:'Missile units (longbows, bowmen, archers, crossbows, guns, goblin hordes) led by your characters fight at an extra +10% strength, attacking or defending.',effect:{type:'archerBonus',pct:0.10}},
   {id:'sd08',name:'War Academy',category:'Military',desc:'Each army in your home province has a 50% chance of being promoted one tier at the end of each turn.',effect:{type:'homePromotion'}},
-  {id:'sd09',name:'Flanking Tactics',category:'Military',desc:'In battles where you have more armies than enemy, excess armies fight at 75% instead of 25%.',effect:{type:'flankBonus'}},
+  {id:'sd09',name:'Flanking Tactics',category:'Military',desc:'Your lines behind the front fight at 75% / 50% / 25% instead of 50% / 25% / 12.5%.',effect:{type:'flankBonus'}},
   {id:'sd10',name:'Scouts & Rangers',category:'Military',desc:'+20% exploration bonus on every Explore order across all your characters.',effect:{type:'exploreBonus',pct:0.20}},
   // ── Economy ──
   {id:'sd11',name:'Advanced Agriculture',category:'Economy',desc:'All your land provinces with tax ≥ 3 produce +1 additional gold per turn.',effect:{type:'taxFloor',minTax:3,bonus:1}},
@@ -9605,22 +9635,12 @@ const BATTLE_ARMY_SPELLS={
       else narrative.push(`⚠ Land units at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
     }
 
-    // ── BATTLE LINES ──
-    if(atkCount>defCount&&defCount>0){
-      narrative.push(`📊 Battle lines: ${atkCount-defCount} flanking unit${atkCount-defCount!==1?'s':''} (×0.5 effectiveness — can't all engage the line).`);
-    } else if(defCount>atkCount&&atkCount>0){
-      narrative.push(`📊 Battle lines: defenders have ${defCount-atkCount} excess unit${defCount-atkCount!==1?'s':''} crowding the line (×0.5 for excess).`);
-    }
-
-    // Calculate attacker raw strength with terrain + battle lines
-    // Sort: flying units always front row (they fly over), then strongest first
-    const flankMultNPC=hasDisc(c.player,'sd09')?0.75:0.50;
-    // Terrain sets the front-line width — how many units can engage at full strength.
-    // Narrow terrain (mountains, forest) forces more units into the flanking reserve.
-    const TERRAIN_FRONT_WIDTH={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
-    const terrainFront=TERRAIN_FRONT_WIDTH[prov.terrain]??6;
-    // Each side fields up to terrainFront units in the front row (flyers always count as front)
+    // ── BATTLE LINES (2026-09-11: four lines, shared helpers — see BATTLE_LINE_MULTS) ──
+    // (The old count-based "N flanking units" line is gone — it described a mechanic that no longer existed.)
+    const atkFlankDisc=hasDisc(c.player,'sd09');
+    const terrainFront=battleFrontWidth(prov.terrain);
     const lineWidth=terrainFront;
+    void atkCount; void defCount;
     // Illusory Terrain: if this province is cloaked by an enemy's illusion, the attacker is
     // disoriented — each unit fights as though caught in the worst ground for its kind (min −15%).
     const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
@@ -9635,28 +9655,8 @@ const BATTLE_ARMY_SPELLS={
       return{a,base,fly:FLYING_TYPES.has(a.type)};
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base); // flying first, then strongest
 
-    const rawAtkStr=(()=>{
-      let total=0;
-      let nonFlyRank=0;
-      armiesWithStr.forEach(({base,fly})=>{
-        // Flying always fights in the front row; ground units fill the terrain-limited front,
-        // then overflow into the flanking reserve at reduced effectiveness.
-        let inFront;
-        if(fly){ inFront=true; }
-        else { inFront=nonFlyRank<lineWidth; nonFlyRank++; }
-        const lineMult=inFront?1:flankMultNPC;
-        total+=base*lineMult;
-      });
-      return total;
-    })();
-    // Count ground units beyond the front for the narrative
-    const groundAtk=armiesWithStr.filter(x=>!x.fly);
-    if(groundAtk.length>lineWidth){
-      const flankCount=groundAtk.length-lineWidth;
-      const frontTypes=groundAtk.slice(0,lineWidth).map(x=>x.a.unitName||x.a.type);
-      const flankTypes=groundAtk.slice(lineWidth).map(x=>x.a.unitName||x.a.type);
-      narrative.push(`📊 ${prov.terrain} terrain — ${cName}'s front line holds ${lineWidth}: ${frontTypes.join(', ')}; reserve ${flankCount} at ×${flankMultNPC}.`); // item 8: same shape as PvP
-    }
+    const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc);
+    { const _bl=battleLineNarrative(cName,armiesWithStr,lineWidth,atkFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
     if(archSkillAtk>0&&armies.some(a=>MISSILE_ARMIES.has(a.type))) narrative.push(`${cName}'s Archery ${archSkillAtk} grants +${(archSkillAtk*10)}% strength to missile units.`);
     // Show Druid shortfall warnings
     const druIdLvl=effStat(c,'druid');
@@ -9681,30 +9681,22 @@ const BATTLE_ARMY_SPELLS={
     const archSkillDef=defHero?effStat(defHero,'archery'):0;
     const defArchMissileBonus=1+(archSkillDef*0.10)+((defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd07'))?0.10:0); // sd07 Fire Arrows (defender side, wired 2026-09-08)
     const defLineWidth=terrainFront;
+    // 2026-09-11: the defenders' Flanking Tactics come from the province OWNER (a player garrison) or the
+    // defending commander's realm — previously hard-coded ×0.5 whatever discoveries they held.
+    const defFlankDisc=(prov.owner!=null&&hasDisc(prov.owner,'sd09'))||(!!defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd09'));
     const defsWithStr=(prov.neutralDefenders||[]).map(a=>{
       let base=armStr(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null)});
       if(MISSILE_ARMIES.has(a.type)) base*=defArchMissileBonus;
       return{a,base,fly:FLYING_TYPES.has(a.type)};
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
     if(archSkillDef>0&&(prov.neutralDefenders||[]).some(a=>MISSILE_ARMIES.has(a.type))) narrative.push(`${defHero.name}'s Archery ${archSkillDef} grants the defenders +${(archSkillDef*10)}% strength to missile units.`);
-    const rawDefStr=(()=>{
-      let total=0;
-      let nonFlyRank=0;
-      defsWithStr.forEach(({base,fly},idx3)=>{
-        let inFront;
-        if(fly){ inFront=true; }
-        else { inFront=nonFlyRank<defLineWidth; nonFlyRank++; }
-        const landUnit=!FLYING_TYPES.has(defsWithStr[idx3]?.a?.type)&&!SEA_TYPES.has(defsWithStr[idx3]?.a?.type);
-        const tacMult=(inFront&&landUnit&&prov.terrain!=='sea')?tacMulted(defTactBonus,defHero):1;
-        total+=base*(inFront?1:0.5)*tacMult;
-      });
-      return total;
-    })();
-    const groundDef=defsWithStr.filter(x=>!x.fly);
-    if(groundDef.length>defLineWidth){
-      const defFlankCount=groundDef.length-defLineWidth;
-      narrative.push(`📊 Defenders: front row (${defLineWidth} units) — ${groundDef.slice(0,defLineWidth).map(x=>x.a.unitName||x.a.type).join(', ')}. Rear (${defFlankCount} units at ×0.5) — ${groundDef.slice(defLineWidth).map(x=>x.a.unitName||x.a.type).join(', ')}.`);
-    }
+    // Tactical on every land unit of a land battle — the same scope the attacker and both PvP sides use
+    // (the defender used to get it on the front line only).
+    const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc,(r)=>{
+      const landUnit=!FLYING_TYPES.has(r.a?.type)&&!SEA_TYPES.has(r.a?.type);
+      return (landUnit&&prov.terrain!=='sea')?tacMulted(defTactBonus,defHero):1;
+    });
+    { const _bl=battleLineNarrative(defHero?defHero.name:'The defenders',defsWithStr,defLineWidth,defFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
     // (Illusory Terrain is applied per-unit above, folded into each attacker's strength.)
     // L7/L9 MASTERY ORDER battle modifiers vs an NPC garrison (c is always the attacker here;
     // Feigned Retreat is purely defensive and correctly has no place on an attack).
@@ -11546,9 +11538,8 @@ const BATTLE_ARMY_SPELLS={
     // narrative here and the front-line strength computation below, so they can never disagree.
     // (Previously a separate TERRAIN_LINE table rolled a RANDOM 1–3 for mountains for this line while the
     // mechanic used a fixed 3 — the "battlefront one wide vs three wide" inconsistency Toby saw.)
-    const PVP_TERRAIN_FRONT={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
-    const pvpFront=PVP_TERRAIN_FRONT[prov.terrain]??6;
-    narrative.push(`The ${prov.terrain} terrain sets a ${pvpFront}-unit front. Deeper ranks fight at reduced effectiveness.`);
+    const pvpFront=battleFrontWidth(prov.terrain);
+    narrative.push(`The ${prov.terrain} terrain sets a ${pvpFront}-unit front. Lines behind it fight at ×0.5, ×0.25 and ×0.125.`);
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
@@ -11744,28 +11735,16 @@ const BATTLE_ARMY_SPELLS={
     const _illCasterP = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
     const _atkIllActiveP = (_illCasterP!=null && atk.player!==_illCasterP);
     const _defIllActiveP = (_illCasterP!=null && def.player!==_illCasterP);
-    // PvP battle lines: sort by strength desc (flying first), strongest in front row
-    const pvpFlankMult=hasDisc(atk.player,'sd09')?0.75:0.50;
+    // PvP battle lines: sort by strength desc (flying first), strongest in front row.
+    // 2026-09-11: each side's OWN Flanking Tactics (the defender used to inherit the attacker's).
+    const atkFlankPvp=hasDisc(atk.player,'sd09'), defFlankPvp=hasDisc(def.player,'sd09');
     const atkSorted=[...atkArmies].map(a=>({a,s:pvpArmStr(a,atk,atkAlign2,atkTactBonus)*(_atkIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     const defSorted=[...defArmies].map(a=>({a,s:pvpArmStr(a,def,defAlign2,defTactBonus)*(_defIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
-    // Ground units fill the terrain-limited front; flyers always front; overflow flanks at reduced effect
-    const pvpLineStr=(sorted)=>{
-      let total=0,nonFly=0;
-      sorted.forEach(({s:str,fly})=>{
-        let inFront;
-        if(fly){inFront=true;} else {inFront=nonFly<pvpFront;nonFly++;}
-        total+=str*(inFront?1:pvpFlankMult);
-      });
-      return total;
-    };
-    const atkRaw=pvpLineStr(atkSorted);
-    const defRaw=pvpLineStr(defSorted);
-    const groundAtkPvp=atkSorted.filter(x=>!x.fly);
-    const groundDefPvp=defSorted.filter(x=>!x.fly);
-    if(groundAtkPvp.length>pvpFront)
-      narrative.push(`📊 ${pvpTerrain} terrain — ${atkName}'s front line holds ${pvpFront}: ${groundAtkPvp.slice(0,pvpFront).map(x=>x.a.unitName||x.a.type).join(', ')}; reserve ${groundAtkPvp.length-pvpFront} at ×${pvpFlankMult}.`);
-    if(groundDefPvp.length>pvpFront)
-      narrative.push(`📊 ${pvpTerrain} terrain — ${defName}'s front line holds ${pvpFront}: ${groundDefPvp.slice(0,pvpFront).map(x=>x.a.unitName||x.a.type).join(', ')}; reserve ${groundDefPvp.length-pvpFront} at ×${pvpFlankMult}.`);
+    // Ground units fill four terrain-width lines (×1 / ×0.5 / ×0.25 / ×0.125); flyers always front.
+    const atkRaw=battleLineTotal(atkSorted.map(x=>({...x,base:x.s})),pvpFront,atkFlankPvp);
+    const defRaw=battleLineTotal(defSorted.map(x=>({...x,base:x.s})),pvpFront,defFlankPvp);
+    { const _a=battleLineNarrative(atkName,atkSorted,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
+      const _d=battleLineNarrative(defName,defSorted,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
 
     // Archery/Naval notes
     if(atkArch>0&&atkArmies.some(a=>MISSILE_A.has(a.type)))
@@ -15885,7 +15864,8 @@ const BATTLE_ARMY_SPELLS={
     const LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
       'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison',
       'Goblin Horde',
-      'Forest Wardens','Dwarven Guard','Orc Berserkers']);
+      'Forest Wardens','Dwarven Guard','Orc Berserkers',
+      'Mountain Guns']); // 2026-09-11 (Toby item 8): gun-crews ride as light foot — an Ironclad ferries a Gun + a Guard
     let landCapNeeded=0;
     landArmies.forEach(a=>{
       landCapNeeded+=LIGHT_ARMIES.has(a.type)?0.5:1; // light=0.5 cap, heavy/cavalry=1
@@ -18198,8 +18178,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   healFeatureMonsters();
 
   // ── WHITE L6 (Mass Healing) ── A master of the White arts standing among friendly characters at
-  // year's end mends every wound: each own/allied living character sharing their province (the healer
-  // included) is restored to full HP. Runs after all combat so it heals the turn's wounds.
+  // year's end mends their wounds: each own/allied living character sharing their province (the healer
+  // included) heals HALF their max HP (2026-09-11, Toby — was a full restore). Runs after all combat.
   {
     const _mhDone=new Set();
     (G.characters||[]).forEach(healer=>{
@@ -18211,8 +18191,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         if(!friendly) return;
         const max=t.maxHp||20;
         if((t.hp==null?max:t.hp)<max){
-          t.hp=max; _mhDone.add(t.id);
-          log('system',`✨ ${healer.name}'s Mass Healing washes over ${t.id===healer.id?'them':t.name} — ${t.id===healer.id?'their':t.name+"'s"} wounds close and ${t.id===healer.id?'they are':'they are'} restored to full health.`,{actor:t.player,targets:[t.player],charId:t.id,provinceId:t.location});
+          const _before=(t.hp==null?max:t.hp);
+          t.hp=Math.min(max,_before+Math.max(1,Math.ceil(max*MASS_HEALING_PCT))); _mhDone.add(t.id);
+          log('system',`✨ ${healer.name}'s Mass Healing washes over ${t.id===healer.id?'them':t.name} — ${t.id===healer.id?'their':t.name+"'s"} wounds close (+${t.hp-_before} HP → ${t.hp}/${max}${t.hp>=max?', fully restored':''}).`,{actor:t.player,targets:[t.player],charId:t.id,provinceId:t.location});
         } else { _mhDone.add(t.id); }
       });
     });
@@ -19147,6 +19128,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-0813</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-0912</div>
 </body>
 </html>

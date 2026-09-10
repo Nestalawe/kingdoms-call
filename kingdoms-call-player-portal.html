@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#888" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" fill="#fff">?</text></svg> Wandering hero</span>
           <span style="display:flex;align-items:center;gap:5px">
-            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#b08a5a" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8f6a38" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚑</span> Your army in the field</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
@@ -414,6 +414,13 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#CD7F32;border:2px solid #A0522D"></span> Poor</span>
           <span style="display:flex;align-items:center;gap:5px"><strong style="color:#ddd">%</strong> = explored</span>
+          <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#999">Race (bottom-right):</span>
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#c9a961;color:#1a1208;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">H</span> Human
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#6fbf73;color:#0c2a0e;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">E</span> Elven
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#9fa8b8;color:#151a22;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">D</span> Dwarven
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#b8433a;color:#fff;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">O</span> Orcish
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#4fa3c9;color:#0a1f28;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">C</span> Creature
+            <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#7d4fb5;color:#fff;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">M</span> Monster</span>
         </div>
       </div>
 
@@ -786,6 +793,7 @@ async function init(){
 }
 
 function show(id){
+  try{ _closeMapTip(); }catch(e){} // item 6 (2026-09-11): dismiss any province popup when leaving/entering a section
   document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
   // On a phone, default the report screen to the Report view the first time it's shown.
@@ -801,6 +809,7 @@ function setMobileView(view){
   if(!lay) return;
   lay.classList.remove('mv-map','mv-report','mv-orders');
   lay.classList.add('mv-'+view);
+  try{ _closeMapTip(); }catch(e){} // item 6 (2026-09-11): a lingering province popup must not survive a view switch
   document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-mv')===view));
   if(view==='map'){ try{ applyMapZoom(); }catch(e){} } // map fix (2026-09-08): re-fit the SVG height now the column is visible
   try{ window.scrollTo(0,0); }catch(e){}   // start each view at its head
@@ -2186,8 +2195,25 @@ function renderReportView(report){
             const _hasFoot=arr.some(a=>!_AER_UI2.has(a.type)&&!_SEA_UI2.has(a.type));
             const _airborne=_hasFlyer&&_hasFoot&&!arr.some(a=>_SEA_UI2.has(a.type))&&(c.effectiveSeaSpeed>0);
             const _airNote=_airborne?` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`:'';
+            // 2026-09-11 (Toby): sea transport — how many hulls this force needs to enter a sea province, and how
+            // many it has. Mirrors the engine's getSeaCapability: only the six carrier fleets carry (a hull each);
+            // light foot (levies, archers, gun-crews, garrisons, Goblin Horde, Forest Wardens, Dwarven Guard, Orc
+            // Berserkers) take ½ a hull, everything else on foot takes a full hull; flyers and sea units need none;
+            // Naval mastery (level 8+) halves the need; a fully airborne column needs no ships at all.
+            const _CARRIER_UI2=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+            const _LIGHT_UI2=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns']);
+            const _landUnits=arr.filter(a=>!_AER_UI2.has(a.type)&&!_SEA_UI2.has(a.type));
+            let _hullNeed=_landUnits.reduce((n,a)=>n+(_LIGHT_UI2.has(a.type)?0.5:1),0);
+            if(effSkillP(c,'naval')>=8) _hullNeed/=2;
+            const _hullNeedShown=Math.ceil(_hullNeed);
+            const _hullHave=arr.filter(a=>_CARRIER_UI2.has(a.type)).length;
+            let _seaNote='';
+            if(_landUnits.length===0) _seaNote=` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
+            else if(_airborne) _seaNote='';
+            else if(_hullHave>=_hullNeed) _seaNote=` · ⚓ <span style="color:#2d7a2d">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — can put to sea</span>`;
+            else _seaNote=` · ⚓ <span style="color:var(--crimson)">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — ${_hullNeedShown-_hullHave} more fleet unit${_hullNeedShown-_hullHave!==1?'s':''} to carry the whole force</span>`;
             const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#2d7a2d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
-            const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}</div>`;
+            const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
             return head+lines+summary+`</div>`;
           })()}
         </div>
@@ -2231,7 +2257,8 @@ function renderReportView(report){
   if(visDeadHeroes.length>0){
     otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Fallen Heroes</div>`;
     otherForcesHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
-      <strong>${h.name}</strong> <span style="color:#8a1c1c">(dead)</span>${h.isOwn?' — your hero':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
+      <strong>${h.name}</strong> <span style="color:#8a1c1c">(dead)</span>${(h.race||h.alignment)?` (${[h.race,h.alignment].filter(Boolean).join(', ')})`:''}${h.isOwn?' — your hero':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
+      <span style="font-size:.78rem">${h.topSkill?`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill} ${h.topSkill.level}</span>`:'No notable skills'}</span><br>
       ${h.inVisibleProv
         ?'<span style="font-size:.72rem;color:#5a3a7a">💀 A hero with the Resurrect spell can raise them from this province.</span>'
         :'<span style="font-size:.72rem;color:#888">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
@@ -2256,7 +2283,7 @@ function renderReportView(report){
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
-          : `Best skill: ${topStr}`;
+          : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
           <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
@@ -2269,7 +2296,7 @@ function renderReportView(report){
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
-          : `Best skill: ${topStr}`;
+          : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#8a6a2a">
           🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
           <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
@@ -2283,9 +2310,9 @@ function renderReportView(report){
         const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
-          : `Best skill: ${topStr}`;
+          : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#7a1c1c">
-          👁 <strong>${s.name}</strong> of ${s.kingdom} — ${s.locationName}<br>
+          👁 <strong>${s.name}</strong> of ${s.kingdom}${(s.race||s.alignment)?` (${[s.race,s.alignment].filter(Boolean).join(', ')})`:''} — ${s.locationName}<br>
           <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
         </div>`;
       }).join('');
@@ -2578,7 +2605,7 @@ const MASTERY_EFFECTS={
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
-  white:{6:'Master of White Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
+  white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) heal half their maximum HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
   illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
   elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
@@ -4266,7 +4293,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     if(sk.length) hireTop={skill:sk[0][0],level:sk[0][1]};
   }
   const skillStr=hireTop
-    ?`<span style="color:var(--forest)"><strong>Best skill:</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill} ${hireTop.level}</span>`
+    ?`<span style="color:var(--forest)"><strong>${skillFameLabel(hireTop.level)}:</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill} ${hireTop.level}</span>`
     :'<span style="color:#aaa">No notable skills</span>';
 
   card.innerHTML=`
@@ -5541,11 +5568,16 @@ function buildTargetField(c, ph, saved){
       // TREASURY, or rob the province's garrison paymaster (1g per garrison unit). The choice of
       // prize rides in `extra` ('item' | 'gold'); 'garrison' is a target value of its own.
       const thiefLvl=effSkillP(c,'thief');
-      const visibleEnemyChars=(report.visibleChars||[]).filter(x=>x.player!==null&&x.player!==c.player);
       const loc=predictedLocation(c.id,ph);
+      // 2026-09-11 (Toby): only characters standing where the thief will BE this phase are offered. The
+      // engine (`case 'steal'`) requires `victim.location===c.location` and never chases — a target in another
+      // province was accepted by the form, then wasted the phase with "finds no suitable target".
+      const _allVisEnemy=(report.visibleChars||[]).filter(x=>x.player!==null&&x.player!==c.player);
+      const visibleEnemyChars=loc?_allVisEnemy.filter(x=>x.locationId===loc.id):[];
+      const _elsewhere=_allVisEnemy.length-visibleEnemyChars.length;
       const pdS=loc?provOrderData[loc.id]:null;
       const garrN=(pdS&&pdS.owner!=null&&pdS.owner!==c.player)?((pdS.garrisonArmies||[]).length):0;
-      if(visibleEnemyChars.length===0&&garrN===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from here — you need a rival character or an enemy garrison" disabled>`;
+      if(visibleEnemyChars.length===0&&garrN===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc?loc.name:'this province'}${_elsewhere>0?` (${_elsewhere} rival${_elsewhere!==1?'s':''} in sight elsewhere — a thief must stand in the same province; move there first)`:' — you need a rival character or an enemy garrison'}" disabled>`;
       const base=50+10*Math.min(thiefLvl,5);
       const opts=visibleEnemyChars.map(x=>{
         const hasItems=(x.items||[]).length>0;
@@ -5558,7 +5590,7 @@ function buildTargetField(c, ph, saved){
           <option value="item" ${prize==='item'?'selected':''}>Lift a magic item</option>
           <option value="gold" ${prize==='gold'?'selected':''}>Pick their strongbox — 5% of their treasury</option>
         </select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Target must be in the same province. A target with no items is robbed of gold instead. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${orderChanceNote(c,'Steal',ph)}`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc?loc.name:'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere>0?` (${_elsewhere} other rival${_elsewhere!==1?'s':''} in sight elsewhere.)`:''} A target with no items is robbed of gold instead. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${orderChanceNote(c,'Steal',ph)}`;
     }
 
     // ── SEARCH LAIR ──
@@ -6334,7 +6366,21 @@ function popupKnownChars(pd, deadHeroes){
 // Single function renders into any SVG element (inline or fullscreen)
 // 2026-09-10 (item 4): map marker colour for local chieftains (neutral-province guards). Wandering heroes
 // stay #888 grey with '?'; chieftains are light brown with '!'. Keep in step with the legend SVG above.
-const CHIEFTAIN_MARKER_COLOR='#b08a5a';
+// 2026-09-11 (Toby): how a hero's best skill is introduced, by its level — replaces the flat "Best skill:".
+function skillFameLabel(level){
+  const l=level||0;
+  return l>=8?'Legendary for':l>=6?'Renowned for':l>=4?'Famous for':l>=2?'Known for':'Trained in';
+}
+// 2026-09-11 (item 4): bottom-right race badges. Keys are formatRace() outputs.
+const MAP_RACE_BADGE={
+  Human:   {glyph:'H',fill:'#c9a961',stroke:'#5a4310',text:'#1a1208'},
+  Elven:   {glyph:'E',fill:'#6fbf73',stroke:'#1f5a23',text:'#0c2a0e'},
+  Dwarven: {glyph:'D',fill:'#9fa8b8',stroke:'#3a4250',text:'#151a22'},
+  Orcish:  {glyph:'O',fill:'#b8433a',stroke:'#4d1410',text:'#fff'},
+  Creature:{glyph:'C',fill:'#4fa3c9',stroke:'#173f52',text:'#0a1f28'},
+  Monster: {glyph:'M',fill:'#7d4fb5',stroke:'#2d1550',text:'#fff'},
+};
+const CHIEFTAIN_MARKER_COLOR='#8f6a38'; // 2026-09-11 (Toby item 5): darkened from #b08a5a — luminance 111 stays just above the tooltip's 110 lightening threshold so the popup shows the same brown
 function renderMapIntoSvg(svgEl, report){
   const svgNS='http://www.w3.org/2000/svg';
   svgEl.innerHTML='';
@@ -6639,6 +6685,31 @@ function renderMapIntoSvg(svgEl, report){
         dt.setAttribute('class','sym-dead'); symbolLayer.appendChild(dt);
       }
     }
+    // 2026-09-11 (Toby item 4): a small race badge in the BOTTOM-RIGHT corner of every known hex —
+    // H/E/D/O for the humanoid races, C for Creature, M for Monster (Whale Cohorts are creatures; sea
+    // beasts are monsters) — so a glance shows which peoples live where. formatRace() collapses the
+    // engine's 'Primal:<sub-race>' values to Creature/Monster. Uninhabited land and empty sea show nothing.
+    if(known && pd.race){
+      const rb=MAP_RACE_BADGE[formatRace(pd.race)];
+      if(rb){
+        const rx=x+HS-7.5, ry=y+HS-16.5;
+        const rg=document.createElementNS(svgNS,'g');
+        const rc=document.createElementNS(svgNS,'circle');
+        rc.setAttribute('cx',rx);rc.setAttribute('cy',ry);rc.setAttribute('r','3');
+        rc.setAttribute('fill',rb.fill);rc.setAttribute('stroke',rb.stroke);rc.setAttribute('stroke-width','0.5');
+        rc.setAttribute('opacity',known&&!isOwned&&!isVisited?'0.7':'1');
+        const rt=document.createElementNS(svgNS,'text');
+        rt.setAttribute('x',rx);rt.setAttribute('y',ry+1.4);
+        rt.setAttribute('text-anchor','middle');rt.setAttribute('font-size','4');rt.setAttribute('font-weight','700');
+        rt.setAttribute('font-family','Cinzel,serif');rt.setAttribute('fill',rb.text);
+        rt.textContent=rb.glyph;
+        const rtt=document.createElementNS(svgNS,'title'); rtt.textContent=formatRace(pd.race)+' province';
+        rg.appendChild(rtt); rg.appendChild(rc); rg.appendChild(rt);
+        rg.setAttribute('pointer-events','none');
+        rg.setAttribute('class','sym-race'); symbolLayer.appendChild(rg);
+      }
+    }
+
     // Item 9 (this session): a shield at the BOTTOM-RIGHT of any owned hex where the player holds
     // GARRISONED (unled) units — a glance tells them which provinces are actually held by a standing
     // garrison rather than just owned on paper. Keyed on pd.garrisonArmies (only populated for owned
@@ -6765,6 +6836,7 @@ function renderMapIntoSvg(svgEl, report){
         tt.style.display='block';
         tt.style.left=(ev.clientX+16)+'px';
         tt.style.top=(ev.clientY+16)+'px';
+        _clampMapTip(tt); // 2026-09-11 (item 6): keep the whole popup — Close button included — inside the viewport
       });
       g.addEventListener('mouseleave',()=>{ if(!tt._sticky) tt.style.display='none'; });
       // Item 4: a tap/click makes the popup STICKY and interactive (so the Close button works on mobile,
@@ -6781,6 +6853,25 @@ function renderMapIntoSvg(svgEl, report){
 // ── INLINE MAP ─────────────────────────────────────────
 // Item 4: dismiss the sticky province popup (mobile — no mouse-leave to hide it).
 function _closeMapTip(ev){ if(ev){ev.stopPropagation();} const tt=document.getElementById('map-tooltip'); if(tt){ tt.style.display='none'; tt._sticky=false; tt.style.pointerEvents='none'; } }
+// 2026-09-11 (Toby item 6 — Android Chrome: popup could not be closed). Root causes: (1) the popup was
+// placed at the tap point +16px with no bounds check, so a tap near the right/bottom edge pushed its
+// Close button off-screen; (2) nothing closed it when the player switched Map/Report/Orders views or
+// tapped elsewhere. Fixes: clamp the popup inside the viewport after it is shown; a tap or click
+// anywhere outside the popup, an Escape key, a view/tab switch or closing the fullscreen map all dismiss it.
+function _clampMapTip(tt){
+  try{
+    const r=tt.getBoundingClientRect(), vw=window.innerWidth||0, vh=window.innerHeight||0, pad=8;
+    if(!vw||!vh) return;
+    let l=r.left, t=r.top;
+    if(l+r.width>vw-pad) l=Math.max(pad, vw-pad-r.width);
+    if(t+r.height>vh-pad) t=Math.max(pad, vh-pad-r.height);
+    if(l<pad) l=pad; if(t<pad) t=pad;
+    tt.style.left=l+'px'; tt.style.top=t+'px';
+    tt.style.maxHeight=Math.max(120, vh-2*pad)+'px'; tt.style.overflowY='auto';
+  }catch(e){}
+}
+document.addEventListener('click',ev=>{ const tt=document.getElementById('map-tooltip'); if(!tt||tt.style.display==='none'||!tt._sticky) return; if(tt.contains(ev.target)) return; _closeMapTip(); },true);
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') _closeMapTip(); });
 
 // ── Item 2: MAP ICON TOGGLES ────────────────────────────────────────────────
 // Each overlay icon type carries a CSS class (sym-<type>); a shared <style> hides the classes the
@@ -6795,6 +6886,7 @@ const MAP_ICON_TYPES=[
   {key:'consec',   label:'✨ Consecrated'},
   {key:'ritual',   label:'🌙 Ritual sites'},
   {key:'prosper',  label:'● Prosperity'},
+  {key:'race',     label:'Ⓗ Races'},
 ];
 const _mapIconOff=new Set();
 function applyMapIconVisibility(){
@@ -6842,7 +6934,7 @@ function showFullscreenMap(){
   const hdr=document.createElement('div');
   hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#1a1208;border-bottom:1px solid #c8922a;flex-shrink:0';
   hdr.innerHTML='<span style="font-family:Cinzel,serif;color:#e8b84b;font-size:.85rem">Known World</span>'
-    +'<button onclick="document.getElementById(\'map-fullscreen-modal\').remove()" '
+    +'<button onclick="_closeMapTip();document.getElementById(\'map-fullscreen-modal\').remove()" '
     +'style="background:#7a1c1c;color:#fff;border:none;padding:7px 16px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;border-radius:2px">\u2715 Close</button>';
   const body=document.createElement('div');
   body.className='kc-map-scroll';
@@ -6859,7 +6951,7 @@ function showFullscreenMap(){
   document.body.appendChild(modal);
   if(viewingReport||currentReport) renderMapIntoSvg(fsSvg, viewingReport||currentReport);
   if(fitMapSvgHeight(fsSvg,fsW)==null) fsSvg.style.height=Math.max(200,(window.innerHeight||400)-80)+'px';
-  modal.addEventListener('click',ev=>{if(ev.target===modal)modal.remove();});
+  modal.addEventListener('click',ev=>{if(ev.target===modal){_closeMapTip();modal.remove();}});
 }
 
 // ── BOOT ─────────────────────────────────────────────
@@ -6868,6 +6960,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-0813</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-0912</div>
 </body>
 </html>
