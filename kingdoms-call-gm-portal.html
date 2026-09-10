@@ -12584,7 +12584,7 @@ const BATTLE_ARMY_SPELLS={
           if(_adjacent){ toProv=_want; }
           else {
             seaCap[c.id]=getSeaCapability(c.armies||[], c); // stepToward reads the cache — make it current
-            const _step=stepToward(c,_want.id);
+            const _step=stepTowardPreferSafe(c,_want.id);
             if(!_step){log('move',`${c.name} intended to march to ${_want.name}, but from ${prov.name} no passable route leads there this phase — the column holds.`,{actor:c.player,targets:[c.player]});break;}
             toProv=_step;
             log('move',`${c.name} intended to march to ${_want.name}, but after being displaced it no longer lies adjacent — the column turns toward it by way of ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
@@ -16653,11 +16653,30 @@ const BATTLE_ARMY_SPELLS={
 
   // First step of a legal path from the character's current province toward a destination.
   // Respects the terrain the character's armies can actually cross. Returns null if no route.
-  function stepToward(c,toId){
+  // A province a player's column can pass THROUGH without starting a fight or being turned back: their
+  // own land, an ally's, or unowned ground with no live armed neutral guard. Used to steer a displaced
+  // prov:-move detour onto safe ground when an equally short route exists (see stepTowardPreferSafe).
+  function provSafePassageFor(p,pi){
+    if(!p) return false;
+    if(p.owner===pi) return true;
+    if(p.owner!=null) return relationBetween(pi,p.owner)==='allied';
+    return !(G.characters||[]).some(g=>g&&g.alive&&g.player===null&&g._isNeutralGuard&&g.location===p.id&&(g.armies||[]).length>0);
+  }
+  // prov:-move detour: prefer a route whose INTERMEDIATE provinces are all safe passage (the final
+  // target itself may be hostile — that is the player's chosen destination). Falls back to the plain
+  // shortest route when no safe one exists, so the column still makes progress.
+  function stepTowardPreferSafe(c,toId){
+    if(c&&c.player!=null){
+      const safe=stepToward(c,toId,p=>p.id===toId||provSafePassageFor(p,c.player));
+      if(safe) return safe;
+    }
+    return stepToward(c,toId);
+  }
+  function stepToward(c,toId,extraFilter){
     const from=G.world.provinces[c.location];
     if(!from||toId==null||c.location===toId) return null;
     const sc=seaCap[c.id]||'land';
-    const passable=(p)=>!!p&&canEnterTerrain(c,p.terrain,sc);
+    const passable=(p)=>!!p&&canEnterTerrain(c,p.terrain,sc)&&(!extraFilter||extraFilter(p));
     const seen=new Set([from.id]);
     // BFS storing the first step taken on each path
     let frontier=getNeighborsP(from,G.world.cols,G.world.rows,G.world.provinces)
@@ -16692,7 +16711,7 @@ const BATTLE_ARMY_SPELLS={
       const want=G.world.provinces[parseInt(t.slice(5))];
       if(!want||want.id===from.id) return null;
       if(getNeighborsP(from,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===want.id)) return want;
-      return stepToward(c,want.id);
+      return stepTowardPreferSafe(c,want.id);
     }
     const id=parseInt(t);
     if(isNaN(id)) return null;
@@ -18926,6 +18945,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1625</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1730</div>
 </body>
 </html>
