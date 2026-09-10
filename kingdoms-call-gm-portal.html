@@ -812,7 +812,9 @@ function predictedLocation(charId,upToPhaseExclusive){
     const actionEl=getActionEl(charId,ph);
     if(!actionEl||actionEl.value!=='Move')continue;
     const tgt=getOrderTarget(charId,ph);
-    if(!tgt||!tgt.startsWith('dir:'))continue;
+    if(!tgt)continue;
+    if(tgt.startsWith('prov:')){ const pid=parseInt(tgt.slice(5)); if(!isNaN(pid)&&worldMeta.provinces.some(p=>p.id===pid)) locId=pid; continue; }
+    if(!tgt.startsWith('dir:'))continue;
     const dir=tgt.slice(4);
     const curProv=worldMeta.provinces.find(p=>p.id===locId);
     if(!curProv)continue;
@@ -889,7 +891,19 @@ function buildTargetField(c,ph,saved){
   const extra=saved.extra||'';
   const report=currentReport||{};
   const provOrderData=report.provinceOrderData||{};
-  const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>`<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}</option>`).join('');
+  // Move targets are ABSOLUTE province ids (prov:<id>) labelled by compass direction + name, so a
+  // displaced character still heads where the player meant. Legacy dir:<D> orders remain accepted.
+  const _wm=report.worldMeta||{}; const _wc=_wm.cols||20,_wr=_wm.rows||10,_wp=_wm.provinces||[];
+  const _cur=predictedLocation(c.id,ph); const _curProv=_cur?_wp.find(p=>p.id===_cur.id):null;
+  const _HD=['NW','NE','W','E','SW','SE'],_EV=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]],_OD=[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+  const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>{
+    if(!_curProv) return `<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}</option>`;
+    const i=_HD.indexOf(v); const [dr,dc]=(_curProv.row%2===0?_EV:_OD)[i];
+    const nr=_curProv.row+dr; if(nr<0||nr>=_wr) return null;
+    const nid=nr*_wc+(((_curProv.col+dc)%_wc+_wc)%_wc); const nb=_wp.find(p=>p.id===nid);
+    const sel=(target==='prov:'+nid||target==='dir:'+v)?'selected':'';
+    return `<option value="prov:${nid}" ${sel}>${l}${nb&&nb.name?` (${nb.name})`:''}</option>`;
+  }).filter(Boolean).join('');
   switch(action){
     case 'Move':
       return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
@@ -12523,6 +12537,27 @@ const BATTLE_ARMY_SPELLS={
           const dir=target.slice(4);
           toProv=neighborInDir(prov,dir);
           if(!toProv){log('move',`${c.name} marches ${dir} to the edge of the world, but the impassable icy wastelands bar the way — no army can cross them to the far north or south.`,{actor:c.player,targets:[c.player]});break;}
+        } else if(target.startsWith('prov:')){
+          // ABSOLUTE move target (player portal, v2026.09.10+): the order names the specific province
+          // chosen at order time rather than a compass direction, so a character displaced earlier in the
+          // turn (a retreat after a lost battle, a Terror-Walker rout) still heads for the province the
+          // player actually wanted. If that province is adjacent, march straight in. If the displacement
+          // put it out of reach, take ONE step along the shortest passable route toward it (terrain-aware
+          // BFS — the same stepToward the wandering-hero code uses); the step is then subject to every
+          // normal movement rule below (pools, borders, sea/land capability) exactly like a direct move.
+          const _wantId=parseInt(target.slice(5));
+          const _want=isNaN(_wantId)?null:G.world.provinces[_wantId];
+          if(!_want){log('move',`${c.name}: invalid move target.`,{actor:c.player,targets:[c.player]});break;}
+          if(_want.id===prov.id){log('move',`${c.name} is already in ${_want.name} — the move order is moot.`,{actor:c.player,targets:[c.player]});break;}
+          const _adjacent=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===_want.id);
+          if(_adjacent){ toProv=_want; }
+          else {
+            seaCap[c.id]=getSeaCapability(c.armies||[], c); // stepToward reads the cache — make it current
+            const _step=stepToward(c,_want.id);
+            if(!_step){log('move',`${c.name} intended to march to ${_want.name}, but from ${prov.name} no passable route leads there this phase — the column holds.`,{actor:c.player,targets:[c.player]});break;}
+            toProv=_step;
+            log('move',`${c.name} intended to march to ${_want.name}, but after being displaced it no longer lies adjacent — the column turns toward it by way of ${toProv.name}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
+          }
         } else {
           const id=parseInt(target);
           if(!isNaN(id)) toProv=G.world.provinces[id];
@@ -16620,6 +16655,14 @@ const BATTLE_ARMY_SPELLS={
     const from=G.world.provinces[c.location];
     if(!from) return null;
     if(t.startsWith('dir:')) return neighborInDir(from,t.slice(4));
+    if(t.startsWith('prov:')){
+      // Absolute target: the province itself if adjacent, else the first step toward it (mirrors the
+      // move case so phase intents / interceptions see where the column will actually go).
+      const want=G.world.provinces[parseInt(t.slice(5))];
+      if(!want||want.id===from.id) return null;
+      if(getNeighborsP(from,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===want.id)) return want;
+      return stepToward(c,want.id);
+    }
     const id=parseInt(t);
     if(isNaN(id)) return null;
     return G.world.provinces[id]||null;
@@ -18852,6 +18895,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1341</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1546</div>
 </body>
 </html>

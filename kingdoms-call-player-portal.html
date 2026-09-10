@@ -5188,7 +5188,9 @@ function predictedLocation(charId, upToPhaseExclusive){
     const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
     if(action!=='Move') continue;
     const tgt=getOrderTarget(charId,ph);
-    if(!tgt||!tgt.startsWith('dir:')) continue;
+    if(!tgt) continue;
+    if(tgt.startsWith('prov:')){ const pid=parseInt(tgt.slice(5)); if(!isNaN(pid)&&worldMeta.provinces.some(p=>p.id===pid)) locId=pid; continue; }
+    if(!tgt.startsWith('dir:')) continue;
     const dir=tgt.slice(4);
     const curProv=worldMeta.provinces.find(p=>p.id===locId);
     if(!curProv) continue;
@@ -5439,7 +5441,14 @@ function buildTargetField(c, ph, saved){
       }
     }
     if(offMap) return null; // legal moves only
-    return`<option value="dir:${v}" ${target==='dir:'+v?'selected':''}>${l}${provLabel}</option>`;
+    // Emit the ABSOLUTE province id (prov:<id>) rather than the compass direction, so if the character is
+    // displaced earlier in the turn (retreat after a lost battle) the engine still heads for the province
+    // the player actually chose, not "one hex east of wherever they ended up". Legacy dir: orders still
+    // parse, so a previously-saved direction is shown as selected too.
+    const nidOut=curProv_?(curProv_.row+(curProv_.row%2===0?EVEN_OFF:ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][0])*wCols+(((curProv_.col+(curProv_.row%2===0?EVEN_OFF:ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][1])%wCols+wCols)%wCols):null;
+    const valOut=nidOut!=null?`prov:${nidOut}`:`dir:${v}`;
+    const selOut=(target===valOut||target==='dir:'+v)?'selected':'';
+    return`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
   }).filter(Boolean).join('');
 
   switch(action){
@@ -6827,6 +6836,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1341</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1546</div>
 </body>
 </html>
