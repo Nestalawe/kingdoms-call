@@ -3301,21 +3301,21 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Beastbane Snare',desc:'Combat use: a beast or vermin foe is snared and loses its next 2 actions.',lore:'An iron net a trapper would envy. Used once per personal combat, only against beasts and vermin: the foe is snared and loses its next 2 actions.',effect:{stat:'combatUse',use:'banestun',stun:2,vs:['beast','vermin'],bonus:0},tier:1},
   // ── RACE- AND ALIGNMENT-BOUND ITEMS (2026-09-07, item 4): only a character of the named race or alignment can
   //    equip or use these; in any other hand they are inert (and still worth giving to the right ally). ──
-  {name:'Dwarf-Forged Warhammer',desc:'[Dwarves only] Melee +2.',lore:'Forged in the deep halls and balanced for a dwarven grip. Dwarves only: Melee skill counts as 2 levels higher; inert in any other hand.',race:'Dwarf',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
-  {name:'Deep-Delver\'s Lantern',desc:'[Dwarves only] Explorer +2.',lore:'A miner\'s lamp that shows every seam and side-tunnel. Dwarves only: Explorer skill counts as 2 levels higher; inert in any other hand.',race:'Dwarf',effect:{stat:'explorer',bonus:2},tier:1},
-  {name:'Runic Ale-Horn',desc:'[Dwarves only] Max HP +6.',lore:'Ale drunk from it puts iron in the belly. Dwarves only: maximum HP +6; inert in any other hand.',race:'Dwarf',effect:{stat:'maxHp',bonus:6},tier:1},
-  {name:'Ironclad Captain\'s Chain',desc:'[Dwarves only] Naval +2.',lore:'The chain of office of the Iron Fleet\'s first admiral. Dwarves only: Naval skill counts as 2 levels higher; inert in any other hand.',race:'Dwarf',effect:{stat:'naval',bonus:2},slot:'amulet',tier:1},
-  {name:'Anvil-Brand Shield',desc:'[Dwarves only] Combat use: a ward that soaks 12 damage, once per fight.',lore:'A shield stamped with the mark of the mountain forges. Dwarves only, used once per personal combat: a ward that soaks 12 damage; inert in any other hand.',race:'Dwarf',effect:{stat:'combatUse',use:'absorb',absorb:12,bonus:0},tier:2},
-  {name:'Moonsilver Bow',desc:'[Elves only] Archery +2.',lore:'Strung with moonlight, or something very like it. Elves only: Archery skill counts as 2 levels higher; inert in any other hand.',race:'Elf',effect:{stat:'archery',bonus:2},slot:'weapon',tier:1},
-  {name:'Starlight Diadem',desc:'[Elves only] Illusory Magic +2.',lore:'A circlet that scatters starlight into a hundred false shapes. Elves only: Illusory Magic skill counts as 2 levels higher; inert in any other hand.',race:'Elf',effect:{stat:'illusory',bonus:2},slot:'helm',tier:1},
-  {name:'Cloak of Leaves',desc:'[Elves only] Spy +2.',lore:'Its wearer is just another shadow beneath the trees. Elves only: Spy skill counts as 2 levels higher; inert in any other hand.',race:'Elf',effect:{stat:'spy',bonus:2},slot:'cloak',tier:1},
-  {name:'Wardancer\'s Anklets',desc:'[Elves only] March +2.',lore:'Bells of the swift dance that lighten every step. Elves only: March skill counts as 2 levels higher; inert in any other hand.',race:'Elf',effect:{stat:'march',bonus:2},slot:'armour',tier:1},
-  {name:'Phial of Elvenmead',desc:'[Elves only] Combat use: recover 12 HP once per fight (used below half health).',lore:'The wine of the elven courts, sweet and restoring. Elves only, used once per personal combat when below half health: recover 12 HP; inert in any other hand.',race:'Elf',effect:{stat:'combatUse',use:'heal',amt:12,below:0.5,bonus:0},tier:2},
-  {name:'Skull-Cleaver',desc:'[Orcs only] Melee +2.',lore:'A brutal orcish blade, notched from a hundred skulls. Orcs only: Melee skill counts as 2 levels higher; inert in any other hand.',race:'Orc',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
-  {name:'Warg-Hide Mantle',desc:'[Orcs only] Max HP +8.',lore:'The pelt of a black warg still keeps its savage vitality. Orcs only: maximum HP +8; inert in any other hand.',race:'Orc',effect:{stat:'maxHp',bonus:8},slot:'cloak',tier:1},
-  {name:'Blood-Drum of the Horde',desc:'[Orcs only] Tactical +2.',lore:'Its beat sets the whole horde moving as one. Orcs only: Tactical skill counts as 2 levels higher; inert in any other hand.',race:'Orc',effect:{stat:'tactical',bonus:2},tier:1},
-  {name:'Tusk Fetish',desc:'[Orcs only] Necromancy +2.',lore:'Tusks and finger-bones strung on a sinew cord; the dead answer to it. Orcs only: Necromancy skill counts as 2 levels higher; inert in any other hand.',race:'Orc',effect:{stat:'necromancy',bonus:2},slot:'amulet',tier:1},
-  {name:'Berserker\'s Draught',desc:'[Orcs only] Combat use: Melee +2 for the rest of the fight (drunk as the fight opens).',lore:'Red-eye brew: the world goes crimson and the pain goes away. Orcs only, drunk as a personal combat opens: Melee counts 2 higher for the rest of the fight; inert in any other hand.',race:'Orc',effect:{stat:'combatUse',use:'buff',melee:2,bonus:0},tier:2},
+  {name:'Dwarf-Forged Warhammer',desc:'[Dwarves only] Melee +2.',lore:'Forged in the deep halls and balanced for a dwarven grip. Dwarves only: Melee skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
+  {name:'Deep-Delver\'s Lantern',desc:'[Dwarves only] Explorer +2.',lore:'A miner\'s lamp that shows every seam and side-tunnel. Dwarves only: Explorer skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'explorer',bonus:2},tier:1},
+  {name:'Runic Ale-Horn',desc:'[Dwarves only] Max HP +6.',lore:'Ale drunk from it puts iron in the belly. Dwarves only: maximum HP +6; inert in any other hand.',race:'Dwarven',effect:{stat:'maxHp',bonus:6},tier:1},
+  {name:'Ironclad Captain\'s Chain',desc:'[Dwarves only] Naval +2.',lore:'The chain of office of the Iron Fleet\'s first admiral. Dwarves only: Naval skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'naval',bonus:2},slot:'amulet',tier:1},
+  {name:'Anvil-Brand Shield',desc:'[Dwarves only] Combat use: a ward that soaks 12 damage, once per fight.',lore:'A shield stamped with the mark of the mountain forges. Dwarves only, used once per personal combat: a ward that soaks 12 damage; inert in any other hand.',race:'Dwarven',effect:{stat:'combatUse',use:'absorb',absorb:12,bonus:0},tier:2},
+  {name:'Moonsilver Bow',desc:'[Elves only] Archery +2.',lore:'Strung with moonlight, or something very like it. Elves only: Archery skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'archery',bonus:2},slot:'weapon',tier:1},
+  {name:'Starlight Diadem',desc:'[Elves only] Illusory Magic +2.',lore:'A circlet that scatters starlight into a hundred false shapes. Elves only: Illusory Magic skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'illusory',bonus:2},slot:'helm',tier:1},
+  {name:'Cloak of Leaves',desc:'[Elves only] Spy +2.',lore:'Its wearer is just another shadow beneath the trees. Elves only: Spy skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'spy',bonus:2},slot:'cloak',tier:1},
+  {name:'Wardancer\'s Anklets',desc:'[Elves only] March +2.',lore:'Bells of the swift dance that lighten every step. Elves only: March skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'march',bonus:2},slot:'armour',tier:1},
+  {name:'Phial of Elvenmead',desc:'[Elves only] Combat use: recover 12 HP once per fight (used below half health).',lore:'The wine of the elven courts, sweet and restoring. Elves only, used once per personal combat when below half health: recover 12 HP; inert in any other hand.',race:'Elven',effect:{stat:'combatUse',use:'heal',amt:12,below:0.5,bonus:0},tier:2},
+  {name:'Skull-Cleaver',desc:'[Orcs only] Melee +2.',lore:'A brutal orcish blade, notched from a hundred skulls. Orcs only: Melee skill counts as 2 levels higher; inert in any other hand.',race:'Orcish',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
+  {name:'Warg-Hide Mantle',desc:'[Orcs only] Max HP +8.',lore:'The pelt of a black warg still keeps its savage vitality. Orcs only: maximum HP +8; inert in any other hand.',race:'Orcish',effect:{stat:'maxHp',bonus:8},slot:'cloak',tier:1},
+  {name:'Blood-Drum of the Horde',desc:'[Orcs only] Tactical +2.',lore:'Its beat sets the whole horde moving as one. Orcs only: Tactical skill counts as 2 levels higher; inert in any other hand.',race:'Orcish',effect:{stat:'tactical',bonus:2},tier:1},
+  {name:'Tusk Fetish',desc:'[Orcs only] Necromancy +2.',lore:'Tusks and finger-bones strung on a sinew cord; the dead answer to it. Orcs only: Necromancy skill counts as 2 levels higher; inert in any other hand.',race:'Orcish',effect:{stat:'necromancy',bonus:2},slot:'amulet',tier:1},
+  {name:'Berserker\'s Draught',desc:'[Orcs only] Combat use: Melee +2 for the rest of the fight (drunk as the fight opens).',lore:'Red-eye brew: the world goes crimson and the pain goes away. Orcs only, drunk as a personal combat opens: Melee counts 2 higher for the rest of the fight; inert in any other hand.',race:'Orcish',effect:{stat:'combatUse',use:'buff',melee:2,bonus:0},tier:2},
   {name:'Banner of the Free Companies',desc:'[Humans only] All armies led: strength +2 each.',lore:'The standard the free companies fought under in the old wars. Humans only: every army you lead fights at +2 strength; inert in any other hand.',race:'Human',effect:{stat:'armyBonus',bonus:2},tier:2},
   {name:'Yeoman\'s Warbow',desc:'[Humans only] Archery +2.',lore:'A great yew bow of the border levies. Humans only: Archery skill counts as 2 levels higher; inert in any other hand.',race:'Human',effect:{stat:'archery',bonus:2},slot:'weapon',tier:1},
   {name:'Guildmaster\'s Seal',desc:'[Humans only] +5g collected each tax season.',lore:'The seal of the counting-houses opens purses across the realm. Humans only: +5 gold collected each tax season; inert in any other hand.',race:'Human',effect:{stat:'taxBonus',bonus:5},slot:'ring',tier:1},
@@ -3572,9 +3572,14 @@ function ensureAllLairHoards(gs){
 }
 function itemNameList(items){ return (items||[]).map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+(d.desc?' ('+d.desc+')':'')).join(', '); }
 // Which race / alignment an item is bound to, if any; an item a character cannot use is inert in their hands.
+// 2026-09-10 item 3: race-bound items were tagged 'Elf'/'Dwarf'/'Orc' while characters carry 'Elven'/
+// 'Dwarven'/'Orcish', so every non-Human race-bound item was inert in its OWN race's hands. The item
+// data now uses the canonical names; this alias map keeps items already rolled into saved games working.
+const _ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
+function itemRaceOf(it){ const r=it&&it.race; return r?(_ITEM_RACE_ALIAS[r]||r):r; }
 function itemUsableBy(it, c){
   if(!it) return false;
-  if(it.race && (!c || c.race!==it.race)) return false;
+  if(it.race && (!c || c.race!==itemRaceOf(it))) return false;
   if(it.alignment && (!c || c.alignment!==it.alignment)) return false;
   return true;
 }
@@ -10225,7 +10230,8 @@ const BATTLE_ARMY_SPELLS={
       castSpells:[], castSchool:{}, // per-combat spell limits
       isUndead:(ch.alignment==='Undead'),
       // ── LEVEL 6/8 SKILL PERKS (personal combat) ──
-      meleeRaw:skillLevel(ch,'melee'), archeryRaw:skillLevel(ch,'archery'),
+      // (2026-09-10: the duplicate meleeRaw/archeryRaw keys that used to sit here silently overrode the
+      // Math.max(raw, effStat+minors) versions above — "+2 Melee" items never reached the damage roll.)
       perkParry:perkTier(ch,'melee')>=1,          // MELEE L6 — Parry
       perkCounter:perkTier(ch,'melee')>=3,        // MELEE L8 — Counterattack
       perkImpale:perkTier(ch,'archery')>=1,       // ARCHERY L6 — Impalement
@@ -10397,7 +10403,7 @@ const BATTLE_ARMY_SPELLS={
     const limit=lvl>=2?2:1;
     if(caster.castSpells.includes(spellName)){ narrative.push(`  ${caster.name}: ${spellName} already cast this combat.`); return false; }
     if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${school} spell limit reached this combat.`); return false; }
-    const castChance=Math.min(95,20+lvl*10+magicL8CastBonus(caster.ref));
+    const castChance=Math.min(95,20+lvl*10+magicL8CastBonus(caster.ref)+((caster.player!=null&&hasDisc(caster.player,'sd27'))?5:0)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>!e.school||e.school===school):0)); // 2026-09-10: sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only)
     // Item 10: narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader
     // sees the character reach for the spell, then whether the weave holds or collapses.
     const _schoolWeave={white:'sacred',psychic:'psychic',illusory:'illusory',elemental:'elemental',necromancy:'necromantic'}[school]||school;
@@ -11188,6 +11194,30 @@ const BATTLE_ARMY_SPELLS={
     if(!its.length) return null;
     return `  ⚜ ${ch.name} bears ${its.map(it=>it.name+(it.tier===3?' (Legendary)':'')).join(', ')} into the fight.`;
   }
+  // ── FLEE SPOILS (2026-09-10 item 2) ── A character who breaks off a duel or an Encounter against
+  // another character has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the
+  // character who held the field keeps it. Mithril never drops (granted relic). Both ends are resolved
+  // on the REAL character records since fights are often fought on pooled copies. Returns the item or null.
+  const DUEL_FLEE_DROP=0.30;
+  function duelFleeItemDrop(runnerCbt, stayerCbt, narrative){
+    if(!runnerCbt||!stayerCbt||runnerCbt.kind!=='character'||stayerCbt.kind!=='character') return null;
+    const _real=(x)=>(x&&x.id!=null&&(G.characters||[]).find(r=>r&&r.id===x.id))||x;
+    const runner=_real(runnerCbt.ref), stayer=_real(stayerCbt.ref);
+    if(!runner||!stayer||runner===stayer) return null;
+    const pool=transferableItems(runner.items||[]);
+    if(!pool.length) return null;
+    const roll=d100(), chance=Math.round(DUEL_FLEE_DROP*100);
+    narrative.push(`  ${runner.name} scrambles clear — ${chance}% chance of dropping something in the rout [roll ${roll}${roll<=chance?' ✓':' ✗'}]`);
+    if(roll>chance) return null;
+    const it=pool[Math.floor(Math.random()*pool.length)];
+    runner.items=(runner.items||[]).filter(x=>x!==it);
+    if(runnerCbt.ref!==runner&&Array.isArray(runnerCbt.ref.items)) runnerCbt.ref.items=runnerCbt.ref.items.filter(x=>x!==it&&!(x&&it&&x.name===it.name&&x.tier===it.tier)); // keep the battle copy in step
+    delete it.equipped; // re-slotted by normaliseEquipment on the new owner
+    stayer.items=(stayer.items||[]).concat([it]);
+    if(stayerCbt.ref!==stayer&&Array.isArray(stayerCbt.ref.items)) stayerCbt.ref.items=stayerCbt.ref.items.concat([it]);
+    narrative.push(`  💎 In the rout ${runner.name} drops ${it.name}${it.tier===3?' (Legendary)':''} — ${stayer.name} claims it.`);
+    return it;
+  }
   function resolveDuel(atk, def, narrative){
     const _ia=magicItemsLine(atk), _ib=magicItemsLine(def); // item 5
     if(_ia) narrative.push(_ia);
@@ -11198,6 +11228,7 @@ const BATTLE_ARMY_SPELLS={
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
       narrative.push(`${runner.name} breaks off the duel and slips away — ${stayer.name} holds the field.`);
+      duelFleeItemDrop(res.fledBy, res.fledBy===A?B:A, narrative); // item 2 (2026-09-10): flee spoils
       // Nobody is slain, but breaking off IS losing the duel — the caller demoralises their force.
       return {fled:runner, heldField:stayer};
     }
@@ -11994,7 +12025,7 @@ const BATTLE_ARMY_SPELLS={
         narrative.push(`${def.name} lifts ${stolen}g from ${atk.name}'s purse and is gone.`);
       }
     }
-    if(res.fledBy) narrative.push(`${res.fledBy.name} breaks away and escapes the encounter.`);
+    if(res.fledBy){ narrative.push(`${res.fledBy.name} breaks away and escapes the encounter.`); duelFleeItemDrop(res.fledBy, res.fledBy===A?B:A, narrative); } // item 2 (2026-09-10): flee spoils
 
     const atkHp=res.aHp, defHp=res.bHp;
     // A felled commander is not always slain — a third of the time the fight ends in
@@ -12143,7 +12174,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain}; }catch(e){} // (G exposed 2026-09-09 for harness reads of the live turn state)
+  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain,resolveDuel,duelFleeItemDrop,pcCastCombatSpell}; }catch(e){} // (G exposed 2026-09-09 for harness reads of the live turn state)
 
   // When a player's character visits/spies a province, record any dead heroes there as seen
   function recordDeadHeroSighting(playerIdx, provId){
@@ -18895,6 +18926,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1546</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1625</div>
 </body>
 </html>

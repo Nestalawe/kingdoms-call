@@ -560,8 +560,10 @@ const ITEM_SLOT_OF_P={
 function itemSlotP(it){ if(!it) return null; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded.
 // Item 4 (2026-09-07): race/alignment-bound items are inert in the wrong hands.
-function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==it.race)) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
-function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${it.race} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#a33;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
+const _ITEM_RACE_ALIAS_P={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
+function itemRaceOfP(it){ const r=it&&it.race; return r?(_ITEM_RACE_ALIAS_P[r]||r):r; }
+function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==itemRaceOfP(it))) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
+function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${itemRaceOfP(it)} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#a33;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
 function itemSlotTag(it,c){
   // Item 6 (2026-09-10): name the slot AND how many of that slot the character still has free.
   const sl=itemSlotP(it);
@@ -6836,6 +6838,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1546</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1625</div>
 </body>
 </html>
