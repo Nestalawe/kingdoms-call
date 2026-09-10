@@ -370,43 +370,43 @@ const MISSILE_ARMIES_MASTER=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Ar
 const PRIMAL_ARMY_DEFS_P={
   // ── Druid 4 — Land ──
   'Stone Giants'    :{str:9,speed:1,cost:5,race:'Stone Giant',cat:'Heavy',
-    desc:'Ancient stone-fleshed giants. Mountain Bulwark: +30% strength when the battle is fought in mountain terrain. Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Crushingly slow (speed 1).',
+    desc:'Ancient stone-fleshed giants. Mountain Bulwark: +30% strength when the battle is fought in mountain terrain. Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Crushingly slow (speed 1).',
     spells:[{name:'Boulder Barrage',dmg:[4,7],target:'single',flavour:'Giants heave boulders that shatter a formation before contact!'}]},
   'Forest Ents'     :{str:8,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
-    desc:'Living trees of great age. Rooted Grove: +30% strength in forest or jungle terrain. Pre-battle strike Choking Spores: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
+    desc:'Living trees of great age. Rooted Grove: +30% strength in forest or jungle terrain. Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
     spells:[{name:'Choking Spores',dmg:[2,4],target:'all',flavour:'A cloud of ancient spores rolls across the whole enemy line.'}]},
   'Giant Eagles'    :{str:7,speed:5,cost:4,race:'Giant Eagle',cat:'Free Lances',
-    desc:'Wild eagle-lords, not the Elven-tamed variety. Stoop on the Archers: +25% strength whenever the enemy fields any missile unit. Pre-battle strike Diving Talons: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
+    desc:'Wild eagle-lords, not the Elven-tamed variety. Stoop on the Archers: +25% strength whenever the enemy fields any missile unit. Pre-battle strike Diving Talons: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
     spells:[{name:'Diving Talons',dmg:[4,8],target:'single',flavour:'Eagles fold their wings and fall on the archers like thunderbolts!'}]},
   'Cave Trolls'     :{str:8,speed:2,cost:4,race:'Cave Troll',cat:'Heavy',
-    desc:'Regenerating mountain brutes. Regenerating Hide: +20% strength in every battle, and a further +30% (about +56% total) in mountain or forest terrain. Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
+    desc:'Regenerating mountain brutes. Regenerating Hide: +20% strength in every battle, and a further +30% (about +56% total) in mountain or forest terrain. Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
     spells:[{name:'Hurled Rubble',dmg:[4,7],target:'single',flavour:'A troll rips a slab from the earth and hurls it into the ranks.'}]},
   'Manticore Pride' :{str:8,speed:4,cost:5,race:'Manticore',cat:'Free Lances',
-    desc:'Ferocious lion-scorpion-bat creatures. Relentless Hunt: +25% strength when their side is the ATTACKER. Pre-battle strike Spine Volley: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
+    desc:'Ferocious lion-scorpion-bat creatures. Relentless Hunt: +25% strength when their side is the ATTACKER. Pre-battle strike Spine Volley: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
     spells:[{name:'Spine Volley',dmg:[2,4],target:'all',flavour:'A storm of tail-spines rains across every enemy unit.'}]},
   'Basilisk Brood'  :{str:7,speed:2,cost:4,race:'Basilisk',cat:'Heavy',
-    desc:'Petrifying reptiles. Stone Deterrent: +25% strength when their side is DEFENDING. Pre-battle strike Petrifying Gaze: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
+    desc:'Petrifying reptiles. Stone Deterrent: +25% strength when their side is DEFENDING. Pre-battle strike Petrifying Gaze: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
     spells:[{name:'Petrifying Gaze',dmg:[2,4],target:'all',flavour:'A hundred stony eyes sweep the field — flesh begins to seize.'}]},
   // ── Druid 4 — Sea ──
   'Sea Giants'      :{str:9,speed:3,cost:5,race:'Sea Giant',cat:'Naval',
-    desc:'Colossal ocean-dwelling giants. Tidal Might: +30% strength in a sea battle. Pre-battle strike Tidal Surge: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit.',
+    desc:'Colossal ocean-dwelling giants. Tidal Might: +30% strength in a sea battle. Pre-battle strike Tidal Surge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit.',
     spells:[{name:'Tidal Surge',dmg:[4,8],target:'single',flavour:'A wall of driven water smashes a vessel broadside.'}]},
   'Kraken Tentacles':{str:10,speed:2,cost:6,race:'Kraken',cat:'Naval',
-    desc:'Severed but animate tentacles of elder krakens. Deepwater Grasp: +35% strength in a sea battle. Pre-battle strike Crushing Coils: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit.',
+    desc:'Severed but animate tentacles of elder krakens. Deepwater Grasp: +35% strength in a sea battle. Pre-battle strike Crushing Coils: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit.',
     spells:[{name:'Crushing Coils',dmg:[5,9],target:'single',flavour:'Titanic coils breach and drag a hull under.'}]},
   // ── Druid 5 — Land ──
   'Elder Dragons'   :{str:12,speed:4,cost:8,race:'Dragon',cat:'Free Lances',
-    desc:'Fully sapient ancient dragons — each unit is one elder dragon. Wyrmscale: +25% strength in every battle. Pre-battle strike Dragonfire Breath: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit. Flying.',
+    desc:'Fully sapient ancient dragons — each unit is one elder dragon. Wyrmscale: +25% strength in every battle. Pre-battle strike Dragonfire Breath: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit. Flying.',
     spells:[{name:'Dragonfire Breath',dmg:[3,6],target:'all',flavour:'A sheet of ancient fire washes across the entire front line!'}]},
   'Crimson Rocs'      :{str:10,speed:5,cost:6,race:'Roc',cat:'Free Lances',
-    desc:'Riders atop massive thunder-birds. Air Superiority: +30% strength whenever the enemy fields any missile unit. Pre-battle strike Thunderous Stoop: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit. Flying (speed 5).',
+    desc:'Riders atop massive thunder-birds. Air Superiority: +30% strength whenever the enemy fields any missile unit. Pre-battle strike Thunderous Stoop: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit. Flying (speed 5).',
     spells:[{name:'Thunderous Stoop',dmg:[5,9],target:'single',flavour:'A roc plummets from cloud-height and scatters a unit outright.'}]},
   'Titan Warbeasts' :{str:11,speed:2,cost:7,race:'Titan',cat:'Heavy',
-    desc:'Primordial mythic beasts. Colossal Bulk: +30% strength in every battle (they fight from the back line at front-line power). Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
+    desc:'Primordial mythic beasts. Colossal Bulk: +30% strength in every battle (they fight from the back line at front-line power). Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
     spells:[{name:'World-Shaking Charge',dmg:[3,6],target:'all',flavour:'The herd charges — the ground itself throws every enemy off balance.'}]},
   // ── Druid 5 — Sea ──
   'Leviathan Pods'  :{str:13,speed:3,cost:8,race:'Leviathan',cat:'Naval',
-    desc:'Pods of ocean-spanning leviathans — the premier naval unit. Fleet-Sinker: +40% strength in a sea battle. Pre-battle strike Abyssal Maelstrom: fires in the pre-battle magic phase (20% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to every enemy unit.',
+    desc:'Pods of ocean-spanning leviathans — the premier naval unit. Fleet-Sinker: +40% strength in a sea battle. Pre-battle strike Abyssal Maelstrom: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to every enemy unit.',
     spells:[{name:'Abyssal Maelstrom',dmg:[4,7],target:'all',flavour:'The sea itself rises in a spiral that swallows a whole fleet.'}]},
 };
 
@@ -2619,7 +2619,7 @@ function setFeatureTreasure(f, v){
 // Item 9: the gold a hero collects for CLEARING a feature guardian is a tier-band roll. We roll it
 // ONCE and cache it on the feature, so a Scout can report the EXACT figure a clearer will receive
 // and the victory branch pays out that same amount (rolled here if the site was never scouted).
-const ENCOUNTER_CLEAR_GOLD_BANDS={Weak:[5,12],Moderate:[14,28],Powerful:[30,50],Legendary:[55,90]}; // Sept 2026 redesign: raised with the guardian rescale (was 3–8 / 8–16 / 18–25 / 26–40)
+const ENCOUNTER_CLEAR_GOLD_BANDS={Weak:[5,8],Moderate:[12,18],Powerful:[20,30],Legendary:[40,60]}; // 2026-09-10 (Toby): was 5–12 / 14–28 / 30–50 / 55–90
 function encounterClearGold(feat){
   if(!feat) return 0;
   if(feat._hoardV2) return featureTreasure(feat); // item 4 (2026-09-07): the one hoard figure
@@ -2781,269 +2781,269 @@ function seedUsedHeroNames(gameState){
   });
 }
 const MONSTERS_P=[
-  // ── Weak (hp 8–14, melee 1–2) — Sept 2026 rescale vs the derived-HP hero curve — no spells ──
-  {name:'Goblin Skirmisher',cat:'humanoid',desc:'A wiry goblin cutthroat, quick with a rusted blade and quicker to bolt from a losing fight.',hp:10,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:2},
-  {name:'Dire Rat',cat:'vermin',desc:'A dog-sized rat with yellowed fangs, nesting in the ruins and defending its filth with feral spite.',hp:8,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Skeleton Sentinel',cat:'undead',desc:'A rattling revenant bound to this place, its hollow sockets lit with cold, tireless purpose.',hp:9,power:'Weak',melee:1,archery:1,speed:'medium',minG:1,maxG:2},
-  {name:'Dire Wolf',cat:'beast',desc:'A grey hunter the size of a pony, driven by hunger, circling low before it lunges.',hp:12,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Bandit Outlaw',cat:'humanoid',desc:'A hardened road-thief in patched leathers, holding this haunt for whatever coin it hides.',hp:11,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:3},
-  {name:'Giant Wasp',cat:'vermin',desc:'A hand-span wasp with a barbed sting, darting fast and near impossible to pin down.',hp:10,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Cave Bat',cat:'vermin',desc:'A leathery horror of the deep dark, blind but unerring, shrieking as it dives.',hp:8,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Swamp Lizard',cat:'beast',desc:'A cold-blooded ambusher lurking in the muck, striking with a slow but crushing bite.',hp:13,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Crag Harpy',cat:'fey',desc:'A shrieking woman-vulture that stoops from the crags talons-first, jealous of every trinket.',hp:14,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
-  {name:'Alley Cutthroat',cat:'humanoid',desc:'A knife-for-hire with dead eyes, guarding stolen loot from the shadows.',hp:11,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:4},
-  // ── Moderate (hp 16–26, melee 2–3) — minor spells ──
-  {name:'Giant Spider',cat:'vermin',desc:'A bristling hunter the size of a warhorse, binding its prey in venom-slick silk.',hp:20,power:'Moderate',melee:3,archery:1,speed:'medium',minG:1,maxG:3,
-    spells:[{name:'Venom Web',school:'elemental',dmg:[3,6],effect:'hero -15% to hit for 1 round',castChance:35,flavour:'The spider hurls a web of crackling venom!'}]},
-  {name:'Bandit King',cat:'humanoid',desc:'A scarred outlaw chief who rules this haunt by fear; his war-cry alone can shake a hero.',hp:16,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:4,
-    spells:[{name:'Battle Cry',school:'psychic',dmg:[2,4],effect:'hero -20% to hit for 2 rounds',castChance:40,flavour:'The bandit king bellows a terrifying war cry — your nerves waver!'}]},
-  {name:'Stone Troll',cat:'giant',desc:'A lumbering brute of living rock whose wounds knit shut as fast as you can open them.',hp:21,power:'Moderate',melee:3,archery:1,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Stone Hide',school:'elemental',dmg:[0,0],effect:'troll gains +7 HP (regenerates)',castChance:40,flavour:'The troll\'s stony hide knits itself back together!'}]},
-  {name:'Sand Wurm',cat:'beast',desc:'A blind burrowing horror that erupts from the dunes in a storm of scouring sand.',hp:23,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Sand Blast',school:'elemental',dmg:[5,10],effect:'',castChance:40,flavour:'The wurm exhales a scouring storm of razor sand!'}]},
-  {name:'Spiked Manticore',cat:'beast',desc:'A lion-bodied terror with a scorpion tail, raining iron spikes before it closes to maul.',hp:24,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
-    spells:[{name:'Tail Volley',school:'elemental',dmg:[4,9],effect:'',castChance:40,flavour:'The manticore launches a volley of iron-hard tail spikes!'}]},
-  {name:'Ogre Chieftain',cat:'giant',desc:'A massive brute of a chieftain, slow-witted but strong enough to shatter stone with a fist.',hp:22,power:'Moderate',melee:3,archery:2,speed:'medium',minG:2,maxG:5,
-    spells:[{name:'Earthshake',school:'elemental',dmg:[3,7],effect:'hero -1 melee for next round',castChance:35,flavour:'The ogre hammers the ground, throwing you off balance!'}]},
-  {name:'Moon-Cursed Werewolf',cat:'beast',desc:'A cursed shapechanger, savage beneath the moon, whose howl freezes the blood.',hp:19,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
-    spells:[{name:'Howl of the Moon',school:'psychic',dmg:[2,5],effect:'hero loses next attack',castChance:30,flavour:'An unearthly howl fills the air — raw animal terror grips you!'}]},
-  {name:'Sea Serpent',cat:'beast',desc:'A coiling leviathan of the shallows, crushing hulls and heroes alike in its grip.',hp:26,power:'Moderate',melee:3,archery:0,speed:'fast',minG:3,maxG:6,
-    spells:[{name:'Crushing Coils',school:'elemental',dmg:[6,11],effect:'',castChance:35,flavour:'The serpent wraps massive coils around you — bones creak under the pressure!'}]},
-  {name:'Dark Elf Assassin',cat:'humanoid',desc:'A shadow-cloaked killer who strikes from impossible angles with poisoned steel.',hp:18,power:'Moderate',melee:3,archery:2,speed:'fast',minG:3,maxG:6,
-    spells:[{name:'Shadow Step',school:'illusory',dmg:[1,4],effect:'hero loses next attack',castChance:30,flavour:'The assassin vanishes into shadow and strikes from an impossible angle!'},
-            {name:'Poison Dart',school:'illusory',dmg:[2,4],effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:35,flavour:'A poisoned dart flies from the darkness!'}]},
-  {name:'Frost Bear',cat:'beast',desc:'A shaggy white giant of the high cold, its breath a killing gale of ice.',hp:24,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
-    spells:[{name:'Freezing Breath',school:'elemental',dmg:[4,9],effect:'hero -15% to hit',castChance:35,flavour:'A blast of bone-chilling cold washes over you!'}]},
-  // ── Powerful (hp 32–50, melee 3–5) — significant spells ──
-  {name:'Acid Wyvern',cat:'dragon',desc:'A lesser dragon-kin that spits corrosive acid and batters foes flat with its wings.',hp:40,power:'Powerful',melee:4,archery:0,speed:'fast',minG:4,maxG:7,
-    spells:[{name:'Acid Spit',school:'elemental',dmg:[7,13],effect:'',castChance:40,flavour:'The wyvern rears back and spews a stream of corrosive acid!'},
-            {name:'Wing Buffet',school:'elemental',dmg:[5,9],effect:'hero knocked prone: -20% to hit',castChance:35,flavour:'Massive wings beat the air into a battering storm!'}]},
-  {name:'Vampire Lord',cat:'undead',desc:'An undying noble of the night, draining life at a touch and snaring minds with its gaze.',hp:36,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
-    spells:[{name:'Life Drain',school:'necromancy',dmg:[5,10],effect:'vampire heals half the damage dealt',castChance:45,flavour:'The vampire\'s eyes glow crimson as it drains your vitality — you feel your life force flowing away!'},
-            {name:'Charm Gaze',school:'psychic',dmg:[2,5],effect:'hero loses one attack round (entranced)',castChance:35,flavour:'The vampire\'s hypnotic gaze locks onto yours — your mind goes blank!'},
-            {name:'Bat Swarm',school:'necromancy',dmg:[6,12],effect:'',castChance:45,flavour:'A shrieking cloud of bats erupts from the shadows!'}]},
-  {name:'Rock Giant',cat:'giant',desc:'A cliff-shouldered giant that hurls boulders and stamps the earth into tremors.',hp:46,power:'Powerful',melee:4,archery:2,speed:'slow',minG:4,maxG:7,
-    spells:[{name:'Boulder Hurl',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'The giant wrenches a boulder from the earth and hurls it with bone-crushing force!'},
-            {name:'Tremor Stomp',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:30,flavour:'The giant\'s foot strikes the earth — a shockwave tears through the ground!'}]},
-  {name:'Crested Basilisk',cat:'beast',desc:'A crested serpent whose gaze turns flesh to stone — do not meet its eyes.',hp:26,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
-    spells:[{name:'Petrifying Gaze',school:'illusory',dmg:[0,0],effect:'hero loses next attack (limbs stiffening)',castChance:40,flavour:'The basilisk\'s terrible eyes meet yours — your limbs begin to stiffen!'},
-            {name:'Stone Spit',school:'elemental',dmg:[5,9],effect:'',castChance:35,flavour:'Streams of petrifying slime fly from the basilisk\'s maw!'}]},
-  {name:'Marsh Hydra',cat:'dragon',desc:'A many-headed serpent that regrows every head you sever; a battle of attrition you may lose.',hp:50,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
-    spells:[{name:'Multi-Bite',school:'elemental',dmg:[3,7],effect:'hits twice if roll succeeds',castChance:50,flavour:'Three heads lunge simultaneously from different angles!'},
-            {name:'Regenerate Head',school:'necromancy',dmg:[0,0],effect:'hydra regains 11 HP',castChance:40,flavour:'A severed head grows back in seconds — the hydra laughs at your wounds!'}]},
-  {name:'Chaos Knight',cat:'fiend',desc:'A warped champion sheathed in living darkness, its blade crackling with raw chaos.',hp:37,power:'Powerful',melee:4,archery:2,speed:'medium',minG:5,maxG:8,
-    spells:[{name:'Chaos Bolt',school:'elemental',dmg:[7,13],effect:'',castChance:40,flavour:'A bolt of writhing chaotic energy crackles from the knight\'s blade!'},
-            {name:'Dark Blessing',school:'necromancy',dmg:[0,0],effect:'knight gains +2 melee',castChance:40,flavour:'The Chaos Knight roars a dark benediction — black light floods its armour!'}]},
-  {name:'Greater Demon',cat:'fiend',desc:'A hulking fiend wreathed in hellfire, its psychic scream shredding reason itself.',hp:44,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
-    spells:[{name:'Hellfire',school:'elemental',dmg:[7,13],effect:'',castChance:45,flavour:'Columns of hellfire erupt from the ground at your feet!'},
-            {name:'Soul Scream',school:'psychic',dmg:[6,11],effect:'hero -15% to hit for 3 rounds',castChance:35,flavour:'The demon unleashes a psychic scream that shreds rational thought!'},
-            {name:'Brimstone Shield',school:'elemental',dmg:[0,0],effect:'demon reflects 3 dmg back each time hero hits',castChance:30,flavour:'A shell of burning brimstone encases the demon!'}]},
-  {name:'Kraken Spawn',cat:'aberration',desc:'A young leviathan of ink and tentacle, dragging the unwary down into the dark.',hp:47,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
-    spells:[{name:'Ink Cloud',school:'illusory',dmg:[3,6],effect:'hero -25% to hit',castChance:40,flavour:'A cloud of black ink fills the air — you can\'t see a thing!'},
-            {name:'Tentacle Slam',school:'elemental',dmg:[7,13],effect:'',castChance:45,flavour:'A massive tentacle slams down like a falling tree!'}]},
-  {name:'Storm Eagle',cat:'beast',desc:'A vast raptor crowned in lightning, striking down from the thunderheads.',hp:42,power:'Powerful',melee:4,archery:0,speed:'fast',minG:3,maxG:7,
-    spells:[{name:'Lightning Strike',school:'elemental',dmg:[6,12],effect:'',castChance:45,flavour:'The eagle calls down a spear of lightning from storm clouds above!'},
-            {name:'Gale Force',school:'elemental',dmg:[4,8],effect:'hero loses all Archery this round',castChance:35,flavour:'Screaming winds make it impossible to aim!'}]},
-  {name:'Lich Acolyte',cat:'undead',desc:'A robed apprentice of the death-arts, mending its own bones with stolen life.',hp:25,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
-    spells:[{name:'Necrotic Bolt',school:'necromancy',dmg:[6,11],effect:'',castChance:40,flavour:'A bolt of necrotic energy strips the life from your flesh!'},
-            {name:'Bone Shield',school:'necromancy',dmg:[0,0],effect:'acolyte absorbs next 10 dmg',castChance:30,flavour:'A swirling shield of animated bones snaps into place!'},
-            {name:'Raise Fallen',school:'necromancy',dmg:[0,0],effect:'acolyte regains 10 HP',castChance:35,flavour:'The acolyte chants and draws life-force from the bodies of the fallen!'}]},
-  // ── Legendary (hp 55–90, melee 5–6) — powerful multi-spell casters ──
-  {name:'Elder Dragon',cat:'dragon',desc:'An ancient winged tyrant whose fire and terror have ended a hundred would-be heroes.',hp:71,power:'Legendary',melee:5,archery:2,speed:'fast',minG:7,maxG:10,
-    spells:[{name:'Fire Breath',school:'elemental',dmg:[9,17],effect:'',castChance:55,flavour:'The dragon inhales — then a torrent of searing dragonfire engulfs you!'},
-            {name:'Wing Storm',school:'elemental',dmg:[7,12],effect:'hero knocked back',castChance:35,flavour:'Wings the size of sails create a hurricane blast!'},
-            {name:'Dragon Terror',school:'psychic',dmg:[0,0],effect:'hero must pass courage test or flee',castChance:45,flavour:'The dragon\'s ancient gaze radiates primal terror — your every instinct screams to run!'}]},
-  {name:'Lich Sovereign',cat:'undead',desc:'An undead archmage of terrible power, pointing a bony finger that carries instant death.',hp:70,power:'Legendary',melee:6,archery:0,speed:'slow',minG:6,maxG:10,
-    spells:[{name:'Finger of Death',school:'necromancy',dmg:[9,17],effect:'20% halves current HP',castChance:45,flavour:'A bony finger points — black death magic surges towards you!'},
-            {name:'Necrotic Burst',school:'necromancy',dmg:[6,12],effect:'hero -25% to hit for 3 rounds',castChance:45,flavour:'A wave of entropic energy corrodes your very essence!'},
-            {name:'Undead Thralls',school:'necromancy',dmg:[0,0],effect:'lich regains 16 HP as it draws power from nearby dead',castChance:40,flavour:'The lich stretches its hands wide, drinking the death-energy of the battlefield!'},
-            {name:'Paralyse',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:40,flavour:'Iron bands of psychic force clamp around your mind and body!'}]},
-  {name:'Ancient Wyrm',cat:'dragon',desc:'The eldest of dragons, its flame older than realms and its presence a crushing weight on the mind.',hp:71,power:'Legendary',melee:6,archery:3,speed:'fast',minG:8,maxG:10,
-    spells:[{name:'Ancient Flame',school:'elemental',dmg:[10,18],effect:'',castChance:55,flavour:'Flame older than civilisation pours from the Ancient Wyrm\'s jaws!'},
-            {name:'Psychic Roar',school:'psychic',dmg:[4,9],effect:'hero loses all Archery this round',castChance:45,flavour:'The wyrm\'s mindless roar shatters conscious thought!'},
-            {name:'Tail Sweep',school:'elemental',dmg:[5,10],effect:'hero knocked back',castChance:40,flavour:'A tail like a castle wall sweeps everything aside!'},
-            {name:'Draconic Presence',school:'psychic',dmg:[4,8],effect:'hero -30% to hit for encounter',castChance:40,flavour:'The wyrm\'s sheer age and power exerts a crushing mental weight!'}]},
-  {name:'Elder Titan',cat:'giant',desc:'A primordial colossus that shakes the world with a step and calls down divine fire.',hp:70,power:'Legendary',melee:6,archery:2,speed:'slow',minG:7,maxG:10,
-    spells:[{name:'World-Shaker',school:'elemental',dmg:[8,15],effect:'hero knocked back',castChance:40,flavour:'The Elder Titan stamps — the very world shakes to its foundations!'},
-            {name:'Divine Wrath',school:'white',dmg:[10,20],effect:'ignores all armour and defensive bonuses',castChance:40,flavour:'Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!'},
-            {name:'Time Stop',school:'illusory',dmg:[0,0],effect:'hero loses 2 rounds completely',castChance:30,flavour:'Reality stutters. You blink and two rounds have passed — you\'ve been standing frozen!'}]},
-  {name:'Kobold Skirmisher',cat:'humanoid',desc:'A cunning little reptile trap-setter, dangerous in its warren and cowardly outside it.',hp:9,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5},
-  {name:'Zombie Shambler',cat:'undead',desc:'A slow rotting corpse that feels no pain and will not stop, clawing with dead strength.',hp:12,power:'Weak',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Rotting Grasp',school:'necromancy',dmg:[3,6],effect:'',castChance:40,flavour:'Cold dead hands claw at you with surprising strength.'}]},
-  {name:'Wild Boar',cat:'beast',desc:'A tusked forest brute, territorial and fearless, charging anything that nears its wallow.',hp:11,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:5},
-  {name:'Giant Centipede',cat:'vermin',desc:'A segmented horror as long as a spear, its bite dripping burning venom.',hp:10,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Venom Bite',school:'elemental',dmg:[2,5],effect:'hero -10% to hit next round',castChance:40,flavour:'Its mandibles sink in, dripping burning venom.'}]},
-  {name:'Marsh Sprite',cat:'fey',desc:'A flickering bog-light that lures the unwary, stinging like a swarm of wasps.',hp:8,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5,
-    spells:[{name:'Will-o-Wisp',school:'illusory',dmg:[2,5],effect:'hero -10% to hit',castChance:45,flavour:'Ghostly lights dart in and sting like wasps.'}]},
-  {name:'Bandit Scout',cat:'humanoid',desc:'A lean outrider with a keen eye and keener bow, picking off intruders from the treeline.',hp:10,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
+  // ── Weak (hp 15–25, melee 1–2) — 2026-09-10 rescale — no spells ──
+  {name:'Goblin Skirmisher',cat:'humanoid',desc:'A wiry goblin cutthroat, quick with a rusted blade and quicker to bolt from a losing fight.',hp:18,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:2},
+  {name:'Dire Rat',cat:'vermin',desc:'A dog-sized rat with yellowed fangs, nesting in the ruins and defending its filth with feral spite.',hp:15,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Skeleton Sentinel',cat:'undead',desc:'A rattling revenant bound to this place, its hollow sockets lit with cold, tireless purpose.',hp:17,power:'Weak',melee:1,archery:1,speed:'medium',minG:1,maxG:2},
+  {name:'Dire Wolf',cat:'beast',desc:'A grey hunter the size of a pony, driven by hunger, circling low before it lunges.',hp:22,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Bandit Outlaw',cat:'humanoid',desc:'A hardened road-thief in patched leathers, holding this haunt for whatever coin it hides.',hp:20,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:3},
+  {name:'Giant Wasp',cat:'vermin',desc:'A hand-span wasp with a barbed sting, darting fast and near impossible to pin down.',hp:18,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Cave Bat',cat:'vermin',desc:'A leathery horror of the deep dark, blind but unerring, shrieking as it dives.',hp:15,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Swamp Lizard',cat:'beast',desc:'A cold-blooded ambusher lurking in the muck, striking with a slow but crushing bite.',hp:23,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Crag Harpy',cat:'fey',desc:'A shrieking woman-vulture that stoops from the crags talons-first, jealous of every trinket.',hp:25,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
+  {name:'Alley Cutthroat',cat:'humanoid',desc:'A knife-for-hire with dead eyes, guarding stolen loot from the shadows.',hp:20,power:'Weak',melee:1,archery:1,speed:'medium',minG:2,maxG:4},
+  // ── Moderate (hp 30–45, melee 2–3) — minor spells ──
+  {name:'Giant Spider',cat:'vermin',desc:'A bristling hunter the size of a warhorse, binding its prey in venom-slick silk.',hp:36,power:'Moderate',melee:3,archery:1,speed:'medium',minG:1,maxG:3,
+    spells:[{name:'Venom Web',school:'elemental',dmgW:1,effect:'hero -15% to hit for 1 round',castChance:35,flavour:'The spider hurls a web of crackling venom!'}]},
+  {name:'Bandit King',cat:'humanoid',desc:'A scarred outlaw chief who rules this haunt by fear; his war-cry alone can shake a hero.',hp:30,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:4,
+    spells:[{name:'Battle Cry',school:'psychic',dmgW:1,effect:'hero -20% to hit for 2 rounds',castChance:40,flavour:'The bandit king bellows a terrifying war cry — your nerves waver!'}]},
+  {name:'Stone Troll',cat:'giant',desc:'A lumbering brute of living rock whose wounds knit shut as fast as you can open them.',hp:38,power:'Moderate',melee:3,archery:1,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Stone Hide',school:'elemental',dmgW:0,effect:'troll gains +13 HP (regenerates)',castChance:40,flavour:'The troll\'s stony hide knits itself back together!'}]},
+  {name:'Sand Wurm',cat:'beast',desc:'A blind burrowing horror that erupts from the dunes in a storm of scouring sand.',hp:40,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Sand Blast',school:'elemental',dmgW:1.5,effect:'',castChance:40,flavour:'The wurm exhales a scouring storm of razor sand!'}]},
+  {name:'Spiked Manticore',cat:'beast',desc:'A lion-bodied terror with a scorpion tail, raining iron spikes before it closes to maul.',hp:42,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
+    spells:[{name:'Tail Volley',school:'elemental',dmgW:1,effect:'',castChance:40,flavour:'The manticore launches a volley of iron-hard tail spikes!'}]},
+  {name:'Ogre Chieftain',cat:'giant',desc:'A massive brute of a chieftain, slow-witted but strong enough to shatter stone with a fist.',hp:39,power:'Moderate',melee:3,archery:2,speed:'medium',minG:2,maxG:5,
+    spells:[{name:'Earthshake',school:'elemental',dmgW:1,effect:'hero -1 melee for next round',castChance:35,flavour:'The ogre hammers the ground, throwing you off balance!'}]},
+  {name:'Moon-Cursed Werewolf',cat:'beast',desc:'A cursed shapechanger, savage beneath the moon, whose howl freezes the blood.',hp:34,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Howl of the Moon',school:'psychic',dmgW:1,effect:'hero loses next attack',castChance:30,flavour:'An unearthly howl fills the air — raw animal terror grips you!'}]},
+  {name:'Sea Serpent',cat:'beast',desc:'A coiling leviathan of the shallows, crushing hulls and heroes alike in its grip.',hp:45,power:'Moderate',melee:3,archery:0,speed:'fast',minG:3,maxG:6,
+    spells:[{name:'Crushing Coils',school:'elemental',dmgW:1.5,effect:'',castChance:35,flavour:'The serpent wraps massive coils around you — bones creak under the pressure!'}]},
+  {name:'Dark Elf Assassin',cat:'humanoid',desc:'A shadow-cloaked killer who strikes from impossible angles with poisoned steel.',hp:33,power:'Moderate',melee:3,archery:2,speed:'fast',minG:3,maxG:6,
+    spells:[{name:'Shadow Step',school:'illusory',dmgW:1,effect:'hero loses next attack',castChance:30,flavour:'The assassin vanishes into shadow and strikes from an impossible angle!'},
+            {name:'Poison Dart',school:'illusory',dmgW:1,effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:35,flavour:'A poisoned dart flies from the darkness!'}]},
+  {name:'Frost Bear',cat:'beast',desc:'A shaggy white giant of the high cold, its breath a killing gale of ice.',hp:42,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
+    spells:[{name:'Freezing Breath',school:'elemental',dmgW:1,effect:'hero -15% to hit',castChance:35,flavour:'A blast of bone-chilling cold washes over you!'}]},
+  // ── Powerful (hp 55–65, melee 3–5) — significant spells ──
+  {name:'Acid Wyvern',cat:'dragon',desc:'A lesser dragon-kin that spits corrosive acid and batters foes flat with its wings.',hp:59,power:'Powerful',melee:4,archery:0,speed:'fast',minG:4,maxG:7,
+    spells:[{name:'Acid Spit',school:'elemental',dmgW:2.0,effect:'',castChance:40,flavour:'The wyvern rears back and spews a stream of corrosive acid!'},
+            {name:'Wing Buffet',school:'elemental',dmgW:1.5,effect:'hero knocked prone: -20% to hit',castChance:35,flavour:'Massive wings beat the air into a battering storm!'}]},
+  {name:'Vampire Lord',cat:'undead',desc:'An undying noble of the night, draining life at a touch and snaring minds with its gaze.',hp:57,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
+    spells:[{name:'Life Drain',school:'necromancy',dmgW:1.5,effect:'vampire heals half the damage dealt',castChance:45,flavour:'The vampire\'s eyes glow crimson as it drains your vitality — you feel your life force flowing away!'},
+            {name:'Charm Gaze',school:'psychic',dmgW:1,effect:'hero loses one attack round (entranced)',castChance:35,flavour:'The vampire\'s hypnotic gaze locks onto yours — your mind goes blank!'},
+            {name:'Bat Swarm',school:'necromancy',dmgW:1.5,effect:'',castChance:45,flavour:'A shrieking cloud of bats erupts from the shadows!'}]},
+  {name:'Rock Giant',cat:'giant',desc:'A cliff-shouldered giant that hurls boulders and stamps the earth into tremors.',hp:63,power:'Powerful',melee:4,archery:2,speed:'slow',minG:4,maxG:7,
+    spells:[{name:'Boulder Hurl',school:'elemental',dmgW:2.0,effect:'',castChance:40,flavour:'The giant wrenches a boulder from the earth and hurls it with bone-crushing force!'},
+            {name:'Tremor Stomp',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:30,flavour:'The giant\'s foot strikes the earth — a shockwave tears through the ground!'}]},
+  {name:'Crested Basilisk',cat:'beast',desc:'A crested serpent whose gaze turns flesh to stone — do not meet its eyes.',hp:45,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
+    spells:[{name:'Petrifying Gaze',school:'illusory',dmgW:0,effect:'hero loses next attack (limbs stiffening)',castChance:40,flavour:'The basilisk\'s terrible eyes meet yours — your limbs begin to stiffen!'},
+            {name:'Stone Spit',school:'elemental',dmgW:1.5,effect:'',castChance:35,flavour:'Streams of petrifying slime fly from the basilisk\'s maw!'}]},
+  {name:'Marsh Hydra',cat:'dragon',desc:'A many-headed serpent that regrows every head you sever; a battle of attrition you may lose.',hp:65,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
+    spells:[{name:'Multi-Bite',school:'elemental',dmgW:1,effect:'hits twice if roll succeeds',castChance:50,flavour:'Three heads lunge simultaneously from different angles!'},
+            {name:'Regenerate Head',school:'necromancy',dmgW:0,effect:'hydra regains 14 HP',castChance:40,flavour:'A severed head grows back in seconds — the hydra laughs at your wounds!'}]},
+  {name:'Chaos Knight',cat:'fiend',desc:'A warped champion sheathed in living darkness, its blade crackling with raw chaos.',hp:58,power:'Powerful',melee:4,archery:2,speed:'medium',minG:5,maxG:8,
+    spells:[{name:'Chaos Bolt',school:'elemental',dmgW:2.0,effect:'',castChance:40,flavour:'A bolt of writhing chaotic energy crackles from the knight\'s blade!'},
+            {name:'Dark Blessing',school:'necromancy',dmgW:0,effect:'knight gains +2 melee',castChance:40,flavour:'The Chaos Knight roars a dark benediction — black light floods its armour!'}]},
+  {name:'Greater Demon',cat:'fiend',desc:'A hulking fiend wreathed in hellfire, its psychic scream shredding reason itself.',hp:62,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
+    spells:[{name:'Hellfire',school:'elemental',dmgW:2.0,effect:'',castChance:45,flavour:'Columns of hellfire erupt from the ground at your feet!'},
+            {name:'Soul Scream',school:'psychic',dmgW:1.5,effect:'hero -15% to hit for 3 rounds',castChance:35,flavour:'The demon unleashes a psychic scream that shreds rational thought!'},
+            {name:'Brimstone Shield',school:'elemental',dmgW:0,effect:'demon reflects 3 dmg back each time hero hits',castChance:30,flavour:'A shell of burning brimstone encases the demon!'}]},
+  {name:'Kraken Spawn',cat:'aberration',desc:'A young leviathan of ink and tentacle, dragging the unwary down into the dark.',hp:63,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
+    spells:[{name:'Ink Cloud',school:'illusory',dmgW:1,effect:'hero -25% to hit',castChance:40,flavour:'A cloud of black ink fills the air — you can\'t see a thing!'},
+            {name:'Tentacle Slam',school:'elemental',dmgW:2.0,effect:'',castChance:45,flavour:'A massive tentacle slams down like a falling tree!'}]},
+  {name:'Storm Eagle',cat:'beast',desc:'A vast raptor crowned in lightning, striking down from the thunderheads.',hp:61,power:'Powerful',melee:4,archery:0,speed:'fast',minG:3,maxG:7,
+    spells:[{name:'Lightning Strike',school:'elemental',dmgW:1.5,effect:'',castChance:45,flavour:'The eagle calls down a spear of lightning from storm clouds above!'},
+            {name:'Gale Force',school:'elemental',dmgW:1,effect:'hero loses all Archery this round',castChance:35,flavour:'Screaming winds make it impossible to aim!'}]},
+  {name:'Lich Acolyte',cat:'undead',desc:'A robed apprentice of the death-arts, mending its own bones with stolen life.',hp:44,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
+    spells:[{name:'Necrotic Bolt',school:'necromancy',dmgW:1.5,effect:'',castChance:40,flavour:'A bolt of necrotic energy strips the life from your flesh!'},
+            {name:'Bone Shield',school:'necromancy',dmgW:0,effect:'acolyte absorbs next 18 dmg',castChance:30,flavour:'A swirling shield of animated bones snaps into place!'},
+            {name:'Raise Fallen',school:'necromancy',dmgW:0,effect:'acolyte regains 18 HP',castChance:35,flavour:'The acolyte chants and draws life-force from the bodies of the fallen!'}]},
+  // ── Legendary (hp 75–90, melee 5–6) — powerful multi-spell casters ──
+  {name:'Elder Dragon',cat:'dragon',desc:'An ancient winged tyrant whose fire and terror have ended a hundred would-be heroes.',hp:76,power:'Legendary',melee:5,archery:2,speed:'fast',minG:7,maxG:10,
+    spells:[{name:'Fire Breath',school:'elemental',dmgW:2.0,effect:'',castChance:55,flavour:'The dragon inhales — then a torrent of searing dragonfire engulfs you!'},
+            {name:'Wing Storm',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:35,flavour:'Wings the size of sails create a hurricane blast!'},
+            {name:'Dragon Terror',school:'psychic',dmgW:0,effect:'hero must pass courage test or flee',castChance:45,flavour:'The dragon\'s ancient gaze radiates primal terror — your every instinct screams to run!'}]},
+  {name:'Lich Sovereign',cat:'undead',desc:'An undead archmage of terrible power, pointing a bony finger that carries instant death.',hp:75,power:'Legendary',melee:6,archery:0,speed:'slow',minG:6,maxG:10,
+    spells:[{name:'Finger of Death',school:'necromancy',dmgW:2.0,effect:'20% halves current HP',castChance:45,flavour:'A bony finger points — black death magic surges towards you!'},
+            {name:'Necrotic Burst',school:'necromancy',dmgW:1.5,effect:'hero -25% to hit for 3 rounds',castChance:45,flavour:'A wave of entropic energy corrodes your very essence!'},
+            {name:'Undead Thralls',school:'necromancy',dmgW:0,effect:'lich regains 17 HP as it draws power from nearby dead',castChance:40,flavour:'The lich stretches its hands wide, drinking the death-energy of the battlefield!'},
+            {name:'Paralyse',school:'psychic',dmgW:0,effect:'hero loses 2 rounds completely paralysed',castChance:40,flavour:'Iron bands of psychic force clamp around your mind and body!'}]},
+  {name:'Ancient Wyrm',cat:'dragon',desc:'The eldest of dragons, its flame older than realms and its presence a crushing weight on the mind.',hp:76,power:'Legendary',melee:6,archery:3,speed:'fast',minG:8,maxG:10,
+    spells:[{name:'Ancient Flame',school:'elemental',dmgW:2.0,effect:'',castChance:55,flavour:'Flame older than civilisation pours from the Ancient Wyrm\'s jaws!'},
+            {name:'Psychic Roar',school:'psychic',dmgW:1,effect:'hero loses all Archery this round',castChance:45,flavour:'The wyrm\'s mindless roar shatters conscious thought!'},
+            {name:'Tail Sweep',school:'elemental',dmgW:1,effect:'hero knocked back',castChance:40,flavour:'A tail like a castle wall sweeps everything aside!'},
+            {name:'Draconic Presence',school:'psychic',dmgW:1,effect:'hero -30% to hit for encounter',castChance:40,flavour:'The wyrm\'s sheer age and power exerts a crushing mental weight!'}]},
+  {name:'Elder Titan',cat:'giant',desc:'A primordial colossus that shakes the world with a step and calls down divine fire.',hp:75,power:'Legendary',melee:6,archery:2,speed:'slow',minG:7,maxG:10,
+    spells:[{name:'World-Shaker',school:'elemental',dmgW:2.0,effect:'hero knocked back',castChance:40,flavour:'The Elder Titan stamps — the very world shakes to its foundations!'},
+            {name:'Divine Wrath',school:'white',dmgW:2.0,effect:'ignores all armour and defensive bonuses',castChance:40,flavour:'Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!'},
+            {name:'Time Stop',school:'illusory',dmgW:0,effect:'hero loses 2 rounds completely',castChance:30,flavour:'Reality stutters. You blink and two rounds have passed — you\'ve been standing frozen!'}]},
+  {name:'Kobold Skirmisher',cat:'humanoid',desc:'A cunning little reptile trap-setter, dangerous in its warren and cowardly outside it.',hp:17,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5},
+  {name:'Zombie Shambler',cat:'undead',desc:'A slow rotting corpse that feels no pain and will not stop, clawing with dead strength.',hp:22,power:'Weak',melee:2,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Rotting Grasp',school:'necromancy',dmgW:1,effect:'',castChance:40,flavour:'Cold dead hands claw at you with surprising strength.'}]},
+  {name:'Wild Boar',cat:'beast',desc:'A tusked forest brute, territorial and fearless, charging anything that nears its wallow.',hp:20,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:5},
+  {name:'Giant Centipede',cat:'vermin',desc:'A segmented horror as long as a spear, its bite dripping burning venom.',hp:18,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Venom Bite',school:'elemental',dmgW:1,effect:'hero -10% to hit next round',castChance:40,flavour:'Its mandibles sink in, dripping burning venom.'}]},
+  {name:'Marsh Sprite',cat:'fey',desc:'A flickering bog-light that lures the unwary, stinging like a swarm of wasps.',hp:15,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Will-o-Wisp',school:'illusory',dmgW:1,effect:'hero -10% to hit',castChance:45,flavour:'Ghostly lights dart in and sting like wasps.'}]},
+  {name:'Bandit Scout',cat:'humanoid',desc:'A lean outrider with a keen eye and keener bow, picking off intruders from the treeline.',hp:18,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:5},
   // ── SEA GUARDIANS (item: sea provinces get sea-themed features & guardians; good variety) ──
   // Weak sea (hp 6–12, no spells)
-  {name:'Giant Crab',cat:'vermin',desc:'A boulder-shelled crab the size of a rowboat, claws that shear through oar and arm alike.',hp:13,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Shark Pack',cat:'beast',desc:'A frenzy of grey hunters circling the shallows, drawn to the first drop of blood.',hp:11,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Reef Piranha Swarm',cat:'vermin',desc:'A living cloud of needle-toothed fish that strips a swimmer to bone in moments.',hp:9,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
-  {name:'Drowned Deckhand',cat:'undead',desc:'A bloated, barnacle-crusted sailor still lurching about the wreck that killed him.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Giant Barnacle',cat:'vermin',desc:'A crusted maw fixed to the rock, lashing out with a sudden sticky tongue at anything close.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Giant Crab',cat:'vermin',desc:'A boulder-shelled crab the size of a rowboat, claws that shear through oar and arm alike.',hp:23,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Shark Pack',cat:'beast',desc:'A frenzy of grey hunters circling the shallows, drawn to the first drop of blood.',hp:20,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Reef Piranha Swarm',cat:'vermin',desc:'A living cloud of needle-toothed fish that strips a swimmer to bone in moments.',hp:17,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:2},
+  {name:'Drowned Deckhand',cat:'undead',desc:'A bloated, barnacle-crusted sailor still lurching about the wreck that killed him.',hp:22,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Giant Barnacle',cat:'vermin',desc:'A crusted maw fixed to the rock, lashing out with a sudden sticky tongue at anything close.',hp:25,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
   // Moderate sea (hp 13–22, minor spells)
-  {name:'Reef Siren',cat:'fey',desc:'A beautiful voice on the rocks whose song turns keels — and crews — onto the reef.',hp:19,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:5,
-    spells:[{name:'Luring Song',school:'psychic',dmg:[2,5],effect:'hero loses next attack (entranced)',castChance:40,flavour:'A song of impossible sweetness drifts across the water — your grip on your weapon slackens.'}]},
-  {name:'Sea Hag',cat:'fey',desc:'A brine-witch of the tide-caves, hurling curdled seawater that blisters and blinds.',hp:21,power:'Moderate',melee:3,archery:1,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Brine Curse',school:'elemental',dmg:[4,9],effect:'hero -15% to hit',castChance:40,flavour:'She flings a fistful of stinging brine that sears the eyes!'}]},
-  {name:'Merrow Raider',cat:'humanoid',desc:'A tusked sea-folk warrior with a barbed trident, striking from beneath the waves.',hp:20,power:'Moderate',melee:3,archery:1,speed:'fast',minG:2,maxG:5,
-    spells:[{name:'Trident Lunge',school:'elemental',dmg:[5,10],effect:'',castChance:38,flavour:'The merrow bursts from the surf and drives its trident home!'}]},
-  {name:'Anglerfish Horror',cat:'beast',desc:'A vast deep-water fish, all teeth and a swaying lure of ghostly light.',hp:23,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Deep Lure',school:'illusory',dmg:[3,7],effect:'hero -20% to hit',castChance:40,flavour:'A cold light sways hypnotically — and jaws the size of a door yawn open beneath it!'}]},
-  {name:'Electric Eel Swarm',cat:'beast',desc:'A knot of writhing eels that fills the water with crackling, muscle-locking current.',hp:21,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
-    spells:[{name:'Shock Field',school:'elemental',dmg:[4,8],effect:'hero loses next attack',castChance:40,flavour:'The water erupts in white sparks — every muscle seizes at once!'}]},
+  {name:'Reef Siren',cat:'fey',desc:'A beautiful voice on the rocks whose song turns keels — and crews — onto the reef.',hp:34,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:5,
+    spells:[{name:'Luring Song',school:'psychic',dmgW:1,effect:'hero loses next attack (entranced)',castChance:40,flavour:'A song of impossible sweetness drifts across the water — your grip on your weapon slackens.'}]},
+  {name:'Sea Hag',cat:'fey',desc:'A brine-witch of the tide-caves, hurling curdled seawater that blisters and blinds.',hp:38,power:'Moderate',melee:3,archery:1,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Brine Curse',school:'elemental',dmgW:1,effect:'hero -15% to hit',castChance:40,flavour:'She flings a fistful of stinging brine that sears the eyes!'}]},
+  {name:'Merrow Raider',cat:'humanoid',desc:'A tusked sea-folk warrior with a barbed trident, striking from beneath the waves.',hp:36,power:'Moderate',melee:3,archery:1,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Trident Lunge',school:'elemental',dmgW:1.5,effect:'',castChance:38,flavour:'The merrow bursts from the surf and drives its trident home!'}]},
+  {name:'Anglerfish Horror',cat:'beast',desc:'A vast deep-water fish, all teeth and a swaying lure of ghostly light.',hp:40,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Deep Lure',school:'illusory',dmgW:1,effect:'hero -20% to hit',castChance:40,flavour:'A cold light sways hypnotically — and jaws the size of a door yawn open beneath it!'}]},
+  {name:'Electric Eel Swarm',cat:'beast',desc:'A knot of writhing eels that fills the water with crackling, muscle-locking current.',hp:38,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
+    spells:[{name:'Shock Field',school:'elemental',dmgW:1,effect:'hero loses next attack',castChance:40,flavour:'The water erupts in white sparks — every muscle seizes at once!'}]},
   // Powerful sea (hp 24–38, significant spells)
-  {name:'Pirate Captain',cat:'humanoid',desc:'A scarred reaver in a dead admiral\u2019s coat, cutlass in one hand and a barking crew at his back.',hp:42,power:'Powerful',melee:4,archery:2,speed:'medium',minG:4,maxG:8,
-    spells:[{name:'Broadside',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'"Give \u2019em the guns!" \u2014 a ragged broadside thunders across the deck!'},
-            {name:'Cutlass Rush',school:'elemental',dmg:[4,8],effect:'hero -15% to hit',castChance:32,flavour:'The captain and his crew swarm forward in a howling rush of steel!'}]},
-  {name:'Ghost Galleon Crew',cat:'undead',desc:'The drowned company of a lost ship, still working the rigging of a hull that sank an age ago.',hp:40,power:'Powerful',melee:4,archery:2,speed:'medium',minG:4,maxG:8,
-    spells:[{name:'Spectral Volley',school:'necromancy',dmg:[6,12],effect:'',castChance:44,flavour:'Ghostly muskets flash along the phantom rail!'},
-            {name:'Drowning Grasp',school:'necromancy',dmg:[4,9],effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:35,flavour:'Cold dead hands close around your ankles, dragging you under!'}]},
-  {name:'Deep One Priest',cat:'humanoid',desc:'A robed abomination of the abyssal cults, chanting to things that should not wake.',hp:42,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
-    spells:[{name:'Abyssal Chant',school:'psychic',dmg:[6,11],effect:'hero -15% to hit for 3 rounds',castChance:40,flavour:'A droning, wrong chant fills your skull \u2014 the horizon seems to bend.'},
-            {name:'Crushing Deep',school:'elemental',dmg:[7,12],effect:'',castChance:42,flavour:'The pressure of a mile of black water slams down on you!'}]},
-  {name:'Abyssal Horror',cat:'aberration',desc:'A nightmare of eyes and groping arms that boils up from the lightless deep.',hp:45,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
-    spells:[{name:'Enveloping Arms',school:'elemental',dmg:[8,14],effect:'',castChance:44,flavour:'A dozen slick limbs lash out of the dark all at once!'},
-            {name:'Maddening Gaze',school:'psychic',dmg:[3,7],effect:'hero loses next attack',castChance:33,flavour:'A ring of pale eyes fixes on you \u2014 reason falters.'}]},
-  {name:'Deep Leviathan',cat:'beast',desc:'The old terror of the deep water \u2014 a serpent vast enough to swallow a longship whole.',hp:50,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
-    spells:[{name:'Sounding Dive',school:'elemental',dmg:[8,14],effect:'',castChance:45,flavour:'The leviathan rolls and its flukes come down like a falling cliff!'},
-            {name:'Tidal Surge',school:'elemental',dmg:[5,10],effect:'hero -20% to hit',castChance:35,flavour:'Its passing throws up a wall of water that hurls you off your feet!'}]},
+  {name:'Pirate Captain',cat:'humanoid',desc:'A scarred reaver in a dead admiral\u2019s coat, cutlass in one hand and a barking crew at his back.',hp:61,power:'Powerful',melee:4,archery:2,speed:'medium',minG:4,maxG:8,
+    spells:[{name:'Broadside',school:'elemental',dmgW:2.0,effect:'',castChance:42,flavour:'"Give \u2019em the guns!" \u2014 a ragged broadside thunders across the deck!'},
+            {name:'Cutlass Rush',school:'elemental',dmgW:1,effect:'hero -15% to hit',castChance:32,flavour:'The captain and his crew swarm forward in a howling rush of steel!'}]},
+  {name:'Ghost Galleon Crew',cat:'undead',desc:'The drowned company of a lost ship, still working the rigging of a hull that sank an age ago.',hp:59,power:'Powerful',melee:4,archery:2,speed:'medium',minG:4,maxG:8,
+    spells:[{name:'Spectral Volley',school:'necromancy',dmgW:1.5,effect:'',castChance:44,flavour:'Ghostly muskets flash along the phantom rail!'},
+            {name:'Drowning Grasp',school:'necromancy',dmgW:1,effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:35,flavour:'Cold dead hands close around your ankles, dragging you under!'}]},
+  {name:'Deep One Priest',cat:'humanoid',desc:'A robed abomination of the abyssal cults, chanting to things that should not wake.',hp:61,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
+    spells:[{name:'Abyssal Chant',school:'psychic',dmgW:1.5,effect:'hero -15% to hit for 3 rounds',castChance:40,flavour:'A droning, wrong chant fills your skull \u2014 the horizon seems to bend.'},
+            {name:'Crushing Deep',school:'elemental',dmgW:1.5,effect:'',castChance:42,flavour:'The pressure of a mile of black water slams down on you!'}]},
+  {name:'Abyssal Horror',cat:'aberration',desc:'A nightmare of eyes and groping arms that boils up from the lightless deep.',hp:62,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
+    spells:[{name:'Enveloping Arms',school:'elemental',dmgW:2.0,effect:'',castChance:44,flavour:'A dozen slick limbs lash out of the dark all at once!'},
+            {name:'Maddening Gaze',school:'psychic',dmgW:1,effect:'hero loses next attack',castChance:33,flavour:'A ring of pale eyes fixes on you \u2014 reason falters.'}]},
+  {name:'Deep Leviathan',cat:'beast',desc:'The old terror of the deep water \u2014 a serpent vast enough to swallow a longship whole.',hp:65,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:9,
+    spells:[{name:'Sounding Dive',school:'elemental',dmgW:2.0,effect:'',castChance:45,flavour:'The leviathan rolls and its flukes come down like a falling cliff!'},
+            {name:'Tidal Surge',school:'elemental',dmgW:1.5,effect:'hero -20% to hit',castChance:35,flavour:'Its passing throws up a wall of water that hurls you off your feet!'}]},
   // ── NEW GUARDIANS (2026-09-07, item 4: the bestiary doubled — 55 new, 14 of them undead) ──
   // Weak land
-  {name:'Barrow Wight',cat:'undead',desc:'A grave-cold thing in rusted mail that rises from its mound to defend the tomb-gold it was buried with.',hp:12,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
-  {name:'Grave Hound',cat:'undead',desc:'A skeletal mastiff still chained to its dead master\'s cairn, snapping at anyone who nears it.',hp:10,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Ghoul Scavenger',cat:'undead',desc:'A hunched corpse-eater with a hyena\'s grin, quick to bite and quicker to burrow into the bone-pile.',hp:11,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3,
-    spells:[{name:'Paralysing Bite',school:'necromancy',dmg:[2,4],effect:'hero loses next attack',castChance:30,flavour:'Its teeth close on you and a numbing cold spreads from the wound.'}]},
-  {name:'Hobgoblin Warden',cat:'humanoid',desc:'A disciplined goblin-kin sergeant in scavenged plate, holding the doorway with spear and shield.',hp:13,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
-  {name:'Orc Deserter',cat:'humanoid',desc:'A broken-tusked outcast from some warband, squatting in the ruins with a stolen axe and nothing to lose.',hp:14,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
-  {name:'Gnoll Raider',cat:'humanoid',desc:'A hyena-headed marauder that cackles as it circles, waiting for you to turn your back.',hp:12,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
-  {name:'Giant Toad',cat:'beast',desc:'A warty bog-beast broad as a cart, swallowing lesser intruders whole with a lash of its tongue.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Cliff Vulture',cat:'beast',desc:'A carrion bird with a wingspan wider than a door, tearing at anything that climbs to its nest.',hp:9,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
-  {name:'Rust-Mite Swarm',cat:'vermin',desc:'A glittering carpet of iron-eating mites that pours over steel and skin alike.',hp:8,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:2,
-    spells:[{name:'Corroding Tide',school:'elemental',dmg:[2,5],effect:'hero -10% to hit',castChance:40,flavour:'The mites swarm up your blade and your grip goes slick with rust.'}]},
-  {name:'Blood Leech Cluster',cat:'vermin',desc:'Fist-sized leeches that drop from the cave roof in dozens, drinking a hero pale in minutes.',hp:9,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
-    spells:[{name:'Sanguine Drain',school:'necromancy',dmg:[2,5],effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:35,flavour:'A dozen mouths fasten on and will not let go.'}]},
-  {name:'Pixie Trickster',cat:'fey',desc:'A knee-high sprite with a needle-thin rapier, laughing as it dances just out of reach.',hp:8,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4,
-    spells:[{name:'Faerie Dust',school:'illusory',dmg:[1,3],effect:'hero -15% to hit for 1 round',castChance:40,flavour:'A puff of glittering dust and the world swims.'}]},
-  {name:'Clay Sentinel',cat:'construct',desc:'A crude man-shape of fired clay, slow and mindless, set to guard this place by a long-dead hand.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
-  {name:'Dust Devil',cat:'elemental',desc:'A living whirl of grit and hot wind that scours flesh and flings sand in the eyes.',hp:10,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:3,
-    spells:[{name:'Stinging Gust',school:'elemental',dmg:[2,4],effect:'hero -10% to hit',castChance:40,flavour:'Grit lashes your face and you cannot see to strike.'}]},
-  {name:'Troll Whelp',cat:'giant',desc:'A half-grown troll, all knuckles and appetite, already too stubborn to stay down.',hp:14,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
-  {name:'Harpy Matriarch',cat:'fey',desc:'The shrieking queen of a harpy roost, hoarding every bright thing her daughters have snatched.',hp:18,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
-    spells:[{name:'Deafening Shriek',school:'psychic',dmg:[3,6],effect:'hero -15% to hit for 2 rounds',castChance:40,flavour:'A scream like tearing metal leaves your ears ringing.'}]},
+  {name:'Barrow Wight',cat:'undead',desc:'A grave-cold thing in rusted mail that rises from its mound to defend the tomb-gold it was buried with.',hp:22,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
+  {name:'Grave Hound',cat:'undead',desc:'A skeletal mastiff still chained to its dead master\'s cairn, snapping at anyone who nears it.',hp:18,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Ghoul Scavenger',cat:'undead',desc:'A hunched corpse-eater with a hyena\'s grin, quick to bite and quicker to burrow into the bone-pile.',hp:20,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3,
+    spells:[{name:'Paralysing Bite',school:'necromancy',dmgW:1,effect:'hero loses next attack',castChance:30,flavour:'Its teeth close on you and a numbing cold spreads from the wound.'}]},
+  {name:'Hobgoblin Warden',cat:'humanoid',desc:'A disciplined goblin-kin sergeant in scavenged plate, holding the doorway with spear and shield.',hp:23,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
+  {name:'Orc Deserter',cat:'humanoid',desc:'A broken-tusked outcast from some warband, squatting in the ruins with a stolen axe and nothing to lose.',hp:25,power:'Weak',melee:2,archery:0,speed:'medium',minG:2,maxG:4},
+  {name:'Gnoll Raider',cat:'humanoid',desc:'A hyena-headed marauder that cackles as it circles, waiting for you to turn your back.',hp:22,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4},
+  {name:'Giant Toad',cat:'beast',desc:'A warty bog-beast broad as a cart, swallowing lesser intruders whole with a lash of its tongue.',hp:25,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Cliff Vulture',cat:'beast',desc:'A carrion bird with a wingspan wider than a door, tearing at anything that climbs to its nest.',hp:17,power:'Weak',melee:1,archery:0,speed:'fast',minG:1,maxG:3},
+  {name:'Rust-Mite Swarm',cat:'vermin',desc:'A glittering carpet of iron-eating mites that pours over steel and skin alike.',hp:15,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:2,
+    spells:[{name:'Corroding Tide',school:'elemental',dmgW:1,effect:'hero -10% to hit',castChance:40,flavour:'The mites swarm up your blade and your grip goes slick with rust.'}]},
+  {name:'Blood Leech Cluster',cat:'vermin',desc:'Fist-sized leeches that drop from the cave roof in dozens, drinking a hero pale in minutes.',hp:17,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
+    spells:[{name:'Sanguine Drain',school:'necromancy',dmgW:1,effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:35,flavour:'A dozen mouths fasten on and will not let go.'}]},
+  {name:'Pixie Trickster',cat:'fey',desc:'A knee-high sprite with a needle-thin rapier, laughing as it dances just out of reach.',hp:15,power:'Weak',melee:1,archery:1,speed:'fast',minG:2,maxG:4,
+    spells:[{name:'Faerie Dust',school:'illusory',dmgW:1,effect:'hero -15% to hit for 1 round',castChance:40,flavour:'A puff of glittering dust and the world swims.'}]},
+  {name:'Clay Sentinel',cat:'construct',desc:'A crude man-shape of fired clay, slow and mindless, set to guard this place by a long-dead hand.',hp:25,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
+  {name:'Dust Devil',cat:'elemental',desc:'A living whirl of grit and hot wind that scours flesh and flings sand in the eyes.',hp:18,power:'Weak',melee:1,archery:1,speed:'fast',minG:1,maxG:3,
+    spells:[{name:'Stinging Gust',school:'elemental',dmgW:1,effect:'hero -10% to hit',castChance:40,flavour:'Grit lashes your face and you cannot see to strike.'}]},
+  {name:'Troll Whelp',cat:'giant',desc:'A half-grown troll, all knuckles and appetite, already too stubborn to stay down.',hp:25,power:'Weak',melee:1,archery:0,speed:'slow',minG:2,maxG:4},
+  {name:'Harpy Matriarch',cat:'fey',desc:'The shrieking queen of a harpy roost, hoarding every bright thing her daughters have snatched.',hp:33,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
+    spells:[{name:'Deafening Shriek',school:'psychic',dmgW:1,effect:'hero -15% to hit for 2 rounds',castChance:40,flavour:'A scream like tearing metal leaves your ears ringing.'}]},
   // Weak sea
-  {name:'Drowned Oarsman',cat:'undead',desc:'A waterlogged galley slave still chained to his bench, dragging his oar like a club.',hp:11,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
-  {name:'Stinging Jellyfish Bloom',cat:'vermin',desc:'A drifting field of translucent bells trailing yards of burning tendrils.',hp:8,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
-    spells:[{name:'Venom Tendrils',school:'elemental',dmg:[2,5],effect:'hero -10% to hit next round',castChance:40,flavour:'Tendrils brush your arm and it burns like fire.'}]},
-  {name:'Wreck Moray',cat:'beast',desc:'A thick-bodied eel coiled in the ribs of a sunken hull, jaws lined with needle teeth.',hp:12,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3},
-  {name:'Smuggler Lookout',cat:'humanoid',desc:'A wiry sea-thief watching the cove from the rocks, with a sling and a very sharp knife.',hp:10,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:4},
+  {name:'Drowned Oarsman',cat:'undead',desc:'A waterlogged galley slave still chained to his bench, dragging his oar like a club.',hp:20,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:3},
+  {name:'Stinging Jellyfish Bloom',cat:'vermin',desc:'A drifting field of translucent bells trailing yards of burning tendrils.',hp:15,power:'Weak',melee:1,archery:0,speed:'slow',minG:1,maxG:2,
+    spells:[{name:'Venom Tendrils',school:'elemental',dmgW:1,effect:'hero -10% to hit next round',castChance:40,flavour:'Tendrils brush your arm and it burns like fire.'}]},
+  {name:'Wreck Moray',cat:'beast',desc:'A thick-bodied eel coiled in the ribs of a sunken hull, jaws lined with needle teeth.',hp:22,power:'Weak',melee:1,archery:0,speed:'medium',minG:1,maxG:3},
+  {name:'Smuggler Lookout',cat:'humanoid',desc:'A wiry sea-thief watching the cove from the rocks, with a sling and a very sharp knife.',hp:18,power:'Weak',melee:1,archery:2,speed:'fast',minG:2,maxG:4},
   // Moderate land
-  {name:'Wraith of the Barrow',cat:'undead',desc:'A shrouded shade that drifts through stone, its touch stealing warmth and will alike.',hp:19,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
-    spells:[{name:'Chilling Touch',school:'necromancy',dmg:[4,8],effect:'hero -1 melee for next round',castChance:38,flavour:'Its hand passes through your guard and into your chest.'}]},
-  {name:'Mummified Champion',cat:'undead',desc:'A bandaged warrior-king of a forgotten dynasty, still swinging the bronze khopesh it was entombed with.',hp:22,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
-    spells:[{name:'Curse of the Tomb',school:'necromancy',dmg:[3,6],effect:'hero takes 2 dmg at start of each round for 3 rounds',castChance:35,flavour:'Dust pours from its wrappings and settles on your skin like a sickness.'}]},
-  {name:'Ghast Packleader',cat:'undead',desc:'The largest of a ghoul pack, reeking of the charnel pit and shrieking its kin into a frenzy.',hp:20,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
-    spells:[{name:'Charnel Stench',school:'necromancy',dmg:[2,5],effect:'hero -15% to hit for 2 rounds',castChance:40,flavour:'The stink of the grave doubles you over.'}]},
-  {name:'Hill Giant Youngling',cat:'giant',desc:'A giant not yet grown, but already twelve feet tall and armed with an uprooted sapling.',hp:24,power:'Moderate',melee:3,archery:1,speed:'slow',minG:3,maxG:6,
-    spells:[{name:'Sapling Swing',school:'elemental',dmg:[5,9],effect:'',castChance:38,flavour:'The whole tree comes round in a great sweeping arc!'}]},
-  {name:'Minotaur Warden',cat:'humanoid',desc:'A bull-headed brute that knows every turn of its maze and charges down the corridors head-first.',hp:23,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
-    spells:[{name:'Goring Charge',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:35,flavour:'Horns lowered, it thunders down the passage at you!'}]},
-  {name:'Goblin Shaman',cat:'humanoid',desc:'A cackling hunchback in a feathered headdress, hurling curses and fungus-smoke from behind its bodyguards.',hp:17,power:'Moderate',melee:3,archery:1,speed:'medium',minG:3,maxG:6,
-    spells:[{name:'Spore Cloud',school:'illusory',dmg:[3,6],effect:'hero -15% to hit',castChance:40,flavour:'A puffball bursts and choking spores fill the air.'},
-            {name:'Hex of Weakness',school:'necromancy',dmg:[2,4],effect:'hero -1 melee for next round',castChance:30,flavour:'It rattles a bone fetish and your arm goes leaden.'}]},
-  {name:'Wyvern Hatchling',cat:'dragon',desc:'A young wyvern, all wings and venomous tail, guarding a clutch of eggs with hysterical fury.',hp:21,power:'Moderate',melee:3,archery:0,speed:'fast',minG:3,maxG:6,
-    spells:[{name:'Tail Sting',school:'elemental',dmg:[4,8],effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:38,flavour:'The barbed tail whips round and punches through your armour.'}]},
-  {name:'Owlbear',cat:'beast',desc:'A shrieking mass of feathers, fur and hooked beak that hugs its prey to death.',hp:24,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
-    spells:[{name:'Crushing Hug',school:'elemental',dmg:[5,9],effect:'',castChance:38,flavour:'It wraps you in a bone-cracking embrace!'}]},
-  {name:'Cockatrice',cat:'beast',desc:'A rooster-headed horror whose peck turns living flesh slowly to stone.',hp:21,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
-    spells:[{name:'Petrifying Peck',school:'illusory',dmg:[2,5],effect:'hero loses next attack (limbs stiffening)',castChance:35,flavour:'A single peck and your leg turns grey and heavy.'}]},
-  {name:'Dryad Warden',cat:'fey',desc:'A bark-skinned guardian of the old grove, calling roots and thorns up out of the earth.',hp:20,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:5,
-    spells:[{name:'Grasping Roots',school:'elemental',dmg:[3,6],effect:'hero loses next attack',castChance:35,flavour:'Roots burst from the soil and wrap your ankles.'},
-            {name:'Thorn Lash',school:'elemental',dmg:[4,8],effect:'',castChance:35,flavour:'A whip of thorned vine cracks across your face.'}]},
-  {name:'Imp Swarm',cat:'fiend',desc:'A dozen cackling little devils with pitchforks, too many to swat and too quick to catch.',hp:21,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
-    spells:[{name:'Pitchfork Prods',school:'elemental',dmg:[4,8],effect:'',castChance:40,flavour:'They come at you from every side at once!'}]},
-  {name:'Iron Golem Shard',cat:'construct',desc:'The animated torso of a shattered war-golem, dragging itself forward on two enormous arms.',hp:25,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
-    spells:[{name:'Iron Fist',school:'elemental',dmg:[5,10],effect:'',castChance:35,flavour:'A fist of solid iron comes down like a dropped anvil!'}]},
-  {name:'Lesser Fire Elemental',cat:'elemental',desc:'A roaring pillar of flame that sets the very stones alight as it moves.',hp:19,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
-    spells:[{name:'Scorching Embrace',school:'elemental',dmg:[4,8],effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:38,flavour:'It wraps you in fire and your cloak goes up like tinder.'}]},
+  {name:'Wraith of the Barrow',cat:'undead',desc:'A shrouded shade that drifts through stone, its touch stealing warmth and will alike.',hp:34,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
+    spells:[{name:'Chilling Touch',school:'necromancy',dmgW:1,effect:'hero -1 melee for next round',castChance:38,flavour:'Its hand passes through your guard and into your chest.'}]},
+  {name:'Mummified Champion',cat:'undead',desc:'A bandaged warrior-king of a forgotten dynasty, still swinging the bronze khopesh it was entombed with.',hp:39,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
+    spells:[{name:'Curse of the Tomb',school:'necromancy',dmgW:1,effect:'hero takes 2 dmg at start of each round for 3 rounds',castChance:35,flavour:'Dust pours from its wrappings and settles on your skin like a sickness.'}]},
+  {name:'Ghast Packleader',cat:'undead',desc:'The largest of a ghoul pack, reeking of the charnel pit and shrieking its kin into a frenzy.',hp:36,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Charnel Stench',school:'necromancy',dmgW:1,effect:'hero -15% to hit for 2 rounds',castChance:40,flavour:'The stink of the grave doubles you over.'}]},
+  {name:'Hill Giant Youngling',cat:'giant',desc:'A giant not yet grown, but already twelve feet tall and armed with an uprooted sapling.',hp:42,power:'Moderate',melee:3,archery:1,speed:'slow',minG:3,maxG:6,
+    spells:[{name:'Sapling Swing',school:'elemental',dmgW:1.5,effect:'',castChance:38,flavour:'The whole tree comes round in a great sweeping arc!'}]},
+  {name:'Minotaur Warden',cat:'humanoid',desc:'A bull-headed brute that knows every turn of its maze and charges down the corridors head-first.',hp:40,power:'Moderate',melee:3,archery:0,speed:'medium',minG:3,maxG:6,
+    spells:[{name:'Goring Charge',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:35,flavour:'Horns lowered, it thunders down the passage at you!'}]},
+  {name:'Goblin Shaman',cat:'humanoid',desc:'A cackling hunchback in a feathered headdress, hurling curses and fungus-smoke from behind its bodyguards.',hp:32,power:'Moderate',melee:3,archery:1,speed:'medium',minG:3,maxG:6,
+    spells:[{name:'Spore Cloud',school:'illusory',dmgW:1,effect:'hero -15% to hit',castChance:40,flavour:'A puffball bursts and choking spores fill the air.'},
+            {name:'Hex of Weakness',school:'necromancy',dmgW:1,effect:'hero -1 melee for next round',castChance:30,flavour:'It rattles a bone fetish and your arm goes leaden.'}]},
+  {name:'Wyvern Hatchling',cat:'dragon',desc:'A young wyvern, all wings and venomous tail, guarding a clutch of eggs with hysterical fury.',hp:38,power:'Moderate',melee:3,archery:0,speed:'fast',minG:3,maxG:6,
+    spells:[{name:'Tail Sting',school:'elemental',dmgW:1,effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:38,flavour:'The barbed tail whips round and punches through your armour.'}]},
+  {name:'Owlbear',cat:'beast',desc:'A shrieking mass of feathers, fur and hooked beak that hugs its prey to death.',hp:42,power:'Moderate',melee:3,archery:0,speed:'medium',minG:2,maxG:5,
+    spells:[{name:'Crushing Hug',school:'elemental',dmgW:1.5,effect:'',castChance:38,flavour:'It wraps you in a bone-cracking embrace!'}]},
+  {name:'Cockatrice',cat:'beast',desc:'A rooster-headed horror whose peck turns living flesh slowly to stone.',hp:38,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Petrifying Peck',school:'illusory',dmgW:1,effect:'hero loses next attack (limbs stiffening)',castChance:35,flavour:'A single peck and your leg turns grey and heavy.'}]},
+  {name:'Dryad Warden',cat:'fey',desc:'A bark-skinned guardian of the old grove, calling roots and thorns up out of the earth.',hp:36,power:'Moderate',melee:3,archery:1,speed:'medium',minG:2,maxG:5,
+    spells:[{name:'Grasping Roots',school:'elemental',dmgW:1,effect:'hero loses next attack',castChance:35,flavour:'Roots burst from the soil and wrap your ankles.'},
+            {name:'Thorn Lash',school:'elemental',dmgW:1,effect:'',castChance:35,flavour:'A whip of thorned vine cracks across your face.'}]},
+  {name:'Imp Swarm',cat:'fiend',desc:'A dozen cackling little devils with pitchforks, too many to swat and too quick to catch.',hp:38,power:'Moderate',melee:3,archery:1,speed:'fast',minG:3,maxG:6,
+    spells:[{name:'Pitchfork Prods',school:'elemental',dmgW:1,effect:'',castChance:40,flavour:'They come at you from every side at once!'}]},
+  {name:'Iron Golem Shard',cat:'construct',desc:'The animated torso of a shattered war-golem, dragging itself forward on two enormous arms.',hp:44,power:'Moderate',melee:3,archery:0,speed:'slow',minG:3,maxG:6,
+    spells:[{name:'Iron Fist',school:'elemental',dmgW:1.5,effect:'',castChance:35,flavour:'A fist of solid iron comes down like a dropped anvil!'}]},
+  {name:'Lesser Fire Elemental',cat:'elemental',desc:'A roaring pillar of flame that sets the very stones alight as it moves.',hp:34,power:'Moderate',melee:3,archery:0,speed:'fast',minG:2,maxG:5,
+    spells:[{name:'Scorching Embrace',school:'elemental',dmgW:1,effect:'hero takes 2 dmg at start of each round for 2 rounds',castChance:38,flavour:'It wraps you in fire and your cloak goes up like tinder.'}]},
   // Moderate sea
-  {name:'Drowned Bosun',cat:'undead',desc:'The bloated mate of a lost ship, still barking orders to a crew of the dead as he swings his boathook.',hp:20,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Dead Man\'s Hail',school:'necromancy',dmg:[3,6],effect:'hero -15% to hit for 2 rounds',castChance:38,flavour:'A voice full of seawater bellows and your nerve falters.'}]},
-  {name:'Sea Troll',cat:'giant',desc:'A barnacled troll wallowing in the shallows, its rubbery hide knitting shut as you cut it.',hp:23,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Brine Mending',school:'elemental',dmg:[0,0],effect:'troll gains +7 HP (regenerates)',castChance:40,flavour:'Its wounds foam and seal over.'}]},
-  {name:'Giant Sea Turtle',cat:'beast',desc:'An ancient turtle the size of a longboat, guarding its nesting reef with a beak that shears through planks.',hp:26,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
-    spells:[{name:'Shell Ram',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:35,flavour:'The whole reef seems to lurch as it slams into you!'}]},
-  {name:'Wreckers\' Gang',cat:'humanoid',desc:'False-light shore-thieves who lure ships onto the rocks and finish the survivors with cudgels.',hp:19,power:'Moderate',melee:3,archery:1,speed:'medium',minG:3,maxG:6,
-    spells:[{name:'Cudgel Rush',school:'elemental',dmg:[4,8],effect:'hero -10% to hit',castChance:38,flavour:'They come out of the surf swinging!'}]},
+  {name:'Drowned Bosun',cat:'undead',desc:'The bloated mate of a lost ship, still barking orders to a crew of the dead as he swings his boathook.',hp:36,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Dead Man\'s Hail',school:'necromancy',dmgW:1,effect:'hero -15% to hit for 2 rounds',castChance:38,flavour:'A voice full of seawater bellows and your nerve falters.'}]},
+  {name:'Sea Troll',cat:'giant',desc:'A barnacled troll wallowing in the shallows, its rubbery hide knitting shut as you cut it.',hp:40,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Brine Mending',school:'elemental',dmgW:0,effect:'troll gains +12 HP (regenerates)',castChance:40,flavour:'Its wounds foam and seal over.'}]},
+  {name:'Giant Sea Turtle',cat:'beast',desc:'An ancient turtle the size of a longboat, guarding its nesting reef with a beak that shears through planks.',hp:45,power:'Moderate',melee:3,archery:0,speed:'slow',minG:2,maxG:5,
+    spells:[{name:'Shell Ram',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:35,flavour:'The whole reef seems to lurch as it slams into you!'}]},
+  {name:'Wreckers\' Gang',cat:'humanoid',desc:'False-light shore-thieves who lure ships onto the rocks and finish the survivors with cudgels.',hp:34,power:'Moderate',melee:3,archery:1,speed:'medium',minG:3,maxG:6,
+    spells:[{name:'Cudgel Rush',school:'elemental',dmgW:1,effect:'hero -10% to hit',castChance:38,flavour:'They come out of the surf swinging!'}]},
   // Powerful land
-  {name:'Death Knight',cat:'undead',desc:'A fallen paladin in blackened plate, bound to unlife by a broken oath, its greatsword rimed with frost.',hp:40,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:8,
-    spells:[{name:'Unholy Cleave',school:'necromancy',dmg:[7,13],effect:'',castChance:42,flavour:'The black blade comes down in a hissing arc!'},
-            {name:'Aura of Despair',school:'necromancy',dmg:[3,7],effect:'hero -20% to hit for 3 rounds',castChance:33,flavour:'Hope drains out of you like blood from a wound.'}]},
-  {name:'Banshee',cat:'undead',desc:'The wailing ghost of a murdered queen, whose scream stops hearts and whose touch withers flesh.',hp:32,power:'Powerful',melee:3,archery:0,speed:'fast',minG:4,maxG:7,
-    spells:[{name:'Death Wail',school:'necromancy',dmg:[6,12],effect:'hero must pass courage test or flee',castChance:35,flavour:'A scream that is not a sound tears through your mind!'},
-            {name:'Withering Touch',school:'necromancy',dmg:[5,9],effect:'hero -1 melee for next round',castChance:40,flavour:'Her fingers brush your cheek and the skin beneath goes grey.'}]},
-  {name:'Bone Colossus',cat:'undead',desc:'A towering thing lashed together from a thousand skeletons, lurching forward on a dozen legs.',hp:47,power:'Powerful',melee:4,archery:0,speed:'slow',minG:5,maxG:9,
-    spells:[{name:'Skeletal Avalanche',school:'necromancy',dmg:[8,14],effect:'',castChance:40,flavour:'A wall of bone crashes down on top of you!'},
-            {name:'Reknit',school:'necromancy',dmg:[0,0],effect:'colossus regains 12 HP',castChance:35,flavour:'Loose bones rattle back into place across its frame.'}]},
-  {name:'Frost Giant Jarl',cat:'giant',desc:'A blue-skinned lord of the high ice, swinging an axe of frozen iron taller than a man.',hp:45,power:'Powerful',melee:4,archery:1,speed:'slow',minG:5,maxG:8,
-    spells:[{name:'Glacier Axe',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'The frozen axe shears the air with a shriek of ice!'},
-            {name:'Winter\'s Breath',school:'elemental',dmg:[4,8],effect:'hero -20% to hit',castChance:35,flavour:'A killing cold pours from his lungs and your fingers stop answering.'}]},
-  {name:'Hill Giant Chieftain',cat:'giant',desc:'A boulder-shouldered chief of the hill clans, hurling rocks and roaring challenges from his cairn-throne.',hp:44,power:'Powerful',melee:4,archery:2,speed:'slow',minG:4,maxG:8,
-    spells:[{name:'Rock Throw',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'A boulder the size of a barrel whistles past — and the next one doesn\'t miss!'},
-            {name:'Ground Slam',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:30,flavour:'Both fists hammer the earth and you are thrown off your feet!'}]},
-  {name:'Orc Warlord',cat:'humanoid',desc:'A one-eyed warlord in trophy-hung plate, veteran of a hundred raids, roaring for blood.',hp:38,power:'Powerful',melee:5,archery:1,speed:'medium',minG:5,maxG:8,
-    spells:[{name:'Whirling Cleaver',school:'elemental',dmg:[7,12],effect:'',castChance:42,flavour:'The great cleaver spins in a circle of death!'},
-            {name:'Blood Roar',school:'psychic',dmg:[0,0],effect:'warlord gains +2 melee',castChance:35,flavour:'He bellows to his war-gods and his eyes go red!'}]},
-  {name:'Medusa',cat:'humanoid',desc:'A serpent-haired sorceress whose gaze alone has filled her lair with stone statues of the bold.',hp:44,power:'Powerful',melee:4,archery:2,speed:'medium',minG:5,maxG:8,
-    spells:[{name:'Stone Gaze',school:'illusory',dmg:[0,0],effect:'hero loses 2 rounds completely (turning to stone)',castChance:35,flavour:'You meet her eyes for an instant — and cannot look away.'},
-            {name:'Serpent Bite',school:'elemental',dmg:[5,9],effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:40,flavour:'Her hair strikes as one, a dozen fangs at once.'}]},
-  {name:'Chimera',cat:'beast',desc:'Lion, goat and dragon fused in one raging beast, each head hungrier than the last.',hp:42,power:'Powerful',melee:4,archery:0,speed:'fast',minG:4,maxG:8,
-    spells:[{name:'Dragon-Head Flame',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'The dragon head rears back and vomits fire!'},
-            {name:'Triple Maul',school:'elemental',dmg:[3,7],effect:'hits twice if roll succeeds',castChance:40,flavour:'Three heads strike from three directions!'}]},
-  {name:'Stone Golem',cat:'construct',desc:'A statue of black granite that steps down from its plinth to crush whatever crosses the threshold.',hp:50,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
-    spells:[{name:'Granite Fist',school:'elemental',dmg:[8,14],effect:'',castChance:40,flavour:'A fist of solid stone comes down like a falling wall!'},
-            {name:'Unyielding',school:'elemental',dmg:[0,0],effect:'golem absorbs next 10 dmg',castChance:30,flavour:'Cracks across its surface seal and vanish.'}]},
-  {name:'Night Hag',cat:'fey',desc:'A crooked crone who rides sleepers\' dreams, wringing nightmares into venom.',hp:38,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:8,
-    spells:[{name:'Nightmare Weave',school:'psychic',dmg:[6,11],effect:'hero -15% to hit for 3 rounds',castChance:40,flavour:'Every fear you have ever had crawls up out of the dark.'},
-            {name:'Soul Sip',school:'necromancy',dmg:[4,8],effect:'hag heals half the damage dealt',castChance:40,flavour:'She breathes in and something inside you goes thin.'}]},
+  {name:'Death Knight',cat:'undead',desc:'A fallen paladin in blackened plate, bound to unlife by a broken oath, its greatsword rimed with frost.',hp:59,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:8,
+    spells:[{name:'Unholy Cleave',school:'necromancy',dmgW:2.0,effect:'',castChance:42,flavour:'The black blade comes down in a hissing arc!'},
+            {name:'Aura of Despair',school:'necromancy',dmgW:1,effect:'hero -20% to hit for 3 rounds',castChance:33,flavour:'Hope drains out of you like blood from a wound.'}]},
+  {name:'Banshee',cat:'undead',desc:'The wailing ghost of a murdered queen, whose scream stops hearts and whose touch withers flesh.',hp:55,power:'Powerful',melee:3,archery:0,speed:'fast',minG:4,maxG:7,
+    spells:[{name:'Death Wail',school:'necromancy',dmgW:1.5,effect:'hero must pass courage test or flee',castChance:35,flavour:'A scream that is not a sound tears through your mind!'},
+            {name:'Withering Touch',school:'necromancy',dmgW:1.5,effect:'hero -1 melee for next round',castChance:40,flavour:'Her fingers brush your cheek and the skin beneath goes grey.'}]},
+  {name:'Bone Colossus',cat:'undead',desc:'A towering thing lashed together from a thousand skeletons, lurching forward on a dozen legs.',hp:63,power:'Powerful',melee:4,archery:0,speed:'slow',minG:5,maxG:9,
+    spells:[{name:'Skeletal Avalanche',school:'necromancy',dmgW:2.0,effect:'',castChance:40,flavour:'A wall of bone crashes down on top of you!'},
+            {name:'Reknit',school:'necromancy',dmgW:0,effect:'colossus regains 16 HP',castChance:35,flavour:'Loose bones rattle back into place across its frame.'}]},
+  {name:'Frost Giant Jarl',cat:'giant',desc:'A blue-skinned lord of the high ice, swinging an axe of frozen iron taller than a man.',hp:62,power:'Powerful',melee:4,archery:1,speed:'slow',minG:5,maxG:8,
+    spells:[{name:'Glacier Axe',school:'elemental',dmgW:2.0,effect:'',castChance:40,flavour:'The frozen axe shears the air with a shriek of ice!'},
+            {name:'Winter\'s Breath',school:'elemental',dmgW:1,effect:'hero -20% to hit',castChance:35,flavour:'A killing cold pours from his lungs and your fingers stop answering.'}]},
+  {name:'Hill Giant Chieftain',cat:'giant',desc:'A boulder-shouldered chief of the hill clans, hurling rocks and roaring challenges from his cairn-throne.',hp:62,power:'Powerful',melee:4,archery:2,speed:'slow',minG:4,maxG:8,
+    spells:[{name:'Rock Throw',school:'elemental',dmgW:2.0,effect:'',castChance:42,flavour:'A boulder the size of a barrel whistles past — and the next one doesn\'t miss!'},
+            {name:'Ground Slam',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:30,flavour:'Both fists hammer the earth and you are thrown off your feet!'}]},
+  {name:'Orc Warlord',cat:'humanoid',desc:'A one-eyed warlord in trophy-hung plate, veteran of a hundred raids, roaring for blood.',hp:58,power:'Powerful',melee:5,archery:1,speed:'medium',minG:5,maxG:8,
+    spells:[{name:'Whirling Cleaver',school:'elemental',dmgW:1.5,effect:'',castChance:42,flavour:'The great cleaver spins in a circle of death!'},
+            {name:'Blood Roar',school:'psychic',dmgW:0,effect:'warlord gains +2 melee',castChance:35,flavour:'He bellows to his war-gods and his eyes go red!'}]},
+  {name:'Medusa',cat:'humanoid',desc:'A serpent-haired sorceress whose gaze alone has filled her lair with stone statues of the bold.',hp:62,power:'Powerful',melee:4,archery:2,speed:'medium',minG:5,maxG:8,
+    spells:[{name:'Stone Gaze',school:'illusory',dmgW:0,effect:'hero loses 2 rounds completely (turning to stone)',castChance:35,flavour:'You meet her eyes for an instant — and cannot look away.'},
+            {name:'Serpent Bite',school:'elemental',dmgW:1.5,effect:'hero takes 3 dmg at start of each round for 2 rounds',castChance:40,flavour:'Her hair strikes as one, a dozen fangs at once.'}]},
+  {name:'Chimera',cat:'beast',desc:'Lion, goat and dragon fused in one raging beast, each head hungrier than the last.',hp:61,power:'Powerful',melee:4,archery:0,speed:'fast',minG:4,maxG:8,
+    spells:[{name:'Dragon-Head Flame',school:'elemental',dmgW:2.0,effect:'',castChance:42,flavour:'The dragon head rears back and vomits fire!'},
+            {name:'Triple Maul',school:'elemental',dmgW:1,effect:'hits twice if roll succeeds',castChance:40,flavour:'Three heads strike from three directions!'}]},
+  {name:'Stone Golem',cat:'construct',desc:'A statue of black granite that steps down from its plinth to crush whatever crosses the threshold.',hp:65,power:'Powerful',melee:4,archery:0,speed:'slow',minG:4,maxG:8,
+    spells:[{name:'Granite Fist',school:'elemental',dmgW:2.0,effect:'',castChance:40,flavour:'A fist of solid stone comes down like a falling wall!'},
+            {name:'Unyielding',school:'elemental',dmgW:0,effect:'golem absorbs next 13 dmg',castChance:30,flavour:'Cracks across its surface seal and vanish.'}]},
+  {name:'Night Hag',cat:'fey',desc:'A crooked crone who rides sleepers\' dreams, wringing nightmares into venom.',hp:58,power:'Powerful',melee:4,archery:0,speed:'medium',minG:5,maxG:8,
+    spells:[{name:'Nightmare Weave',school:'psychic',dmgW:1.5,effect:'hero -15% to hit for 3 rounds',castChance:40,flavour:'Every fear you have ever had crawls up out of the dark.'},
+            {name:'Soul Sip',school:'necromancy',dmgW:1,effect:'hag heals half the damage dealt',castChance:40,flavour:'She breathes in and something inside you goes thin.'}]},
   // Powerful sea
-  {name:'Drowned Admiral',cat:'undead',desc:'A dead fleet-lord in weed-hung finery, still commanding a rotting flagship\'s crew from beneath the waves.',hp:42,power:'Powerful',melee:4,archery:1,speed:'medium',minG:5,maxG:8,
-    spells:[{name:'Ghost Broadside',school:'necromancy',dmg:[7,13],effect:'',castChance:42,flavour:'Phantom guns thunder along a hull that sank a century ago!'},
-            {name:'Undertow Curse',school:'necromancy',dmg:[4,8],effect:'flee chance reduced',castChance:35,flavour:'The water itself seems to close around your legs.'}]},
-  {name:'Sea Wyrm',cat:'dragon',desc:'A finned dragon of the deep trenches, breathing scalding steam and lashing with a rudder-like tail.',hp:45,power:'Powerful',melee:4,archery:0,speed:'fast',minG:5,maxG:9,
-    spells:[{name:'Scalding Breath',school:'elemental',dmg:[7,13],effect:'',castChance:42,flavour:'A gout of boiling steam erupts from its jaws!'},
-            {name:'Tail Lash',school:'elemental',dmg:[5,9],effect:'hero knocked back',castChance:33,flavour:'The great tail sweeps across the deck!'}]},
-  {name:'Giant Octopus',cat:'aberration',desc:'A boulder-headed monster of the kelp forest, eight crushing arms and a beak that opens hulls.',hp:46,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
-    spells:[{name:'Eightfold Grip',school:'elemental',dmg:[6,11],effect:'hero loses next attack',castChance:38,flavour:'Arms wrap you from every side and squeeze!'},
-            {name:'Ink Jet',school:'illusory',dmg:[2,5],effect:'hero -20% to hit',castChance:35,flavour:'The water goes black around you.'}]},
+  {name:'Drowned Admiral',cat:'undead',desc:'A dead fleet-lord in weed-hung finery, still commanding a rotting flagship\'s crew from beneath the waves.',hp:61,power:'Powerful',melee:4,archery:1,speed:'medium',minG:5,maxG:8,
+    spells:[{name:'Ghost Broadside',school:'necromancy',dmgW:2.0,effect:'',castChance:42,flavour:'Phantom guns thunder along a hull that sank a century ago!'},
+            {name:'Undertow Curse',school:'necromancy',dmgW:1,effect:'flee chance reduced',castChance:35,flavour:'The water itself seems to close around your legs.'}]},
+  {name:'Sea Wyrm',cat:'dragon',desc:'A finned dragon of the deep trenches, breathing scalding steam and lashing with a rudder-like tail.',hp:62,power:'Powerful',melee:4,archery:0,speed:'fast',minG:5,maxG:9,
+    spells:[{name:'Scalding Breath',school:'elemental',dmgW:2.0,effect:'',castChance:42,flavour:'A gout of boiling steam erupts from its jaws!'},
+            {name:'Tail Lash',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:33,flavour:'The great tail sweeps across the deck!'}]},
+  {name:'Giant Octopus',cat:'aberration',desc:'A boulder-headed monster of the kelp forest, eight crushing arms and a beak that opens hulls.',hp:63,power:'Powerful',melee:4,archery:0,speed:'medium',minG:4,maxG:8,
+    spells:[{name:'Eightfold Grip',school:'elemental',dmgW:1.5,effect:'hero loses next attack',castChance:38,flavour:'Arms wrap you from every side and squeeze!'},
+            {name:'Ink Jet',school:'illusory',dmgW:1,effect:'hero -20% to hit',castChance:35,flavour:'The water goes black around you.'}]},
   // Legendary land
-  {name:'Dread Vampire Sovereign',cat:'undead',desc:'The eldest of the night-nobles, a thousand years dead and lord of every shadow in the land.',hp:82,power:'Legendary',melee:6,archery:0,speed:'fast',minG:7,maxG:10,
-    spells:[{name:'Sanguine Feast',school:'necromancy',dmg:[8,15],effect:'vampire heals half the damage dealt',castChance:48,flavour:'It is on you before you can blink, and the world goes red.'},
-            {name:'Dominating Gaze',school:'psychic',dmg:[0,0],effect:'hero loses 2 rounds completely paralysed',castChance:38,flavour:'Its eyes hold yours and your body simply stops obeying.'},
-            {name:'Cloud of Bats',school:'necromancy',dmg:[6,12],effect:'',castChance:45,flavour:'The night comes apart into ten thousand shrieking wings!'}]},
-  {name:'Dracolich',cat:'undead',desc:'A dragon that cheated death — bare bone and green witchfire, its breath a wind of corruption.',hp:85,power:'Legendary',melee:6,archery:2,speed:'medium',minG:8,maxG:10,
-    spells:[{name:'Corpse Breath',school:'necromancy',dmg:[9,17],effect:'',castChance:50,flavour:'Green fire pours from the skull\'s empty jaws!'},
-            {name:'Bone Storm',school:'necromancy',dmg:[6,12],effect:'hero -25% to hit for 3 rounds',castChance:40,flavour:'Splinters of its own ribs whirl around you like a blizzard!'},
-            {name:'Deathless',school:'necromancy',dmg:[0,0],effect:'dracolich regains 16 HP',castChance:35,flavour:'Witchfire flares in every joint and the shattered bone knits.'}]},
-  {name:'Archdemon',cat:'fiend',desc:'A prince of the pit, crowned in horns and wrapped in the screams of the damned.',hp:77,power:'Legendary',melee:5,archery:0,speed:'medium',minG:8,maxG:10,
-    spells:[{name:'Infernal Blade',school:'elemental',dmg:[9,17],effect:'',castChance:50,flavour:'A sword of liquid fire carves the air!'},
-            {name:'Damnation',school:'psychic',dmg:[5,10],effect:'hero must pass courage test or flee',castChance:40,flavour:'It speaks your name and every sin you have ever committed.'},
-            {name:'Hellfire Mantle',school:'elemental',dmg:[0,0],effect:'demon reflects 3 dmg back each time hero hits',castChance:35,flavour:'It wraps itself in a cloak of burning brimstone!'}]},
-  {name:'Storm Titan',cat:'giant',desc:'A primordial giant who walks in thunderheads and throws lightning as a man throws stones.',hp:71,power:'Legendary',melee:5,archery:3,speed:'medium',minG:7,maxG:10,
-    spells:[{name:'Thunderbolt',school:'elemental',dmg:[9,16],effect:'',castChance:50,flavour:'Lightning leaps from its outstretched hand!'},
-            {name:'Hurricane Grasp',school:'elemental',dmg:[6,11],effect:'hero knocked back',castChance:40,flavour:'A wind like a falling mountain hurls you across the ground!'},
-            {name:'Deafening Peal',school:'psychic',dmg:[4,8],effect:'hero loses all Archery this round',castChance:40,flavour:'The thunder of its voice leaves you reeling and blind!'}]},
-  {name:'Sphinx',cat:'beast',desc:'A winged lion with a woman\'s face, guarding a riddle-locked treasury with claws and mind alike.',hp:74,power:'Legendary',melee:6,archery:1,speed:'fast',minG:7,maxG:10,
-    spells:[{name:'Riddle of Madness',school:'psychic',dmg:[6,12],effect:'hero loses 2 rounds completely (lost in the riddle)',castChance:38,flavour:'She asks a question and your mind folds in on itself trying to answer.'},
-            {name:'Talon Sweep',school:'elemental',dmg:[8,14],effect:'',castChance:48,flavour:'Claws like scythes rake across you!'},
-            {name:'Mind Lock',school:'psychic',dmg:[3,7],effect:'hero -30% to hit for encounter',castChance:35,flavour:'Her gaze settles on you and you feel every move being read before you make it.'}]},
+  {name:'Dread Vampire Sovereign',cat:'undead',desc:'The eldest of the night-nobles, a thousand years dead and lord of every shadow in the land.',hp:87,power:'Legendary',melee:6,archery:0,speed:'fast',minG:7,maxG:10,
+    spells:[{name:'Sanguine Feast',school:'necromancy',dmgW:2.0,effect:'vampire heals half the damage dealt',castChance:48,flavour:'It is on you before you can blink, and the world goes red.'},
+            {name:'Dominating Gaze',school:'psychic',dmgW:0,effect:'hero loses 2 rounds completely paralysed',castChance:38,flavour:'Its eyes hold yours and your body simply stops obeying.'},
+            {name:'Cloud of Bats',school:'necromancy',dmgW:1.5,effect:'',castChance:45,flavour:'The night comes apart into ten thousand shrieking wings!'}]},
+  {name:'Dracolich',cat:'undead',desc:'A dragon that cheated death — bare bone and green witchfire, its breath a wind of corruption.',hp:90,power:'Legendary',melee:6,archery:2,speed:'medium',minG:8,maxG:10,
+    spells:[{name:'Corpse Breath',school:'necromancy',dmgW:2.0,effect:'',castChance:50,flavour:'Green fire pours from the skull\'s empty jaws!'},
+            {name:'Bone Storm',school:'necromancy',dmgW:1.5,effect:'hero -25% to hit for 3 rounds',castChance:40,flavour:'Splinters of its own ribs whirl around you like a blizzard!'},
+            {name:'Deathless',school:'necromancy',dmgW:0,effect:'dracolich regains 17 HP',castChance:35,flavour:'Witchfire flares in every joint and the shattered bone knits.'}]},
+  {name:'Archdemon',cat:'fiend',desc:'A prince of the pit, crowned in horns and wrapped in the screams of the damned.',hp:82,power:'Legendary',melee:5,archery:0,speed:'medium',minG:8,maxG:10,
+    spells:[{name:'Infernal Blade',school:'elemental',dmgW:2.0,effect:'',castChance:50,flavour:'A sword of liquid fire carves the air!'},
+            {name:'Damnation',school:'psychic',dmgW:1,effect:'hero must pass courage test or flee',castChance:40,flavour:'It speaks your name and every sin you have ever committed.'},
+            {name:'Hellfire Mantle',school:'elemental',dmgW:0,effect:'demon reflects 3 dmg back each time hero hits',castChance:35,flavour:'It wraps itself in a cloak of burning brimstone!'}]},
+  {name:'Storm Titan',cat:'giant',desc:'A primordial giant who walks in thunderheads and throws lightning as a man throws stones.',hp:76,power:'Legendary',melee:5,archery:3,speed:'medium',minG:7,maxG:10,
+    spells:[{name:'Thunderbolt',school:'elemental',dmgW:2.0,effect:'',castChance:50,flavour:'Lightning leaps from its outstretched hand!'},
+            {name:'Hurricane Grasp',school:'elemental',dmgW:1.5,effect:'hero knocked back',castChance:40,flavour:'A wind like a falling mountain hurls you across the ground!'},
+            {name:'Deafening Peal',school:'psychic',dmgW:1,effect:'hero loses all Archery this round',castChance:40,flavour:'The thunder of its voice leaves you reeling and blind!'}]},
+  {name:'Sphinx',cat:'beast',desc:'A winged lion with a woman\'s face, guarding a riddle-locked treasury with claws and mind alike.',hp:79,power:'Legendary',melee:6,archery:1,speed:'fast',minG:7,maxG:10,
+    spells:[{name:'Riddle of Madness',school:'psychic',dmgW:1.5,effect:'hero loses 2 rounds completely (lost in the riddle)',castChance:38,flavour:'She asks a question and your mind folds in on itself trying to answer.'},
+            {name:'Talon Sweep',school:'elemental',dmgW:1.5,effect:'',castChance:48,flavour:'Claws like scythes rake across you!'},
+            {name:'Mind Lock',school:'psychic',dmgW:1,effect:'hero -30% to hit for encounter',castChance:35,flavour:'Her gaze settles on you and you feel every move being read before you make it.'}]},
   // Legendary sea
-  {name:'Kraken',cat:'aberration',desc:'The full-grown terror of the abyss — a mountain of tentacles that drags whole fleets to the sea floor.',hp:82,power:'Legendary',melee:6,archery:0,speed:'medium',minG:8,maxG:10,
-    spells:[{name:'Crushing Tentacles',school:'elemental',dmg:[9,17],effect:'',castChance:50,flavour:'A tentacle thick as a mainmast smashes down!'},
-            {name:'Maelstrom',school:'elemental',dmg:[6,12],effect:'hero loses next attack',castChance:40,flavour:'The sea spins into a whirlpool and drags you under!'},
-            {name:'Abyssal Ink',school:'illusory',dmg:[3,6],effect:'hero -25% to hit',castChance:40,flavour:'Blackness swallows the light.'}]},
+  {name:'Kraken',cat:'aberration',desc:'The full-grown terror of the abyss — a mountain of tentacles that drags whole fleets to the sea floor.',hp:87,power:'Legendary',melee:6,archery:0,speed:'medium',minG:8,maxG:10,
+    spells:[{name:'Crushing Tentacles',school:'elemental',dmgW:2.0,effect:'',castChance:50,flavour:'A tentacle thick as a mainmast smashes down!'},
+            {name:'Maelstrom',school:'elemental',dmgW:1.5,effect:'hero loses next attack',castChance:40,flavour:'The sea spins into a whirlpool and drags you under!'},
+            {name:'Abyssal Ink',school:'illusory',dmgW:1,effect:'hero -25% to hit',castChance:40,flavour:'Blackness swallows the light.'}]},
 ];
 // Item 2 (this session): the SINGLE source of truth for which guardians are SEA creatures. Sea lairs
 // draw only from these; LAND lairs must exclude all of them. Previously the land filter used a much
@@ -3154,6 +3154,8 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Lock-Pick of Legends',desc:'Thief +1, +20% steal chance in encounters',lore:'No strongbox in the world has yet resisted it. Thief skill counts 1 level higher, and your chance to steal in an encounter is +20%.',effect:{stat:'thief',bonus:1},tier:1},
   // ── Druid ──
   {name:'Staff of the Wildwood',desc:'Druid +2',lore:'Living wood, still budding in spring, that beasts and monsters instinctively defer to. Druid skill counts as 2 levels higher.',effect:{stat:'druid',bonus:2},tier:2},
+  {name:'Beastcaller\'s Warhorn',desc:'Druid +1, and the pre-battle strikes of primal and special armies you lead fire +15% more often',lore:'A curved horn of aurochs bone, its note pitched for beasts rather than men. Druid skill counts 1 level higher, and the pre-battle strikes (Boulder Barrage, Choking Spores, Dragonfire Breath and the like) of primal and special armies you lead fire 15% more often.',effect:{stat:'druid',bonus:1},primalStrike:15,tier:1},
+  {name:'Totem of the Thunderhead',desc:'Pre-battle strikes of primal and special armies you lead fire +25% more often',lore:'A carved storm-spirit on a pole, hung with feathers and teeth; the wild things watch it for their signal. The pre-battle strikes of every primal and special army you lead fire 25% more often.',effect:{stat:'primalStrike',bonus:25},tier:2},
   {name:'Green Stone of Speaking',desc:'Druid +1',lore:'A smooth green gem through which the speech of beasts becomes plain. Druid skill counts 1 level higher.',effect:{stat:'druid',bonus:1},tier:1},
   // ── Explorer ──
   {name:'Ring of the Explorer',desc:'Explorer +2',lore:'Worn by a wanderer who walked the whole known world and half the unknown one. Explorer skill counts as 2 levels higher, so you chart more of every province.',effect:{stat:'explorer',bonus:2},tier:2},
@@ -3305,7 +3307,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Deep-Delver\'s Lantern',desc:'[Dwarves only] Explorer +2.',lore:'A miner\'s lamp that shows every seam and side-tunnel. Dwarves only: Explorer skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'explorer',bonus:2},tier:1},
   {name:'Runic Ale-Horn',desc:'[Dwarves only] Max HP +6.',lore:'Ale drunk from it puts iron in the belly. Dwarves only: maximum HP +6; inert in any other hand.',race:'Dwarven',effect:{stat:'maxHp',bonus:6},tier:1},
   {name:'Ironclad Captain\'s Chain',desc:'[Dwarves only] Naval +2.',lore:'The chain of office of the Iron Fleet\'s first admiral. Dwarves only: Naval skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'naval',bonus:2},slot:'amulet',tier:1},
-  {name:'Anvil-Brand Shield',desc:'[Dwarves only] Combat use: a ward that soaks 12 damage, once per fight.',lore:'A shield stamped with the mark of the mountain forges. Dwarves only, used once per personal combat: a ward that soaks 12 damage; inert in any other hand.',race:'Dwarven',effect:{stat:'combatUse',use:'absorb',absorb:12,bonus:0},tier:2},
+  {name:'Anvil-Brand Shield',desc:'[Dwarves only] Shield — combat use: a ward that soaks 12 damage, once per fight.',lore:'A shield stamped with the mark of the mountain forges. Dwarves only, used once per personal combat: a ward that soaks 12 damage; inert in any other hand.',race:'Dwarven',effect:{stat:'combatUse',use:'absorb',absorb:12,bonus:0},slot:'shield',tier:2},
   {name:'Moonsilver Bow',desc:'[Elves only] Archery +2.',lore:'Strung with moonlight, or something very like it. Elves only: Archery skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'archery',bonus:2},slot:'weapon',tier:1},
   {name:'Starlight Diadem',desc:'[Elves only] Illusory Magic +2.',lore:'A circlet that scatters starlight into a hundred false shapes. Elves only: Illusory Magic skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'illusory',bonus:2},slot:'helm',tier:1},
   {name:'Cloak of Leaves',desc:'[Elves only] Spy +2.',lore:'Its wearer is just another shadow beneath the trees. Elves only: Spy skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'spy',bonus:2},slot:'cloak',tier:1},
@@ -3322,7 +3324,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Knight-Marshal\'s Baton',desc:'[Humans only] Tactical +2.',lore:'The baton of the crown\'s constable. Humans only: Tactical skill counts as 2 levels higher; inert in any other hand.',race:'Human',effect:{stat:'tactical',bonus:2},tier:1},
   {name:'Chirurgeon\'s Kit',desc:'[Humans only] Combat use: recover 10 HP once per fight (used below half health).',lore:'Needles, gut and a steady hand. Humans only, used once per personal combat when below half health: recover 10 HP; inert in any other hand.',race:'Human',effect:{stat:'combatUse',use:'heal',amt:10,below:0.5,bonus:0},tier:1},
   {name:'Paladin\'s Sword',desc:'[Good characters only] Melee +2.',lore:'A blade that will not be drawn in an unjust cause. Good characters only: Melee skill counts as 2 levels higher; inert in any other hand.',alignment:'Good',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
-  {name:'Shield of the Innocent',desc:'[Good characters only] All armies led: +1 quality tier when defending a home province.',lore:'The folk fight the harder knowing who they shield. Good characters only: every army you lead fights one quality tier higher when defending a home province; inert in any other hand.',alignment:'Good',effect:{stat:'homeDefBonus',bonus:1},tier:2},
+  {name:'Shield of the Innocent',desc:'[Good characters only] All armies led: +1 quality tier when defending a home province.',lore:'The folk fight the harder knowing who they shield. Good characters only: every army you lead fights one quality tier higher when defending a home province; inert in any other hand.',alignment:'Good',effect:{stat:'homeDefBonus',bonus:1},slot:'shield',tier:2},
   {name:'Oathkeeper\'s Ring',desc:'[Good characters only] Max HP +6.',lore:'The wearer\'s word holds, and so does the wearer. Good characters only: maximum HP +6; inert in any other hand.',alignment:'Good',effect:{stat:'maxHp',bonus:6},slot:'ring',tier:1},
   {name:'Tyrant\'s Sceptre',desc:'[Evil characters only] +5g collected each tax season.',lore:'A rod of iron rule; the taxes come in on time. Evil characters only: +5 gold collected each tax season; inert in any other hand.',alignment:'Evil',effect:{stat:'taxBonus',bonus:5},slot:'weapon',tier:1},
   {name:'Poisoner\'s Ring',desc:'[Evil characters only] Thief +2.',lore:'A hollow signet with a hinged lid. Evil characters only: Thief skill counts as 2 levels higher; inert in any other hand.',alignment:'Evil',effect:{stat:'thief',bonus:2},slot:'ring',tier:1},
@@ -3355,6 +3357,32 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Sword of the First Emperor',desc:'The blade that founded the old Empire. Melee +4.',lore:'The blade that founded the old Empire, and the greatest weapon in the world. A LEGENDARY relic: Melee skill counts as 4 levels higher.',effect:{stat:'melee',bonus:4},tier:3},
   {name:'Imperial Regalia',desc:'The crown, orb and sceptre of the vanished throne. +10g collected each tax season.',lore:'The crown, orb and sceptre of the vanished throne; whoever holds them commands a tithe from every corner of the land. A LEGENDARY relic: +10 gold collected each tax season.',effect:{stat:'taxBonus',bonus:10},tier:3},
   {name:'Standard of the Nine Legions',desc:'The war-banner under which the Empire was won. All armies you lead: strength +5 each.',lore:'The war-banner under which the Empire was won. A LEGENDARY relic: every army you lead fights at +5 strength.',effect:{stat:'armyBonus',bonus:5},tier:3},
+  // ── ARMOUR (2026-09-10) ── fifteen worn defences, each mitigating damage in a different way. Fourteen sit in
+  // the single `armour` slot (one worn at a time; cloaks/helms are separate slots); the Tower Shield is `shield`,
+  // as are the six further shields below Warden's Scale. Effects resolve in personal
+  // combat only — see pcArmourOf / pcTakeHit / pcRoundStart / pcHitChance. `stat:'armour'` + one `ward` key.
+  {name:'Dwarf-Forged Hauberk',desc:'Armour: every melee blow that lands on you deals 2 less damage (never below 1).',lore:'Rings of mountain steel, each one closed by a smith who never hurried. Every melee blow that lands on the wearer deals 2 less damage, never below 1.',effect:{stat:'armour',ward:'meleeDR',amt:2,bonus:0},slot:'armour',tier:1},
+  {name:'Arrow-Turning Brigandine',desc:'Armour: every arrow or missile that strikes you deals 3 less damage (never below 1).',lore:'Overlapping plates riveted beneath stout cloth, angled so shafts skate away. Every arrow or missile that strikes the wearer deals 3 less damage, never below 1.',effect:{stat:'armour',ward:'arrowDR',amt:3,bonus:0},slot:'armour',tier:1},
+  {name:'Troll-Hide Jerkin',desc:'Armour: recover 2 HP at the start of every combat round.',lore:'Cured troll-skin that has not quite stopped living. The wearer recovers 2 HP at the start of every round of personal combat.',effect:{stat:'armour',ward:'regen',amt:2,bonus:0},slot:'armour',tier:1},
+  {name:'Thornwood Cuirass',desc:'Armour: whoever lands a melee blow on you takes 2 damage back.',lore:'Breastplate of living blackthorn; it bites back. Whoever lands a melee blow on the wearer takes 2 damage in return.',effect:{stat:'armour',ward:'thorns',amt:2,bonus:0},slot:'armour',tier:1},
+  {name:'Tower Shield of the Wall',desc:'Shield: 20% chance to block any melee blow or arrow outright.',lore:'A door-sized slab of oak and iron carried by the shield-wall\'s best. One melee blow or arrow in five is blocked outright.',effect:{stat:'armour',ward:'block',pct:20,bonus:0},slot:'shield',tier:1},
+  {name:'Serpent-Scale Coat',desc:'Armour: beasts, vermin and dragons deal 3 less damage to you with every hit (never below 1).',lore:'Scales of some great serpent, still faintly warm. Beasts, vermin and dragon-kind deal 3 less damage to the wearer with every hit, never below 1.',effect:{stat:'armour',ward:'natureDR',amt:3,bonus:0},slot:'armour',tier:1},
+  {name:'Grave-Iron Plate',desc:'Armour: undead and fiends deal 3 less damage to you with every hit (never below 1).',lore:'Plate quenched in consecrated ash; the dead and the damned find it hard to bite. Undead and fiends deal 3 less damage to the wearer with every hit, never below 1.',effect:{stat:'armour',ward:'darkDR',amt:3,bonus:0},slot:'armour',tier:1},
+  {name:'Blood-Bound Cuirass',desc:'Armour: the first blow, arrow or spell that lands on you each fight does no damage at all.',lore:'Old blood in the steel takes the first wound for its wearer. The first blow, arrow or spell that lands on the wearer in each fight does no damage at all.',effect:{stat:'armour',ward:'firstHit',bonus:0},slot:'armour',tier:1},
+  {name:'Spellwarded Robe',desc:'Armour: spells and monster powers deal 30% less damage to you.',lore:'Silk stitched through with silver sigils that drink hostile magic. Spells and guardian powers deal 30% less damage to the wearer.',effect:{stat:'armour',ward:'spellPct',pct:30,bonus:0},slot:'armour',tier:2},
+  {name:'Quicksilver Mail',desc:'Armour: enemies have −10% to hit you in personal combat.',lore:'Mail so light it seems to move before the wearer does. Every foe has 10% less chance to hit the wearer in personal combat.',effect:{stat:'armour',ward:'dodge',pct:10,bonus:0},slot:'armour',tier:2},
+  {name:'Ashen Plate',desc:'Armour: burns, poisons and bleeding never take hold on you.',lore:'Plate forged in a dead volcano; nothing lingers on it. Burns, poisons, bleeding and every other lingering harm never take hold on the wearer.',effect:{stat:'armour',ward:'dotImmune',bonus:0},slot:'armour',tier:2},
+  {name:'Bulwark Breastplate',desc:'Armour: no single hit may cost you more than 25% of your maximum HP.',lore:'A slab of layered steel that spreads the heaviest blow across the whole body. No single hit may cost the wearer more than a quarter of their maximum HP.',effect:{stat:'armour',ward:'cap',pct:25,bonus:0},slot:'armour',tier:2},
+  {name:'Last-Stand Plate',desc:'Armour: once per fight, the first time you fall below 30% HP you recover 25% of your maximum HP.',lore:'Worn by a champion who would not go down; some of that stubbornness stayed. Once per fight, the first time the wearer falls below 30% HP they recover a quarter of their maximum HP on the spot.',effect:{stat:'armour',ward:'secondWind',pct:25,bonus:0},slot:'armour',tier:2},
+  {name:'Steadfast Harness',desc:'Armour: to-hit penalties laid on you fade twice as fast, and half of all stuns and lost actions are shrugged off.',lore:'Harness blessed against faltering. Penalties to the wearer\'s aim fade twice as fast, and half of all stuns and lost actions are shrugged off.',effect:{stat:'armour',ward:'resist',bonus:0},slot:'armour',tier:2},
+  // ── SHIELDS (2026-09-10, second batch) — `shield` slot, six more ways to blunt harm ──
+  {name:'Kite Shield of the Marches',desc:'Shield: 30% chance to block any arrow or missile outright.',lore:'Long and narrow, made for riders who take fire on the road. Three arrows in ten glance off it entirely.',effect:{stat:'armour',ward:'arrowBlock',pct:30,bonus:0},slot:'shield',tier:1},
+  {name:'Bronze Buckler',desc:'Shield: melee blows deal 1 less damage and foes have −5% to hit you.',lore:'Small, quick and always in the way. Melee blows on the bearer deal 1 less damage, and every foe has 5% less chance to hit them.',effect:{stat:'armour',ward:'buckler',bonus:0},slot:'shield',tier:1},
+  {name:'Oaken Roundshield',desc:'Shield: the first two hits to land on you each fight deal half damage.',lore:'Heavy oak rimmed in iron, raised high while the bearer reads the foe. The first two hits to land on the bearer in each fight deal half damage.',effect:{stat:'armour',ward:'openGuard',hits:2,pct:50,bonus:0},slot:'shield',tier:1},
+  {name:'Mirror-Bright Shield',desc:'Shield: 25% chance any hostile spell or guardian power is turned away harmlessly.',lore:'Polished until it holds the sky. One hostile spell or guardian power in four is turned away with no effect at all.',effect:{stat:'armour',ward:'spellBlock',pct:25,bonus:0},slot:'shield',tier:2},
+  {name:'Shield of the Ward-Saints',desc:'Shield: at the start of every round a ward forms that soaks the next 4 damage.',lore:'Painted with saints who take the blow for the bearer. At the start of every round a fresh ward forms that soaks the next 4 damage.',effect:{stat:'armour',ward:'roundWard',amt:4,bonus:0},slot:'shield',tier:2},
+  {name:'Dragonbone Shield',desc:'Shield: you can never be stunned, entranced, paralysed or knocked back.',lore:'Cut from the breastbone of a wyrm; nothing shakes it or the arm behind it. The bearer can never be stunned, entranced, paralysed or knocked back.',effect:{stat:'armour',ward:'stunImmune',bonus:0},slot:'shield',tier:2},
+  {name:'Warden\'s Scale',desc:'Armour: while below half HP, every hit on you deals 25% less damage.',lore:'Scale-mail of the border wardens, made for the long last hour. While the wearer is below half HP, every hit on them deals 25% less damage.',effect:{stat:'armour',ward:'lowHp',pct:25,bonus:0},slot:'armour',tier:2},
 ];
 // ── Item 2 (this session): triple the tier-1 and tier-2 relics ──────────────────────────────────
 // Each tier-1 / tier-2 item now exists in THREE differently-named versions with IDENTICAL effects,
@@ -3475,6 +3503,8 @@ const _ITEM_NAME_ALTS={
   'Whispering Mirror':['Glass of Murmurs','Mirror of Faint Voices'],
   'Lock-Pick of Legends':['Skeleton Key of Ages','The Master Pick'],
   'Green Stone of Speaking':['Whisper-Stone of the Wild','The Speaking Emerald'],
+  "Beastcaller's Warhorn":['Horn of the First Hunt','Wildwood Warhorn'],
+  'Totem of the Thunderhead':['Storm-Spirit Totem','Totem of the Gathering Sky'],
   'Compass of the Wanderer':['Lodestone of the Wanderer','Needle of the Trailblazer'],
   'Chalice of Dawn':['Grail of First Light','Cup of the Morning'],
   'Dreamstone':['Slumber Gem','Stone of Reverie'],
@@ -3492,6 +3522,28 @@ const _ITEM_NAME_ALTS={
   'Black Sceptre':['Rod of the Grave','Sceptre of Bone'],
   'Ring of Wealth':['Band of Plenty','Coin-Ring of the Hoard'],
   'Merchant\'s Ledger':['Trader\'s Tally-Book','The Gilded Ledger'],
+  // ── 2026-09-10 armour ──
+  'Dwarf-Forged Hauberk':['Deepstone Mail','Ringmail of the Under-Halls'],
+  'Arrow-Turning Brigandine':['Shaft-Breaker Coat','Bowman\'s Bane Jack'],
+  'Troll-Hide Jerkin':['Living-Leather Vest','Knitflesh Jerkin'],
+  'Thornwood Cuirass':['Briar-Heart Breastplate','Bramble Plate'],
+  'Tower Shield of the Wall':['Doorward Pavise','Shield of the Unbroken Line'],
+  'Serpent-Scale Coat':['Wyrmling-Scale Coat','Beastward Scale'],
+  'Grave-Iron Plate':['Ashen-Quenched Plate','Sanctified Cuirass'],
+  'Blood-Bound Cuirass':['First-Wound Plate','Oathblood Breastplate'],
+  'Spellwarded Robe':['Sigil-Stitched Vestment','Robe of Quiet Silver'],
+  'Quicksilver Mail':['Mercurial Hauberk','Mail of the Passing Wind'],
+  'Ashen Plate':['Cinderforged Plate','Plate of the Dead Mountain'],
+  'Bulwark Breastplate':['Rampart Cuirass','Bastion Plate'],
+  'Last-Stand Plate':['Champion\'s Unyielding Plate','Plate of the Final Hour'],
+  'Steadfast Harness':['Harness of the Unfaltering','Ironwill Straps'],
+  'Warden\'s Scale':['Borderguard Scale','Scale of the Long Watch'],
+  'Kite Shield of the Marches':['Rider\'s Long Shield','Shield of the Border Road'],
+  'Bronze Buckler':['Quickhand Buckler','Targe of the Nimble'],
+  'Oaken Roundshield':['Heartwood Roundshield','Shield of the First Rounds'],
+  'Mirror-Bright Shield':['Skyglass Shield','Shield of Turned Spells'],
+  'Shield of the Ward-Saints':['Icon Shield','Shield of the Painted Martyrs'],
+  'Dragonbone Shield':['Wyrmbone Shield','Shield of the Unshaken Arm'],
 };
 (function _tripleLowerTierItems(){
   const extra=[];
@@ -3542,7 +3594,7 @@ function rollMagicItem(monsterPower, taken){
 // turns them on the challenger; a thief may lift one (`_stolenItems` remembers what went); a slain challenger's
 // kit joins the hoard. Legendary lairs are stocked first so the rarest tiers go to the toughest guardians; once
 // the treasury is exhausted a lair simply holds gold.
-const LAIR_ITEM_ODDS={Weak:{itemChance:0.40,bonusItem:0,thirdItem:0},Moderate:{itemChance:0.80,bonusItem:0.15,thirdItem:0},Powerful:{itemChance:1.0,bonusItem:0.40,thirdItem:0},Legendary:{itemChance:1.0,bonusItem:1.0,thirdItem:0.50}}; // Sept 2026 redesign (was 25/0, 60/0, 100/15, 100/50)
+const LAIR_ITEM_ODDS={Weak:{itemChance:1.0,bonusItem:0,thirdItem:0},Moderate:{itemChance:1.0,bonusItem:0.50,thirdItem:0},Powerful:{itemChance:1.0,bonusItem:1.0,thirdItem:0},Legendary:{itemChance:1.0,bonusItem:1.0,thirdItem:0.50}}; // 2026-09-10 (Toby): was 40/0, 80/15, 100/40, 100/100/50
 function ensureLairHoard(f, gs){
   if(!f||f.ritualSite) return;
   f.hoardItems=Array.isArray(f.hoardItems)?f.hoardItems:[];
@@ -3701,11 +3753,12 @@ function encounterUntargetableReason(c){
 // slot items give their effect. Everything without a slot is always active. `activeItems(c)` is the
 // single gate every effect read goes through; it normalises first (auto-equips an empty slot with the
 // first item held, trims any over-cap), so pre-existing saves and new pick-ups need no migration.
-const ITEM_SLOT_CAP={weapon:1,armour:1,cloak:1,helm:1,ring:2,amulet:1};
-const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (gauntlets, gloves, boots)',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant'};
+const ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1}; // shield slot added 2026-09-10
+const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (body armour, gauntlets, gloves, boots)',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant'};
 const ITEM_SLOT_OF={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
+  'Tower Shield of the Wall':'shield','Anvil-Brand Shield':'shield','Shield of the Innocent':'shield', // shield slot (2026-09-10); overrides any stale inline slot — see itemSlot
   "Traveller's Cloak":'cloak','Shadowcloak':'cloak','Veil of Illusions':'cloak','Cloak of Many Faces':'cloak',
   "Sage's Crown":'helm','Crown of Command':'helm','Imperial Regalia':'helm',
   'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
@@ -3714,7 +3767,10 @@ const ITEM_SLOT_OF={
 // Item 2 (2026-09-07): the two alternate-named clones of every tier-1/2 item share the base item's
 // slot (previously 'Sword of Wrath' etc. had no slot and so were ALWAYS active, bypassing Equip Items).
 const _ITEM_ALT_BASE={}; Object.entries(_ITEM_NAME_ALTS).forEach(([base,alts])=>alts.forEach(a=>{_ITEM_ALT_BASE[a]=base;}));
-function itemSlot(it){ if(!it) return null; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]]||null; }
+const _SHIELD_BASES=new Set(['Tower Shield of the Wall','Anvil-Brand Shield','Shield of the Innocent','Kite Shield of the Marches','Bronze Buckler','Oaken Roundshield','Mirror-Bright Shield','Shield of the Ward-Saints','Dragonbone Shield']);
+function itemSlot(it){ if(!it) return null;
+  if(_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name]||it.name)) return 'shield'; // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
+  if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]]||null; }
 function normaliseEquipment(c){
   if(!c||!Array.isArray(c.items)) return;
   const count={};
@@ -3760,40 +3816,57 @@ function dedupeItemsByName(items){
   (items||[]).forEach(it=>{ if(!it) return; const k=it.name||('fx:'+JSON.stringify(it.effect||{})); if(seen.has(k)) return; seen.add(k); out.push(it); });
   return out;
 }
-// ── MAXIMUM HP (Sept 2026 redesign) ── a character's maximum HP is a DERIVED stat, recomputed from
-// their skills and equipment whenever either changes. There is no earned pool and no cap to gate:
-//   toughness points P = Melee×4 + Archery×2 + every other skill (1 per level for L1–3, 2 per level L4–9)
-//   max HP = 15 + max(0, P − 8), with the part of that gain above 50 counting at half, hard stop 100;
-//   Orcish characters of an Orcish realm ×1.2 (so up to 120); magic-item max-HP bonuses add on top.
-// The −8 offset keeps fresh characters (3–4 starting skill points) at ~15. Kill-hardening, lair
-// HP rewards, Orc Vigour and the old skill-based ceiling (hpCapFor/raiseMaxHp) are all gone —
-// fighting now trains Melee/Archery (see awardKillXP), and the skill drives the HP.
-const MAXHP_BASE=15, MAXHP_OFFSET=8, MAXHP_SOFT=50, MAXHP_HARD=100, MAXHP_ORC_MULT=1.2;
+// ── MAXIMUM HP (2026-09-10 revert: EARNED HP) ── a character's maximum HP is an earned pool again.
+//   max HP = start (15; 18 for an Orcish character of an Orcish realm) + hpEarned + item bonuses + ro08.
+//   hpEarned grows ONLY through combat wins (lair guardian cleared, enemy character slain, pre-battle
+//   duel won) — see rollHpGain. Each win: +1–3 while the earned base is under the first shoulder, then a
+//   shrinking chance of a smaller gain, so the pool stalls around 60 (65 Orc) with no hard cap.
+//   Shoulders: 40 / 50 / 60 (+5 for the Orcish edge). Skills no longer drive HP.
+const HPGAIN_START=15, HPGAIN_START_ORC=18, HPGAIN_ORC_SHIFT=5, HPGAIN_MIGRATE_CLAMP=60;
+const HPGAIN_S1=40, HPGAIN_S2=50, HPGAIN_S3=60, HPGAIN_FLOOR_PCT=5;
 let _MAXHP_PLAYERS=null; // set by runTurn / generateNewGame so module-level callers can see the realm races
-function maxHpPoints(ch){
-  let P=0;
-  ALL_SKILLS.forEach(sk=>{ const L=skillLevel(ch,sk); if(sk==='melee') P+=L*4; else if(sk==='archery') P+=L*2; else P+=Math.min(L,3)+2*Math.max(0,L-3); });
-  return P;
-}
 function maxHpIsOrc(ch, players){
   const pl=players||_MAXHP_PLAYERS||[];
   return !!(ch&&ch.race==='Orcish'&&ch.player!=null&&pl[ch.player]&&pl[ch.player].race==='Orcish');
 }
+function hpStartOf(ch, players){ return maxHpIsOrc(ch,players)?HPGAIN_START_ORC:HPGAIN_START; }
+// The earned base: start + pool, before any item/discovery bonus. This is what the gain curve reads.
+function hpEarnedBase(ch, players){ return hpStartOf(ch,players)+Math.max(0,Math.round(ch&&ch.hpEarned||0)); }
 function itemMaxHpBonus(ch){
   const seen=new Set(); let b=0;
   activeItems(ch).forEach(it=>{ if(it&&it.effect&&it.effect.stat==='maxHp'&&!seen.has(it.name)){ seen.add(it.name); b+=(it.effect.bonus||0); } });
   return b;
 }
 function computeMaxHp(ch, players){
-  if(!ch) return MAXHP_BASE;
-  let gained=Math.max(0, maxHpPoints(ch)-MAXHP_OFFSET);
-  if(gained>MAXHP_SOFT) gained=MAXHP_SOFT+(gained-MAXHP_SOFT)/2;
-  let hp=Math.min(MAXHP_HARD, MAXHP_BASE+gained);
-  if(maxHpIsOrc(ch,players)) hp*=MAXHP_ORC_MULT;
+  if(!ch) return HPGAIN_START;
   // item 2 (2026-09-09): realm-wide `maxHp` discoveries (ro08 Thick Hides) add a flat amount on top.
   const _plHp=(ch.player!=null)?((players||_MAXHP_PLAYERS||[])[ch.player]):null;
   const _discHp=_plHp?discSumOf(_plHp,'maxHp','hp'):0;
-  return Math.round(hp)+itemMaxHpBonus(ch)+_discHp;
+  return hpEarnedBase(ch,players)+itemMaxHpBonus(ch)+_discHp;
+}
+// The gain curve. Returns {chance, lo, hi} for the NEXT win given the current earned base.
+function hpGainBand(ch, players){
+  const base=hpEarnedBase(ch,players), sh=maxHpIsOrc(ch,players)?HPGAIN_ORC_SHIFT:0;
+  if(base<HPGAIN_S1+sh) return {chance:100, lo:1, hi:3};
+  if(base<HPGAIN_S2+sh) return {chance:100-4*(base-(HPGAIN_S1+sh)), lo:1, hi:2};
+  if(base<HPGAIN_S3+sh) return {chance:60-4*(base-(HPGAIN_S2+sh)), lo:1, hi:1};
+  return {chance:Math.max(HPGAIN_FLOOR_PCT, 20-4*(base-(HPGAIN_S3+sh))), lo:1, hi:1};
+}
+// Roll a combat-win HP gain for a REAL character and apply it (the rise heals into the new headroom).
+// Returns {gain, chance, roll, maxHp}; gain 0 when the roll fails. `why` is only used for the note.
+function rollHpGain(ch, players, why){
+  if(!ch||ch.alive===false) return {gain:0,chance:0,roll:0,maxHp:ch?ch.maxHp:0};
+  const band=hpGainBand(ch,players);
+  const roll=Math.floor(Math.random()*100)+1;
+  let gain=0;
+  if(roll<=band.chance) gain=Math.floor(Math.random()*(band.hi-band.lo+1))+band.lo;
+  if(gain>0){ ch.hpEarned=Math.max(0,Math.round(ch.hpEarned||0))+gain; syncMaxHp(ch,players); }
+  return {gain, chance:band.chance, roll, maxHp:ch.maxHp, why:why||''};
+}
+function hpGainLine(ch, r){
+  if(!r) return '';
+  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
+  return `${ch.name} is battle-worn already — no further hardening from this victory. [${r.chance}% roll ${r.roll}]`;
 }
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
 // filled); a fall clamps current HP to the new maximum (never below 1 for a living character).
@@ -3809,27 +3882,36 @@ function syncMaxHp(ch, players){
   }
   return nu-old;
 }
-// One-time migration for saves made under the old earned-HP system: recompute every character, and
-// leave a note in each affected character's chronicle so the change is explained. Later turns only
-// resync silently here (the end-of-turn pass announces genuine changes).
+// Migration (2026-09-10 revert): any living character without an earned pool gets one from their
+// current maximum — earned base = maxHp minus item/discovery bonuses, clamped to HPGAIN_MIGRATE_CLAMP
+// (60), pool = base − start. Saves made under the derived-HP formula keep their figures (never reset);
+// characters created since (hp 15) simply get pool 0. Runs every turn (cheap) so a hero spawned or
+// hired mid-turn is always initialised; the one-time chronicle note fires only on the first pass.
 function migrateMaxHpV2(gs){
   if(!gs) return;
   _MAXHP_PLAYERS=gs.players||[];
-  const first=!gs._maxHpV2;
+  const first=!gs._maxHpV3;
   (gs.characters||[]).forEach(ch=>{
     if(!ch||!ch.alive) return;
-    const old=ch.maxHp||15, d=syncMaxHp(ch,gs.players);
-    if(first&&d!==0&&ch.player!=null&&typeof gs.log!=='undefined'){
-      gs._maxHpMigration=gs._maxHpMigration||[];
-      gs._maxHpMigration.push({charId:ch.id,player:ch.player,old,nu:ch.maxHp});
-    }
+    if(ch.hpEarned==null){
+      const old=ch.maxHp||HPGAIN_START;
+      const _pl=(ch.player!=null)?(_MAXHP_PLAYERS[ch.player]):null;
+      const bonuses=itemMaxHpBonus(ch)+(_pl?discSumOf(_pl,'maxHp','hp'):0);
+      const base=Math.min(HPGAIN_MIGRATE_CLAMP, old-bonuses);
+      ch.hpEarned=Math.max(0, Math.round(base-hpStartOf(ch,gs.players)));
+      const d=syncMaxHp(ch,gs.players);
+      if(first&&d!==0&&ch.player!=null){
+        gs._maxHpMigration=gs._maxHpMigration||[];
+        gs._maxHpMigration.push({charId:ch.id,player:ch.player,old,nu:ch.maxHp});
+      }
+    } else syncMaxHp(ch,gs.players);
   });
-  gs._maxHpV2=true;
+  gs._maxHpV2=true; gs._maxHpV3=true;
   migrateLairGuardiansV2(gs);
 }
-// Sept 2026 redesign: guardians were rescaled against the new hero HP curve. Uncleared lairs in older
+// 2026-09-10: guardian HP rescaled (Weak 15–25 / Moderate 30–45 / Powerful 55–65 / Legendary 75–90). Uncleared lairs in older
 // saves adopt the current table stats for their creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=3; // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+const GUARDIAN_TABLE_VER=5; // 5: special-ability damage weights (dmgW) replace dmg ranges // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -3838,8 +3920,49 @@ function migrateLairGuardiansV2(gs){
     if(!f||f.cleared||!f.monster) return;
     const t=byName[f.monster.name]; if(!t) return;
     f.monster.hp=t.hp; f.monster.melee=t.melee; f.monster.archery=t.archery; delete f.monster._hpFull;
+    if(t.spells) f.monster.spells=JSON.parse(JSON.stringify(t.spells)); else delete f.monster.spells; // v5: specials carry dmgW weights now
   }));
   gs._guardiansV2=true; gs._guardiansVer=GUARDIAN_TABLE_VER;
+}
+// ── ARMOUR (2026-09-10) ── fold every worn `stat:'armour'` item into one ward table for personal combat.
+// Flat reductions add, percentages take the best, flags OR. Used by pcCharCombatant and by a guardian
+// wielding a hoard's armour (resolveEncounter).
+function pcArmourMerge(a, e, name){
+  a=a||{names:[]}; e=e||{};
+  switch(e.ward){
+    case 'meleeDR': a.meleeDR=(a.meleeDR||0)+(e.amt||0); break;
+    case 'arrowDR': a.arrowDR=(a.arrowDR||0)+(e.amt||0); break;
+    case 'natureDR': a.natureDR=(a.natureDR||0)+(e.amt||0); break;
+    case 'darkDR': a.darkDR=(a.darkDR||0)+(e.amt||0); break;
+    case 'thorns': a.thorns=(a.thorns||0)+(e.amt||0); break;
+    case 'regen': a.regen=(a.regen||0)+(e.amt||0); break;
+    case 'spellPct': a.spellPct=Math.max(a.spellPct||0,e.pct||0); break;
+    case 'dodge': a.dodge=Math.max(a.dodge||0,e.pct||0); break;
+    case 'block': a.block=Math.max(a.block||0,e.pct||0); break;
+    case 'cap': a.cap=Math.max(a.cap||0,e.pct||0); break;
+    case 'secondWind': a.secondWind=Math.max(a.secondWind||0,e.pct||0); break;
+    case 'lowHp': a.lowHp=Math.max(a.lowHp||0,e.pct||0); break;
+    case 'firstHit': a.firstHit=true; break;
+    case 'dotImmune': a.dotImmune=true; break;
+    case 'resist': a.resist=true; break;
+    // shields, second batch (2026-09-10)
+    case 'arrowBlock': a.arrowBlock=Math.max(a.arrowBlock||0,e.pct||0); break;
+    case 'buckler': a.meleeDR=(a.meleeDR||0)+1; a.dodge=Math.max(a.dodge||0,5); break;
+    case 'openGuard': a.openGuardHits=Math.max(a.openGuardHits||0,e.hits||2); a.openGuardPct=Math.max(a.openGuardPct||0,e.pct||50); break;
+    case 'spellBlock': a.spellBlock=Math.max(a.spellBlock||0,e.pct||0); break;
+    case 'roundWard': a.roundWard=(a.roundWard||0)+(e.amt||0); break;
+    case 'stunImmune': a.stunImmune=true; break;
+    default: return a;
+  }
+  if(name&&!a.names.includes(name)) a.names.push(name);
+  return a;
+}
+function pcArmourOf(items){
+  let a=null; const seen=new Set();
+  (items||[]).forEach(it=>{ if(!it||!it.effect||it.effect.stat!=='armour') return;
+    const base=_ITEM_ALT_BASE[it.name]||it.name; if(seen.has(base)) return; seen.add(base); // a clone of the same piece counts once
+    a=pcArmourMerge(a,it.effect,it.name); });
+  return a;
 }
 // Legacy name kept for the item-grant call sites: granting (or losing) a max-HP item just resyncs.
 function applyItemMaxHp(ch, item){
@@ -6068,9 +6191,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     const _byTier={Weak:_seaMons.filter(m=>m.power==='Weak'),Moderate:_seaMons.filter(m=>m.power==='Moderate'),Powerful:_seaMons.filter(m=>m.power==='Powerful')};
     const _pickTier=(tax)=>{
       const rr=Math.random();
-      if(tax>=5) return rr<0.5?'Powerful':'Moderate';        // rich/primal seas: nastier
-      if(tax>=3) return rr<0.6?'Moderate':(rr<0.85?'Weak':'Powerful');
-      return rr<0.7?'Weak':'Moderate';                        // poor / open water: mostly weak
+      // 2026-09-10 item 6: softened alongside land lairs (was 50/50 P/M · 25/60/15 W/M/P · 70/30 W/M).
+      if(tax>=5) return rr<0.35?'Powerful':(rr<0.85?'Moderate':'Weak');   // rich/primal seas: nastier
+      if(tax>=3) return rr<0.35?'Weak':(rr<0.9?'Moderate':'Powerful');
+      return rr<0.75?'Weak':'Moderate';                                      // poor / open water: mostly weak
     };
     provinces.filter(p=>p.terrain==='sea').forEach(p=>{
       const fcount=1+(Math.random()<0.5?1:0); // 1-2 features
@@ -6467,10 +6591,10 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
   grantMithrilToDwarves(_newGameState); // Item 3: dwarf characters of a dwarf realm start suited in mithril
   ensureAllLairHoards(_newGameState);   // Item 4 (2026-09-07): every lair's gold and magic decided now
-  // Sept 2026 redesign: max HP is derived from skills — set every starting character to the formula, at full health.
+  // 2026-09-10 revert: earned HP — every starting character opens with an empty pool (15 HP; 18 for an Orc of an Orcish realm), at full health.
   _MAXHP_PLAYERS=players;
-  allChars.forEach(c=>{ c.maxHp=computeMaxHp(c,players); c.hp=c.maxHp; });
-  _newGameState._maxHpV2=true; _newGameState._guardiansV2=true; _newGameState._guardiansVer=GUARDIAN_TABLE_VER;
+  allChars.forEach(c=>{ c.hpEarned=0; c.maxHp=computeMaxHp(c,players); c.hp=c.maxHp; });
+  _newGameState._maxHpV2=true; _newGameState._maxHpV3=true; _newGameState._guardiansV2=true; _newGameState._guardiansVer=GUARDIAN_TABLE_VER;
   return _newGameState;
 }
 
@@ -6575,9 +6699,21 @@ function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
 // own hard 95% cap. Safe on any object (raw skills via skillLevel); returns 0 for monsters/undefined.
 // A lair's difficulty, rolled before its guardian is chosen so the two always agree (2026-09-09g).
 // Weighted toward the easier end: most country holds modest dangers, legendary ones are rare.
+// ── PRE-BATTLE STRIKE CHANCE (single source of truth, 2026-09-10 item 1) ──────────────────────
+// Primal (and special-unit) pre-battle strikes fire at 30% + 10% per Druid level of the commander,
+// plus any `primalStrike` item bonus the commander carries, hard cap 90%. Read by the NPC-attacker,
+// NPC-defender and PvP strike rolls so all three quote and roll the same odds.
+function primalStrikeItemBonus(c){
+  if(!c||typeof activeItems!=='function') return 0;
+  return activeItems(c).reduce((s,it)=>s+((it&&it.primalStrike)||0)+((it&&it.effect&&it.effect.stat==='primalStrike')?(it.effect.bonus||0):0),0);
+}
+function primalStrikeChance(druidLvl, commander){
+  return Math.min(90, 30+(druidLvl||0)*10+primalStrikeItemBonus(commander));
+}
 function LAIR_TIER_ROLL(){
   const r=Math.random()*100;
-  return r<40?'Weak':r<72?'Moderate':r<92?'Powerful':'Legendary';
+  // 2026-09-10 item 6: shifted toward the easy end (was 40/32/20/8) — more Weak and Moderate lairs.
+  return r<48?'Weak':r<84?'Moderate':r<96?'Powerful':'Legendary';
 }
 const MAGIC_L8_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
 // ── CAST CHANCE (single source of truth, 2026-09-09f) ─────────────────────────────────────────
@@ -7578,7 +7714,7 @@ const SAGE_DISCOVERIES_P=[
   // ── Heroic ──
   {id:'sd33',name:'Duelling Code',category:'Heroic',desc:'Your characters gain +10% to hit in all personal duels and encounters.',effect:{type:'duelBonus',pct:0.10}},
   {id:'sd34',name:'Mounted Couriers',category:'Heroic',desc:'Newly hired heroes may act from the phase they are hired (not the next phase).',effect:{type:'immediateHire'}},
-  {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king learns twice as much from each kill: the fighting-skill experience roll for slaying an enemy commander or lair guardian is doubled.',effect:{type:'kingKillHpX2'}},
+  {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king is hardened twice as much by each victory: every HP gain from slaying an enemy commander, clearing a lair or winning a pre-battle duel is doubled.',effect:{type:'kingKillHpX2'}},
   {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Any of your characters who would be slain — in a duel, an encounter, or a battle — has a 20% chance to be dragged from the field alive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
   {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters fight in personal combat (duels, encounters, lair fights) as if their Melee and Archery were 1 level higher.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},
   {id:'sd38',name:'Inspiring Leadership',category:'Heroic',desc:'The wages of all your heroes are halved.',effect:{type:'halveHeroWages'}},
@@ -8510,7 +8646,7 @@ async function runTurn(opts){
       const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
       const _payAfter=real.pay||0;
-      const _hpRise=syncMaxHp(real,G.players); // Sept 2026 redesign: skill drives max HP — apply the rise now
+      const _hpRise=syncMaxHp(real,G.players); // (2026-09-10: skill no longer drives max HP — this only resyncs kit; normally 0)
       // A March/Naval rise increases pace immediately: recompute this character's move pool so the
       // extra reach is available for the rest of THIS turn (preserving points already spent).
       if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
@@ -9389,7 +9525,7 @@ const BATTLE_ARMY_SPELLS={
       if(armySpells.length===0||defenders.length===0) return;
       const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
       // Cast chance: 20% + 10% per druid level (druid rating governs primal/special units)
-      const armySpellChance=Math.min(90,20+druIdLvlMag*10);
+      const armySpellChance=primalStrikeChance(druIdLvlMag, atkCmdrSlain?null:c);
       const armySpellRoll=d100();
       if(armySpellRoll>armySpellChance&&_isPrimalStrikeA){
         narrative.push(`〰 ${atk.unitName||atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag>0?`, Druid ${druIdLvlMag}`:', no commanding druid'}).`);
@@ -9576,7 +9712,7 @@ const BATTLE_ARMY_SPELLS={
       }
       if(armySpells.length===0||armies.length===0) return;
       const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
-      const armySpellChance=Math.min(90,20+defDruIdLvl*10);
+      const armySpellChance=primalStrikeChance(defDruIdLvl, (defHero&&!defHero._druidNegated)?defHero:null);
       if(Math.random()*100<armySpellChance){
         narrative.push(`✨ ${def.unitName||def.type} (defending) — **${sp.name}**: "${sp.flavour}"`);
         if(sp.target==='all'){
@@ -10237,6 +10373,7 @@ const BATTLE_ARMY_SPELLS={
       mithril:activeItems(ch).some(it=>it.effect&&it.effect.stat==='mithrilArmour'), // Item 3: −2 melee damage taken
       mithrilDR:2+((ch.player!=null)?discSum(ch.player,'mithril','extra'):0), // item 2 (2026-09-09): rd08 Mithril Craft — 3 instead of 2
       combatItems:dedupeItemsByName(activeItems(ch)).filter(it=>it.effect&&it.effect.stat==='combatUse'), // Item 4 (2026-09-07): once-per-fight potions/scrolls
+      arm:pcArmourOf(activeItems(ch)), // 2026-09-10: worn armour wards (see pcArmourOf / pcTakeHit)
       status:pcNewStatus(),
       castSpells:[], castSchool:{}, // per-combat spell limits
       isUndead:(ch.alignment==='Undead'),
@@ -10305,6 +10442,7 @@ const BATTLE_ARMY_SPELLS={
     chance -= (attacker.status.hitPenalty||0);
     chance += (attacker.status.hitBonus||0);                // Elixir of Focus and kin
     chance -= (defender.status.toHitReduce||0);            // Invisibility: flat \u221225 to hit (floored at 40 below)
+    chance -= ((defender.arm&&defender.arm.dodge)||0);     // Quicksilver Mail (2026-09-10 armour): −10% to be hit
     if(attacker.player!=null && hasDisc(attacker.player,'sd33')) chance+=10; // sd33 Duelling Code (wired 2026-09-07)
     chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
     return Math.max(40, Math.min(95, chance));
@@ -10335,6 +10473,31 @@ const BATTLE_ARMY_SPELLS={
       return 0;
     }
     let d=dmg;
+    // ── ARMOUR (2026-09-10) ── outright negations first: the Blood-Bound Cuirass takes the first landed
+    // hit of the fight in full; the Tower Shield blocks one melee blow or arrow in five.
+    const _arm=target.arm||null, _chan=PC_CHANNEL[kind]||'spell';
+    if(_arm&&_arm.firstHit&&!target._armFirstHitUsed){
+      target._armFirstHitUsed=true;
+      narrative.push(`  🛡 The first ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')} to reach ${target.name} is drunk by their armour — no damage. (${_arm.names.join(', ')})`);
+      return 0;
+    }
+    if(_arm&&_arm.block>0&&(_chan==='melee'||_chan==='archery')&&d100()<=_arm.block){
+      narrative.push(`  🛡 ${target.name}'s shield takes the ${_chan==='archery'?'arrow':'blow'} square on — blocked outright. (${_arm.block}%)`);
+      return 0;
+    }
+    if(_arm&&_arm.arrowBlock>0&&_chan==='archery'&&d100()<=_arm.arrowBlock){
+      narrative.push(`  🛡 The arrow glances off ${target.name}'s shield. (${_arm.arrowBlock}%)`);
+      return 0;
+    }
+    if(_arm&&_arm.spellBlock>0&&_chan==='spell'&&d100()<=_arm.spellBlock){
+      narrative.push(`  🛡 ${target.name}'s shield turns the ${kind} away harmlessly. (${_arm.spellBlock}%)`);
+      return 0;
+    }
+    if(_arm&&_arm.roundWard>0&&(target._roundWardLeft||0)>0&&d>0){
+      const _rw=Math.min(target._roundWardLeft,d); target._roundWardLeft-=_rw; d-=_rw;
+      narrative.push(`  🛡 The ward on ${target.name}'s shield soaks ${_rw}.`);
+      if(d<=0) return 0;
+    }
     // Item 5 (this session): Mithril Armour turns aside 2 points of any MELEE or ARROW blow that lands
     // (a magic sword-arm or spell still ignores it), never below 1 damage — and it announces itself
     // each time it saves the wearer harm.
@@ -10379,10 +10542,44 @@ const BATTLE_ARMY_SPELLS={
       const _cut2=rng(1,3); const _b2=d; d=Math.max(1,d-_cut2);
       if(d<_b2) narrative.push(`  🜂 ${target.name}'s Elemental Armour absorbs ${_b2-d} of the ${kind}. (Elemental Armour)`);
     }
+    // ── ARMOUR (2026-09-10) ── worn wards, applied last: flat reductions by channel / by the striker's
+    // nature, a percentage off spells, a percentage off everything while badly hurt, then the hard cap.
+    if(_arm&&d>0){
+      const _b3=d; const _src=(target._foeCat||null);
+      if(_chan==='melee'&&_arm.meleeDR) d=Math.max(1,d-_arm.meleeDR);
+      if(_chan==='archery'&&_arm.arrowDR) d=Math.max(1,d-_arm.arrowDR);
+      if(_arm.natureDR&&(_src==='beast'||_src==='vermin'||_src==='dragon')) d=Math.max(1,d-_arm.natureDR);
+      if(_arm.darkDR&&(_src==='undead'||_src==='fiend')) d=Math.max(1,d-_arm.darkDR);
+      if(_chan==='spell'&&_arm.spellPct) d=Math.max(1,Math.round(d*(1-_arm.spellPct/100)));
+      if(_arm.lowHp&&target.hp<(target.maxHp||20)*0.5) d=Math.max(1,Math.round(d*(1-_arm.lowHp/100)));
+      if(_arm.openGuardHits&&(target._openGuardUsed||0)<_arm.openGuardHits){ target._openGuardUsed=(target._openGuardUsed||0)+1; d=Math.max(1,Math.round(d*(1-(_arm.openGuardPct||50)/100))); }
+      if(_arm.cap){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt) d=_capAt; }
+      if(d<_b3) narrative.push(`  🛡 ${target.name}'s armour turns aside ${_b3-d} of the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')}. (${_arm.names.join(', ')})`);
+    }
     target.hp-=d;
+    // Last-Stand Plate: once per fight, the first time the wearer drops below 30% they recover 25% of max.
+    if(_arm&&_arm.secondWind&&!target._armSecondWindUsed&&target.hp>0&&target.hp<(target.maxHp||20)*0.30){
+      target._armSecondWindUsed=true;
+      const _back=Math.max(1,Math.round((target.maxHp||20)*_arm.secondWind/100));
+      target.hp=Math.min(target.maxHp||20,target.hp+_back);
+      narrative.push(`  🛡 ${target.name} will not go down — their armour's blessing restores ${_back} HP. (HP ${Math.round(target.hp)})`);
+    }
     return d;
   }
   function pcRoundStart(cbt, narrative){
+    // ── ARMOUR (2026-09-10) ── Ashen Plate: lingering harm never takes hold; Troll-Hide: regenerate;
+    // Steadfast Harness: aim penalties fade twice as fast and half of all stuns are shrugged off.
+    cbt._roundNo=(cbt._roundNo||0)+1;
+    if(cbt.arm){
+      if(cbt.arm.roundWard>0) cbt._roundWardLeft=cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
+      if(cbt.arm.stunImmune&&cbt.status.stun>0){ cbt.status.stun=0; narrative.push(`  🛡 ${cbt.name}'s shield arm never wavers — the daze is ignored.`); }
+      if(cbt.arm.dotImmune&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  🛡 ${cbt.name}'s armour sloughs off every burn, poison and bleeding.`); }
+      if(cbt.arm.regen>0&&cbt.hp>0&&cbt.hp<(cbt.maxHp||20)){ const h=Math.min(cbt.arm.regen,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  🛡 ${cbt.name}'s armour knits flesh for ${h}. (HP ${Math.round(cbt.hp)})`); }
+      if(cbt.arm.resist){
+        if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-5);
+        if(cbt.status.stun>0&&Math.random()<0.5){ cbt.status.stun=0; narrative.push(`  🛡 ${cbt.name} shrugs off the daze — their armour holds them steady.`); }
+      }
+    }
     // Damage-over-time
     (cbt.status.dot||[]).forEach(d=>{
       if(d.rounds>0){ cbt.hp-=d.dmg; d.rounds--; narrative.push(`  ${d.label||'Lingering harm'} afflicts ${cbt.name} for ${d.dmg} damage. (HP ${Math.max(0,Math.round(cbt.hp))})`); }
@@ -10498,8 +10695,12 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour?` "${sp.flavour}"`:''}`);
     const eff=String(sp.effect||'');
     let dealt=0;
-    if(sp.dmg&&(sp.dmg[0]>0||sp.dmg[1]>0)){
-      let d=rng(sp.dmg[0],sp.dmg[1]);
+    // 2026-09-10 (Toby): a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage —
+    // 2–5 + ⌈melee/2⌉ + skill gap) × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy
+    // saved creatures still carrying a dmg:[lo,hi] range roll that range instead.
+    const _w=(sp.dmgW!=null)?sp.dmgW:((sp.dmg&&(sp.dmg[0]>0||sp.dmg[1]>0))?null:0);
+    if(_w!==0){
+      let d=(_w!=null)?Math.max(1,Math.round(pcMeleeDamage(actor,foe)*_w)):rng(sp.dmg[0],sp.dmg[1]);
       if(/hits twice/i.test(eff)) d*=2;
       dealt=pcTakeHit(foe,d,narrative,actor.name,sp.name);
       if(dealt) narrative.push(`  ${sp.name} tears into ${foe.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(foe.hp))})`);
@@ -10606,7 +10807,53 @@ const BATTLE_ARMY_SPELLS={
         actor.hp-=foe.status.reflect;
         narrative.push(`  ${foe.name}'s shield lashes back for ${foe.status.reflect} damage. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
       }
+      if(dealt && foe.arm && foe.arm.thorns>0){ // Thornwood Cuirass (2026-09-10 armour)
+        actor.hp-=foe.arm.thorns;
+        narrative.push(`  🛡 ${foe.name}'s thorned armour bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
+      }
     } else { narrative.push(`  ${actor.name}'s blow is turned aside.`); pcTryCounter(foe, actor, narrative); }
+  }
+  // ── FLEE (2026-09-10 items 3–5): ONE routine for both flight paths ─────────────────────────
+  // Path A (the encounter plan says FL, or temper picks it as the round's action) and Path B (the
+  // end-of-round break-off once HP is under the temper threshold) used to roll different odds: A had
+  // base 50 with monster-speed terms, Charm doubling, a 5–95 clamp and a 1–4 parting blow; B rolled a
+  // bare 50+fleeMod with none of that and no failure cost. Both now call pcAttemptFlee.
+  //   base 30% (item 5) · vs a SLOW monster +25 / vs a FAST one −15 · + temper fleeMod ·
+  //   + fleeBonus (Invisibility, Smoke Bomb, Potion of Fleetness) − fleePenalty (Undertow Curse) ·
+  //   Charm doubles · clamped 5–95.
+  // A FAILED escape turns the runner's back: the foe takes a bonus free melee attack (item 3).
+  // Only one flee attempt per combatant per round — an action-phase attempt suppresses the
+  // end-of-round break-off, so nobody eats two free strikes in one round.
+  function pcFleeChance(actor, foe){
+    const spd=foe.kind==='monster'?pcSpeedOf(foe):2;
+    let chance=30+(spd===1?25:spd===3?-15:0)+temperOf(actor.temper).fleeMod+(actor.status.fleeBonus||0)-(actor.status.fleePenalty||0);
+    if(actor.status.fleeDoubled) chance*=2; // Charm combat effect
+    return Math.max(5, Math.min(95, Math.round(chance)));
+  }
+  function pcFreeStrike(actor, foe, narrative){
+    // A bonus melee attack outside the normal exchange. No riposte on a miss (the target is running).
+    if(!actor||!foe||actor.hp<=0||foe.hp<=0) return;
+    if(actor.status&&actor.status.stun>0){ narrative.push(`  …but ${actor.name} is too dazed to punish it.`); return; }
+    if(actor.status&&actor.status.nextAttackFails>0){ actor.status.nextAttackFails--; narrative.push(`  …but ${actor.name} is still reeling and the chance is lost. (Trueshot)`); return; }
+    const hitI=Math.round(pcHitChance(actor,foe,50)), roll=d100();
+    narrative.push(`  ⚔ ${actor.name} takes a free strike at ${foe.name}'s back (Melee ${actor.melee} vs ${foe.melee}, ${hitI}% to hit [roll ${roll}]${roll<=hitI?' ✓':' ✗'})`);
+    if(roll<=hitI){
+      actor._didMelee=true;
+      const dealt=pcTakeHit(foe,pcMeleeDamage(actor,foe),narrative,actor.name,'free strike');
+      if(dealt) narrative.push(`  ${actor.name} lands it for ${dealt} damage! (${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
+      if(foe.hp<=0 && foe._rebirth){ foe._rebirth=false; foe.hp=Math.max(5,Math.round(foe.maxHp*0.4)); narrative.push(`  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`); }
+    } else narrative.push(`  The free strike misses.`);
+  }
+  function pcAttemptFlee(actor, foe, narrative, state, how){
+    if(actor.neverFlees) return false;
+    actor._fleeAttempted=true;
+    const chance=pcFleeChance(actor,foe), roll=d100();
+    const lead=how==='temper'?`${actor.name} (${actor.temper}) loses the stomach for the fight and tries to break off`:`${actor.name} attempts to flee`;
+    narrative.push(`  🏃 ${lead} (${chance}% [roll ${roll}]${roll<=chance?' ✓':' ✗'})`);
+    if(roll<=chance){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); return true; }
+    narrative.push(`  ${actor.name} fails to get clear.`);
+    pcFreeStrike(foe, actor, narrative);
+    return false;
   }
   function pcAdvanceOrStrike(actor, foe, narrative, state){
     if(state.range!=='melee'){
@@ -10831,13 +11078,7 @@ const BATTLE_ARMY_SPELLS={
       }
       case 'FL': case 'FLEE':{
         if(actor.neverFlees){ narrative.push(`  ${actor.name} knows nothing of retreat.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
-        const base=foe.kind==='monster'?(pcSpeedOf(foe)===1?80:pcSpeedOf(foe)===3?20:50):50;
-        let chance=Math.max(5,Math.min(95, base+temperOf(actor.temper).fleeMod+(actor.status.fleeBonus||0)-(actor.status.fleePenalty||0)));
-        if(actor.status.fleeDoubled){ chance=Math.min(95, chance*2); } // Charm combat effect
-        const chanceI=Math.round(chance), roll=d100();
-        narrative.push(`  ${actor.name} attempts to flee (${chanceI}% [roll ${roll}]${roll<=chanceI?' ✓':' ✗'})`);
-        if(roll<=chanceI){ state.fledBy=actor; narrative.push(`  ${actor.name} escapes the fight!`); }
-        else { const d=rng(1,4); const dealt=pcTakeHit(actor,d,narrative,foe.name,'parting blow'); narrative.push(`  ${actor.name} fails to escape and is struck for ${dealt} damage. (HP ${Math.max(0,Math.round(actor.hp))})`); }
+        pcAttemptFlee(actor, foe, narrative, state, 'plan'); // items 3–5 (2026-09-10): shared flee routine
         break;
       }
       case 'TA': case 'TALK':{
@@ -10933,6 +11174,9 @@ const BATTLE_ARMY_SPELLS={
   function resolvePersonalCombat(A, B, opts){
     opts=opts||{}; const maxRounds=opts.maxRounds||20;
     const narrative=[];
+    A._foeCat=pcFoeCat(B); B._foeCat=pcFoeCat(A); // 2026-09-10 armour: nature-keyed wards (Serpent-Scale / Grave-Iron) read the striker's kind
+    A._armFirstHitUsed=false; B._armFirstHitUsed=false; A._armSecondWindUsed=false; B._armSecondWindUsed=false;
+    A._roundNo=0; B._roundNo=0; A._roundWardLeft=0; B._roundWardLeft=0; A._openGuardUsed=0; B._openGuardUsed=0;
     const state={fledBy:null, parley:false, stoleBy:null, range:'spell', mirror:null, feature:opts.feature||null}; // all combats begin at Spell range
     // ── DRUID 3+ beast ward (Toby 2026-09-09) ── decided once, at the joining of the fight: a character of
     // Druid 3 or better facing a NATURAL creature (beast or vermin) takes half damage from it. Undead,
@@ -10987,6 +11231,7 @@ const BATTLE_ARMY_SPELLS={
     for(let round=0; round<maxRounds; round++){
       if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
       pcRoundStart(A,narrative); pcRoundStart(B,narrative);
+      A._fleeAttempted=false; B._fleeAttempted=false;
       if(A.hp<=0||B.hp<=0) break;
 
       // ── Mirror Image: while an illusion fights, the victim battles their own phantom and the
@@ -11054,9 +11299,10 @@ const BATTLE_ARMY_SPELLS={
           const ratio=cbt.hp/(cbt.maxHp||20);
           // Even a Berserk has a breaking point — it is just a very late and unreliable one.
           const wants=(ratio<tt.fleeAt) && !(tt.losingOnly && cbt.hp>=foe.hp);
+          if(cbt._fleeAttempted) continue; // already tried (and failed) to flee as this round's action
           if(wants && Math.random()<tt.fleeUrge){
-            const fleeChance=50+tt.fleeMod+(cbt.status.fleeBonus||0)-(cbt.status.fleePenalty||0);
-            if(Math.random()*100<fleeChance){ state.fledBy=cbt; narrative.push(`  🏃 ${cbt.name} (${cbt.temper}) loses the stomach for the fight and breaks off!`); break; }
+            if(pcAttemptFlee(cbt, foe, narrative, state, 'temper')) break; // items 3–5: shared flee routine
+            if(cbt.hp<=0) break; // the free strike finished them
           }
         }
         if(state.fledBy) break;
@@ -11171,7 +11417,9 @@ const BATTLE_ARMY_SPELLS={
       }
       narrative.push(`\u{1F480} ${loser.name} is slain in the duel!`);
       demoralise(loser, `their commander fell in single combat`);
-      awardKillXP(realWinner, realLoser, narrative);
+      // (2026-09-10: awardKillXP used to run HERE, before handleHeroDeath — the victim still read
+      // alive===true, so its "saved victim" guard bailed and a pre-battle duel kill never paid out.
+      // It now runs after the death is confirmed, below.)
       // keepArmies: the fallen commander's host does NOT scatter before the battle — it fights
       // on leaderless (demoralised, without the commander's skills). The battle code disperses
       // whatever survives afterwards. Items/grave/death flags are handled here as normal.
@@ -11183,6 +11431,7 @@ const BATTLE_ARMY_SPELLS={
         narrative.push(`\u{1FA79} ${loser.name} is borne from the field alive \u2014 barely.`);
         return{atkMorale,defMorale};
       }
+      awardKillXP(realWinner, realLoser, narrative); // the kill is confirmed — experience roll + earned HP
       // Mirror the death onto the battle copy so the rest of this battle sees it.
       if(loser!==realLoser){ loser.alive=false; loser.killedThisTurn=true; loser.items=[]; }
       if(loser===atk) atkSlain=true; else defSlain=true;
@@ -11190,6 +11439,7 @@ const BATTLE_ARMY_SPELLS={
     } else if(duelResult.fled){
       // Breaking off the duel is losing it — the runner's own troops saw them go.
       demoralise(duelResult.fled, `their commander broke off the duel`);
+      if(duelResult.heldField) awardWinHp(duelResult.heldField, narrative, 'duel'); // 2026-09-10: holding the field in a pre-battle duel is a win
     } else {
       narrative.push(`The duel ends inconclusively — both commanders live to fight on, and neither host loses heart.`);
     }
@@ -11199,7 +11449,7 @@ const BATTLE_ARMY_SPELLS={
   // Item 5: which magic items a combatant brings to bear — announced at the start of a battle or duel
   // so every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls out
   // each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
-  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','maxHp','white','black','pagan','psychic','elemental','necromancy','spellcasting']);
+  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','armour','maxHp','white','black','pagan','psychic','elemental','necromancy','spellcasting']);
   function magicItemsLine(ch){
     const its=activeItems(ch).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
     if(!its.length) return null;
@@ -11209,7 +11459,7 @@ const BATTLE_ARMY_SPELLS={
   // another character has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the
   // character who held the field keeps it. Mithril never drops (granted relic). Both ends are resolved
   // on the REAL character records since fights are often fought on pooled copies. Returns the item or null.
-  const DUEL_FLEE_DROP=0.30;
+  const DUEL_FLEE_DROP=0.50; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
   function duelFleeItemDrop(runnerCbt, stayerCbt, narrative){
     if(!runnerCbt||!stayerCbt||runnerCbt.kind!=='character'||stayerCbt.kind!=='character') return null;
     const _real=(x)=>(x&&x.id!=null&&(G.characters||[]).find(r=>r&&r.id===x.id))||x;
@@ -11488,7 +11738,7 @@ const BATTLE_ARMY_SPELLS={
           armySpells=PRIMAL_ARMY_DEFS_P[a.type].spells.filter(s=>s.dmg&&s.dmg[1]>0);
         if(!armySpells.length||!enemyArmies.length) return;
         const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
-        const _pvpStrikeChance=Math.min(90,20+druLvl*10);
+        const _pvpStrikeChance=primalStrikeChance(druLvl, heroChar._druidNegated?null:heroChar);
         const _pvpHit=Math.random()*100<_pvpStrikeChance;
         if(!_pvpHit&&_isPrimalP)
           narr.push(`〰 ${a.unitName||a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl>0?`, Druid ${druLvl}`:', no commanding druid'}).`);
@@ -12133,6 +12383,7 @@ const BATTLE_ARMY_SPELLS={
           else if(e.stat==='archery') mon.archery=(mon.archery||0)+(e.bonus||0);
           else if(e.stat==='maxHp'&&mon.hp>=mon.maxHp){ mon.maxHp+=e.bonus; mon.hp+=e.bonus; mon._hpItemBonus+=e.bonus; }
           else if(e.stat==='combatUse') mon.combatItems.push(it);
+          else if(e.stat==='armour') mon.arm=pcArmourMerge(mon.arm,e,it.name); // 2026-09-10: a guardian in the hoard's armour
           if((_ITEM_ALT_BASE[it.name]||it.name)==='Warbringer Gauntlets') mon.gauntlets=true;
         });
         narrative.push(`The ${m.name} has turned the hoard's magic to its own use — it bears ${_wield.map(x=>x.name).join(', ')}.`);
@@ -12157,6 +12408,24 @@ const BATTLE_ARMY_SPELLS={
     } else if(res.fledBy===hero){
       fled=true;
       narrative.push(`${c.name} turns and flees from the ${m.name}, escaping into the surrounding terrain!`);
+      // Item 2 (2026-09-10): a character who flees a lair guardian has the same DUEL_FLEE_DROP chance of
+      // dropping one magic item in the scramble as when fleeing a duel. Anything dropped joins the lair's
+      // hoardItems — it is treasure for whoever finally clears the lair, and the guardian wields it in
+      // every later fight (the wield block above rebuilds from hoardItems on each encounter).
+      { const _realC=(c&&c.id!=null&&(G.characters||[]).find(r=>r&&r.id===c.id))||c;
+        const _pool=transferableItems(_realC.items||[]);
+        if(_pool.length){
+          const _roll=d100(), _chance=Math.round(DUEL_FLEE_DROP*100);
+          narrative.push(`  ${c.name} scrambles clear — ${_chance}% chance of dropping something in the rout [roll ${_roll}${_roll<=_chance?' ✓':' ✗'}]`);
+          if(_roll<=_chance){
+            const _it=_pool[Math.floor(Math.random()*_pool.length)];
+            _realC.items=(_realC.items||[]).filter(x=>x!==_it);
+            if(c!==_realC&&Array.isArray(c.items)) c.items=c.items.filter(x=>x!==_it&&!(x&&x.name===_it.name&&x.tier===_it.tier));
+            delete _it.equipped;
+            ensureLairHoard(feature,G); feature.hoardItems=(feature.hoardItems||[]).concat([_it]);
+            narrative.push(`  💎 In the rout ${c.name} drops ${_it.name}${_it.tier===3?' (Legendary)':''} — it lies among the ${m.name}'s hoard now${guardianCanUseItem(m,_it)?', and the beast will turn it against the next intruder':''}.`);
+          }
+        } }
     } else if(res.winner===hero){
       won=true;
       narrative.push(`With a final ${rng(0,1)?'decisive blow':'burst of effort'}, the ${m.name} is defeated!`);
@@ -12185,7 +12454,7 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // Test hook (headless harnesses only): expose the encounter resolvers nested in runTurn.
-  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain,resolveDuel,duelFleeItemDrop,pcCastCombatSpell}; }catch(e){} // (G exposed 2026-09-09 for harness reads of the live turn state)
+  try{ if(typeof window!=='undefined') window._kcTest={G,resolveEncounter,resolvePersonalCombat,resolveCharVsChar,combatVsChar,effStat,rng,pcCharCombatant,pcMonsterCombatant,trySkillGain,resolveDuel,duelFleeItemDrop,pcCastCombatSpell,preBattleDuel,awardWinHp,awardKillXP}; }catch(e){} // (G exposed 2026-09-09 for harness reads of the live turn state)
 
   // When a player's character visits/spies a province, record any dead heroes there as seen
   function recordDeadHeroSighting(playerIdx, provId){
@@ -12212,11 +12481,26 @@ const BATTLE_ARMY_SPELLS={
     // Sept 2026 redesign: no permanent-HP reward. A kill is a hard lesson in the killer's fighting
     // skill instead — one extra experience roll in Melee (or Archery for a bowman), weighted by how
     // tough the fallen foe was. Skill drives max HP, so seasoned killers still end up the hardiest.
-    const vHp=victim.maxHp||20;
-    let mult=vHp>=60?3:vHp>=40?2.5:vHp>=25?2:1.5;
-    if(killer.isKing && hasDisc(killer.player,'sd35')) mult*=2; // sd35 Order of the Golden Shield: the king learns twice as much from his kills
-    const sk=(skillLevel(killer,'archery')>skillLevel(killer,'melee'))?'archery':'melee';
-    trySkillGain(killer, sk, SKILLGAIN_STD, narrative, mult);
+    // 2026-09-10 (Toby): the extra fighting-skill experience roll on a kill is DROPPED — a win now pays
+    // only the earned-HP gain below (skill still rises through ordinary fight experience and practice).
+    awardWinHp(killer, narrative, 'kill'); // a slain enemy commander hardens the victor (earned HP)
+  }
+  // ── EARNED HP (2026-09-10 revert) ── one combat win = one rollHpGain on the REAL character. Wins that
+  // count: lair guardian cleared, enemy character slain (any personal-combat path), pre-battle duel won
+  // (kill or the loser breaking off). A fled Encounter/chase/thief fight and a pacified beast do NOT count.
+  function awardWinHp(ch, narrative, why){
+    if(!ch||ch.alive===false) return null;
+    const real=(ch.id!=null&&(G.characters||[]).find(r=>r&&r.id===ch.id))||ch;
+    if(real.alive===false) return null;
+    const r=rollHpGain(real, G.players, why);
+    if(r.gain>0&&real.isKing&&hasDisc(real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
+      real.hpEarned+=r.gain; syncMaxHp(real,G.players); r.gain*=2; r.maxHp=real.maxHp; r.sd35=true; }
+    if(ch!==real){ ch.maxHp=real.maxHp; if(r.gain>0&&ch.hp!=null) ch.hp=Math.min(real.maxHp, ch.hp+r.gain); }
+    const line=hpGainLine(real, r);
+    if(Array.isArray(narrative)) narrative.push(line);
+    else { const prov=(real.location!=null)?G.world.provinces[real.location]:null;
+      log('combat', line, {actor:real.player!=null?real.player:-1, targets:real.player!=null?[real.player]:[], charId:real.id, provinceId:prov?prov.id:undefined}); }
+    return r;
   }
 
   // ── Dispersal of a dead character's armies ──
@@ -13560,12 +13844,9 @@ const BATTLE_ARMY_SPELLS={
           const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct'))); // Item 5: lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
-          // Sept 2026 redesign: no permanent-HP reward. The victory is a lesson in the hero's fighting
-          // skill — an extra experience roll weighted by the guardian's tier (skill drives max HP).
-          { let _lm=({Weak:1.5,Moderate:2,Powerful:2.5,Legendary:3})[tier]||1.5;
-            if(c.isKing&&hasDisc(c.player,'sd35')) _lm*=2; // sd35: the king learns twice as much from his kills
-            const _lsk=(skillLevel(c,'archery')>skillLevel(c,'melee'))?'archery':'melee';
-            trySkillGain(c,_lsk,SKILLGAIN_STD,null,_lm); }
+          // 2026-09-10 (Toby): the tier-weighted fighting-skill experience roll for a lair clear is DROPPED;
+          // the only permanent reward is the earned-HP gain. A pacified beast earns nothing.
+          if(!encounter.pacified) awardWinHp(c, null, 'lair'); // clearing a lair by force hardens the hero (earned HP)
           // 2026-09-09 (item 4): the automatic "catches their breath" heal (half of the HP lost) after a
           // lair win is REMOVED. The hero leaves the fight at the HP the encounter left them on; recovery
           // now comes only from Rest, Herbal Lore (sd29), Mass Healing (White L6+) and in-fight items/spells.
@@ -14158,7 +14439,7 @@ const BATTLE_ARMY_SPELLS={
           if(!c._sgLog || c._sgLog.turn!==G.turn) c._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
           c._sgLog.turnGains=c._sgLog.turnGains||{}; c._sgLog.turnGains[skill]=(c._sgLog.turnGains[skill]||0)+1;
           recalcHeroPay(c);
-          const _prHp=syncMaxHp(c,G.players); // Sept 2026 redesign: skill drives max HP
+          const _prHp=syncMaxHp(c,G.players); // (2026-09-10: skill no longer drives max HP — resync only, normally 0)
           // Item 2 (2026-09-07 batch 2): a mentored improvement is guaranteed — no roll to show.
           log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}${_prHp>0?` (Max HP +${_prHp} → ${c.maxHp}.)`:''}`,{actor:c.player,targets:[c.player]});
         } else {
@@ -18025,13 +18306,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     });
   }
 
-  // ── MAX-HP SYNC (Sept 2026 redesign) ── every living character's maximum HP is recomputed from
-  // their skills and kit at the close of the turn and any change is announced in their Chronicle.
-  // (Replaces Orc Vigour — the Orcish ×1.2 now lives inside the formula.)
+  // ── MAX-HP SYNC ── every living character's maximum HP is resynced (earned pool + kit + realm
+  // discoveries) at the close of the turn and any change is announced in their Chronicle. Combat wins
+  // announce their own gain at the moment of victory (rollHpGain); this catches item/discovery moves.
   _MAXHP_PLAYERS=G.players;
-  (G._maxHpMigration||[]).forEach(r=>{ // one-time note for saves migrated from the old earned-HP system
+  (G._maxHpMigration||[]).forEach(r=>{ // one-time note for saves migrated to the earned-HP pool (2026-09-10)
     const ch=(G.characters||[]).find(c=>c&&c.id===r.charId); if(!ch) return;
-    log('system',`📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now set by skill and equipment alone — ${r.old} becomes ${r.nu}. Training and hard-won experience will raise it from here.`,{actor:r.player,targets:[r.player],charId:ch.id,public:true});
+    log('system',`📜 A new reckoning of vigour: ${ch.name}'s maximum HP is now earned in battle rather than set by skill — ${r.old} becomes ${r.nu}. Victories over lair guardians and enemy commanders will raise it from here.`,{actor:r.player,targets:[r.player],charId:ch.id,public:true});
   });
   delete G._maxHpMigration;
   (G.characters||[]).forEach(ch=>{
@@ -18040,7 +18321,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(d===0) return;
     const prov=(ch.location!=null)?G.world.provinces[ch.location]:null;
     const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
-    log('system', d>0?`💪 ${ch.name}'s hard-won skill tells: maximum HP rises by ${d} to ${ch.maxHp}.`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
+    log('system', d>0?`💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp}.`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
   });
 
   // ── Spared cowards slink home ── A Cowardly commander who begged for mercy this turn abandons the
@@ -18334,8 +18615,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(p._turnStrReduction) delete p._turnStrReduction;
   });
 
-  // 7c2. sd35 Order of the Golden Shield: the king's kill-experience roll is doubled (applied in
-  // awardKillXP and the lair clear), so there is no per-turn effect to run here.
+  // 7c2. sd35 Order of the Golden Shield: the king's earned-HP gain from a win is doubled (applied in
+  // awardWinHp, 2026-09-10 — it used to double the kill-experience roll, which is gone), nothing per-turn.
 
   // GRAND DESIGN — Evil (Iron Throne of Skulls): apply this turn's queued skeleton-rises to the real winners.
   (G._pendingRises||[]).forEach(r=>{ const _ch=(G.characters||[]).find(c=>c&&c.id===r.charId); if(_ch&&_ch.alive){ _ch.armies=_ch.armies||[]; _ch.armies.push(r.unit); } });
@@ -18961,6 +19242,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-1802</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.10-2228</div>
 </body>
 </html>

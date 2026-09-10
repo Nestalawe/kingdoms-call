@@ -548,18 +548,20 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 // ── EQUIPMENT SLOTS (Item 11, Sept 2026) — mirror of the GM engine's tables ──
-const ITEM_SLOT_CAP_P={weapon:1,armour:1,cloak:1,helm:1,ring:2,amulet:1};
-const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman'};
-const ITEM_SLOT_ORDER_P=['weapon','armour','cloak','helm','ring','amulet'];
+const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1}; // shield slot added 2026-09-10 (mirror)
+const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman'};
+const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet'];
 const ITEM_SLOT_OF_P={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
+  'Tower Shield of the Wall':'shield','Doorward Pavise':'shield','Shield of the Unbroken Line':'shield','Anvil-Brand Shield':'shield','Shield of the Mountain Hall':'shield','Shield of the Innocent':'shield','Aegis of the Hearth':'shield',
+  'Kite Shield of the Marches':'shield',"Rider's Long Shield":'shield','Shield of the Border Road':'shield','Bronze Buckler':'shield','Quickhand Buckler':'shield','Targe of the Nimble':'shield','Oaken Roundshield':'shield','Heartwood Roundshield':'shield','Shield of the First Rounds':'shield','Mirror-Bright Shield':'shield','Skyglass Shield':'shield','Shield of Turned Spells':'shield','Shield of the Ward-Saints':'shield','Icon Shield':'shield','Shield of the Painted Martyrs':'shield','Dragonbone Shield':'shield','Wyrmbone Shield':'shield','Shield of the Unshaken Arm':'shield',
   "Traveller's Cloak":'cloak','Shadowcloak':'cloak','Veil of Illusions':'cloak','Cloak of Many Faces':'cloak',
   "Sage's Crown":'helm','Crown of Command':'helm','Imperial Regalia':'helm',
   'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
   "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
 };
-function itemSlotP(it){ if(!it) return null; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
+function itemSlotP(it){ if(!it) return null; if(ITEM_SLOT_OF_P[it.name]==='shield') return 'shield'; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded.
 // Item 4 (2026-09-07): race/alignment-bound items are inert in the wrong hands.
 const _ITEM_RACE_ALIAS_P={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
@@ -6866,6 +6868,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-1802</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.10-2228</div>
 </body>
 </html>
