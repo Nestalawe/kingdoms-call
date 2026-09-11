@@ -2950,7 +2950,7 @@ const SEA_GUARDIAN_NAMES=new Set(['Sea Serpent','Kraken Spawn','Storm Eagle','Gi
 // replaces the old name-regex traits in monsterTraits (kept only as a fallback for legacy saves).
 const MONSTER_CATS=['humanoid','undead','beast','vermin','giant','dragon','fiend','fey','aberration','elemental','construct'];
 const MONSTER_CAT_ITEM_USE={humanoid:'all',undead:'all',giant:'all',fiend:'all',fey:'trinket',dragon:'trinket',beast:'none',vermin:'none',aberration:'none',elemental:'none',construct:'none'};
-const _TRINKET_SLOTS=new Set(['ring','amulet','cloak','helm']);
+const _TRINKET_SLOTS=new Set(['ring','amulet','cloak','helm','consumable']); // consumable added 2026-09-11 (they had no slot before, so were always wieldable)
 function monsterCat(m){
   if(m&&m.cat) return m.cat;
   const n=((m&&m.name)||'').toLowerCase();
@@ -3278,6 +3278,180 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Shield of the Ward-Saints',desc:'Shield: at the start of every round a ward forms that soaks the next 4 damage.',lore:'Painted with saints who take the blow for the bearer. At the start of every round a fresh ward forms that soaks the next 4 damage.',effect:{stat:'armour',ward:'roundWard',amt:4,bonus:0},slot:'shield',tier:2},
   {name:'Dragonbone Shield',desc:'Shield: you can never be stunned, entranced, paralysed or knocked back.',lore:'Cut from the breastbone of a wyrm; nothing shakes it or the arm behind it. The bearer can never be stunned, entranced, paralysed or knocked back.',effect:{stat:'armour',ward:'stunImmune',bonus:0},slot:'shield',tier:2},
   {name:'Warden\'s Scale',desc:'Armour: while below half HP, every hit on you deals 25% less damage.',lore:'Scale-mail of the border wardens, made for the long last hour. While the wearer is below half HP, every hit on them deals 25% less damage.',effect:{stat:'armour',ward:'lowHp',pct:25,bonus:0},slot:'armour',tier:2},
+  // ── 2026-09-11 (Toby): 74 new slot items ANYONE can use — 16 weapons, 16 helms, 16 cloaks, 16 rings, 10 amulets.
+  // `effect.pc` is a personal-combat rider read by pcApplyFx (ward / aura / burn / drain / hitBonus / dmgBonus),
+  // usable alongside a skill bonus. Inline `slot` keeps the slot tables untouched. No alternate names.
+  // ── Weapons ──
+  {name:'Woodsman\'s Axe',slot:'weapon',desc:'Melee +1',lore:'A plain felling axe with a wicked edge. Melee skill counts 1 level higher in personal combat.',effect:{stat:'melee',bonus:1},tier:1},
+  {name:'Hunter\'s Recurve',slot:'weapon',desc:'Archery +1',lore:'A short horn-backed bow made for the chase. Archery skill counts 1 level higher.',effect:{stat:'archery',bonus:1},tier:1},
+  {name:'Serpent-Fang Dagger',slot:'weapon',desc:'Weapon: +10% to hit in personal combat.',lore:'A curved blade that seems to find the gap before you do. +10% to hit with every attack in personal combat.',effect:{stat:'pc',pc:{hitBonus:10}},tier:1},
+  {name:'Warden\'s Spear',slot:'weapon',desc:'Melee +1, and melee blows against you deal 1 less damage.',lore:'A long ash spear that keeps the foe at arm\'s length. Melee counts 1 higher; every melee blow that lands on you deals 1 less.',effect:{stat:'melee',bonus:1,pc:{ward:'meleeDR',amt:1}},tier:1},
+  {name:'Sling of Whispering Stones',slot:'weapon',desc:'Archery +1, +5% to hit.',lore:'The stones seem to whisper as they fly. Archery counts 1 higher and every attack is +5% to hit.',effect:{stat:'archery',bonus:1,pc:{hitBonus:5}},tier:1},
+  {name:'Rod of the Pale Court',slot:'weapon',desc:'Necromancy +1, and undead and fiends deal 2 less damage to you.',lore:'A bone-white rod that the dead recognise as one of their own. Necromancy counts 1 higher; undead and fiends deal 2 less with every hit.',effect:{stat:'necromancy',bonus:1,pc:{ward:'darkDR',amt:2}},tier:1},
+  {name:'Crozier of Dawn',slot:'weapon',desc:'White Magic +1, recover 1 HP each combat round.',lore:'A shepherd\'s crook chased with gold. White Magic counts 1 higher and you recover 1 HP at the start of every round.',effect:{stat:'white',bonus:1,pc:{ward:'regen',amt:1}},tier:1},
+  {name:'Wand of the Fox',slot:'weapon',desc:'Illusory Magic +1, foes −5% to hit you.',lore:'A slender wand that makes you a little harder to look at straight. Illusory counts 1 higher and enemies have −5% to hit you.',effect:{stat:'illusory',bonus:1,pc:{ward:'dodge',pct:5}},tier:1},
+  {name:'Greatsword of the Marches',slot:'weapon',desc:'Weapon: +3 damage on every successful melee attack.',lore:'A two-handed blade from the border wars. Every melee hit you land deals 3 extra damage.',effect:{stat:'pc',pc:{dmgBonus:3}},tier:2},
+  {name:'Composite Bow of the Steppe',slot:'weapon',desc:'Archery +2',lore:'Horn, sinew and wood laminated by horse-lords. Archery counts 2 levels higher.',effect:{stat:'archery',bonus:2},tier:2},
+  {name:'Leech-Blade',slot:'weapon',desc:'Weapon: you recover half the damage you deal with melee hits.',lore:'A black sword that drinks. Half of every melee wound you deal returns to you as health.',effect:{stat:'pc',pc:{drain:0.5}},tier:2},
+  {name:'Brand of the Salamander',slot:'weapon',desc:'Weapon: a foe in melee reach takes 2 fire damage every round.',lore:'A blade that never cools. Any foe at melee range takes 2 damage at the end of each round.',effect:{stat:'pc',pc:{burn:2}},tier:2},
+  {name:'Executioner\'s Maul',slot:'weapon',desc:'Weapon: +4 damage on every successful melee attack.',lore:'Ugly, heavy and final. Every melee hit you land deals 4 extra damage.',effect:{stat:'pc',pc:{dmgBonus:4}},tier:2},
+  {name:'Duellist\'s Rapier',slot:'weapon',desc:'Melee +1, foes −10% to hit you.',lore:'Light, quick and made for the salle. Melee counts 1 higher and your guard gives enemies −10% to hit you.',effect:{stat:'melee',bonus:1,pc:{ward:'dodge',pct:10}},tier:2},
+  {name:'Staff of Ashes',slot:'weapon',desc:'Elemental Magic +2',lore:'Charred oak that still smoulders at the tip. Elemental Magic counts 2 levels higher.',effect:{stat:'elemental',bonus:2},tier:2},
+  {name:'Flail of Thunder',slot:'weapon',desc:'Melee +1, +2 damage per melee hit.',lore:'Each strike lands like a thunderclap. Melee counts 1 higher and every melee hit deals 2 extra damage.',effect:{stat:'melee',bonus:1,pc:{dmgBonus:2}},tier:2},
+  // ── Helms ──
+  {name:'Iron Sallet',slot:'helm',desc:'Helm: melee blows deal 1 less damage to you.',lore:'A plain soldier\'s helm. Every melee blow that lands on you deals 1 less (never below 1).',effect:{stat:'pc',pc:{ward:'meleeDR',amt:1}},tier:1},
+  {name:'Visored Bascinet',slot:'helm',desc:'Helm: arrows and missiles deal 2 less damage to you.',lore:'The visor turns shafts that would have taken an eye. Every arrow or missile that strikes you deals 2 less.',effect:{stat:'pc',pc:{ward:'arrowDR',amt:2}},tier:1},
+  {name:'Circlet of Clear Thought',slot:'helm',desc:'Psychic Magic +1',lore:'A thin silver band that quiets the noise of other minds. Psychic Magic counts 1 level higher.',effect:{stat:'psychic',bonus:1},tier:1},
+  {name:'Helm of the Stalwart',slot:'helm',desc:'Max HP +5',lore:'Heavy, dented and utterly reliable. Maximum HP +5.',effect:{stat:'maxHp',bonus:5},tier:1},
+  {name:'Crown of the Tactician',slot:'helm',desc:'Tactical +1',lore:'A circlet worked with the shapes of the classic formations. Tactical counts 1 level higher.',effect:{stat:'tactical',bonus:1},tier:1},
+  {name:'Cap of the Pathfinder',slot:'helm',desc:'Explorer +1',lore:'A weathered cap whose wearer always seems to know the next ridge. Explorer counts 1 level higher.',effect:{stat:'explorer',bonus:1},tier:1},
+  {name:'Hood of the Listener',slot:'helm',desc:'Spy +1',lore:'A deep hood that hears what it should not. Spy counts 1 level higher.',effect:{stat:'spy',bonus:1},tier:1},
+  {name:'Scholar\'s Cap',slot:'helm',desc:'Sage +1',lore:'The square cap of the old academies. Sage counts 1 level higher.',effect:{stat:'sage',bonus:1},tier:1},
+  {name:'Warlord\'s Crest',slot:'helm',desc:'Melee +1',lore:'A helm crested with a snarling beast that makes its wearer bolder. Melee counts 1 level higher.',effect:{stat:'melee',bonus:1},tier:1},
+  {name:'Archer\'s Cap',slot:'helm',desc:'Archery +1',lore:'A light leather cap that keeps the sun from the eyes. Archery counts 1 level higher.',effect:{stat:'archery',bonus:1},tier:1},
+  {name:'Coronet of the Tithe',slot:'helm',desc:'+3g collected each tax season',lore:'Wear it and the stewards find a little more in every chest. +3 gold each tax season.',effect:{stat:'taxBonus',bonus:3},tier:1},
+  {name:'Helm of the Unflinching',slot:'helm',desc:'Helm: foes have −5% to hit you.',lore:'Its steady gaze unsettles those who face it. Enemies have −5% to hit you in personal combat.',effect:{stat:'pc',pc:{aura:5}},tier:1},
+  {name:'Helm of Iron Will',slot:'helm',desc:'Helm: you can never be stunned, entranced, paralysed or knocked back.',lore:'A helm forged for a mind that will not be moved. No stun, entrancement, paralysis or knockback ever takes hold.',effect:{stat:'pc',pc:{ward:'stunImmune'}},tier:2},
+  {name:'Great Helm of the Bulwark',slot:'helm',desc:'Helm: no single hit may cost you more than 30% of your maximum HP.',lore:'A great helm that spreads the worst blow across the whole body. No single hit costs more than 30% of your maximum HP.',effect:{stat:'pc',pc:{ward:'cap',pct:30}},tier:2},
+  {name:'Dragon-Crest Helm',slot:'helm',desc:'Helm: beasts, vermin and dragons deal 3 less damage to you.',lore:'Crested with a dragon\'s own scale, it turns fang and claw aside. Beasts, vermin and dragons deal 3 less with every hit.',effect:{stat:'pc',pc:{ward:'natureDR',amt:3}},tier:2},
+  {name:'Diadem of the Second Sight',slot:'helm',desc:'Illusory Magic +2',lore:'A diadem set with a stone that shows what is not there. Illusory Magic counts 2 levels higher.',effect:{stat:'illusory',bonus:2},tier:2},
+  // ── Cloaks ──
+  {name:'Cloak of the Wayfarer',slot:'cloak',desc:'March +1',lore:'A travel-stained cloak that makes the miles shorter. March counts 1 level higher.',effect:{stat:'march',bonus:1},tier:1},
+  {name:'Mantle of the Deep',slot:'cloak',desc:'Naval +1',lore:'Sealskin and salt. Naval counts 1 level higher.',effect:{stat:'naval',bonus:1},tier:1},
+  {name:'Cloak of Embers',slot:'cloak',desc:'Cloak: a foe in melee reach takes 1 fire damage every round.',lore:'It smoulders without burning its wearer. Any foe at melee range takes 1 damage at the end of each round.',effect:{stat:'pc',pc:{burn:1}},tier:1},
+  {name:'Cloak of the Grove',slot:'cloak',desc:'Druid +1',lore:'Woven of living leaves that never wither. Druid counts 1 level higher.',effect:{stat:'druid',bonus:1},tier:1},
+  {name:'Weatherworn Cape',slot:'cloak',desc:'Cloak: burns, poisons and bleeding never take hold on you.',lore:'A cape that has shed a hundred storms. No burn, poison or bleed ever takes hold on you.',effect:{stat:'pc',pc:{ward:'dotImmune'}},tier:1},
+  {name:'Mantle of Thorns',slot:'cloak',desc:'Cloak: whoever lands a melee blow on you takes 1 damage back.',lore:'Bramble worked into the weave. Anyone who lands a melee blow on you takes 1 damage.',effect:{stat:'pc',pc:{ward:'thorns',amt:1}},tier:1},
+  {name:'Cutpurse\'s Cloak',slot:'cloak',desc:'Thief +1',lore:'Sewn with more pockets than seams. Thief counts 1 level higher.',effect:{stat:'thief',bonus:1},tier:1},
+  {name:'Cape of the Stormrider',slot:'cloak',desc:'Elemental Magic +1',lore:'It crackles when the weather turns. Elemental Magic counts 1 level higher.',effect:{stat:'elemental',bonus:1},tier:1},
+  {name:'Shroud of the Barrow',slot:'cloak',desc:'Necromancy +1',lore:'Grave-linen that never quite warms. Necromancy counts 1 level higher.',effect:{stat:'necromancy',bonus:1},tier:1},
+  {name:'Mantle of the Confessor',slot:'cloak',desc:'White Magic +1',lore:'Plain white wool, and the peace that comes with it. White Magic counts 1 level higher.',effect:{stat:'white',bonus:1},tier:1},
+  {name:'Cloak of Still Water',slot:'cloak',desc:'Psychic Magic +1',lore:'Its wearer\'s thoughts settle like a pond at dusk. Psychic Magic counts 1 level higher.',effect:{stat:'psychic',bonus:1},tier:1},
+  {name:'Shroud of Moths',slot:'cloak',desc:'Cloak: foes have −10% to hit you.',lore:'A cloak that flutters at the edge of sight. Enemies have −10% to hit you in personal combat.',effect:{stat:'pc',pc:{ward:'dodge',pct:10}},tier:2},
+  {name:'Warden\'s Greatcloak',slot:'cloak',desc:'Cloak: 20% chance to block any arrow or missile outright.',lore:'Thick enough to catch a shaft in its folds. 20% chance any arrow or missile is stopped outright.',effect:{stat:'pc',pc:{ward:'arrowBlock',pct:20}},tier:2},
+  {name:'Cloak of the Hearth',slot:'cloak',desc:'Cloak: recover 2 HP at the start of every combat round.',lore:'Warm as a fireside however cold the field. Recover 2 HP at the start of every round.',effect:{stat:'pc',pc:{ward:'regen',amt:2}},tier:2},
+  {name:'Cloak of Stillness',slot:'cloak',desc:'Cloak: spells and monster powers deal 25% less damage to you.',lore:'Magic slides off it like rain off slate. Spells and guardian powers deal 25% less damage to you.',effect:{stat:'pc',pc:{ward:'spellPct',pct:25}},tier:2},
+  {name:'Marshal\'s Mantle',slot:'cloak',desc:'All armies you lead: strength +2 each.',lore:'The scarlet mantle soldiers look for in the line. Every army you lead fights at +2 strength.',effect:{stat:'armyBonus',bonus:2},tier:2},
+  // ── Rings ──
+  {name:'Ring of Vigour',slot:'ring',desc:'Max HP +4',lore:'A heavy band that keeps the heart beating steadily. Maximum HP +4.',effect:{stat:'maxHp',bonus:4},tier:1},
+  {name:'Ring of the Duellist',slot:'ring',desc:'Melee +1',lore:'Worn on the sword hand. Melee counts 1 level higher.',effect:{stat:'melee',bonus:1},tier:1},
+  {name:'Ring of the Bowyer',slot:'ring',desc:'Archery +1',lore:'A thumb-ring of horn. Archery counts 1 level higher.',effect:{stat:'archery',bonus:1},tier:1},
+  {name:'Ring of the Tide',slot:'ring',desc:'Naval +1',lore:'Green sea-glass in a silver band. Naval counts 1 level higher.',effect:{stat:'naval',bonus:1},tier:1},
+  {name:'Ring of the Long Road',slot:'ring',desc:'March +1',lore:'A worn band that lightens the pack. March counts 1 level higher.',effect:{stat:'march',bonus:1},tier:1},
+  {name:'Ring of Ember',slot:'ring',desc:'Elemental Magic +1',lore:'Warm to the touch, always. Elemental Magic counts 1 level higher.',effect:{stat:'elemental',bonus:1},tier:1},
+  {name:'Ring of Bone',slot:'ring',desc:'Necromancy +1',lore:'Carved from a knuckle that was not given willingly. Necromancy counts 1 level higher.',effect:{stat:'necromancy',bonus:1},tier:1},
+  {name:'Ring of the Dawn',slot:'ring',desc:'White Magic +1',lore:'A pale gold band that catches the first light. White Magic counts 1 level higher.',effect:{stat:'white',bonus:1},tier:1},
+  {name:'Ring of Glamour',slot:'ring',desc:'Illusory Magic +1',lore:'It is never quite the colour you remember. Illusory Magic counts 1 level higher.',effect:{stat:'illusory',bonus:1},tier:1},
+  {name:'Ring of the Inner Eye',slot:'ring',desc:'Psychic Magic +1',lore:'A dark stone that seems to look back. Psychic Magic counts 1 level higher.',effect:{stat:'psychic',bonus:1},tier:1},
+  {name:'Ring of the Green',slot:'ring',desc:'Druid +1',lore:'A twist of living vine. Druid counts 1 level higher.',effect:{stat:'druid',bonus:1},tier:1},
+  {name:'Ring of the Cartographer',slot:'ring',desc:'Explorer +1',lore:'A compass-rose signet. Explorer counts 1 level higher.',effect:{stat:'explorer',bonus:1},tier:1},
+  {name:'Ring of the Shadow',slot:'ring',desc:'Spy +1',lore:'Black iron that draws no eye. Spy counts 1 level higher.',effect:{stat:'spy',bonus:1},tier:1},
+  {name:'Signet of the Marshal',slot:'ring',desc:'Tactical +1',lore:'The seal of a forgotten marshal. Tactical counts 1 level higher.',effect:{stat:'tactical',bonus:1},tier:1},
+  {name:'Ring of Steady Hands',slot:'ring',desc:'Ring: +5% to hit in personal combat.',lore:'The tremor leaves the hand that wears it. +5% to hit with every attack in personal combat.',effect:{stat:'pc',pc:{hitBonus:5}},tier:1},
+  {name:'Ring of the Warding Circle',slot:'ring',desc:'Ring: 15% chance any hostile spell or guardian power is turned away harmlessly.',lore:'A ring inscribed with a circle that closes when magic comes near. 15% chance any hostile spell or guardian power is turned aside.',effect:{stat:'pc',pc:{ward:'spellBlock',pct:15}},tier:2},
+  // ── Amulets ──
+  {name:'Amulet of the Oak',slot:'amulet',desc:'Max HP +6',lore:'An acorn of dark gold on a leather cord. Maximum HP +6.',effect:{stat:'maxHp',bonus:6},tier:2},
+  {name:'Talisman of the Bear',slot:'amulet',desc:'Amulet: +2 damage on every successful melee attack.',lore:'A bear\'s claw that lends its strength to the arm. Every melee hit you land deals 2 extra damage.',effect:{stat:'pc',pc:{dmgBonus:2}},tier:1},
+  {name:'Pendant of the Tides',slot:'amulet',desc:'Naval +2',lore:'A pearl that rises and falls with the moon. Naval counts 2 levels higher.',effect:{stat:'naval',bonus:2},tier:2},
+  {name:'Amulet of Quickening',slot:'amulet',desc:'March +2',lore:'A hummingbird in amber. March counts 2 levels higher.',effect:{stat:'march',bonus:2},tier:2},
+  {name:'Talisman of the Wilds',slot:'amulet',desc:'Druid +2',lore:'A wolf-tooth strung on sinew that the wild things recognise. Druid counts 2 levels higher.',effect:{stat:'druid',bonus:2},tier:2},
+  {name:'Amulet of the Quiet Mind',slot:'amulet',desc:'Amulet: spells and monster powers deal 20% less damage to you.',lore:'A smooth grey stone that dulls the sting of sorcery. Spells and guardian powers deal 20% less damage to you.',effect:{stat:'pc',pc:{ward:'spellPct',pct:20}},tier:1},
+  {name:'Amulet of Second Breath',slot:'amulet',desc:'Amulet: once per fight, when first pushed near defeat you recover 20% of your maximum HP.',lore:'It warms when you are almost done. Once per fight, the first time you are driven near defeat you recover 20% of your maximum HP.',effect:{stat:'pc',pc:{ward:'secondWind',pct:20}},tier:2},
+  {name:'Locket of the Watchful',slot:'amulet',desc:'Spy +2',lore:'Open it and it shows a face you were not looking for. Spy counts 2 levels higher.',effect:{stat:'spy',bonus:2},tier:2},
+  {name:'Charm of the Lucky Coin',slot:'amulet',desc:'+2g collected each tax season',lore:'A coin that always comes back with a friend. +2 gold each tax season.',effect:{stat:'taxBonus',bonus:2},tier:1},
+  {name:'Amulet of the Seeker',slot:'amulet',desc:'Explorer +2',lore:'A lodestone that pulls toward the unmapped. Explorer counts 2 levels higher.',effect:{stat:'explorer',bonus:2},tier:2},
+  // ── 2026-09-11 (Toby, session h): 44 further slot designs anyone can use — the thin categories first
+  // (shields especially), so the balancing pass below has real designs to draw on rather than one shield
+  // cloned a dozen times.
+  // ── Shields ──
+  {name:'Buckler of the Quick Hand',slot:'shield',desc:'Shield: foes have −8% to hit you.',lore:'A small steel disc that is always exactly where the blow was going. Enemies have −8% to hit you in personal combat.',effect:{stat:'pc',pc:{ward:'dodge',pct:8}},tier:1},
+  {name:'Hide Targe',slot:'shield',desc:'Shield: melee blows deal 1 less damage to you.',lore:'Boiled hide over a willow frame — cheap, light and better than nothing. Every melee blow that lands on you deals 1 less.',effect:{stat:'pc',pc:{ward:'meleeDR',amt:1}},tier:1},
+  {name:'Banded Pavise',slot:'shield',desc:'Shield: arrows and missiles deal 3 less damage to you.',lore:'A tall shield a crossbowman hides behind while he winds. Every arrow or missile that strikes you deals 3 less.',effect:{stat:'pc',pc:{ward:'arrowDR',amt:3}},tier:1},
+  {name:'Thorn-Rimmed Shield',slot:'shield',desc:'Shield: whoever lands a melee blow on you takes 2 damage back.',lore:'Its rim is set with iron barbs that bite the hand that strikes it. Anyone landing a melee blow on you takes 2 damage.',effect:{stat:'pc',pc:{ward:'thorns',amt:2}},tier:1},
+  {name:'Shield of the Watchfire',slot:'shield',desc:'Shield: a foe in melee reach takes 1 fire damage every round.',lore:'The boss glows like a banked coal. Any foe at melee range takes 1 damage at the end of each round.',effect:{stat:'pc',pc:{burn:1}},tier:1},
+  {name:'Wicker Warboard',slot:'shield',desc:'Shield: the first two hits to land on you each fight deal half damage.',lore:'Woven cane that gives before it breaks. The first two hits to land on you each fight deal half damage.',effect:{stat:'pc',pc:{ward:'openGuard',hits:2,pct:50}},tier:1},
+  {name:'Shield of the Green Hill',slot:'shield',desc:'Shield: recover 1 HP at the start of every combat round.',lore:'Bound in living bark that closes its own cuts, and yours. Recover 1 HP at the start of every round.',effect:{stat:'pc',pc:{ward:'regen',amt:1}},tier:1},
+  {name:'Scale-Faced Shield',slot:'shield',desc:'Shield: beasts, vermin and dragons deal 2 less damage to you.',lore:'Faced with the scales of something that used to hunt. Beasts, vermin and dragons deal 2 less with every hit.',effect:{stat:'pc',pc:{ward:'natureDR',amt:2}},tier:1},
+  {name:'Shield of the Vigil',slot:'shield',desc:'Shield: undead and fiends deal 3 less damage to you.',lore:'Blessed on a night-long watch and never unblessed. Undead and fiends deal 3 less with every hit.',effect:{stat:'pc',pc:{ward:'darkDR',amt:3}},tier:1},
+  {name:'Stormbreak Shield',slot:'shield',desc:'Shield: 25% chance to block any arrow or missile outright.',lore:'Angled to throw shafts aside like rain off a roof. 25% chance any arrow or missile is stopped outright.',effect:{stat:'pc',pc:{ward:'arrowBlock',pct:25}},tier:2},
+  {name:'Shield of the Last Gate',slot:'shield',desc:'Shield: no single hit may cost you more than 25% of your maximum HP.',lore:'It held a gate once and has never learned to stop. No single hit costs more than a quarter of your maximum HP.',effect:{stat:'pc',pc:{ward:'cap',pct:25}},tier:2},
+  {name:'Aegis of the Quiet Word',slot:'shield',desc:'Shield: spells and monster powers deal 30% less damage to you.',lore:'Sigils run its rim, and sorcery slides off them. Spells and guardian powers deal 30% less damage to you.',effect:{stat:'pc',pc:{ward:'spellPct',pct:30}},tier:2},
+  {name:'Shield of the Unbowed',slot:'shield',desc:'Shield: while below half HP, every hit on you deals 25% less damage.',lore:'The worse it goes, the harder its bearer sets their feet. Below half HP every hit on you deals 25% less.',effect:{stat:'pc',pc:{ward:'lowHp',pct:25}},tier:2},
+  {name:'Blackiron Heater',slot:'shield',desc:'Shield: melee blows deal 2 less damage to you.',lore:'Plain black iron, twice the weight and twice the worth. Every melee blow that lands on you deals 2 less.',effect:{stat:'pc',pc:{ward:'meleeDR',amt:2}},tier:2},
+  // ── Armour ──
+  {name:'Padded Gambeson',slot:'armour',desc:'Armour: arrows and missiles deal 2 less damage to you.',lore:'Twenty layers of quilted linen that swallow an arrowhead. Every arrow or missile that strikes you deals 2 less.',effect:{stat:'armour',ward:'arrowDR',amt:2},tier:1},
+  {name:'Coat of Small Plates',slot:'armour',desc:'Armour: melee blows deal 1 less damage to you, and foes −5% to hit you.',lore:'Hundreds of overlapping plates riveted between cloth. Melee blows deal 1 less, and enemies have −5% to hit you.',effect:{stat:'armour',ward:'buckler'},tier:1},
+  {name:'Salt-Crusted Mail',slot:'armour',desc:'Armour: recover 1 HP at the start of every combat round.',lore:'Mail hauled from a wreck; the sea gave it something back. Recover 1 HP at the start of every round.',effect:{stat:'armour',ward:'regen',amt:1},tier:1},
+  {name:'Harness of the Long Vigil',slot:'armour',desc:'Armour: 15% chance any hostile spell or guardian power is turned away harmlessly.',lore:'Every strap is stamped with a ward-word. 15% chance a hostile spell or guardian power is turned aside entirely.',effect:{stat:'armour',ward:'spellBlock',pct:15},tier:2},
+  // ── Helms ──
+  {name:'Kettle Hat',slot:'helm',desc:'Helm: arrows and missiles deal 1 less damage to you.',lore:'A wide brim keeps the sky off a marching man. Arrows and missiles deal 1 less damage to you.',effect:{stat:'pc',pc:{ward:'arrowDR',amt:1}},tier:1},
+  {name:'Horned Warhelm',slot:'helm',desc:'Helm: +2 damage on every successful melee attack.',lore:'You do not wear this to hide behind it. Every melee hit you land deals 2 extra damage.',effect:{stat:'pc',pc:{dmgBonus:2}},tier:1},
+  {name:'Coif of the Deep Roads',slot:'helm',desc:'Helm: recover 1 HP at the start of every combat round.',lore:'Mail worn smooth by years underground, and warm in the worst of it. Recover 1 HP at the start of every round.',effect:{stat:'pc',pc:{ward:'regen',amt:1}},tier:1},
+  {name:'Crown of the Quiet Court',slot:'helm',desc:'White Magic +1',lore:'A slim gold band worn by those who judge rather than fight. White Magic counts 1 level higher.',effect:{stat:'white',bonus:1},tier:1},
+  {name:'Bone Diadem',slot:'helm',desc:'Necromancy +1',lore:'Carved from a skull that answered questions after it died. Necromancy counts 1 level higher.',effect:{stat:'necromancy',bonus:1},tier:1},
+  {name:'Helm of the Salamander',slot:'helm',desc:'Helm: burns, poisons and bleeding never take hold on you.',lore:'Nothing lit inside it has ever stayed lit. No burn, poison or bleed takes hold on you.',effect:{stat:'pc',pc:{ward:'dotImmune'}},tier:2},
+  // ── Cloaks ──
+  {name:'Oilskin Cloak',slot:'cloak',desc:'Cloak: arrows and missiles deal 1 less damage to you.',lore:'Heavy, waxed and stiff enough to turn a spent shaft. Arrows and missiles deal 1 less damage to you.',effect:{stat:'pc',pc:{ward:'arrowDR',amt:1}},tier:1},
+  {name:'Mantle of the Second Wind',slot:'cloak',desc:'Cloak: once per fight, when first pushed near defeat you recover 15% of your maximum HP.',lore:'It tightens at the shoulders when the legs begin to go. Once per fight, driven near defeat, you recover 15% of your maximum HP.',effect:{stat:'pc',pc:{ward:'secondWind',pct:15}},tier:2},
+  {name:'Cloak of the Cold Hearth',slot:'cloak',desc:'Cloak: undead and fiends deal 2 less damage to you.',lore:'Grave-cold to the touch, and the grave-cold thing finds nothing in it. Undead and fiends deal 2 less with every hit.',effect:{stat:'pc',pc:{ward:'darkDR',amt:2}},tier:1},
+  {name:'Beastward Mantle',slot:'cloak',desc:'Cloak: beasts, vermin and dragons deal 2 less damage to you.',lore:'Sewn with the musk of a bigger predator. Beasts, vermin and dragons deal 2 less with every hit.',effect:{stat:'pc',pc:{ward:'natureDR',amt:2}},tier:1},
+  {name:'Cloak of the Pale Hours',slot:'cloak',desc:'Cloak: +5% to hit in personal combat.',lore:'Worn thin at the hem from too many night marches; its wearer sees the opening first. +5% to hit in personal combat.',effect:{stat:'pc',pc:{hitBonus:5}},tier:1},
+  {name:'Sage\'s Travelling Cloak',slot:'cloak',desc:'Sage +1',lore:'Deep pockets full of notes nobody else can read. Sage counts 1 level higher.',effect:{stat:'sage',bonus:1},tier:1},
+  // ── Rings ──
+  {name:'Ring of the Ironbound',slot:'ring',desc:'Ring: melee blows deal 1 less damage to you.',lore:'A plain band that seems to take some of the weight of a blow. Melee blows deal 1 less damage to you.',effect:{stat:'pc',pc:{ward:'meleeDR',amt:1}},tier:1},
+  {name:'Ring of Small Mercies',slot:'ring',desc:'Ring: recover 1 HP at the start of every combat round.',lore:'It warms a little with every wound taken. Recover 1 HP at the start of every round.',effect:{stat:'pc',pc:{ward:'regen',amt:1}},tier:1},
+  {name:'Ring of the Coiled Serpent',slot:'ring',desc:'Ring: +2 damage on every successful melee attack.',lore:'The serpent tightens when the hand does. Every melee hit you land deals 2 extra damage.',effect:{stat:'pc',pc:{dmgBonus:2}},tier:1},
+  {name:'Ring of the Counting House',slot:'ring',desc:'+3g collected each tax season',lore:'A merchant\'s seal that still opens doors. +3 gold each tax season.',effect:{stat:'taxBonus',bonus:3},tier:1},
+  // ── Amulets ──
+  {name:'Charm of the Ash Grove',slot:'amulet',desc:'Amulet: burns, poisons and bleeding never take hold on you.',lore:'A knot of grey ashwood that draws poison out. No burn, poison or bleed takes hold on you.',effect:{stat:'pc',pc:{ward:'dotImmune'}},tier:1},
+  {name:'Pendant of the Grave-Warden',slot:'amulet',desc:'Amulet: undead and fiends deal 3 less damage to you.',lore:'Worn by those whose work is in the cold ground. Undead and fiends deal 3 less with every hit.',effect:{stat:'pc',pc:{ward:'darkDR',amt:3}},tier:1},
+  {name:'Talisman of the Steady Eye',slot:'amulet',desc:'Amulet: +10% to hit in personal combat.',lore:'A polished disc that pulls the gaze straight. +10% to hit with every attack in personal combat.',effect:{stat:'pc',pc:{hitBonus:10}},tier:2},
+  {name:'Amulet of the Deep Root',slot:'amulet',desc:'Amulet: recover 2 HP at the start of every combat round.',lore:'A knotted root that keeps drawing on something far below. Recover 2 HP at the start of every round.',effect:{stat:'pc',pc:{ward:'regen',amt:2}},tier:2},
+  {name:'Charm of the Turned Blade',slot:'amulet',desc:'Amulet: melee blows deal 1 less damage to you.',lore:'A bent nail on a thong; it was bent stopping something. Melee blows deal 1 less damage to you.',effect:{stat:'pc',pc:{ward:'meleeDR',amt:1}},tier:1},
+  {name:'Locket of the Hearthkeeper',slot:'amulet',desc:'Max HP +4',lore:'Someone at home is still waiting, and it matters. Maximum HP +4.',effect:{stat:'maxHp',bonus:4},tier:1},
+  // ── 2026-09-11 (Toby, session i): 41 further consumables, so the Consumable slot is as deep as every
+  // worn slot (90). One name per effect, as ruled in 84.3 — these are new DESIGNS, not renamed copies.
+  {name:'Draught of the Badger',desc:'Combat use: recover 6 HP once per fight (drunk when below 60% health).',lore:'Thick, bitter and brewed by people who expect to be bitten. Used once per personal combat when below 60% health: recover 6 HP.',effect:{stat:'combatUse',use:'heal',amt:6,below:0.6,bonus:0},tier:1},
+  {name:'Surgeon\'s Flask',desc:'Combat use: recover 11 HP once per fight (drunk when below half health).',lore:'Spirits strong enough to clean a wound and dull it at once. Used once per personal combat below half health: recover 11 HP.',effect:{stat:'combatUse',use:'heal',amt:11,below:0.5,bonus:0},tier:2},
+  {name:'Vial of Deep Water',desc:'Combat use: recover 4 HP once per fight (drunk when badly hurt).',lore:'Drawn from a spring nobody can find twice. Used once per personal combat when badly hurt: recover 4 HP.',effect:{stat:'combatUse',use:'heal',amt:4,below:0.4,bonus:0},tier:1},
+  {name:'Poultice of Bright Moss',desc:'Combat use: heal 2 HP at the start of each of the next 5 rounds.',lore:'Moss that keeps glowing after it is picked, and keeps working after it is packed into a wound. 2 HP a round for five rounds.',effect:{stat:'combatUse',use:'hot',amt:2,rounds:5,below:0.7,bonus:0},tier:1},
+  {name:'Tincture of Slow Mending',desc:'Combat use: heal 4 HP at the start of each of the next 3 rounds.',lore:'It works from the inside out, and it is not gentle. 4 HP a round for three rounds.',effect:{stat:'combatUse',use:'hot',amt:4,rounds:3,below:0.7,bonus:0},tier:2},
+  {name:'Cordial of the Last Breath',desc:'Combat use: recover 12 HP and shed every poison, burn and blinding (drunk when nearly spent).',lore:'Kept for the moment there is nothing else left to try. Recover 12 HP, and every lingering affliction lifts.',effect:{stat:'combatUse',use:'secondwind',amt:12,below:0.5,bonus:0},tier:2},
+  {name:'Scroll of Hailstones',desc:'Combat use: a battering of ice for 6-11 damage, once per fight.',lore:'The air above the foe turns white and falls on them. 6-11 damage, once per fight.',effect:{stat:'combatUse',use:'dmg',dmg:[6,11],bonus:0},tier:1},
+  {name:'Scroll of the Riving Wind',desc:'Combat use: a cutting gale for 9-15 damage, once per fight.',lore:'A wind with edges in it. 9-15 damage, once per fight.',effect:{stat:'combatUse',use:'dmg',dmg:[9,15],bonus:0},tier:2},
+  {name:'Vial of Green Vitriol',desc:'Combat use: 5-9 damage and the acid keeps eating for 2 a round, three rounds.',lore:'It goes through mail the way rain goes through paper. 5-9 damage, then 2 a round for three rounds.',effect:{stat:'combatUse',use:'dmg',dmg:[5,9],dot:[2,3],bonus:0},tier:1},
+  {name:'Firepot of the Siegeworks',desc:'Combat use: 7-12 damage and the foe burns for 3 a round, two rounds.',lore:'A clay pot of something the engineers will not name. 7-12 damage, then 3 a round for two rounds.',effect:{stat:'combatUse',use:'dmg',dmg:[7,12],dot:[3,2],bonus:0},tier:2},
+  {name:'Scroll of the Splitting Bolt',desc:'Combat use: two bolts of 4-7 damage each, once per fight.',lore:'One word, two answers. Two strikes of 4-7 damage.',effect:{stat:'combatUse',use:'dmg',dmg:[4,7],times:2,bonus:0},tier:2},
+  {name:'Handful of Iron Filings',desc:'Combat use: 3-6 damage and the foe is blinded (-15% to hit).',lore:'Thrown into the eyes by someone who has stopped fighting fair. 3-6 damage, and the foe is -15% to hit.',effect:{stat:'combatUse',use:'dmg',dmg:[3,6],hitPen:15,bonus:0},tier:1},
+  {name:'Screaming Skull',desc:'Combat use: 6-10 damage and the foe loses their next action.',lore:'It screams once, and whoever hears it loses a moment they needed. 6-10 damage and one action lost.',effect:{stat:'combatUse',use:'dmg',dmg:[6,10],stun:1,bonus:0},tier:2},
+  {name:'Scroll of the Barbed Word',desc:'Combat use: 8-13 damage, once per fight.',lore:'A syllable that lodges somewhere it should not. 8-13 damage, once per fight.',effect:{stat:'combatUse',use:'dmg',dmg:[8,13],bonus:0},tier:2},
+  {name:'Caltrop Pouch',desc:'Combat use: 2-5 damage and the foe is slowed (-10% to hit).',lore:'Scattered underfoot, and suddenly nobody is advancing. 2-5 damage and -10% to hit.',effect:{stat:'combatUse',use:'dmg',dmg:[2,5],hitPen:10,bonus:0},tier:1},
+  {name:'Phial of Black Bile',desc:'Combat use: 4-8 damage to the foe, and you recover the same.',lore:'It takes something out of them and puts it into you. 4-8 damage, and you recover as much.',effect:{stat:'combatUse',use:'drain',dmg:[4,8],below:0.75,bonus:0},tier:1},
+  {name:'Chalice of the Leech',desc:'Combat use: 7-11 damage to the foe, and you recover the same.',lore:'A cup with no bottom worth speaking of. 7-11 damage, and you recover as much.',effect:{stat:'combatUse',use:'drain',dmg:[7,11],below:0.75,bonus:0},tier:2},
+  {name:'Net of Fine Chain',desc:'Combat use: the foe is tangled and loses their next action.',lore:'Weighted silver links that close as they fall. The foe loses one action.',effect:{stat:'combatUse',use:'stun',stun:1,bonus:0},tier:1},
+  {name:'Scroll of the Binding Word',desc:'Combat use: the foe is held and loses their next 2 actions.',lore:'A word of holding, spoken once and obeyed twice. The foe loses two actions.',effect:{stat:'combatUse',use:'stun',stun:2,bonus:0},tier:2},
+  {name:'Flash Powder',desc:'Combat use: the foe is dazzled — -20% to hit for the rest of the fight.',lore:'A white bang and a long green afterimage. The foe is -20% to hit.',effect:{stat:'combatUse',use:'pen',hitPen:20,bonus:0},tier:1},
+  {name:'Pot of Clinging Pitch',desc:'Combat use: the foe fights half-blind — -25% to hit for the rest of the fight.',lore:'Black, sticky and impossible to wipe away in a hurry. The foe is -25% to hit.',effect:{stat:'combatUse',use:'pen',hitPen:25,bonus:0},tier:2},
+  {name:'Scroll of the Leaden Arm',desc:'Combat use: the foe\'s Melee drops 2 for the rest of the fight.',lore:'Their sword weighs what an anvil weighs. The foe\'s Melee counts 2 lower.',effect:{stat:'combatUse',use:'weak',melee:2,bonus:0},tier:2},
+  {name:'Scroll of the Slackened String',desc:'Combat use: the foe\'s Archery drops 2 for the rest of the fight.',lore:'Every bowstring within earshot goes soft. The foe\'s Archery counts 2 lower.',effect:{stat:'combatUse',use:'weak',archery:2,bonus:0},tier:1},
+  {name:'Wailing Horn',desc:'Combat use: a living foe must hold their nerve or flee; the fearless fight on shaken (-20% to hit).',lore:'One long note that sounds like something losing. The foe flees, or fights on at -20% to hit.',effect:{stat:'combatUse',use:'terror',hitPen:20,bonus:0},tier:2},
+  {name:'Scroll of the Stilled Tongue',desc:'Combat use: the foe\'s magic and powers are bound for 4 rounds.',lore:'Their throat works and nothing comes out. Four rounds of silence.',effect:{stat:'combatUse',use:'silence',rounds:4,bonus:0},tier:2},
+  {name:'Bell of Quiet Hours',desc:'Combat use: the foe\'s magic and powers are bound for 2 rounds.',lore:'Rung once, it takes the noise out of the air — and the words out of a spell. Two rounds of silence.',effect:{stat:'combatUse',use:'silence',rounds:2,bonus:0},tier:1},
+  {name:'Draught of the Boar',desc:'Combat use: Melee +2 for the rest of the fight.',lore:'Drunk by people who intend to go straight through. Melee counts 2 higher.',effect:{stat:'combatUse',use:'buff',melee:2,bonus:0},tier:2},
+  {name:'Draught of the Steady Draw',desc:'Combat use: Archery +2 for the rest of the fight.',lore:'It slows the heart until the shot chooses itself. Archery counts 2 higher.',effect:{stat:'combatUse',use:'buff',archery:2,bonus:0},tier:2},
+  {name:'Hunter\'s Tonic',desc:'Combat use: Archery +1 for the rest of the fight.',lore:'Bitter bark and cold water, drunk before the beaters go in. Archery counts 1 higher.',effect:{stat:'combatUse',use:'buff',archery:1,bonus:0},tier:1},
+  {name:'Oil of the Keen Eye',desc:'Combat use: +15% to hit for the rest of the fight.',lore:'A drop at each temple and the world stops shifting. +15% to hit.',effect:{stat:'combatUse',use:'focus',hitBonus:15,bonus:0},tier:2},
+  {name:'Chalk of the Duellist',desc:'Combat use: +7% to hit for the rest of the fight.',lore:'Rubbed into the palm before the first pass. +7% to hit.',effect:{stat:'combatUse',use:'focus',hitBonus:7,bonus:0},tier:1},
+  {name:'Charm of the Standing Stone',desc:'Combat use: a ward that soaks 6 damage.',lore:'A chip of a stone that has stood through worse. A ward that drinks the next 6 damage.',effect:{stat:'combatUse',use:'absorb',absorb:6,bonus:0},tier:1},
+  {name:'Scroll of the Thorned Ward',desc:'Combat use: a ward that soaks 10 damage and bites back for 3 on every hit.',lore:'The ward has spines on the inside. Soaks 10 damage and bites back for 3.',effect:{stat:'combatUse',use:'absorb',absorb:10,reflect:3,bonus:0},tier:2},
+  {name:'Scroll of the Glass Skin',desc:'Combat use: a ward that soaks 14 damage.',lore:'It looks like nothing and stops a great deal. A ward that drinks the next 14 damage.',effect:{stat:'combatUse',use:'absorb',absorb:14,bonus:0},tier:2},
+  {name:'Powder of Three Shadows',desc:'Combat use: three mirror images that each soak one blow.',lore:'Thrown over the shoulder; three of you walk on. Three images, one blow each.',effect:{stat:'combatUse',use:'mirror',images:3,below:0.7,bonus:0},tier:2},
+  {name:'Grey Cloak Draught',desc:'Combat use: the foe strikes at shadows — -20% to hit you.',lore:'You are still there; you are simply very hard to attend to. The foe is -20% to hit you.',effect:{stat:'combatUse',use:'invis',toHitReduce:20,bonus:0},tier:1},
+  {name:'Ash of the Hearth-Fire',desc:'Combat use: +30% to any flight attempt (thrown when badly hurt).',lore:'A grey cloud and a smell of home; nobody follows through it. +30% to break away.',effect:{stat:'combatUse',use:'flee',fleeBonus:30,below:0.35,bonus:0},tier:1},
+  {name:'Whistle of the Waiting Horse',desc:'Combat use: +50% to any flight attempt, and the foe -10% to hit (used when badly hurt).',lore:'Something loyal is closer than the foe realised. +50% to break away, and the foe -10% to hit.',effect:{stat:'combatUse',use:'flee',fleeBonus:50,toHitReduce:10,below:0.35,bonus:0},tier:2},
+  {name:'Draught of Clean Blood',desc:'Combat use: every poison, burn and blinding on you lifts at once.',lore:'It tastes of nothing at all, which is the point. Every lingering affliction lifts.',effect:{stat:'combatUse',use:'dispel',bonus:0},tier:1},
+  {name:'Silver-Tipped Bolt',desc:'Combat use: 13-19 damage against undead and fiends only.',lore:'Cast for one purpose and useless for any other. 13-19 damage to undead and fiends.',effect:{stat:'combatUse',use:'bane',dmg:[13,19],vs:['undead','fiend'],bonus:0},tier:2},
+  {name:'Wyrm-Salt Charge',desc:'Combat use: 12-17 damage against beasts and dragons only.',lore:'Salt from a bed a dragon once slept in; its kin cannot abide it. 12-17 damage to beasts and dragons.',effect:{stat:'combatUse',use:'bane',dmg:[12,17],vs:['beast','dragon'],bonus:0},tier:1},
 ];
 // ── Item 2 (this session): triple the tier-1 and tier-2 relics ──────────────────────────────────
 // Each tier-1 / tier-2 item now exists in THREE differently-named versions with IDENTICAL effects,
@@ -3444,6 +3618,7 @@ const _ITEM_NAME_ALTS={
   const extra=[];
   ALL_MAGIC_ITEMS_P.forEach(it=>{
     if(it.tier!==1&&it.tier!==2) return;
+    if(it.effect&&it.effect.stat==='combatUse') return; // 2026-09-11 (Toby): ONE version of each consumable — no clones (their alt names stay in _ITEM_ALT_BASE so items already in saves still resolve)
     (_ITEM_NAME_ALTS[it.name]||[]).forEach(nm=>{
       extra.push({...it, effect:{...it.effect}, name:nm}); // same effect/desc/tier, new name
     });
@@ -3490,8 +3665,9 @@ function rollMagicItem(monsterPower, taken){
 // kit joins the hoard. Legendary lairs are stocked first so the rarest tiers go to the toughest guardians; once
 // the treasury is exhausted a lair simply holds gold.
 const LAIR_ITEM_ODDS={Weak:{itemChance:1.0,bonusItem:0,thirdItem:0},Moderate:{itemChance:1.0,bonusItem:0.50,thirdItem:0},Powerful:{itemChance:1.0,bonusItem:1.0,thirdItem:0},Legendary:{itemChance:1.0,bonusItem:1.0,thirdItem:0.50}}; // 2026-09-10 (Toby): was 40/0, 80/15, 100/40, 100/100/50
-function ensureLairHoard(f, gs){
+function ensureLairHoard(f, gs, opts){
   if(!f||f.ritualSite) return;
+  const _noItems=!!(opts&&opts.noItems); // 2026-09-11: balanced stocking (ensureAllLairHoards) fills items itself
   f.hoardItems=Array.isArray(f.hoardItems)?f.hoardItems:[];
   if(Array.isArray(f.lairItems)&&f.lairItems.length){ f.hoardItems.push(...f.lairItems); f.lairItems=[]; }
   if(f._hoardV2) return;
@@ -3504,7 +3680,7 @@ function ensureLairHoard(f, gs){
   // Thief revision (Toby 2026-09-09): remember the hoard as it stood at generation — a thief's cut is
   // a share of the ORIGINAL pile, so each successive theft takes a like amount until it runs dry.
   if(f._hoardGoldOrig==null) f._hoardGoldOrig=gold;
-  if(f.cleared||!gs) return;
+  if(f.cleared||!gs||_noItems) return;
   if(!Array.isArray(gs._awardedItems)) gs._awardedItems=[];
   const taken=new Set(gs._awardedItems);
   const T=LAIR_ITEM_ODDS[power]||LAIR_ITEM_ODDS.Weak;
@@ -3513,9 +3689,135 @@ function ensureLairHoard(f, gs){
   if(Math.random()<T.bonusItem) roll();
   if(Math.random()<(T.thirdItem||0)) roll();
 }
+// The tier a lair of this power prefers for a hoard item (the same odds rollMagicItem uses).
+function lairItemTier(power){
+  const r=Math.random();
+  if(power==='Legendary') return r<0.5?3:2;
+  if(power==='Powerful') return r<0.15?3:2;
+  if(power==='Moderate') return r<0.25?2:1;
+  return 1;
+}
+// 2026-09-11 (Toby): BALANCED STOCKING. At world generation (and for any lair still unstocked in an older save):
+//   1. every LEGENDARY (tier-3) item is placed — toughest guardians first, one per lair, then a second round if
+//      there are more legendaries than lairs — whatever the map size;
+//   2. every other hoard slot is filled so the item CATEGORIES (weapon, armour, shield, helm, cloak, ring, amulet,
+//      consumable, unslotted trinket) come out in equal proportion: each slot goes to the category with the
+//      fewest items placed so far, preferring the tier the lair's power would have rolled.
+// Names stay unique game-wide (gs._awardedItems). Lairs created later in play (Discover Lost Ruin etc.) still
+// draw through rollMagicItem.
+const HOARD_CATEGORIES=['weapon','armour','shield','helm','cloak','ring','amulet','consumable','trinket'];
+function itemHoardCategory(it){ return itemSlot(it)||'trinket'; }
+// ── EVEN DISTRIBUTION PER PLAYER (2026-09-11, Toby: "so players won't keep finding the same type of
+// item all the time") ─────────────────────────────────────────────────────────────────────────────
+// Balancing the WORLD's hoards (84.5) does not by itself balance what any one realm finds: a player
+// works their own corner of the map, and a corner is a small sample. Two passes fix that.
+//
+//   1. REGIONAL STOCKING (below). Every lair is assigned to the nearest king's home province, and the
+//      category counter is kept PER REGION — so each realm's own neighbourhood holds an even spread of
+//      weapons, armour, shields, helms, cloaks, rings, amulets, consumables and trinkets, not just the
+//      world as a whole. A realm that never leaves home still sees one of everything.
+//   2. A CORRECTIVE DRAW (rollMagicItemFor). Items won in play — bonus finds, newly discovered ruins —
+//      are drawn from whichever category THAT player has found least of so far, so a run of, say, four
+//      rings is answered by the next find being something else. Per-player tallies live on the player
+//      record (`_itemsFoundByCat`) and are kept by noteItemFound().
+// A lair's contents are still fixed at generation and a scout report still tells the truth about them —
+// nothing is decided at the moment of opening the chest.
+function lairRegionOf(gs, prov){
+  const pls=(gs&&gs.players)||[];
+  if(!prov||!pls.length) return 0;
+  const provs=(gs.world&&gs.world.provinces)||[]; const cols=(gs.world&&gs.world.cols)||0;
+  let best=0, bestD=Infinity;
+  for(let i=0;i<pls.length;i++){
+    const hid=homeProvinceIdFor(gs,i); const hp=(hid!=null)?provs[hid]:null; if(!hp) continue;
+    const d=hexDistP(prov,hp,cols);
+    if(d<bestD){ bestD=d; best=i; }
+  }
+  return best;
+}
+// Remember what a realm has actually WON, by category — the tally the corrective draw reads.
+function noteItemFound(gs, playerIndex, it){
+  if(!gs||playerIndex==null||!it) return;
+  const pl=(gs.players||[])[playerIndex]; if(!pl) return;
+  if(!pl._itemsFoundByCat) pl._itemsFoundByCat={};
+  const cat=itemHoardCategory(it);
+  pl._itemsFoundByCat[cat]=(pl._itemsFoundByCat[cat]||0)+1;
+}
+// A lair-tier roll for a NAMED player: same tier odds as rollMagicItem, but among the categories this
+// realm has found least of. Falls back to the plain roll when no category has stock in the chosen tier.
+function rollMagicItemFor(gs, playerIndex, monsterPower, taken){
+  taken=taken||new Set();
+  const pl=(gs&&gs.players||[])[playerIndex];
+  if(!pl) return rollMagicItem(monsterPower, taken);
+  const found=pl._itemsFoundByCat||{};
+  const live=HOARD_CATEGORIES.filter(c=>ALL_MAGIC_ITEMS_P.some(it=>it.tier!==3&&!taken.has(it.name)&&itemHoardCategory(it)===c));
+  if(!live.length) return rollMagicItem(monsterPower, taken);
+  const low=Math.min(...live.map(c=>found[c]||0));
+  const cats=shuffleP(live.filter(c=>(found[c]||0)===low));
+  const cat=cats[0];
+  const inCat=ALL_MAGIC_ITEMS_P.filter(it=>it.tier!==3&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
+  const t=Math.min(2,lairItemTier(monsterPower));
+  const pref=inCat.filter(it=>(it.tier||1)===t);
+  const pool=pref.length?pref:inCat;
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:rollMagicItem(monsterPower, taken);
+}
 function ensureAllLairHoards(gs){
   const provs=(gs&&gs.world&&gs.world.provinces)||[];
-  ['Legendary','Powerful','Moderate','Weak'].forEach(pw=>provs.forEach(p=>(p.features||[]).forEach(f=>{ if(f&&!f.ritualSite&&((f.monster&&f.monster.power)||'Weak')===pw) ensureLairHoard(f,gs); })));
+  const powOf=f=>((f.monster&&f.monster.power)||'Weak');
+  const lairs=[];
+  ['Legendary','Powerful','Moderate','Weak'].forEach(pw=>{
+    const tier=[]; provs.forEach(p=>(p.features||[]).forEach(f=>{ if(f&&!f.ritualSite&&powOf(f)===pw) tier.push({f,prov:p}); }));
+    shuffleP(tier).forEach(x=>lairs.push(x)); // {f,prov} pairs — the province is NEVER stored on the feature (game_state is JSON-serialised, and that would be circular)
+  });
+  if(!lairs.length) return;
+  if(!Array.isArray(gs._awardedItems)) gs._awardedItems=[];
+  // Gold + migration for every lair; item SLOTS are rolled here but not filled (ensureLairHoard's own item rolls
+  // are bypassed by pre-marking _hoardV2 below).
+  const work=[];
+  lairs.forEach(({f,prov})=>{
+    const fresh=!f._hoardV2 && !f.cleared;
+    ensureLairHoard(f,gs,{noItems:true});
+    if(!fresh) return;
+    const T=LAIR_ITEM_ODDS[powOf(f)]||LAIR_ITEM_ODDS.Weak;
+    let slots=0; if(Math.random()<T.itemChance) slots++; if(Math.random()<T.bonusItem) slots++; if(Math.random()<(T.thirdItem||0)) slots++;
+    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov)});
+  });
+  if(!work.length) return;
+  const taken=new Set(gs._awardedItems);
+  const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
+  // 2026-09-11: counts are kept PER REGION (nearest home province), so each realm's own neighbourhood
+  // gets an even spread rather than only the world as a whole. `_all` keeps the world-level tally for
+  // the harness and for the fallback when a region is somehow empty.
+  const regCount={}, catCount={}; HOARD_CATEGORIES.forEach(c=>catCount[c]=0);
+  const countsFor=(r)=>regCount[r]||(regCount[r]=Object.fromEntries(HOARD_CATEGORIES.map(c=>[c,0])));
+  gs._awardedItems.forEach(n=>{ const it=byName.get(n); if(it) catCount[itemHoardCategory(it)]=(catCount[itemHoardCategory(it)]||0)+1; });
+  const give=(f,base,reg)=>{ taken.add(base.name); gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1;
+    f.hoardItems.push({...base,effect:{...base.effect},id});
+    const cat=itemHoardCategory(base); catCount[cat]=(catCount[cat]||0)+1;
+    if(reg!=null) countsFor(reg)[cat]=(countsFor(reg)[cat]||0)+1; };
+  // 1. Legendaries — all of them, whatever the map size.
+  let legs=shuffleP(ALL_MAGIC_ITEMS_P.filter(it=>it.tier===3&&!taken.has(it.name)));
+  for(const w of work){ if(!legs.length) break; if(w.slots>0){ give(w.f,legs.pop(),w.region); w.slots--; } }
+  let guard=0; while(legs.length&&guard++<50){ for(const w of work){ if(!legs.length) break; give(w.f,legs.pop(),w.region); } }
+  // 2. Everything else, category-balanced.
+  const untaken=cat=>ALL_MAGIC_ITEMS_P.filter(it=>it.tier!==3&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
+  for(const w of work){
+    const rc=countsFor(w.region);
+    while(w.slots>0){
+      const cats=HOARD_CATEGORIES.filter(c=>untaken(c).length>0);
+      if(!cats.length){ w.slots=0; break; }
+      // Lowest count IN THIS REGION first; the world tally breaks ties, so the map stays level too.
+      const low=Math.min(...cats.map(c=>rc[c]||0));
+      const tiedR=cats.filter(c=>(rc[c]||0)===low);
+      const lowW=Math.min(...tiedR.map(c=>catCount[c]||0));
+      const pool=shuffleP(tiedR.filter(c=>(catCount[c]||0)===lowW));
+      const cat=pool[0];
+      const t=Math.min(2,lairItemTier(w.power));
+      const inCat=untaken(cat);
+      const pref=inCat.filter(it=>(it.tier||1)===t);
+      const pick=(pref.length?pref:inCat)[Math.floor(Math.random()*(pref.length?pref.length:inCat.length))];
+      give(w.f,pick,w.region); w.slots--;
+    }
+  }
 }
 function itemNameList(items){ return (items||[]).map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+(d.desc?' ('+d.desc+')':'')).join(', '); }
 // Which race / alignment an item is bound to, if any; an item a character cannot use is inert in their hands.
@@ -3535,7 +3837,7 @@ function itemUsableBy(it, c){
 // characters of a Dwarven realm. Kept out of ALL_MAGIC_ITEMS_P so rollMagicItem never awards it and
 // every qualifying dwarf can hold their own copy. Effect stat 'mithrilArmour' reduces melee damage
 // dealt to the wearer by 2 (applied per-hit in pcMeleeDamage; non-stacking — one suit is enough).
-const MITHRIL_ARMOUR={name:'Mithril Armour',desc:'Melee and arrow attacks against the wearer deal 2 less damage',lore:'A suit of the dwarves\' own mithril, light as linen and harder than steel; granted to every dwarven character of a dwarven realm and never found in a lair. Every melee blow or arrow that lands on the wearer deals 2 less damage (never below 1).',effect:{stat:'mithrilArmour',bonus:2},tier:1};
+const MITHRIL_ARMOUR={name:'Mithril Armour',slot:'armour',desc:'Melee and arrow attacks against the wearer deal 2 less damage',lore:'A suit of the dwarves\' own mithril, light as linen and harder than steel; granted to every dwarven character of a dwarven realm and never found in a lair. Every melee blow or arrow that lands on the wearer deals 2 less damage (never below 1).',effect:{stat:'mithrilArmour',bonus:2},tier:1};
 // Item 6 (this session): duplicate items of the SAME type (same name) do NOT stack — a character may
 // hold several, but only ONE of each name has any effect. Every place that sums item effects runs the
 // item list through this first. (Different items that happen to share a stat still stack normally.)
@@ -3648,8 +3950,8 @@ function encounterUntargetableReason(c){
 // slot items give their effect. Everything without a slot is always active. `activeItems(c)` is the
 // single gate every effect read goes through; it normalises first (auto-equips an empty slot with the
 // first item held, trims any over-cap), so pre-existing saves and new pick-ups need no migration.
-const ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1}; // shield slot added 2026-09-10
-const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (body armour, gauntlets, gloves, boots)',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant'};
+const ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,consumable:2}; // shield slot added 2026-09-10 · consumable ×2 added 2026-09-11
+const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (body armour, gauntlets, gloves, boots)',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant',consumable:'Consumables (two — potions, scrolls, devices)'};
 const ITEM_SLOT_OF={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
@@ -3657,6 +3959,7 @@ const ITEM_SLOT_OF={
   "Traveller's Cloak":'cloak','Shadowcloak':'cloak','Veil of Illusions':'cloak','Cloak of Many Faces':'cloak',
   "Sage's Crown":'helm','Crown of Command':'helm','Imperial Regalia':'helm',
   'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
+  'Mithril Armour':'armour', // 2026-09-11 (Toby): the granted suit now occupies the armour slot
   "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
 };
 // Item 2 (2026-09-07): the two alternate-named clones of every tier-1/2 item share the base item's
@@ -3664,8 +3967,92 @@ const ITEM_SLOT_OF={
 const _ITEM_ALT_BASE={}; Object.entries(_ITEM_NAME_ALTS).forEach(([base,alts])=>alts.forEach(a=>{_ITEM_ALT_BASE[a]=base;}));
 const _SHIELD_BASES=new Set(['Tower Shield of the Wall','Anvil-Brand Shield','Shield of the Innocent','Kite Shield of the Marches','Bronze Buckler','Oaken Roundshield','Mirror-Bright Shield','Shield of the Ward-Saints','Dragonbone Shield']);
 function itemSlot(it){ if(!it) return null;
+  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // 2026-09-11: every potion / scroll / device takes a Consumable slot (two per character)
+  if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // 2026-09-11: Mithril is worn in the armour slot
   if(_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name]||it.name)) return 'shield'; // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]]||null; }
+
+// ── SLOT BALANCE (2026-09-11, Toby) ────────────────────────────────────────────────────────────
+// Every worn slot must offer the SAME number of items, and the treasury must be deep enough to fill
+// the biggest map (19×12 → ~570 lairs, ~745 hoard slots) without a category running dry — otherwise
+// the balanced stocker in ensureAllLairHoards has to skip exhausted categories and the mix tilts.
+// The curated designs above are the seed; this pass mints further named versions of them (the same
+// mechanism as _tripleLowerTierItems) until every slot holds exactly ITEM_BALANCE_TARGET items.
+// Names are drawn from a per-slot bank of adjectives and nouns, cycling epithets if a bank runs out,
+// and are checked against every name already in the table, so no two items ever share a name.
+// Only UNBOUND tier-1/2 items are used as seeds, so a minted item is always usable by anyone.
+const ITEM_BALANCE_TARGET=90;
+const BALANCED_SLOTS=['weapon','armour','shield','helm','cloak','ring','amulet'];
+const _VARIANT_BANK={
+  // A weapon's NOUN must suit what the weapon does — a sabre cannot grant Archery, and a bow cannot
+  // grant Melee — so the weapon bank is split by kind and chosen from the seed's own effect.
+  weapon:{adj:['Keen','Iron','Silvered','Runed','Ashen','Grim','Gilded','Hollow','Bright','Old','Bloodied','Sworn','Black','Storm-Touched','Weathered','Pitted','Chased','Long'],
+          noun:['Blade','Sabre','Warhammer','Glaive','Spear','Axe','Mace','Falchion','Poleaxe','Dagger','Warpick','Halberd','Scimitar','Cudgel','Longknife','Broadsword','Warblade','Bill'],
+          bow:['Bow','Longbow','Recurve','Warbow','Hunting Bow','Crossbow','Shortbow','Greatbow','Arbalest','Horn Bow','Latchbow','Flatbow','Stavebow','Sling','Yew Bow','Hornbow','Draw-Bow','Quickbow'],
+          focus:['Staff','Rod','Wand','Sceptre','Cane','Crook','Stave','Branch','Baton','Focus','Talisman-Staff','Rune-Rod','Sigil-Wand','Walking Staff','Wizard\'s Rod','Quarterstaff','Sprig','Ferule']},
+  armour:{adj:['Riveted','Scarred','Quilted','Blackened','Burnished','Weathered','Studded','Lacquered','Grey','Heavy','Close','Banded','Scaled','Plated','Worn','Oiled','Rust-Flecked','Deep'],
+          noun:['Hauberk','Cuirass','Brigandine','Harness','Mail','Plate','Jerkin','Corselet','Byrnie','Coat','Lamellar','Scale','Vest','Curass','Panoply','Shirt','Jack','Carapace']},
+  shield:{adj:['Banded','Oaken','Bronze','Dented','Painted','Tall','Round','Studded','Riveted','Bossed','Grey','Iron-Rimmed','Split','Hide','Broad','Narrow','Faded','Braced'],
+          noun:['Shield','Pavise','Targe','Buckler','Roundshield','Heater','Kite','Warboard','Aegis','Guard','Boss','Wall','Screen','Ward','Barrier','Cover','Plank','Rondache']},
+  helm:{adj:['Crested','Visored','Plain','Winged','Gilded','Horned','Barred','Close','Open','Tall','Scarred','Silvered','Dark','Bright','Beaten','Chased','Grey','Riveted'],
+        noun:['Helm','Sallet','Bascinet','Cap','Coif','Circlet','Crown','Diadem','Kettle-Hat','Barbute','Casque','Headpiece','Coronet','Skullcap','Warhelm','Greathelm','Band','Chaplet']},
+  cloak:{adj:['Travelworn','Grey','Hooded','Long','Waxed','Furred','Ragged','Deep','Quiet','Storm-Grey','Dusty','Plain','Heavy','Pale','Night','Green','Ashen','Threadbare'],
+         noun:['Cloak','Mantle','Cape','Shroud','Wrap','Greatcloak','Half-Cloak','Robe','Veil','Overcoat','Surcoat','Pelisse','Mantlet','Travelling Cloak','Riding Cloak','Shoulder-Cloak','Hood','Drape']},
+  ring:{adj:['Plain','Twisted','Silver','Copper','Bone','Jade','Iron','Braided','Etched','Worn','Heavy','Slim','Dark','Bright','Knotted','Banded','Set','Old'],
+        noun:['Ring','Band','Signet','Circle','Hoop','Loop','Seal','Token','Coil','Thumb-Ring','Finger-Ring','Keepsake','Bezel','Round','Knot','Cirque','Wedding-Band','Ringlet']},
+  amulet:{adj:['Carved','Hanging','Bright','Dull','Stone','Silver','Bronze','Knotted','Hollow','Small','Heavy','Corded','Sealed','Old','Plain','Twinned','Etched','Whole'],
+          noun:['Amulet','Talisman','Pendant','Charm','Locket','Fetish','Medallion','Phylactery','Torc','Necklace','Gorget','Bead','Sigil','Reliquary','Token','Chain','Icon','Keepsake']},
+};
+const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour','of the Old Road','of the Broken Field','of the Quiet Watch','of the Last Winter','of the Wandering Host','of Thornfall','of the Cold Ford','of the Iron Year','of the Second Vigil'];
+(function _balanceSlotItems(){
+  const taken=new Set(ALL_MAGIC_ITEMS_P.map(it=>it.name));
+  BALANCED_SLOTS.forEach(sl=>{
+    const inSlot=ALL_MAGIC_ITEMS_P.filter(it=>it&&it.tier!==3&&itemSlot(it)===sl);
+    const seeds=inSlot.filter(it=>!it.race&&!it.alignment);
+    if(!seeds.length) return;
+    const bank=_VARIANT_BANK[sl]||{adj:['Old'],noun:[sl]};
+    // Which nouns suit THIS seed: a bow for an Archery item, a staff/rod/wand for a spellcasting one,
+    // a blade or haft for everything else. Outside the weapon slot the nouns are interchangeable.
+    const nounsFor=(seed)=>{
+      if(sl!=='weapon') return bank.noun;
+      const st=(seed.effect||{}).stat;
+      if(st==='archery') return bank.bow;
+      // Magic schools AND command relics (an army-wide bonus) take a staff, rod or sceptre; blades and
+      // hafts are for the items that sharpen the bearer's own arm.
+      if(['white','psychic','illusory','elemental','necromancy','druid','undeadBonus','armyBonus','taxBonus','tactical','naval','sage'].includes(st)) return bank.focus;
+      return bank.noun;
+    };
+    const namesFor=(seed)=>{
+      const nouns=nounsFor(seed), out=[];
+      bank.adj.forEach(a=>nouns.forEach(n=>out.push(`${a} ${n}`)));
+      _VARIANT_EPITHETS.forEach(e=>nouns.forEach(n=>out.push(`${n} ${e}`)));
+      return out;
+    };
+    let si=0, made=inSlot.length, guard=0;
+    const cursor={};
+    while(made<ITEM_BALANCE_TARGET && guard++<4000){
+      const seed=seeds[si++%seeds.length];
+      const list=namesFor(seed);
+      let k=cursor[seed.name]||0, nm=null;
+      while(k<list.length){ const cand=list[k++]; if(!taken.has(cand)){ nm=cand; break; } }
+      cursor[seed.name]=k;
+      if(!nm) continue;
+      taken.add(nm);
+      ALL_MAGIC_ITEMS_P.push({...seed, effect:{...seed.effect}, name:nm, slot:sl, _variantOf:seed.name}); // _variantOf: a named version of a curated design, identical in every effect
+      made++;
+    }
+  });
+})();
+
+// ITEMS_BY_TIER and ITEM_LORE_BY_NAME were built above, before the minting pass — top them up so the
+// new names are rollable and carry their seed's lore. (ITEMS_BY_TIER must stay declared after
+// ALL_MAGIC_ITEMS_P; we only push into it here, never redeclare — see the load-order gotcha.)
+ALL_MAGIC_ITEMS_P.forEach(it=>{
+  const pool=ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1];
+  if(!pool.includes(it)) pool.push(it);
+  if(it.lore&&!ITEM_LORE_BY_NAME[it.name]) ITEM_LORE_BY_NAME[it.name]=it.lore;
+});
+
 function normaliseEquipment(c){
   if(!c||!Array.isArray(c.items)) return;
   const count={};
@@ -7832,7 +8219,7 @@ const SPELL_DEFS_P={
     desc:'Action: the target loses 2 skill levels, each drawn from a random owned skill (the two picks may be the same skill). Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
     fn:'psychic_blast'},
   'Telekinetic Storm':{school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Action: a number of the target\'s units equal to your skill level are struck — Green units are destroyed outright, and every other struck unit PERMANENTLY drops one experience level (skeletal units are unaffected). Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
+    desc:'Action: a number of the target\'s units equal to your skill level are struck — Green units are destroyed outright, and every other struck unit PERMANENTLY drops one experience level; a skeletal unit struck by it shatters outright. Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
     fn:'psychic_storm'},
 
   // ══ ILLUSORY MAGIC ══
@@ -10239,7 +10626,7 @@ const BATTLE_ARMY_SPELLS={
     // with the length of the fight instead of being a one-off buffer. rageHp is retained in the
     // table (null for every temper) so any save data or future temper can still use it.
     const rg=temperOf(effTemper(ch)).rageHp; const rageHp=rg?rng(rg[0],rg[1]):0;
-    return {
+    const cbt={
       kind:'character', ref:ch, name:ch.name, player:ch.player,
       // 2026-09-09: the unkillable wanderer never enters a fight at 0 HP (a stale 0 from a past escape would end it before round 1).
       hp:((ch.hp!=null?ch.hp:maxHp)<=0&&_escapesTheEnd(ch)?Math.max(1,Math.round(maxHp/2)):(ch.hp!=null?ch.hp:maxHp))+rageHp, maxHp:maxHp+rageHp,
@@ -10276,6 +10663,8 @@ const BATTLE_ARMY_SPELLS={
       perkTrueshot:perkTier(ch,'archery')>=3,     // ARCHERY L8 — Trueshot
       perkElemArmour:perkTier(ch,'elemental')>=1, // ELEMENTAL L6 — Elemental Armour
     };
+    pcApplyItemFx(cbt, activeItems(ch)); // 2026-09-11: weapons / helms / cloaks / rings / amulets with combat riders
+    return cbt;
   }
   // A monster's default action plan. Monsters get Fire actions only if they actually have a
   // ranged attack (archery > 0, or an explicit `ranged` flag), and each of their special
@@ -10300,15 +10689,25 @@ const BATTLE_ARMY_SPELLS={
   // A guardian's PASSIVE (2026-09-10, item 7): `m.passive` = {name, fx, desc}. Ward-style fx (meleeDR, arrowDR,
   // dodge, regen, thorns, spellPct, cap, lowHp, secondWind, stunImmune, dotImmune) fold into the combatant's `arm`
   // table exactly like worn armour; aura / burn / drain / hitBonus / dmgBonus are read by the engine directly.
-  function pcApplyMonsterPassive(cbt, m){
-    const p=m&&m.passive; if(!p||!p.fx) return;
-    const fx=p.fx; cbt.passiveName=p.name; cbt.passiveDesc=p.desc||'';
-    if(fx.ward) cbt.arm=pcArmourMerge(cbt.arm,fx,p.name);
-    if(fx.aura>0) cbt.aura=fx.aura;               // foe −N% to hit for the whole fight (status.auraPenalty)
-    if(fx.burn>0) cbt.burn=fx.burn;               // foe at melee range takes N each round
-    if(fx.drain>0) cbt.drain=fx.drain;            // heals this fraction of melee damage dealt
+  // 2026-09-11: ONE applier for every fx table — guardian passives AND the new items' `effect.pc` riders.
+  // Stacking: wards merge, aura/drain take the best, burn/hitBonus/dmgBonus add.
+  function pcApplyFx(cbt, fx, name){
+    if(!cbt||!fx) return;
+    if(fx.ward) cbt.arm=pcArmourMerge(cbt.arm,fx,name);
+    if(fx.aura>0) cbt.aura=Math.max(cbt.aura||0,fx.aura);      // foe −N% to hit for the whole fight (status.auraPenalty)
+    if(fx.burn>0) cbt.burn=(cbt.burn||0)+fx.burn;              // foe at melee range takes N each round
+    if(fx.drain>0) cbt.drain=Math.max(cbt.drain||0,fx.drain);  // heals this fraction of melee damage dealt
     if(fx.hitBonus>0) cbt.status.hitBonus=(cbt.status.hitBonus||0)+fx.hitBonus;
     if(fx.dmgBonus>0) cbt.dmgBonus=(cbt.dmgBonus||0)+fx.dmgBonus;
+  }
+  function pcApplyMonsterPassive(cbt, m){
+    const p=m&&m.passive; if(!p||!p.fx) return;
+    cbt.passiveName=p.name; cbt.passiveDesc=p.desc||'';
+    pcApplyFx(cbt,p.fx,p.name);
+  }
+  // Items a CHARACTER wears that carry a personal-combat rider (`effect.pc`) — one copy of each name counts.
+  function pcApplyItemFx(cbt, items){
+    (dedupeItemsByName(items||[])).forEach(it=>{ if(it&&it.effect&&it.effect.pc) pcApplyFx(cbt,it.effect.pc,it.name); });
   }
   function pcMonsterCombatant(m){
     // 2026-09-10 (Toby, item 3): a guardian enters EVERY fight at full health — it heals completely at the end of
@@ -11379,7 +11778,7 @@ const BATTLE_ARMY_SPELLS={
   // Item 5: which magic items a combatant brings to bear — announced at the start of a battle or duel
   // so every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls out
   // each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
-  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','armour','maxHp','white','black','pagan','psychic','elemental','necromancy','spellcasting']);
+  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','armour','maxHp','white','black','pagan','psychic','elemental','illusory','necromancy','spellcasting','pc','combatUse']); // 2026-09-11: + illusory, pc riders, consumables
   function magicItemsLine(ch){
     const its=activeItems(ch).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
     if(!its.length) return null;
@@ -12306,6 +12705,7 @@ const BATTLE_ARMY_SPELLS={
           else if(e.stat==='maxHp'&&mon.hp>=mon.maxHp){ mon.maxHp+=e.bonus; mon.hp+=e.bonus; mon._hpItemBonus+=e.bonus; }
           else if(e.stat==='combatUse') mon.combatItems.push(it);
           else if(e.stat==='armour') mon.arm=pcArmourMerge(mon.arm,e,it.name); // 2026-09-10: a guardian in the hoard's armour
+          if(e.pc) pcApplyFx(mon,e.pc,it.name); // 2026-09-11: a guardian wearing a new rider item feels it too
           if((_ITEM_ALT_BASE[it.name]||it.name)==='Warbringer Gauntlets') mon.gauntlets=true;
         });
         narrative.push(`The ${m.name} has turned the hoard's magic to its own use — it bears ${_wield.map(x=>x.name).join(', ')}.`);
@@ -13790,14 +14190,15 @@ const BATTLE_ARMY_SPELLS={
           const drops=[];
           if(!Array.isArray(G._awardedItems)) G._awardedItems=[];
           const _taken=new Set(G._awardedItems);
-          const rollItem=()=>{const base=rollMagicItem(tier,_taken);if(!base) return null;_taken.add(base.name);G._awardedItems.push(base.name);const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;return {...base,id:itemId};};
+          // 2026-09-11: bonus finds are drawn from the category this realm has found LEAST of.
+          const rollItem=()=>{const base=rollMagicItemFor(G,c.player,tier,_taken);if(!base) return null;_taken.add(base.name);G._awardedItems.push(base.name);const itemId=(G.nextItemId||0);G.nextItemId=(G.nextItemId||0)+1;return {...base,id:itemId};};
           (f.hoardItems||[]).forEach(it=>drops.push(it)); f.hoardItems=[];
           const baseDrops=drops.slice(); // the hoard's own magic, narrated below; bonus finds announce themselves.
           // sd25 Alchemical Theory: 10% chance of an extra find.
           { const _dIC=discSum(c.player,'itemChance','pct'); if(_dIC>0&&Math.random()<_dIC){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Your realm's lore yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } } } // Item 5: itemChance discoveries
           if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
           c.items=(c.items||[]);
-          drops.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ });
+          drops.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ noteItemFound(G,c.player,it); }); // 2026-09-11: tally what this realm has found, by category
           // Narrate the magic actually won here. Previously the tier-roll drops were pushed to the hero
           // SILENTLY: the report then fell through to the "no magic this time" line even though the hero
           // walked away with an item — the bug Toby saw (gold reported, no item reported, item in pack).
@@ -14238,6 +14639,26 @@ const BATTLE_ARMY_SPELLS={
         { const _knownPre=new Set((player.discoveries||[]).map(d=>d.id));
           if(_rcat&&_rcat.toLowerCase()!=='any'&&!discAvailableFor(c.player,_knownPre).some(_catFilter)){
             log('system',`${c.name}: every ${_rcat} discovery has already been made by your realm — choose another field of study.`,{actor:c.player,targets:[c.player]});break; } }
+        // 2026-09-11 (Toby): the HIDDEN-FIELD roll is made FIRST and, when it lands, it is the discovery
+        // this research yields — an unlooked-for find INSTEAD of the ordinary one, never as well as it.
+        // Half the discovery chance, as before.
+        let _sideFound=false;
+        { const _sRoll=d100(); const _sChance=Math.max(1,Math.floor(discoveryChance/2));
+          if(_sRoll<=_sChance){
+            if(!player.discoveries) player.discoveries=[];
+            const _known2=new Set(player.discoveries.map(d=>d.id));
+            const _side=discAvailableFor(c.player,_known2).filter(d=>RESEARCH_HIDDEN_CATS.has(d.category));
+            if(_side.length>0){
+              const disc=_side[Math.floor(Math.random()*_side.length)];
+              player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
+              if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; }
+              if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } }
+              log('explore',`💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light — and the ordinary course of study is set aside for it. ${disc.desc}`,{actor:c.player,targets:[c.player]});
+              trySkillGain(c,'sage',SKILLGAIN_STD);
+              _sideFound=true;
+            }
+          } }
+        if(_sideFound) break; // one discovery per Research order
         const dRoll=d100();
         log('system',`📊 Research${_rcat&&_rcat.toLowerCase()!=='any'?` (${_rcat})`:''} — Sage discovery roll: ${discoveryChance}% chance (Sage level ${sageLevel}${neutralSageBonus>0?', Neutral ×2':''}) — roll ${dRoll} — ${dRoll<=discoveryChance?'✓ Success!':'✗ No discovery this turn.'}`,{actor:c.player,targets:[c.player]});
         if(dRoll<=discoveryChance){
@@ -14257,22 +14678,6 @@ const BATTLE_ARMY_SPELLS={
         } else {
           log('system',`${c.name} researches hard but makes no new discovery this turn.`,{actor:c.player,targets:[c.player]});
         }
-        // Item 11 (2026-09-10): the hidden fields — an independent side roll at HALF the discovery
-        // chance whenever any research is done. Reported as an unexpected find; the field is never named
-        // as a choice anywhere the player can see.
-        { const _sRoll=d100(); const _sChance=Math.max(1,Math.floor(discoveryChance/2));
-          if(_sRoll<=_sChance){
-            if(!player.discoveries) player.discoveries=[];
-            const _known2=new Set(player.discoveries.map(d=>d.id));
-            const _side=discAvailableFor(c.player,_known2).filter(d=>RESEARCH_HIDDEN_CATS.has(d.category));
-            if(_side.length>0){
-              const disc=_side[Math.floor(Math.random()*_side.length)];
-              player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
-              if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; }
-              log('explore',`💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light. ${disc.desc}`,{actor:c.player,targets:[c.player]});
-              trySkillGain(c,'sage',SKILLGAIN_STD);
-            }
-          } }
         break;
       }
       case 'practice':{
@@ -15252,19 +15657,19 @@ const BATTLE_ARMY_SPELLS={
           if(armies.length===0){log('combat',`✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const n=Math.min(spellLevelEff, armies.length);
           const picks=shuffleP(armies).slice(0,n);
-          let demoted=0, destroyed=0, unmoved=0; const _lines=[];
+          let demoted=0, destroyed=0; const _lines=[];
           // 2026-09-11 (Toby, item 9): the loss is PERMANENT — every struck unit drops one experience level for
           // good (Elite→Crack→Veteran→Average→Green), and a Green unit disbands outright, exactly as a battle
           // demotion does (demoteOrDisband). Skeletal units never change quality by any means, so the storm
           // rattles their bones and leaves them as they were. (Was: a strength penalty for the rest of the turn.)
           picks.forEach(a=>{
-            if(a._isSkeletal){ unmoved++; _lines.push(`${a.unitName||a.type} rattle but hold — bone does not lose heart`); return; }
+            if(a._isSkeletal){ a._disbanded=true; destroyed++; _lines.push(`${a.unitName||a.type} shattered to dust — the storm scatters every bone`); return; } // Toby 2026-09-11: skeletons shatter outright
             const _q0=a.quality;
             if(demoteOrDisband(a)){ destroyed++; _lines.push(`${a.unitName||a.type} (${_q0}) torn apart and scattered for good`); return; }
             demoted++; _lines.push(`${a.unitName||a.type} ${_q0}→${a.quality}`);
           });
           targetChar.armies=armies.filter(a=>!a._disbanded);
-          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} caught: ${destroyed} shattered outright, ${demoted} permanently reduced one experience level${unmoved?`, ${unmoved} skeletal unaffected`:''}. (${_lines.join('; ')})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          log('combat',`✨ ${c.name}'s Telekinetic Storm hurls ${targetChar.name}'s troops about — ${n} unit${n!==1?'s':''} caught: ${destroyed} shattered outright, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
           notifyTarget(targetChar,`🌀 ${c.name}'s Telekinetic Storm scatters ${targetChar.name}'s formations — ${destroyed} destroyed, ${demoted} permanently reduced one experience level. (${_lines.join('; ')})`,ph,'combat');
         }
 
@@ -19183,6 +19588,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-1334</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-1458</div>
 </body>
 </html>

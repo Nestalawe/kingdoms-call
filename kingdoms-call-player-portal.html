@@ -557,9 +557,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 // ── EQUIPMENT SLOTS (Item 11, Sept 2026) — mirror of the GM engine's tables ──
-const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1}; // shield slot added 2026-09-10 (mirror)
-const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman'};
-const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet'];
+const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,consumable:2}; // shield slot added 2026-09-10 (mirror) · consumable ×2 added 2026-09-11
+const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman',consumable:'Consumables (up to two)'};
+const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet','consumable'];
 const ITEM_SLOT_OF_P={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
@@ -570,7 +570,10 @@ const ITEM_SLOT_OF_P={
   'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
   "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
 };
-function itemSlotP(it){ if(!it) return null; if(ITEM_SLOT_OF_P[it.name]==='shield') return 'shield'; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
+function itemSlotP(it){ if(!it) return null;
+  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // 2026-09-11: potions / scrolls / devices take a Consumable slot (two per character) — mirrors GM itemSlot
+  if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // 2026-09-11: Mithril is worn in the armour slot
+  if(ITEM_SLOT_OF_P[it.name]==='shield') return 'shield'; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded.
 // Item 4 (2026-09-07): race/alignment-bound items are inert in the wrong hands.
 const _ITEM_RACE_ALIAS_P={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
@@ -5696,7 +5699,7 @@ function buildTargetField(c, ph, saved){
       // this phase; target = comma-separated chosen item names. Unlisted slot items are unequipped;
       // a slot left on '— none —' is auto-filled by the engine with the first item held for it.
       const held=predictedItems(c.id,ph).filter(it=>it&&itemSlotP(it)&&itemUsableByP(it,c)); // Item 4: bound items you can't use aren't offered
-      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, cloak, helm, ring or amulet items)" disabled>`;
+      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or consumable items)" disabled>`;
       const chosen=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
       const rows=ITEM_SLOT_ORDER_P.map(sl=>{
         const opts=held.filter(it=>itemSlotP(it)===sl); if(opts.length===0) return '';
@@ -5782,7 +5785,14 @@ function buildTargetField(c, ph, saved){
       const spyOpts=((report.worldMeta?.provinces)||[]).filter(p=>p.name&&p.terrain).map(p=>
         `<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Buy word from ${p.name} (2g — full Spy result)</option>`).join('');
       if(!hireOpts&&!spyOpts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
-      return`<select id="po-target-${c.id}-${ph}">${hireOpts}${spyOpts}</select>
+      // 2026-09-11 (Toby) — BROKER BUG. The select had no placeholder and no onchange, so (a) the browser
+      // silently pre-selected the FIRST hire option the moment Broker was chosen, which popped that hero's
+      // future-orders card unasked, and (b) changing the choice — to another hero, or to a Spy purchase —
+      // never told syncHiredHeroCard, so the stale card sat there for the rest of the session. Both fixed
+      // the way Hire Hero already does it: an explicit "choose" placeholder, and the card re-synced on change.
+      const _bHasPick=(typeof target==='string'&&(target.startsWith('hire:')||target.startsWith('spy:')));
+      const _bPh=`<option value="" ${_bHasPick?'':'selected'}>— choose what the brokers are to buy —</option>`;
+      return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_bPh}${hireOpts}${spyOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the realm can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the realm has seen — 2g.</div>`;}
     // ── DRUIDIC: AWAKEN THE WILD ──
     case 'Awaken the Wild':{
@@ -5953,7 +5963,7 @@ function buildTargetField(c, ph, saved){
       const catOpts=`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
         <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).</div>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`+orderChanceNote(c,'Research',ph);}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>`+orderChanceNote(c,'Research',ph);}
 
     // ── RECRUIT ARMIES ──
     case 'Recruit Armies':{
@@ -7069,6 +7079,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-1334</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-1458</div>
 </body>
 </html>
