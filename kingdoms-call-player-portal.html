@@ -400,6 +400,8 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8a2020" stroke="#fff" stroke-width="1"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4.2,11 Q8,7.5 11.8,11" fill="#fff"/></svg> Enemy hero</span>
           <span style="display:flex;align-items:center;gap:5px">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><path d="M8,8 L8,1 A7,7 0 0,1 14.06,11.5 Z" fill="#8a2020"/><path d="M8,8 L14.06,11.5 A7,7 0 0,1 1.94,11.5 Z" fill="#1a3a6a"/><path d="M8,8 L1.94,11.5 A7,7 0 0,1 8,1 Z" fill="#27ae60"/><circle cx="8" cy="8" r="7" fill="none" stroke="#fff" stroke-width="1"/><text x="8" y="11" text-anchor="middle" font-size="8" fill="#fff">3</text></svg> Heroes of several realms (one wedge per realm)</span>
+          <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#888" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" fill="#fff">?</text></svg> Wandering hero</span>
           <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8f6a38" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
@@ -1328,7 +1330,7 @@ const SKILL_INFO={
   archery:'Missile combat. In battle it adds +10% strength per level to your bow/crossbow units (Yeoman Longbows, Elven Bowmen, Ironwood Crossbows, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
-  naval:'Seamanship. Boosts the strength of your fleets and sea creatures in naval battles (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
+  naval:'Seamanship. Boosts the strength of your fleets and sea creatures in every battle, on land or at sea (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
   sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — via the Steal order (a hero\'s pack, their strongbox, or a garrison paymaster), by pickpocketing during encounters, and when lifting a lair\'s hoard (10% of the original hoard per level, capped at 5).',
@@ -2778,7 +2780,34 @@ function renderMinorTitles(t){
     ${mineHtml}
   </div>`;
 }
-function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(currentReport); }
+function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(currentReport); renderReckoningOrders(); }
+// 2026-09-11 (Toby): the Call the Reckoning control ALSO lives in Orders → 🏰 Realm, beside Concede —
+// and when it cannot be called the section still says where the button will be and what is missing
+// (titles not yet public / king dead / share short / already called), so a player never hunts for it.
+function renderReckoningOrders(){
+  const w=document.getElementById('reckoning-wrap'); if(!w) return;
+  const t=(currentReport&&currentReport.titles)||{};
+  const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
+  if(t.gameOver){ w.innerHTML=`<div style="color:#777">The game is over — there is nothing left to call.</div>`; return; }
+  if(t.reckoning){
+    w.innerHTML=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:6px 8px">👑 <strong>The Reckoning has already been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of Turn ${t.reckoning.resolveAtTurn} unless the claim is broken.</div>`;
+    return;
+  }
+  if(t.canCallReckoning){
+    w.innerHTML = reckoningCall
+      ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px;font-size:.78rem">👑 <strong>You will Call the Reckoning with these orders.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button type="button" onclick="setReckoningCall(false)" style="margin-left:6px;font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`
+      : `<div><button type="button" onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:6px 12px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
+          <div style="color:#777;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
+    return;
+  }
+  // Not available — say why, and where the button will appear.
+  let why;
+  if(t.public===false) why=`The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5} — the Reckoning cannot be called before then.`;
+  else if(t.kingAlive===false) why=`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
+  else if(pct<thr) why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#777">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.`;
+  else why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
+  w.innerHTML=`<div style="color:#555;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
+}
 
 // Item 12 (Sept 2026): the spell-target (secondary) field builder, extracted from the Cast Spell form so
 // the Use Item form can offer the same province / character targeting for spell items.
@@ -2917,7 +2946,7 @@ function castChanceNote(c, spellName, opts){
   if(lvl<=0) return `<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${SKILL_LABELS[school]||school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
   if(school==='necromancy'&&c&&c.necroAutoReady)
     return `<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>100%</strong> — your Wailing Phylactery makes this turn's first Necromancy spell certain.</div>`;
-  const chance=rec?rec.chance:Math.min(95,20+lvl*10);
+  const chance=rec?rec.chance:Math.min(95,30+lvl*10); // 2026-09-11: base 30 everywhere
   // Name what lifted it above the base, so the number is explainable.
   const bits=[`${SKILL_LABELS[school]||school} ${lvl}`];
   if(rec&&rec.arcane) bits.push(`+${rec.arcane}% Arcane Codex`);
@@ -3027,7 +3056,7 @@ const SPELL_HINTS={
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
-  'Telekinetic Storm':'Target: an enemy hero leading armies in your province. Up to your-level units each have a 50% chance to fight one level lower in their next battle this turn (temporary). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
+  'Telekinetic Storm':'Target: an enemy hero leading armies in your province. A number of their units equal to your skill level are struck: Green units are destroyed and every other struck unit PERMANENTLY drops one experience level (skeletal units unaffected). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
   'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Whatever armies they lead in their next battle this turn fight +10% per caster level (works even if they pick up armies in a later phase). Not cumulative.',
   'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides ALL lairs you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
@@ -3039,7 +3068,7 @@ const SPELL_HINTS={
   'Elemental Summon':'Summons a random elemental (Air/Fire/Earth/Water/Darkness, Veteran) to fight under you for the rest of the turn, then it dissolves. One per turn.',
   'Control Undead':'Target: an enemy/neutral hero here to seize one random undead unit \u2014 OR cast on THIS province to reveal the dead army units lying here. Combat: an undead foe is frozen for your-level rounds. Battle: one enemy undead unit defects.',
   'Skeletal Armies':'Raises one random battlefield-grave unit in your province as a Skeletal (Undead) unit under your command (1g upkeep). Needs fallen armies present.',
-  'Curse':'Target: an enemy/neutral hero here. Their highest skill is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
+  'Curse':'Target: an enemy/neutral hero here. EVERY skill they have is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
   'Hand of Death':'Combat: 10% per Necromancy level to deal damage equal to 50% of the target\u2019s max HP.',
   'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
@@ -3081,7 +3110,11 @@ function armyLabel(a, opts={}){
   // army carries no race field — e.g. awakened/recruited beasts), and no separate [C]/[M] tag is used.
   const primalWord=CREATURE_ARMIES_UI.has(a.type)?'Creature':MONSTER_ARMIES_UI.has(a.type)?'Monster':null;
   const race=a.race?formatRace(a.race,a.type):null;
-  const lead=primalWord||race; // humanoid keeps its race name; primal shows Creature/Monster
+  // 2026-09-11 (Toby): a unit with a HUMANOID race leads with that race — "Orcish (Monster), Wyvern
+  // Riders" — so an Orc garrison of wyverns is not mistaken for a primal band. Only raceless / primal
+  // units lead with the bare Creature / Monster word.
+  const _humanoidRace=!!(a.race&&HUMANOID_RACES_UI.has(a.race));
+  const lead=_humanoidRace?(primalWord?`${race} (${primalWord})`:race):(primalWord||race);
   const str=unitBaseStrengthP(a);
   const detail=[lead,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
   // Item 2 (2026-09-10): beasts bound by the Rite of the Wild Hunt are flagged wherever an army line
@@ -3264,17 +3297,18 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
       if(_m) _m.innerHTML=`<div class="msg-info">Your saved draft was written for Turn ${_staleTurn} and has been set aside — the GM has resolved that turn since. These orders start fresh.</div>`;
     } }
   const savedOrders=rawSaved.orders||rawSaved; // unwrap {orders:{...}, encounterPlans:{...}}
+  _draftOrdersSnapshot=savedOrders||{}; // 2026-09-11: lets target defaults see companions' saved orders on first paint
   const savedEncounterPlans=rawSaved.encounterPlans||{};
   // Restore any diplomacy declarations saved in this turn's draft so they survive a re-render.
   if(rawSaved.diplomacy && typeof rawSaved.diplomacy==='object') diploChoices={...rawSaved.diplomacy};
   if(rawSaved.callReckoning===true) reckoningCall=true;
-  concedeGame=(rawSaved.concede===true); setTimeout(renderConcede,0);
+  concedeGame=(rawSaved.concede===true); setTimeout(renderConcede,0); setTimeout(renderReckoningOrders,0); // 2026-09-11: the Reckoning control lives here too
 
   // Item 9 (2026-09-07): realm-level controls FIRST — dispatches to other realms, the diplomacy
   // declarations (moved here from the report's Diplomacy card, which keeps the information) and the
   // Concede control (moved up from the sticky submit block, where it was easy to miss on a phone).
   const _realmTop=`<div id="orders-realm-top" class="orders-char-block" style="background:#fdf8ee">
-      <div class="orders-char-head" style="background:var(--parchment-dark)">
+      <div class="orders-char-head" style="background:#5c3d14">
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
         🏰 Realm — dispatches, diplomacy &amp; concession
       </div>
@@ -3283,6 +3317,9 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
           <span style="font-size:1rem">🤝</span><span style="font-weight:600">Diplomacy — declarations this turn</span></div>
         <div id="orders-diplomacy"></div>
+        <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
+          <span style="font-size:1rem">👑</span><span style="font-weight:600">Call the Reckoning</span></div>
+        <div id="reckoning-wrap" style="font-size:.72rem"></div>
         <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
           <span style="font-size:1rem">🏳</span><span style="font-weight:600">Concede</span></div>
         <div id="concede-wrap" style="font-size:.72rem"></div>
@@ -4562,7 +4599,7 @@ const UNIT_ABILITIES={
   'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields missile troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
   'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each).',
   'Titan Warbeasts':'Colossal Bulk — ×1.3 strength in every battle (they fight from the back line at full front-line effect). World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each).',
-  'Sea Giants':'Tidal Might — ×1.3 strength at sea. Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
+  'Sea Giants':'Tidal Might — ×1.2 strength in a coastal land province (one bordering the sea). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
   'Kraken Tentacles':'Deepwater Grasp — ×1.35 strength at sea. Crushing Coils: a pre-battle strike that drags one enemy unit under (5–9).',
   'Leviathan Pods':'Fleet-Sinker — ×1.4 strength at sea, the strongest naval unit in the game. Abyssal Maelstrom: a pre-battle strike across the whole enemy fleet-line (4–7 each).',
 };
@@ -4886,6 +4923,7 @@ function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 // engine term; players only ever see Creature or Monster.
 // Player-facing class of each primal unit TYPE, mirroring the engine's CREATURE_ARMIES /
 // MONSTER_ARMIES sets. Used where only the unit type is known (race stored as a bare 'Primal').
+const HUMANOID_RACES_UI=new Set(['Human','Elven','Dwarven','Orcish']);
 const CREATURE_ARMIES_UI=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
 const MONSTER_ARMIES_UI=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
 const PRIMAL_SUBRACE_CLASS={
@@ -5325,6 +5363,50 @@ function movedInWithArmyBy(charId, provId, upToPhaseExclusive){
 // predicted to be in that phase (mirrors the engine's co-trainer rule: same realm, same province,
 // same phase). Reads the live order form, so it reflects what the player has entered so far. If
 // several companions drill different skills, the most common one wins (first seen on a tie).
+// 2026-09-11 (items 7 & 12): ONE way to read what any character is ordered to do in any phase. The live
+// form (DOM) wins; before the form exists — the very first paint — the saved draft is consulted, so
+// "default to what a companion is doing" works on load as well as after a change.
+let _draftOrdersSnapshot={};
+function draftOrderAt(charId, ph){
+  const actEl=document.getElementById(`po-action-${charId}-${ph}`);
+  if(actEl) return {action:actEl.value||'', target:getOrderTarget(charId,ph)};
+  const sv=((_draftOrdersSnapshot||{})[charId]||[])[ph]||{};
+  return {action:sv.action||'', target:sv.target||''};
+}
+const LAIR_POWER_RANK={Weak:0,Moderate:1,Powerful:2,Legendary:3};
+// Item 7: the default Search Lair target is the LOWEST-power lair known in the province the character
+// will stand in, skipping any lair already chosen by an earlier Search Lair order — this character's
+// earlier phases, or any other of the realm's characters in any phase (same province, same lair).
+function defaultLairTarget(c, ph, provId, feats){
+  const taken=new Set();
+  ((currentReport&&currentReport.characters)||[]).forEach(o=>{
+    if(!o||o.alive===false) return;
+    for(let q=0;q<SEASONS.length;q++){
+      if(o.id===c.id && q>=ph) continue;                       // own later phases don't count
+      const d=draftOrderAt(o.id,q); if(d.action!=='Search Lair'&&d.action!=='Search Feature') continue;
+      if(d.target==='') continue;
+      const loc=predictedLocation(o.id,q); if((loc?loc.id:o.locationId)!==provId) continue;
+      taken.add(String(d.target));
+    }
+  });
+  const ranked=(feats||[]).filter(f=>!taken.has(String(f.idx)))
+    .sort((a,b)=>((a.ritualSite?9:(LAIR_POWER_RANK[a.monsterPower]??5))-(b.ritualSite?9:(LAIR_POWER_RANK[b.monsterPower]??5)))||(a.idx-b.idx));
+  return ranked.length?String(ranked[0].idx):'';
+}
+// Item 12: Research defaults to the field a companion is researching in the SAME province and phase,
+// else this character's own earlier Research this turn, else any other character's Research this turn.
+function defaultResearchField(c, ph){
+  const here=predictedLocation(c.id,ph); const hereId=here?here.id:c.locationId;
+  const chars=((currentReport&&currentReport.characters)||[]).filter(o=>o&&o.alive!==false);
+  const counts={}; let best='', bestN=0;
+  chars.forEach(o=>{ if(o.id===c.id) return; const d=draftOrderAt(o.id,ph); if(d.action!=='Research'||!d.target) return;
+    const loc=predictedLocation(o.id,ph); if((loc?loc.id:o.locationId)!==hereId) return;
+    counts[d.target]=(counts[d.target]||0)+1; if(counts[d.target]>bestN){bestN=counts[d.target];best=d.target;} });
+  if(best) return best;
+  for(let q=ph-1;q>=0;q--){ const d=draftOrderAt(c.id,q); if(d.action==='Research'&&d.target) return d.target; }
+  for(const o of chars){ if(o.id===c.id) continue; for(let q=0;q<SEASONS.length;q++){ const d=draftOrderAt(o.id,q); if(d.action==='Research'&&d.target) return d.target; } }
+  return '';
+}
 function practiceCompanionSkill(c, ph){
   const report=currentReport||{};
   const here=predictedLocation(c.id,ph); const hereId=here?here.id:c.locationId;
@@ -5600,7 +5682,10 @@ function buildTargetField(c, ph, saved){
       // and list every feature known there — including ones discovered by another of your characters.
       const loc=predictedLocation(c.id,ph);
       const pd=(loc?provOrderData[loc.id]:null)||provOrderData[c.locationId]||null;
-      const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');return `<option value="${f.idx}" ${target==f.idx?'selected':''}>${f.name}${diff?` (${diff})`:''}</option>`;}).join('');
+      const _provId=loc?loc.id:c.locationId;
+      // Item 7 (2026-09-11): no saved target → the weakest lair not already chosen by another Search Lair order here.
+      const _lairSel=(target!==''&&target!=null)?String(target):defaultLairTarget(c,ph,_provId,pd?.features||[]);
+      const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');return `<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}</option>`;}).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
@@ -5861,7 +5946,11 @@ function buildTargetField(c, ph, saved){
       const chance=sg*per+neutral;
       // Item 6 (2026-09-07): choose a FIELD of study. Categories with every discovery already made are greyed out.
       const cats=(report.researchCategories||[]);
-      const catOpts=`<option value="" ${!target?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${target===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
+      // Item 12 (2026-09-11): no saved field → what a companion researches here this phase, else this
+      // character's earlier Research this turn, else any other character's. An open field (all found) is never defaulted.
+      let _rsel=target||defaultResearchField(c,ph);
+      if(_rsel&&cats.some(k=>k.name===_rsel&&k.known>=k.total)) _rsel='';
+      const catOpts=`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
         <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that.</div>`+orderChanceNote(c,'Research',ph);}
@@ -6608,18 +6697,36 @@ function renderMapIntoSvg(svgEl, report){
         const mx=markerX,my=y-HS+12;
         const mg=document.createElementNS(svgNS,'g');
         mg.setAttribute('transform',`translate(${mx} ${my}) scale(0.75) translate(${-mx} ${-my})`); // ×1.5 of prior 0.5 (item: all map symbols 1.5× except prosperity dots)
-        const ec=document.createElementNS(svgNS,'circle');
-        // Use enemy's colour if available
-        const enemyCol=enemyChars[0].ownerColor||'#7a1c1c';
-        ec.setAttribute('cx',mx);ec.setAttribute('cy',my);ec.setAttribute('r','4.5');
-        ec.setAttribute('fill',enemyCol);ec.setAttribute('stroke','#fff');ec.setAttribute('stroke-width','0.8');
-        ec.setAttribute('pointer-events','none');
+        // 2026-09-11 (Toby, item 13): characters of SEVERAL realms in one province used to take the first
+        // realm's colour only. Now the disc is cut into one wedge per realm present (in the order the
+        // characters are listed), so a shared province reads as shared at a glance.
+        const realmCols=[...new Set(enemyChars.map(c=>c.ownerColor||'#7a1c1c'))];
+        const ec=document.createElementNS(svgNS,'g'); ec.setAttribute('pointer-events','none');
+        if(realmCols.length===1){
+          const c1=document.createElementNS(svgNS,'circle');
+          c1.setAttribute('cx',mx);c1.setAttribute('cy',my);c1.setAttribute('r','4.5');
+          c1.setAttribute('fill',realmCols[0]);c1.setAttribute('stroke','#fff');c1.setAttribute('stroke-width','0.8');
+          ec.appendChild(c1);
+        } else {
+          const R=4.5, n=realmCols.length;
+          realmCols.forEach((col,i)=>{
+            const a0=-Math.PI/2+(2*Math.PI*i)/n, a1=-Math.PI/2+(2*Math.PI*(i+1))/n;
+            const x0=mx+R*Math.cos(a0), y0=my+R*Math.sin(a0), x1=mx+R*Math.cos(a1), y1=my+R*Math.sin(a1);
+            const w=document.createElementNS(svgNS,'path');
+            w.setAttribute('d',`M${mx},${my} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${(a1-a0)>Math.PI?1:0},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`);
+            w.setAttribute('fill',col); ec.appendChild(w);
+          });
+          const ring=document.createElementNS(svgNS,'circle');
+          ring.setAttribute('cx',mx);ring.setAttribute('cy',my);ring.setAttribute('r','4.5');
+          ring.setAttribute('fill','none');ring.setAttribute('stroke','#fff');ring.setAttribute('stroke-width','0.8');
+          ec.appendChild(ring);
+        }
         const elbl=document.createElementNS(svgNS,'text');
         elbl.setAttribute('x',mx);elbl.setAttribute('y',my+2);
         elbl.setAttribute('text-anchor','middle');elbl.setAttribute('font-size','5');
         elbl.setAttribute('fill','#fff');elbl.setAttribute('pointer-events','none');
         const eHasKing=enemyChars.some(c=>c.isKing);
-        elbl.textContent=eHasKing?'♛':'';
+        elbl.textContent=eHasKing?'♛':(enemyChars.length>1?String(enemyChars.length):''); // item 13: a count, as the own-marker shows
         mg.appendChild(ec);mg.appendChild(elbl);
         if(!eHasKing&&enemyChars.length===1){
           const ehd=document.createElementNS(svgNS,'circle');
@@ -6962,6 +7069,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-1034</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-1334</div>
 </body>
 </html>
