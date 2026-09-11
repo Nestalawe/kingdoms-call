@@ -570,10 +570,26 @@ const ITEM_SLOT_OF_P={
   'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
   "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
 };
+// 2026-09-11 (Toby): FOUR item tiers, mirroring the GM engine - 1 Weak, 2 Moderate, 3 Powerful,
+// 4 LEGENDARY. A lair holds exactly one item, of its own guardian's tier, so the tier a player is
+// shown is the danger they beat for it. Only a legendary relic scores a point.
+const ITEM_TIER_NAME_P={1:'Weak',2:'Moderate',3:'Powerful',4:'Legendary'};
+function isLegendaryItemP(it){ return !!it && it.tier===4; }
+function itemTierNameP(it){ return ITEM_TIER_NAME_P[(it&&it.tier)||1]||'Weak'; }
+const ITEM_TIER_COLOUR_P={1:'var(--stone)',2:'#4a6a3a',3:'#7a4a12',4:'#b8860b'};
+// The small pill shown beside an item name wherever a pack is listed.
+function itemTierTagP(it){
+  const n=(it&&it.tier)||1;
+  const leg=n===4;
+  return `<span style="color:${ITEM_TIER_COLOUR_P[n]};font-weight:${leg?700:600};font-size:.9em">${leg?' \u2728 Legendary':' \u00b7 '+ITEM_TIER_NAME_P[n]}</span>`;
+}
 function itemSlotP(it){ if(!it) return null;
-  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // 2026-09-11: potions / scrolls / devices take a Consumable slot (two per character) — mirrors GM itemSlot
-  if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // 2026-09-11: Mithril is worn in the armour slot
-  if(ITEM_SLOT_OF_P[it.name]==='shield') return 'shield'; if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
+  // A shield is a shield even when its power is a once-per-fight ward (Anvil-Brand Shield) - mirrors
+  // the GM engine, where the shield test runs before the consumable test.
+  if(ITEM_SLOT_OF_P[it.name]==='shield') return 'shield';
+  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // potions / scrolls / devices take a Consumable slot (two per character) — mirrors GM itemSlot
+  if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // Mithril is worn in the armour slot
+  if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded.
 // Item 4 (2026-09-07): race/alignment-bound items are inert in the wrong hands.
 const _ITEM_RACE_ALIAS_P={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
@@ -2134,7 +2150,7 @@ function renderReportView(report){
           ${c.race} · ${c.alignment} · ${c.temper}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''} · 📍 ${c.locationName||'Unknown'}<br>
           <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
           ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${itemLoreTip(i,i.name)}${i.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}`).join('')}
+          ${(c.items||[]).map(i=>`<br>🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}`).join('')}
           ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
@@ -3367,7 +3383,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -5704,7 +5720,7 @@ function buildTargetField(c, ph, saved){
       const rows=ITEM_SLOT_ORDER_P.map(sl=>{
         const opts=held.filter(it=>itemSlotP(it)===sl); if(opts.length===0) return '';
         const cap=ITEM_SLOT_CAP_P[sl]; const pre=chosen.length?chosen.filter(n=>opts.some(o=>o.name===n)):opts.filter(o=>o.equipped!==false).map(o=>o.name);
-        const sels=Array.from({length:cap},(_,k)=>`<select data-slot="${sl}" onchange="updateEquipTarget('${c.id}',${ph})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map(o=>`<option value="${o.name.replace(/"/g,'&quot;')}" ${pre[k]===o.name?'selected':''}>${o.name}${o.tier===3?' ✦':''}</option>`).join('')}</select>`).join('');
+        const sels=Array.from({length:cap},(_,k)=>`<select data-slot="${sl}" onchange="updateEquipTarget('${c.id}',${ph})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map(o=>`<option value="${o.name.replace(/"/g,'&quot;')}" ${pre[k]===o.name?'selected':''}>${o.name}${isLegendaryItemP(o)?'✨ ':''}</option>`).join('')}</select>`).join('');
         return `<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${ITEM_SLOT_LABEL_P[sl]}</span>${sels}</div>`;
       }).join('');
       const init=chosen.length?chosen:held.filter(o=>o.equipped!==false).map(o=>o.name);
@@ -5717,7 +5733,7 @@ function buildTargetField(c, ph, saved){
       // Items received via Give Item in an earlier phase are usable here too.
       const active=predictedItems(c.id,ph).filter(it=>it&&it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
       if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No usable (active) items — most items are passive" disabled>`;
-      const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${it.tier===3?'✦ Legendary — ':''}${it.name} — ${it.desc}</option>`).join('');
+      const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${isLegendaryItemP(it)?'✨ Legendary — ':(ITEM_TIER_NAME_P[it.tier||1]+' — ')}${it.name} — ${it.desc}</option>`).join('');
       // Item 12: a spell item needs the spell's own target (province / character) — same field as Cast Spell.
       const selIt=active.find(it=>String(it.id)===String(target))||active[0];
       const sec=(selIt&&selIt.effect&&selIt.effect.stat==='castSpell')?castChanceNote(c,selIt.effect.spell,{itemCast:true})+spellSecondaryHtml(report,c,ph,selIt.effect.spell,extra,selIt.effect.spell):'';
@@ -6122,7 +6138,7 @@ function buildTargetField(c, ph, saved){
         const chk=(!_bound&&(_giAll||_giSaved.includes(String(i))))?'checked':'';
         return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound?'not-allowed':'pointer'};${_bound?'opacity:.55':''}">
           <input type="checkbox" value="${i}" ${chk} ${_bound?'disabled':''} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
-          🔮 ${it.name}${it.tier===3?' <span style="color:#b8860b;font-weight:700">✦ Legendary</span>':''}${_bound?' <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>':(startNames.has(it.name)?'':' (received earlier this turn)')}
+          🔮 ${it.name}${itemTierTagP(it)}${_bound?' <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>':(startNames.has(it.name)?'':' (received earlier this turn)')}
         </label>`;
       }).join('');
       const _giWrap=`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
@@ -7079,6 +7095,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-1458</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.11-1915</div>
 </body>
 </html>

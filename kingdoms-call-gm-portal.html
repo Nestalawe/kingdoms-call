@@ -1129,7 +1129,7 @@ function buildTargetField(c,ph,saved){
       const startNames=new Set((c.items||[]).map(it=>it&&it.name));
       if(!items.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to send (none held, or all sent away earlier this turn)" disabled>`;
       const others=(report.characters||[]).filter(x=>x.id!==c.id);
-      return`<select id="po-target-${c.id}-${ph}">${items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>${it.tier===3?'✦ Legendary — ':''}${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('')}</select>
+      return`<select id="po-target-${c.id}-${ph}">${items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>${isLegendaryItem(it)?'✦ Legendary — ':''}${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('')}</select>
         <select id="po-extra-${c.id}-${ph}" style="margin-top:3px">${others.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('')}</select>`;}
     case 'Leave/Transfer Army':{
       const armies=c.armies||[];
@@ -3627,7 +3627,14 @@ const _ITEM_NAME_ALTS={
 })();
 
 // ── Item-tier pools (built after the item list so they can reference it) ──
-const ITEMS_BY_TIER={1:[],2:[],3:[]};
+// 2026-09-11 (Toby): FOUR named tiers - 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY. Every item's tier
+// is (re)assigned by _retierAndBalanceItems() further down, once itemSlot() exists to sort them by kind;
+// these arrays are cleared and refilled there. The `tier` written in the item table above is only a hint.
+const ITEM_TIER_NAME={1:'Weak',2:'Moderate',3:'Powerful',4:'Legendary'};
+const ITEM_TIER_OF_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
+function isLegendaryItem(it){ return !!it && it.tier===4; }
+function itemTierName(it){ return ITEM_TIER_NAME[(it&&it.tier)||1]||'Weak'; }
+const ITEMS_BY_TIER={1:[],2:[],3:[],4:[]};
 ALL_MAGIC_ITEMS_P.forEach(it=>{(ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1]).push(it);});
 // ── Item lore (2026-09-09, item 1) ── every base item carries `lore`: a short narrative that also states the
 // effect in plain words. Clones inherit it by the spread above. Items already sitting in saves or lair hoards
@@ -3636,7 +3643,7 @@ const ITEM_LORE_BY_NAME={};
 ALL_MAGIC_ITEMS_P.forEach(it=>{ if(it&&it.lore) ITEM_LORE_BY_NAME[it.name]=it.lore; });
 function itemLore(it){ if(!it) return ''; return it.lore||ITEM_LORE_BY_NAME[it.name]||(it.effect&&it.effect.stat==='mithrilArmour'?MITHRIL_ARMOUR.lore:'')||it.desc||''; }
 // One chronicle line per item — "📜 The Blade of Fury — <lore>" — used when items are won from a lair.
-function itemLoreLines(items){ return (items||[]).filter(Boolean).map(d=>`📜 The ${d.name}${d.tier===3?' (LEGENDARY)':''} — ${itemLore(d)}`).join('\n'); }
+function itemLoreLines(items){ return (items||[]).filter(Boolean).map(d=>`📜 The ${d.name}${isLegendaryItem(d)?' (LEGENDARY)':''} — ${itemLore(d)}`).join('\n'); }
 // Loot quality climbs with the monster's tier: tougher foes yield rarer (higher-tier) items.
 // Item 2 (this session): UNIQUENESS. `taken` is a Set of item names already found this game; the roll
 // never returns one already claimed. It prefers the tier the monster's power rolled; if that tier is
@@ -3645,12 +3652,7 @@ function itemLoreLines(items){ return (items||[]).filter(Boolean).map(d=>`📜 T
 // three named versions, exhaustion is rare even on the biggest maps.
 function rollMagicItem(monsterPower, taken){
   taken=taken||new Set();
-  const r=Math.random();
-  let t;
-  if(monsterPower==='Legendary') t=r<0.5?3:2;
-  else if(monsterPower==='Powerful') t=r<0.15?3:2;
-  else if(monsterPower==='Moderate') t=r<0.25?2:1;
-  else t=1; // Weak
+  const t=lairItemTier(monsterPower); // 2026-09-11: the guardian's power IS the tier
   const inTier=((ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P)
     .filter(it=>!taken.has(it.name));
   if(inTier.length) return inTier[Math.floor(Math.random()*inTier.length)];
@@ -3664,7 +3666,10 @@ function rollMagicItem(monsterPower, taken){
 // turns them on the challenger; a thief may lift one (`_stolenItems` remembers what went); a slain challenger's
 // kit joins the hoard. Legendary lairs are stocked first so the rarest tiers go to the toughest guardians; once
 // the treasury is exhausted a lair simply holds gold.
-const LAIR_ITEM_ODDS={Weak:{itemChance:1.0,bonusItem:0,thirdItem:0},Moderate:{itemChance:1.0,bonusItem:0.50,thirdItem:0},Powerful:{itemChance:1.0,bonusItem:1.0,thirdItem:0},Legendary:{itemChance:1.0,bonusItem:1.0,thirdItem:0.50}}; // 2026-09-10 (Toby): was 40/0, 80/15, 100/40, 100/100/50
+// 2026-09-11 (Toby): EXACTLY ONE item per lair, always - no second or third find, and no empty hoard.
+// The item's tier is the guardian's own power: a Weak lair holds a Weak item, a Legendary lair a
+// LEGENDARY relic. (Kept as a table so a future change of heart needs one edit, not twenty.)
+const LAIR_ITEM_ODDS={Weak:{itemChance:1.0,bonusItem:0,thirdItem:0},Moderate:{itemChance:1.0,bonusItem:0,thirdItem:0},Powerful:{itemChance:1.0,bonusItem:0,thirdItem:0},Legendary:{itemChance:1.0,bonusItem:0,thirdItem:0}}; // 2026-09-10 (Toby): was 40/0, 80/15, 100/40, 100/100/50
 function ensureLairHoard(f, gs, opts){
   if(!f||f.ritualSite) return;
   const _noItems=!!(opts&&opts.noItems); // 2026-09-11: balanced stocking (ensureAllLairHoards) fills items itself
@@ -3689,14 +3694,8 @@ function ensureLairHoard(f, gs, opts){
   if(Math.random()<T.bonusItem) roll();
   if(Math.random()<(T.thirdItem||0)) roll();
 }
-// The tier a lair of this power prefers for a hoard item (the same odds rollMagicItem uses).
-function lairItemTier(power){
-  const r=Math.random();
-  if(power==='Legendary') return r<0.5?3:2;
-  if(power==='Powerful') return r<0.15?3:2;
-  if(power==='Moderate') return r<0.25?2:1;
-  return 1;
-}
+// The tier a lair of this power holds. Since 2026-09-11 this is simply the guardian's own power.
+function lairItemTier(power){ return ITEM_TIER_OF_POWER[power]||1; }
 // 2026-09-11 (Toby): BALANCED STOCKING. At world generation (and for any lair still unstocked in an older save):
 //   1. every LEGENDARY (tier-3) item is placed — toughest guardians first, one per lair, then a second round if
 //      there are more legendaries than lairs — whatever the map size;
@@ -3749,15 +3748,16 @@ function rollMagicItemFor(gs, playerIndex, monsterPower, taken){
   const pl=(gs&&gs.players||[])[playerIndex];
   if(!pl) return rollMagicItem(monsterPower, taken);
   const found=pl._itemsFoundByCat||{};
-  const live=HOARD_CATEGORIES.filter(c=>ALL_MAGIC_ITEMS_P.some(it=>it.tier!==3&&!taken.has(it.name)&&itemHoardCategory(it)===c));
+  const t=lairItemTier(monsterPower);
+  const avail=(c,tt)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&(tt==null||it.tier===tt)&&!taken.has(it.name)&&itemHoardCategory(it)===c);
+  let atTier=true;
+  let live=HOARD_CATEGORIES.filter(c=>avail(c,t).length>0);
+  if(!live.length){ atTier=false; live=HOARD_CATEGORIES.filter(c=>avail(c,null).length>0); }
   if(!live.length) return rollMagicItem(monsterPower, taken);
   const low=Math.min(...live.map(c=>found[c]||0));
   const cats=shuffleP(live.filter(c=>(found[c]||0)===low));
   const cat=cats[0];
-  const inCat=ALL_MAGIC_ITEMS_P.filter(it=>it.tier!==3&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
-  const t=Math.min(2,lairItemTier(monsterPower));
-  const pref=inCat.filter(it=>(it.tier||1)===t);
-  const pool=pref.length?pref:inCat;
+  const pool=avail(cat, atTier?t:null);
   return pool.length?pool[Math.floor(Math.random()*pool.length)]:rollMagicItem(monsterPower, taken);
 }
 function ensureAllLairHoards(gs){
@@ -3795,15 +3795,22 @@ function ensureAllLairHoards(gs){
     const cat=itemHoardCategory(base); catCount[cat]=(catCount[cat]||0)+1;
     if(reg!=null) countsFor(reg)[cat]=(countsFor(reg)[cat]||0)+1; };
   // 1. Legendaries — all of them, whatever the map size.
-  let legs=shuffleP(ALL_MAGIC_ITEMS_P.filter(it=>it.tier===3&&!taken.has(it.name)));
+  let legs=shuffleP(ALL_MAGIC_ITEMS_P.filter(it=>isLegendaryItem(it)&&!taken.has(it.name)));
   for(const w of work){ if(!legs.length) break; if(w.slots>0){ give(w.f,legs.pop(),w.region); w.slots--; } }
   let guard=0; while(legs.length&&guard++<50){ for(const w of work){ if(!legs.length) break; give(w.f,legs.pop(),w.region); } }
   // 2. Everything else, category-balanced.
-  const untaken=cat=>ALL_MAGIC_ITEMS_P.filter(it=>it.tier!==3&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
+  // Items of a given kind still available AT A GIVEN TIER (legendaries are dealt separately above).
+  const untakenT=(cat,t)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&it.tier===t&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
+  const untakenAny=cat=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
   for(const w of work){
     const rc=countsFor(w.region);
+    const t=lairItemTier(w.power); // a lair holds an item of its OWN guardian's tier
     while(w.slots>0){
-      const cats=HOARD_CATEGORIES.filter(c=>untaken(c).length>0);
+      // Kinds that still have stock at this tier; if the tier is spent, fall back to any tier of that
+      // kind rather than leaving the lair empty.
+      let atTier=true;
+      let cats=HOARD_CATEGORIES.filter(c=>untakenT(c,t).length>0);
+      if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c).length>0); }
       if(!cats.length){ w.slots=0; break; }
       // Lowest count IN THIS REGION first; the world tally breaks ties, so the map stays level too.
       const low=Math.min(...cats.map(c=>rc[c]||0));
@@ -3811,15 +3818,13 @@ function ensureAllLairHoards(gs){
       const lowW=Math.min(...tiedR.map(c=>catCount[c]||0));
       const pool=shuffleP(tiedR.filter(c=>(catCount[c]||0)===lowW));
       const cat=pool[0];
-      const t=Math.min(2,lairItemTier(w.power));
-      const inCat=untaken(cat);
-      const pref=inCat.filter(it=>(it.tier||1)===t);
-      const pick=(pref.length?pref:inCat)[Math.floor(Math.random()*(pref.length?pref.length:inCat.length))];
+      const inCat=atTier?untakenT(cat,t):untakenAny(cat);
+      const pick=inCat[Math.floor(Math.random()*inCat.length)];
       give(w.f,pick,w.region); w.slots--;
     }
   }
 }
-function itemNameList(items){ return (items||[]).map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+(d.desc?' ('+d.desc+')':'')).join(', '); }
+function itemNameList(items){ return (items||[]).map(d=>(isLegendaryItem(d)?'the LEGENDARY ':'the ')+d.name+(d.desc?' ('+d.desc+')':'')).join(', '); }
 // Which race / alignment an item is bound to, if any; an item a character cannot use is inert in their hands.
 // 2026-09-10 item 3: race-bound items were tagged 'Elf'/'Dwarf'/'Orc' while characters carry 'Elven'/
 // 'Dwarven'/'Orcish', so every non-Human race-bound item was inert in its OWN race's hands. The item
@@ -3967,25 +3972,102 @@ const ITEM_SLOT_OF={
 const _ITEM_ALT_BASE={}; Object.entries(_ITEM_NAME_ALTS).forEach(([base,alts])=>alts.forEach(a=>{_ITEM_ALT_BASE[a]=base;}));
 const _SHIELD_BASES=new Set(['Tower Shield of the Wall','Anvil-Brand Shield','Shield of the Innocent','Kite Shield of the Marches','Bronze Buckler','Oaken Roundshield','Mirror-Bright Shield','Shield of the Ward-Saints','Dragonbone Shield']);
 function itemSlot(it){ if(!it) return null;
-  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // 2026-09-11: every potion / scroll / device takes a Consumable slot (two per character)
-  if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // 2026-09-11: Mithril is worn in the armour slot
-  if(_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name]||it.name)) return 'shield'; // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
+  // 2026-09-11 (Toby): a SHIELD is a shield even when its power is a once-per-fight ward - the
+  // Anvil-Brand Shield is strapped to the arm, not drunk. The shield test therefore comes first.
+  if(_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name]||it.name)) return 'shield';
+  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // every other potion / scroll / device takes a Consumable slot (two per character)
+  if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]]||null; }
 
-// ── SLOT BALANCE (2026-09-11, Toby) ────────────────────────────────────────────────────────────
-// Every worn slot must offer the SAME number of items, and the treasury must be deep enough to fill
-// the biggest map (19×12 → ~570 lairs, ~745 hoard slots) without a category running dry — otherwise
-// the balanced stocker in ensureAllLairHoards has to skip exhausted categories and the mix tilts.
-// The curated designs above are the seed; this pass mints further named versions of them (the same
-// mechanism as _tripleLowerTierItems) until every slot holds exactly ITEM_BALANCE_TARGET items.
-// Names are drawn from a per-slot bank of adjectives and nouns, cycling epithets if a bank runs out,
-// and are checked against every name already in the table, so no two items ever share a name.
-// Only UNBOUND tier-1/2 items are used as seeds, so a minted item is always usable by anyone.
-const ITEM_BALANCE_TARGET=90;
+// == ITEM TIERS AND STOCK (2026-09-11, Toby, session j) ======================================
+// FOUR tiers, named for the guardians that hold them: 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY.
+// A lair holds exactly one item, of its own guardian's tier, so the tier a player sees IS the danger
+// they beat. Three things happen in this pass, in order:
+//
+//   1. SCORE every curated design on how much it actually does in play (itemPowerScore).
+//   2. RE-TIER by that score, kind by kind, so the simplest items are Weak and the strongest are
+//      LEGENDARY - the tier written in the table above is only a starting hint and is overwritten.
+//      Band sizes follow how common each guardian is, so the stock roughly matches the demand.
+//   3. TOP UP any (kind x tier) that is short, by minting further named versions of the designs
+//      already in that band. Consumables and legendary relics are NEVER minted: one name each.
+//
+// Item count falls from ~860 to ~600 because a lair now takes one item instead of up to three.
+const ITEM_TIER_TARGET={1:34,2:25,3:8};    // minimum stock per kind, per tier (legendaries are curated)
+const LEGENDARY_PER_KIND=2;                // relics of each kind; each is worth RELIC_PRIZE_EACH at scoring
+const TIER_BAND_SHARE={1:0.48,2:0.35,3:0.13,4:0.04}; // how the curated designs of a kind are split
 const BALANCED_SLOTS=['weapon','armour','shield','helm','cloak','ring','amulet'];
+
+// --- How strong is this item, really? ------------------------------------------------------
+// One number per item, on a rough 0-10 scale, so that "simplest" and "strongest" mean something a
+// machine can sort. Every branch reads the SAME effect fields the combat engine reads, so an item
+// cannot score for a power it does not actually have.
+function _wardScore(fx){
+  if(!fx||!fx.ward) return 0;
+  const w=fx.ward, a=fx.amt||0, p=fx.pct||0;
+  const FLAT={stunImmune:3,dotImmune:3,firstHit:2.5,secondWind:4,buckler:2.5};
+  if(FLAT[w]!=null) return FLAT[w]+(p?p/10:0);
+  if(['meleeDR','arrowDR','natureDR','darkDR','thorns','regen'].includes(w)) return a*1.2;
+  if(['dodge','block','arrowBlock','spellBlock','spellPct','cap','lowHp','openGuard','resist','roundWard'].includes(w)) return p/7;
+  return 2;
+}
+function _pcScore(pc){
+  if(!pc) return 0;
+  return (pc.hitBonus||0)/4+(pc.dmgBonus||0)*1.2+(pc.burn||0)*1.5+(pc.drain||0)*5+(pc.aura||0)/4+_wardScore(pc);
+}
+function _useScore(e){
+  const avg=a=>a?(a[0]+a[1])/2:0;
+  switch(e.use){
+    case 'heal': return (e.amt||5)/2.5;
+    case 'hot': return ((e.amt||3)*(e.rounds||3))/3;
+    case 'secondwind': return (e.amt||10)/2.5+1;
+    case 'dmg': case 'bane': case 'banestun':
+      return avg(e.dmg)/3*(e.times||1)+(e.dot?e.dot[0]*e.dot[1]/2:0)+(e.stun||0)*2+(e.hitPen||0)/6+(e.use==='dmg'?0:-1);
+    case 'drain': return avg(e.dmg)/2.2;
+    case 'stun': return (e.stun||1)*2.5;
+    case 'pen': return (e.hitPen||15)/6;
+    case 'weak': return 2.5*((e.melee||0)+(e.archery||0));
+    case 'buff': return 3*((e.melee||0)+(e.archery||0));
+    case 'focus': return (e.hitBonus||10)/4;
+    case 'absorb': return (e.absorb||10)/3+(e.reflect||0);
+    case 'mirror': return (e.images||2)*1.5;
+    case 'flee': return (e.fleeBonus||25)/12+(e.toHitReduce||0)/8;
+    case 'invis': return (e.toHitReduce||25)/6;
+    case 'terror': return 3+(e.hitPen||15)/10;
+    case 'silence': return (e.rounds||3)*1.2;
+    case 'dispel': return 3;
+    default: return 3;
+  }
+}
+function itemPowerScore(it){
+  if(!it) return 0;
+  const e=it.effect||{};
+  let s=0;
+  if(e.stat==='combatUse') s=_useScore(e);
+  else if(e.stat==='maxHp') s=(e.bonus||0)*0.7;
+  else if(e.stat==='armour'||e.stat==='mithrilArmour') s=_wardScore(e)+(e.bonus||0)*3;
+  else if(e.stat==='pc') s=0;
+  else if(e.stat==='taxBonus') s=(e.bonus||0)*1.2;
+  else if(e.stat==='temper') s=3;
+  else if(e.stat==='castSpell'){
+    // A charm that casts a spell once a turn: worth what the spell is worth, so a Resurrect charm is
+    // not filed beside a +1 trinket. SPELL_DEFS_P is a `const` declared FURTHER DOWN the file, and this
+    // pass runs at load - `typeof` does NOT save you from a temporal-dead-zone const, it throws too
+    // (the same trap that once hung the portal on the loading spinner), so the read is wrapped.
+    let _sl=0; try{ const sp=SPELL_DEFS_P[e.spell]; _sl=(sp&&(sp.level||sp.lvl||sp.minLevel))||0; }catch(_e){ _sl=0; }
+    s=3+(_sl||2)*1.2;
+  }
+  else if(typeof e.bonus==='number') s=(e.bonus||0)*3;
+  else s=3;                                   // a one-off power with no number to read
+  if(e.pc) s+=_pcScore(e.pc);
+  // A realm-wide effect (a banner worth +25 army strength, say) would otherwise swamp the scale; the
+  // ordering is all that matters here, so the top end is clamped.
+  return Math.min(12, Math.round(s*10)/10);
+}
+
+// --- Name bank for minted versions ----------------------------------------------------------
 const _VARIANT_BANK={
-  // A weapon's NOUN must suit what the weapon does — a sabre cannot grant Archery, and a bow cannot
-  // grant Melee — so the weapon bank is split by kind and chosen from the seed's own effect.
+  // A weapon's NOUN must suit what the weapon does - a sabre cannot grant Archery, and a bow cannot
+  // grant Melee - so the weapon bank is split by kind and chosen from the seed's own effect.
   weapon:{adj:['Keen','Iron','Silvered','Runed','Ashen','Grim','Gilded','Hollow','Bright','Old','Bloodied','Sworn','Black','Storm-Touched','Weathered','Pitted','Chased','Long'],
           noun:['Blade','Sabre','Warhammer','Glaive','Spear','Axe','Mace','Falchion','Poleaxe','Dagger','Warpick','Halberd','Scimitar','Cudgel','Longknife','Broadsword','Warblade','Bill'],
           bow:['Bow','Longbow','Recurve','Warbow','Hunting Bow','Crossbow','Shortbow','Greatbow','Arbalest','Horn Bow','Latchbow','Flatbow','Stavebow','Sling','Yew Bow','Hornbow','Draw-Bow','Quickbow'],
@@ -4002,56 +4084,122 @@ const _VARIANT_BANK={
         noun:['Ring','Band','Signet','Circle','Hoop','Loop','Seal','Token','Coil','Thumb-Ring','Finger-Ring','Keepsake','Bezel','Round','Knot','Cirque','Wedding-Band','Ringlet']},
   amulet:{adj:['Carved','Hanging','Bright','Dull','Stone','Silver','Bronze','Knotted','Hollow','Small','Heavy','Corded','Sealed','Old','Plain','Twinned','Etched','Whole'],
           noun:['Amulet','Talisman','Pendant','Charm','Locket','Fetish','Medallion','Phylactery','Torc','Necklace','Gorget','Bead','Sigil','Reliquary','Token','Chain','Icon','Keepsake']},
+  trinket:{adj:['Old','Carved','Tarnished','Painted','Bound','Cracked','Gilded','Grey','Hollow','Weathered','Sealed','Worn','Iron','Bone','Silvered','Faded','Chased','Knotted'],
+           noun:['Banner','Horn','Standard','Idol','Censer','Ledger','Orb','Figurine','Totem','Reliquary','Chime','Lantern','Compass','Casket','Tablet','Whistle','Brazier','Effigy']},
 };
 const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour','of the Old Road','of the Broken Field','of the Quiet Watch','of the Last Winter','of the Wandering Host','of Thornfall','of the Cold Ford','of the Iron Year','of the Second Vigil'];
-(function _balanceSlotItems(){
+
+(function _retierAndBalanceItems(){
+  // The ten named relics that were legendary before this pass stay legendary - they are marquee
+  // content and several are referred to by name elsewhere.
+  const wasLegendary=new Set(ALL_MAGIC_ITEMS_P.filter(it=>it.tier===3).map(it=>it.name));
+  // Work only from CURATED designs: minted versions are rebuilt from scratch below, and an
+  // alt-named clone always follows its base.
+  const curated=ALL_MAGIC_ITEMS_P.filter(it=>!it._variantOf);
+  ALL_MAGIC_ITEMS_P.length=0; curated.forEach(it=>ALL_MAGIC_ITEMS_P.push(it));
+
+  const byCat={};
+  ALL_MAGIC_ITEMS_P.forEach(it=>{ const c=itemHoardCategory(it); (byCat[c]=byCat[c]||[]).push(it); });
+
+  Object.keys(byCat).forEach(cat=>{
+    const list=byCat[cat];
+    // An alt-named clone must land in the same tier as its base, so tier only the BASES and let the
+    // clones follow. (_ITEM_ALT_BASE maps a clone's name back to its base.)
+    const bases=list.filter(it=>!_ITEM_ALT_BASE[it.name]);
+    const tierScoreOf={};
+    bases.forEach(it=>{ it._score=itemPowerScore(it); tierScoreOf[it.name]=it._score; });
+    bases.sort((a,b)=>(a._score-b._score)||a.name.localeCompare(b.name));
+    // LEGENDARY is a small, fixed, CURATED set: the marquee relics of this kind, topped up from the
+    // highest scorers to LEGENDARY_PER_KIND. Nothing else may reach tier 4 - in particular no minted or
+    // alt-named clone, since every relic must be one of a kind (each is worth a scoring point).
+    const marquee=bases.filter(it=>wasLegendary.has(it.name));
+    const legs=new Set(marquee.map(it=>it.name));
+    for(let i=bases.length-1;i>=0&&legs.size<Math.max(LEGENDARY_PER_KIND,marquee.length);i--) legs.add(bases[i].name);
+    bases.forEach(it=>{ if(legs.has(it.name)) it.tier=4; });
+    // Everything that is not a relic - bases AND their alt-named clones - is ranked by score and the
+    // bands are filled EXACTLY: the strongest 8 are Powerful, the next 25 Moderate, the next 34 Weak.
+    // A clone carries its base's score. Whatever is left over at the bottom is the weakest material of
+    // its kind and is DROPPED from the treasury outright: a lair now holds one item instead of three,
+    // so the game needs far less stock, and what it keeps should be the better half.
+    const ordinary=list.filter(it=>!legs.has(it.name));
+    ordinary.forEach(it=>{ const b=_ITEM_ALT_BASE[it.name]; it._score=(b&&tierScoreOf[b]!=null)?tierScoreOf[b]:itemPowerScore(it); });
+    // Strongest first. Among items of equal worth, a CURATED design outranks a repeated name and a
+    // race- or alignment-bound design outranks a plain one, so the material that gets shed is the
+    // interchangeable filler rather than something written for a particular people.
+    const _rank=it=>((_ITEM_ALT_BASE[it.name]||it._variantOf)?2:0)+((it.race||it.alignment)?-1:0);
+    ordinary.sort((a,b)=>(b._score-a._score)||(_rank(a)-_rank(b))||a.name.localeCompare(b.name));
+    let i=0;
+    [[3,ITEM_TIER_TARGET[3]],[2,ITEM_TIER_TARGET[2]],[1,ITEM_TIER_TARGET[1]]].forEach(([t,want])=>{
+      for(let k=0;k<want&&i<ordinary.length;k++,i++) ordinary[i].tier=t;
+    });
+    for(;i<ordinary.length;i++) ordinary[i]._drop=true;
+  });
+
+  // --- Top up short (kind x tier) bands with minted versions -------------------------------
+  // Shed the surplus decided above before topping up, so a band is never filled with material that is
+  // about to be thrown away.
+  { const keep=ALL_MAGIC_ITEMS_P.filter(it=>!it._drop);
+    ALL_MAGIC_ITEMS_P.length=0; keep.forEach(it=>{ delete it._drop; ALL_MAGIC_ITEMS_P.push(it); }); }
   const taken=new Set(ALL_MAGIC_ITEMS_P.map(it=>it.name));
-  BALANCED_SLOTS.forEach(sl=>{
-    const inSlot=ALL_MAGIC_ITEMS_P.filter(it=>it&&it.tier!==3&&itemSlot(it)===sl);
-    const seeds=inSlot.filter(it=>!it.race&&!it.alignment);
-    if(!seeds.length) return;
-    const bank=_VARIANT_BANK[sl]||{adj:['Old'],noun:[sl]};
-    // Which nouns suit THIS seed: a bow for an Archery item, a staff/rod/wand for a spellcasting one,
-    // a blade or haft for everything else. Outside the weapon slot the nouns are interchangeable.
+  const minted=[];
+  HOARD_CATEGORIES.forEach(cat=>{
+    const bank=_VARIANT_BANK[cat]; if(!bank) return; // consumables have no bank: one name each, by ruling
     const nounsFor=(seed)=>{
-      if(sl!=='weapon') return bank.noun;
+      if(cat!=='weapon') return bank.noun;
       const st=(seed.effect||{}).stat;
       if(st==='archery') return bank.bow;
-      // Magic schools AND command relics (an army-wide bonus) take a staff, rod or sceptre; blades and
-      // hafts are for the items that sharpen the bearer's own arm.
+      // Magic schools AND command relics take a staff, rod or sceptre; blades and hafts are for the
+      // items that sharpen the bearer's own arm.
       if(['white','psychic','illusory','elemental','necromancy','druid','undeadBonus','armyBonus','taxBonus','tactical','naval','sage'].includes(st)) return bank.focus;
       return bank.noun;
     };
     const namesFor=(seed)=>{
       const nouns=nounsFor(seed), out=[];
-      bank.adj.forEach(a=>nouns.forEach(n=>out.push(`${a} ${n}`)));
-      _VARIANT_EPITHETS.forEach(e=>nouns.forEach(n=>out.push(`${n} ${e}`)));
+      bank.adj.forEach(a=>nouns.forEach(nn=>out.push(a+' '+nn)));
+      _VARIANT_EPITHETS.forEach(e=>nouns.forEach(nn=>out.push(nn+' '+e)));
       return out;
     };
-    let si=0, made=inSlot.length, guard=0;
-    const cursor={};
-    while(made<ITEM_BALANCE_TARGET && guard++<4000){
-      const seed=seeds[si++%seeds.length];
-      const list=namesFor(seed);
-      let k=cursor[seed.name]||0, nm=null;
-      while(k<list.length){ const cand=list[k++]; if(!taken.has(cand)){ nm=cand; break; } }
-      cursor[seed.name]=k;
-      if(!nm) continue;
-      taken.add(nm);
-      ALL_MAGIC_ITEMS_P.push({...seed, effect:{...seed.effect}, name:nm, slot:sl, _variantOf:seed.name}); // _variantOf: a named version of a curated design, identical in every effect
-      made++;
-    }
+    [1,2,3].forEach(t=>{
+      const want=ITEM_TIER_TARGET[t];
+      const inBand=ALL_MAGIC_ITEMS_P.filter(it=>it.tier===t&&itemHoardCategory(it)===cat);
+      // Seeds must be usable by anyone and must not be consumables (one name each, by ruling).
+      const seeds=inBand.filter(it=>!it.race&&!it.alignment&&!(it.effect&&it.effect.stat==='combatUse'));
+      if(!seeds.length) return;
+      let made=inBand.length, si=0, guard=0; const cursor={};
+      while(made<want&&guard++<3000){
+        const seed=seeds[si++%seeds.length];
+        const names=namesFor(seed);
+        let k=cursor[seed.name]||0, nm=null;
+        while(k<names.length){ const cand=names[k++]; if(!taken.has(cand)){ nm=cand; break; } }
+        cursor[seed.name]=k;
+        if(!nm) continue;
+        taken.add(nm);
+        minted.push({...seed, effect:{...seed.effect}, name:nm, slot:(cat==='trinket'?undefined:cat), tier:t, _variantOf:seed.name});
+        made++;
+      }
+    });
+  });
+  minted.forEach(it=>{ if(it.slot===undefined) delete it.slot; ALL_MAGIC_ITEMS_P.push(it); });
+
+  // --- Rebuild the derived tables ----------------------------------------------------------
+  [1,2,3,4].forEach(t=>{ ITEMS_BY_TIER[t].length=0; });
+  ALL_MAGIC_ITEMS_P.forEach(it=>{
+    ITEMS_BY_TIER[it.tier||1].push(it);
+    if(it.lore&&!ITEM_LORE_BY_NAME[it.name]) ITEM_LORE_BY_NAME[it.name]=it.lore;
   });
 })();
 
-// ITEMS_BY_TIER and ITEM_LORE_BY_NAME were built above, before the minting pass — top them up so the
-// new names are rollable and carry their seed's lore. (ITEMS_BY_TIER must stay declared after
-// ALL_MAGIC_ITEMS_P; we only push into it here, never redeclare — see the load-order gotcha.)
-ALL_MAGIC_ITEMS_P.forEach(it=>{
-  const pool=ITEMS_BY_TIER[it.tier||1]||ITEMS_BY_TIER[1];
-  if(!pool.includes(it)) pool.push(it);
-  if(it.lore&&!ITEM_LORE_BY_NAME[it.name]) ITEM_LORE_BY_NAME[it.name]=it.lore;
-});
+// Items already sitting in a save carry whatever tier they were given when they were rolled. Re-stamp
+// them from the master table by name on load, so a relic won three turns ago still scores as legendary
+// and a Weak find still reads as Weak. Runs beside ensureAllLairHoards at the head of every turn.
+function migrateItemTiers(gs){
+  if(!gs) return;
+  const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
+  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m&&it.tier!==m.tier) it.tier=m.tier; };
+  (gs.characters||[]).forEach(c=>(c.items||[]).forEach(fix));
+  ((gs.world&&gs.world.provinces)||[]).forEach(p=>(p.features||[]).forEach(f=>{ if(f) (f.hoardItems||[]).forEach(fix); }));
+  (gs.players||[]).forEach(pl=>{ if(pl&&Array.isArray(pl.vault)) pl.vault.forEach(fix); });
+}
 
 function normaliseEquipment(c){
   if(!c||!Array.isArray(c.items)) return;
@@ -6953,7 +7101,9 @@ const TITLE_DEFS=[
   {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn you are told the location and strength of the largest skeletal army in the world.'},
   {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead.'},
 ];
-const RELIC_PRIZE_EACH=1;                 // 10 legendary items × 1 = 10 points → 100-pt spread
+const RELIC_PRIZE_EACH=1;                 // 1 point per LEGENDARY relic held. 2026-09-11: the legendary
+                                          // tier is now two relics of each kind, so the relic pool is worth
+                                          // ~22 points against 100 points of Titles (was 10) - DEV_LOG 87.3.
 const TITLES_PUBLIC_FROM_TURN=5;          // standings hidden turns 1–4 (clarification #10)
 const TITLE_PERKS_ENABLED=true;           // live perks while a Title is held (from turn 5)
 
@@ -7021,7 +7171,7 @@ function castChanceFor(c, school, player, opts){
   return {level:lvl,chance:Math.min(95,SPELL_CAST_BASE+lvl*10+arcane+l8+disc),arcane,l8,disc};
 }
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
-function _legendaryNames(){ return new Set((ITEMS_BY_TIER[3]||[]).map(it=>it.name)); }
+function _legendaryNames(){ return new Set((ITEMS_BY_TIER[4]||[]).map(it=>it.name)); }
 // Per-character raw merit for the six non-realm titles (before alignment boost).
 function _charTitleMerit(c){
   const tm=c.tm||{};
@@ -8550,6 +8700,7 @@ async function runTurn(opts){
 
   try{
 
+  migrateItemTiers(G);    // 2026-09-11: re-stamp saved items with their tier under the four-tier scheme
   ensureAllLairHoards(G); // Item 4 (2026-09-07): stocks any lair from a pre-hoard save (no-op afterwards)
 
   function collectBotDiplomacy(){
@@ -11782,7 +11933,7 @@ const BATTLE_ARMY_SPELLS={
   function magicItemsLine(ch){
     const its=activeItems(ch).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
     if(!its.length) return null;
-    return `  ⚜ ${ch.name} bears ${its.map(it=>it.name+(it.tier===3?' (Legendary)':'')).join(', ')} into the fight.`;
+    return `  ⚜ ${ch.name} bears ${its.map(it=>it.name+(isLegendaryItem(it)?' (Legendary)':'')).join(', ')} into the fight.`;
   }
   // ── FLEE SPOILS (2026-09-10 item 2) ── A character who breaks off a duel or an Encounter against
   // another character has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the
@@ -11805,7 +11956,7 @@ const BATTLE_ARMY_SPELLS={
     delete it.equipped; // re-slotted by normaliseEquipment on the new owner
     stayer.items=(stayer.items||[]).concat([it]);
     if(stayerCbt.ref!==stayer&&Array.isArray(stayerCbt.ref.items)) stayerCbt.ref.items=stayerCbt.ref.items.concat([it]);
-    narrative.push(`  💎 In the rout ${runner.name} drops ${it.name}${it.tier===3?' (Legendary)':''} — ${stayer.name} claims it.`);
+    narrative.push(`  💎 In the rout ${runner.name} drops ${it.name}${isLegendaryItem(it)?' (Legendary)':''} — ${stayer.name} claims it.`);
     return it;
   }
   function resolveDuel(atk, def, narrative){
@@ -12745,7 +12896,7 @@ const BATTLE_ARMY_SPELLS={
             if(c!==_realC&&Array.isArray(c.items)) c.items=c.items.filter(x=>x!==_it&&!(x&&x.name===_it.name&&x.tier===_it.tier));
             delete _it.equipped;
             ensureLairHoard(feature,G); feature.hoardItems=(feature.hoardItems||[]).concat([_it]);
-            narrative.push(`  💎 In the rout ${c.name} drops ${_it.name}${_it.tier===3?' (Legendary)':''} — it lies among the ${m.name}'s hoard now${guardianCanUseItem(m,_it)?', and the beast will turn it against the next intruder':''}.`);
+            narrative.push(`  💎 In the rout ${c.name} drops ${_it.name}${isLegendaryItem(_it)?' (Legendary)':''} — it lies among the ${m.name}'s hoard now${guardianCanUseItem(m,_it)?', and the beast will turn it against the next intruder':''}.`);
           }
         } }
     } else if(res.winner===hero){
@@ -14157,7 +14308,7 @@ const BATTLE_ARMY_SPELLS={
             if(_hi.length){ const _th=effStat(c,'thief'); const _ch=Math.min(80,30+10*_th); const _r=d100();
               if(_r<=_ch){ const _it=_hi.splice(Math.floor(Math.random()*_hi.length),1)[0]; c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
                 f._stolenItems=(f._stolenItems||[]).concat(_it.name);
-                log('explore',`🗝 ${c.name} also slips ${(_it.tier===3?'the LEGENDARY ':'the ')}${_it.name} (${_it.desc}) out from under the guardian's nose! ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+                log('explore',`🗝 ${c.name} also slips ${(isLegendaryItem(_it)?'the LEGENDARY ':'the ')}${_it.name} (${_it.desc}) out from under the guardian's nose! ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
               } else log('explore',`${c.name} eyes the hoard's magic but cannot get near it. ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             } }
         } else if(encounter.won){
@@ -14211,7 +14362,7 @@ const BATTLE_ARMY_SPELLS={
             const _recovered=f.lairItems.slice();
             _recovered.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ });
             f.lairItems=[];
-            log('explore',`Among the bones of the fallen, ${c.name} recovers ${_recovered.map(d=>(d.tier===3?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('explore',`Among the bones of the fallen, ${c.name} recovers ${_recovered.map(d=>(isLegendaryItem(d)?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             _recovered.forEach(it=>log('explore',itemLoreLines([it]),{actor:c.player,targets:[c.player],provinceId:prov.id})); // item 1: lore line per recovered relic
           }
           // Only claim "no magic" when the fight truly yielded no items — no tier drops AND no Alchemical bonus AND no recovered lair items.
@@ -19588,6 +19739,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-1458</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-1915</div>
 </body>
 </html>
