@@ -3979,6 +3979,50 @@ function itemSlot(it){ if(!it) return null;
   if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]]||null; }
 
+// == THE TWENTY-TWO LEGENDARY RELICS (2026-09-11, Toby, session k) =============================
+// Every relic is named once, does something no other item in the game does, and is worth roughly
+// TWICE a Powerful item of its kind (the Powerful band averages ~6 on itemPowerScore; these sit
+// near 12). Two of every worn kind, plus the six great unslotted relics of the old Empire and the
+// elder world. Nothing else may ever reach tier 4: no minted version, no alt-named copy, and no
+// promotion by score - the tier is this list and only this list.
+// Six of the unslotted relics carry powers the scorer cannot price at all ("Spy always succeeds",
+// "once per game, promote every army"); they are marked _unscorable so the balance harness does not
+// judge them by a number that was never meant to describe them.
+const LEGENDARY_ITEMS_P=[
+  // -- weapon --
+  {name:'Sword of the First Emperor',slot:'weapon',desc:'Melee +4',lore:'The blade that founded the old Empire, and has not been drawn in anger since the last Emperor fell. Melee counts 4 levels higher.',effect:{stat:'melee',bonus:4},tier:4},
+  {name:'Dawnbreaker',slot:'weapon',desc:'Melee +3, and +2 damage on every melee hit.',lore:'A greatsword that takes the colour of the first light, whoever holds it and whatever the hour. Melee counts 3 levels higher and every melee hit deals 2 extra damage.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:2}},tier:4},
+  // -- armour --
+  {name:'Aegis of the Sundered Host',slot:'armour',desc:'Armour: melee blows deal 4 less, +8% to hit, +2 damage per melee hit, and foes -8% to hit you.',lore:'Plate recovered from the field where an army died to the last shield. Melee blows on you deal 4 less; you strike at +8% to hit for 2 extra damage, and the foe fights at -8% to hit.',effect:{stat:'pc',pc:{ward:'meleeDR',amt:4,hitBonus:8,dmgBonus:2,aura:8}},tier:4},
+  {name:'Carapace of the World-Serpent',slot:'armour',desc:'Max HP +10, recover 3 HP each round, and foes -6% to hit you.',lore:'Scale from the serpent that is said to ring the world, still faintly warm. Maximum HP +10, 3 HP recovered at the start of every round, and the foe fights at -6% to hit.',effect:{stat:'maxHp',bonus:10,pc:{ward:'regen',amt:3,aura:6}},tier:4},
+  // -- shield --
+  {name:'Bulwark of the Last Dawn',slot:'shield',desc:'Shield: 50% to block any missile outright, +12% to hit, +3 damage per melee hit, foes -10% to hit you.',lore:'The shield that held the eastern gate through one night the chronicles will not describe. 50% chance any arrow or missile is stopped outright; you fight at +12% to hit for 3 extra damage, and the foe at -10%.',effect:{stat:'pc',pc:{ward:'arrowBlock',pct:50,hitBonus:12,dmgBonus:3,aura:10}},tier:4},
+  {name:'Mirror of the Drowned Moon',slot:'shield',desc:'Shield: 50% to turn aside any hostile spell or power, +3 damage per melee hit, +8% to hit, foes -10% to hit you.',lore:'A disc of black glass hauled from a lake that has no bottom. 50% chance a hostile spell or guardian power is turned aside entirely; every melee hit you land deals 3 extra, you strike at +8% to hit, and the foe fights at -10%.',effect:{stat:'pc',pc:{ward:'spellBlock',pct:50,dmgBonus:3,hitBonus:8,aura:10}},tier:4},
+  // -- helm --
+  {name:'Crown of Command',slot:'helm',desc:'All characters in the same province gain +1 to all skills for the duration',lore:'The iron crown of a king nobody now names, whose word could not be disobeyed. Every character standing with you fights and works one level better in every skill.',effect:{stat:'aura',bonus:1},tier:4,_unscorable:true},
+  {name:'Imperial Regalia',slot:'helm',desc:'+10g collected each tax season',lore:'The crown, orb and sceptre of the vanished throne; the provinces still pay when they see them. +10 gold each tax season.',effect:{stat:'taxBonus',bonus:10},tier:4},
+  // -- cloak --
+  {name:'Cloak of Many Faces',slot:'cloak',desc:'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter orders',lore:'Nobody who has worn it agrees on its colour, and nobody who has hunted its wearer has found the same face twice. No Spy, Psychic Blast, Curse or Encounter order may name you.',effect:{stat:'untargetable'},tier:4,_unscorable:true},
+  {name:'Nightfall Mantle',slot:'cloak',desc:'Cloak: foes -35% to hit you, a further -12% aura, and +16% to your own attacks.',lore:'Woven the hour the sun failed, and it has never quite let the light back in. Enemies strike at -35% to hit you, fight at a further -12%, and you attack at +16% to hit.',effect:{stat:'pc',pc:{ward:'dodge',pct:35,aura:12,hitBonus:16}},tier:4},
+  // -- ring --
+  {name:'Band of the Ninefold Path',slot:'ring',desc:'Max HP +8, recover 2 HP each round, +10% to hit, foes -8% to hit you.',lore:'Nine bands of nine metals, forged by nine smiths who never met. Maximum HP +8, 2 HP a round, +10% to hit, and the foe at -8%.',effect:{stat:'maxHp',bonus:8,pc:{ward:'regen',amt:2,hitBonus:10,aura:8}},tier:4},
+  {name:'Signet of the Sleepless Crown',slot:'ring',desc:'Ring: never stunned, entranced or knocked back; +3 damage per melee hit, +10% to hit, foes -8%.',lore:'The seal of a king who is said never to have closed his eyes. No stun, entrancement, paralysis or knockback takes hold; you hit at +10% for 3 extra damage, and the foe at -8%.',effect:{stat:'pc',pc:{ward:'stunImmune',dmgBonus:3,hitBonus:10,aura:8}},tier:4},
+  // -- amulet --
+  {name:'Heartstone of the Deep Vigil',slot:'amulet',desc:'Max HP +10, immune to burns, poisons and bleeding, foes -8% to hit you.',lore:'A stone cut from the floor of a shrine that was watched, unbroken, for four hundred years. Maximum HP +10, no burn, poison or bleed ever takes hold, and the foe fights at -8% to hit.',effect:{stat:'maxHp',bonus:10,pc:{ward:'dotImmune',aura:8}},tier:4},
+  {name:'Pendant of the Ten Thousand Eyes',slot:'amulet',desc:'Amulet: once per fight recover 35% of max HP when nearly spent; +16% to hit throughout.',lore:'Every facet holds a watcher, and between them they miss nothing - least of all the moment you are about to fall. Once per fight, driven near defeat, you recover 35% of your maximum HP; you fight at +16% to hit.',effect:{stat:'pc',pc:{ward:'secondWind',pct:35,hitBonus:16}},tier:4},
+  // -- consumable --
+  {name:'Vial of the Riven Sky',slot:'consumable',desc:'Combat use: 26-36 damage and the foe loses their next action.',lore:'A finger of the storm that split the sky over the Broken Field, stoppered while it was still screaming. 26-36 damage, and the foe loses an action.',effect:{stat:'combatUse',use:'dmg',dmg:[26,36],stun:1,bonus:0},tier:4},
+  {name:'Draught of the Undying',slot:'consumable',desc:'Combat use: recover 26 HP and shed every poison, burn and blinding.',lore:'Drawn from a well that the dying were once carried a hundred miles to reach. Recover 26 HP, and every affliction on you lifts at once.',effect:{stat:'combatUse',use:'secondwind',amt:26,below:0.6,bonus:0},tier:4},
+  // -- the six great unslotted relics --
+  {name:'Crystal Orb',desc:'Spy always succeeds - no roll needed',lore:'It shows the watcher what they came to see, and does not ask whether they should see it. Every Spy order you give succeeds without a roll.',effect:{stat:'spyAuto'},tier:4,_unscorable:true},
+  {name:'Battle Standard',desc:'All armies led: strength +4 each',lore:'A standard that has never touched the ground, through three dynasties and one long defeat. Every army you lead fights at +4 strength.',effect:{stat:'armyBonus',bonus:4},tier:4},
+  {name:'Kraken Figurehead',desc:'All fleets you lead fight as if one experience level higher',lore:'Carved from something that was pulled up dead and did not stay that way. Every fleet you lead fights one experience level above its own.',effect:{stat:'fleetQuality',bonus:1},tier:4,_unscorable:true},
+  {name:'Wailing Phylactery',desc:'Necromancy spells always succeed first cast per turn',lore:'The screaming inside it has not stopped since the night it was filled. Your realm\'s first Necromancy spell each turn cannot fail.',effect:{stat:'necroAuto'},tier:4,_unscorable:true},
+  {name:'Philosopher\'s Stone',desc:'Once per game: instantly promote all armies one quality tier',lore:'Small, dull and warm, and worth more than any province. Once in the whole game, every army of your realm is promoted one experience level on the instant.',effect:{stat:'promoteAll'},tier:4,_unscorable:true},
+  {name:'Standard of the Nine Legions',desc:'All armies you lead: strength +6 each',lore:'The war-banner under which the Empire was won, and under which it was lost exactly once. Every army you lead fights at +6 strength.',effect:{stat:'armyBonus',bonus:6},tier:4},
+];
+const LEGENDARY_NAMES_P=new Set(LEGENDARY_ITEMS_P.map(it=>it.name));
+
 // == ITEM TIERS AND STOCK (2026-09-11, Toby, session j) ======================================
 // FOUR tiers, named for the guardians that hold them: 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY.
 // A lair holds exactly one item, of its own guardian's tier, so the tier a player sees IS the danger
@@ -3992,7 +4036,7 @@ function itemSlot(it){ if(!it) return null;
 //      already in that band. Consumables and legendary relics are NEVER minted: one name each.
 //
 // Item count falls from ~860 to ~600 because a lair now takes one item instead of up to three.
-const ITEM_TIER_TARGET={1:34,2:25,3:8};    // minimum stock per kind, per tier (legendaries are curated)
+const ITEM_TIER_TARGET={1:34,2:25,3:10};   // stock per kind, per tier (legendaries are the curated list)
 const LEGENDARY_PER_KIND=2;                // relics of each kind; each is worth RELIC_PRIZE_EACH at scoring
 const TIER_BAND_SHARE={1:0.48,2:0.35,3:0.13,4:0.04}; // how the curated designs of a kind are split
 const BALANCED_SLOTS=['weapon','armour','shield','helm','cloak','ring','amulet'];
@@ -4060,7 +4104,10 @@ function itemPowerScore(it){
   else s=3;                                   // a one-off power with no number to read
   if(e.pc) s+=_pcScore(e.pc);
   // A realm-wide effect (a banner worth +25 army strength, say) would otherwise swamp the scale; the
-  // ordering is all that matters here, so the top end is clamped.
+  // ordering is all that matters here, so the top end is clamped. NOTE: this means two realm-wide items
+  // of different size can score alike - the unslotted pile is therefore not compared against the relics
+  // on this scale (see the harness), because an army banner and a duelling ring are not the same kind
+  // of thing measured the same way.
   return Math.min(12, Math.round(s*10)/10);
 }
 
@@ -4090,13 +4137,17 @@ const _VARIANT_BANK={
 const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour','of the Old Road','of the Broken Field','of the Quiet Watch','of the Last Winter','of the Wandering Host','of Thornfall','of the Cold Ford','of the Iron Year','of the Second Vigil'];
 
 (function _retierAndBalanceItems(){
-  // The ten named relics that were legendary before this pass stay legendary - they are marquee
-  // content and several are referred to by name elsewhere.
-  const wasLegendary=new Set(ALL_MAGIC_ITEMS_P.filter(it=>it.tier===3).map(it=>it.name));
-  // Work only from CURATED designs: minted versions are rebuilt from scratch below, and an
-  // alt-named clone always follows its base.
-  const curated=ALL_MAGIC_ITEMS_P.filter(it=>!it._variantOf);
-  ALL_MAGIC_ITEMS_P.length=0; curated.forEach(it=>ALL_MAGIC_ITEMS_P.push(it));
+  // 2026-09-11 (session k): the legendary tier is now the curated LEGENDARY_ITEMS_P list and nothing
+  // else. Any older entry bearing a relic's name (and any alt-named clone of one) is removed outright,
+  // so a relic's effect exists exactly once in the whole treasury, and the relic itself is re-added
+  // from the list below. Everything that used to be promoted into tier 4 by score falls back into the
+  // ordinary bands and is tiered on its merits like anything else.
+  const curated=ALL_MAGIC_ITEMS_P.filter(it=>!it._variantOf
+    && !LEGENDARY_NAMES_P.has(it.name)
+    && !LEGENDARY_NAMES_P.has(_ITEM_ALT_BASE[it.name]||''));
+  ALL_MAGIC_ITEMS_P.length=0;
+  curated.forEach(it=>{ it.tier=(it.tier===3||it.tier===4)?2:it.tier; ALL_MAGIC_ITEMS_P.push(it); }); // drop the old tier-3 "legendary" hint
+  LEGENDARY_ITEMS_P.forEach(it=>ALL_MAGIC_ITEMS_P.push(it));
 
   const byCat={};
   ALL_MAGIC_ITEMS_P.forEach(it=>{ const c=itemHoardCategory(it); (byCat[c]=byCat[c]||[]).push(it); });
@@ -4109,12 +4160,8 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     const tierScoreOf={};
     bases.forEach(it=>{ it._score=itemPowerScore(it); tierScoreOf[it.name]=it._score; });
     bases.sort((a,b)=>(a._score-b._score)||a.name.localeCompare(b.name));
-    // LEGENDARY is a small, fixed, CURATED set: the marquee relics of this kind, topped up from the
-    // highest scorers to LEGENDARY_PER_KIND. Nothing else may reach tier 4 - in particular no minted or
-    // alt-named clone, since every relic must be one of a kind (each is worth a scoring point).
-    const marquee=bases.filter(it=>wasLegendary.has(it.name));
-    const legs=new Set(marquee.map(it=>it.name));
-    for(let i=bases.length-1;i>=0&&legs.size<Math.max(LEGENDARY_PER_KIND,marquee.length);i--) legs.add(bases[i].name);
+    // LEGENDARY is exactly the curated relic list - never a promotion by score.
+    const legs=LEGENDARY_NAMES_P;
     bases.forEach(it=>{ if(legs.has(it.name)) it.tier=4; });
     // Everything that is not a relic - bases AND their alt-named clones - is ranked by score and the
     // bands are filled EXACTLY: the strongest 8 are Powerful, the next 25 Moderate, the next 34 Weak.
@@ -4122,17 +4169,25 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     // its kind and is DROPPED from the treasury outright: a lair now holds one item instead of three,
     // so the game needs far less stock, and what it keeps should be the better half.
     const ordinary=list.filter(it=>!legs.has(it.name));
+    if(!ordinary.length) return;
     ordinary.forEach(it=>{ const b=_ITEM_ALT_BASE[it.name]; it._score=(b&&tierScoreOf[b]!=null)?tierScoreOf[b]:itemPowerScore(it); });
     // Strongest first. Among items of equal worth, a CURATED design outranks a repeated name and a
     // race- or alignment-bound design outranks a plain one, so the material that gets shed is the
     // interchangeable filler rather than something written for a particular people.
     const _rank=it=>((_ITEM_ALT_BASE[it.name]||it._variantOf)?2:0)+((it.race||it.alignment)?-1:0);
     ordinary.sort((a,b)=>(b._score-a._score)||(_rank(a)-_rank(b))||a.name.localeCompare(b.name));
-    let i=0;
-    [[3,ITEM_TIER_TARGET[3]],[2,ITEM_TIER_TARGET[2]],[1,ITEM_TIER_TARGET[1]]].forEach(([t,want])=>{
-      for(let k=0;k<want&&i<ordinary.length;k++,i++) ordinary[i].tier=t;
+    // Split what EXISTS across the three ordinary bands in proportion first, so every band is seeded
+    // even for a kind with few designs of its own (helms, say). Filling strongest-first instead would
+    // hand the whole list to Powerful and Moderate and leave Weak with nothing to mint from.
+    // The bands are then trimmed or minted to their exact targets below.
+    const nTop=Math.max(1,Math.round(ordinary.length*0.13));
+    const nMid=Math.max(1,Math.round(ordinary.length*0.37));
+    ordinary.forEach((it,k)=>{ it.tier = k<nTop?3 : k<nTop+nMid?2 : 1; });
+    // Trim any band that overflows its target, weakest and most interchangeable first.
+    [1,2,3].forEach(t=>{
+      const band=ordinary.filter(it=>it.tier===t);
+      for(let k=ITEM_TIER_TARGET[t];k<band.length;k++) band[k]._drop=true; // band is already strongest-first
     });
-    for(;i<ordinary.length;i++) ordinary[i]._drop=true;
   });
 
   // --- Top up short (kind x tier) bands with minted versions -------------------------------
@@ -4162,8 +4217,13 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     [1,2,3].forEach(t=>{
       const want=ITEM_TIER_TARGET[t];
       const inBand=ALL_MAGIC_ITEMS_P.filter(it=>it.tier===t&&itemHoardCategory(it)===cat);
-      // Seeds must be usable by anyone and must not be consumables (one name each, by ruling).
-      const seeds=inBand.filter(it=>!it.race&&!it.alignment&&!(it.effect&&it.effect.stat==='combatUse'));
+      // Seeds should be usable by anyone, and never a consumable (one name each, by ruling). If a
+      // band holds nothing but race- or alignment-bound designs, seed from those instead and let the
+      // minted versions carry the same binding - a short band would otherwise leave the stocker
+      // handing that kind's lairs an item of the wrong tier.
+      const plain=it=>!(it.effect&&it.effect.stat==='combatUse');
+      let seeds=inBand.filter(it=>plain(it)&&!it.race&&!it.alignment);
+      if(!seeds.length) seeds=inBand.filter(plain);
       if(!seeds.length) return;
       let made=inBand.length, si=0, guard=0; const cursor={};
       while(made<want&&guard++<3000){
@@ -7020,6 +7080,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     relations:{},
     heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
   grantMithrilToDwarves(_newGameState); // Item 3: dwarf characters of a dwarf realm start suited in mithril
+  // 2026-09-11 (Toby): re-grade every lair before the hoards are stocked - always 22 legendary lairs,
+  // spread across the world, with the weak country gathered around the homes.
+  assignLairGrades(provinces, players.map(pl=>pl.homeProvinceId), sz.cols, sz.rows, ITEMS_BY_TIER[4].length);
   ensureAllLairHoards(_newGameState);   // Item 4 (2026-09-07): every lair's gold and magic decided now
   // 2026-09-10 revert: earned HP — every starting character opens with an empty pool (15 HP; 18 for an Orc of an Orcish realm), at full health.
   _MAXHP_PLAYERS=players;
@@ -7143,6 +7206,85 @@ function primalStrikeItemBonus(c){
 function primalStrikeChance(druidLvl, commander){
   return Math.min(90, 30+(druidLvl||0)*10+primalStrikeItemBonus(commander));
 }
+// == LAIR GRADES: RELICS EVERYWHERE, DANGER FARTHEST FROM HOME (2026-09-11, Toby, session k) ====
+// The grade of every lair is decided here, AFTER all land and sea features exist, rather than rolled
+// one at a time as each lair is made. Three rules, in order:
+//
+//   1. There are ALWAYS exactly as many LEGENDARY lairs as there are legendary relics (22), whatever
+//      the size of the world - so every relic is kept by a guardian worthy of it, on a two-realm map
+//      as on a ten-realm one. (If a world somehow held fewer than 22 lairs, every lair is legendary.)
+//   2. Those legendary lairs are spread as far apart as the map allows: the first is the lair
+//      farthest from any home, and each one after it is the lair whose nearest legendary neighbour is
+//      as distant as possible - a farthest-point walk, so relics are never clustered in one corner.
+//   3. Everything else is graded by how far it lies from the nearest king's home: WEAK lairs press in
+//      around the home provinces, and Moderate then Powerful ones ring outward. The proportions match
+//      what LAIR_TIER_ROLL used to produce (48 / 36 / 12 of the remainder) so the world is no more
+//      dangerous than before - only better arranged.
+//
+// The guardian is then re-drawn from the beasts of the lair's new standing, respecting land and sea
+// pools, so a Legendary lair is kept by a legendary beast and a sea lair never gets a land one.
+function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
+  const lairs=[];
+  provinces.forEach(p=>(p.features||[]).forEach(f=>{ if(f&&!f.ritualSite) lairs.push({f,p}); }));
+  if(!lairs.length) return;
+  const homes=(homeIds||[]).map(id=>provinces[id]).filter(Boolean);
+  const dist=(a,b)=>hexDistP(a,b,cols);
+  const homeDist=(p)=>homes.length?Math.min(...homes.map(h=>dist(p,h))):0;
+  lairs.forEach(L=>{ L.dHome=homeDist(L.p); });
+
+  // 1 + 2: the legendary lairs, spread by a farthest-point walk.
+  const wantLeg=Math.min(lairs.length, relicCount);
+  const legs=[];
+  const pool=lairs.slice();
+  if(wantLeg>0){
+    let first=0;
+    for(let i=1;i<pool.length;i++) if(pool[i].dHome>pool[first].dHome) first=i;
+    legs.push(pool.splice(first,1)[0]);
+    while(legs.length<wantLeg&&pool.length){
+      let best=0,bestD=-1;
+      for(let i=0;i<pool.length;i++){
+        let near=Infinity;
+        for(const L of legs){ const d=dist(pool[i].p,L.p); if(d<near) near=d; }
+        // Ties broken outward: of two equally isolated lairs, take the one deeper from home.
+        const score=near*100+pool[i].dHome;
+        if(score>bestD){ bestD=score; best=i; }
+      }
+      legs.push(pool.splice(best,1)[0]);
+    }
+  }
+  legs.forEach(L=>{ L.grade='Legendary'; });
+
+  // 3: the rest, ranked by distance from home - the near country weak, the far country dangerous.
+  pool.sort((a,b)=>(a.dHome-b.dHome)||(Math.random()-0.5));
+  // 50 / 38 / 12 of the remainder. The Powerful share is held to 12% so the Powerful stock (10 of
+  // every kind, 90 items) covers the Powerful lairs even on the largest map - otherwise the tail of
+  // them would be handed an item of the wrong tier.
+  const nW=Math.round(pool.length*0.50), nM=Math.round(pool.length*0.38);
+  pool.forEach((L,i)=>{ L.grade = i<nW?'Weak' : i<nW+nM?'Moderate' : 'Powerful'; });
+
+  // Re-draw each guardian from the beasts of its lair's new standing.
+  const seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name));
+  const landMons=MONSTERS_P.filter(m=>!SEA_GUARDIAN_NAMES.has(m.name));
+  lairs.forEach(L=>{
+    const isSea=L.p.terrain==='sea';
+    const src=isSea?seaMons:landMons;
+    let cand=src.filter(m=>m.power===L.grade);
+    if(!cand.length){
+      // No beast of that standing in this element (the seas hold no legendary beast, for instance):
+      // take the nearest standing the element does offer, but the LAIR keeps the grade it was given,
+      // so the relic count never bends to the shape of the map.
+      const ORDER=['Legendary','Powerful','Moderate','Weak'];
+      const from=ORDER.indexOf(L.grade);
+      for(let i=from;i<ORDER.length&&!cand.length;i++) cand=src.filter(m=>m.power===ORDER[i]);
+      for(let i=from-1;i>=0&&!cand.length;i--) cand=src.filter(m=>m.power===ORDER[i]);
+    }
+    if(!cand.length) cand=src.length?src:MONSTERS_P;
+    L.f.monster={...cand[Math.floor(Math.random()*cand.length)]};
+    L.f.tier=L.grade;                 // the grade shown to players is the lair's own, not the beast's
+    L.f.monster.power=L.grade;        // and the guardian is treated as being of that standing
+  });
+}
+
 function LAIR_TIER_ROLL(){
   const r=Math.random()*100;
   // 2026-09-10 item 6: shifted toward the easy end (was 40/32/20/8) — more Weak and Moderate lairs.
@@ -19739,6 +19881,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.11-1915</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-0002</div>
 </body>
 </html>
