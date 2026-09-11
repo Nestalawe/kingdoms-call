@@ -2698,7 +2698,7 @@ function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort){
   const r0=atkBase/defBase, r1=(atkBase*fort.atk)/(defBase*fort.def);
   const favoured=r0>=1?atkLabel:defLabel, winner=r1>=1?atkLabel:defLabel;
   const pAtk=fortuneWinChance(r0), pFav=r0>=1?pAtk:1-pAtk;
-  const edge=`${favoured} holds ${fortuneEdgeText(r0)} (${Math.round(pFav*100)}% to win)`;
+  const edge=`${favoured} holds ${fortuneEdgeText(r0)} (${dispFloor(pFav*100)}% to win)`;
   const S=fort.S||0, small=Math.abs(S)<Math.log(1.15);
   let luck;
   if(small) luck=`Fortune of battle: an even roll — luck played little part`;
@@ -3929,6 +3929,9 @@ function enemyCharVisibleTo(gs, viewerPi, c, ctx){
   if(!c||!c.alive) return false;
   if(c.player===viewerPi) return true;
   const p=gs.world.provinces[c.location]; if(!p) return false;
+  // 2026-09-12 (Toby, item 1): a character this realm watches with Clairvoyance is seen wherever they stand —
+  // as if spied on — and, unlike a Spy, the mind-link pierces Invisibility and every stealth cloak.
+  { const _vp=gs.players&&gs.players[viewerPi]; if(_vp&&_vp._clairCharThisTurn!=null&&_vp._clairCharThisTurn===c.id) return true; }
   const coLoc=ctx.ownCharLocs.has(p.id), ownHere=ctx.ownedProvIds.has(p.id), spied=ctx.spiedThisTurn.has(p.id);
   if(!coLoc&&!ownHere&&!spied) return false;                       // no line of sight at all
   if(c._invisTurn===gs.turn) return false;                          // Invisibility beats even a spy
@@ -4532,11 +4535,16 @@ function pctSucceeds(chance){ return d100()<=chance; }
 // Roll-display contract (Sept 2026): callers MUST compare an integer d100 roll against Math.round(chance)
 // — never the raw fractional chance — so the tick shown here always matches the outcome. fmtRoll rounds
 // both the same way.
-function fmtRoll(chance, roll){ const c=Math.max(0,Math.min(100,Math.round(chance))); return `${c}% [roll ${Math.round(roll)} ${Math.round(roll)<=c?'✓':'✗'}]`; }
+// 2026-09-12 (Toby, item 5): every number a player is shown is ROUNDED DOWN (toward zero), never to nearest — a
+// 41.6% share must not read "42% (need 42%)", and a 49.6% chance must not read 50% and then miss on a roll of 50.
+// With integer d100 rolls, roll<=floor(chance) is exactly roll<=chance, so the shown figure is the true test.
+// A float a hair under an integer (0.29*100 = 28.999…) snaps to that integer rather than dropping a point.
+function dispFloor(v){ const n=Number(v)||0; const r=Math.round(n); return Math.abs(n-r)<1e-9?r:Math.trunc(n); }
+function fmtRoll(chance, roll){ const c=Math.max(0,Math.min(100,dispFloor(chance))); const r=dispFloor(roll); return `${c}% [roll ${r} ${r<=c?'✓':'✗'}]`; }
 // 2026-09-10 item 1: pctRoll(chance) — the ONE way to make a displayed percentage check. Rounds the
 // chance to an integer first so the shown "N%" and the pass/fail test agree exactly; a roll equal to
 // the chance succeeds.
-function pctRoll(chance){ const c=Math.max(0,Math.min(100,Math.round(chance))); const roll=d100(); return {chance:c,roll,ok:roll<=c}; }
+function pctRoll(chance){ const c=Math.max(0,Math.min(100,dispFloor(chance))); const roll=d100(); return {chance:c,roll,ok:roll<=c}; }
 
 const PRIMAL_UNIT_NAMES={
   'Stone Giants':['the Stoneback Clan','the Mountain-Shapers','the Ironhide Brethren','the World-Crushers','the Ancient Fist','the Colossi of the Long Dark','the Host of the Deep Wild','the Elder Breakers','the Rift Colossi','the Host of the Dawn of Days','the Titan Fist','the Kin of the Long Dark','the World Shapers','the Rift Shapers','the Myth Titans','the Clan of the Old Storm','the Old-Blood Clan','the Titans of the Long Dark','the Storm Shapers','the Clan of the First Age','the Host of the Long Dark','the Sky Clan','the Breakers of the Rift','the Kin of the Bones of the Earth','the Host of the World-Root','the Wild Clan','the Fell Clan','the Kin of the Rift'],
@@ -7540,14 +7548,20 @@ function buildTurnReport(gameState, playerIndex){
     const marchLvl=effSkillOf(c,'march',gameState.characters||[]);
     const navalLvl=effSkillOf(c,'naval',gameState.characters||[]);
     const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
+    const _repPl=(c.player!=null)?(gameState.players[c.player]||null):null;
     function repSpd(a){
       const base=a.speed||3;
       const SEA_T=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',
         'Sea Giants','Kraken Tentacles','Leviathan Pods']);
       const FLY_T=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
-      if(SEA_T.has(a.type)) return base+navalLvl;
+      if(SEA_T.has(a.type)) return base+navalSpeedBonus(base,navalLvl); // 2026-09-12: the engine's naval table (was +navalLvl)
       if(FLY_T.has(a.type)) return base;
-      return base+(base<=2?MB_SLOW[Math.min(marchLvl,5)]:MB_FAST[Math.min(marchLvl,5)]);
+      // 2026-09-12 (Toby, item 6): Road Network (sd13) and the race/alignment `move` discoveries (Toll Roads, Caravan
+      // Roads…) add to Speed 1–2 land units in the engine (computeMovePoolMax) but were missing here, so the order
+      // form showed a Road-Network Dwarven Guard column at 2 while it actually marched at 3.
+      let _road=0;
+      if(base<=2&&_repPl){ if((_repPl.discoveries||[]).some(d=>d&&d.id==='sd13')) _road+=1; discEffectsOf(_repPl,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
+      return base+(base<=2?MB_SLOW[Math.min(marchLvl,5)]:MB_FAST[Math.min(marchLvl,5)])+_road;
     }
     const SEA_UNIT_TYPES=['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'];
     // Winged units cross sea without a fleet (matches AERIAL_TYPES in the engine).
@@ -7557,8 +7571,9 @@ function buildTurnReport(gameState, playerIndex){
     const trueLandRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type)&&!AERIAL_UNIT_TYPES.has(a.type));
     let effSpd=armies.length===0?5:landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):0;
     // Sea speed: use fleets if present; else all-flying/empty forces cross by air at their land speed.
-    let effSeaSpd=seaArmiesRep.length>0?Math.max(...seaArmiesRep.map(a=>repSpd(a)))
-      :armies.length===0?5+navalLvl
+    // 2026-09-12: the squadron sails at its SLOWEST ship and a lone hero takes passage at a flat 5 — both as the engine does.
+    let effSeaSpd=seaArmiesRep.length>0?Math.min(...seaArmiesRep.map(a=>repSpd(a)))
+      :armies.length===0?5
       :(trueLandRep.length===0?(landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):5):0);
     // ── Task 6: FLYING CARRY (report mirror of getFlyCapability) ── If the humanoid flyers can lift
     // every foot soldier in the force (1 each, nothing grounded left behind), the column takes to the
@@ -7620,7 +7635,7 @@ function buildTurnReport(gameState, playerIndex){
         out.spy={ auto:(items.some(it=>it.effect&&it.effect.stat==='oracle')||raw('spy')>=6),
                   autoWhy:items.some(it=>it.effect&&it.effect.stat==='oracle')?'Crystal Orb':(raw('spy')>=6?'Master Spy':''),
                   level:eff('spy'),
-                  chance:Math.round((0.2+eff('spy')*0.2+(has('sd21')?0.15:0)+discSumOf(pl,'spy','pct'))*100) };
+                  chance:dispFloor((0.2+eff('spy')*0.2+(has('sd21')?0.15:0)+discSumOf(pl,'spy','pct'))*100) };
         // RESEARCH — Sage level x 5%, doubled for Neutral realms, + Loreseeker.
         { const per=5;
           out.research={ level:eff('sage'), rawLevel:raw('sage'),
@@ -7680,7 +7695,9 @@ function buildTurnReport(gameState, playerIndex){
     // A hero charmed last turn is closed to Charm for the whole of this one — surfaced so the order form
     // can grey them out rather than let the player spend a cast on a mind that cannot be swayed.
     charmImmune:(c._charmImmuneTurn===(gameState.turn||1)),
-    ...((!c.isKing&&(c.armies||[]).length===0)?{skills:{...(c.skills||{})},temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
+    // 2026-09-12 (Toby, item 7): an ENEMY hero's skills are never sent — a charmer must not learn them. A wandering hero's
+    // are public (the Hire list shows them), so they still travel.
+    ...((!c.isKing&&(c.armies||[]).length===0)?{...(c.player==null?{skills:{...(c.skills||{})}}:{}),temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
   }));
 
   // ── Persistent "ever seen" character intel (Clairvoyance targeting) ──
@@ -7904,6 +7921,11 @@ function buildTurnReport(gameState, playerIndex){
     });
   });
 
+  // 2026-09-12 (Toby, item 1): the character this realm watches with Clairvoyance is drawn wherever they end the
+  // turn — including border and remembered hexes (which otherwise never show characters) and a never-seen hex.
+  const _clairId=(player&&player._clairCharThisTurn!=null)?player._clairCharThisTurn:null;
+  const _clairChar=(_clairId!=null)?(gameState.characters||[]).find(x=>x&&x.id===_clairId&&x.alive&&x.player!==playerIndex):null;
+  const _clairLoc=_clairChar?_clairChar.location:null;
   // World meta — full hex grid with visibility-appropriate data for map rendering
   const worldMeta={
     cols,rows,
@@ -7957,6 +7979,10 @@ function buildTurnReport(gameState, playerIndex){
           armyCount:(c.armies||[]).length,
           ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
       }).filter(Boolean);
+      const _clairCharsHere=()=>(_clairChar&&p.id===_clairLoc)?[{id:_clairChar.id,name:_clairChar.name,isOwn:false,isKing:_clairChar.isKing,
+        isWanderer:_clairChar.player===null,isNeutralGuard:!!_clairChar._isNeutralGuard,
+        ownerName:_clairChar.player!=null?(gameState.players[_clairChar.player]?.name||null):null,
+        armyCount:(_clairChar.armies||[]).length,ownerColor:_clairChar.player!==null?gameState.players[_clairChar.player]?.color:null,clairvoyant:true}]:[];
 
       if(isOwned){
         // Full live info — your own province.
@@ -7989,7 +8015,7 @@ function buildTurnReport(gameState, playerIndex){
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
-          characters:[], ownArmyHere:_ownArmyHere,
+          characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
         };
       } else if(memo){
         // Remembered: frozen at the last phase one of your characters could see it. Core info and
@@ -7999,10 +8025,17 @@ function buildTurnReport(gameState, playerIndex){
           owner:memo.owner,ownerName:memo.ownerName??null,ownerColor:memo.ownerColor??null,
           armyTypes:memo.armyTypes||[],neighbors,explored,seenTurn:memo.turn,
           features:memo.features||[],
-          characters:[], ownArmyHere:_ownArmyHere,
+          characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
         };
       } else {
         // Unknown — just the grid position so we can draw an empty hex.
+        if(_clairChar&&p.id===_clairLoc){
+          // Never seen by this realm, but the Clairvoyant sees through the watched character's eyes.
+          return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'remembered',race:p.race,
+            wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
+            ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,armyTypes:p.armyTypes||[],neighbors,explored,seenTurn:gameState.turn,
+            features:[],characters:_clairCharsHere(),ownArmyHere:_ownArmyHere};
+        }
         return{id:p.id,row:p.row,col:p.col,terrain:null,tier:'unknown',neighbors};
       }
     }),
@@ -9742,7 +9775,7 @@ const BATTLE_ARMY_SPELLS={
     });
     if(narrative){
       const adjNames=getNeighborsP(battleProv,G.world.cols,G.world.rows,G.world.provinces).map(n=>n&&n.name).filter(Boolean);
-      narrative.push(`💀 Terror radiates from ${battleProv.name}${adjNames.length?` into the surrounding lands (${adjNames.join(', ')})`:''} — any army that next defends there fights demoralised (−${Math.round((TERROR_PCT_PER_STACK+discSum(byPlayer,'terror','pct'))*100)}% per terror, stacking).`);
+      narrative.push(`💀 Terror radiates from ${battleProv.name}${adjNames.length?` into the surrounding lands (${adjNames.join(', ')})`:''} — any army that next defends there fights demoralised (−${dispFloor((TERROR_PCT_PER_STACK+discSum(byPlayer,'terror','pct'))*100)}% per terror, stacking).`);
     }
   }
   // Consume any lingering terror in a province at the start of a battle: returns true if applied.
@@ -9763,7 +9796,7 @@ const BATTLE_ARMY_SPELLS={
     const _tp=prov._terrorPct||TERROR_PCT_PER_STACK;
     const frac=Math.min(_tp*stacks, _tp*TERROR_MAX_STACKS);
     (defenders||[]).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*frac);});
-    if(narrative) narrative.push(`💀 Terror lingers in ${prov.name} — defenders fight at −${Math.round(frac*100)}% strength (${stacks} terror stack${stacks!==1?'s':''} from earlier Evil victories nearby).`);
+    if(narrative) narrative.push(`💀 Terror lingers in ${prov.name} — defenders fight at −${dispFloor(frac*100)}% strength (${stacks} terror stack${stacks!==1?'s':''} from earlier Evil victories nearby).`);
     delete prov._terrorStacks; delete prov._terrorTurn; delete prov._terrorisedBy; delete prov._terrorPct;
     return true;
   }
@@ -10022,7 +10055,7 @@ const BATTLE_ARMY_SPELLS={
     const atkHome=_founderN!=null&&c.player===_founderN&&prov.owner!==_founderN;
     if(isHome) narrative.push(`The defenders fight on home soil, gaining an additional ×1.2 bonus.`);
     if(atkHome) narrative.push(`🏠 ${cName} fights to win back ${prov.name}, the realm's own capital — home ground lends the assault ×1.5 strength.`);
-    { const _dOwn=(prov.owner!=null&&prov.owner!==c.player)?discSum(prov.owner,'defOwn','pct'):0; if(_dOwn>0){ defBonus*=1+_dOwn; narrative.push(`  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${Math.round(_dOwn*100)}% defence).`); } } // Item 5: defOwn discoveries
+    { const _dOwn=(prov.owner!=null&&prov.owner!==c.player)?discSum(prov.owner,'defOwn','pct'):0; if(_dOwn>0){ defBonus*=1+_dOwn; narrative.push(`  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${dispFloor(_dOwn*100)}% defence).`); } } // Item 5: defOwn discoveries
     const homeBonus=isHome?1.2:1;
     const atkHomeBonus=atkHome?1.5:1;
 
@@ -10191,7 +10224,7 @@ const BATTLE_ARMY_SPELLS={
           else narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}, but they are already softened as much as arrows can manage.`);
         }
       });
-      narrative.push(`📊 Archery phase total: −${totalArrowDmg} strength spread across defenders (each unit softened by at most ${Math.round(MISSILE_CAP_FRACTION*100)}%).`);
+      narrative.push(`📊 Archery phase total: −${totalArrowDmg} strength spread across defenders (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION*100)}%).`);
     }
 
     // ══════════════════════════════════════════════════════
@@ -10285,7 +10318,7 @@ const BATTLE_ARMY_SPELLS={
           else if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${def.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
           else narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but they are already as softened as arrows can manage.`);
         });
-        narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${Math.round(MISSILE_CAP_FRACTION*100)}%).`);
+        narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION*100)}%).`);
       }
     }
 
@@ -10329,8 +10362,8 @@ const BATTLE_ARMY_SPELLS={
       const tm=terrainMod(a.type,prov.terrain);
       const sp2=seaPenalty(a.type,prov.terrain);
       const combined=tm*sp2;
-      if(combined<0.85) terrainNotable.push(`${a.type} −${Math.round((1-combined)*100)}%`);
-      else if(combined>1.05) terrainNotable.push(`${a.type} +${Math.round((combined-1)*100)}%`);
+      if(combined<0.85) terrainNotable.push(`${a.type} −${dispFloor((1-combined)*100)}%`);
+      else if(combined>1.05) terrainNotable.push(`${a.type} +${dispFloor((combined-1)*100)}%`);
     });
     if(terrainNotable.length>0) narrative.push(`📊 Terrain (${prov.terrain}): ${terrainNotable.join(', ')}`);
     if(!isLandBattle&&armies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))){
@@ -10370,7 +10403,7 @@ const BATTLE_ARMY_SPELLS={
         const penalty=druIdPenaltyMult(c,a,playerAlign,dragonTamed(c,a));
         // Only warn if a penalty actually applies (skeletal/exempt units return 1.0 = no penalty)
         if(penalty<1){
-          narrative.push(`⚠ ${cName} lacks Druid skill to lead ${a.unitName||a.type} (needs ${req}, has ${druIdLvl}): −${Math.round((1-penalty)*100)}% strength penalty.`);
+          narrative.push(`⚠ ${cName} lacks Druid skill to lead ${a.unitName||a.type} (needs ${req}, has ${druIdLvl}): −${dispFloor((1-penalty)*100)}% strength penalty.`);
         }
       }
     });
@@ -10603,7 +10636,7 @@ const BATTLE_ARMY_SPELLS={
       // Survivors stay in the province and contest it again next phase.
       const _defOwnerNm=defHero?defHero.name.replace(' (wandering)',''):('The defenders of '+prov.name);
       narrative.push(`🛡 **${_defOwnerNm}'s forces** (defender):`);
-      if(_npcRideAtk>0) narrative.push(`🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${Math.round(_npcRideAtk*100)}% losses).`);
+      if(_npcRideAtk>0) narrative.push(`🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${dispFloor(_npcRideAtk*100)}% losses).`);
       defenders.forEach(a=>{
         if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtk){
           a._died=true;
@@ -10671,7 +10704,7 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>delete a._defDied);
 
       narrative.push(`⚔ **${cName}'s forces** (attacker):`);
-      if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${Math.round(_npcRideDef*100)}% losses).`);
+      if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef*100)}% losses).`);
       armies.forEach(a=>{
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
@@ -10899,7 +10932,8 @@ const BATTLE_ARMY_SPELLS={
   function pcNewStatus(){
     return {stun:0, hitPenalty:0, dodge:1, meleeHalvedRounds:0, silenceRounds:0,
             dot:[], mirrorImages:0, freeAttacksForFoe:0, fleeBonus:0, fleePenalty:0,
-            reflect:0, absorb:0, incomingDmgBonus:0, bestAbilityHalved:false, nextAttackFails:0};
+            reflect:0, absorb:0, incomingDmgBonus:0, bestAbilityHalved:false, nextAttackFails:0,
+            hitPenaltyFixed:0}; // 2026-09-12 (item 2): a to-hit penalty that lasts the whole fight (does NOT fade 5%/round)
   }
   // 2026-09-11 (item 16): "Melee 6" alone looks like a bug when the sheet says 4. Show the boost and its size:
   // "Archery 6 (4 +2 bonus)". Monsters and unboosted characters print the plain figure.
@@ -11040,13 +11074,14 @@ const BATTLE_ARMY_SPELLS={
     chance += temperOf(attacker.temper).meleeHit;
     chance -= temperOf(defender.temper).defence;
     chance -= (attacker.status.hitPenalty||0);
+    chance -= (attacker.status.hitPenaltyFixed||0);        // 2026-09-12: "for the rest of the fight" penalties (Flash Powder, Clinging Pitch)
     chance -= (attacker.status.auraPenalty||0);            // 2026-09-10: a guardian's passive aura (Dread / Petrifying…) — never decays
     chance += (attacker.status.hitBonus||0);                // Elixir of Focus and kin
     chance -= (defender.status.toHitReduce||0);            // Invisibility: flat \u221225 to hit (floored at 40 below)
     chance -= ((defender.arm&&defender.arm.dodge)||0);     // Quicksilver Mail (2026-09-10 armour): −10% to be hit
     if(attacker.player!=null && hasDisc(attacker.player,'sd33')) chance+=10; // sd33 Duelling Code (wired 2026-09-07)
-    chance = chance*(defender.status.dodge||1);           // Invisibility etc. make defender harder to hit
-    return Math.max(5, Math.min(95, chance)); // 2026-09-10: floor 40 → 5 (the old floor hid the new lower base)
+    chance = chance*(defender.status.dodge||1);           // (no effect currently sets status.dodge — kept as a hook)
+    return Math.max(5, Math.min(95, dispFloor(chance))); // 2026-09-10: floor 40 → 5 · 2026-09-12: whole number, rounded down
   }
   function pcMeleeDamage(attacker, defender){
     const diff=(attacker.melee||0)-(defender.melee||0);
@@ -11128,7 +11163,7 @@ const BATTLE_ARMY_SPELLS={
     if(_soakPct>0 && (PC_CHANNEL[kind]==='melee'||PC_CHANNEL[kind]==='archery')){
       const _before=d;
       d=Math.max(1, Math.round(d*(1-_soakPct)));
-      if(d<_before) narrative.push(`  ${target.name} takes the ${kind} on raw fury and shrugs off ${_before-d} of it. (Rage −${Math.round(_soakPct*100)}%)`);
+      if(d<_before) narrative.push(`  ${target.name} takes the ${kind} on raw fury and shrugs off ${_before-d} of it. (Rage −${dispFloor(_soakPct*100)}%)`);
     }
     if(target.status && target.status.absorb>0){
       const soak=Math.min(target.status.absorb, d);
@@ -11168,7 +11203,7 @@ const BATTLE_ARMY_SPELLS={
       target._armSecondWindUsed=true;
       const _back=Math.max(1,Math.round((target.maxHp||20)*_arm.secondWind/100));
       target.hp=Math.min(target.maxHp||20,target.hp+_back);
-      narrative.push(`  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind==='monster'?(target.passiveName||'its nature'):"their armour's blessing"} restores ${_back} HP. (HP ${Math.round(target.hp)})`);
+      narrative.push(`  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind==='monster'?(target.passiveName||'its nature'):"their armour's blessing"} restores ${_back} HP. (HP ${dispFloor(target.hp)})`);
     }
     return d;
   }
@@ -11180,7 +11215,7 @@ const BATTLE_ARMY_SPELLS={
       if(cbt.arm.roundWard>0) cbt._roundWardLeft=cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
       if(cbt.arm.stunImmune&&cbt.status.stun>0){ cbt.status.stun=0; narrative.push(`  ${pcWardIcon(cbt)} ${cbt.kind==='monster'?`${cbt.name} cannot be held (${cbt.passiveName||'its nature'})`:`${cbt.name}'s shield arm never wavers`} — the daze is ignored.`); }
       if(cbt.arm.dotImmune&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} sloughs off every burn, poison and bleeding.`); }
-      if(cbt.arm.regen>0&&cbt.hp>0&&cbt.hp<(cbt.maxHp||20)){ const h=Math.min(cbt.arm.regen,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} knits flesh for ${h}. (HP ${Math.round(cbt.hp)})`); }
+      if(cbt.arm.regen>0&&cbt.hp>0&&cbt.hp<(cbt.maxHp||20)){ const h=Math.min(cbt.arm.regen,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} knits flesh for ${h}. (HP ${dispFloor(cbt.hp)})`); }
       if(cbt.arm.resist){
         if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-5);
         if(cbt.status.stun>0&&Math.random()<0.5){ cbt.status.stun=0; narrative.push(`  🛡 ${cbt.name} shrugs off the daze — their armour holds them steady.`); }
@@ -11192,7 +11227,7 @@ const BATTLE_ARMY_SPELLS={
     });
     cbt.status.dot=(cbt.status.dot||[]).filter(d=>d.rounds>0);
     // Heal-over-time (Potion of Regeneration and kin)
-    if(cbt.status.hot&&cbt.status.hot.rounds>0){ const h=Math.min(cbt.status.hot.amt,Math.max(0,(cbt.maxHp||20)-cbt.hp)); cbt.hp+=h; cbt.status.hot.rounds--; if(h>0) narrative.push(`  ${cbt.status.hot.label||'Regeneration'} knits ${cbt.name} for ${h}. (HP ${Math.round(cbt.hp)})`); }
+    if(cbt.status.hot&&cbt.status.hot.rounds>0){ const h=Math.min(cbt.status.hot.amt,Math.max(0,(cbt.maxHp||20)-cbt.hp)); cbt.hp+=h; cbt.status.hot.rounds--; if(h>0) narrative.push(`  ${cbt.status.hot.label||'Regeneration'} knits ${cbt.name} for ${h}. (HP ${dispFloor(cbt.hp)})`); }
     // Decay to-hit penalty
     if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-5);
     if(cbt.status.meleeHalvedRounds>0) cbt.status.meleeHalvedRounds--;
@@ -11322,7 +11357,7 @@ const BATTLE_ARMY_SPELLS={
     }
     if(heal>0){
       actor.hp=Math.min(actor.maxHp, actor.hp+heal);
-      narrative.push(`  The ${actor.name} knits its wounds for ${heal}. (HP ${Math.round(actor.hp)})`);
+      narrative.push(`  The ${actor.name} knits its wounds for ${heal}. (HP ${dispFloor(actor.hp)})`);
     }
     // ── Lost actions ──
     let stun=0;
@@ -11402,7 +11437,7 @@ const BATTLE_ARMY_SPELLS={
     const hit=pcHitChance(actor,foe);
     // Roll-display fix (Sept 2026): the shown target and the shown roll are BOTH the integers the
     // engine actually compares (roll 1-100 <= rounded chance) — a displayed 82 vs target 82 succeeds.
-    const hitI=Math.round(hit), roll=d100();
+    const hitI=dispFloor(hit), roll=d100();
     narrative.push(`  ${actor.name} attacks (${pcSkillLabel(actor,'melee')}, ${hitI}% to hit [roll ${roll}]${roll<=hitI?' ✓':' ✗'})`);
     if(roll<=hitI){
       actor._didMelee=true;
@@ -11411,7 +11446,7 @@ const BATTLE_ARMY_SPELLS={
       if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt} damage! (HP ${Math.max(0,Math.round(foe.hp))})`);
       if(dealt && actor.drain>0 && actor.hp<(actor.maxHp||20)){ // 2026-09-10: guardian passive (Undying Thirst, Sanguine Feeding…)
         const _dr=Math.min(Math.max(1,Math.round(dealt*actor.drain)),(actor.maxHp||20)-actor.hp); actor.hp+=_dr;
-        narrative.push(`  ${actor.name} drinks the wound — +${_dr} HP. (${actor.passiveName||'Drain'}, HP ${Math.round(actor.hp)})`);
+        narrative.push(`  ${actor.name} drinks the wound — +${_dr} HP. (${actor.passiveName||'Drain'}, HP ${dispFloor(actor.hp)})`);
       }
       // Brimstone-style shields bite back at whoever lands a blow.
       if(dealt && foe.status.reflect>0){
@@ -11439,14 +11474,14 @@ const BATTLE_ARMY_SPELLS={
     const spd=foe.kind==='monster'?pcSpeedOf(foe):2;
     let chance=30+(spd===1?25:spd===3?-15:0)+temperOf(actor.temper).fleeMod+(actor.status.fleeBonus||0)-(actor.status.fleePenalty||0);
     if(actor.status.fleeDoubled) chance*=2; // Charm combat effect
-    return Math.max(5, Math.min(95, Math.round(chance)));
+    return Math.max(5, Math.min(95, dispFloor(chance)));
   }
   function pcFreeStrike(actor, foe, narrative){
     // A bonus melee attack outside the normal exchange. No riposte on a miss (the target is running).
     if(!actor||!foe||actor.hp<=0||foe.hp<=0) return;
     if(actor.status&&actor.status.stun>0){ narrative.push(`  …but ${actor.name} is too dazed to punish it.`); return; }
     if(actor.status&&actor.status.nextAttackFails>0){ actor.status.nextAttackFails--; narrative.push(`  …but ${actor.name} is still reeling and the chance is lost. (Trueshot)`); return; }
-    const hitI=Math.round(pcHitChance(actor,foe)), roll=d100();
+    const hitI=dispFloor(pcHitChance(actor,foe)), roll=d100();
     narrative.push(`  ⚔ ${actor.name} takes a free strike at ${foe.name}'s back (${pcSkillLabel(actor,'melee')}, ${hitI}% to hit [roll ${roll}]${roll<=hitI?' ✓':' ✗'})`);
     if(roll<=hitI){
       actor._didMelee=true;
@@ -11499,10 +11534,26 @@ const BATTLE_ARMY_SPELLS={
     if(volley>1) narrative.push(`  ${actor.name} draws and looses a volley of ${volley} arrows (${pcSkillLabel(actor,'archery')}).`);
     for(let v=0; v<volley && foe.hp>0; v++) pcFireOne(actor, foe, narrative);
   }
+  // 2026-09-12 (Toby, item 2): ONE archery to-hit, the mirror of pcHitChance. It used to be an inline sum that
+  // (a) ignored the target's Invisibility-type reduction (Invisibility, Potion of Invisibility, Grey Cloak Draught,
+  // Potion of Fleetness…), so arrows went straight through "foe −25% to hit you"; (b) applied the dodge multiplier
+  // AFTER the 5–95 clamp; and (c) rolled a hidden float, showing the chance only on a miss. The defender's temper
+  // GUARD does not turn arrows (Toby 2026-09-12) — guard is a melee trait.
+  function pcArrowHitChance(actor, foe){
+    let chance=PC_MELEE_HIT_BASE+PC_MELEE_HIT_PER_LVL*Math.min(PC_HIT_SKILL_CAP,Math.max(0,actor.archery||0));
+    chance += temperOf(actor.temper).archeryHit;
+    chance -= (actor.status.hitPenalty||0)+(actor.status.hitPenaltyFixed||0)+(actor.status.auraPenalty||0);
+    chance += (actor.status.hitBonus||0);
+    chance -= (foe.status.toHitReduce||0);
+    chance -= ((foe.arm&&foe.arm.dodge)||0);
+    if(actor.player!=null && hasDisc(actor.player,'sd33')) chance+=10; // sd33 Duelling Code
+    chance = chance*(foe.status.dodge||1);
+    return Math.max(5, Math.min(95, dispFloor(chance)));
+  }
   function pcFireOne(actor, foe, narrative){
-    const hit=Math.max(5, Math.min(95, 30+Math.min(PC_HIT_SKILL_CAP,actor.archery||0)*10+temperOf(actor.temper).archeryHit-(actor.status.hitPenalty||0)-(actor.status.auraPenalty||0)+(actor.status.hitBonus||0)-((foe.arm&&foe.arm.dodge)||0)+((actor.player!=null&&hasDisc(actor.player,'sd33'))?10:0))); // sd33 Duelling Code · 2026-09-10: skill counted to 5 (item 5 parity), aura / focus / dodge wards now reach arrows too
-    const r=Math.random()*100;
-    if(r<hit*(foe.status.dodge||1)){
+    const hit=pcArrowHitChance(actor,foe), roll=d100();
+    narrative.push(`  ${actor.name} shoots (${pcSkillLabel(actor,'archery')}, ${hit}% to hit [roll ${roll}]${roll<=hit?' ✓':' ✗'})`);
+    if(roll<=hit){
       actor._didArchery=true;
       const d=pcArrowDamage(actor);
       const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow');
@@ -11517,7 +11568,7 @@ const BATTLE_ARMY_SPELLS={
         foe.status.nextAttackFails=(foe.status.nextAttackFails||0)+1;
         narrative.push(`  🎯 ${actor.name}'s shot strikes a vital point — ${foe.name}'s next attack will fail. (Trueshot)`);
       }
-    } else { narrative.push(`  ${actor.name}'s shot flies wide. [${hit.toFixed(0)}%]`); pcTryCounter(foe, actor, narrative); }
+    } else { narrative.push(`  ${actor.name}'s shot flies wide.`); pcTryCounter(foe, actor, narrative); }
   }
 
   // --- Tactic selection --------------------------------------------------------
@@ -11593,17 +11644,20 @@ const BATTLE_ARMY_SPELLS={
     const hurt=(d,label)=>{ const dealt=pcTakeHit(foe,d,narrative,actor.name,label||nm); if(dealt) narrative.push(`  ${nm} strikes ${foe.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(foe.hp))})`); return dealt; };
     narrative.push(`  🧪 ${who} uses the ${nm}!`);
     switch(e.use){
-      case 'heal':{ const h=Math.min(e.amt||5,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; narrative.push(`  ${who} recovers ${h} HP. (HP ${Math.round(actor.hp)})`); break; }
+      case 'heal':{ const h=Math.min(e.amt||5,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; narrative.push(`  ${who} recovers ${h} HP. (HP ${dispFloor(actor.hp)})`); break; }
       case 'hot':{ st.hot={amt:e.amt||3,rounds:e.rounds||3,label:nm}; narrative.push(`  Warmth spreads through ${actor.name} — ${e.amt} HP a round for ${e.rounds} rounds.`); break; }
-      case 'secondwind':{ const h=Math.min(e.amt||10,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; st.dot=[]; st.hitPenalty=0; narrative.push(`  ${who} recovers ${h} HP and every lingering affliction lifts. (HP ${Math.round(actor.hp)})`); break; }
+      case 'secondwind':{ const h=Math.min(e.amt||10,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; st.dot=[]; st.hitPenalty=0; st.hitPenaltyFixed=0; narrative.push(`  ${who} recovers ${h} HP and every lingering affliction lifts. (HP ${dispFloor(actor.hp)})`); break; }
       case 'dmg': case 'bane':{ const times=e.times||1; for(let i=0;i<times&&foe.hp>0;i++){ let d=rng(e.dmg[0],e.dmg[1]); if((e.doubleVs||[]).includes(pcFoeCat(foe))){ d*=2; narrative.push(`  The ${nm} blazes twice as bright against ${foe.name}!`); } hurt(d); }
         if(e.dot&&foe.hp>0){ fs.dot.push({dmg:e.dot[0],rounds:e.dot[1],label:nm}); narrative.push(`  ${nm} keeps burning on ${foe.name}.`); }
         if(e.hitPen&&foe.hp>0){ fs.hitPenalty=(fs.hitPenalty||0)+e.hitPen; narrative.push(`  ${foe.name} is thrown off (−${e.hitPen}% to hit).`); }
         if(e.stun&&foe.hp>0){ fs.stun=(fs.stun||0)+e.stun; narrative.push(`  ${foe.name} loses ${e.stun} action${e.stun!==1?'s':''}.`); }
         break; }
-      case 'drain':{ const d=rng(e.dmg[0],e.dmg[1]); const dealt=hurt(d); const h=Math.min(dealt,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; if(h>0) narrative.push(`  ${who} drinks the stolen vigour — +${h} HP. (HP ${Math.round(actor.hp)})`); break; }
+      case 'drain':{ const d=rng(e.dmg[0],e.dmg[1]); const dealt=hurt(d); const h=Math.min(dealt,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; if(h>0) narrative.push(`  ${who} drinks the stolen vigour — +${h} HP. (HP ${dispFloor(actor.hp)})`); break; }
       case 'stun': case 'banestun':{ fs.stun=(fs.stun||0)+(e.stun||1); narrative.push(`  ${foe.name} is held fast — ${e.stun||1} action${(e.stun||1)!==1?'s':''} lost.`); break; }
-      case 'pen':{ fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen}% to hit).`); break; }
+      case 'pen':{ // 2026-09-12 (item 2): an item that says "for the rest of the fight" no longer fades 5% a round
+        if(/rest of the fight/i.test(it.desc||'')){ fs.hitPenaltyFixed=(fs.hitPenaltyFixed||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit for the rest of the fight).`); }
+        else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit).`); }
+        break; }
       case 'weak':{ if(e.melee){ foe.melee=Math.max(0,(foe.melee||0)-e.melee); } if(e.archery){ foe.archery=Math.max(0,(foe.archery||0)-e.archery); } narrative.push(`  ${foe.name} is sapped — Melee ${foe.melee}${e.archery?`, Archery ${foe.archery}`:''} for the rest of the fight.`); break; }
       case 'terror':{ if(!foe.neverFlees&&Math.random()<0.5){ state.fledBy=foe; narrative.push(`  ${foe.name} is overcome with dread and flees!`); } else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} holds their ground, badly shaken (−${e.hitPen||15}% to hit).`); } break; }
       case 'silence':{ fs.silenceRounds=(fs.silenceRounds||0)+(e.rounds||3); narrative.push(`  ${foe.name}'s magic and powers are bound for ${e.rounds||3} rounds.`); break; }
@@ -11613,7 +11667,7 @@ const BATTLE_ARMY_SPELLS={
       case 'mirror':{ st.mirrorImages=(st.mirrorImages||0)+(e.images||2); narrative.push(`  ${e.images||2} shimmering doubles step out of ${actor.name}.`); break; }
       case 'flee':{ st.fleeBonus=(st.fleeBonus||0)+(e.fleeBonus||25); if(e.toHitReduce) st.toHitReduce=(st.toHitReduce||0)+e.toHitReduce; narrative.push(`  ${who} is ready to break away (+${e.fleeBonus||25}% to flee${e.toHitReduce?`, foe −${e.toHitReduce}% to hit`:''}).`); break; }
       case 'invis':{ st.toHitReduce=(st.toHitReduce||0)+(e.toHitReduce||25); narrative.push(`  ${who} fades from sight — ${foe.name} strikes at shadows (−${e.toHitReduce||25}% to hit).`); break; }
-      case 'dispel':{ st.dot=[]; st.hitPenalty=0; narrative.push(`  Every poison, burn and blinding on ${actor.name} lifts.`); break; }
+      case 'dispel':{ st.dot=[]; st.hitPenalty=0; st.hitPenaltyFixed=0; narrative.push(`  Every poison, burn and blinding on ${actor.name} lifts.`); break; }
       default: narrative.push(`  …but nothing happens.`);
     }
   }
@@ -11650,12 +11704,12 @@ const BATTLE_ARMY_SPELLS={
         // A Fire action means: get to firing range, then shoot. Speed decides whether the
         // move succeeds — closing the gap, or breaking back out of a melee the foe is holding.
         if(state.range==='spell'){
-          const ch=Math.round(pcMoveCheck(actor,foe,'advance')), roll=d100();
+          const ch=dispFloor(pcMoveCheck(actor,foe,'advance')), roll=d100();
           narrative.push(`  ${actor.name} moves up to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
           if(roll>ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
           state.range='bow';
         } else if(state.range==='melee'){
-          const ch=Math.round(pcMoveCheck(actor,foe,'withdraw')), roll=d100();
+          const ch=dispFloor(pcMoveCheck(actor,foe,'withdraw')), roll=d100();
           narrative.push(`  ${actor.name} tries to break away to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
           if(roll>ch){ narrative.push(`  ${foe.name} stays right on top of ${actor.name} — no room to draw.`); break; }
           state.range='bow';
@@ -11769,7 +11823,9 @@ const BATTLE_ARMY_SPELLS={
         } else {
           narrative.push(`  ${actor.name} scouts the ground, but there is nothing here to guard.`);
         }
-        if(b>0){ actor.status.hitPenalty=Math.max(0,(actor.status.hitPenalty||0)-b); narrative.push(`  ${actor.name} reads the ground and steadies (Explorer ${ex}: +${b}% to hit).`); }
+        // 2026-09-12 (item 2): Scout only ever CANCELLED fading to-hit penalties (it never added a bonus) — the line now says so.
+        if(b>0){ const _had=actor.status.hitPenalty||0, _cut=Math.min(_had,b); actor.status.hitPenalty=_had-_cut;
+          if(_cut>0) narrative.push(`  ${actor.name} reads the ground and steadies — ${_cut}% of their to-hit penalty is shaken off (Explorer ${ex}).`); }
         break;
       }
       // Item 11: a 'CS' tactic is a battle-magic-phase school choice — it has NO place in personal
@@ -11908,7 +11964,7 @@ const BATTLE_ARMY_SPELLS={
         cbt._secondWindUsed=true;
         const back=Math.max(1, Math.round((cbt.maxHp||20)*tt.secondWind));
         cbt.hp=Math.min(cbt.maxHp||20, cbt.hp+back);
-        narrative.push(`  💪 ${cbt.name} (${cbt.temper}) finds their second wind and fights on — ${back} HP recovered. (HP ${Math.round(cbt.hp)})`);
+        narrative.push(`  💪 ${cbt.name} (${cbt.temper}) finds their second wind and fights on — ${back} HP recovered. (HP ${dispFloor(cbt.hp)})`);
       }
 
       // ── Flight from Combat (AK §2.4): a fighter's Temper may make them break off when death nears ──
@@ -12216,7 +12272,7 @@ const BATTLE_ARMY_SPELLS={
       defBonus*=1.10;
       narrative.push(`✝ Righteous Defence — ${defName}'s host defends ground held justly (+10% defence).`);
     }
-    { const _dOwnP=(prov.owner!=null&&prov.owner===def.player)?discSum(def.player,'defOwn','pct'):0; if(_dOwnP>0){ defBonus*=1+_dOwnP; narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${Math.round(_dOwnP*100)}% defence).`); } } // Item 5: defOwn discoveries
+    { const _dOwnP=(prov.owner!=null&&prov.owner===def.player)?discSum(def.player,'defOwn','pct'):0; if(_dOwnP>0){ defBonus*=1+_dOwnP; narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP*100)}% defence).`); } } // Item 5: defOwn discoveries
     if(isHome && prov.owner===def.player && activeItems(def).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`); }
     if(activeItems(atk).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`); }
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
@@ -12450,7 +12506,7 @@ const BATTLE_ARMY_SPELLS={
       const sp3=seaPenalty(a.type,pvpTerrain);
       const combined=tm*sp3;
       if(combined<0.85||combined>1.05){
-        pvpTerrainNotes.push(`${a.type}:${combined>1?'+':''}${Math.round((combined-1)*100)}%`);
+        pvpTerrainNotes.push(`${a.type}:${combined>1?'+':''}${dispFloor((combined-1)*100)}%`);
       }
     });
     if(pvpTerrainNotes.length>0) narrative.push(`📊 Terrain (${pvpTerrain}): ${pvpTerrainNotes.join(', ')}`);
@@ -12493,8 +12549,8 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`${defName}'s Naval ${defNav}: +${(defNav*20)}% to fleet units.`);
 
     // Druid shortfall warnings — only when a penalty actually applies (skeletal/exempt units are free)
-    atkArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(atk,'druid'));if(sf>0){const pen=druIdPenaltyMult(atk,a,atkAlign2,dragonTamed(atk,a));if(pen<1)narrative.push(`⚠ ${atkName} Druid shortfall on ${a.unitName||a.type}: −${Math.round((1-pen)*100)}%`);}});
-    defArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(def,'druid'));if(sf>0){const pen=druIdPenaltyMult(def,a,defAlign2,dragonTamed(def,a));if(pen<1)narrative.push(`⚠ ${defName} Druid shortfall on ${a.unitName||a.type}: −${Math.round((1-pen)*100)}%`);}});
+    atkArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(atk,'druid'));if(sf>0){const pen=druIdPenaltyMult(atk,a,atkAlign2,dragonTamed(atk,a));if(pen<1)narrative.push(`⚠ ${atkName} Druid shortfall on ${a.unitName||a.type}: −${dispFloor((1-pen)*100)}%`);}});
+    defArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(def,'druid'));if(sf>0){const pen=druIdPenaltyMult(def,a,defAlign2,dragonTamed(def,a));if(pen<1)narrative.push(`⚠ ${defName} Druid shortfall on ${a.unitName||a.type}: −${dispFloor((1-pen)*100)}%`);}});
 
     // Discovery bonus
     const atkDiscBonus=1+discoveryArmyBonus(atk.player);
@@ -12669,7 +12725,7 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       const _rideAtkEff=_sfDef?0:_rideAtk;
       if(_rideAtk>0&&_sfDef) narrative.push(`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Free Lances find no broken backs to ride down.`);
-      else if(_rideAtk>0) narrative.push(`🐎 ${atkName}'s Free Lances ride down the broken companies (+${Math.round(_rideAtk*100)}% losses to ${defName}).`);
+      else if(_rideAtk>0) narrative.push(`🐎 ${atkName}'s Free Lances ride down the broken companies (+${dispFloor(_rideAtk*100)}% losses to ${defName}).`);
       // Losing defender
       defArmies.forEach(a=>{
         if(a._isSkeletal) return;
@@ -12747,7 +12803,7 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Losing attacker
       const _rideDefEff=_sfAtk?0:_rideDef;
       if(_rideDef>0&&_sfAtk) narrative.push(`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Free Lances find no broken backs to ride down.`);
-      else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${Math.round(_rideDef*100)}% losses to ${atkName}).`);
+      else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef*100)}% losses to ${atkName}).`);
       atkArmies.forEach(a=>{
         if(a._isSkeletal) return;
         const i=tiers.indexOf(a.quality);
@@ -13215,10 +13271,10 @@ const BATTLE_ARMY_SPELLS={
       const _sRoll=d100();
       if(_sRoll<=20){
         deadChar.hp=1; deadChar.alive=true; deadChar.killedThisTurn=false;
-        log('combat',`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(20,_sRoll)}`,{actor:deadChar.player,targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+        log('combat',`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(20,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
         return false;
       } else {
-        log('combat',`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(20,_sRoll)}`,{actor:deadChar.player,targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
+        log('combat',`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(20,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
       }
     }
     if(killerChar&&killerChar.player!=null&&deadChar.player!=null&&deadChar.player!==killerChar.player){ const _tm=TM(killerChar); _tm.duelKills=(_tm.duelKills||0)+1; } // MINOR TITLE — The Widowmaker
@@ -14710,7 +14766,7 @@ const BATTLE_ARMY_SPELLS={
           const _mySpy=effStat(c,'spy'), _tgSpy=effStat(_tgt,'spy');
           const _masterSpy=perkTier(c,'spy')>0;
           const _auto=hasCrystalOrb||_masterSpy;
-          const _chance=Math.max(5,Math.min(95,Math.round((0.25+0.10*_mySpy+spyBonus)*100)));
+          const _chance=Math.max(5,Math.min(95,dispFloor((0.25+0.10*_mySpy+spyBonus)*100)));
           const _roll=d100();
           const _ok=_auto||_roll<=_chance;
           log('system',`📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_chance,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -14747,7 +14803,7 @@ const BATTLE_ARMY_SPELLS={
         c._spyDisguised=false;
         if(charMinor(c,'shadow')) c._spyDisguised=true; // MINOR TITLE — The Shadow: spies never detected
         // Item 10: show the spy's success chance and the actual roll (previously neither was reported).
-        const _spyChance=Math.round((0.2+effStat(c,'spy')*0.2+spyBonus-cipherPenalty)*100);
+        const _spyChance=dispFloor((0.2+effStat(c,'spy')*0.2+spyBonus-cipherPenalty)*100);
         const _autoSpy=hasCrystalOrb||masterSpy;
         const _spyRoll=d100();
         const success=_autoSpy||(_spyRoll<=_spyChance);
@@ -15047,15 +15103,15 @@ const BATTLE_ARMY_SPELLS={
           // Group practice among equals — the shared drilling adds a bonus equal to HALF each
           // character's normal chance of improving (i.e. total = 1.5× the solo chance).
           successChance=soloChance*1.5;
-          bonusReason=` — practising alongside ${peers.map(t=>t.name).join(' & ')} (base ${Math.round(baseByLevel*100)}% at level ${current}, +50% group bonus)`;
+          bonusReason=` — practising alongside ${peers.map(t=>t.name).join(' & ')} (base ${dispFloor(baseByLevel*100)}% at level ${current}, +50% group bonus)`;
           if(astroBonus>0) bonusReason+=' incl. Astronomical Tables';
         } else {
           successChance=soloChance; // solo practice (or only lower-skilled trainees present)
-          bonusReason=` (base ${Math.round(baseByLevel*100)}% at level ${current})`+(astroBonus>0?' +5% (Astronomical Tables)':'');
+          bonusReason=` (base ${dispFloor(baseByLevel*100)}% at level ${current})`+(astroBonus>0?' +5% (Astronomical Tables)':'');
         }
         if(_streak>0&&successChance<1) bonusReason+=` ×${_persevere.toFixed(2)} for ${_streak} earlier failed practice${_streak!==1?'s':''} this turn`;
             // Item 10: roll a d100 and show the success chance and the roll, like every other action.
-            const _prPct=Math.round(successChance*100);
+            const _prPct=dispFloor(successChance*100);
             const _prRoll=d100();
             if(_prRoll<=_prPct){
           c._practiceFailStreak={turn:G.turn,n:0}; // Item 7: success resets the streak
@@ -15219,6 +15275,9 @@ const BATTLE_ARMY_SPELLS={
         //   • DIFFERENT province → the items leave the sender NOW but travel by courier and ARRIVE with
         //     the recipient at the END of the turn (queued on G._itemDeliveries), ready to use next turn.
         // Item 9 (this session): the recipient is notified in THEIR own Chronicle section, this phase.
+        // 2026-09-12 (Toby, item 7): a CHARMED hero (enemy seized for the turn, or a wanderer swayed this turn) will not
+        // send their items away — the order is refused (the player portal no longer offers it either).
+        if(c._charmTempControl||c._charmedTurn===G.turn){ log('system',`${c.name} will not part with their possessions — a charmed mind still clutches what it owns.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
         const recipId=parseInt(extra);
         const recip=G.characters[recipId];
         if(!recip){log('item',`${c.name}: cannot send item — no such recipient.`,{actor:c.player,targets:[c.player]});break;}
@@ -15728,8 +15787,12 @@ const BATTLE_ARMY_SPELLS={
           // ignored; applied only to phases after the cast, since actingThisPhase() will skip the
           // hero in every earlier phase anyway (they were dead).
           {
-            const pend=(G._pendingResurrectOrders||[]).find(x=>
-              x.heroId===deadHero.id && x.casterId===c.id && x.player===c.player);
+            // 2026-09-12 (Toby, item 3): the player portal now shows ONE order card per fallen hero, whichever of
+            // the realm's casters targets them — so the orders apply if ANY of this realm's casters raises the hero
+            // (an exact caster match still wins if two cards were somehow submitted). A rival's orders never apply.
+            const _pendAll=(G._pendingResurrectOrders||[]);
+            const pend=_pendAll.find(x=>x.heroId===deadHero.id && x.casterId===c.id && x.player===c.player)
+              ||_pendAll.find(x=>x.heroId===deadHero.id && x.player===c.player);
             if(pend&&Array.isArray(pend.orders)){
               const slots=G.turnOrders[deadHero.id]||[null,null,null,null,null];
               let applied=0;
@@ -15797,7 +15860,7 @@ const BATTLE_ARMY_SPELLS={
           const _divineKingdom=G.players[c.player]?.alignment==='Divine';
           const _divineKingBless=c.isKing&&_divineKingdom;
           targetProv._blessedMult=(_divineKingBless?2.0:(_divineKingdom?1.8:1.6))+discSum(c.player,'bless','pct'); // item 2 (2026-09-09): ad09 Rites of Plenty (+0.2)
-          const _blessPct=`+${Math.round((targetProv._blessedMult-1)*100)}% tax`+(_divineKingBless?' (a Divine king\'s blessing — the gods answer their anointed in full)':(_divineKingdom?' (Divine blessing)':''));
+          const _blessPct=`+${dispFloor((targetProv._blessedMult-1)*100)}% tax`+(_divineKingBless?' (a Divine king\'s blessing — the gods answer their anointed in full)':(_divineKingdom?' (Divine blessing)':''));
           log('explore',`✨ ${c.name} blesses ${targetProv.name} — its lands flourish, yielding ${_blessPct} at collection this turn. The sacred ground is warded — a ${targetProv._blessWardPct}% chance to turn aside any enemy Flood, Earthquake, Plague or Part Sea cast here this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
         }
 
@@ -15846,6 +15909,7 @@ const BATTLE_ARMY_SPELLS={
             }
             t.pay=_chWage;
             t.player=c.player; t.hiredInPhase=ph;    // hiredInPhase gates acting to ph+1 (permanent join)
+            t._charmedTurn=G.turn;                   // 2026-09-12 (item 7): a charmed mind will not send its possessions away this turn
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
             if(typeof setMovePool==='function') setMovePool(t);
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
@@ -15864,6 +15928,7 @@ const BATTLE_ARMY_SPELLS={
             t._charmedByPlayer=c.player;
             t._charmedForPhase=ph;
             t._charmTempControl=true;
+            t._charmedTurn=G.turn;                   // 2026-09-12 (item 7)
             t._charmControlFrom=ph;
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
             t.player=c.player;
@@ -15910,6 +15975,9 @@ const BATTLE_ARMY_SPELLS={
           // Task 7(a): remember this watch so the report can surface everything that befalls the target
           // FROM THIS PHASE ONWARD, filed into the caster's Realm Events. One watch per player.
           clairWatch[c.player]={charId:targetChar.id, fromPhase:ph};
+          // 2026-09-12 (Toby, item 1): the watched character is SEEN wherever they end the turn — on the map, in
+          // hero sightings and the Encounter list — as if spied on, and the mind-link pierces Invisibility.
+          if(G.players[c.player]) G.players[c.player]._clairCharThisTurn=targetChar.id;
           const tp=G.world.provinces[targetChar.location];
           // Item 7: watching a character with Clairvoyance also reveals their full skills.
           {
@@ -15939,7 +16007,7 @@ const BATTLE_ARMY_SPELLS={
             targetChar.skills[sk]=Math.max(0,(targetChar.skills[sk]||0)-1);
             _pbDrops.push(SKILL_LABELS[sk]||sk);
           }
-          if(_pbDrops.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          if(_pbDrops.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s mind buckles, losing ${_pbDrops.join(' and ')}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
           notifyTarget(targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears away ${_pbDrops.join(' and ')}.`,ph,'combat');
         }
@@ -15947,7 +16015,7 @@ const BATTLE_ARMY_SPELLS={
           if(!targetChar||targetChar.location!==c.location){log('system',`Telekinetic Storm: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(targetChar.player===c.player){log('system',`Telekinetic Storm cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const armies=(targetChar.armies||[]);
-          if(armies.length===0){log('combat',`✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          if(armies.length===0){log('combat',`✨ Telekinetic Storm buffets ${targetChar.name}, but they lead no armies to scatter.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const n=Math.min(spellLevelEff, armies.length);
           const picks=shuffleP(armies).slice(0,n);
           let demoted=0, destroyed=0; const _lines=[];
@@ -16151,7 +16219,7 @@ const BATTLE_ARMY_SPELLS={
           if(!targetChar||targetChar.location!==c.location){log('system',`Dominate: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(targetChar.player===c.player){log('system',`Dominate cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const src=targetChar.armies||[];
-          if(src.length===0){log('combat',`✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          if(src.length===0){log('combat',`✨ ${c.name}'s Dominate grips ${targetChar.name}, but they lead no troops to turn.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const take=Math.max(1,Math.floor(src.length*0.25));
           const idxs=shuffleP(src.map((_,i)=>i)).slice(0,take).sort((a,b)=>b-a);
           const seized=idxs.map(i=>src.splice(i,1)[0]);
@@ -16187,9 +16255,9 @@ const BATTLE_ARMY_SPELLS={
           if(!targetChar||targetChar.location!==c.location){log('system',`Chain Lightning: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
           if(targetChar.player===c.player){log('system',`Chain Lightning cannot be turned on your own heroes.`,{actor:c.player,targets:[c.player]});break;}
           const src=targetChar.armies||[];
-          if(src.length===0){log('combat',`✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          if(src.length===0){log('combat',`✨ Chain Lightning crackles around ${targetChar.name}, but they lead no troops to strike.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const pool=Math.floor(src.length*0.30);
-          if(pool<=0){log('combat',`⚡ ${c.name}'s Chain Lightning crackles around ${targetChar.name}'s handful of troops but earths out without a kill.`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
+          if(pool<=0){log('combat',`⚡ ${c.name}'s Chain Lightning crackles around ${targetChar.name}'s handful of troops but earths out without a kill.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           const idxs=shuffleP(src.map((_,i)=>i)).slice(0,pool).sort((a,b)=>b-a);
           let killed=0;
           idxs.forEach(i=>{ if(Math.random()<0.5){ src.splice(i,1); killed++; } });
@@ -16430,13 +16498,13 @@ const BATTLE_ARMY_SPELLS={
         if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
         const roll=d100();
-        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
+        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
           else { log('combat',`🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true});
           handleHeroDeath(victim, c); awardKillXP(c, victim); c.merits=(c.merits||0)+2; }
         } else {
-          log('spy',`${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
+          log('spy',`${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
         }
         trySkillGain(c,'spy',SKILLGAIN_STD);
         break;
@@ -16455,7 +16523,7 @@ const BATTLE_ARMY_SPELLS={
         const foe=G.characters.find(ch=>ch.alive&&ch.id===parseInt(target)&&ch.location===c.location&&ch.player!==c.player);
         if(!foe){log('system',`${c.name} finds no enemy hero to challenge in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
         if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Challenge would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
-        if((foe.armies||[]).length>0){log('combat',`${foe.name} is at the head of an army and will not break off to answer ${c.name}'s Challenge.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id});break;}
+        if((foe.armies||[]).length>0){log('combat',`${foe.name} is at the head of an army and will not break off to answer ${c.name}'s Challenge.`,{actor:c.player,charIds:[c.id,foe.id].filter(v=>v!=null),targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id});break;}
         const A=pcCharCombatant(c), B=pcCharCombatant(foe);
         const aScore=(A.melee+A.archery)*3 + (c.hp||20) + d100()/4;
         const bScore=(B.melee+B.archery)*3 + (foe.hp||20) + d100()/4;
@@ -17309,6 +17377,19 @@ const BATTLE_ARMY_SPELLS={
         getNeighborsP(pv,cols,rows,G.world.provinces).forEach(n=>{ if(n) observed.add(n.id); });
       });
       (spiedThisPhase[pi]||[]).forEach(id=>observed.add(id));
+      // 2026-09-12 (item 1): CLAIRVOYANCE — from the cast phase on, the watched character's province is observed
+      // each phase (so the map keeps the hex) and they are recorded as seen there (Clairvoyance can re-target).
+      { const _w=clairWatch[pi];
+        if(_w&&_w.charId!=null&&ph>=(_w.fromPhase||0)){
+          const _wc=(G.characters||[]).find(x=>x&&x.id===_w.charId);
+          if(_wc&&_wc.alive&&_wc.location!=null&&_wc.player!==pi){
+            observed.add(_wc.location);
+            const _wp=G.world.provinces[_wc.location];
+            if(!pl.seenCharIntel) pl.seenCharIntel={};
+            pl.seenCharIntel[_wc.id]={id:_wc.id,name:_wc.name,isKing:!!_wc.isKing,race:_wc.race,alignment:_wc.alignment,
+              player:_wc.player,isWandering:_wc.player===null,lastSeenTurn:G.turn,lastLocId:_wc.location,lastLocName:_wp?_wp.name:'?'};
+          }
+        } }
       // ── Character sightings ── Any living character standing in a province this player owns or
       // occupies right now is recorded into a persistent per-player intel record. Clairvoyance
       // targets "any character seen at any point in the game" — this is that record.
@@ -17538,7 +17619,7 @@ const BATTLE_ARMY_SPELLS={
   // Items 6 & 7 — per-turn spy tracking. Reset the "provinces spied THIS turn" set on every player
   // at the start of resolution (used to gate non-controlled army DETAIL to spied provinces only).
   // _spiedHeroSkills is NOT reset — it persists across turns and is refreshed on each new spy.
-  (G.players||[]).forEach(p=>{ p._spiedProvincesThisTurn=[]; if(!p._spiedHeroSkills) p._spiedHeroSkills={}; });
+  (G.players||[]).forEach(p=>{ p._spiedProvincesThisTurn=[]; p._clairCharThisTurn=null; if(!p._spiedHeroSkills) p._spiedHeroSkills={}; }); // _clairCharThisTurn: 2026-09-12 Clairvoyance reveal (one per realm)
 
   // Defend watches and Pursuits last for the rest of the TURN only — never across turns.
   (G.characters||[]).forEach(c=>{ delete c._defend; delete c._pursuit; delete c._defendReactedPhase; });
@@ -18207,7 +18288,7 @@ const BATTLE_ARMY_SPELLS={
     const spy=effStat(c,'spy'), qSpy=effStat(quarry,'spy');
     let pct=50+5*spy-5*qSpy;
     if((quarry.armies||[]).length>0) pct*=2;
-    return Math.max(5,Math.min(100,Math.round(pct)));
+    return Math.max(5,Math.min(100,dispFloor(pct)));
   }
 
   function endPursuit(c){ if(c._pursuit) c._pursuit.active=false; }
@@ -18331,14 +18412,14 @@ const BATTLE_ARMY_SPELLS={
       // (only the both-armed case above becomes a battle). A King answers a challenge only if he set
       // out after the same man himself.
       if(themArmed){
-        log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but a commander at the head of their own column will not break ranks for a private quarrel.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),provinceId:prov.id});
+        log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but a commander at the head of their own column will not break ranks for a private quarrel.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),charId:c.id,charIds:[c.id,quarry.id],provinceId:prov.id});
         endPursuit(c); return;
       }
       if(quarry.isKing){
         const _their=(G.turnOrders[quarry.id]||[])[ph];
         const _mutual=normaliseAction(_their)==='encounter'&&parseInt(_their&&_their.target)===c.id;
         if(!_mutual){
-          log('system',`${c.name} corners ${quarry.name} in ${prov.name}, but a crowned head does not stoop to answer every challenge — the King rides on.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),provinceId:prov.id});
+          log('system',`${c.name} corners ${quarry.name} in ${prov.name}, but a crowned head does not stoop to answer every challenge — the King rides on.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),charId:c.id,charIds:[c.id,quarry.id],provinceId:prov.id});
           endPursuit(c); return;
         }
       }
@@ -18450,7 +18531,7 @@ const BATTLE_ARMY_SPELLS={
       if(d===0) return;
       const prov=(ch.location!=null)?G.world.provinces[ch.location]:null;
       const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
-      log('system', d>0?`💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${Math.round(ch.hp)}).`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
+      log('system', d>0?`💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${dispFloor(ch.hp)}).`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
     });
   }
   for(let ph=0;ph<5;ph++){
@@ -19066,10 +19147,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           const nm=G.players[pi]?.name||('Realm '+(pi+1));
           const allies=bloc.filter(b=>b!==pi).map(b=>G.players[b]?.name).filter(Boolean);
           const blocNm=allies.length?` and their allies (${allies.join(', ')})`:'';
-          log('system',`👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${Math.round(share*100)}% of the world. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${Math.round(thr*100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,{actor:null,targets:[],system:true,public:true});
+          log('system',`👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${dispFloor(share*100)}% of the world. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${dispFloor(thr*100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,{actor:null,targets:[],system:true,public:true});
           break;
         } else {
-          log('system',`${G.players[pi]?.name||'A king'} calls for the Reckoning, but commands only ${Math.round(share*100)}% of the world — short of the ${Math.round(thr*100)}% needed to press the claim.`,{actor:null,targets:[pi],system:true});
+          log('system',`${G.players[pi]?.name||'A king'} calls for the Reckoning, but commands only ${dispFloor(share*100)}% of the world — short of the ${dispFloor(thr*100)}% needed to press the claim.`,{actor:null,targets:[pi],system:true});
         }
       }
     }
@@ -19078,7 +19159,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       const share=reckoningBlocShare(G, G.reckoning.by);
       const claimantAlive=((G.players[G.reckoning.by]?.provinces)||[]).length>0 || (G.characters||[]).some(c=>c.alive&&c.player===G.reckoning.by);
       if(!claimantAlive || share<thr){
-        log('system',`The claim to the throne collapses — ${G.players[G.reckoning.by]?.name||'the claimant'}'s bloc no longer commands the world (${Math.round(share*100)}% < ${Math.round(thr*100)}%). The Reckoning is called off; the war goes on.`,{actor:null,targets:[],system:true,public:true});
+        log('system',`The claim to the throne collapses — ${G.players[G.reckoning.by]?.name||'the claimant'}'s bloc no longer commands the world (${dispFloor(share*100)}% < ${dispFloor(thr*100)}%). The Reckoning is called off; the war goes on.`,{actor:null,targets:[],system:true,public:true});
         delete G.reckoning;
       } else if(G.turn>=G.reckoning.resolveAtTurn){
         const rw=reckoningWinner(G);
@@ -19461,7 +19542,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // Reckoning (STD.worldTax = every province, land AND sea), so these %s correlate across reports.
     // 2026-09-09 (item 4): every comparative title report now opens with the holder's OWN figure, so the
     // rivals' numbers can be read against something.
-    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; const own=Math.round(100*(STD.taxByPlayer[pi]||0)/world); log('system',`[The Throne] Your realm: ${own}% of the world tax base.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); } }
+    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; const own=dispFloor(100*(STD.taxByPlayer[pi]||0)/world); log('system',`[The Throne] Your realm: ${own}% of the world tax base.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); } }
     // THE VAULTKEEPER — each rival's treasury (own line).
     { const pi=holder('vault'); if(pi!=null){ log('system',`[The Vaultkeeper] Your realm: ${G.players[pi]?.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; log('system',`[The Vaultkeeper] ${pnm(i)}: ${pl.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); }); } }
     // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
@@ -19799,6 +19880,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           _seenKeys.add(key);
           report.lastTurnLog.push({ type:'system', text:'\u{1F52E} Clairvoyance \u2014 '+t, charId:null, phase:e.phase, pinNotice:false, env:false });
         });
+        // 2026-09-12 (item 1): and where the watched character stands as the turn ends.
+        { const _wc=(G.characters||[]).find(x=>x&&x.id===W);
+          if(_wc&&_wc.alive&&_wc.location!=null){ const _wp=G.world.provinces[_wc.location];
+            report.lastTurnLog.push({ type:'system', text:`\u{1F52E} Clairvoyance \u2014 as the turn ends, ${_wc.name} stands in ${_wp?_wp.name:'parts unknown'}. They are marked on your map.`, charId:null, phase:null, pinNotice:false, env:false }); } }
       }
     }
     // Item 8: environmental province events (earthquake / flood / plague / blessing / part-sea /
@@ -19881,6 +19966,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-0002</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-1005</div>
 </body>
 </html>

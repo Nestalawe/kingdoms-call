@@ -688,6 +688,7 @@ function actionsFor(c){
     if(a==='Research'&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
     if(a==='Steal'&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only (2026-09-09) — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // 2026-09-08: a king cannot release himself
+    if(c&&c._hiddenSkills&&(a==='Send Item'||a==='Give Item'||a==='Release Hero')) return false; // 2026-09-12 (item 7): a charmed hero will not give up their possessions
     return true;
   }).sort((a,b)=>_actionRank(a)-_actionRank(b));
 }
@@ -2134,7 +2135,7 @@ function renderReportView(report){
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
     </div>
     ${chars.filter(c=>c.alive!==false).map(c=>{
-      const hpPct=Math.round((c.hp/c.maxHp)*100)||0;
+      const hpPct=floorNumP((c.hp/c.maxHp)*100)||0;
       // 2026-09-09e: was the raw trained level only — item, aura and Curse changes never showed, so this
       // card disagreed with both the orders column and the engine. Now the shared renderer.
       const skillTags=skillRowHTML(c,'tags');
@@ -2683,7 +2684,7 @@ function renderTitles(report){
     return;
   }
   const nPlayers=(t.standings||[]).length||2;
-  const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
+  const pct=floorNumP((t.myShare||0)*100), thr=Math.ceil(floorNumP((t.threshold||0)*100*1e6)/1e6); // 2026-09-12 (item 5): a 41.6% share shows 41, never "42% (need 42%)"
 
   // ── Item 2: titles newly WON this turn (character or realm), with how + effect ──
   let gainsHtml='';
@@ -2806,7 +2807,7 @@ function setReckoningCall(v){ reckoningCall=!!v; if(currentReport) renderTitles(
 function renderReckoningOrders(){
   const w=document.getElementById('reckoning-wrap'); if(!w) return;
   const t=(currentReport&&currentReport.titles)||{};
-  const pct=Math.round((t.myShare||0)*100), thr=Math.round((t.threshold||0)*100);
+  const pct=floorNumP((t.myShare||0)*100), thr=Math.ceil(floorNumP((t.threshold||0)*100*1e6)/1e6); // 2026-09-12 (item 5): a 41.6% share shows 41, never "42% (need 42%)"
   if(t.gameOver){ w.innerHTML=`<div style="color:#777">The game is over — there is nothing left to call.</div>`; return; }
   if(t.reckoning){
     w.innerHTML=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:6px 8px">👑 <strong>The Reckoning has already been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of Turn ${t.reckoning.resolveAtTurn} unless the claim is broken.</div>`;
@@ -2996,7 +2997,7 @@ function rebuildTargetWrap(charId, ph){
 }
 function orderChanceNote(c, action, ph){
   const oc=(c&&c.orderChance)||null; if(!oc) return '';
-  const pct=(n)=>`<strong>${Math.max(0,Math.min(100,Math.round(n)))}%</strong>`;
+  const pct=(n)=>`<strong>${Math.max(0,Math.min(100,floorNumP(n)))}%</strong>`;
   switch(action){
     case 'Spy':{
       const o=oc.spy||{};
@@ -3073,13 +3074,13 @@ const SPELL_HINTS={
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord. Kings and army-leaders are immune. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
-  'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. Only one active at a time.',
+  'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. A number of their units equal to your skill level are struck: Green units are destroyed and every other struck unit PERMANENTLY drops one experience level (skeletal units unaffected). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
   'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Whatever armies they lead in their next battle this turn fight +10% per caster level (works even if they pick up armies in a later phase). Not cumulative.',
   'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides ALL lairs you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
-  'Invisibility':'Combat: you become twice as hard to hit for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn.',
+  'Invisibility':'Combat: enemies suffer \u221225% to hit you (melee and arrows) for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn.',
   'Lightning Bolt':'Combat: 2\u20134 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
   'Fireball':'Combat: burns the target for 10% of its health each round for 3 rounds. Battle: a random enemy unit\u2019s strength is halved.',
   'Earthquake':'Target: a province you\u2019re in or adjacent to. It yields no tax at the end of this turn.',
@@ -3098,6 +3099,9 @@ const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thi
 // line to a whole number — EXCEPT one immediately preceded by '×', because multipliers are the one
 // place a decimal carries meaning ('× tactical ×1.2' rounded to '×1' would say nothing at all).
 // Percentages already arrive as integers from the engine, so they pass through untouched.
+// 2026-09-12 (Toby, item 5): every figure a player is shown is ROUNDED DOWN (toward zero). Mirrors dispFloor in the GM
+// portal: a float a hair under an integer (0.29*100) snaps to that integer rather than losing a point.
+function floorNumP(v){ const n=Number(v)||0; const r=Math.round(n); return Math.abs(n-r)<1e-9?r:Math.trunc(n); }
 function roundReportNumbers(text){
   // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
   // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
@@ -3105,7 +3109,7 @@ function roundReportNumbers(text){
   // 2026-09-08: a decimal FOLLOWED by × ("a 6.1× edge") is a multiplier too and is kept. (Root cause of the
   // "× fortune 1" report: the old "fortune 0.50" had no × directly before it and was rounded to 1.)
   return String(text||'').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g,(m,mult,whole,frac)=>
-    mult?m:String(Math.round(Number(whole+'.'+frac))));
+    mult?m:String(floorNumP(Number(whole+'.'+frac)))); // 2026-09-12: rounded DOWN, never to nearest
 }
 
 // Module-level base unit strength, mirroring the GM engine's UNIT_BASE_STR / UNIT_Q_MULT
@@ -3517,6 +3521,12 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   }
   // Any projection note that reads the finished form is refreshed once the fields are settled.
   if(typeof refreshExploreNotes==='function') refreshExploreNotes();
+  // 2026-09-12 (item 3): rebuild the shared Resurrect order cards from the reopened draft, orders and all.
+  { const _savedRes={};
+    Object.entries(savedOrders||{}).forEach(([k,v])=>{ const m=String(k).match(/^resurrect_(\d+)_via_\d+_ph\d+$/); if(!m||!Array.isArray(v)) return;
+      const ep=(savedEncounterPlans||{})[k]||{};
+      _savedRes[m[1]]={phases:v.map(o=>o||{}),tactics:(ep.tactics||[]).join(','),notes:ep.notes||'',duel:ep.duelStance||''}; });
+    try{ syncAllResurrectCards(_savedRes); }catch(e){ console.warn('resurrect card rebuild failed',e); } }
 
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
@@ -3995,54 +4005,103 @@ function syncHiredHeroCard(charId, ph){
 // player in the same turn. The GM holds these as PENDING orders and only honours them inside a
 // SUCCESSFUL white_resurrect cast by this caster, so losing the race to raise a body cannot hand
 // you control of a hero someone else raised.
-function syncResurrectCard(charId, ph){
-  const containerId=`resurrect-orders-${charId}-${ph}`;
-  const existing=document.getElementById(containerId);
-  const action=document.getElementById(`po-action-${charId}-${ph}`)?.value||'';
-  const spell=getOrderTarget(charId, ph);
-  const heroId=document.getElementById(`po-extra-${charId}-${ph}`)?.value||'';
-  const wanted=(action==='Cast Spell'&&spell==='Resurrect'&&heroId);
-  if(!wanted){
-    // Tear down the card AND unregister the placeholder, or a stale entry would linger in
-    // currentReport.characters and be picked up by target dropdowns elsewhere in the form.
-    if(existing){
-      const stale=existing.getAttribute('data-fakeid');
-      if(stale&&currentReport) currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==stale);
-      existing.remove();
+// 2026-09-12 (Toby, item 3): ONE order card per fallen hero. Two of your casters aiming Resurrect at the same body used
+// to raise two identical-looking cards, each tied to its own caster — fill one, and if the OTHER caster succeeded the
+// raised hero did nothing. Now every Resurrect order on a body (any caster, any phase) shares a single card, anchored
+// under the earliest caster; the GM applies it whichever of your casters actually raises the hero. The card is also
+// rebuilt when a saved draft is reopened (it used to vanish, taking its orders with it).
+function syncResurrectCard(charId, ph){ syncAllResurrectCards(); }
+function _resurrectCastersByHero(){
+  const out={}; const chars=((currentReport&&currentReport.characters)||[]);
+  chars.forEach(c=>{
+    if(!c||c.alive===false||!/^\d+$/.test(String(c.id))) return;
+    for(let ph=0;ph<5;ph++){
+      if((document.getElementById(`po-action-${c.id}-${ph}`)?.value||'')!=='Cast Spell') continue;
+      if(getOrderTarget(c.id,ph)!=='Resurrect') continue;
+      const hid=String(document.getElementById(`po-extra-${c.id}-${ph}`)?.value||'');
+      if(!/^\d+$/.test(hid)) continue;
+      (out[hid]=out[hid]||[]).push({charId:String(c.id),ph,name:c.name});
     }
-    return;
+  });
+  Object.values(out).forEach(list=>list.sort((x,y)=>x.ph-y.ph));
+  return out;
+}
+function _readResurrectCardOrders(fakeId){
+  return {phases:[0,1,2,3,4].map(p=>({action:document.getElementById(`po-action-${fakeId}-${p}`)?.value||'',target:getOrderTarget(fakeId,p),extra:getOrderExtra(fakeId,p)})),
+    tactics:document.getElementById(`ep-tactics-${fakeId}`)?.value||'', notes:document.getElementById(`ep-notes-${fakeId}`)?.value||'',
+    duel:document.getElementById(`ep-duel-${fakeId}`)?.value||''};
+}
+function _teardownResurrectCard(card){
+  const stale=card.getAttribute('data-fakeid');
+  if(stale&&currentReport) currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==stale);
+  card.remove();
+}
+function _fillResurrectCard(fakeId, saved){
+  const fake=((currentReport&&currentReport.characters)||[]).find(c=>c.id===fakeId); if(!fake||!saved) return;
+  const first=(fake.hiredInPhase??-1)+1;
+  for(let p=first;p<5;p++){
+    const o=(saved.phases||[])[p]; if(!o||!o.action) continue;
+    const sel=document.getElementById(`po-action-${fakeId}-${p}`);
+    if(!sel||![...sel.options].some(x=>x.value===o.action)) continue;
+    sel.value=o.action;
+    const wrap=document.getElementById(`po-target-wrap-${fakeId}-${p}`);
+    if(wrap){ try{ wrap.innerHTML=buildTargetField(fake,p,{action:o.action,target:o.target||'',extra:o.extra||''}); }catch(_){} }
   }
-  injectResurrectOrders(charId, ph, heroId, containerId);
+  if(saved.tactics){ const h=document.getElementById(`ep-tactics-${fakeId}`); if(h){ h.value=saved.tactics; try{ refreshEncounterPlan(fakeId, saved.tactics.split(',').filter(Boolean)); }catch(_){} } }
+  if(saved.notes){ const n=document.getElementById(`ep-notes-${fakeId}`); if(n) n.value=saved.notes; }
+  if(saved.duel){ const d=document.getElementById(`ep-duel-${fakeId}`); if(d) d.value=saved.duel; }
+}
+function _setResurrectCasterNote(card, casters){
+  const el=card.querySelector('.resurrect-casters'); if(!el) return;
+  const SEASONS_R=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const who=casters.map(x=>`${x.name} (${SEASONS_R[x.ph]||'?'})`);
+  el.textContent=casters.length>1
+    ? `Raised by any of: ${who.join(', ')} — whichever succeeds, these orders apply.`
+    : `Raised by ${who[0]}.`;
+}
+// savedByHero: { heroId: {phases, tactics, notes, duel} } — orders to pour into a card as it is (re)built.
+function syncAllResurrectCards(savedByHero){
+  savedByHero=savedByHero||{};
+  const groups=_resurrectCastersByHero();
+  const kept={};
+  document.querySelectorAll('[id^="resurrect-orders-"]').forEach(card=>{
+    const hid=card.getAttribute('data-heroid'); const g=hid?groups[hid]:null;
+    if(!g||kept[hid]){ _teardownResurrectCard(card); return; }
+    if(card.getAttribute('data-firstph')!==String(g[0].ph)||card.getAttribute('data-anchor')!==g[0].charId){
+      // The earliest caster changed — rebuild in the right place with the right phases, carrying the orders over.
+      if(!savedByHero[hid]) savedByHero[hid]=_readResurrectCardOrders(card.getAttribute('data-fakeid'));
+      _teardownResurrectCard(card); return;
+    }
+    kept[hid]=card; _setResurrectCasterNote(card,g);
+  });
+  // Placeholders whose card is gone (e.g. the form was rebuilt) must not linger in the character list.
+  if(currentReport){ const live=new Set([...document.querySelectorAll('[id^="resurrect-orders-"]')].map(c=>c.getAttribute('data-fakeid')));
+    currentReport.characters=(currentReport.characters||[]).filter(c=>!(typeof c.id==='string'&&c.id.startsWith('resurrect_')&&!live.has(c.id))); }
+  Object.entries(groups).forEach(([hid,g])=>{
+    if(kept[hid]) return;
+    const card=injectResurrectOrders(g[0].charId, g[0].ph, hid, g);
+    if(card&&savedByHero[hid]) _fillResurrectCard(card.getAttribute('data-fakeid'), savedByHero[hid]);
+  });
 }
 
-function injectResurrectOrders(charId, ph, heroId, containerId){
+function injectResurrectOrders(charId, ph, heroId, casters){
   const report=currentReport||{};
-  // The GM's id grammar is resurrect_<heroId>_via_<casterId>_ph<N>, all numeric. A hero HIRED
-  // earlier this same turn has a synthetic (non-numeric) id of their own, so they cannot be the
-  // caster here. Rare, and pre-ordering for a hero you have not hired yet who then raises a third
-  // hero is a chain too speculative to be worth the ambiguity — the cast still resolves normally,
-  // the raised hero simply defends for the rest of the turn.
-  if(!/^\d+$/.test(String(charId))||!/^\d+$/.test(String(heroId))) return;
-
+  // The GM's id grammar is resurrect_<heroId>_via_<casterId>_ph<N>, all numeric (a caster hired this same turn has a
+  // synthetic id and cannot anchor a card — rare, and the cast still resolves; the raised hero simply defends).
+  if(!/^\d+$/.test(String(charId))||!/^\d+$/.test(String(heroId))) return null;
   const dead=(report.knownDeadHeroes||report.deadHeroes||[]).find(x=>String(x.id)===String(heroId));
-  if(!dead) return;
-
+  if(!dead) return null;
   const firstActable=ph+1;
-  if(firstActable>4) return; // raised in Early Winter — no phases left to act in
-
+  if(firstActable>4) return null; // raised in Early Winter — no phases left to act in
+  const containerId=`resurrect-orders-${heroId}`;
   document.getElementById(containerId)?.remove();
   const casterBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
-  if(!casterBlock) return;
+  if(!casterBlock) return null;
 
   const SEASONS_R=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
   const fakeId=`resurrect_${heroId}_via_${charId}_ph${ph}`;
-
-  // Register a placeholder so buildTargetField/onActionChange can resolve this id. A raised hero
-  // returns at full health but STRIPPED of items and armies (see white_resurrect), so the card
-  // starts them with neither — order forms that read c.armies must see the truth, not their old kit.
-  // A raised hero returns where the body lies — i.e. where the CASTER is standing when the
-  // Resurrect resolves (the caster must be at the grave to cast it). Give the fake char that
-  // province so its order options (Recruit Armies, Search Lair, …) populate like any other hero.
+  // A raised hero returns at full health, STRIPPED of items and armies, where the body lies — i.e. where the caster
+  // stands when Resurrect resolves — so their order options (Recruit Armies, Search Lair…) populate from there.
   const _casterLoc=predictedLocation(charId, ph);
   const fakeChar={
     id:fakeId, name:dead.name, isKing:false,
@@ -4054,13 +4113,16 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
     hp:null, maxHp:null,
   };
   if(currentReport){
-    currentReport.characters=(currentReport.characters||[]).filter(c=>c.id!==fakeId);
+    currentReport.characters=(currentReport.characters||[]).filter(c=>!(typeof c.id==='string'&&c.id.startsWith(`resurrect_${heroId}_via_`)));
     currentReport.characters.push(fakeChar);
   }
 
   const card=document.createElement('div');
   card.id=containerId;
   card.setAttribute('data-fakeid',fakeId);
+  card.setAttribute('data-heroid',String(heroId));
+  card.setAttribute('data-anchor',String(charId));
+  card.setAttribute('data-firstph',String(ph));
   card.className='orders-char-block';
   card.style.cssText='border:2px dashed #5a3a7a;opacity:0.9;margin-top:8px';
   card.innerHTML=`
@@ -4070,12 +4132,14 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
       <span style="color:#5a3a7a;font-size:.7rem;margin-left:6px">(if raised \u2014 can act from ${SEASONS_R[firstActable]||'next turn'})</span>
     </div>
     <div style="padding:5px 10px 6px;background:#f5eeff;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
-      <div style="color:#5a3a7a">These orders only take effect if the Resurrect succeeds. If the cast
-      fails, or another realm raises ${dead.name} first, they are simply ignored.</div>
+      <div class="resurrect-casters" style="color:#5a3a7a;font-weight:600"></div>
+      <div style="color:#5a3a7a">These orders only take effect if one of your Resurrect casts succeeds. If every cast
+      fails, or another realm raises ${dead.name} first, they are simply ignored. A phase before the hero is actually raised is skipped.</div>
       <div style="color:var(--stone);margin-top:2px">Returns at full health, stripped of all items and armies.</div>
     </div>
     <div class="orders-char-body"></div>`;
   casterBlock.after(card);
+  _setResurrectCasterNote(card, casters&&casters.length?casters:[{charId:String(charId),ph,name:(((report.characters||[]).find(x=>String(x.id)===String(charId))||{}).name||'your caster')}]);
 
   const body=card.querySelector('.orders-char-body');
   SEASONS_R.forEach((season,phIdx)=>{
@@ -4099,7 +4163,6 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
     body.appendChild(row);
   });
 
-  // Encounter plan, matching the hired-hero card.
   const epDiv=document.createElement('div');
   epDiv.style.cssText='padding:10px;border-top:1px solid var(--parchment-dark);background:#faf6ff';
   epDiv.innerHTML=`
@@ -4125,6 +4188,7 @@ function injectResurrectOrders(charId, ph, heroId, containerId){
       <input type="text" id="ep-notes-${fakeId}" placeholder="e.g. Death held me only briefly." style="font-size:.8rem;margin-top:2px">
     </div>`;
   card.appendChild(epDiv);
+  return card;
 }
 
 // ── CHARM PRE-ORDERS ──────────────────────────────────────────────────────────
@@ -4181,7 +4245,9 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   const fakeChar={
     id:fakeId, name:wanderer.name, isKing:false,
     race:wanderer.race||'Unknown', alignment:wanderer.alignment||'Neutral', temper:wanderer.temper||'Brave',
-    skills:wanderer.skills||{}, armies:[], items:[], pay:wanderer.pay||1,
+    // 2026-09-12 (Toby, item 7): the charmer does not see the charmed hero's skills or items. skills stays empty and
+    // _hiddenSkills tells the order fields to list choices without levels; Send Item is not offered at all.
+    skills:{}, _hiddenSkills:true, armies:[], items:[], pay:wanderer.pay||1,
     locationId:(wanderer.locationId!=null?wanderer.locationId:null), locationName:wanderer.locationName||'(in your province)',
     effectiveSpeed:5, effectiveSeaSpeed:0,
     hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
@@ -4660,7 +4726,7 @@ function updateTemperDesc(){
   const DESCS={
     Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +1 melee damage,</strong> and <strong>they shrug off 20% of every melee or archery hit they take</strong> (spells cut straight through). The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
     Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
-    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% to hit them</strong> and every melee blow that lands does <strong>1 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
+    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% melee to hit them</strong> (a guard does not turn arrows) and every melee blow that lands does <strong>1 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
     Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. The cost is −10% melee to hit, and they break off below 40% health. Poor in a melee, excellent as an archer, thief or spy — and the safest temper for a king you cannot afford to lose.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
@@ -5875,6 +5941,15 @@ function buildTargetField(c, ph, saved){
     }
     case 'Cast Spell':{
       const skills=c.skills||{};
+      // 2026-09-12 (item 7): a charmed hero's schools and levels are hidden — offer every core phase spell without levels.
+      if(c._hiddenSkills){
+        const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
+          'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Earthquake','Flood','Elemental Summon','Control Undead','Skeletal Armies','Curse','Plague']);
+        const _hsList=Object.entries(SPELLS_BY_SCHOOL).flatMap(([school,list])=>list.filter(sp=>_hsPhase.has(sp)&&!SPELL_REQ_LEVEL[sp]).map(sp=>[sp,school]));
+        const _hsSel=target||(_hsList[0]&&_hsList[0][0])||'';
+        return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${_hsList.map(([sp,school])=>`<option value="${sp}" ${target===sp?'selected':''}>${sp} (${SKILL_LABELS[school]})</option>`).join('')}</select>
+          <div style="font-size:.7rem;color:var(--stone)">You cannot see this hero's skills — a spell from a school they have not learned simply fails.</div>${spellSecondaryHtml(report,c,ph,_hsSel,extra,target)}`;
+      }
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
@@ -5960,7 +6035,8 @@ function buildTargetField(c, ph, saved){
       // Item 4 (2026-09-10): failing a companion, default to whatever THIS character practised in an
       // earlier phase this turn (the latest one), so a training week takes one click per phase.
       const defaultSk=target||practiceCompanionSkill(c,ph)||practiceOwnEarlierSkill(c,ph)||'';
-      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]} (Lv ${(c.skills||{})[sk]||0})</option>`).join('');
+      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${c._hiddenSkills?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`).join('');
+      if(c._hiddenSkills) return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">A charmed hero's skill levels are hidden from you.</div>`; // item 7
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
@@ -7095,6 +7171,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-0002</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-1005</div>
 </body>
 </html>
