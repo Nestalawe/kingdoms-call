@@ -2434,6 +2434,10 @@ function renderReportView(report){
     // Group features by the province they sit in, so a player can see at a glance which province
     // holds which feature. Provinces are listed alphabetically; each feature drops the redundant
     // inline province name now that it lives under a province heading.
+    // 2026-09-12 (item 3): once your realm has learned a guardian's weakness — by scouting it in an
+    // encounter, or by watching it bite — it is yours for the rest of the game, and shows against every
+    // lair holding that kind of creature. Keyed by guardian name, exactly as the engine records it.
+    const _knownWeak=(report&&report.knownGuardianWeaknesses)||{};
     const featureCard=(f)=>{
       const pColor=POWER_COLORS[f.monsterPower]||'#7a5510';
       const pIcon=POWER_ICONS[f.monsterPower]||'?';
@@ -2449,7 +2453,7 @@ function renderReportView(report){
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
         ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
-        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}</span>`}
+        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}`}
       </div>`;
     };
     const featuresByProvince={};
@@ -4062,6 +4066,9 @@ function _setResurrectCasterNote(card, casters){
 // savedByHero: { heroId: {phases, tactics, notes, duel} } — orders to pour into a card as it is (re)built.
 function syncAllResurrectCards(savedByHero){
   savedByHero=savedByHero||{};
+  // 2026-09-12 (item 4): clear last pass's "no orders to give" notes — injectResurrectOrders rebuilds
+  // whichever are still wanted. They carry no orders, so nothing is lost by dropping them.
+  document.querySelectorAll('[id^="resurrect-note-"]').forEach(n=>n.remove());
   const groups=_resurrectCastersByHero();
   const kept={};
   document.querySelectorAll('[id^="resurrect-orders-"]').forEach(card=>{
@@ -4092,11 +4099,33 @@ function injectResurrectOrders(charId, ph, heroId, casters){
   const dead=(report.knownDeadHeroes||report.deadHeroes||[]).find(x=>String(x.id)===String(heroId));
   if(!dead) return null;
   const firstActable=ph+1;
-  if(firstActable>4) return null; // raised in Early Winter — no phases left to act in
   const containerId=`resurrect-orders-${heroId}`;
   document.getElementById(containerId)?.remove();
   const casterBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
   if(!casterBlock) return null;
+  // 2026-09-12 (Toby, item 4): a hero raised in EARLY WINTER has no phase left to act in this turn, so
+  // there is nothing to pre-order — the card was correct to be absent, but it vanished SILENTLY, which
+  // read as a missing form beside the Late Summer and Fall cards. Say so instead. The note deliberately
+  // uses a DIFFERENT id prefix (resurrect-note-) so no card selector, order collector or placeholder
+  // sweep ever picks it up; syncAllResurrectCards clears the notes itself each rebuild.
+  if(firstActable>4){
+    const note=document.createElement('div');
+    note.id=`resurrect-note-${heroId}`;
+    note.className='orders-char-block';
+    note.style.cssText='border:2px dashed #b9a7c9;opacity:0.85;margin-top:8px';
+    note.innerHTML=`
+      <div class="orders-char-head" style="background:#f5eeff;color:#4a4a4a">
+        \u2728 ${dead.name}
+        <span style="color:#5a3a7a;font-size:.7rem;margin-left:6px">(raised in Early Winter \u2014 no orders to give)</span>
+      </div>
+      <div style="padding:6px 10px 8px;background:#f5eeff;font-size:.76rem;line-height:1.6;color:#5a3a7a">
+        Early Winter is the last phase of the turn, so ${dead.name} returns with no phase left in which to act.
+        There are no orders to pre-write. If the cast succeeds they stand in your caster's province at full
+        health, stripped of items and armies, and take your orders normally from Spring next turn.
+      </div>`;
+    casterBlock.after(note);
+    return null;
+  }
 
   const SEASONS_R=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
   const fakeId=`resurrect_${heroId}_via_${charId}_ph${ph}`;
@@ -4724,9 +4753,9 @@ function updateTemperDesc(){
   // Temper affects how a character behaves in personal encounters, duels and monster fights,
   // and how often they trigger encounters while exploring/searching (AK 2.4).
   const DESCS={
-    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +1 melee damage,</strong> and <strong>they shrug off 20% of every melee or archery hit they take</strong> (spells cut straight through). The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
-    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
-    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% melee to hit them</strong> (a guard does not turn arrows) and every melee blow that lands does <strong>1 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
+    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +3 melee damage,</strong> and <strong>they shrug off 20% of every melee or archery hit they take</strong> (spells cut straight through) as well as 1 point off every melee blow. The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
+    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +1 melee damage, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
+    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% melee to hit them</strong> (a guard does not turn arrows) and every melee blow that lands does <strong>2 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
     Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. The cost is −10% melee to hit, and they break off below 40% health. Poor in a melee, excellent as an archer, thief or spy — and the safest temper for a king you cannot afford to lose.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
@@ -7171,6 +7200,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-1005</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-1326</div>
 </body>
 </html>
