@@ -8337,6 +8337,7 @@ function buildTurnReport(gameState, playerIndex){
       } else if(isBorder){
         // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'border',race:p.race,
+          isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // crown marker (2026-09-13)
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           consecrated:provinceConsecrated(gameState,p), // Item 4: holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
@@ -8351,6 +8352,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:memo.tax>=7?'Rich':memo.tax>=3?'Prosperous':'Poor',
           owner:memo.owner,ownerName:memo.ownerName??null,ownerColor:memo.ownerColor??null,
           armyTypes:memo.armyTypes||[],neighbors,explored,seenTurn:memo.turn,
+          isHomeCapitalOfOwner:!!memo.isHomeCapitalOfOwner, // crown marker, as it stood when last observed
           hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex),
           features:memo.features||[],
           characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
@@ -8362,6 +8364,7 @@ function buildTurnReport(gameState, playerIndex){
           return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'remembered',race:p.race,
             wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
             ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,armyTypes:p.armyTypes||[],neighbors,explored,seenTurn:gameState.turn,
+            isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // crown marker
             features:[],characters:_clairCharsHere(),ownArmyHere:_ownArmyHere};
         }
         return{id:p.id,row:p.row,col:p.col,terrain:null,tier:'unknown',neighbors};
@@ -8378,7 +8381,7 @@ function buildTurnReport(gameState, playerIndex){
   const hasDiscR=(id)=>(player.discoveries||[]).some(d=>d.id===id);
   // Item 3: track each income modifier separately so the Tax Income box can itemise WHAT is lifting
   // (or cutting) the realm's revenue — mirroring the end-of-turn collection engine.
-  let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0,_sdCreed=0,_enslaveReduction=0,_consecG=0;
+  let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0,_sdCreed=0,_enslaveReduction=0,_consecG=0,_sdRecords=0;
   // 2026-09-09 (Toby: Neutral king saw 11g +1 trade in Kingdom Events but 12g +2 trade in the Tax Income
   // box). The box is a NEXT-turn projection and had drifted from the collector: it ignored the Enslave
   // resentment (-1 tax for 3 turns, persistent) and every heritage / creed `tax` and `interest`
@@ -8412,6 +8415,7 @@ function buildTurnReport(gameState, playerIndex){
   const ledgers=_pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
   const perProvBonus=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
   const interestBonus=(hasDiscR('sd12')?Math.min(3,Math.floor((player.gold||0)*0.05)):0)+discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
+  _sdRecords=hasDiscR('sd14')?Math.floor(provTaxIncome*10/100):0; // sd14 Taxation Records — keep in step with the collector
   const neutralTradeBonus=neutralTradeGold(player,provTaxIncome);
   // Item 3: title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings
   // / computeMinorTitles are module-level and already used above, so the report builder can read the
@@ -8431,7 +8435,7 @@ function buildTurnReport(gameState, playerIndex){
   const titlePerkGold=throneG+vaultG+cutpurseG+championG+castellanG;
   const baseTaxIncome=provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)
   const thiefStipend=_pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0); // THIEF L6: +5g income per Thief-6 character
-  const taxIncome=provTaxIncome+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold+thiefStipend;
+  const taxIncome=provTaxIncome+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+_sdRecords+titlePerkGold+thiefStipend;
   const ARMY_COST_TR=ARMY_COST_MASTER; // alias → master table at top of script
   const playerCharsForWages=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
   const allArmiesForWages=playerCharsForWages.flatMap(c=>c.armies||[]);
@@ -8534,7 +8538,7 @@ function buildTurnReport(gameState, playerIndex){
     } }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
     discoveries:(player.discoveries||[]).map(d=>{ const m=DISC_BY_ID[d.id]; return {id:d.id,name:(m&&m.name)||d.name,category:(m&&m.category)||d.category,desc:(m&&m.desc)||d.desc,turnDiscovered:d.turnDiscovered}; }), // item 2 (2026-09-09): master text wins over the copy stored at discovery time
     // Item 6 (2026-09-07): the Research order's category dropdown — every category this realm is eligible for,
     // with how many of its discoveries are already known (the portal greys out exhausted ones). Names and
@@ -8642,7 +8646,11 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd11',name:'Advanced Agriculture',category:'Economy',desc:'All your land provinces with tax ≥ 3 produce +1 additional gold per turn.',effect:{type:'taxFloor',minTax:3,bonus:1}},
   {id:'sd12',name:'Merchant Guilds',category:'Economy',desc:'Your treasury earns +5% interest on gold held at end of each turn (max 3g).',effect:{type:'interest',pct:0.05,max:3}},
   {id:'sd13',name:'Road Network',category:'Economy',desc:'All Speed 1–2 land armies gain +1 move point per turn.',effect:{type:'roadBonus',speedBelow:3,extra:1}},
-  {id:'sd14',name:'Taxation Records',category:'Economy',desc:'Province tax is shown exactly (no margin of error) in all Spy reports.',effect:{type:'exactTax'}},
+  // sd14 (Toby 2026-09-13): the old 'exactTax' effect was never wired to anything — Spy reports have
+  // always shown exact province tax, so the discovery did literally nothing. Replaced with a REVENUE
+  // effect that actually earns its place in the Economy field and, unlike sd11/sd15/sd18, scales with
+  // the realm rather than with a particular kind of ground: honest ledgers mean nothing goes missing.
+  {id:'sd14',name:'Taxation Records',category:'Economy',desc:'Your clerks keep an exact ledger of every holding — your realm collects +10% more province tax each turn (rounded down).',effect:{type:'taxPct',pct:0.10}},
   {id:'sd15',name:'Mining Techniques',category:'Economy',desc:'Mountain provinces you own produce +2 gold per turn.',effect:{type:'terrainTaxBonus',terrain:'mountain',bonus:2}},
   {id:'sd16',name:'Shipbuilding',category:'Economy',desc:'Fleet recruitment costs halved (rounded up).',effect:{type:'recruitCostReduction',armyTypes:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships'],factor:0.5}},
   {id:'sd17',name:'Granaries',category:'Economy',desc:'Hero wage defaults reduced by 1g per hero (minimum 1g).',effect:{type:'heroWageReduction',amount:1}},
@@ -17960,6 +17968,9 @@ const BATTLE_ARMY_SPELLS={
           owner:pv.owner,
           ownerName:pv.owner!=null?G.players[pv.owner]?.name:null,
           ownerColor:pv.owner!=null?G.players[pv.owner]?.color:null,
+          // A realm's seat can MOVE (conquest, a new capital). Snapshot it with everything else so a
+          // remembered hex shows the crown exactly as it stood when last observed (2026-09-13).
+          isHomeCapitalOfOwner:(pv.owner!=null&&homeProvinceIdFor(G,pv.owner)===pv.id),
         };
       });
       // ── DIPLOMACY ENCOUNTER TRACKING ── Seeing another player's PROVINCE (any observed province they
@@ -19330,6 +19341,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // this used to be floor(income*(1.20-1)), and 1.20-1 is 0.19999999999999996 in floating point,
         // so any income that is a multiple of 5 paid one gold LESS than the Tax Income forecast promised
         // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
+        // sd14 Taxation Records: +10% of province income, rounded down. Integer maths for the same
+        // reason neutralTradeGold uses it — floor(income*0.10) drifts a gold on float-unfriendly totals.
+        const taxRecordsBonus=hasDisc(pi,'sd14')?Math.floor(income*10/100):0;
         const neutralTradeBonus=neutralTradeGold(p,income);
         // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g per 5 provinces.
         // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
@@ -19339,8 +19353,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // tax-income forecast but never actually paid at collection — the forecast over-promised. Pay it here.
         const thiefStipend=pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0);
         const thiefNote=thiefStipend>0?` (+${thiefStipend}g Thief network)`:'';
-        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold+thiefStipend;
-        if(income>0||perProvBonus>0||titlePerkGold>0||thiefStipend>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+titlePerkGold+thiefStipend}g in taxes${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}${_consecBonus>0?` (+${_consecBonus}g from consecrated ground)`:''}${titlePerkNote}${thiefNote}.`,{actor:p.id,targets:[p.id]});
+        p.gold=(p.gold||0)+income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+taxRecordsBonus+titlePerkGold+thiefStipend;
+        if(income>0||perProvBonus>0||titlePerkGold>0||thiefStipend>0)log('system',`${p.name} collects ${income+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+taxRecordsBonus+titlePerkGold+thiefStipend}g in taxes${taxRecordsBonus>0?` (+${taxRecordsBonus}g Taxation Records)`:''}${perProvBonus>0?` (+${perProvBonus}g Merchant's Ledger)`:''}${neutralTradeBonus>0?` (+${neutralTradeBonus}g Neutral trade bonus)`:''}${interestBonus>0?` (+${interestBonus}g Merchant Guilds interest)`:''}${_consecBonus>0?` (+${_consecBonus}g from consecrated ground)`:''}${titlePerkNote}${thiefNote}.`,{actor:p.id,targets:[p.id]});
       });
       log('system','═ Army wages & hero wages ═');
       G.players.forEach(p=>{
@@ -20526,6 +20540,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-2316</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.13-0011</div>
 </body>
 </html>

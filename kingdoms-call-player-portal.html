@@ -411,6 +411,7 @@ section{display:none;}.section-active{display:block;}
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8f6a38" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#b060ff">⚔</span> Personal combat (duel, encounter or assassination)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;font-family:Cinzel,serif">♛</span> Home capital (top-left, in that realm's colour)</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚑</span> Your army in the field</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Lair</span>
@@ -2158,6 +2159,7 @@ function renderReportView(report){
         if((kingdom.perProvBonus||0)>0) parts.push(`+${kingdom.perProvBonus}g Merchant's Ledger`);
         if((kingdom.interestBonus||0)>0) parts.push(`+${kingdom.interestBonus}g interest`);
         // Item 3: Sage discoveries that lift province tax income, itemised by name.
+        if((kingdom.sdRecords||0)>0) parts.push(`+${kingdom.sdRecords}g Taxation Records`);
         if((kingdom.sdAgri||0)>0) parts.push(`+${kingdom.sdAgri}g Advanced Agriculture`);
         if((kingdom.sdMining||0)>0) parts.push(`+${kingdom.sdMining}g Mining Techniques`);
         if((kingdom.sdAqueduct||0)>0) parts.push(`+${kingdom.sdAqueduct}g Aqueducts`);
@@ -6937,9 +6939,10 @@ function renderMapIntoSvg(svgEl, report){
         Poor:    {fill:'#CD7F32',stroke:'#A0522D',glow:null},
       };
       const ws=wStyles[pd.wealth]||wStyles.Poor;
-      // Position: top-left area of hex
-      const dotX=x-HS*0.55;
-      const dotY=y-HS*0.45;
+      // Position: the LEFT FLANK of the hex. Nudged down from the old top-left spot (2026-09-13) so
+      // the capital crown can take the top-left corner without the two sitting on top of one another.
+      const dotX=x-HS*0.66;
+      const dotY=y-HS*0.12;
       const dot=document.createElementNS(svgNS,'circle');
       dot.setAttribute('cx',dotX);dot.setAttribute('cy',dotY);dot.setAttribute('r','1.75');
       dot.setAttribute('fill',ws.fill);
@@ -7185,6 +7188,30 @@ function renderMapIntoSvg(svgEl, report){
       ctxt.setAttribute('class','sym-consec'); symbolLayer.appendChild(ctxt);
     }
 
+    // Capital crown (Toby 2026-09-13) — a ♛ at the TOP-LEFT of any hex that is a realm's HOME CAPITAL,
+    // drawn in that realm's own colour. Shown to ANYONE who can see the province (owned, occupied,
+    // bordering, remembered or seen by Clairvoyance), not just the owner, so every player can tell at a
+    // glance where the other crowns sit. The GM re-reads homeProvinceIdFor every turn and the remembered
+    // tier carries the snapshot taken when the hex was last observed, so a seat that MOVES is followed
+    // rather than frozen. The top-left corner is otherwise free: the prosperity dot has been nudged down
+    // the left flank, the hero markers sit top-right and the battle swords top-middle.
+    if(pd.isHomeCapitalOfOwner && pd.ownerColor){
+      const kx=x-HS+11, ky=y-HS+12;
+      const ktxt=document.createElementNS(svgNS,'text');
+      ktxt.setAttribute('x',kx);ktxt.setAttribute('y',ky);
+      ktxt.setAttribute('text-anchor','middle');ktxt.setAttribute('font-size','9');
+      ktxt.setAttribute('font-weight','700');ktxt.setAttribute('font-family','Cinzel,serif');
+      ktxt.setAttribute('fill',pd.ownerColor);
+      ktxt.setAttribute('stroke','#f4ead8');ktxt.setAttribute('stroke-width','0.35');
+      ktxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
+      ktxt.setAttribute('pointer-events','auto');
+      const _kt=document.createElementNS(svgNS,'title');
+      _kt.textContent=(pd.ownerName?pd.ownerName+"'s":'The')+' home capital'+(pd.tier==='remembered'?' — as last seen':'');
+      ktxt.appendChild(_kt);
+      ktxt.textContent='\u265B';
+      ktxt.setAttribute('class','sym-capital'); symbolLayer.appendChild(ktxt);
+    }
+
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
     // where this player has a character with troops under their command. Pagan ritual-site moons sit
     // just to its right so the two never collide.
@@ -7309,6 +7336,7 @@ const MAP_ICON_TYPES=[
   {key:'garrison', label:'🛡 Garrisons'},
   {key:'battle',   label:'⚔ Battles'},
   {key:'combat',   label:'⚔ Duels'},
+  {key:'capital',  label:'♛ Capitals'},
   {key:'dead',     label:'☠ Fallen'},
   {key:'consec',   label:'✨ Consecrated'},
   {key:'ritual',   label:'🌙 Ritual sites'},
@@ -7387,6 +7415,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-2316</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.13-0011</div>
 </body>
 </html>
