@@ -5024,15 +5024,52 @@ function pickBotAlignment(takenCounts){
   const ties=safePool.filter(a=>(takenCounts[a]||0)===bestN);
   return ties[Math.floor(Math.random()*ties.length)];
 }
+// ── BALANCED ALIGNMENT SPREAD (Toby 2026-09-12, item 4) ──────────────────────
+// With humans in the game the bots' alignments are no longer merely "spread out": they are chosen so
+// that EACH human faces roughly half bots who would ally with them and half who would go to war.
+// Under the item 3 rule a bot's stance toward a human is fixed by the spectrum — alignDistP <= 1 is a
+// future ally, >= 2 is a future enemy — so the alignments ARE the diplomacy, decided at world gen.
+//
+// Greedy, one bot slot at a time. For each legal candidate alignment we count, per human, whether that
+// candidate would be a friend of theirs, and charge the side that human already has MORE of:
+//
+//   cost = Σ_humans ( candidate is that human's friend ? friendsSoFar[h] : foesSoFar[h] )
+//
+// so every pick fills whichever column is currently shorter for each human, and the two converge on
+// half and half. A small spread term keeps alignment variety (and so a varied world) when the balance
+// term ties, and ties are then broken at random. Divine/Undead uniqueness is honoured exactly as
+// pickBotAlignment does. `humanAligns` empty (an all-bot game) → fall back to pickBotAlignment.
+function pickBotAlignmentBalanced(takenCounts, humanAligns, friends, foes){
+  if(!humanAligns||!humanAligns.length) return pickBotAlignment(takenCounts);
+  const used=new Set(Object.keys(takenCounts).filter(a=>takenCounts[a]>0));
+  const legal=ALIGNMENTS_P.filter(a=> !(BOT_UNIQUE_ALIGNS.includes(a)&&used.has(a)) );
+  const pool=legal.length?legal:['Neutral'];
+  let best=null;
+  pool.forEach(a=>{
+    let cost=0;
+    humanAligns.forEach((ha,h)=>{
+      const friendly=alignDistP(a,ha)<=BOT_ALLY_ALIGN_DIST;
+      cost += friendly ? (friends[h]||0) : (foes[h]||0);
+    });
+    cost += (takenCounts[a]||0)*0.25;                 // mild preference for an alignment not yet in play
+    if(!best||cost<best.cost) best={cost,ties:[a]};
+    else if(Math.abs(cost-best.cost)<1e-9) best.ties.push(a);
+  });
+  return best.ties[Math.floor(Math.random()*best.ties.length)];
+}
 // Generate `count` bot setup objects, indexed startIndex..startIndex+count-1 (kept CONTIGUOUS with
 // the human indices so generateNewGame's array-position player id matches game_players.player_index).
-// humanSetups seed the alignment spread + uniqueness so bots avoid clustering on the humans' choices.
+// humanSetups seed the alignment spread + uniqueness so bots avoid clustering on the humans' choices,
+// and (2026-09-12, item 4) drive the half-friendly / half-hostile balance described above.
 function generateBotSetups(humanSetups, count, startIndex){
   const takenCounts={};
   (humanSetups||[]).forEach(s=>{ if(s.alignment) takenCounts[s.alignment]=(takenCounts[s.alignment]||0)+1; });
+  const humanAligns=(humanSetups||[]).map(s=>s&&s.alignment).filter(Boolean);
+  const friends=humanAligns.map(()=>0), foes=humanAligns.map(()=>0);
   const bots=[];
   for(let i=0;i<count;i++){
-    const alignment=pickBotAlignment(takenCounts);
+    const alignment=pickBotAlignmentBalanced(takenCounts,humanAligns,friends,foes);
+    humanAligns.forEach((ha,h)=>{ if(alignDistP(alignment,ha)<=BOT_ALLY_ALIGN_DIST) friends[h]++; else foes[h]++; });
     takenCounts[alignment]=(takenCounts[alignment]||0)+1;
     const race=RACES_P[Math.floor(Math.random()*RACES_P.length)];
     const temper=TEMPERS_P[Math.floor(Math.random()*TEMPERS_P.length)];
@@ -5182,6 +5219,27 @@ function botNoteLand(G,pi){
   p._botLandPrev=land; p._botLandSeenTurn=G.turn;
 }
 function botRelationRaw(G,a,b){ if(a==null||b==null||a===b) return 'neutral'; const k=a<b?a+'-'+b:b+'-'+a; return ((G.relations||{})[k])||'neutral'; }
+// ── ALIGNMENT DIPLOMACY (Toby 2026-09-12, item 3) ────────────────────────────
+// ALIGNMENTS_P is the moral spectrum (Divine 0 … Neutral 3 … Undead 6) and it now decides, on its own,
+// who a bot courts and who it fights. Same alignment or ONE step away (alignDistP <= 1) => offer a Treat
+// every turn until the pact is sealed. TWO steps or more => war. That is the whole rule: the old
+// war-on-contact default and the anti-runaway coalition no longer override it (see collectBotDiplomacy).
+const BOT_ALLY_ALIGN_DIST=1;
+function botAlignOf(G,pi){ return (((G.players||[])[pi]||{}).alignment)||'Neutral'; }
+function botAlignFriendly(G,a,b){ return alignDistP(botAlignOf(G,a),botAlignOf(G,b))<=BOT_ALLY_ALIGN_DIST; }
+// A rival one of OUR allies is also at war with. Concentrating on the common foe is what an alliance is
+// for (item 3, "work together with any allies against mutual enemies") — it biases target selection, it
+// does not change who we are at war with.
+function botMutualFoe(G,pi,j){
+  if(j==null||j===pi) return false;
+  const pls=(G.players||[]);
+  for(let a=0;a<pls.length;a++){
+    if(a===pi||a===j||!pls[a]) continue;
+    if(botRelationRaw(G,pi,a)==='allied'&&botRelationRaw(G,a,j)==='enemy') return true;
+  }
+  return false;
+}
+function botConceded(G,pi){ return !!(((G.players||[])[pi]||{}).conceded); }
 // Strength of the neutral guard holding an UNOWNED province (its guard hero's live force, else the
 // province's neutralDefenders list). Only meaningful for owner==null land.
 function botGuardStrength(G,prov){
@@ -5648,7 +5706,9 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
     const effMargin=ec.hasKing?margin*0.9:margin;
     if(targetStr>0 && strIn(N.terrain) < targetStr*effMargin) continue;
     // Item 2: a winnable enemy HOST is the prize — the bigger the stack we can smash, the better.
-    let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3;
+    // 2026-09-12 (item 3): an ally's enemy is the enemy to press — a shared front ends the war sooner.
+    let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3
+              + ((enemyTarget&&botMutualFoe(G,pi,N.owner))?T.rivalBias:0);
     if(N.terrain==='sea'){
       score-=40;                                            // sea is only worth claiming when land is exhausted
       if(botIsLoadedFleet(c.armies)) for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy'){ score+=40+T.rivalBias*2; break; } }
@@ -5694,7 +5754,8 @@ function botDistantStrike(G,pi,c,P,myStr,T,maxHops){
         if(X.owner==null) tStr=botTargetDefence(G,pi,X)+ec.force*BOT_DEF_BONUS; else { tStr=botTargetDefence(G,pi,X); enemyTarget=true; }
         const effMargin=ec.hasKing?margin*0.9:margin;
         if(tStr>0 && strIn(X.terrain)<tStr*effMargin) continue;
-        const v=(X.tax||0)*T.taxScoreWeight - tStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3 - depth*4;
+        const v=(X.tax||0)*T.taxScoreWeight - tStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3 - depth*4
+                + ((enemyTarget&&botMutualFoe(G,pi,X.owner))?T.rivalBias:0);
         if(sc==null||v>sc) sc=v; }
       if(sc!=null && (!best||sc>best.sc)) best={id:N.id,sc}; } });
     q=next; }
@@ -5705,6 +5766,100 @@ function botDistantStrike(G,pi,c,P,myStr,T,maxHops){
   if(cur.id===best.id && moves.length<maxHops) moves.push(...botChainHops(G,pi,c,cur,myStr,T,maxHops-moves.length,visited,0));
   return moves.length?{moves,stageId:best.id}:null;
 }
+// ══ INFILTRATOR — conjure a host behind the enemy line (Toby 2026-09-12, item 1) ═══════════════════
+// A caster with Necromancy or Elemental magic takes provinces by himself, with no army at all. He walks
+// UNARMED into undefended enemy ground (no guard engages an unarmed character, so he can cross the front
+// line freely), then spends his remaining phases casting:
+//   Necromancy → Skeletal Armies  — raises one dead unit per success from the province's battleGraves
+//   Elemental  → Elemental Summon — tears an elemental out of the air (no prerequisite; always available)
+// Either way the caster GAINS a unit while standing on ground he does not own, and the engine's
+// resolveUnitGainInProvince hands him the province that same phase when nothing is there to contest it.
+//
+// The two schools then diverge, and both are wanted:
+//   • An elemental DISSOLVES at turn's end — the land stays taken, the caster is unarmed again next turn
+//     and simply walks on to the next undefended province. A one-man province-taking machine.
+//   • Skeletons STAY (1g/turn upkeep). A necromancer therefore snowballs: once he holds 3+ units
+//     botRoles promotes him to a field LEADER and the ordinary expansion/recruit AI takes him over —
+//     which is Toby's "or start recruiting armies and capturing more provinces".
+//   Between those two states (1–2 skeletons) he keeps infiltrating, but only into ADJACENT undefended
+//   ground: an armed column that marches into a defended province fights, and this force must not.
+//
+// TARGETING — "undefended" means nothing present can contest the province: no foreign armed character,
+// no garrison, no neutral defenders. Scoring prefers ground DEEP inside enemy land (counted as enemy-owned
+// neighbours: that is the "behind the front line" test), rich ground, and — for a necromancer — graves,
+// less 3 per hop of walking. Unowned undefended land is a legal secondary target and needs no war.
+const BOT_INFILTRATE_RANGE=5;      // an unarmed character's full walking reach
+function botInfiltrateSchool(c){
+  const s=c.skills||{}; const nec=s.necromancy||0, ele=s.elemental||0;
+  if(nec<1&&ele<1) return null;
+  return nec>=ele?'necromancy':'elemental';
+}
+// All of this character's units are conjured skeletons (i.e. everything he has, he raised himself).
+function botOnlySkeletal(c){ const a=(c.armies||[]); return a.length>0 && a.every(x=>x&&x._isSkeletal); }
+// Nothing in this province can fight for it.
+function botProvUndefended(G,prov,pi){
+  if(!prov||prov.terrain==='sea') return false;
+  if((prov.garrisonArmies||[]).length>0) return false;
+  if((prov.neutralDefenders||[]).length>0||(prov.npcArmies||0)>0) return false;
+  return !(prov.characters||[]).some(id=>{
+    const e=(G.characters||[]).find(x=>x&&x.id===id);
+    return e&&e.alive&&e.player!==pi&&(e.armies||[]).length>0&&!e._justDefeated;
+  });
+}
+// Best province to conjure a host in, within `range` hops. {P,d,sc} or null.
+function botInfiltrateTarget(G,pi,c,school,range){
+  const from=G.world.provinces[c.location]; if(!from) return null;
+  const graves=X=>((X.battleGraves||[]).length);
+  let best=null;
+  (G.world.provinces||[]).forEach(X=>{
+    if(!X||X.terrain==='sea'||X.owner===pi) return;
+    const enemyLand=X.owner!=null&&botRelationRaw(G,pi,X.owner)==='enemy';
+    if(X.owner!=null&&!enemyLand) return;                       // never an ally's or a at-peace crown's land
+    if(school==='necromancy'&&graves(X)===0) return;            // no dead here to answer the call
+    if(!botProvUndefended(G,X,pi)) return;
+    const d=(X.id===from.id)?0:botPathLenAny(G,from,X.id,range); if(d==null) return;
+    let depth=0; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N&&N.owner!=null&&N.owner!==pi&&botRelationRaw(G,pi,N.owner)==='enemy') depth++; }
+    const sc=(X.tax||0)*2 + depth*4 + (enemyLand?10:0) + Math.min(3,graves(X))*2 - d*3;
+    if(!best||sc>best.sc) best={P:X,d,sc};
+  });
+  return best;
+}
+// Build the full 5-phase infiltration order list, or null if it will not fit. `pre` is consumed.
+function botInfiltrateOrders(G,pi,c,pre,school,range){
+  const P=G.world.provinces[c.location]; if(!P) return null;
+  const tgt=botInfiltrateTarget(G,pi,c,school,range); if(!tgt) return null;
+  const spell=(school==='necromancy')?'Skeletal Armies':'Elemental Summon';
+  const path=tgt.d>0?(botPathAny(G,P,tgt.P.id,range)||[]):[];
+  if(tgt.d>0&&path.length!==tgt.d) return null;                 // could not reconstruct the walk
+  if(pre.length+path.length>=5) return null;                    // no phase left to cast in
+  const mv=path.map(d=>botMoveOrder(d,'Infiltrate '+tgt.P.name));
+  const casts=[];
+  while(pre.length+mv.length+casts.length<5) casts.push({action:'cast_spell',target:spell,extra:'',desc:'Cast '+spell});
+  if(!casts.length) return null;
+  return botFillOrders(G,pi,c,[...pre,...mv,...casts],[]);
+}
+
+// ══ BOT CONCESSION (Toby 2026-09-12, item 2) ═══════════════════════════════════════════════════════
+// A bot realm with no province anywhere in the world has nothing to rule, nothing to tax and nothing to
+// rebuild from: it concedes. The engine's existing concession machinery then does everything else — the
+// realm's characters only ever Defend (enforced in the order-merge pass), it stops being waited on
+// (realmExemptFromOrders) and it no longer counts toward the last-realm-standing victory test.
+// MUST run before the bot movement/economy/action passes so a conceding realm never writes orders.
+function runBotConcessions(G, botIdxSet, logFn){
+  if(!botIdxSet||!botIdxSet.size||!G||!G.world) return;
+  if(!(G.world.provinces||[]).length) return;          // world not built — never concede on a blank state
+  if((G.turn||0)<1) return;
+  botIdxSet.forEach(pi=>{
+    const p=(G.players||[])[pi]; if(!p||p.conceded) return;
+    if((p.provinces||[]).length>0) return;
+    // Belt and braces: the realm's own province list is the engine's record, but cross-check the map so a
+    // stale/desynced list can never concede a bot that still holds ground.
+    if((G.world.provinces||[]).some(pv=>pv&&pv.owner===pi)) return;
+    p.conceded=true; p.concededTurn=G.turn;
+    if(typeof logFn==='function') logFn('system',`\u{1F3F3} ${p.name} holds no province in all the world — the realm CONCEDES the game. Its heroes lay down their ambitions and will only defend what they have from here on.`,{actor:null,targets:[],system:true,public:true});
+  });
+}
+
 // Write movement (and phase-0 muster) orders for every bot character. Called from runTurn after human
 // orders are merged into G.turnOrders and before the default-to-Defend pass.
 function runBotMovement(G, botIdxSet, hooks){
@@ -5713,6 +5868,7 @@ function runBotMovement(G, botIdxSet, hooks){
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
   G.turnOrders=G.turnOrders||{};
   botIdxSet.forEach(pi=>{
+    if(botConceded(G,pi)) return;                     // item 2: a conceded realm only ever Defends
     botNoteLand(G,pi);                                // expansion-pressure bookkeeping (once per turn)
     const L=botLedger(G,pi), roles=botRoles(G,pi);
     const all=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
@@ -5746,6 +5902,19 @@ function runBotMovement(G, botIdxSet, hooks){
       const armed=(c.armies||[]).length>0;
       const pre=[];
       const hire=botHireOrder(G,pi,c,L); if(hire) pre.push(hire);
+      // ── INFILTRATOR (Toby 2026-09-12, item 1): a Necromancy / Elemental caster who is not running a
+      //    field army goes behind the enemy line and conjures a host in undefended ground, taking the
+      //    province outright. Unarmed he ranges the full 5 hops; carrying skeletons he raised himself he
+      //    only steps to an ADJACENT undefended province (an armed column marching into defended ground
+      //    would have to fight, and this force cannot). Ranked ahead of companion/feeder duty because
+      //    taking provinces is the bot's whole purpose (item 5). ──
+      if(!isLeader && !c.isKing && !c._isHeir){
+        const _infSchool=(!armed||botOnlySkeletal(c))?botInfiltrateSchool(c):null;
+        if(_infSchool){
+          const _inf=botInfiltrateOrders(G,pi,c,pre,_infSchool,armed?1:BOT_INFILTRATE_RANGE);
+          if(_inf){ G.turnOrders[c.id]=_inf; assigned.add(c.id); return; }
+        }
+      }
       // ── FEEDER standing with a leader: hand the whole column over, then drill/hold. ──
       if(!isLeader && armed){
         const ld=leaderAt(c.location);
@@ -6036,7 +6205,7 @@ function runBotEconomy(G, botIdxSet){
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
   G.turnOrders=G.turnOrders||{};
   botIdxSet.forEach(pi=>{
-    const player=G.players[pi]; if(!player) return;
+    const player=G.players[pi]; if(!player||player.conceded) return;   // item 2: conceded realms spend nothing
     const L=botLedger(G,pi), roles=botRoles(G,pi);
     if(L.budget<1 || L.upkeep>=L.upkeepCap) return;                 // broke or already fully committed
     // A holder is a bot character not doing anything yet. NOTE: runTurn pre-populates G.turnOrders[c.id]
@@ -6306,6 +6475,7 @@ function runBotActions(G, botIdxSet){
     G.turnOrders[cid]=o; };
   const fill=(cid,order)=>{ overlay(cid,[0,1,2,3,4].map(()=>({...order}))); };
   botIdxSet.forEach(pi=>{
+    if(botConceded(G,pi)) return;                                      // item 2: a conceded realm only ever Defends
     (G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&isFillable(c)).forEach(c=>{
       const maxHp=c.maxHp||20, hp=(c.hp!=null?c.hp:maxHp);
       if(hp < maxHp*0.6){ fill(c.id,{action:'rest',target:'',extra:'',desc:'Rest & heal'}); return; }
@@ -7512,6 +7682,7 @@ function runBotReckoning(G, botIdxSet, reckoningCalls){
   if((G.turn||0) < TITLES_PUBLIC_FROM_TURN) return;           // standings (and the call) unlock at turn 5
   const thr=reckoningThreshold((G.players||[]).length);
   botIdxSet.forEach(pi=>{
+    if(botConceded(G,pi)) return;                                      // item 2: a conceded realm claims nothing
     const kingAlive=(G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===pi);
     if(kingAlive && reckoningBlocShare(G, pi) >= thr) reckoningCalls.add(pi);
   });
@@ -9010,44 +9181,59 @@ async function runTurn(opts){
   ensureAllLairHoards(G); // Item 4 (2026-09-07): stocks any lair from a pre-hoard save (no-op afterwards)
 
   function collectBotDiplomacy(){
-  // ── BOT DIPLOMACY (Phase 2 + coalition) — declarations ── (function since 2026-09-07 so it can run pre-phase)
-  // Default: war-on-contact (declare war on every rival identified at the START of the turn, not already
-  // at war). COALITION (Phase 6+ diplomacy): when a front-runner threatens to win — near the Reckoning
-  // threshold, or holding a live claim — the trailing bots turn on the leader together: they WAR the
-  // leader and TREAT fellow non-leaders (Enemy→Neutral→Allied, one step per turn; mutual by construction
-  // since every trailing bot treats the others in this same pass) so they can ally and gang up. A human
-  // trailing realm can join simply by treating back. Bots never treat toward the leader.
+  // ── BOT DIPLOMACY — ALIGNMENT DECIDES (Toby 2026-09-12, item 3) ──────────────────────────────────
+  // (a function since 2026-09-07 so it can run pre-phase as well as at 6d)
+  //
+  // ALIGNMENTS_P is the moral spectrum — Divine(0) Good(1) Druidic(2) Neutral(3) Pagan(4) Evil(5)
+  // Undead(6) — and it is now the WHOLE of a bot's foreign policy, replacing the old war-on-contact
+  // default and the "bots are one bloc while a human king lives" rule:
+  //
+  //   alignDistP <= 1  (same alignment, or one step along the spectrum)
+  //        → TREAT, every turn, until the pact is sealed. The engine moves one step per turn and only
+  //          on a MUTUAL treat (Enemy→Neutral→Allied), so a bot simply keeps offering: two adjacent
+  //          bots ally by construction (both sides declare in this same pass), and a human ally-to-be
+  //          joins by treating back. Stops once allied — there is nothing further to offer.
+  //   alignDistP >= 2  → WAR, if not already at war. No exceptions: a Divine bot fights Pagan, Evil and
+  //          Undead crowns whoever they are, human or bot.
+  //
+  // Because a distant rival is never treated with, a bot can never BE allied to a realm 2+ steps away,
+  // so the war declaration above can never break one of its own alliances.
+  //
+  // ── LATE-GAME ESCAPE HATCH (Toby's option 2) ──────────────────────────────────────────────────────
+  // Alignment governs the whole game EXCEPT at the very end. Once a rival holds a LIVE RECKONING CLAIM,
+  // the bots' own alliance with him is no longer worth more than the game: every bot not making the
+  // claim declares war on the claimant, even an alignment-brother it has been allied with for twenty
+  // turns, and treats every OTHER realm (including ones 2+ steps away) so the field can unite to deny
+  // him. This is deliberately narrower than the old coalition: it needs an actual claim on the board,
+  // not merely a front-runner near the threshold, so ordinary play stays purely alignment-driven and
+  // legible from the alignment wheel alone.
     const _kingAliveIdx=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.isKing&&c.player!=null).map(c=>c.player));
     const _hasLand=idx=>(((G.players||[])[idx]||{}).provinces||[]).length>0;
-    const nP=(G.players||[]).length, thr=reckoningThreshold(nP);
-    // Find the dominant leader (highest bloc share); a live Reckoning claim names the leader outright.
-    let leader=-1, leaderShare=0;
-    for(let pi=0; pi<nP; pi++){ if(!_kingAliveIdx.has(pi)) continue; let sh=0; try{ sh=reckoningBlocShare(G,pi); }catch(e){} if(sh>leaderShare){ leaderShare=sh; leader=pi; } }
-    const claimBy=(G.reckoning && G.reckoning.by!=null)?G.reckoning.by:-1;
-    let coalitionLeader = claimBy>=0 ? claimBy
-                          : (leader>=0 && nP>=3 && leaderShare>=botTuning(G).coalitionTriggerFrac*thr) ? leader : -1;
-    // Sept 2026 (bot strategy, item 3): while a HUMAN king still reigns, bots are one bloc — they never war
-    // each other, they Treat one another toward alliance, and the anti-leader coalition only forms against
-    // a human front-runner. In an all-bot (or humans-eliminated) game the old every-realm-for-itself rules
-    // apply, so self-play still produces a war.
-    const _botBloc = botHumanKingAlive(G);
-    if(_botBloc && coalitionLeader>=0 && _botPlayerIdx.has(coalitionLeader)) coalitionLeader=-1;
+    const _conceded=idx=>!!(((G.players||[])[idx]||{}).conceded);
+    // The claimant, if any — the only thing that can override alignment.
+    const claimBy=(G.reckoning && G.reckoning.by!=null && _kingAliveIdx.has(G.reckoning.by))?G.reckoning.by:-1;
     _botPlayerIdx.forEach(idx=>{
-      // A bot joins the coalition if it isn't the leader (and isn't already the leader's ally).
-      const inCoalition = coalitionLeader>=0 && idx!==coalitionLeader && !areAllied(idx,coalitionLeader);
+      if(_conceded(idx)) return;                                 // item 2: a conceded realm makes no declarations
+      if(!_kingAliveIdx.has(idx)&&!_hasLand(idx)) return;
+      const denyingAClaim = claimBy>=0 && claimBy!==idx;
       (_botEncounteredAtStart[idx]||[]).forEach(rival=>{
         if(rival==null||rival===idx) return;
         if(!(G.players||[])[rival]) return;
-        if(!_kingAliveIdx.has(rival)&&!_hasLand(rival)) return;  // skip already-defeated realms
-        if(_botBloc && _botPlayerIdx.has(rival)){
-          if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';   // fellow bot: peace → alliance
+        if(_conceded(rival)) return;                             // a realm that has quit is not worth a declaration
+        if(!_kingAliveIdx.has(rival)&&!_hasLand(rival)) return;   // skip already-defeated realms
+        if(denyingAClaim){
+          if(rival===claimBy){
+            // The crown is on the table: break with him, ally or not.
+            if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+          } else if(!areAllied(idx,rival)){
+            // Everyone else is a potential partner in denying the claim, whatever their alignment.
+            (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
+          }
           return;
         }
-        if(inCoalition && rival!==coalitionLeader){
-          // Fellow trailing realm: offer peace/alliance instead of warring, so we can unite on the leader.
+        if(botAlignFriendly(G,idx,rival)){
           if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
         } else {
-          // The leader (or ordinary war-on-contact when no coalition): declare war if not already at war.
           if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
         }
       });
@@ -18755,6 +18941,8 @@ const BATTLE_ARMY_SPELLS={
       return {win:win/n, felled:felled/n};
     }catch(e){ return null; }
   };
+  // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans a turn.
+  runBotConcessions(G, _botPlayerIdx, log);
   runBotMovement(G, _botPlayerIdx, {duelSim:_botDuelSim});
   // Phase 3b — economy: holders (characters not moving) in owned provinces spend the treasury on
   // sustainable reinforcements (and opportunistic hires). Must run AFTER movement so movers are skipped.
@@ -20249,6 +20437,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-1528</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-1848</div>
 </body>
 </html>
