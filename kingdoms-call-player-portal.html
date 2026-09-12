@@ -410,6 +410,7 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px">
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8f6a38" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#b060ff">⚔</span> Personal combat (duel, encounter or assassination)</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚑</span> Your army in the field</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Lair</span>
@@ -2189,7 +2190,7 @@ function renderReportView(report){
       const hpPct=floorNumP((c.hp/c.maxHp)*100)||0;
       // 2026-09-09e: was the raw trained level only — item, aura and Curse changes never showed, so this
       // card disagreed with both the orders column and the engine. Now the shared renderer.
-      const skillTags=skillRowHTML(c,'tags');
+      const skillRow=skillRowHTML(c,'inline'); // Toby 2026-09-12: match the orders column's inline style
       const effSpd=(c.armies||[]).length===0?5:(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...(c.armies||[]).map(a=>a.speed||3)));
       return`<div class="char-card">
         <div class="char-card-head">
@@ -2198,24 +2199,26 @@ function renderReportView(report){
           <div class="char-hp-wrap"><div class="char-hp-bar" style="width:${hpPct}%"></div></div>
           <span style="font-size:.7rem;color:var(--stone)">HP ${c.hp}/${c.maxHp}</span>
         </div>
-        <div class="char-detail">
-          ${c.race} · ${c.alignment} · ${c.temper}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''} · 📍 ${c.locationName||'Unknown'}<br>
-          <span style="color:var(--forest)">Move: ${effSpd} province${effSpd!==1?'s':''}/turn total (1 per phase used for move, +1 per province conquered)</span>
-          ${!c.isKing?` · Pay: ${c.pay||1}g/turn`:''}
-          ${(c.items||[]).map(i=>`<br>🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}`).join('')}
-          ${skillTags?`<div class="skills-list" style="margin-top:4px">${skillTags}</div>`:''}
+        <div class="char-detail" style="background:#fdf5e0;border:1px solid var(--parchment-dark);border-radius:2px;padding:5px 10px 6px;font-size:.76rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:8px">
+          <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''}</span>
+          <span><strong>HP:</strong> ${c.hp}/${c.maxHp}</span>
+          <span>📍 ${c.locationName||'Unknown'}</span>
+          <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd!==1?'s':''}/turn</span>
+          ${!c.isKing?`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
+          ${skillRow}
+          ${(c.items||[]).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}</div>`).join('')}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
             if(!maj.length && !min.length) return '';
             const majH=maj.map(tt=>`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#7a5510">🏆 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
             const minH=min.map(tt=>`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
-            return `<div style="margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
+            return `<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
           })()}
           ${(()=>{
             // Item: Armies Leading — the force under this character, with a summary of total strength,
             // move rate, upkeep, and which units need Druid skill to command.
             const arr=c.armies||[];
-            const head=`<div style="margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
+            const head=`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
             if(arr.length===0) return head+`<div style="font-size:.75rem;color:#999">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel=effSkillP(c,'druid');
             const isDruidic=((kingdom.alignment)==='Druidic');
@@ -7151,6 +7154,24 @@ function renderMapIntoSvg(svgEl, report){
       btxt.setAttribute('class','sym-battle'); symbolLayer.appendChild(btxt);
     }
 
+    // Personal-combat icon (Toby 2026-09-12) — PURPLE crossed swords for a fight that was NOT a field
+    // battle: a duel (ambush, pursuit, thief caught, a Challenge), a lair or monster encounter, or an
+    // assassination attempt. The GM only sets hadCombat for realms that were actually IN the fight, so
+    // a covert ambush never advertises itself to a bystander. Sits beside the red battle swords when a
+    // province saw both, otherwise takes the same top-middle slot.
+    if(pd.hadCombat){
+      const cx2=x+((pd.hadBattle||pd.battleUnresolved)?12:0), cy2=y-HS+12;
+      const ctx2=document.createElementNS(svgNS,'text');
+      ctx2.setAttribute('x',cx2);ctx2.setAttribute('y',cy2);
+      ctx2.setAttribute('text-anchor','middle');ctx2.setAttribute('font-size','9');
+      ctx2.setAttribute('fill','#b060ff');ctx2.setAttribute('pointer-events','auto');
+      ctx2.setAttribute('filter','drop-shadow(0 0 2px #000)');
+      const _ct=document.createElementNS(svgNS,'title'); _ct.textContent='Personal combat fought here this turn — a duel, encounter or assassination attempt, not a field battle';
+      ctx2.appendChild(_ct);
+      ctx2.textContent='⚔';
+      ctx2.setAttribute('class','sym-combat'); symbolLayer.appendChild(ctx2);
+    }
+
     // DIVINE — Consecrate: a ✨ at the TOP-RIGHT marks the realm's holy ground so the player can
     // confirm at a glance that the blessing is active (+50% tax, doubly-fanatical defenders, −15% to
     // Undead/Evil attackers, and resurrection anchor all key off this province).
@@ -7287,6 +7308,7 @@ const MAP_ICON_TYPES=[
   {key:'flag',     label:'⚑ Army flags'},
   {key:'garrison', label:'🛡 Garrisons'},
   {key:'battle',   label:'⚔ Battles'},
+  {key:'combat',   label:'⚔ Duels'},
   {key:'dead',     label:'☠ Fallen'},
   {key:'consec',   label:'✨ Consecrated'},
   {key:'ritual',   label:'🌙 Ritual sites'},
@@ -7365,6 +7387,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-2121</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-2316</div>
 </body>
 </html>

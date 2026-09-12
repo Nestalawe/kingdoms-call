@@ -5237,6 +5237,20 @@ function botNoteLand(G,pi){
   p._botLandPrev=land; p._botLandSeenTurn=G.turn;
 }
 function botRelationRaw(G,a,b){ if(a==null||b==null||a===b) return 'neutral'; const k=a<b?a+'-'+b:b+'-'+a; return ((G.relations||{})[k])||'neutral'; }
+// ── PERSONAL-COMBAT PROVINCE MARKER (Toby 2026-09-12) ────────────────────────
+// _hadBattleThisTurn drives the map's RED crossed swords and is for ARMY battles only. A personal
+// combat — a duel (ambush, pursuit, thief caught in the act, a Challenge), a lair/monster encounter,
+// or an assassination attempt — now paints a PURPLE pair of swords instead. Unlike a field battle,
+// which the whole neighbourhood sees, a duel is a private affair: we record WHICH PLAYERS were in it
+// and the per-player report only sets hadCombat for those realms, so a covert ambush never advertises
+// itself to a bystander who happens to have the province explored. Cleared with the battle flags at
+// the end of the turn.
+function markProvinceCombat(prov, players){
+  if(!prov) return;
+  const arr=prov._combatPlayersThisTurn||(prov._combatPlayersThisTurn=[]);
+  (players||[]).forEach(pi=>{ if(pi!=null && !arr.includes(pi)) arr.push(pi); });
+}
+
 // ── ALIGNMENT DIPLOMACY (Toby 2026-09-12, item 3) ────────────────────────────
 // ALIGNMENTS_P is the moral spectrum (Divine 0 … Neutral 3 … Undead 6) and it now decides, on its own,
 // who a bot courts and who it fights. Same alignment or ONE step away (alignDistP <= 1) => offer a Treat
@@ -8303,7 +8317,7 @@ function buildTurnReport(gameState, playerIndex){
           isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // 2026-09-09: Grand Heist needs to know a capital when it sees one
           tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor', ownArmyHere:_ownArmyHere,
           consecrated:isConsecrated(gameState.players[playerIndex],p.id), // DIVINE — Consecrate: mark the realm's holy ground so the player can confirm it is active
-          hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
+          hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
@@ -8316,7 +8330,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           consecrated:provinceConsecrated(gameState,p), // Item 4: holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
+          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           characters:liveChars(), ownArmyHere:_ownArmyHere,
         };
@@ -8326,7 +8340,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
           consecrated:provinceConsecrated(gameState,p), // Item 4: holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
-          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, battleUnresolved:!!p._battleUnresolved, /* item 14 */
+          armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
         };
@@ -8337,6 +8351,7 @@ function buildTurnReport(gameState, playerIndex){
           wealth:memo.tax>=7?'Rich':memo.tax>=3?'Prosperous':'Poor',
           owner:memo.owner,ownerName:memo.ownerName??null,ownerColor:memo.ownerColor??null,
           armyTypes:memo.armyTypes||[],neighbors,explored,seenTurn:memo.turn,
+          hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex),
           features:memo.features||[],
           characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
         };
@@ -9241,6 +9256,28 @@ async function runTurn(opts){
   // him. This is deliberately narrower than the old coalition: it needs an actual claim on the board,
   // not merely a front-runner near the threshold, so ordinary play stays purely alignment-driven and
   // legible from the alignment wheel alone.
+    // ── THE GRUDGE (Toby 2026-09-12) ────────────────────────────────────────────────────────────────
+    // A HUMAN king who declares war on a bot has burned that bridge permanently. The bot remembers it
+    // for the rest of the game and will never again offer that realm a Treat — not when their
+    // alignments sit one step apart, not when the field is uniting to deny a Reckoning claim. Since a
+    // pact can only be sealed by a MUTUAL treat, refusing to offer is enough to make an alliance (or
+    // even a return to peace) impossible. Stored on the bot's own player record so it survives the
+    // save, and recorded from the raw declarations before they are resolved, so the grudge is already
+    // in force on the very turn war is declared.
+    Object.keys(diploDeclarations).forEach(k=>{
+      const from=Number(k);
+      if(!Number.isInteger(from)||_botPlayerIdx.has(from)) return;      // human declarations only
+      const decl=diploDeclarations[from]||{};
+      Object.keys(decl).forEach(k2=>{
+        const to=Number(k2);
+        if(decl[k2]!=='enemy'||!_botPlayerIdx.has(to)) return;
+        const bp=(G.players||[])[to]; if(!bp) return;
+        if(!Array.isArray(bp.botGrudges)) bp.botGrudges=[];
+        if(!bp.botGrudges.includes(from)) bp.botGrudges.push(from);
+      });
+    });
+    const _grudgeAgainst=(botIdx,rival)=>(((G.players||[])[botIdx]||{}).botGrudges||[]).includes(rival);
+
     const _kingAliveIdx=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.isKing&&c.player!=null).map(c=>c.player));
     const _hasLand=idx=>(((G.players||[])[idx]||{}).provinces||[]).length>0;
     const _conceded=idx=>!!(((G.players||[])[idx]||{}).conceded);
@@ -9259,10 +9296,15 @@ async function runTurn(opts){
           if(rival===claimBy){
             // The crown is on the table: break with him, ally or not.
             if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
-          } else if(!areAllied(idx,rival)){
-            // Everyone else is a potential partner in denying the claim, whatever their alignment.
+          } else if(!areAllied(idx,rival) && !_grudgeAgainst(idx,rival)){
+            // Everyone else is a potential partner in denying the claim, whatever their alignment —
+            // except a human king who once declared war on us. That grudge outlasts the endgame.
             (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
           }
+          return;
+        }
+        if(_grudgeAgainst(idx,rival)){
+          // They declared war on us once. No overture, ever again, whatever the alignment wheel says.
           return;
         }
         if(botAlignFriendly(G,idx,rival)){
@@ -13967,6 +14009,7 @@ const BATTLE_ARMY_SPELLS={
       const defPlan=filterPlan(victim.encounterPlan); if(!defPlan.length) defPlan.push('ME');
       const _duelChars=[thief.id,victim.id];
       log('combat',`⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
+      markProvinceCombat(prov,[thief.player,victim.player]); // purple swords: a personal combat, not a field battle
       const enc=resolveCharVsChar(thief,victim,atkPlan,defPlan,prov,effStat,rng,G);
       enc.narrative.forEach(line=>log('combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       thief.hp=Math.max(1,enc.atkHp);
@@ -14941,6 +14984,7 @@ const BATTLE_ARMY_SPELLS={
         if(f.cleared){log('explore',`${c.name} revisits the cleared ${f.name} in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         if(!featDiscovered(f,c.player)){discoverFeat(f,c.player); TM(c).featuresFound+=1;} // TITLE MERIT: Loremaster
         const plan=c.encounterPlan||{tactics:['ME']};
+        markProvinceCombat(prov,[c.player]); // purple swords: a personal combat, not a field battle
         const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],effStat,rng,player);
         encounter.narrative.forEach(line=>{log('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
 
@@ -16989,6 +17033,7 @@ const BATTLE_ARMY_SPELLS={
         if(victim.player!=null&&!areEnemies(c.player,victim.player)){log('system',`${c.name}: you are not at war with ${victim.name}'s crown — an assassination would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
         const roll=d100();
+        markProvinceCombat(prov,[c.player,victim.player]); // purple swords: knife-work counts as a personal combat
         log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
@@ -17015,6 +17060,7 @@ const BATTLE_ARMY_SPELLS={
         if(!foe){log('system',`${c.name} finds no enemy hero to challenge in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
         if(foe.player!=null&&!areEnemies(c.player,foe.player)){log('system',`${c.name}: you are not at war with ${foe.name}'s crown — a Challenge would be an act of war. Declare war first.`,{actor:c.player,targets:[c.player]});break;}
         if((foe.armies||[]).length>0){log('combat',`${foe.name} is at the head of an army and will not break off to answer ${c.name}'s Challenge.`,{actor:c.player,charIds:[c.id,foe.id].filter(v=>v!=null),targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id});break;}
+        markProvinceCombat(prov,[c.player,foe.player]); // purple swords: a personal duel, not a field battle
         const A=pcCharCombatant(c), B=pcCharCombatant(foe);
         const aScore=(A.melee+A.archery)*3 + (c.hp||20) + d100()/4;
         const bScore=(B.melee+B.archery)*3 + (foe.hp||20) + d100()/4;
@@ -18701,6 +18747,7 @@ const BATTLE_ARMY_SPELLS={
       const defPlan=filterPlan(quarry.encounterPlan); if(!defPlan.length) defPlan.push('ME');
       const _duelChars=[c.id,quarry.id];
       log('combat',`⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
+      markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
       const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
       enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       c.hp=Math.max(1,enc.atkHp);
@@ -18922,6 +18969,7 @@ const BATTLE_ARMY_SPELLS={
       const targetsPi=[c.player,quarry.player].filter(x=>x!=null);
       const _duelChars=[c.id,quarry.id]; // Task 9: the duel belongs in BOTH duellists' report sections
       log('combat',`⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
+      markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
       const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
       enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       // Item 3 (this session): a hero beaten to 0 HP in the duel DIES outright — the old "capitulates
@@ -20427,7 +20475,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }
 
   // Clear per-turn battle flags now that every player's report (and its hadBattle markers) is built.
-  G.world.provinces.forEach(p=>{delete p._hadBattleThisTurn;});
+  G.world.provinces.forEach(p=>{delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn;});
 
   // 11. Save full log to turn_logs table
   await sb.from('turn_logs').insert({
@@ -20478,6 +20526,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-2121</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-2316</div>
 </body>
 </html>
