@@ -115,6 +115,10 @@ section{display:none;}.section-active{display:block;}
 /* Collapsible sections (Item 5) — report-column cards & per-hero order blocks */
 .sec-toggle{background:transparent;border:1px solid currentColor;color:inherit;cursor:pointer;font-size:.7rem;line-height:1;padding:1px 6px;border-radius:3px;font-family:'Cinzel',serif;opacity:.75;flex:0 0 auto;}
 .sec-toggle:hover{opacity:1;}
+/* 2026-09-12 (item 2): hero reorder arrows in the orders column header. */
+.hero-move{background:transparent;border:1px solid currentColor;color:inherit;cursor:pointer;font-size:.62rem;line-height:1;padding:2px 6px;border-radius:3px;opacity:.7;flex:0 0 auto;}
+.hero-move:hover:not(:disabled){opacity:1;}
+.hero-move:disabled{opacity:.22;cursor:default;}
 #rp-report-col .card>h2{display:flex;align-items:center;gap:8px;}
 #rp-report-col .card>h2 .sec-toggle{margin-left:auto;color:var(--stone);}
 #rp-report-col .card.sec-collapsed{padding-top:14px;padding-bottom:14px;}
@@ -705,6 +709,11 @@ let currentReport = null;
 let diploChoices = {};
 // Victory: whether the player is Calling the Reckoning this turn (king-only, when dominant). Submitted with orders.
 let reckoningCall = false;
+// 2026-09-12 (item 2): the player's own arrangement of their heroes in the orders column, as an array
+// of character ids (strings), most-recent order first-to-last. Players asked to be able to group
+// similar heroes together while planning. Submitted with orders; the engine stores it on the realm
+// (player.heroOrder) and hands it back on every later report, so the arrangement survives turn runs.
+let _heroOrder = [];
 // Item 7 (this session): the player may concede the game with their orders. Once the GM runs a turn
 // with concede=true the realm is out for good — its heroes only Defend from then on.
 let concedeGame = false;
@@ -1127,9 +1136,16 @@ async function pollForUpdates(){
     const gameIds=[...new Set(mySlots.map(s=>s.game_id))];
     const {data:games}=await sb.from('games').select('id,turn,status').in('id',gameIds);
     const gById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
+    // 2026-09-12 (item 1): rivals' submission flags feed the "N of M realms have sent orders" line, so
+    // they must be part of the change signature or the tally would sit stale until the turn resolved.
+    // (Exempt realms are not filtered out here — this is change-detection only; loadMyGames does the
+    // real, game_state-aware tally when it repaints.)
+    const {data:pollSlots}=await sb.from('game_players').select('game_id,user_id,orders_submitted').in('game_id',gameIds);
+    const _tally={};
+    (pollSlots||[]).forEach(r=>{ if(!r.user_id) return; const t=_tally[r.game_id]=_tally[r.game_id]||[0,0]; t[1]++; if(r.orders_submitted) t[0]++; });
 
     // Signature of everything the My Games cards show — cheap change-detection.
-    const sig=mySlots.map(s=>{const g=gById[s.game_id]||{};return `${s.id}:${g.turn||0}:${g.status||''}:${s.orders_submitted?1:0}`;}).sort().join('|');
+    const sig=mySlots.map(s=>{const g=gById[s.game_id]||{};const t=_tally[s.game_id]||[0,0];return `${s.id}:${g.turn||0}:${g.status||''}:${s.orders_submitted?1:0}:${t[0]}/${t[1]}`;}).sort().join('|');
 
     const active=_activeSectionId();
     if(active==='sec-games'){
@@ -1171,6 +1187,11 @@ async function loadMyGames(){
   const {data:games,error:gErr}=await sb.from('games').select('*').in('id',gameIds);
   if(gErr){el.innerHTML=`<div class="msg-error">${gErr.message}</div>`;return;}
   const gamesById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
+  // 2026-09-12 (item 1): every slot in those games, so each card can show HOW MANY realms have sent
+  // their orders. Counts only — never which realms, and never what they ordered.
+  const {data:allSlots}=await sb.from('game_players').select('game_id,user_id,player_index,orders_submitted').in('game_id',gameIds);
+  const slotsByGame={};
+  (allSlots||[]).forEach(s=>{ (slotsByGame[s.game_id]=slotsByGame[s.game_id]||[]).push(s); });
   el.innerHTML=mySlots.map(slot=>{
     const g=gamesById[slot.game_id];
     if(!g) return `<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
@@ -1182,14 +1203,44 @@ async function loadMyGames(){
         Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
         Turn ${g.turn||0}
       </div>
+      ${(()=>{ const t=ordersInTextP(g,slotsByGame[slot.game_id]); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
       ${(()=>{ const t=turnDeadlineText(g); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
     </div>`;
   }).join('');
 }
 
+// ── Orders-in tally (2026-09-12, item 1) ─────────────────────────────────────────────────────
+// Players asked to see how many rivals the turn is still waiting on. Deliberately a COUNT ONLY —
+// never which realms have sent orders, and never a hint of what was ordered. Mirrors the GM portal's
+// own tally (loadGames / ordersWaitingOn): bot slots (no user_id) and conceded or extinguished realms
+// are exempt and appear on neither side of the fraction, so the number matches the GM's readiness pill.
+function parseGameStateP(g){
+  try{ return typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){ return {}; }
+}
+function realmExemptFromOrdersP(G,idx){
+  const pl=((G&&G.players)||[])[idx];
+  if(!pl) return false;
+  if(pl.conceded||pl._eliminated) return true;
+  const hasProv=((pl.provinces)||[]).length>0;
+  const hasChar=((G&&G.characters)||[]).some(c=>c&&c.alive&&c.player===idx);
+  return !hasProv&&!hasChar;
+}
+function ordersInTextP(g,slots){
+  if(!g||g.status!=='active') return '';
+  const G=parseGameStateP(g);
+  const need=(slots||[]).filter(p=>p&&p.user_id&&!realmExemptFromOrdersP(G,p.player_index));
+  if(need.length===0) return '';
+  const inN=need.filter(p=>p.orders_submitted).length;
+  const waiting=need.length-inN;
+  const head=`📜 <strong>${inN} of ${need.length}</strong> realm${need.length!==1?'s':''} have sent orders`;
+  return waiting===0
+    ? `${head} — every realm is in, so the turn can be run.`
+    : `${head} — still waiting on ${waiting} more.`;
+}
+
 // ── Turn running mode (mirror of the GM portal's turnMode; read-only here) ───────────────────
 // The GM chooses manual / automatic / automatic-with-deadline. Players are shown the deadline (in their
-// own local time) but never how many rivals have submitted.
+// own local time), and the COUNT of realms whose orders are in — never which ones.
 function turnModeOfGame(g){
   let gs={}; try{ gs=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
   const tm=(gs&&gs.turnMode&&typeof gs.turnMode==='object')?gs.turnMode:{};
@@ -3252,15 +3303,109 @@ function heirSelectorHTML(chars){
   </div>`;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// HERO ORDER (2026-09-12, item 2) — players reorder their heroes in the orders column
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// The ▲ ▼ buttons move the hero's whole CARD in the DOM rather than rebuilding the form, so every
+// half-typed order, target and encounter plan in the column survives a reorder untouched. Any cards
+// injected under a hero (a hired hero, a resurrection or charm pre-order) are siblings that follow
+// their parent block, so they travel with it as a group — see heroGroupP().
+function heroOrderFromOrdersP(existingOrders){
+  try{
+    const r=typeof existingOrders==='string'?JSON.parse(existingOrders||'{}'):(existingOrders||{});
+    return (Array.isArray(r.heroOrder)&&r.heroOrder.length)?r.heroOrder.map(String):null;
+  }catch(e){ return null; }
+}
+function applyHeroOrderP(chars, order){
+  const list=[...(chars||[])];
+  if(order&&order.length){
+    const rank=new Map(order.map((id,i)=>[String(id),i]));
+    list.sort((a,b)=>(rank.has(String(a.id))?rank.get(String(a.id)):1e9)-(rank.has(String(b.id))?rank.get(String(b.id)):1e9));
+    return list;
+  }
+  return list.sort((a,b)=>((a.isKing||a._isHeir)?0:1)-((b.isKing||b._isHeir)?0:1));
+}
+function heroBlocksP(){
+  const form=document.getElementById('orders-form');
+  return form?[...form.querySelectorAll(':scope > .orders-char-block[data-hero]')]:[];
+}
+// A hero's block plus every element that follows it up to the next hero block — i.e. the injected
+// hired-hero / resurrect / charm cards that `charBlock.after(card)` parked underneath it.
+function heroGroupP(block){
+  const g=[block];
+  let n=block.nextElementSibling;
+  while(n && !(n.classList.contains('orders-char-block') && n.hasAttribute('data-hero'))){ g.push(n); n=n.nextElementSibling; }
+  return g;
+}
+// The arrangement as it stands right now: read from the DOM when the editable column is on screen,
+// otherwise the last known copy (the read-only submitted view has no hero blocks to read).
+function currentHeroOrderP(){
+  const fromDom=heroBlocksP().map(b=>b.getAttribute('data-hero'));
+  return fromDom.length?fromDom:(_heroOrder||[]).slice();
+}
+function moveHeroBlock(charId, dir){
+  const blocks=heroBlocksP();
+  const i=blocks.findIndex(b=>b.getAttribute('data-hero')===String(charId));
+  const j=i+dir;
+  if(i<0||j<0||j>=blocks.length) return;
+  const gA=heroGroupP(blocks[i]), gB=heroGroupP(blocks[j]);
+  if(dir>0){ let ref=gB[gB.length-1]; gA.forEach(n=>{ ref.after(n); ref=n; }); }
+  else { const anchor=gB[0]; gA.forEach(n=>anchor.parentNode.insertBefore(n,anchor)); }
+  _heroOrder=heroBlocksP().map(b=>b.getAttribute('data-hero'));
+  refreshHeroMoveButtonsP();
+  try{ blocks[i].scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} // not every environment has it
+  persistHeroOrder();
+}
+// Re-disable the first ▲ and the last ▼ after every move.
+function refreshHeroMoveButtonsP(){
+  const blocks=heroBlocksP();
+  blocks.forEach((b,i)=>{
+    const up=b.querySelector('.hero-move-up'), dn=b.querySelector('.hero-move-down');
+    if(up) up.disabled=(i===0);
+    if(dn) dn.disabled=(i>=blocks.length-1);
+  });
+}
+// Persist the arrangement on its own, MERGED into whatever orders payload is already stored, so a
+// reorder never rewrites (or un-submits) the orders themselves. The engine picks `heroOrder` out of
+// the payload and keeps it on the realm from then on.
+async function persistHeroOrder(){
+  const gp=currentGamePlayer;
+  if(!gp||!gp.id||!_heroOrder.length) return;
+  // Never write while a past-turn report is on screen (same guard doSaveOrders uses).
+  if(document.getElementById('prev-report-banner')?.style.display==='block') return;
+  let raw={};
+  try{ raw=typeof gp.orders==='string'?JSON.parse(gp.orders||'{}'):(gp.orders||{}); }catch(e){ raw={}; }
+  if(!raw||typeof raw!=='object') raw={};
+  // Keep the payload in the new {orders,encounterPlans,forTurn} shape so the stale-draft guard and the
+  // engine's format sniff both still recognise it after a bare reorder on an otherwise empty form.
+  if(raw.orders===undefined) raw.orders={};
+  if(raw.encounterPlans===undefined) raw.encounterPlans={};
+  if(raw.forTurn==null) raw.forTurn=(currentReport&&(currentReport._liveTurn||currentReport.turn))||1;
+  raw.heroOrder=_heroOrder.slice();
+  const payload=JSON.stringify(raw);
+  const {error}=await sb.from('game_players').update({orders:payload}).eq('id',gp.id);
+  if(error){ console.warn('persistHeroOrder:',error.message); return; }
+  gp.orders=payload;
+}
+
 function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // `report` is a LOCAL of openReport, not a global — referencing it here threw a ReferenceError
   // that aborted the whole form build (and, because renderPlayerMap is called on the next line of
   // openReport, silently blanked the map too). Use the module-level currentReport, as every other
   // helper in this file does. Do not reintroduce a bare `report` reference in this function.
   const report=currentReport||{};
-  // The King (or a newly-crowned heir) always sits at the TOP of the orders column. Array.sort is
-  // stable in modern engines, so every other character keeps its original report order.
-  chars=[...chars].sort((a,b)=>((a.isKing||a._isHeir)?0:1)-((b.isKing||b._isHeir)?0:1));
+  // ── HERO ORDER (2026-09-12, item 2) ────────────────────────────────────────────────────────
+  // Precedence: an arrangement saved with THIS turn's draft/submission → the arrangement the engine
+  // persisted on the realm (report.heroOrder) → the default, which puts the King (or a newly-crowned
+  // heir) at the top and leaves everyone else in engine order. Array.sort is stable in modern engines,
+  // so heroes the arrangement does not name (newly hired, raised or crowned) fall in after the named
+  // ones, keeping their report order. Once the player reorders, the King is no longer pinned to the
+  // top — the arrangement is theirs.
+  chars=applyHeroOrderP(chars, heroOrderFromOrdersP(existingOrders) || (Array.isArray(report.heroOrder)&&report.heroOrder.length?report.heroOrder.map(String):null));
+  // Keep currentReport.characters in the same order so index-based lookups, the report column and the
+  // orders column can never disagree about which hero is which.
+  if(currentReport && Array.isArray(currentReport.characters)) currentReport.characters=chars;
+  _heroOrder=chars.filter(c=>c&&c.alive!==false).map(c=>String(c.id));
   const el=document.getElementById('orders-form');
   const msg=document.getElementById('orders-msg');
   // NB: #submit-btn is NOT grabbed here. The submit control (orders-submit-wrap) is a live DOM node
@@ -3352,7 +3497,13 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         <div id="concede-wrap" style="font-size:.72rem"></div>
       </div>
     </div>`;
-  el.innerHTML=_realmTop+heirSelectorHTML(chars)+chars.filter(c=>c.alive!==false).map(c=>{
+  const _orderChars=chars.filter(c=>c.alive!==false);
+  // Item 2 (2026-09-12): tell players the arrows exist — the feature is invisible otherwise.
+  const _reorderNote=_orderChars.length>1
+    ? `<div style="font-size:.72rem;color:var(--stone);padding:2px 2px 8px">Use the <strong>▲ ▼</strong> arrows on a hero's header to move them up or down this column — group your heroes however suits your planning. The arrangement is kept from turn to turn.</div>`
+    : '';
+  el.innerHTML=_realmTop+_reorderNote+heirSelectorHTML(chars)+_orderChars.map((c,_hi)=>{
+    const _hn=_orderChars.length; // item 2: for the ▲ ▼ reorder arrows below
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
     const currentTactics=savedEP.tactics||['ME'];
@@ -3364,12 +3515,14 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     const epPreSchool=(currentTactics.find(t=>String(t).toUpperCase().startsWith('CS:'))||'').slice(3).toLowerCase();
 
     return`
-    <div class="orders-char-block">
+    <div class="orders-char-block" data-hero="${c.id}">
       <div class="orders-char-head">
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
         ${c.isKing?'👑':'⚔'} ${c.name}
         ${hiredPh>=0?`<span style="background:#c8922a;color:#1a1208;font-size:.65rem;padding:1px 6px;border-radius:2px;margin-left:6px">Hired ${SEASONS[hiredPh]} — acts from ${SEASONS[hiredPh+1]||'next turn'}</span>`:''}
         <span style="margin-left:auto;font-size:.7rem;opacity:.75">📍 ${c.locationName||'?'} · Land: ${c.effectiveSpeed||3}/turn${(c.skills?.march||0)>0?` (March ${c.skills.march})`:''}${c.effectiveSeaSpeed?` · Sea: ${c.effectiveSeaSpeed}/turn${(c.skills?.naval||0)>0?` (Naval ${c.skills.naval})`:''}`:''}</span>
+        <button type="button" class="hero-move hero-move-up" ${_hi===0?'disabled':''} title="Move this hero up the orders column" onclick="moveHeroBlock('${c.id}',-1)">&#9650;</button>
+        <button type="button" class="hero-move hero-move-down" ${_hi>=_hn-1?'disabled':''} title="Move this hero down the orders column" onclick="moveHeroBlock('${c.id}',1)">&#9660;</button>
       </div>
       <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px;line-height:1.6">
         <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}</span>
@@ -4753,10 +4906,10 @@ function updateTemperDesc(){
   // Temper affects how a character behaves in personal encounters, duels and monster fights,
   // and how often they trigger encounters while exploring/searching (AK 2.4).
   const DESCS={
-    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +3 melee damage,</strong> and <strong>they shrug off 20% of every melee or archery hit they take</strong> (spells cut straight through) as well as 1 point off every melee blow. The cost is a wide-open guard — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
-    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +1 melee damage, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover 22% of maximum HP. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
-    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% melee to hit them</strong> (a guard does not turn arrows) and every melee blow that lands does <strong>2 less damage</strong>. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. Wins long fights by outlasting rather than out-hitting, and is the hardest temper to kill in a duel.',
-    Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. The cost is −10% melee to hit, and they break off below 40% health. Poor in a melee, excellent as an archer, thief or spy — and the safest temper for a king you cannot afford to lose.',
+    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +3 melee damage</strong> \u2014 the hardest hitter in the game by a wide margin \u2014 and they shrug off <strong>12%</strong> of every melee or archery hit they take (spells cut straight through). They carry no other guard at all: rage is their only armour. The cost is a wide-open stance — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
+    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +1 melee damage, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover <strong>26% of maximum HP</strong> \u2014 enough to turn a fight they were losing. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
+    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% melee to hit them</strong> (a guard does not turn arrows) <em>and can never exceed 66% to hit them however skilled they are</em>, while every melee blow that lands does <strong>2 less damage</strong>. When a melee attack on them MISSES, they have a <strong>40% chance to riposte</strong> with a free blow of their own \u2014 the guard is how they win, not just how they survive. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. The hardest temper to kill, and murder on anyone who swings wildly.',
+    Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. Their <strong>opening shot</strong> never fails: the first time they give ground to firing range in a fight they get there and loose before anything can reach them. The cost is only −4% melee to hit, and they break off below 40% health. Still poor in a melee, but deadly as an archer, and excellent as a thief or spy — and the safest temper for a king you cannot afford to lose.',
   };
   desc.innerHTML=DESCS[sel.value]||'';
 }
@@ -4835,7 +4988,7 @@ async function doSaveOrders(){
   // Stamp the draft with the turn it belongs to, as a submission is — so neither this form nor the GM
   // engine can mistake last turn's draft for this turn's orders (2026-09-09).
   const _draftTurn=currentReport?._liveTurn||currentReport?.turn||1;
-  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),forTurn:_draftTurn});
+  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:_draftTurn});
   const {error:saveErr}=await sb.from('game_players').update({
     orders:_payload,
     orders_submitted:false
@@ -4967,7 +5120,7 @@ async function doSubmitOrders(){
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),forTurn:expectedTurn}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -7200,6 +7353,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-1326</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-1528</div>
 </body>
 </html>

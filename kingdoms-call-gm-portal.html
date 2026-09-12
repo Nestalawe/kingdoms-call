@@ -742,7 +742,7 @@ const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'M
 // fully wired and gated; L6/L8 describe the wired passive that deepens at that level.
 const MASTERY_UNLOCKS={
   melee:{6:'Parry — in personal combat, each enemy melee blow that lands has a 50% chance to be reduced by 1 up to half your Melee skill.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:"Counterattack — in personal combat, when an enemy misses you there is a 50% chance you riposte at once with a free melee strike.",9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
-  archery:{6:'Impalement — in personal combat, each arrow that hits has a 50% chance to impale, bleeding the foe 1-3 damage every round for the rest of the fight.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:"Trueshot — in personal combat, each arrow that hits has a 50% chance to strike a vital point, so the foe's very next attack automatically fails.",9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
+  archery:{6:'Impalement — in personal combat, each arrow that hits has a 50% chance to impale, bleeding the foe 1-3 damage every round for three rounds.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:"Trueshot — in personal combat, each arrow that hits has a 50% chance to strike a vital point, so the foe's very next attack automatically fails.",9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
   tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
@@ -2653,16 +2653,19 @@ const TEMPERS_P=['Berserk','Brave','Cautious','Cowardly'];
 //   rageHp       [min,max] extra hit points gained for the fight (null = none)
 //   hitSoakPct   fraction of each incoming MELEE or ARCHERY hit shrugged off (0 = none)
 //   secondWind   fraction of max HP recovered, once per fight, on first dropping below fleeAt+0.05
+//   riposte      chance to counterattack when a MELEE attack against them misses (2026-09-12b)
+//   defence      ALSO lowers the 80% melee hit ceiling for anyone attacking them (2026-09-12c)
+//   openingShot  the first move up to firing range in a fight cannot fail (2026-09-12b)
 //   mercy        may beg for mercy when felled instead of dying
 const TEMPER_TRAITS={
-  Berserk:  {meleeHit:18, archeryHit:0,  defence:-10, meleeDamage:3, damageSoak:1, hitSoakPct:0.20, withdrawMod:-10, stealMod:0,  fleeMod:-20, fleeAt:0.15, fleeUrge:0.20, losingOnly:false, rageHp:null,  secondWind:0,    mercy:false},
-  Brave:    {meleeHit:12, archeryHit:8,  defence:4,   meleeDamage:1, damageSoak:0, hitSoakPct:0,    withdrawMod:0,   stealMod:0,  fleeMod:10,  fleeAt:0.25, fleeUrge:0.30, losingOnly:true,  rageHp:null,  secondWind:0.22, mercy:false},
-  Cautious: {meleeHit:0,  archeryHit:0,  defence:14,  meleeDamage:0, damageSoak:2, hitSoakPct:0,    withdrawMod:10,  stealMod:0,  fleeMod:20,  fleeAt:0.40, fleeUrge:0.35, losingOnly:false, rageHp:null,  secondWind:0,    mercy:false},
-  Cowardly: {meleeHit:-10,archeryHit:22, defence:6,   meleeDamage:0, damageSoak:0, hitSoakPct:0,    withdrawMod:15,  stealMod:15, fleeMod:30,  fleeAt:0.40, fleeUrge:0.40, losingOnly:false, rageHp:null,  secondWind:0,    mercy:true},
+  Berserk:  {meleeHit:18, archeryHit:0,  defence:-10, meleeDamage:3, damageSoak:0, hitSoakPct:0.12, withdrawMod:-10, stealMod:0,  fleeMod:-20, fleeAt:0.15, fleeUrge:0.20, losingOnly:false, rageHp:null,  secondWind:0,    riposte:0,    openingShot:false, mercy:false},
+  Brave:    {meleeHit:12, archeryHit:8,  defence:4,   meleeDamage:1, damageSoak:0, hitSoakPct:0,    withdrawMod:0,   stealMod:0,  fleeMod:10,  fleeAt:0.25, fleeUrge:0.30, losingOnly:true,  rageHp:null,  secondWind:0.26, riposte:0,    openingShot:false, mercy:false},
+  Cautious: {meleeHit:0,  archeryHit:0,  defence:14,  meleeDamage:0, damageSoak:2, hitSoakPct:0,    withdrawMod:10,  stealMod:0,  fleeMod:20,  fleeAt:0.40, fleeUrge:0.35, losingOnly:false, rageHp:null,  secondWind:0,    riposte:0.40, openingShot:false, mercy:false},
+  Cowardly: {meleeHit:-4, archeryHit:22, defence:6,   meleeDamage:0, damageSoak:0, hitSoakPct:0,    withdrawMod:15,  stealMod:15, fleeMod:30,  fleeAt:0.40, fleeUrge:0.40, losingOnly:false, rageHp:null,  secondWind:0,    riposte:0,    openingShot:true,  mercy:true},
   // A true no-temper profile — all zeros, no second wind, no mercy. Feature guardians (the
   // monsters/beasts on a treasure site) use this so they neither gain hero-style temper perks nor
   // print a temper like "(Brave)" in combat lines. NOT in TEMPERS_P, so it is never assigned to a hero.
-  None:     {meleeHit:0,  archeryHit:0,  defence:0,   meleeDamage:0, damageSoak:0, hitSoakPct:0,    withdrawMod:0,   stealMod:0,  fleeMod:0,   fleeAt:0.25, fleeUrge:0,    losingOnly:false, rageHp:null,  secondWind:0,    mercy:false},
+  None:     {meleeHit:0,  archeryHit:0,  defence:0,   meleeDamage:0, damageSoak:0, hitSoakPct:0,    withdrawMod:0,   stealMod:0,  fleeMod:0,   fleeAt:0.25, fleeUrge:0,    losingOnly:false, rageHp:null,  secondWind:0,    riposte:0,    openingShot:false, mercy:false},
 };
 function temperOf(t){ return TEMPER_TRAITS[t]||TEMPER_TRAITS.Brave; }
 // A feature's steal-able treasure as a plain number. Tolerates the legacy {gold:n} shape that
@@ -4455,6 +4458,37 @@ function migrateLairGuardiansV2(gs){
 // the Divine/Good; constructs shatter under Elemental force; fey wither under Necromancy or cold
 // dwarven iron; giants are easily deceived; dragons' vast prideful minds open to Psychic magic.
 const PC_WEAK_MULT=2;
+// ── DAMAGE FLOOR (2026-09-12b, Toby) ─────────────────────────────────────────────────────────
+// Soaks, wards, armour and hides used to stack until almost every landed attack was scraped down
+// to the 1-damage minimum (Cautious 2 + Mithril 2 + meleeDR + a rage soak reaches that easily on a
+// well-equipped hero). No stack of REDUCTIONS may now take a landed attack below HALF of what it
+// would have dealt. Outright PREVENTION is untouched: a mirror image, a first-hit cuirass or a
+// shield block still stops a blow completely — they return before the floor is ever considered.
+const PC_DMG_FLOOR_FRACTION=0.5;
+// ── LINGERING EFFECTS (2026-09-12b, Toby) ────────────────────────────────────────────────────
+// Nothing that ticks or clings lasts a whole fight any more. Every damage-over-time is clamped to
+// three rounds at the point it is applied (guardian specials, spells, items and Impalement all run
+// through pcPushDot), and a to-hit penalty always burns off inside three rounds however deep it is.
+const PC_MAX_LINGER_ROUNDS=3;
+function pcLingerRounds(n){ n=parseInt(n); if(!Number.isFinite(n)||n<1) n=1; return Math.min(PC_MAX_LINGER_ROUNDS,n); }
+// The ONE place a damage-over-time is added, so the three-round cap cannot be bypassed by a new
+// effect that forgets it. Merges nothing — several bleeds may run at once, each on its own clock.
+function pcPushDot(cbt, dmg, rounds, label){
+  if(!cbt||!cbt.status) return null;
+  cbt.status.dot=cbt.status.dot||[];
+  const lbl=label||'Lingering harm';
+  const e={dmg:Math.max(1,Math.round(dmg||1)), rounds:pcLingerRounds(rounds), label:lbl};
+  // The SAME affliction REFRESHES rather than stacking. Without this an archer with Impalement stacks
+  // a fresh three-round bleed on every hit and the target bleeds for the whole fight after all — the
+  // exact thing the three-round cap exists to stop. Different afflictions still run side by side.
+  const prev=cbt.status.dot.find(d=>d&&d.label===lbl);
+  if(prev){ prev.dmg=Math.max(prev.dmg,e.dmg); prev.rounds=Math.max(prev.rounds,e.rounds); return prev; }
+  cbt.status.dot.push(e); return e;
+}
+// A to-hit penalty sheds at least a third of itself each round (minimum 5), so even a Legendary
+// dragon's −30% is gone by the third round rather than fading 5% a round for six.
+const PC_PEN_FADE_MIN=5;
+function pcPenaltyFade(pen){ return Math.max(PC_PEN_FADE_MIN, Math.ceil(pen/PC_MAX_LINGER_ROUNDS)); }
 // Which school a personal-combat spell belongs to. Module scope so pcTakeHit can name the school of
 // the blow that landed; pcCastCombatSpell reads the same table (one source of truth).
 const PC_SPELL_SCHOOL_MAP={'Holy Symbol':'white','Spiritwrack':'white','Psychic Blast':'psychic',
@@ -7526,6 +7560,15 @@ function computeMinorTitles(state){
 function buildTurnReport(gameState, playerIndex){
   const player=gameState.players[playerIndex];
   const chars=gameState.characters.filter(c=>c.player===playerIndex&&(c.alive||c.killedThisTurn));
+  // 2026-09-12 (item 2): honour the player's own arrangement of their heroes (set from the orders
+  // column and kept on the realm). Array.sort is stable, so heroes the arrangement does not name —
+  // newly hired, raised or crowned — fall in after the named ones in engine order. This drives both
+  // the report's character list and, through it, next turn's orders column.
+  { const _ho=Array.isArray(player&&player.heroOrder)?player.heroOrder.map(String):[];
+    if(_ho.length){
+      const _rank=new Map(_ho.map((id,i)=>[String(id),i]));
+      chars.sort((a,b)=>(_rank.has(String(a.id))?_rank.get(String(a.id)):1e9)-(_rank.has(String(b.id))?_rank.get(String(b.id)):1e9));
+    } }
   // ── TITLES: per-character holdings (Items 1 & 2). Computed once; public from turn 5. ──
   const _titlesPublic=((gameState.turn||1)>=TITLES_PUBLIC_FROM_TURN)||!!gameState.gameOver;
   let _stdT={titles:{}}, _minT={};
@@ -8288,6 +8331,9 @@ function buildTurnReport(gameState, playerIndex){
     // Any dead hero visible to this player can be resurrected — own or enemy
     deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const restId=g._monarch?monarchRestProvId(gameState,g.player):null;const locId=(restId!=null)?restId:g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
     characters:charReports,ownedProvinces,intel,
+    // item 2 (2026-09-12): the hero arrangement, so the player portal keeps it on a fresh turn even
+    // before any draft exists (the orders payload is wiped after every run).
+    heroOrder:(Array.isArray(player&&player.heroOrder)?player.heroOrder.map(String):[]),
     // Tasks 1 & 4 (this session): colour lookups so the portal can tint EVERY realm name and
     // character name in any report line in the controlling player's colour. Realm names are public;
     // character names are limited to living (or just-fallen) NON-cloaked characters — a Cloak of Many
@@ -8832,6 +8878,13 @@ async function runTurn(opts){
     let epObj={};
     let kingSkillsObj={};
     let forTurn=null;
+    // 2026-09-12 (item 2): the player's own arrangement of their heroes in the orders column, sent as
+    // an array of character ids. Stored on the realm so it survives this turn's run and shapes every
+    // later report (buildTurnReport sorts by it). Read BEFORE the format sniff below, because a bare
+    // reorder on an otherwise untouched form is a payload with no meaningful orders in it.
+    if(Array.isArray(raw.heroOrder)&&G.players[gp.player_index]){
+      G.players[gp.player_index].heroOrder=raw.heroOrder.slice(0,200).map(String);
+    }
     if(raw.orders!==undefined&&raw.encounterPlans!==undefined){
       ordersObj=raw.orders||{};
       epObj=raw.encounterPlans||{};
@@ -8854,6 +8907,7 @@ async function runTurn(opts){
       staleOrderWarnings.push(`⚠ Ignoring stale orders from ${G.players[gp.player_index]?.name||'a player'} — submitted for Turn ${forTurn}, not Turn ${expectedTurnToRun}.`);
       return; // skip this player's stale orders entirely
     }    Object.entries(ordersObj).forEach(([charId,phaseOrders])=>{
+      if(charId==='heroOrder') return; // item 2: an array, but not a character's phase orders
       if(!Array.isArray(phaseOrders)) return;
       // Handle synthetic RESURRECTION IDs: 'resurrect_HEROID_via_CASTERID_phPH'
       // A player who orders Resurrect in phase PH may pre-write orders for the hero they intend to
@@ -11184,7 +11238,18 @@ const BATTLE_ARMY_SPELLS={
     chance -= ((defender.arm&&defender.arm.dodge)||0);     // Quicksilver Mail (2026-09-10 armour): −10% to be hit
     if(attacker.player!=null && hasDisc(attacker.player,'sd33')) chance+=10; // sd33 Duelling Code (wired 2026-09-07)
     chance = chance*(defender.status.dodge||1);           // (no effect currently sets status.dodge — kept as a hook)
-    return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance))); // 2026-09-12 (item 8): hard 80% ceiling, applied AFTER every modifier
+    // ── The defender's STANCE lowers the ceiling itself (2026-09-12c) ──────────────────────────
+    // Testing found the +14 Cautious guard was doing nothing above about Melee 4: a Melee 6 Berserk
+    // raws 85+18=103, and subtracting 14 still leaves 89, which the 80% cap flattens anyway. The
+    // signature stat of the defensive temper was inert against exactly the opponents it exists to
+    // survive. A temper's GUARD now also lowers the hard ceiling for anyone swinging at them, so the
+    // maximum melee hit chance is 80% against a Berserk, 76% against a Brave, 74% against a Cowardly
+    // and 66% against a Cautious — a defensive stance is worth something no matter how good the
+    // attacker is. This is deliberately NOT extended to a guardian's dodge passive or to Invisibility:
+    // Toby's rule (2026-09-12) is that those come off the REAL figure, so mastery beats them. A
+    // trained stance is a different thing from being hard to see, and only the stance moves the cap.
+    const _guardCap=Math.max(0, temperOf(defender.temper).defence||0);
+    return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX-_guardCap, dispFloor(chance))); // hard ceiling, applied AFTER every modifier
   }
   function pcMeleeDamage(attacker, defender){
     const diff=(attacker.melee||0)-(defender.melee||0);
@@ -11195,8 +11260,10 @@ const BATTLE_ARMY_SPELLS={
     const _dsk=(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0));
     let dmg=Math.max(1, rng(2,5)+Math.ceil(_dsk/2)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
-    // A Cautious fighter rolls with the blow rather than taking it square on.
-    dmg=Math.max(1, dmg-temperOf(defender.temper).damageSoak);
+    // 2026-09-12b: the defender's temper soak MOVED to pcTakeHit. It is a reduction like any other
+    // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
+    // was still taking 1-damage hits because the guard had already scraped the blow down before
+    // pcTakeHit ever saw its "original" value. Every reduction now lives in one place.
     if((attacker.ref && hasItemBase(attacker.ref,'Warbringer Gauntlets'))||attacker.gauntlets) dmg+=2; // Warbringer Gauntlets: +2 damage per successful melee attack (a guardian wielding them too)
     if(attacker.dmgBonus) dmg+=attacker.dmgBonus; // 2026-09-10: guardian passive (Brute Strength, Savage Jaws…)
     // (Mithril Armour is applied in pcTakeHit now — item 5 — so it also covers arrows.)
@@ -11281,6 +11348,13 @@ const BATTLE_ARMY_SPELLS={
     // ── Temper: Rage ── A Berserk shrugs off a fifth of every blow and arrow that lands. Spells
     // bypass it entirely (rage is a tolerance for pain, not a ward), and it can never reduce a
     // landed hit below 1.
+    // ── Temper: a guarded stance ── Cautious rolls with the blow rather than taking it square on.
+    // Melee only: a guard turns a blade, not an arrow or a spell.
+    const _tSoak=temperOf(target.temper).damageSoak||0;
+    if(_tSoak>0 && PC_CHANNEL[kind]==='melee' && d>1){
+      const _tb=d; d=Math.max(1, d-_tSoak);
+      if(d<_tb) narrative.push(`  ${target.name} rolls with the blow and takes ${_tb-d} less. (${target.temper} guard)`);
+    }
     const _soakPct=temperOf(target.temper).hitSoakPct||0;
     if(_soakPct>0 && (PC_CHANNEL[kind]==='melee'||PC_CHANNEL[kind]==='archery')){
       const _before=d;
@@ -11316,9 +11390,22 @@ const BATTLE_ARMY_SPELLS={
       if(_chan==='spell'&&_arm.spellPct) d=Math.max(1,Math.round(d*(1-_arm.spellPct/100)));
       if(_arm.lowHp&&target.hp<(target.maxHp||20)*0.5) d=Math.max(1,Math.round(d*(1-_arm.lowHp/100)));
       if(_arm.openGuardHits&&(target._openGuardUsed||0)<_arm.openGuardHits){ target._openGuardUsed=(target._openGuardUsed||0)+1; d=Math.max(1,Math.round(d*(1-(_arm.openGuardPct||50)/100))); }
-      if(_arm.cap){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt) d=_capAt; }
       if(d<_b3) narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} turns aside ${_b3-d} of the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')}.${target.kind==='monster'?'':` (${_arm.names.join(', ')})`}`);
     }
+    // ── DAMAGE FLOOR (2026-09-12b, Toby) ── every reduction above is now collectively limited: a
+    // landed attack keeps at least HALF of what it came in at. Outright negations (mirror image,
+    // first-hit cuirass, shield block, a ward that drinks the whole blow) returned long before this
+    // and are untouched — this floors REDUCTION, never PREVENTION.
+    if(d>0){
+      const _floor=Math.max(1,Math.ceil(dmg*PC_DMG_FLOOR_FRACTION));
+      if(d<_floor){
+        narrative.push(`  ${target.name} turns aside all they can, but the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')} still lands for ${_floor}. (no ward may take a hit below half)`);
+        d=_floor;
+      }
+    }
+    // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
+    // rather than a reduction, so the floor is never allowed to lift a blow back over it.
+    if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} will not let any single hit bite deeper than ${_capAt}.`); } }
     target.hp-=d;
     // Last-Stand Plate: once per fight, the first time the wearer drops below 30% they recover 25% of max.
     if(_arm&&_arm.secondWind&&!target._armSecondWindUsed&&target.hp>0&&target.hp<(target.maxHp||20)*0.30){
@@ -11339,7 +11426,7 @@ const BATTLE_ARMY_SPELLS={
       if(cbt.arm.dotImmune&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} sloughs off every burn, poison and bleeding.`); }
       if(cbt.arm.regen>0&&cbt.hp>0&&cbt.hp<(cbt.maxHp||20)){ const h=Math.min(cbt.arm.regen,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} knits flesh for ${h}. (HP ${dispFloor(cbt.hp)})`); }
       if(cbt.arm.resist){
-        if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-5);
+        if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-pcPenaltyFade(cbt.status.hitPenalty)); // Steadfast Harness: a second helping of the same fade
         if(cbt.status.stun>0&&Math.random()<0.5){ cbt.status.stun=0; narrative.push(`  🛡 ${cbt.name} shrugs off the daze — their armour holds them steady.`); }
       }
     }
@@ -11350,8 +11437,9 @@ const BATTLE_ARMY_SPELLS={
     cbt.status.dot=(cbt.status.dot||[]).filter(d=>d.rounds>0);
     // Heal-over-time (Potion of Regeneration and kin)
     if(cbt.status.hot&&cbt.status.hot.rounds>0){ const h=Math.min(cbt.status.hot.amt,Math.max(0,(cbt.maxHp||20)-cbt.hp)); cbt.hp+=h; cbt.status.hot.rounds--; if(h>0) narrative.push(`  ${cbt.status.hot.label||'Regeneration'} knits ${cbt.name} for ${h}. (HP ${dispFloor(cbt.hp)})`); }
-    // Decay to-hit penalty
-    if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-5);
+    // Decay to-hit penalty — at least a third of it a round (minimum 5), so nothing blinds a fighter
+    // for more than three rounds however deep the penalty was stacked (2026-09-12b, Toby).
+    if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-pcPenaltyFade(cbt.status.hitPenalty));
     if(cbt.status.meleeHalvedRounds>0) cbt.status.meleeHalvedRounds--;
     if(cbt.status.silenceRounds>0) cbt.status.silenceRounds--;
   }
@@ -11397,7 +11485,7 @@ const BATTLE_ARMY_SPELLS={
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
     switch(spellName){
       case 'Lightning Bolt':{ let d=0; const _lbLvl=Math.min(Math.max(1,lvl),5); for(let i=0;i<_lbLvl;i++) d+=rng(2,4); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
-      case 'Fireball':{ const _fbD=Math.max(1,Math.round(target.maxHp*0.10))*wx; target.status.dot.push({dmg:_fbD,rounds:3,label:'Fireball burns'}); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${wx>1?'20':'10'}% of its health each phase for 3 phases.`); break; }
+      case 'Fireball':{ const _fbD=Math.max(1,Math.round(target.maxHp*0.10))*wx; const _fbE=pcPushDot(target,_fbD,3,'Fireball burns'); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${wx>1?'20':'10'}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvlEff*10*(holy?2:1)*wx; target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
       case 'Spiritwrack':{ const _swR=3*wx; target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} phases it cannot cast or use archery, and its melee is halved.`); break; }
@@ -11510,7 +11598,7 @@ const BATTLE_ARMY_SPELLS={
     if(bm){ actor.melee=(actor.melee||0)+parseInt(bm[1]); narrative.push(`  The ${actor.name}'s Melee surges to ${actor.melee}!`); }
     // ── Lingering harm ──
     const dm=eff.match(/takes (\d+) dmg at start of each round for (\d+) rounds/i);
-    if(dm){ foe.status.dot.push({dmg:parseInt(dm[1]), rounds:parseInt(dm[2]), label:sp.name}); narrative.push(`  ${sp.name} festers on ${foe.name}.`); }
+    if(dm){ const _e=pcPushDot(foe,parseInt(dm[1]),parseInt(dm[2]),sp.name); if(_e) narrative.push(`  ${sp.name} festers on ${foe.name} — ${_e.dmg} a round for ${_e.rounds} round${_e.rounds!==1?'s':''}.`); }
     // ── Wards and shields ──
     const rf=eff.match(/reflects (\d+) dmg/i);
     if(rf){ actor.status.reflect=(actor.status.reflect||0)+parseInt(rf[1]); narrative.push(`  Every blow against the ${actor.name} will bite back for ${actor.status.reflect}.`); }
@@ -11541,19 +11629,28 @@ const BATTLE_ARMY_SPELLS={
 
   // --- Shared attack routines --------------------------------------------------
   // MELEE L8 (Counterattack): when a foe MISSES this hero, a 50% chance to riposte with a free melee blow.
-  function pcTryCounter(hero, foe, narrative){
+  // 2026-09-12b (Toby): a CAUTIOUS fighter ripostes too — 30% on a missed MELEE attack. The Cautious
+  // guard used to be purely passive (it could refuse to lose a duel but never win one); punishing a
+  // whiff is how a defensive style converts its guard into a kill. Arrows cannot be riposted — there
+  // is nobody within reach to answer — but the Melee L8 perk keeps its old behaviour on both channels
+  // so nothing regresses. The two do not stack: the better chance is used.
+  function pcTryCounter(hero, foe, narrative, chan){
     if(!hero||!foe||hero.hp<=0||foe.hp<=0) return;
-    if(!hero.perkCounter) return;
+    const _perk=hero.perkCounter?0.5:0;
+    const _temper=(chan==='melee')?(temperOf(hero.temper).riposte||0):0;
+    const _chance=Math.max(_perk,_temper);
+    if(_chance<=0) return;
     if(hero.status && hero.status.stun>0) return;   // no riposte while stunned
-    if(Math.random()>=0.5) return;
+    if(Math.random()>=_chance) return;
+    const _src=(_temper>=_perk&&_temper>0)?`${hero.temper} riposte`:'Counterattack';
     const hit=pcHitChance(hero,foe), roll=Math.random()*100;
     if(roll<hit){
       hero._didMelee=true;
       const dmg=pcMeleeDamage(hero,foe);
       const dealt=pcTakeHit(foe,dmg,narrative,hero.name,'counterattack');
-      if(dealt) narrative.push(`  ↩ ${hero.name} seizes the opening and counterattacks for ${dealt} damage! (Counterattack, ${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
+      if(dealt) narrative.push(`  ↩ ${hero.name} seizes the opening and counterattacks for ${dealt} damage! (${_src}, ${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
     } else {
-      narrative.push(`  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (Counterattack)`);
+      narrative.push(`  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (${_src})`);
     }
   }
   function pcMeleeStrike(actor, foe, narrative){
@@ -11586,7 +11683,7 @@ const BATTLE_ARMY_SPELLS={
         actor.hp-=foe.arm.thorns;
         narrative.push(`  ${pcWardIcon(foe)} ${foe.kind==='monster'?pcWardWord(foe,'hide'):`${foe.name}'s thorned armour`} bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
       }
-    } else { narrative.push(`  ${actor.name}'s blow is turned aside.`); pcTryCounter(foe, actor, narrative); }
+    } else { narrative.push(`  ${actor.name}'s blow is turned aside.`); pcTryCounter(foe, actor, narrative, 'melee'); }
   }
   // ── FLEE (2026-09-10 items 3–5): ONE routine for both flight paths ─────────────────────────
   // Path A (the encounter plan says FL, or temper picks it as the round's action) and Path B (the
@@ -11689,17 +11786,17 @@ const BATTLE_ARMY_SPELLS={
       const d=pcArrowDamage(actor);
       const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow');
       if(dealt)narrative.push(`  ${actor.name}'s shot hits ${foe.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(foe.hp))})`);
-      // ARCHERY L6 (Impalement): 50% chance a hit lodges, bleeding the foe 1-3 each round for the rest of the fight.
+      // ARCHERY L6 (Impalement): 50% chance a hit lodges, bleeding the foe 1-3 each round — capped at three rounds (2026-09-12b).
       if(dealt && actor.perkImpale && foe.hp>0 && Math.random()<0.5){
-        foe.status.dot=foe.status.dot||[]; foe.status.dot.push({dmg:rng(1,3),rounds:99,label:`${actor.name}'s impaling arrow`});
-        narrative.push(`  🩸 ${actor.name}'s arrow impales ${foe.name} — it will bleed for the rest of the fight. (Impalement)`);
+        const _imp=pcPushDot(foe,rng(1,3),PC_MAX_LINGER_ROUNDS,`${actor.name}'s impaling arrow`);
+        narrative.push(`  🩸 ${actor.name}'s arrow impales ${foe.name} — it will bleed ${_imp.dmg} a round for ${_imp.rounds} rounds. (Impalement)`);
       }
       // ARCHERY L8 (Trueshot): 50% chance the shot finds a vital — the foe's next attack automatically fails.
       if(dealt && actor.perkTrueshot && foe.hp>0 && Math.random()<0.5){
         foe.status.nextAttackFails=(foe.status.nextAttackFails||0)+1;
         narrative.push(`  🎯 ${actor.name}'s shot strikes a vital point — ${foe.name}'s next attack will fail. (Trueshot)`);
       }
-    } else { narrative.push(`  ${actor.name}'s shot flies wide.`); pcTryCounter(foe, actor, narrative); }
+    } else { narrative.push(`  ${actor.name}'s shot flies wide.`); pcTryCounter(foe, actor, narrative, 'archery'); }
   }
 
   // --- Tactic selection --------------------------------------------------------
@@ -11779,7 +11876,7 @@ const BATTLE_ARMY_SPELLS={
       case 'hot':{ st.hot={amt:e.amt||3,rounds:e.rounds||3,label:nm}; narrative.push(`  Warmth spreads through ${actor.name} — ${e.amt} HP a round for ${e.rounds} rounds.`); break; }
       case 'secondwind':{ const h=Math.min(e.amt||10,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; st.dot=[]; st.hitPenalty=0; st.hitPenaltyFixed=0; narrative.push(`  ${who} recovers ${h} HP and every lingering affliction lifts. (HP ${dispFloor(actor.hp)})`); break; }
       case 'dmg': case 'bane':{ const times=e.times||1; for(let i=0;i<times&&foe.hp>0;i++){ let d=rng(e.dmg[0],e.dmg[1]); if((e.doubleVs||[]).includes(pcFoeCat(foe))){ d*=2; narrative.push(`  The ${nm} blazes twice as bright against ${foe.name}!`); } hurt(d); }
-        if(e.dot&&foe.hp>0){ fs.dot.push({dmg:e.dot[0],rounds:e.dot[1],label:nm}); narrative.push(`  ${nm} keeps burning on ${foe.name}.`); }
+        if(e.dot&&foe.hp>0){ const _de=pcPushDot(foe,e.dot[0],e.dot[1],nm); if(_de) narrative.push(`  ${nm} keeps burning on ${foe.name} — ${_de.dmg} a round for ${_de.rounds} round${_de.rounds!==1?'s':''}.`); }
         if(e.hitPen&&foe.hp>0){ fs.hitPenalty=(fs.hitPenalty||0)+e.hitPen; narrative.push(`  ${foe.name} is thrown off (−${e.hitPen}% to hit).`); }
         if(e.stun&&foe.hp>0){ fs.stun=(fs.stun||0)+e.stun; narrative.push(`  ${foe.name} loses ${e.stun} action${e.stun!==1?'s':''}.`); }
         break; }
@@ -11835,6 +11932,15 @@ const BATTLE_ARMY_SPELLS={
         // A Fire action means: get to firing range, then shoot. Speed decides whether the
         // move succeeds — closing the gap, or breaking back out of a melee the foe is holding.
         if(state.range==='spell'){
+          // 2026-09-12b (Toby): a COWARDLY fighter's whole identity is the bow, and it was worth little
+          // because they still had to win a move check to reach firing range at all. Their FIRST move up
+          // to bow range in a fight simply succeeds — they were never going to close anyway.
+          if(temperOf(actor.temper).openingShot && !actor._openingShotUsed){
+            actor._openingShotUsed=true; state.range='bow';
+            narrative.push(`  ${actor.name} gives ground and gets to firing range before anything can reach them. (${actor.temper} — opening shot)`);
+            pcFireShot(actor, foe, narrative);
+            break;
+          }
           const ch=dispFloor(pcMoveCheck(actor,foe,'advance')), roll=d100();
           narrative.push(`  ${actor.name} moves up to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
           if(roll>ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
@@ -20143,6 +20249,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-1326</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-1528</div>
 </body>
 </html>
