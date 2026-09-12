@@ -2931,12 +2931,24 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // Resurrect shows dead heroes the player knows of. Kings can never be resurrected, and
           // the body must lie in the caster's province at cast time — bodies at the caster's
           // predicted location are marked ✓; others are listed so the player can plan a move there.
+          // 2026-09-12 (Toby, item 3): every body the player can SEE is listed. One the rules forbid
+          // raising is shown greyed with the reason (`raisable`/`whyNot` from the GM report) rather
+          // than silently dropped — a body on the map that is simply absent from this list reads as
+          // a bug. Raisable bodies sort first. Older reports carry no flags, so default to raisable
+          // and fall back to the previous king filter.
           const casterHereName=(predictedLocation(c.id,ph)||{}).name;
-          charOpts=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>!x.isKing||x.isMonarch).map(x=>{
+          const _bodies=(report.knownDeadHeroes||report.deadHeroes||[]).map(x=>{
+            const _r=(x.raisable!==undefined)?!!x.raisable:(!x.isKing||!!x.isMonarch);
+            const _w=x.whyNot||(x.isKing&&!x.isMonarch?'kings cannot be resurrected':'not a legal target');
+            return {...x,_r,_w};
+          }).sort((a,b)=>(b._r?1:0)-(a._r?1:0));
+          charOpts=_bodies.map(x=>{
             const here=casterHereName&&x.locationName===casterHereName;
             const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':' ⚔ (enemy hero)');
+            if(!x._r) return `<option value="" disabled>${x.isMonarch?'👑 ':''}${x.name} — in ${x.locationName||'?'} — cannot be raised: ${x._w}</option>`;
             return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
           }).join('');
+          if(!charOpts) charOpts='<option value="" disabled>No fallen hero you know of — you must own the ground a body lies on, stand a character there, or have witnessed the death</option>';
         } else if(selSpell==='Charm'){
           // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
           // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
@@ -7353,6 +7365,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-1848</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.12-2121</div>
 </body>
 </html>

@@ -3895,6 +3895,24 @@ function demoteGuardToWanderer(h){
   const base=String(h.name||'').replace(/\s*\(wandering\)/gi,'').trim();
   h.name=base+' (wandering)';
 }
+// 2026-09-12 (Toby, item 1): the inverse of demoteGuardToWanderer. The ' (wandering)' suffix is baked
+// into the NAME, so EVERY path that puts a masterless hero into a realm's service must take it off
+// again — the Hire order did, but Charm's permanent join and Resurrect did not, leaving heroes called
+// "Marigold the Bright (wandering)" serving a crown. One helper, used by all of them.
+function claimWandererName(h){
+  if(!h) return;
+  h.name=String(h.name||'').replace(/\s*\(wandering\)/gi,'').trim();
+}
+// Safety net for saves already carrying the bug (and for any future path that forgets): no character
+// who serves a crown may wear the wandering tag. Run at turn start. Returns the number repaired.
+function normaliseOwnedNames(gs){
+  let n=0;
+  (gs.characters||[]).forEach(c=>{
+    if(!c||c.player==null) return;
+    if(/\(wandering\)/i.test(String(c.name||''))){ claimWandererName(c); n++; }
+  });
+  return n;
+}
 // Safety net: every living neutral "guard" who leads no troops, or who stands in a province a player
 // now owns, is really a wanderer — normalise them. Returns the number repaired.
 function normaliseStrandedGuards(gs){
@@ -8091,21 +8109,32 @@ function buildTurnReport(gameState, playerIndex){
     isOwn:g.player===playerIndex,
     isKing:!!g.isKing,
     inVisibleProv:visibleProvIds.has(g.location)}));
-  // Dead heroes this player has EVER seen (for Resurrect targeting)
+  // Dead heroes this player knows of (for Resurrect targeting).
+  // 2026-09-12 (Toby, item 3): the list and the MAP must never disagree again. Anything the map shows
+  // as a body (visibleDeadHeroes) is listed here too; entries the rules forbid raising carry
+  // raisable:false and a plain-language `whyNot`, and the portal renders them greyed with the reason.
+  // Silently omitting them is what produced "I can see him but he isn't in the dropdown".
+  // Inclusion = the map's rule (own / witnessed / body in a province you own or stand in) PLUS every
+  // grave you have ever known of, since the engine (`_graveKnown`) still lets you march back to it.
+  const _mapVisibleIds=new Set(visibleDeadHeroes.map(g=>g.id));
   const knownDeadHeroes=(gameState.heroGraveyard||[])
-    // Own resurrectable monarch is always shown to the player; other players' monarchs never leak.
-    // 2026-09-12 (item 2) ROOT CAUSE: this list (the Resurrect target list) only ever held your own
-    // dead plus knownDeadHeroIds — a set written ONLY to whoever witnessed the fall. visibleDeadHeroes
-    // above already shows a body lying in a province you own or hold a character in, so a player could
-    // SEE a corpse under their king and still not be able to aim Resurrect at it. Same rule now.
-    .filter(g=>(g._monarch ? (g.player===playerIndex && ((gameState.players[playerIndex]||{})._resurrectableMonarchId===g.id)) : (g.player===playerIndex||knownEver.has(g.id)||(g.location!=null&&visibleProvIds.has(g.location)))))
+    .filter(g=>g && (g.player===playerIndex||knownEver.has(g.id)||seenThisTurn.has(g.id)
+      ||(g.location!=null&&visibleProvIds.has(g.location))||_mapVisibleIds.has(g.id)))
     .map(g=>{
       const restId=g._monarch?(monarchRestProvId(gameState,g.player)):null;
       const locId=(restId!=null)?restId:g.location;
+      // Why this body may or may not be raised — mirrors the guards in `white_resurrect` exactly.
+      let raisable=true, whyNot='';
+      if(g._monarch){
+        if(g.player!==playerIndex){ raisable=false; whyNot='a fallen crown answers only to its own realm'; }
+        else if((gameState.players[playerIndex]||{})._resurrectableMonarchId!==g.id){ raisable=false; whyNot='passed beyond recall — only your most recently fallen monarch may be restored'; }
+      } else if(g.isKing){ raisable=false; whyNot='kings cannot be resurrected'; }
       return {id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,race:g.race||null,
       skills:g.skills||{},alignment:g.alignment||'Neutral',temper:g.temper||'Brave',locationId:locId,
       locationName:gameState.world.provinces[locId]?.name||'unknown',
       isMonarch:g._monarch===true,
+      isKing:!!g.isKing,
+      raisable, whyNot,
       wasOwnHero:g.player===playerIndex};
     });
 
@@ -9012,6 +9041,11 @@ async function runTurn(opts){
   // normaliseStrandedGuards) so this turn's move-in / hire / sightings all treat him as the wanderer
   // he really is. This also heals saves carrying the pre-fix case.
   normaliseStrandedGuards(G);
+  // 2026-09-12 (item 1): strip the ' (wandering)' tag from anyone who now serves a crown. Heals live
+  // games whose heroes were charmed or resurrected into service before the paths below were fixed.
+  // SCOPE TRAP: `log` is a const arrow declared far below inside runTurn, so it is in its temporal
+  // dead zone here — the repair is stashed on G and reported by the turn-end integrity block instead.
+  G._nameRepairs=normaliseOwnedNames(G);
 
   // 2. Merge all player orders into G.turnOrders + apply encounter plans
   // CRITICAL: reset turnOrders completely first — stale orders from a previous turn
@@ -16233,6 +16267,7 @@ const BATTLE_ARMY_SPELLS={
           } else {
             deadHero.player=c.player; // an ordinary raised hero serves the caster's realm
             deadHero.isKing=false;
+            claimWandererName(deadHero); // 2026-09-12 (item 1): a raised wanderer now serves this crown
           }
           if(!prov.characters.includes(deadHero.id)) prov.characters.push(deadHero.id);
           G.heroGraveyard=(G.heroGraveyard||[]).filter(g=>g.id!==grave.id);
@@ -16364,6 +16399,7 @@ const BATTLE_ARMY_SPELLS={
             }
             t.pay=_chWage;
             t.player=c.player; t.hiredInPhase=ph;    // hiredInPhase gates acting to ph+1 (permanent join)
+            claimWandererName(t);                    // 2026-09-12 (item 1): they serve a crown now — drop the ' (wandering)' tag
             t._charmedTurn=G.turn;                   // 2026-09-12 (item 7): a charmed mind will not send its possessions away this turn
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
             if(typeof setMovePool==='function') setMovePool(t);
@@ -19930,6 +19966,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   (G.characters||[]).filter(c=>c.player===null&&c.alive&&!c._isNeutralGuard).forEach(c=>{ c.hp=c.maxHp||c.hp; });
   // (Per-turn battle flags are cleared AFTER the report loop — see below — so buildTurnReport and the
   // hadBattle map-marker derivation can still read which provinces saw fighting this turn.)
+  // 2026-09-12 (item 1): report the turn-start ' (wandering)' name repair here, where `log` exists.
+  if(G._nameRepairs>0){
+    log('system',`[Integrity] ${G._nameRepairs} hero${G._nameRepairs!==1?'es':''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,{actor:null,targets:[]});
+  }
+  G._nameRepairs=0;
   // Item 15 (this session): graveyard sweep — a grave whose character record is ALIVE is a
   // doppelganger (dead in the graveyard, alive in the realm). Purge it and say so in the GM log.
   if(Array.isArray(G.heroGraveyard)&&G.heroGraveyard.length){
@@ -20437,6 +20478,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-1848</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.12-2121</div>
 </body>
 </html>
