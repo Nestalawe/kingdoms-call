@@ -734,6 +734,15 @@ const SPELLS_BY_SCHOOL={
   necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy','Raise Wraiths',"Death's Dominion"],
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+// TRAINING gives its benefit up to level 5; levels 6-9 buy mastery perks and mastery orders instead.
+// Magic items and the Crown of Command aura stack above that ONLY for melee and archery, to the skill
+// ceiling of 9 (Toby, 2026-09-13). Those two are special: the engine already gives levels past 5 a real
+// meaning there — meleeRaw/archeryRaw drive the damage roll, to-hit climbs +5% per level past 5, and
+// perkTier reads the same scale. Every other skill (tactical, naval, sage, druid, spy, thief, explorer,
+// march and the five magic schools) has no defined behaviour above 5, and the engine is tuned around
+// that cap in a dozen places, so their bonuses still stop at 5.
+const SKILL_BENEFIT_CAP=5, SKILL_MAX=9;
+const ITEM_UNCAPPED_SKILLS=new Set(['melee','archery']);
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
 // Item 10 (this session): when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a
 // skill — reachable only through hard experience, never the practice ground), their own report
@@ -761,6 +770,9 @@ const MASTERY_UNLOCKS={
 // turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler).
 const MASTERY_ORDER_KEYS=new Set(['challenge','rampage','rain_of_arrows','snipers_mark','feigned_retreat','grand_stratagem','forced_march','lightning_advance','blockade','raid_coast','research_breakthrough','grand_design','sabotage','assassinate','grand_heist','vanish','awaken_grove','wild_calling','chart_unknown','discover_ruin']);
 const MASTERY_ORDER_LABEL={challenge:'Challenge',rampage:'Rampage',rain_of_arrows:'Rain of Arrows',snipers_mark:"Sniper's Mark",feigned_retreat:'Feigned Retreat',grand_stratagem:'Grand Stratagem',forced_march:'Forced March',lightning_advance:'Lightning Advance',blockade:'Blockade',raid_coast:'Raid the Coast',research_breakthrough:'Research Breakthrough',grand_design:'Grand Design',sabotage:'Sabotage',assassinate:'Assassinate',grand_heist:'Grand Heist',vanish:'Vanish',awaken_grove:'Awaken Grove',wild_calling:'Wild Calling',chart_unknown:'Chart the Unknown',discover_ruin:'Discover Lost Ruin'};
+// Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
+// charmed enemy hero may not be made to do (2026-09-13, Toby item 2).
+const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','awaken_wild','harvest_field','rite']);
 const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
@@ -935,7 +947,9 @@ function getAlreadyRecruitedThisTurn(charId,upToPhaseExclusive){
 function _gmEffMagicLvl(c,school){
   const base=((c&&c.skills)||{})[school]||0;
   const bonus=activeItems(c).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school)?(it.effect.bonus||0):0),0); // Item 2: equipped only
-  return Math.max(0,Math.min(5,base+bonus));
+  // 2026-09-13: magic schools are NOT among the uncapped skills (only melee and archery are), so this
+  // still mirrors skillBonusBreakdown's flat ceiling of 5.
+  return Math.max(0,Math.min(SKILL_BENEFIT_CAP,base+bonus));
 }
 
 function buildTargetField(c,ph,saved){
@@ -1041,7 +1055,7 @@ function buildTargetField(c,ph,saved){
       const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
         const w=heroHireWage(report.kingdom?.alignment||'Neutral',h.alignment,false);
         if(w==null) return '';
-        return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire: ${h.name} (${h.alignment}) in ${h.locationName} — ${w}g/turn</option>`;
+        return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire: ${h.name} (${h.alignment}) in ${h.locationName} — ${heroFameText(h)} — ${w}g/turn</option>`;
       }).filter(Boolean).join('');
       const spyOpts=((report.worldMeta?.provinces)||[]).filter(p=>p.name&&p.terrain).map(p=>`<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Spy: ${p.name} (2g)</option>`).join('');
       if(!hireOpts&&!spyOpts) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing within reach" disabled>`;
@@ -1130,7 +1144,8 @@ function buildTargetField(c,ph,saved){
       const heroes=pd?.availableHeroes||[];
       if(!heroes.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No wandering heroes in ${loc.name}`:'No heroes available'}" disabled>`;
       return`<select id="po-target-${c.id}-${ph}">${heroes.map(h=>{
-        const sk=Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'untrained';
+        // 2026-09-13 (Toby item 1): describe the hero's best skill in words — never list the sheet.
+        const sk=heroFameText(h);
         // Alignment-distance pricing (2026-07-24): 2g base +1g per 2 spectrum steps from the
         // KINGDOM's alignment; Divine<->Undead cannot hire each other at all.
         const wageG=heroHireWage(report.kingdom?.alignment||'Neutral', h.alignment, false);
@@ -3868,7 +3883,30 @@ function ensureAllLairHoards(gs){
     }
   }
 }
-function itemNameList(items){ return (items||[]).map(d=>(isLegendaryItem(d)?'the LEGENDARY ':'the ')+d.name+(d.desc?' ('+d.desc+')':'')).join(', '); }
+// ── HERO FAME (2026-09-13, Toby item 1) ── a wandering hero's reputation is described, never numbered:
+// the Hire and Broker dropdowns quote the same words the Intelligence report uses. Module level so
+// buildTargetField (which runs outside buildPlayerReport) can reach them — buildPlayerReport's own
+// copies now delegate here so the two can never drift apart.
+function skillFameLabelM(level){
+  const l=level||0;
+  return l>=7?'has a heroic level of':l>=4?'legendary for':'renowned for';
+}
+function topSkillOf(char){
+  const skills=Object.entries((char&&char.skills)||{}).filter(([,v])=>v>0);
+  if(!skills.length) return null;
+  const maxLevel=Math.max(...skills.map(([,v])=>v));
+  const tied=skills.filter(([,v])=>v===maxLevel);
+  // Deterministic tie-break by canonical skill order, so the same hero reads the same everywhere.
+  tied.sort((a,b)=>ALL_SKILLS.indexOf(a[0])-ALL_SKILLS.indexOf(b[0]));
+  const [sk,lv]=tied[0];
+  return{skill:sk,level:lv};
+}
+// A hero's reputation as one phrase: "legendary for Tactical". Never exposes the level itself.
+function heroFameText(h){
+  const ts=(h&&h.topSkill)||topSkillOf(h);
+  return ts?`${skillFameLabelM(ts.level)} ${SKILL_LABELS[ts.skill]||ts.skill}`:'no notable skills';
+}
+function itemNameList(items, withDesc){ const wd=(withDesc!==false); return (items||[]).map(d=>(isLegendaryItem(d)?'the LEGENDARY ':'the ')+d.name+((wd&&d.desc)?' ('+d.desc+')':'')).join(', '); }
 // Which race / alignment an item is bound to, if any; an item a character cannot use is inert in their hands.
 // 2026-09-10 item 3: race-bound items were tagged 'Elf'/'Dwarf'/'Orc' while characters carry 'Elven'/
 // 'Dwarven'/'Orcish', so every non-Human race-bound item was inert in its OWN race's hands. The item
@@ -4360,8 +4398,19 @@ function skillBonusBreakdown(c, stat, chars){
     const bearer=chars.find(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&activeItems(o).some(it=>it.effect&&it.effect.stat==='aura'));
     if(bearer){ out.aura=1; out.sources.push({label:bearer.id===c.id?'Crown of Command':`Crown of Command (${bearer.name})`,delta:1}); }
   }
-  out.total=Math.max(0,Math.min(5,out.base+out.items+out.aura+out.curse));
-  out.bonus=out.total-Math.max(0,Math.min(5,out.base)); // what the extras are actually WORTH after the cap
+  // 2026-09-13 (Toby item 4): TRAINING tops out at 5 for benefit purposes — levels 6-9 buy mastery perks
+  // and mastery ORDERS instead of further scaling, which is the documented rule the engine is tuned
+  // around (see the Sage discovery chance, the Druid army bonus, the Thief hoard cut).
+  //   MELEE and ARCHERY only: item and aura bonuses stack ON TOP of that capped base, to the ceiling of 9.
+  //   Levels past 5 already mean something for those two (damage, +5%/level to-hit, perkTier), so a
+  //   Legendary +4 blade is felt in full instead of being worth one level to a Melee 4 hero and nothing
+  //   at all to a Melee 5 one.
+  //   EVERY OTHER SKILL: the total still stops at 5, so a +2 Tome cannot make a Tactical 5 hero
+  //   out-general a trained Tactical 9 in the battle maths.
+  const _trained=Math.max(0,Math.min(SKILL_BENEFIT_CAP,out.base));
+  const _ceiling=ITEM_UNCAPPED_SKILLS.has(stat)?SKILL_MAX:SKILL_BENEFIT_CAP;
+  out.total=Math.max(0,Math.min(_ceiling,_trained+out.items+out.aura+out.curse));
+  out.bonus=out.total-_trained; // what the extras are actually WORTH
   return out;
 }
 function effSkillOf(c, stat, chars){ return skillBonusBreakdown(c,stat,chars).total; }
@@ -8120,21 +8169,10 @@ function buildTurnReport(gameState, playerIndex){
   // Helper: get the single most notable skill for display (highest level; random if tie)
   // 2026-09-13 (Toby, item 4): keep in step with skillFameLabel() in the player portal — a hero who is
   // not yours is known by reputation, not by an exact skill level. Three bands across levels 1–9.
-  function skillFameLabel(level){
-    const l=level||0;
-    return l>=7?'has a heroic level of':l>=4?'legendary for':'renowned for';
-  }
-  function topSkill(char){
-    const skills=Object.entries(char.skills||{}).filter(([,v])=>v>0);
-    if(!skills.length) return null;
-    const maxLevel=Math.max(...skills.map(([,v])=>v));
-    const tied=skills.filter(([,v])=>v===maxLevel);
-    // Deterministic tie-break by canonical skill order, so the same hero shows the same
-    // "best skill" everywhere (Intelligence report AND the Hire Hero orders window).
-    tied.sort((a,b)=>ALL_SKILLS.indexOf(a[0])-ALL_SKILLS.indexOf(b[0]));
-    const [sk,lv]=tied[0];
-    return{skill:sk,level:lv};
-  }
+  // 2026-09-13 (Toby item 1): both now delegate to the module-level helpers, so the Intelligence
+  // report, the Hire dropdown and the Broker dropdown cannot describe the same hero differently.
+  function skillFameLabel(level){ return skillFameLabelM(level); }
+  function topSkill(char){ return topSkillOf(char); }
 
   const intel=[];
 
@@ -14119,6 +14157,23 @@ const BATTLE_ARMY_SPELLS={
     const prov=provOf(c);
     const player=G.players[c.player];
 
+    // ── CHARMED ENEMY HERO (2026-09-13, Toby item 2) ── an enemy hero whose command has been seized
+    // for the turn will march and fight under your banner, but an enchantment is not an oath: they
+    // will not break up their own lord's companies, perform another realm's alignment rites, or spend
+    // their own hard-won mastery for a stranger. A WANDERING hero Charmed into permanent service is
+    // not restricted — they have genuinely joined the realm and act as any other hero of it.
+    // This sits ABOVE the once-per-turn charge below so a refused mastery order is not also spent.
+    if(c._charmTempControl){
+      const _why=(action==='disband_army')?'break up companies that are not theirs to disband'
+                :ALIGNMENT_ORDER_KEYS.has(action)?'perform the rites of a realm they do not serve'
+                :MASTERY_ORDER_KEYS.has(action)?'spend their own mastery for a crown that merely holds their mind'
+                :null;
+      if(_why){
+        log('system',`${c.name} is held by an enchantment, not an oath — they will not ${_why}. The order comes to nothing.`,{actor:c.player,targets:[c.player]});
+        _logCtx={charId:null,phase:null};return;
+      }
+    }
+
     // ── ONCE PER TURN ── a mastery order may be attempted only once per turn per character.
     if(MASTERY_ORDER_KEYS.has(action)){
       c._masteryOrderUsed=c._masteryOrderUsed||{};
@@ -15236,7 +15291,7 @@ const BATTLE_ARMY_SPELLS={
           // SILENTLY: the report then fell through to the "no magic this time" line even though the hero
           // walked away with an item — the bug Toby saw (gold reported, no item reported, item in pack).
           if(baseDrops.length>0){
-            log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and hauls out ${itemNameList(baseDrops)}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and hauls out ${itemNameList(baseDrops,false)}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             baseDrops.forEach(it=>log('explore',itemLoreLines([it]),{actor:c.player,targets:[c.player],provinceId:prov.id})); // item 1 (2026-09-09): one lore line per relic won
           }
           // Item 4: recover any items earlier challengers left behind when the guardian slew them.
@@ -15244,7 +15299,7 @@ const BATTLE_ARMY_SPELLS={
             const _recovered=f.lairItems.slice();
             _recovered.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ });
             f.lairItems=[];
-            log('explore',`Among the bones of the fallen, ${c.name} recovers ${_recovered.map(d=>(isLegendaryItem(d)?'the LEGENDARY ':'the ')+d.name+' ('+d.desc+')').join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('explore',`Among the bones of the fallen, ${c.name} recovers ${itemNameList(_recovered,false)}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             _recovered.forEach(it=>log('explore',itemLoreLines([it]),{actor:c.player,targets:[c.player],provinceId:prov.id})); // item 1: lore line per recovered relic
           }
           // Only claim "no magic" when the fight truly yielded no items — no tier drops AND no Alchemical bonus AND no recovered lair items.
@@ -20711,6 +20766,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.13-2015</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.13-2301</div>
 </body>
 </html>

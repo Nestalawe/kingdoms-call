@@ -701,6 +701,12 @@ function actionsFor(c){
     if(a==='Steal'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only (2026-09-09) — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // 2026-09-08: a king cannot release himself
     if(c&&c._hiddenSkills&&(a==='Send Item'||a==='Give Item'||a==='Release Hero')) return false; // 2026-09-12 (item 7): a charmed hero will not give up their possessions
+    // 2026-09-13 (Toby item 2): an ENEMY hero whose command you have seized for the turn is held by an
+    // enchantment, not an oath — they will not disband companies that are not theirs, perform your
+    // realm's alignment rites, or spend their own mastery for you. The engine refuses these orders at
+    // resolution too (see the _charmTempControl guard in processOrder); this keeps them off the form.
+    // A WANDERING hero charmed into permanent service has genuinely joined the realm and is unrestricted.
+    if(c&&c._charmEnemy&&(L79_ORDERS[a]||ALIGN_ACTIONS[a]||a==='Disband Army')) return false;
     return true;
   }).sort((a,b)=>_actionRank(a)-_actionRank(b));
 }
@@ -3134,6 +3140,8 @@ function effMagicLvl(charObj, school){
   const base=((charObj&&charObj.skills)||{})[school]||0;
   // Item 2 (2026-09-07): only EQUIPPED slot items count (unslotted items are always active).
   const bonus=((charObj&&charObj.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school&&itemUsableByP(it,charObj)&&(!itemSlotP(it)||it.equipped!==false))?(it.effect.bonus||0):0),0);
+  // 2026-09-13: magic schools are NOT among the uncapped skills (only melee and archery are), so this
+  // still mirrors the engine's flat ceiling of 5.
   return Math.max(0,Math.min(5,base+bonus));
 }
 
@@ -4457,6 +4465,8 @@ function injectCharmOrders(charId, ph, heroId, containerId){
     // 2026-09-12 (Toby, item 7): the charmer does not see the charmed hero's skills or items. skills stays empty and
     // _hiddenSkills tells the order fields to list choices without levels; Send Item is not offered at all.
     skills:{}, _hiddenSkills:true, armies:[], items:[], pay:wanderer.pay||1,
+    // 2026-09-13 (Toby item 2): only a seized ENEMY hero is restricted; a charmed wanderer joins freely.
+    _charmEnemy:isEnemy,
     locationId:(wanderer.locationId!=null?wanderer.locationId:null), locationName:wanderer.locationName||'(in your province)',
     effectiveSpeed:5, effectiveSeaSpeed:0,
     hiredInPhase:ph, encounterPlan:{tactics:['ME'],notes:''},
@@ -5184,6 +5194,9 @@ function effSkillP(c, k){
   return ((c&&c.skills)||{})[k]||0;
 }
 
+// Mirrors ITEM_UNCAPPED_SKILLS in the GM engine: the only two skills whose item/aura bonuses may
+// carry a character past an effective 5 (levels past 5 drive damage and to-hit for these).
+const ITEM_UNCAPPED_SKILLS_P=new Set(['melee','archery']);
 function skillRowHTML(c, style){
   const eff=c&&c.skillEff, raw=(c&&c.skills)||{};
   const combat=(c&&c.combatSkillBonus)||{};
@@ -5199,7 +5212,10 @@ function skillRowHTML(c, style){
     const parts=[];
     if(e&&e.sources) e.sources.forEach(x=>parts.push(`${x.delta>0?'+':''}${x.delta} ${x.label}`));
     (combat[k]||[]).forEach(x=>parts.push(`${x.delta>0?'+':''}${x.delta} ${x.label} (personal combat only)`));
-    if(e&&e.total>=5&&((e.items||0)+(e.aura||0))>0&&e.bonus<((e.items||0)+(e.aura||0))) parts.push('capped at 5');
+    // 2026-09-13: melee and archery let item/aura bonuses stack above trained 5 to the ceiling of 9;
+    // every other skill still stops at 5. Mirrors ITEM_UNCAPPED_SKILLS in the GM engine.
+    const _ceil=ITEM_UNCAPPED_SKILLS_P.has(k)?9:5;
+    if(e&&e.total>=_ceil&&((e.items||0)+(e.aura||0))>0&&e.bonus<((e.items||0)+(e.aura||0))) parts.push('capped at '+_ceil);
     const tip=parts.length?` title="${(label+' '+base+' — '+parts.join(', ')).replace(/"/g,'&quot;')}"`:'';
     const bonusStr=bonus>0?`<span style="color:var(--gold)">+${bonus}</span>`:(bonus<0?`<span style="color:var(--crimson)">${bonus}</span>`:'');
     const combatStr=cb>0?`<span style="color:#6a4a9a">(+${cb}\u2694)</span>`:'';
@@ -6093,7 +6109,7 @@ function buildTargetField(c, ph, saved){
       const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
         const w=heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment);
         if(w==null) return '';
-        return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${w}g/turn</option>`;
+        return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
       }).filter(Boolean).join('');
       const spyOpts=((report.worldMeta?.provinces)||[]).filter(p=>p.name&&p.terrain).map(p=>
         `<option value="spy:${p.id}" ${target==='spy:'+p.id?'selected':''}>🕵 Buy word from ${p.name} (2g — full Spy result)</option>`).join('');
@@ -6403,9 +6419,9 @@ function buildTargetField(c, ph, saved){
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc?`No wandering heroes in ${loc.name}`:'No heroes available'}" disabled>`;
       }
       const opts=heroes.map(h=>{
-        // Show only highest skill (like intelligence report)
-        const skills=Object.entries(h.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-        const topSkill=skills.length>0?`${SKILL_LABELS[skills[0][0]]||skills[0][0]} ${skills[0][1]}`:'no notable skills';
+        // 2026-09-13 (Toby item 1): the hero's best skill is DESCRIBED, exactly as the Intelligence
+        // report describes it — "legendary for Tactical" — never given as a bare level number.
+        const topSkill=heroFameTextP(h);
         // Alignment-distance pricing (2026-07-24): wage = 2g +1g per 2 spectrum steps between the
         // hero's alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
@@ -6792,6 +6808,21 @@ function popupKnownChars(pd, deadHeroes){
 // 2026-09-13 (Toby, item 4): a hero who is not yours is described by REPUTATION, never by an exact
 // skill number — three bands across levels 1–9. The precise figures are still shown for your own
 // characters, and for any hero your Spy (or Clairvoyance) has actually read.
+// A wandering hero's reputation as one phrase — "legendary for Tactical". Mirrors the GM engine's
+// heroFameText(); the level itself is never shown (2026-09-13, Toby item 1).
+function heroFameTextP(h){
+  let ts=(h&&h.topSkill)||null;
+  if(!ts){
+    const sk=Object.entries((h&&h.skills)||{}).filter(([,v])=>v>0);
+    if(sk.length){
+      const mx=Math.max(...sk.map(([,v])=>v));
+      const tied=sk.filter(([,v])=>v===mx);
+      tied.sort((a,b)=>ALL_SKILLS.indexOf(a[0])-ALL_SKILLS.indexOf(b[0]));
+      ts={skill:tied[0][0],level:tied[0][1]};
+    }
+  }
+  return ts?`${skillFameLabel(ts.level)} ${SKILL_LABELS[ts.skill]||ts.skill}`:'no notable skills';
+}
 function skillFameLabel(level){
   const l=level||0;
   return l>=7?'has a heroic level of':l>=4?'legendary for':'renowned for';
@@ -7460,6 +7491,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.13-2015</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.13-2301</div>
 </body>
 </html>
