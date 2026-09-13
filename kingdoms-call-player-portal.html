@@ -6777,6 +6777,15 @@ function _lairName(f){
   const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[f.monsterPower||f.power]||null;
   return col?`<span style="color:${col}">${f.name}</span>`:(f.name||'');
 }
+// GRAND DESIGN (2026-09-14, Toby): a Wonder of the age is no secret — anyone who can see the province
+// sees the Wonder standing in it, and who raised it. Its powers, though, serve only the realm that built
+// it, and only while that realm holds the ground: a Wonder in enemy hands is dormant stonework.
+function _grandDesignNote(pd){
+  const gd=pd&&pd.grandDesign; if(!gd) return '';
+  return `<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span>`
+    +`<span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${gd.ownerName||'a fallen realm'}</strong>`
+    +(gd.active?`.` :`, dormant while another crown holds this ground.`)+`</span>`;
+}
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
   // Item 3 (this session): a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id,
@@ -7303,6 +7312,23 @@ function renderMapIntoSvg(svgEl, report){
       ltxt.setAttribute('class','sym-flag'); symbolLayer.appendChild(ltxt);
     }
 
+    // GRAND DESIGN (2026-09-14, Toby): a 🏛 at the bottom-left of any hex holding a Wonder of the age.
+    // Visible to every realm that can see the province, gold while its builder still holds the ground
+    // and grey once it has been taken — the stones stand either way, but the blessings do not.
+    if(pd.grandDesign){
+      const _flagGD=pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
+      const _deadGD=(report.visibleDeadHeroes||[]).some(d=>d.locationId===pd.id);
+      const _ritGD=(pd.features||[]).some(f=>f.ritualSite);
+      const gx=x-HS+8+((_deadGD?9:0)+(_flagGD?9:0)+(_ritGD?9:0)),gy=y+HS-10;
+      const gtxt=document.createElementNS(svgNS,'text');
+      gtxt.setAttribute('x',gx);gtxt.setAttribute('y',gy);
+      gtxt.setAttribute('text-anchor','middle');gtxt.setAttribute('font-size','9');
+      gtxt.setAttribute('fill',pd.grandDesign.active?'#d8a63a':'#8a8a8a');gtxt.setAttribute('pointer-events','none');
+      gtxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
+      gtxt.textContent='\u{1F3DB}';
+      gtxt.setAttribute('class','sym-wonder'); symbolLayer.appendChild(gtxt);
+    }
+
     // Ritual sites: a 🌙 at the bottom-left of any hex where THIS player has DISCOVERED a ritual site —
     // shown to every realm that has found it (like a lair's star), and persisting on remembered
     // provinces regardless of who owns the ground. Only Pagan realms may actually Perform Rites here
@@ -7310,7 +7336,7 @@ function renderMapIntoSvg(svgEl, report){
     if((pd.features||[]).some(f=>f.ritualSite)){
       const hasFlag=pd.ownArmyHere || (pd.characters||[]).some(c=>c.isOwn&&(c.armyCount||0)>0);
       const _deadBL2=(report.visibleDeadHeroes||[]).some(d=>d.locationId===pd.id);
-      const mnx=x-HS+8+((_deadBL2?9:0)+(hasFlag?9:0)),mny=y+HS-10;
+      const mnx=x-HS+8+((_deadBL2?9:0)+(hasFlag?9:0)+(pd.grandDesign?9:0)),mny=y+HS-10;
       const mtxt=document.createElementNS(svgNS,'text');
       mtxt.setAttribute('x',mnx);mtxt.setAttribute('y',mny);
       mtxt.setAttribute('text-anchor','middle');mtxt.setAttribute('font-size','9');
@@ -7328,6 +7354,7 @@ function renderMapIntoSvg(svgEl, report){
         if(isOwned){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
           if(pd.consecrated) h+=`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`;
+          h+=_grandDesignNote(pd);
           h+=`<br>\u{1F6C2} ${formatRace(pd.race)}`;
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>!f.cleared);
@@ -7344,6 +7371,7 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
+          h+=_grandDesignNote(pd);
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
@@ -7358,6 +7386,7 @@ function renderMapIntoSvg(svgEl, report){
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
+          h+=_grandDesignNote(pd);
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
         }
@@ -7491,6 +7520,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.13-2301</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1039</div>
 </body>
 </html>
