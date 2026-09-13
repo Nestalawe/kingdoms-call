@@ -690,9 +690,15 @@ function actionsFor(c){
   return ACTIONS.filter(a=>{
     if(ALIGN_ACTIONS[a]&&ALIGN_ACTIONS[a]!==align) return false;
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
-    if(L79_ORDERS[a]&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
-    if(a==='Research'&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
-    if(a==='Steal'&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only (2026-09-09) — light fingers take training
+    if(L79_ORDERS[a]&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
+    // Research (Sage 1+) and Steal (Thief 1+) are gated on the character's BASE skill, matching the
+    // engine (`case 'research'` / `case 'steal'` both read the raw level). A CHARMED hero is the one
+    // exception: the charmer cannot see their levels, so the placeholder card carries `skills:{}` and
+    // every raw lookup returns 0 — which silently stripped both orders from a hero who may well have
+    // the training. Offer them and let the engine enforce the real requirement at resolution.
+    // (2026-09-13, Toby item 4.)
+    if(a==='Research'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
+    if(a==='Steal'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only (2026-09-09) — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // 2026-09-08: a king cannot release himself
     if(c&&c._hiddenSkills&&(a==='Send Item'||a==='Give Item'||a==='Release Hero')) return false; // 2026-09-12 (item 7): a charmed hero will not give up their possessions
     return true;
@@ -2336,7 +2342,7 @@ function renderReportView(report){
     otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#5a3a7a;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Fallen Heroes</div>`;
     otherForcesHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
       <strong>${h.name}</strong> <span style="color:#8a1c1c">(dead)</span>${(h.race||h.alignment)?` (${[h.race,h.alignment].filter(Boolean).join(', ')})`:''}${h.isOwn?' — your hero':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
-      <span style="font-size:.78rem">${h.topSkill?`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill} ${h.topSkill.level}</span>`:'No notable skills'}</span><br>
+      <span style="font-size:.78rem">${h.topSkill?`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill}</span>`:'No notable skills'}</span><br>
       ${h.inVisibleProv
         ?'<span style="font-size:.72rem;color:#5a3a7a">💀 A hero with the Resurrect spell can raise them from this province.</span>'
         :'<span style="font-size:.72rem;color:#888">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
@@ -2358,7 +2364,7 @@ function renderReportView(report){
     if(wanderers.length>0){
       otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Wandering Heroes</div>`;
       otherForcesHtml+=wanderers.map(s=>{
-        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
+        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
@@ -2371,7 +2377,7 @@ function renderReportView(report){
     if(chieftains.length>0){
       otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#8a6a2a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Local Chieftains</div>`;
       otherForcesHtml+=chieftains.map(s=>{
-        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
+        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
@@ -2385,7 +2391,7 @@ function renderReportView(report){
       // 2026-09-09 (item 5): enemy sightings get their own heading — they used to run on under "Wandering Heroes".
       otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a1c1c;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Enemy Heroes</div>`;
       otherForcesHtml+=enemies.map(s=>{
-        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill} ${s.topSkill.level}</span>`:'no known skills';
+        const topStr=s.topSkill?`<span style="color:var(--gold)">${SKILL_LABELS[s.topSkill.skill]||s.topSkill.skill}</span>`:'no known skills';
         const skillLine=(s.spiedSkills&&Object.keys(s.spiedSkills).some(k=>s.spiedSkills[k]>0))
           ? `<span style="color:#2d7a2d">🔍 Skills (spied turn ${s.spiedTurn}):</span> ${Object.entries(s.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
@@ -4132,11 +4138,15 @@ function onMoveEdited(charId, ph){
   if(ownNote){ ownNote.style.display='none'; ownNote.innerHTML=''; }
   for(let later=ph+1;later<=4;later++){
     const laterAction=document.getElementById(`po-action-${charId}-${later}`)?.value||'';
-    if(laterAction!=='Move') continue;               // scoped to move orders (item 6)
+    // 2026-09-13 (Toby): a later FORCED MARCH sets out from the changed province too — its
+    // move_adjacent dropdown is built from predictedLocation, so it goes stale exactly as a Move does.
+    // Rebuild with the order's OWN action, not a hardcoded 'Move', or a Forced March would be handed
+    // the plain move field.
+    if(laterAction!=='Move'&&laterAction!=='Forced March') continue; // scoped to move orders (item 6)
     const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`);
     if(!wrap) continue;
     const savedT=getOrderTarget(charId,later);
-    wrap.innerHTML=buildTargetField(char, later, {action:'Move', target:savedT});
+    wrap.innerHTML=buildTargetField(char, later, {action:laterAction, target:savedT});
     if(savedT){
       const note=document.getElementById(`po-move-note-${charId}-${later}`);
       if(note){ note.style.display='block'; note.innerHTML='⚠ <strong>Update me</strong> — an earlier move changed, so this order now sets out from a different province. Re-check its direction.'; }
@@ -4545,10 +4555,10 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   if(!/^\d+$/.test(String(heroId))) return;
 
   const report=currentReport||{};
-  // Mounted Couriers (sd34) lets a HIRED hero act from the hire phase — but the engine's Broker path
-  // does not wire that immediate action, so a BROKERED hero always acts from ph+1.
-  const _isBroker=(document.getElementById(`po-action-${charId}-${ph}`)?.value==='Broker');
-  const immH=!_isBroker&&(report.discoveries||[]).some(d=>d.id==='sd34'); // Mounted Couriers: act from hire phase
+  // Mounted Couriers (sd34) lets a newly hired hero act from the hire phase itself. 2026-09-13 (Toby
+  // item 3): the Broker exclusion is GONE — the engine's broker branch now runs the same immediate
+  // processOrder the Hire Hero branch does, so a brokered hero acts on the same terms as any other.
+  const immH=(report.discoveries||[]).some(d=>d&&d.id==='sd34');
   const firstActable=immH?ph:ph+1;
   let heroData=null;
   Object.values(report.provinceOrderData||{}).forEach(pd=>{
@@ -4614,7 +4624,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     if(sk.length) hireTop={skill:sk[0][0],level:sk[0][1]};
   }
   const skillStr=hireTop
-    ?`<span style="color:var(--forest)"><strong>${skillFameLabel(hireTop.level)}:</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill} ${hireTop.level}</span>`
+    ?`<span style="color:var(--forest)"><strong>${skillFameLabel(hireTop.level)}</strong> ${SKILL_LABELS[hireTop.skill]||hireTop.skill}</span>`
     :'<span style="color:#aaa">No notable skills</span>';
 
   card.innerHTML=`
@@ -5485,7 +5495,9 @@ function exploreMoveGainBefore(c, upToPhaseExclusive, provId){
   let gain=0;
   for(let p=0;p<upToPhaseExclusive;p++){
     const act=document.getElementById(`po-action-${c.id}-${p}`)?.value;
-    if(act!=='Move') continue;
+    // 2026-09-13 (Toby): a Forced March IS a move in the engine (`_fmSlip=true; action='move'`), so it
+    // grants the same move-in exploration. The projection has to count it or the forecast undershoots.
+    if(act!=='Move'&&act!=='Forced March') continue;
     const dest=predictedLocation(c.id,p+1);          // where this move LANDS them
     const from=predictedLocation(c.id,p);
     if(!dest||!from||dest.id===from.id||dest.id!==provId) continue;
@@ -5543,6 +5555,16 @@ function predictedLocation(charId, upToPhaseExclusive){
   if(!worldMeta) return {id:locId,name:char.locationName};
   for(let ph=0;ph<upToPhaseExclusive;ph++){
     const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
+    // 2026-09-13 (Toby): FORCED MARCH relocates the character exactly as a Move does (the engine turns
+    // it into a move), so later-phase order forms must follow it. Its target is a BARE province id from
+    // the move_adjacent select, not the `prov:`/`dir:` form a Move uses, so it is resolved first.
+    // Mirrors the GM portal's predictedLocation — both must change together or the forms disagree.
+    if(action==='Forced March'){
+      const fmT=(getOrderTarget(charId,ph)||'').trim();
+      const fmId=parseInt(fmT.startsWith('prov:')?fmT.slice(5):fmT);
+      if(!isNaN(fmId)&&worldMeta.provinces.some(p=>p.id===fmId)) locId=fmId;
+      continue;
+    }
     if(action!=='Move') continue;
     const tgt=getOrderTarget(charId,ph);
     if(!tgt) continue;
@@ -5691,15 +5713,25 @@ function defaultResearchField(c, ph){
   for(const o of chars){ if(o.id===c.id) continue; for(let q=0;q<SEASONS.length;q++){ const d=draftOrderAt(o.id,q); if(d.action==='Research'&&d.target) return d.target; } }
   return '';
 }
+// 2026-09-13 (Toby item 4): both Practice Skill defaults now go through `draftOrderAt`, the same way
+// the Search Lair and Research defaults have since 2026-09-11. They used to read companions' orders
+// STRAIGHT FROM THE DOM — but the whole orders column is built as one `el.innerHTML = …join('')`
+// string, so while that string is being assembled NOT ONE card exists in the document yet. The
+// companion lookup therefore always came back empty on first paint and the default never fired; it
+// appeared to work only while the player was clicking dropdowns, and vanished the moment they
+// reloaded or reopened the report. `draftOrderAt` reads the live form when there is one and falls
+// back to `_draftOrdersSnapshot` (this turn's saved draft) when there is not, so the group-drill
+// default now survives a first paint. This reverses the earlier "no other orders get this system"
+// call — Practice Skill was the one order that visibly needed it.
 function practiceCompanionSkill(c, ph){
   const report=currentReport||{};
   const here=predictedLocation(c.id,ph); const hereId=here?here.id:c.locationId;
   const counts={}; let best='', bestN=0;
   (report.characters||[]).forEach(o=>{
     if(!o||o.id===c.id||o.alive===false) return;
-    const act=document.getElementById(`po-action-${o.id}-${ph}`)?.value;
-    if(act!=='Practice Skill') return;
-    const sk=getOrderTarget(o.id,ph); if(!sk||!ALL_SKILLS.includes(sk)) return;
+    const d=draftOrderAt(o.id,ph);
+    if(d.action!=='Practice Skill') return;
+    const sk=d.target; if(!sk||!ALL_SKILLS.includes(sk)) return;
     const loc=predictedLocation(o.id,ph); if((loc?loc.id:o.locationId)!==hereId) return;
     counts[sk]=(counts[sk]||0)+1;
     if(counts[sk]>bestN){ bestN=counts[sk]; best=sk; }
@@ -5708,9 +5740,9 @@ function practiceCompanionSkill(c, ph){
 }
 function practiceOwnEarlierSkill(c, ph){
   for(let q=ph-1;q>=0;q--){
-    const act=document.getElementById(`po-action-${c.id}-${q}`)?.value;
-    if(act!=='Practice Skill') continue;
-    const sk=getOrderTarget(c.id,q); if(sk&&ALL_SKILLS.includes(sk)) return sk;
+    const d=draftOrderAt(c.id,q);
+    if(d.action!=='Practice Skill') continue;
+    if(d.target&&ALL_SKILLS.includes(d.target)) return d.target;
   }
   return '';
 }
@@ -6757,9 +6789,12 @@ function popupKnownChars(pd, deadHeroes){
 // 2026-09-10 (item 4): map marker colour for local chieftains (neutral-province guards). Wandering heroes
 // stay #888 grey with '?'; chieftains are light brown with '!'. Keep in step with the legend SVG above.
 // 2026-09-11 (Toby): how a hero's best skill is introduced, by its level — replaces the flat "Best skill:".
+// 2026-09-13 (Toby, item 4): a hero who is not yours is described by REPUTATION, never by an exact
+// skill number — three bands across levels 1–9. The precise figures are still shown for your own
+// characters, and for any hero your Spy (or Clairvoyance) has actually read.
 function skillFameLabel(level){
   const l=level||0;
-  return l>=8?'Legendary for':l>=6?'Renowned for':l>=4?'Famous for':l>=2?'Known for':'Trained in';
+  return l>=7?'has a heroic level of':l>=4?'legendary for':'renowned for';
 }
 // 2026-09-11 (item 4): bottom-right race badges. Keys are formatRace() outputs.
 // 2026-09-11 (Toby): no outline — the dark ring read as a black border at map scale. Fill + glyph only,
@@ -7196,14 +7231,24 @@ function renderMapIntoSvg(svgEl, report){
     // rather than frozen. The top-left corner is otherwise free: the prosperity dot has been nudged down
     // the left flank, the hero markers sit top-right and the battle swords top-middle.
     if(pd.isHomeCapitalOfOwner && pd.ownerColor){
+      // 2026-09-13 (Toby, item 5): HALF the old size (font 9 → 4.5) and a skinny WHITE border instead
+      // of the parchment one, so the realm's own colour reads cleanly against any hex fill. The baseline
+      // is left exactly where it was: a pointy-top hex narrows fast toward its top corner, and lifting
+      // the crown even 1.5px pushed the glyph's top edge outside the hex at this x (harness 0913a E10).
+      // The smaller crown therefore sits a shade lower in the same slot, still clear of the prosperity
+      // dot on the left flank, the swords top-middle and the hero markers top-right. paint-order:stroke
+      // puts the white ring
+      // OUTSIDE the glyph — at this size a centred stroke would eat the crown itself — and the drop
+      // shadow is softened to 1px so it frames the white border rather than smearing over it.
       const kx=x-HS+11, ky=y-HS+12;
       const ktxt=document.createElementNS(svgNS,'text');
       ktxt.setAttribute('x',kx);ktxt.setAttribute('y',ky);
-      ktxt.setAttribute('text-anchor','middle');ktxt.setAttribute('font-size','9');
+      ktxt.setAttribute('text-anchor','middle');ktxt.setAttribute('font-size','4.5');
       ktxt.setAttribute('font-weight','700');ktxt.setAttribute('font-family','Cinzel,serif');
       ktxt.setAttribute('fill',pd.ownerColor);
-      ktxt.setAttribute('stroke','#f4ead8');ktxt.setAttribute('stroke-width','0.35');
-      ktxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
+      ktxt.setAttribute('stroke','#ffffff');ktxt.setAttribute('stroke-width','0.3');
+      ktxt.setAttribute('paint-order','stroke');
+      ktxt.setAttribute('filter','drop-shadow(0 0 1px rgba(0,0,0,.6))');
       ktxt.setAttribute('pointer-events','auto');
       const _kt=document.createElementNS(svgNS,'title');
       _kt.textContent=(pd.ownerName?pd.ownerName+"'s":'The')+' home capital'+(pd.tier==='remembered'?' — as last seen':'');
@@ -7415,6 +7460,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.13-0011</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.13-2015</div>
 </body>
 </html>
