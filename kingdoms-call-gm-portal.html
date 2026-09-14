@@ -7827,9 +7827,29 @@ const TITLES_PUBLIC_FROM_TURN=5;          // standings hidden turns 1–4 (clari
 const TITLE_PERKS_ENABLED=true;           // live perks while a Title is held (from turn 5)
 
 // Dominance threshold (share of world tax base) to Call the Reckoning — scales with player count (#1).
-function reckoningThreshold(nPlayers){
-  return ({2:0.60,3:0.50,4:0.45,5:0.42})[nPlayers] || 0.40;
+// 2026-09-14 (Toby, item 1) — THE WORLD TIRES OF WAR. If no Reckoning has been called by the END of
+// turn 15, the bar drops 5 percentage points at the end of that turn and of every turn after, down to
+// a floor of 25%. The decay is counted in STEPS held on the game state (`G.reckoningDecaySteps`), not
+// derived from the turn number, because the clock FREEZES while a claim is live (Toby: "the reckoning
+// freezing if called"): a called Reckoning stops the erosion where it stands, and if the claim later
+// collapses the erosion resumes from that same point rather than jumping to catch up with the turn.
+// All of it in INTEGER percentage points — 0.40 - 0.05 in floats is 0.35000000000000003, and that class
+// of drift has caused live bugs in this engine before.
+const RECKONING_BASE_PCT={2:60,3:50,4:45,5:42};
+const RECKONING_DEFAULT_PCT=40;      // 6 or more realms
+const RECKONING_DECAY_FROM_TURN=15;  // the first END-of-turn at which the bar may erode
+const RECKONING_DECAY_STEP_PCT=5;    // percentage points shed per eroding turn
+const RECKONING_FLOOR_PCT=25;        // and it never falls below this
+function reckoningBasePct(nPlayers){ return RECKONING_BASE_PCT[nPlayers]||RECKONING_DEFAULT_PCT; }
+function reckoningThresholdPct(nPlayers, decaySteps){
+  const steps=Math.max(0, decaySteps|0);
+  return Math.max(RECKONING_FLOOR_PCT, reckoningBasePct(nPlayers) - RECKONING_DECAY_STEP_PCT*steps);
 }
+// Fraction form, for the share comparisons. `decaySteps` defaults to 0, so any caller that has not
+// been taught about the decay still gets the undecayed base rather than NaN.
+function reckoningThreshold(nPlayers, decaySteps){ return reckoningThresholdPct(nPlayers, decaySteps)/100; }
+// Steps read off a game state, wherever the state is called `G` or `gameState` or `state`.
+function reckoningDecayOf(state){ return (state&&state.reckoningDecaySteps)|0; }
 // Alignment signature merit multiplier — each alignment's natural title lane costs less to win (#6).
 const ALIGN_TITLE_BOOST={
   Divine:{hiero:1.25}, Good:{marshal:1.25}, Druidic:{monster:1.25},
@@ -8027,7 +8047,7 @@ function computeStandings(state){
   const standings=players.map((p,pi)=>({index:pi,name:(p&&p.name)||('Realm '+(pi+1)),color:(p&&p.color)||null,alignment:(p&&p.alignment)||null,score:0,titles:[],relics:0}));
   TITLE_DEFS.forEach(t=>{ const h=titles[t.key]; if(h&&h.playerIndex!=null){ standings[h.playerIndex].score+=t.prize; standings[h.playerIndex].titles.push(t.key); } });
   relics.forEach(r=>{ if(r.playerIndex!=null){ standings[r.playerIndex].score+=RELIC_PRIZE_EACH; standings[r.playerIndex].relics++; } });
-  return {titles,relics,standings,taxByPlayer,worldTax,goldByPlayer,threshold:reckoningThreshold(players.length),perChar};
+  return {titles,relics,standings,taxByPlayer,worldTax,goldByPlayer,threshold:reckoningThreshold(players.length, reckoningDecayOf(state)),perChar};
 }
 // Winner at a Reckoning: highest standing, ties broken by tax base then treasury.
 function reckoningWinner(state){
@@ -8058,7 +8078,7 @@ function runBotReckoning(G, botIdxSet, reckoningCalls){
   if(!botIdxSet||!botIdxSet.size||!reckoningCalls) return;
   if(G.reckoning || G.gameOver) return;                       // a claim is already live / game already decided
   if((G.turn||0) < TITLES_PUBLIC_FROM_TURN) return;           // standings (and the call) unlock at turn 5
-  const thr=reckoningThreshold((G.players||[]).length);
+  const thr=reckoningThreshold((G.players||[]).length, reckoningDecayOf(G));
   botIdxSet.forEach(pi=>{
     if(botConceded(G,pi)) return;                                      // item 2: a conceded realm claims nothing
     const kingAlive=(G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===pi);
@@ -9225,13 +9245,13 @@ const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeom
 const SPELL_DEFS_P={
   // ══ WHITE MAGIC ══
   'Resurrect':      {school:'white',target:'character',encounter:false,phase:true,
-    desc:'Action: bring a slain (non-king) hero back to life — without their possessions. The hero must have been in your province at the start of the turn and not already been raised this turn.',
+    desc:'Action: bring a slain hero back to life at full health — without their possessions. The body must lie in your province and must not already have been raised this turn. Your own most recently fallen KING may be recalled this way (his body is borne home), and reclaims the throne; a rival\'s king never can.',
     fn:'white_resurrect'},
   'Part Sea':       {school:'white',target:'province',encounter:false,phase:true,
     desc:'Action: any sea OR land province you are in or adjacent to. A sea province (including a land province flooded to sea earlier this turn) becomes plains for the rest of this turn; fleets cannot enter or leave it from the next phase onward. Cast on still-dry land it finds no sea to part. Cancels Flood.',
     fn:'white_part_sea'},
   'Bless Province': {school:'white',target:'province',encounter:false,phase:true,
-    desc:'Action: a province you are in or adjacent to gains +60% tax base this turn (+80% for Divine realms; +100% when the Divine KING casts it in person). Only one Bless can affect a province at a time (does not stack).',
+    desc:'Action: a province you are in or adjacent to gains +60% tax base this turn (+80% for Divine realms; +100% when the Divine KING casts it in person). The blessed ground is also WARDED: a 50% + 5% per White level chance (counted to level 5, so 50–75%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast there this turn. Only one Bless can affect a province at a time (does not stack).',
     fn:'white_bless_province'},
   'Holy Symbol':    {school:'white',target:'none',encounter:true,phase:false,
     desc:'Combat: the opponent suffers −10% per caster level to hit (doubled vs undead/demons). Battle magic: all enemy undead units fight at 75% base strength.',
@@ -9262,7 +9282,7 @@ const SPELL_DEFS_P={
     desc:'Action: a province you are in or adjacent to shows enemies a false, ever-shifting terrain on their maps. Any enemy who fights there is disoriented — each of their units fights as if caught in the worst terrain for its kind, always at least a 15% strength reduction. An enemy hero who enters dispels it at the end of that turn; otherwise 20% chance to fade each turn.',
     fn:'illusory_terrain'},
   'Phantasmal Armies':{school:'illusory',target:'character',encounter:false,phase:true,
-    desc:'Action: phantasmal duplicates of 15% per caster level (min 1) of the humanoid armies led by you or an allied hero in your province join that force for the rest of the turn — they fight but never appear in the roster, and melt away if their originals fall or the force is beaten.',
+    desc:'Action: phantasmal duplicates of 10% per caster level (counted to level 5, minimum 1) of the humanoid armies led by you or an allied hero in your province join that force for the rest of the turn — they fight but never appear in the roster, and melt away if their originals fall or the force is beaten.',
     fn:'illusory_phantasmal'},
   'Hide Lairs':  {school:'illusory',target:'province',encounter:false,phase:true,
     desc:'Action: veil an entire province you are in or adjacent to — every lair within becomes invisible to all other players, who cannot discover any lair there (though any they already found remains theirs). 20% chance to fade each turn.',
@@ -9276,7 +9296,7 @@ const SPELL_DEFS_P={
 
   // ══ ELEMENTAL MAGIC ══
   'Lightning Bolt': {school:'elemental',target:'none',encounter:true,phase:false,
-    desc:'Combat: deals 1–3 damage per caster level to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
+    desc:'Combat: deals 2–4 damage per caster level (counted to level 5) to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
     fn:'elemental_lightning'},
   'Fireball':       {school:'elemental',target:'none',encounter:true,phase:false,
     desc:'Combat: burns the target for 10% of its health each phase for the next three phases. Battle magic: a random enemy army unit has its base strength halved for the battle.',
@@ -9293,7 +9313,7 @@ const SPELL_DEFS_P={
 
   // ══ NECROMANCY ══
   'Control Undead': {school:'necromancy',target:'character',encounter:true,phase:true,
-    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province — or cast it on your own province to sense the battlefield dead lying there. Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
+    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province — or cast it on your own province to sense the battlefield dead lying there, unit by unit, and to learn which of the SURROUNDING provinces hold graves of their own (that they do, never how many or what). Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
     fn:'necromancy_control'},
   'Skeletal Armies':{school:'necromancy',target:'none',encounter:false,phase:true,
     desc:'Action: raise one random dead army unit lying in your province as a skeletal version under your command.',
@@ -16866,9 +16886,12 @@ const BATTLE_ARMY_SPELLS={
           }
           targetProv._blessedTurn=G.turn;
           // Item: the blessing also WARDS the province — a chance to turn aside a later enemy Flood /
-          // Earthquake / Plague / Part Sea. Base 10% + 15% per point of the caster's White skill (capped at 100%).
+          // Earthquake / Plague / Part Sea. 2026-09-14 (Toby, item 2): base 50% + 5% per point of the
+          // caster's White skill, counted to level 5 — so 50% from an untrained blesser up to 75% from a
+          // master. (Was 10% + 15%/level, i.e. 25% at White 1 rising to 85% at White 5: the ward is now
+          // dependable at every level and much flatter across the ladder.)
           targetProv._blessWardTurn=G.turn; targetProv._blessWardBy=c.player;
-          targetProv._blessWardPct=Math.min(100, 10+15*Math.min(5,effStat(c,'white'))); // Q2: 10% + 15% per White skill level
+          targetProv._blessWardPct=Math.min(100, 50+5*Math.min(5,effStat(c,'white'))); // Toby 2026-09-14: 50% + 5% per White skill level (cap level 5)
           TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
           // DIVINE: a Divine realm's casters bless at +80% (the long-advertised alignment bonus,
           // previously described but never implemented — engine now honours it), and the Divine
@@ -17144,6 +17167,26 @@ const BATTLE_ARMY_SPELLS={
               const list=Object.entries(counts).map(([k,nn])=>`${nn}× ${k}`).join(', ');
               noteGraveIntel(G.players[c.player], prov.id, G.turn, graves); // 2026-09-14 (item 2): the fuller reading is kept in Graveyards known
               log('explore',`💀 ${c.name}'s Control Undead senses the dead of ${prov.name}: ${list}. (${graves.length} grave${graves.length!==1?'s':''} that could be raised as skeletal servants.)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            }
+            // 2026-09-14 (Toby, item 4) — THE SPELL REACHES PAST THE PROVINCE LINE. The caster also feels
+            // which of the SURROUNDING provinces hold battlefield dead. That is all it gives: existence,
+            // never the count and never what the graves hold — for that a caster must stand on the ground
+            // and scan it. Each neighbour is written into the realm's graveyard lore with `null` detail,
+            // which noteGraveIntel treats as a bare sensing (any richer reading already on record keeps its
+            // own older turn stamp and is NOT downgraded); a neighbour sensed EMPTY is written as `[]`,
+            // which clears any stale promise of graves there. Both feed the report's Graveyards Known.
+            {
+              const _pl=G.players[c.player];
+              const _nbrs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>p2&&p2.id!=null);
+              const _withDead=[];
+              _nbrs.forEach(nb=>{
+                if(((nb.battleGraves||[]).length)>0){ noteGraveIntel(_pl, nb.id, G.turn, null); _withDead.push(nb.name); }
+                else noteGraveIntel(_pl, nb.id, G.turn, []);
+              });
+              if(_withDead.length>0)
+                log('explore',`💀 ${c.name}'s sending spreads out from ${prov.name} and the dead answer from beyond its borders — battlefield graves lie in ${_withDead.sort().join(', ')}. How many, and what they hold, only a caster standing on that ground could say.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+              else if(_nbrs.length>0)
+                log('explore',`✨ ${c.name}'s sending spreads out from ${prov.name}, but the lands around it are quiet — no battlefield dead lie in any neighbouring province.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             }
             trySkillGain(c, school, SKILLGAIN_STD);
             break;
@@ -18069,12 +18112,13 @@ const BATTLE_ARMY_SPELLS={
   }
 
   // ── PLAGUE (Necromancy) ───────────────────────────────────────────────────
-  // Each humanoid army unit in the province has a (10% + 10%/level) chance to lose an experience
+  // Each humanoid army unit in the province has a (10% + 5%/level) chance to lose an experience
   // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
   const _PLAGUE_QDOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
   function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
   // ── Bless ward (item) ── A province blessed this turn can shrug off a later ENEMY negative spell
-  // (Flood / Earthquake / Plague). Chance = 10% + 10% × the blesser's White skill. Returns true (and
+  // (Flood / Earthquake / Plague / Part Sea). Chance = 50% + 5% × the blesser's White skill, counted to
+  // level 5 (2026-09-14, Toby item 2). Returns true (and
   // logs) when the ward turns the spell aside, so the caller skips the effect. Rolls per incoming spell.
   function blessWardNegates(prov, caster, spellName){
     if(!prov || prov._blessWardTurn!==G.turn) return false;
@@ -20300,7 +20344,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // 6e. VICTORY — THE RECKONING (KC end-game). Process new claims, grace-period lapse, resolution.
   {
     if(!G.reckoning && reckoningCalls.size>0 && G.turn>=TITLES_PUBLIC_FROM_TURN){
-      const thr=reckoningThreshold(G.players.length);
+      const thr=reckoningThreshold(G.players.length, reckoningDecayOf(G));
       for(const pi of reckoningCalls){
         const kingAlive=(G.characters||[]).some(c=>c.alive&&c.isKing&&c.player===pi);
         if(!kingAlive){ log('system',`Only a king may call the Reckoning.`,{actor:null,targets:[pi],system:true}); continue; }
@@ -20319,7 +20363,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       }
     }
     if(G.reckoning){
-      const thr=reckoningThreshold(G.players.length);
+      const thr=reckoningThreshold(G.players.length, reckoningDecayOf(G));
       const share=reckoningBlocShare(G, G.reckoning.by);
       const claimantAlive=((G.players[G.reckoning.by]?.provinces)||[]).length>0 || (G.characters||[]).some(c=>c.alive&&c.player===G.reckoning.by);
       if(!claimantAlive || share<thr){
@@ -20329,6 +20373,20 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const rw=reckoningWinner(G);
         G.gameOver={winner:rw.winner?rw.winner.index:null, byReckoning:true, turn:G.turn, standings:rw.standings.standings};
         delete G.reckoning;
+      }
+    }
+    // 2026-09-14 (Toby, item 1) — THE BAR ERODES. Run LAST in this block, so a claim called this very
+    // turn is judged against the threshold as it stood when the orders were written, and so a claim that
+    // resolved or collapsed above has already cleared `G.reckoning`. While a claim stands the clock is
+    // frozen: no step is taken, and the bar the contesting realms must drive the claimant below stays
+    // exactly where it was when the throne was claimed.
+    if(!G.gameOver && !G.reckoning && G.turn>=RECKONING_DECAY_FROM_TURN){
+      const nP=(G.players||[]).length;
+      const before=reckoningThresholdPct(nP, reckoningDecayOf(G));
+      if(before>RECKONING_FLOOR_PCT){
+        G.reckoningDecaySteps=reckoningDecayOf(G)+1;
+        const after=reckoningThresholdPct(nP, reckoningDecayOf(G));
+        log('system',`⏳ The world grows weary of the long war. No throne has been claimed, and the crown's price falls: a realm (or allied bloc) now needs only ${after}% of the world's tax base to Call the Reckoning— down from ${before}%.${after<=RECKONING_FLOOR_PCT?' It will fall no further.':` It will fall another ${RECKONING_DECAY_STEP_PCT}% at the end of next turn.`}`,{actor:null,targets:[],system:true,public:true});
       }
     }
   }
@@ -21149,6 +21207,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.14-1250</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.14-1644</div>
 </body>
 </html>

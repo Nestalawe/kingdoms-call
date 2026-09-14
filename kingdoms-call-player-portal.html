@@ -3176,24 +3176,24 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 const SPELL_HINTS={
   'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
-  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). One Bless per province \u2014 does not stack.',
+  'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord. Kings and army-leaders are immune. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
-  'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose one level in a random skill. Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
+  'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose TWO skill levels, each taken from a randomly chosen skill they hold (both picks can land on the same skill, dropping it by 2). Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. A number of their units equal to your skill level are struck: Green units are destroyed and every other struck unit PERMANENTLY drops one experience level (skeletal units unaffected). Combat: 25% of the target\u2019s max HP as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
-  'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Whatever armies they lead in their next battle this turn fight +10% per caster level (works even if they pick up armies in a later phase). Not cumulative.',
-  'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides ALL lairs you\u2019ve discovered there from explorers. 10% chance to fade each turn.',
+  'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Spectral duplicates of their humanoid armies \u2014 10% of the host per caster level, counted to level 5, at least one \u2014 march and fight with the real host for the rest of the turn. The doubles never appear in the roster, need no berth aboard ship, and melt away if their originals fall or the force is beaten.',
+  'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides every lair there from all other players \u2014 they cannot discover any lair in it while the glamour holds (one already found stays theirs). 20% chance to fade each turn.',
   'Invisibility':'Combat: enemies suffer \u221225% to hit you (melee and arrows) for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn.',
   'Lightning Bolt':'Combat: 2\u20134 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
   'Fireball':'Combat: burns the target for 10% of its health each round for 3 rounds. Battle: a random enemy unit\u2019s strength is halved.',
   'Earthquake':'Target: a province you\u2019re in or adjacent to. It yields no tax at the end of this turn.',
   'Flood':'Target: a land province you\u2019re in or adjacent to. It acts as a sea province for the rest of the turn (land armies stranded). Cancels Part Sea.',
   'Elemental Summon':'Summons a random elemental (Air/Fire/Earth/Water/Darkness, Veteran) to fight under you for the rest of the turn, then it dissolves. One per turn.',
-  'Control Undead':'Target: an enemy/neutral hero here to seize one random undead unit \u2014 OR cast on THIS province to reveal the dead army units lying here. Combat: an undead foe is frozen for your-level rounds. Battle: one enemy undead unit defects.',
+  'Control Undead':'Target: an enemy/neutral hero here to seize one random undead unit \u2014 OR cast on THIS province to reveal the dead army units lying here one by one, AND to sense which surrounding provinces hold graves of their own (that they do, not how many or what). All of it is filed under Graveyards Known in your report. Combat: an undead foe is frozen for your-level rounds. Battle: one enemy undead unit defects.',
   'Skeletal Armies':'Raises one random battlefield-grave unit in your province as a Skeletal (Undead) unit under your command (1g upkeep). Needs fallen armies present.',
   'Curse':'Target: an enemy/neutral hero here. EVERY skill they have is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
   'Hand of Death':'Combat: 10% per Necromancy level to deal damage equal to 50% of the target\u2019s max HP.',
@@ -3496,6 +3496,33 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           </div>
         </div>`;
       }).join('')}
+      ${(()=>{
+        // 2026-09-14: pre-order cards (hire / raise / charm) are synthetic ids that are not in
+        // `chars`, so the read-only view showed nothing for them — a player who reloaded after
+        // submitting could not tell whether the orders for a hero they were hiring had gone in.
+        const SEASONS_SY=SEASONS_RO;
+        const rows=Object.entries(savedO).filter(([k])=>/^(?:hired|resurrect|charm)_\d+_via_.+_ph\d+$/.test(String(k)));
+        if(!rows.length) return '';
+        const LABEL={hired:'newly hired',resurrect:'if raised',charm:'if charmed'};
+        return rows.map(([k,ords])=>{
+          const kind=String(k).split('_')[0];
+          const heroId=String(k).split('_')[1];
+          const nm=((currentReport||{}).visibleChars||[]).find(x=>String(x.id)===heroId)?.name
+                 ||(((currentReport||{}).graveyard||[]).find(x=>String(x.id)===heroId)||{}).name||'Hero';
+          const from=parseInt(String(k).match(/_ph(\d+)$/)?.[1]||'0');
+          return`<div style="margin-bottom:12px;border:1px dashed var(--stone);border-radius:3px;overflow:hidden">
+            <div style="font-family:Cinzel,serif;font-size:.85rem;padding:6px 10px;background:var(--parchment-dark)">\u2694 ${nm} <span style="font-size:.68rem;color:var(--stone)">(${LABEL[kind]||kind})</span></div>
+            <div style="padding:6px 10px">
+              ${SEASONS_SY.map((season,ph)=>{
+                if(ph<=from) return`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)"><em>${season}: \u2014</em></div>`;
+                const o=(ords||[])[ph];
+                if(!o||!o.action||o.action==='Defend'||o.action==='defend') return`<div style="font-size:.78rem;padding:2px 0;color:var(--stone)">${season}: <em>Defend</em></div>`;
+                return`<div style="font-size:.78rem;padding:2px 0">${season}: <strong>${o.action}</strong>${o.target?' \u2014 '+o.target:''}</div>`;
+              }).join('')}
+            </div>
+          </div>`;
+        }).join('');
+      })()}
     </div>`;
     return;
   }
@@ -3736,6 +3763,9 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
       const ep=(savedEncounterPlans||{})[k]||{};
       _savedRes[m[1]]={phases:v.map(o=>o||{}),tactics:(ep.tactics||[]).join(','),notes:ep.notes||'',duel:ep.duelStance||''}; });
     try{ syncAllResurrectCards(_savedRes); }catch(e){ console.warn('resurrect card rebuild failed',e); } }
+  // 2026-09-14: and rebuild the HIRED-HERO and CHARM pre-order cards the same way. Without this the
+  // orders written for a hero you are about to hire survive only until the form is next re-rendered.
+  try{ syncAllPreOrderCards(savedOrders, savedEncounterPlans); }catch(e){ console.warn('pre-order card rebuild failed',e); }
 
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
@@ -4180,6 +4210,63 @@ function onMoveEdited(charId, ph){
       const note=document.getElementById(`po-move-note-${charId}-${later}`);
       if(note){ note.style.display='block'; note.innerHTML='⚠ <strong>Update me</strong> — an earlier move changed, so this order now sets out from a different province. Re-check its direction.'; }
     }
+  }
+}
+
+// ── PRE-ORDER CARD REBUILD (2026-09-14) ──────────────────────────────────────
+// The hired-hero and charm cards are injected by an onchange handler and live ONLY in the DOM.
+// buildOrdersForm rebuilt the resurrect cards from the saved draft but not these two, so every
+// re-render of the orders form (a page reload, Revise Orders, an heir skill allocation) silently
+// dropped them: the Hire Hero order itself was restored from the draft, the hero's own orders were
+// not, and the next submit sent the hire with no orders behind it. The hero then joined in Spring
+// and idled the rest of the turn, with nothing in their Chronicle after the hire line.
+// _fillSyntheticOrderCard pours a saved order set back into a freshly injected card, exactly as
+// _fillResurrectCard does for a resurrect card.
+function _fillSyntheticOrderCard(fakeId, savedPhases, savedEP){
+  const fake=((currentReport&&currentReport.characters)||[]).find(c=>String(c.id)===String(fakeId));
+  if(!fake) return;
+  const first=(fake.hiredInPhase??-1)+1;
+  for(let p=first;p<5;p++){
+    const o=(savedPhases||[])[p]; if(!o||!o.action) continue;
+    const sel=document.getElementById(`po-action-${fakeId}-${p}`);
+    if(!sel||![...sel.options].some(x=>x.value===o.action)) continue;
+    sel.value=o.action;
+    const wrap=document.getElementById(`po-target-wrap-${fakeId}-${p}`);
+    if(wrap){ try{ wrap.innerHTML=buildTargetField(fake,p,{action:o.action,target:o.target||'',extra:o.extra||''}); }catch(_){} }
+  }
+  if(!savedEP) return;
+  const allTac=(savedEP.tactics||[]).map(String);
+  const tac=allTac.filter(t=>!t.toUpperCase().startsWith('CS:'));
+  const cs=allTac.find(t=>t.toUpperCase().startsWith('CS:'));
+  const h=document.getElementById(`ep-tactics-${fakeId}`);
+  if(h&&tac.length){ h.value=tac.join(','); try{ refreshEncounterPlan(fakeId,tac); }catch(_){} }
+  if(cs){ const pre=document.getElementById(`ep-preschool-${fakeId}`); if(pre){ pre.value=cs.slice(3).toLowerCase(); try{ renderPreSchool(fakeId); }catch(_){} } }
+  const n=document.getElementById(`ep-notes-${fakeId}`); if(n) n.value=savedEP.notes||'';
+  const d=document.getElementById(`ep-duel-${fakeId}`); if(d&&savedEP.duelStance) d.value=savedEP.duelStance;
+}
+// Walk every rendered order row and re-inject whichever hired-hero / charm cards the restored form
+// calls for, filling each from the draft. Repeated a few times so a NESTED hire (a hero hired this
+// turn who himself hires another) gets his own card once his card exists to be read from.
+function syncAllPreOrderCards(savedOrders, savedEncounterPlans){
+  savedOrders=savedOrders||{}; savedEncounterPlans=savedEncounterPlans||{};
+  const SEL='[id^="hired-hero-orders-"],[id^="charm-orders-"]';
+  for(let round=0;round<3;round++){
+    const before=document.querySelectorAll(SEL).length;
+    const ids=[...new Set([...document.querySelectorAll('select[id^="po-action-"]')]
+      .map(el=>el.id.replace(/^po-action-/,'').replace(/-\d+$/,'')))];
+    ids.forEach(cid=>{
+      for(let ph=0;ph<5;ph++){
+        [['hired-hero-orders',syncHiredHeroCard],['charm-orders',syncCharmCard]].forEach(([prefix,fn])=>{
+          const cardId=`${prefix}-${cid}-${ph}`;
+          if(document.getElementById(cardId)) return;   // already rebuilt this round
+          try{ fn(cid,ph); }catch(_){ return; }
+          const card=document.getElementById(cardId);
+          const fid=card&&card.getAttribute('data-fakeid');
+          if(fid) _fillSyntheticOrderCard(fid, savedOrders[fid], savedEncounterPlans[fid]);
+        });
+      }
+    });
+    if(document.querySelectorAll(SEL).length===before) break;
   }
 }
 
@@ -7541,6 +7628,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1250</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1644</div>
 </body>
 </html>
