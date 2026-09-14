@@ -3030,9 +3030,14 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
         } else if(selSpell==='Control Undead'){
           // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
           // to reveal the dead army units lying in it.
-          const scanOpt=`<option value="__scan__" ${extra==='__scan__'?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
+          // 2026-09-15 (Toby, item 5): the province scan is the DEFAULT. Leaving the dropdown alone used
+          // to send an empty target, which the engine read as a failed attempt to seize a unit from a
+          // hero who was not there. The scan is now preselected whenever no other target is saved, so
+          // the obvious reading of "cast Control Undead here" is also what happens.
+          const _cuNoTarget=(extra===''||extra==null);
+          const scanOpt=`<option value="__scan__" ${(extra==='__scan__'||_cuNoTarget)?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
           const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
-          const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+          const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — seize one undead unit from them</option>`).join('');
           charOpts=scanOpt+enemyOpts;
         } else if(selSpell==='Telekinetic Storm'){
           // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
@@ -3049,7 +3054,11 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
         }
-        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph});syncCharmCard('${c.id}',${ph})"><option value="">— Target character —</option>${charOpts}</select>
+        // Control Undead is the one spell here whose default is a PROVINCE, not a character, so it
+        // gets its own placeholder — "— Target character —" above a preselected province scan reads
+        // as though nothing has been chosen (2026-09-15, item 5).
+        const _ph0=(selSpell==='Control Undead')?'— Choose what to cast it on —':'— Target character —';
+        secondaryHtml=`<select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="syncResurrectCard('${c.id}',${ph});syncCharmCard('${c.id}',${ph})"><option value="">${_ph0}</option>${charOpts}</select>
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
       } else {
         secondaryHtml=`<input id="po-extra-${c.id}-${ph}" type="hidden" value=""><div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell]||''}</div>`;
@@ -6979,6 +6988,27 @@ function skillFameLabel(level){
 // 2026-09-11 (item 4): bottom-right race badges. Keys are formatRace() outputs.
 // 2026-09-11 (Toby): no outline — the dark ring read as a black border at map scale. Fill + glyph only,
 // so `stroke` is deliberately absent from every entry (the draw code sets stroke:'none').
+// ── MAP GLYPHS THAT MOBILE CAN ACTUALLY DRAW (2026-09-15, Toby item 4) ────────────────────────
+// The map's overlay symbols split into two families, and only one of them was safe on a phone.
+//
+//   TEXT-PRESENTATION symbols — ♛ ⚑ ☠ ⚔ — are coloured by the SVG `fill` (realm colour, player
+//   colour, battle state). Desktop has Segoe UI Symbol / Apple Symbols, which carry them, so they
+//   drew correctly. The SVG asked for 'Cinzel,serif' — a Latin-only display face — so on a phone the
+//   request fell through to the platform serif, which carries none of them: either a tofu box, or
+//   the EMOJI font stepped in and drew a full-colour picture that ignores `fill` entirely. That is
+//   the "boxes or the wrong symbol" Toby saw. Fixed by naming a symbol-capable stack that exists on
+//   Android and iOS, and appending U+FE0E (variation selector-15) to pin TEXT presentation so the
+//   emoji font can never hijack the glyph again.
+//
+//   EMOJI symbols — 🛡 🏛 ✨ 🌙 — are the reverse case: forcing text presentation on these is what
+//   risks tofu, because the mono forms are rare. They get U+FE0F (VS16) instead, so every platform
+//   draws the colour emoji. Their `fill` is then ignored by the renderer, which costs nothing for
+//   the garrison shield (navy was decoration) — but the Wonder's gold/grey DID carry meaning, so
+//   active vs dormant is now shown by OPACITY, which emoji honour on every platform.
+const MAP_SYMBOL_FONT="'Noto Sans Symbols 2','Noto Sans Symbols','Segoe UI Symbol','Apple Symbols','Symbola','DejaVu Sans',sans-serif";
+function mapTextGlyph(el, ch){ el.setAttribute('font-family',MAP_SYMBOL_FONT); el.textContent=ch+'\uFE0E'; return el; }
+function mapEmojiGlyph(el, ch){ el.textContent=ch+'\uFE0F'; return el; }
+
 const MAP_RACE_BADGE={
   Human:   {glyph:'H',fill:'#c9a961',text:'#1a1208'},
   Elven:   {glyph:'E',fill:'#6fbf73',text:'#0c2a0e'},
@@ -7195,7 +7225,7 @@ function renderMapIntoSvg(svgEl, report){
         clbl.setAttribute('text-anchor','middle');clbl.setAttribute('font-size','5.5');
         clbl.setAttribute('fill','#fff');clbl.setAttribute('pointer-events','none');
         const hasKing=ownChars.some(c=>c.isKing);
-        clbl.textContent=hasKing?'♛':ownChars.length>1?String(ownChars.length):'';
+        if(hasKing) mapTextGlyph(clbl,'\u265B'); else clbl.textContent=ownChars.length>1?String(ownChars.length):'';
         mg.appendChild(circ);mg.appendChild(clbl);
         // Hero person icon (head+shoulders) for non-king single hero
         if(!hasKing&&ownChars.length===1){
@@ -7244,7 +7274,7 @@ function renderMapIntoSvg(svgEl, report){
         elbl.setAttribute('text-anchor','middle');elbl.setAttribute('font-size','5');
         elbl.setAttribute('fill','#fff');elbl.setAttribute('pointer-events','none');
         const eHasKing=enemyChars.some(c=>c.isKing);
-        elbl.textContent=eHasKing?'♛':(enemyChars.length>1?String(enemyChars.length):''); // item 13: a count, as the own-marker shows
+        if(eHasKing) mapTextGlyph(elbl,'\u265B'); else elbl.textContent=(enemyChars.length>1?String(enemyChars.length):''); // item 13: a count, as the own-marker shows
         mg.appendChild(ec);mg.appendChild(elbl);
         if(!eHasKing&&enemyChars.length===1){
           const ehd=document.createElementNS(svgNS,'circle');
@@ -7308,7 +7338,7 @@ function renderMapIntoSvg(svgEl, report){
         dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','6'); // item: half size
         dt.setAttribute('fill','#7a1f1f');dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.25');
         dt.setAttribute('pointer-events','none');
-        dt.textContent='\u2620'; // ☠ — fallen hero
+        mapTextGlyph(dt,'\u2620'); // ☠ — fallen hero
         dt.setAttribute('class','sym-dead'); symbolLayer.appendChild(dt);
       }
     }
@@ -7353,7 +7383,7 @@ function renderMapIntoSvg(svgEl, report){
       const _tt=document.createElementNS(svgNS,'title'); _tt.textContent=`Garrison: ${_gn} unit${_gn!==1?'s':''} holding this province`;
       gtxt.setAttribute('pointer-events','auto');
       gtxt.appendChild(_tt);
-      gtxt.textContent='\u{1F6E1}'; // 🛡 garrison
+      mapEmojiGlyph(gtxt,'\u{1F6E1}'); // 🛡 garrison
       gtxt.setAttribute('class','sym-garrison'); symbolLayer.appendChild(gtxt);
     }
 
@@ -7369,7 +7399,7 @@ function renderMapIntoSvg(svgEl, report){
       btxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
       const _bt=document.createElementNS(svgNS,'title'); _bt.textContent=pd.battleUnresolved?'Battle still raging here — it will carry on next turn':'Battle fought here this turn';
       btxt.appendChild(_bt);
-      btxt.textContent='⚔';
+      mapTextGlyph(btxt,'\u2694');
       btxt.setAttribute('class','sym-battle'); symbolLayer.appendChild(btxt);
     }
 
@@ -7387,7 +7417,7 @@ function renderMapIntoSvg(svgEl, report){
       ctx2.setAttribute('filter','drop-shadow(0 0 2px #000)');
       const _ct=document.createElementNS(svgNS,'title'); _ct.textContent='Personal combat fought here this turn — a duel, encounter or assassination attempt, not a field battle';
       ctx2.appendChild(_ct);
-      ctx2.textContent='⚔';
+      mapTextGlyph(ctx2,'\u2694');
       ctx2.setAttribute('class','sym-combat'); symbolLayer.appendChild(ctx2);
     }
 
@@ -7400,7 +7430,7 @@ function renderMapIntoSvg(svgEl, report){
       ctxt.setAttribute('text-anchor','middle');ctxt.setAttribute('font-size','8');
       ctxt.setAttribute('pointer-events','none');
       ctxt.setAttribute('filter','drop-shadow(0 0 2px #000)');
-      ctxt.textContent='✨';
+      mapEmojiGlyph(ctxt,'\u2728');
       ctxt.setAttribute('class','sym-consec'); symbolLayer.appendChild(ctxt);
     }
 
@@ -7424,17 +7454,20 @@ function renderMapIntoSvg(svgEl, report){
       const kx=x-HS+11, ky=y-HS+12;
       const ktxt=document.createElementNS(svgNS,'text');
       ktxt.setAttribute('x',kx);ktxt.setAttribute('y',ky);
-      ktxt.setAttribute('text-anchor','middle');ktxt.setAttribute('font-size','4.5');
+      // 2026-09-15 (Toby, item 4): the home-capital crown is 50% larger — 4.5 → 6.75 — so a realm's
+      // seat reads at a glance on a crowded map. The white keyline grows with it (0.3 → 0.45) so the
+      // glyph keeps the same proportion of outline and does not turn into a blob at the larger size.
+      ktxt.setAttribute('text-anchor','middle');ktxt.setAttribute('font-size','6.75');
       ktxt.setAttribute('font-weight','700');ktxt.setAttribute('font-family','Cinzel,serif');
       ktxt.setAttribute('fill',pd.ownerColor);
-      ktxt.setAttribute('stroke','#ffffff');ktxt.setAttribute('stroke-width','0.3');
+      ktxt.setAttribute('stroke','#ffffff');ktxt.setAttribute('stroke-width','0.45');
       ktxt.setAttribute('paint-order','stroke');
       ktxt.setAttribute('filter','drop-shadow(0 0 1px rgba(0,0,0,.6))');
       ktxt.setAttribute('pointer-events','auto');
       const _kt=document.createElementNS(svgNS,'title');
       _kt.textContent=(pd.ownerName?pd.ownerName+"'s":'The')+' home capital'+(pd.tier==='remembered'?' — as last seen':'');
       ktxt.appendChild(_kt);
-      ktxt.textContent='\u265B';
+      mapTextGlyph(ktxt,'\u265B');
       ktxt.setAttribute('class','sym-capital'); symbolLayer.appendChild(ktxt);
     }
 
@@ -7449,7 +7482,7 @@ function renderMapIntoSvg(svgEl, report){
       ltxt.setAttribute('text-anchor','middle');ltxt.setAttribute('font-size','9');
       ltxt.setAttribute('fill',playerColor);ltxt.setAttribute('pointer-events','none'); // item: army banner in the player's colour
       ltxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
-      ltxt.textContent='⚑';
+      mapTextGlyph(ltxt,'\u2691');
       ltxt.setAttribute('class','sym-flag'); symbolLayer.appendChild(ltxt);
     }
 
@@ -7466,7 +7499,8 @@ function renderMapIntoSvg(svgEl, report){
       gtxt.setAttribute('text-anchor','middle');gtxt.setAttribute('font-size','9');
       gtxt.setAttribute('fill',pd.grandDesign.active?'#d8a63a':'#8a8a8a');gtxt.setAttribute('pointer-events','none');
       gtxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
-      gtxt.textContent='\u{1F3DB}';
+      gtxt.setAttribute('opacity',pd.grandDesign.active?'1':'0.45'); // item 4: dormant Wonders read by opacity now that the glyph is an emoji
+      mapEmojiGlyph(gtxt,'\u{1F3DB}');
       gtxt.setAttribute('class','sym-wonder'); symbolLayer.appendChild(gtxt);
     }
 
@@ -7483,7 +7517,7 @@ function renderMapIntoSvg(svgEl, report){
       mtxt.setAttribute('text-anchor','middle');mtxt.setAttribute('font-size','9');
       mtxt.setAttribute('pointer-events','none');
       mtxt.setAttribute('filter','drop-shadow(0 0 1.5px #000)');
-      mtxt.textContent='🌙';
+      mapEmojiGlyph(mtxt,'\u{1F319}');
       mtxt.setAttribute('class','sym-ritual'); symbolLayer.appendChild(mtxt);
     }
 
@@ -7664,6 +7698,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1927</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.15-1107</div>
 </body>
 </html>
