@@ -3916,20 +3916,65 @@ function migrateHoardTally(pl){
 // The record is deliberately allowed to go stale — the graves may have been raised or rotted since
 // — so the report always stamps the turn it was learned. Detail once learned is never downgraded to
 // a bare sensing; it just keeps its own (older) turn stamp.
-function noteGraveIntel(pl, provId, turn, graves){
+// `opts.partial` (2026-09-14, Toby item 8) marks a reading that saw only SOME of what lies here —
+// the Deathpriest's Grave-sight, which picks out the crack and elite dead across the whole world but
+// is blind to the lesser ranks beside them. A partial reading is still the freshest thing the realm
+// knows, so it replaces an older full one, but it is flagged so the report can say "at least".
+// A partial reading with nothing to show is NOT treated as "seen bare" — the title simply found no
+// crack or elite dead there, which says nothing about whether other graves lie in the province.
+function noteGraveIntel(pl, provId, turn, graves, opts){
   if(!pl||provId==null) return;
   if(!pl._graveIntel||typeof pl._graveIntel!=='object'||Array.isArray(pl._graveIntel)) pl._graveIntel={};
+  const partial=!!(opts&&opts.partial);
   const list=Array.isArray(graves)?graves:null;
   // Standing in the province and finding it bare is knowledge too: forget the old record rather
-  // than keep promising graves the character can see are not there.
-  if(list&&list.length===0){ delete pl._graveIntel[provId]; return; }
+  // than keep promising graves the character can see are not there. (Never on a partial reading.)
+  if(list&&list.length===0){ if(!partial) delete pl._graveIntel[provId]; return; }
   const prev=pl._graveIntel[provId]||{};
-  const rec={turn:turn, detail:prev.detail||null, detailTurn:prev.detailTurn||null};
+  const rec={turn:turn, detail:prev.detail||null, detailTurn:prev.detailTurn||null, detailPartial:!!prev.detailPartial};
   if(list&&list.length){
     const counts={}; list.forEach(g=>{ const k=`${g&&g.quality||'Average'} ${g&&g.type||'unit'}`; counts[k]=(counts[k]||0)+1; });
-    rec.detail=Object.entries(counts).map(([k,n])=>({k,n})); rec.detailTurn=turn;
+    rec.detail=Object.entries(counts).map(([k,n])=>({k,n})); rec.detailTurn=turn; rec.detailPartial=partial;
   }
   pl._graveIntel[provId]=rec;
+}
+// ══ RAISING THE DEAD: THE BEST FIRST (2026-09-14, Toby item 6) ═════════════════════════════════
+// Every way of calling a unit up out of a province's battlefield graves — Skeletal Armies, Harvest
+// the Field, Death's Dominion — used to splice a grave out at RANDOM, so a necromancer standing on
+// a field where Elite knights and Green levies both fell was as likely to raise the levies. The
+// dead do not queue by lot: the most experienced rise first. Ties within an experience tier go to
+// the heavier unit (base strength), and only then to chance.
+// Returns the grave record, already removed from prov.battleGraves, or null if there are none.
+function takeBestGrave(prov){
+  const gs=(prov&&prov.battleGraves)||[];
+  if(!gs.length) return null;
+  const qi=g=>{ const i=QUALITY_TIERS.indexOf(g&&g.quality); return i<0?1:i; }; // unknown quality ≈ Average
+  const str=g=>{ try{ return unitBaseStrength({type:g.type,quality:g.quality||'Average'}); }catch(e){ return 0; } };
+  let best=0,bq=-1,bs=-1;
+  gs.forEach((g,i)=>{ const q=qi(g), s=str(g); if(q>bq||(q===bq&&s>bs)){ bq=q; bs=s; best=i; } });
+  return gs.splice(best,1)[0];
+}
+// ── GRAVES UNDERFOOT, PROVINCE BY PROVINCE (2026-09-14, Toby item 7) ──────────────────────────
+// A necromancer feels the battlefield dead of EVERY province they set foot in, not only the one they
+// happen to finish the turn standing in. Called from the move choke-point as each march-in lands, and
+// again in the end-of-turn sweep for any character who never moved. One reading per province per
+// character per turn (tracked on `c._gravesSensedTurn` / `c._gravesSensedIds`), so a column that
+// marches back and forth does not spam the Chronicle — and a province read on the way through is
+// already in `_graveIntel`, so it shows up in the report's Graveyards Known either way.
+// `emit` is the log function to use (the callers differ in phase/context), or null for silent.
+function senseGravesUnderfoot(state, c, pv, emit){
+  if(!c||!c.alive||c.player==null||!pv) return false;
+  if(effStat(c,'necromancy')<1) return false;
+  const pl=(state.players||[])[c.player]; if(!pl) return false;
+  if(c._gravesSensedTurn!==state.turn){ c._gravesSensedTurn=state.turn; c._gravesSensedIds=[]; }
+  if(!Array.isArray(c._gravesSensedIds)) c._gravesSensedIds=[];
+  if(c._gravesSensedIds.includes(pv.id)) return false;   // already read this ground this turn
+  c._gravesSensedIds.push(pv.id);
+  const n=((pv.battleGraves)||[]).length;
+  if(n===0){ noteGraveIntel(pl, pv.id, state.turn, []); return false; } // bare ground is knowledge too
+  noteGraveIntel(pl, pv.id, state.turn, null); // existence only — Control Undead buys the roll of the dead
+  if(typeof emit==='function') emit(pv);
+  return true;
 }
 // The realm's graveyard lore, shaped for the player report ("Graveyards known").
 function graveIntelFor(gs, pl){
@@ -3937,7 +3982,8 @@ function graveIntelFor(gs, pl){
   return Object.keys(pl._graveIntel).map(k=>{
     const pv=gs.world&&gs.world.provinces&&gs.world.provinces[k]; const rec=pl._graveIntel[k]||{};
     return {provinceId:isNaN(+k)?k:+k, name:(pv&&pv.name)||'an unmapped province',
-            turn:rec.turn||null, detail:rec.detail||null, detailTurn:rec.detailTurn||null};
+            turn:rec.turn||null, detail:rec.detail||null, detailTurn:rec.detailTurn||null,
+            detailPartial:!!rec.detailPartial};
   }).sort((a,b)=>(b.turn||0)-(a.turn||0)||String(a.name).localeCompare(String(b.name)));
 }
 // ── EVEN DISTRIBUTION PER PLAYER (2026-09-11, Toby: "so players won't keep finding the same type of
@@ -7818,7 +7864,7 @@ const TITLE_DEFS=[
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'Each turn you learn which Sage discoveries your rivals made this turn \u2014 and copy one of them at random, for free.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage in every magic school.'},
   {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn you are told the location and strength of the largest skeletal army in the world.'},
-  {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead.'},
+  {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead \u2014 and files each one under Graveyards Known in your report.'},
 ];
 const RELIC_PRIZE_EACH=1;                 // 1 point per LEGENDARY relic held. 2026-09-11: the legendary
                                           // tier is now two relics of each kind, so the relic pool is worth
@@ -7840,6 +7886,12 @@ const RECKONING_DEFAULT_PCT=40;      // 6 or more realms
 const RECKONING_DECAY_FROM_TURN=15;  // the first END-of-turn at which the bar may erode
 const RECKONING_DECAY_STEP_PCT=5;    // percentage points shed per eroding turn
 const RECKONING_FLOOR_PCT=25;        // and it never falls below this
+// 2026-09-14 (Toby, item 1) — NO PASSENGERS AT THE THRONE. An allied bloc can still push a realm over
+// the Reckoning bar, but the realm that LODGES the claim must be a real contributor to it: its OWN tax
+// base must be at least this fraction of the threshold. Without this, every member of a bloc that
+// cleared the bar could Call the Reckoning — including an ally holding 3% of the world, who would then
+// be the named claimant. Solo claimants are unaffected (their own share IS the bloc share).
+const RECKONING_CALLER_MIN_FRAC=0.5;
 function reckoningBasePct(nPlayers){ return RECKONING_BASE_PCT[nPlayers]||RECKONING_DEFAULT_PCT; }
 function reckoningThresholdPct(nPlayers, decaySteps){
   const steps=Math.max(0, decaySteps|0);
@@ -7892,10 +7944,11 @@ function primalStrikeChance(druidLvl, commander){
 //   2. Those legendary lairs are spread as far apart as the map allows: the first is the lair
 //      farthest from any home, and each one after it is the lair whose nearest legendary neighbour is
 //      as distant as possible - a farthest-point walk, so relics are never clustered in one corner.
-//   3. Everything else is graded by how far it lies from the nearest king's home: WEAK lairs press in
-//      around the home provinces, and Moderate then Powerful ones ring outward. The proportions match
-//      what LAIR_TIER_ROLL used to produce (48 / 36 / 12 of the remainder) so the world is no more
-//      dangerous than before - only better arranged.
+//   3. Everything else is graded by how far it lies from the nearest king's home. Home provinces and
+//      the ring adjacent to them run 60% Weak / 30% Moderate / 10% Powerful (Toby, 2026-09-14); the
+//      further out a lair lies the fewer Weak and the more Moderate and Powerful. The GLOBAL totals
+//      stay at 50 / 38 / 12 of the remainder, close to what LAIR_TIER_ROLL used to produce, so the
+//      world is no more dangerous than before - only better arranged.
 //
 // The guardian is then re-drawn from the beasts of the lair's new standing, respecting land and sea
 // pools, so a Legendary lair is kept by a legendary beast and a sea lair never gets a land one.
@@ -7930,13 +7983,56 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   }
   legs.forEach(L=>{ L.grade='Legendary'; });
 
-  // 3: the rest, ranked by distance from home - the near country weak, the far country dangerous.
-  pool.sort((a,b)=>(a.dHome-b.dHome)||(Math.random()-0.5));
-  // 50 / 38 / 12 of the remainder. The Powerful share is held to 12% so the Powerful stock (10 of
-  // every kind, 90 items) covers the Powerful lairs even on the largest map - otherwise the tail of
-  // them would be handed an item of the wrong tier.
+  // 3: the rest, graded by distance from home.
+  // ── 2026-09-14 (Toby, item 5): A MIX AT EVERY DISTANCE ────────────────────────────────────────
+  // This used to be a hard cut by distance RANK: the nearest 50% of lairs were ALL Weak, the next
+  // 38% ALL Moderate, the farthest 12% ALL Powerful. So a king's home country held nothing but Weak
+  // lairs and the deep wilds nothing but Powerful ones - no variety at any distance, and no chance
+  // of a nasty surprise on your own doorstep or an easy win far from home.
+  //
+  // Now, two rules:
+  //   a) HOME BAND (a home province or any province adjacent to one): exactly 60% Weak, 30% Moderate,
+  //      10% Powerful, assigned by lot within the band. This is Toby's rule and it holds on every map,
+  //      whatever shape the world turns out to be.
+  //   b) EVERYTHING FURTHER OUT: ranked by distance, but with a deliberate JITTER added to the rank
+  //      before the cut, so the grades SHADE into one another instead of falling in clean rings. Weak
+  //      thins out and Moderate then Powerful thicken the further from home you go, without any
+  //      distance being purely one grade.
+  //
+  // The GLOBAL totals stay at 50 / 38 / 12 of the non-legendary lairs - the world is no more
+  // dangerous than before, only better arranged - because the far band is given exactly the counts
+  // the home band did not use. Holding the Powerful share to 12% is what keeps the Powerful item
+  // stock (10 of every kind, 90 items) covering every Powerful lair even on the largest map;
+  // otherwise the tail of them would be handed an item of the wrong tier.
   const nW=Math.round(pool.length*0.50), nM=Math.round(pool.length*0.38);
-  pool.forEach((L,i)=>{ L.grade = i<nW?'Weak' : i<nW+nM?'Moderate' : 'Powerful'; });
+  const NEAR_D=1;                         // "in and adjacent to" a home province
+  // The split is written so that ANY lair whose distance is not a clean number (a malformed province
+  // with no col/row, say) falls into the far band rather than into neither — every lair must end up
+  // graded, or it would keep whatever tier it was built with and its guardian would not match.
+  const near=shuffleP(pool.filter(L=>L.dHome<=NEAR_D));
+  const far=pool.filter(L=>!(L.dHome<=NEAR_D));
+  // (a) the home band, by lot, at 60 / 30 / 10 - but never claiming more of a grade than the world has.
+  const kW=Math.min(nW, Math.round(near.length*0.60));
+  const kM=Math.min(nM, Math.round(near.length*0.30));
+  near.forEach((L,i)=>{ L.grade = i<kW?'Weak' : i<kW+kM?'Moderate' : 'Powerful'; });
+  // (b) the far country gets whatever the home band left, spread by jittered distance rank.
+  const remW=Math.max(0, nW-kW), remM=Math.max(0, nM-kM);
+  far.sort((a,b)=>(a.dHome-b.dHome)||(Math.random()-0.5));
+  // The jitter is what turns a hard cut into a gradient. At ~35% of the far pool, measured over 400
+  // generated worlds (session_harness_0914e.js), the WEAK share falls 60% → 60% → 16% → 4% across
+  // the home band, the near marches (d2-3), the far marches (d4-5) and the deep wilds (d6+), and
+  // Moderate+Powerful climbs 40% → 40% → 84% → 96%. Less blur puts a cliff at d≈3.5; much more and
+  // the gradient washes out into noise.
+  //
+  // Note one deliberate consequence of Toby's rule: because the home band is PINNED at 10% Powerful
+  // while the global Powerful stock is only 12%, the near marches just beyond home end up with
+  // FEWER Powerful lairs (~5%) than the home band itself. A king's own doorstep therefore hides the
+  // occasional real monster while the settled country a province or two out is the tamest ground in
+  // the world — which is the variety near home that the 60/30/10 rule was asking for.
+  const jitter=Math.max(1, far.length*0.35);
+  far.forEach((L,i)=>{ L._rank=i+(Math.random()-0.5)*2*jitter; });
+  far.sort((a,b)=>a._rank-b._rank);
+  far.forEach((L,i)=>{ L.grade = i<remW?'Weak' : i<remW+remM?'Moderate' : 'Powerful'; delete L._rank; });
 
   // Re-draw each guardian from the beasts of its lair's new standing.
   const seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name));
@@ -8068,6 +8164,25 @@ function reckoningBlocShare(state, pi){
   const blocTax=bloc.reduce((sum,b)=>sum+(s.taxByPlayer[b]||0),0);
   return s.worldTax>0 ? blocTax/s.worldTax : 0;
 }
+// A realm's OWN share of the world tax base — allies excluded (item 1: who may lodge the claim).
+function reckoningOwnShare(state, pi){
+  const s=computeStandings(state);
+  return s.worldTax>0 ? (s.taxByPlayer[pi]||0)/s.worldTax : 0;
+}
+// The personal floor a claimant must clear: half the current Reckoning threshold.
+function reckoningCallerMin(state){
+  return reckoningThreshold((state.players||[]).length, reckoningDecayOf(state))*RECKONING_CALLER_MIN_FRAC;
+}
+// May THIS realm lodge the claim? Bloc share carries the bar; the caller still has to be a
+// contributor worth naming. Returns {ok, blocShare, ownShare, threshold, callerMin, reason}.
+function reckoningCallEligibility(state, pi){
+  const thr=reckoningThreshold((state.players||[]).length, reckoningDecayOf(state));
+  const callerMin=thr*RECKONING_CALLER_MIN_FRAC;
+  const blocShare=reckoningBlocShare(state, pi);
+  const ownShare=reckoningOwnShare(state, pi);
+  const reason = blocShare<thr ? 'blocShort' : (ownShare<callerMin ? 'callerShort' : null);
+  return {ok:!reason, blocShare, ownShare, threshold:thr, callerMin, reason};
+}
 // Phase 5 — a bot KING calls the Reckoning when it dominates the world, so bots actually END (and win)
 // games instead of expanding forever. Bots never ally, so this is always a single-realm claim. The
 // engine (12151) re-checks share ≥ threshold at resolution, so this only needs to add eligible bot kings
@@ -8082,7 +8197,7 @@ function runBotReckoning(G, botIdxSet, reckoningCalls){
   botIdxSet.forEach(pi=>{
     if(botConceded(G,pi)) return;                                      // item 2: a conceded realm claims nothing
     const kingAlive=(G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===pi);
-    if(kingAlive && reckoningBlocShare(G, pi) >= thr) reckoningCalls.add(pi);
+    if(kingAlive && reckoningCallEligibility(G, pi).ok) reckoningCalls.add(pi); // item 1: bloc bar AND the caller's own floor
   });
 }
 const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant',necro:'Deathpriest'};
@@ -8978,6 +9093,7 @@ function buildTurnReport(gameState, playerIndex){
       const turn=gameState.turn||1;
       const st=computeStandings(gameState);
       const myShare=reckoningBlocShare(gameState, playerIndex);
+      const _elig=reckoningCallEligibility(gameState, playerIndex); // item 1: bloc bar + caller's own floor
       const kingAlive=(gameState.characters||[]).some(c=>c.alive&&c.isKing&&c.player===playerIndex);
       const rk=gameState.reckoning||null, over=gameState.gameOver||null;
       const isPublic=turn>=TITLES_PUBLIC_FROM_TURN || !!over;
@@ -8988,7 +9104,10 @@ function buildTurnReport(gameState, playerIndex){
         losses:(gameState._titleLossesByPlayer||{})[playerIndex]||[], // Item 4: titles this player LOST this turn
         threshold:st.threshold,
         myShare,
-        canCallReckoning: isPublic && kingAlive && !rk && !over && myShare>=st.threshold,
+        myOwnShare:_elig.ownShare,        // item 1: this realm's tax base WITHOUT its allies
+        callerMin:_elig.callerMin,        // item 1: the personal floor a claimant must clear
+        callBlockedReason:_elig.reason,   // 'blocShort' | 'callerShort' | null
+        canCallReckoning: isPublic && kingAlive && !rk && !over && _elig.ok,
         kingAlive, // 2026-09-11: Orders → Realm shows why the call is unavailable
         reckoning: rk?{byName:gameState.players[rk.by]?.name||null, calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
         gameOver: over?{winner:over.winner, winnerName:over.winner!=null?(gameState.players[over.winner]?.name||null):null, byElimination:!!over.byElimination, byConcession:!!over.byConcession, standings:(over.standings||[]).map(s=>({...s,titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)}))}:null,
@@ -9014,6 +9133,10 @@ function buildTurnReport(gameState, playerIndex){
 // Item 11 (2026-09-10): fields of study a player can never choose or see listed — found only as a side
 // result of researching any other field (see case 'research').
 const RESEARCH_HIDDEN_CATS=new Set(['Heroic','Special']);
+// 2026-09-14 (Toby, item 2): the odds of an unlooked-for find in a HIDDEN field (Heroic / Special),
+// expressed against the character's ordinary Sage discovery chance. Divisor 5 with a 10% ceiling.
+const HIDDEN_DISCOVERY_DIVISOR=5;
+const HIDDEN_DISCOVERY_CAP_PCT=10;
 const SAGE_DISCOVERIES_P=[
   // ── Military ──
   {id:'sd01',name:'Superior Forging',category:'Military',desc:'All recruited armies start at Veteran quality instead of Average.',effect:{type:'recruitQuality',quality:'Veteran'}},
@@ -14396,6 +14519,33 @@ const BATTLE_ARMY_SPELLS={
     const prov=provOf(c);
     const player=G.players[c.player];
 
+    // ── BATTLE LOCK, RE-CHECKED AT THE MOMENT OF MARCHING (2026-09-14, Toby item 10) ─────────────
+    // STAGE 1b already pins army-leaders standing in a contested province, but it is computed ONCE,
+    // at the top of the phase, from the flags as they stood then. A battle joined DURING the phase —
+    // an invader marching in and being thrown back, say — raises _battleUnresolved AFTER that pass
+    // has run, so the other side's own Move order, processed later in the same phase, marched
+    // straight out of a province it was still locked into.
+    //
+    // That is the Fairscree report: Ketil's assault was repelled but his host was still the stronger,
+    // so he held the field "rather than retreat" and the province was flagged contested — and Boden,
+    // who had just won that battle, then sailed away into the Storm Sea and on across two more
+    // phases, with the fight behind him never resumed and the ground never decided.
+    //
+    // Re-checking here, at the instant the relocating order executes, closes that window: a live
+    // contest pins BOTH sides until resolveStalledBattles settles it at the top of the next phase.
+    // The pin only bites while an armed hostile force is actually standing here — a stale flag left
+    // by an enemy who died or withdrew never traps anyone.
+    if((action==='move'||action==='encounter'||action==='pursue') && prov && prov._battleUnresolved && (c.armies||[]).length>0){
+      const _foeHere=(G.characters||[]).some(x=>x&&(x.alive||x._leaderlessHost)&&x.id!==c.id&&x.location===prov.id
+                        &&(x.armies||[]).length>0&&(x.player==null||(x.player!==c.player&&areEnemies(c.player,x.player))))
+                     || (prov.owner!==c.player && ((prov.neutralDefenders||[]).length>0));
+      if(_foeHere){
+        log('combat',`${c.name} is still locked in the unresolved battle for ${prov.name} and cannot march away — the enemy is on the field and the fight must be seen through before the column can move on.`,
+          {actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id,phase:ph,pinNotice:true});
+        _logCtx={charId:null,phase:null};return;
+      }
+    }
+
     // ── CHARMED ENEMY HERO (2026-09-13, Toby item 2) ── an enemy hero whose command has been seized
     // for the turn will march and fight under your banner, but an enchantment is not an oath: they
     // will not break up their own lord's companies, perform another realm's alignment rites, or spend
@@ -14691,6 +14841,9 @@ const BATTLE_ARMY_SPELLS={
         // move ends in a repulse the character will be gone by the end of the phase, but they still
         // scouted the province and its surrounds and the map must reflect that.
         noteEntered(c.player, toProv.id);
+        // Item 7 (2026-09-14): a necromancer reads the ground the moment they set foot on it — every
+        // province of the march, not just the one they stop in. Feeds the report's Graveyards Known.
+        senseGravesUnderfoot(G, c, toProv, (pv)=>log('explore',`💀 ${c.name} crosses into ${pv.name} and the dead stir underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,{actor:c.player,targets:[c.player],provinceId:pv.id}));
         if(!toProv.visitedBy)toProv.visitedBy=[];
         if(!toProv.visitedBy.includes(c.player)) toProv.visitedBy.push(c.player);
         let _moveExplNote=''; // item 12: exploration change to append to the move-in line
@@ -15982,8 +16135,7 @@ const BATTLE_ARMY_SPELLS={
         if((player.gold||0)<_hCost){
           log('system',`${c.name}: the corpse-carters and grave-wights want their ${_hCost}g — the treasury cannot pay.`,{actor:c.player,targets:[c.player]});break;}
         player.gold-=_hCost;
-        const hIdx=Math.floor(Math.random()*prov.battleGraves.length);
-        const hGrave=prov.battleGraves.splice(hIdx,1)[0];
+        const hGrave=takeBestGrave(prov); // item 6: the most experienced dead are worked first
         const _uTierH=gdActive(c.player,'Undead'); // GRAND DESIGN — Undead
         const hSkel={type:hGrave.type,quality:(_uTierH?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[hGrave.quality]||hGrave.quality):hGrave.quality),race:'Undead',_isSkeletal:true,
           unitName:`${hGrave.unitName||armyUnitName(hGrave.type)} (Skeletal)`};
@@ -16018,7 +16170,12 @@ const BATTLE_ARMY_SPELLS={
         // this research yields — an unlooked-for find INSTEAD of the ordinary one, never as well as it.
         // Half the discovery chance, as before.
         let _sideFound=false;
-        { const _sRoll=d100(); const _sChance=Math.max(1,Math.floor(discoveryChance/2));
+        // 2026-09-14 (Toby, item 2) — THE HIDDEN FIELDS GROW RARER. Was half the ordinary discovery
+        // chance, which put a Neutral Sage 5 holding the Loreseeker at 27% a turn for a Heroic or
+        // Special find — eight of them, so a scholar-realm swept the hidden table in a dozen turns.
+        // Now a FIFTH of the ordinary chance, hard-capped at 10%: an ordinary Sage 5 rolls 5%, and no
+        // stack of Neutral doubling and title bonuses can push it past one in ten.
+        { const _sRoll=d100(); const _sChance=Math.max(1,Math.min(HIDDEN_DISCOVERY_CAP_PCT,Math.floor(discoveryChance/HIDDEN_DISCOVERY_DIVISOR)));
           if(_sRoll<=_sChance){
             if(!player.discoveries) player.discoveries=[];
             const _known2=new Set(player.discoveries.map(d=>d.id));
@@ -17207,8 +17364,7 @@ const BATTLE_ARMY_SPELLS={
           if(graves.length===0){
             log('explore',`${c.name} calls out to the fallen in ${prov.name}, but there are no battlefield dead here to answer. Seek a province where armies have previously perished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
           }
-          const gIdx=Math.floor(Math.random()*prov.battleGraves.length);
-          const grave=prov.battleGraves.splice(gIdx,1)[0];
+          const grave=takeBestGrave(prov); // item 6: the most experienced dead answer first
           const _uTier=gdActive(c.player,'Undead'); // GRAND DESIGN — Undead: +1 tier when raised
           const skel={ type:grave.type,quality:(_uTier?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[grave.quality]||grave.quality):grave.quality),race:'Undead',_isSkeletal:true,
             unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)` };
@@ -17364,7 +17520,7 @@ const BATTLE_ARMY_SPELLS={
           // them up TWO tiers — Average dead rise Crack. Elite is still the ceiling.
           const _ddUp=gdActive(c.player,'Undead')?(q=>QUALITY_UP[QUALITY_UP[q]||q]||QUALITY_UP[q]||q):(q=>QUALITY_UP[q]||q);
           const n=Math.min(graves.length,spellLevelEff); let raised=0;
-          for(let k=0;k<n;k++){ if(prov.battleGraves.length===0)break; const g=prov.battleGraves.splice(Math.floor(Math.random()*prov.battleGraves.length),1)[0]; c.armies=(c.armies||[]); c.armies.push({type:g.type,quality:_ddUp(g.quality),race:'Undead',_isSkeletal:true,unitName:`${g.unitName||armyUnitName(g.type)} (Skeletal)`}); raised++; }
+          for(let k=0;k<n;k++){ const g=takeBestGrave(prov); if(!g)break; /* item 6: best first, down the line */ c.armies=(c.armies||[]); c.armies.push({type:g.type,quality:_ddUp(g.quality),race:'Undead',_isSkeletal:true,unitName:`${g.unitName||armyUnitName(g.type)} (Skeletal)`}); raised++; }
           log('explore',`💀 ${c.name} unleashes Death's Dominion over ${prov.name} — ${raised} skeletal unit${raised!==1?'s':''} claw up from the graves to serve! (${prov.battleGraves.length} remain.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
           resolveUnitGainInProvince(c, prov, ph);
         }
@@ -20049,14 +20205,24 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           log('system',`${p.name} pays ${totalWages}g in wages. Treasury: ${p.gold}g remaining.`,{actor:p.id,targets:[p.id]});
         } else {
           // Can't pay in full — armies disband first (cheapest first), then heroes desert
-          log('system',`⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold||0}g available. Armies will disband, heroes may desert.`,{actor:p.id,targets:[p.id]});
+          log('system',`⚠ ${p.name} cannot pay ${totalWages}g wages! Only ${p.gold||0}g available. The rawest troops melt away first — the greenest companies anywhere in the realm, garrison or field alike — then better men as the shortfall bites. The skeletal dead ask for nothing and are the last to go. Heroes may desert.`,{actor:p.id,targets:[p.id]});
           let deficit=totalWages-(p.gold||0);
           p.gold=0;
 
-          // Disband armies — cheapest first, then by character
-          // Garrison armies disband first (they're the easiest to lose)
-          const sortedArmies=[...allKingdomArmies].sort((a,b)=>
-            (a._isSkeletal?1:ARMY_COST[a.type]||2)-(b._isSkeletal?1:ARMY_COST[b.type]||2));
+          // ── WHO GOES FIRST (2026-09-14, Toby item 3) ────────────────────────────────────────
+          // Was: cheapest-first, which put SKELETONS (1g) at the head of the queue — the opposite of
+          // what a realm of the dead should suffer, since skeletons neither eat nor desert. Now:
+          //   1. Skeletal units are ALWAYS last. Nothing else disbands while a skeleton could.
+          //   2. Within each of those two groups the raw levies go first — lowest experience tier
+          //      before higher, so a Green garrison melts away before a Crack company.
+          //   3. Within one experience tier the choice is RANDOM ACROSS THE WHOLE EMPIRE — no more
+          //      "garrisons always, field armies never". A random key is decorated onto each unit up
+          //      front so the comparator stays a valid (consistent) ordering.
+          const _qRank=a=>{ const i=QUALITY_TIERS.indexOf(a&&a.quality); return i<0?1:i; }; // unknown quality ≈ Average
+          const sortedArmies=[...allKingdomArmies]
+            .map(a=>({a, skel:a._isSkeletal?1:0, q:_qRank(a), r:Math.random()}))
+            .sort((x,y)=>(x.skel-y.skel)||(x.q-y.q)||(x.r-y.r))
+            .map(x=>x.a);
           sortedArmies.forEach(army=>{
             if(deficit<=0)return;
             // Item 8: elementals and other temporary summons are never disbanded for non-payment —
@@ -20070,8 +20236,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
             // Find and remove this army from its owner character or garrison
             // Item 1 (this session): match the EXACT army object (identity), never a same-type stand-in —
             // the old `a.type===army.type` fallback, with characters searched first, could disband a
-            // hero's unit in place of the garrison unit that was actually selected. Garrisons are
-            // searched first so the cheap standing troops go before a marching column's.
+            // hero's unit in place of the garrison unit that was actually selected. The search order
+            // below (garrisons, then characters) is now only a lookup path — the sort above already
+            // chose WHICH unit goes, and identity matching means the lookup cannot pick a different one.
             let removed=false;
             (G.world.provinces||[]).filter(pv=>pv.owner===p.id).forEach(pv=>{
               if(removed)return;
@@ -20116,21 +20283,19 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // first sweep of next turn rather than being invisible for a whole season.
   flagEnemyStandoffs();
 
-  // ── GRAVES UNDERFOOT (2026-09-14, Toby item 2) ──────────────────────────────────────────────
-  // Every character with at least one level of Necromancy senses the battlefield dead of the
-  // province they END the turn in. They learn only THAT graves are there, never what lies in them
-  // — Control Undead's province scan is what buys the roll of the dead, and it records its own
-  // richer entry when it is cast (see necromancy_control __scan__). Run here, after the phase
-  // loop, so the location is the one the character finished on however many times they marched.
+  // ── GRAVES UNDERFOOT (2026-09-14, Toby items 2 & 7) ─────────────────────────────────────────
+  // Every character with at least one level of Necromancy senses the battlefield dead of the ground
+  // they stand on. They learn only THAT graves are there, never what lies in them — Control Undead's
+  // province scan is what buys the roll of the dead, and it records its own richer entry when it is
+  // cast (see necromancy_control __scan__).
+  // Item 7 (2026-09-14): the reading now happens at EVERY march-in during the phase loop as well
+  // (see senseGravesUnderfoot at the move choke-point), so a necromancer marching three provinces
+  // reads all three, not only the one they stop in. This end-of-turn sweep therefore only catches
+  // whoever never moved — senseGravesUnderfoot's own per-turn guard skips anyone already read here.
   (G.characters||[]).forEach(c=>{
     if(!c||!c.alive||c.player==null) return;
-    if(effStat(c,'necromancy')<1) return;
     const pv=G.world.provinces[c.location]; if(!pv) return;
-    const n=(pv.battleGraves||[]).length;
-    const pl=G.players[c.player]; if(!pl) return;
-    if(n===0){ noteGraveIntel(pl, pv.id, G.turn, []); return; } // standing here and finding it bare
-    noteGraveIntel(pl, pv.id, G.turn, null); // bare sensing: existence only, detail untouched
-    log('explore',`💀 ${c.name} feels the dead of ${pv.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,{actor:c.player,targets:[c.player],provinceId:pv.id});
+    senseGravesUnderfoot(G, c, pv, (p2)=>log('explore',`💀 ${c.name} feels the dead of ${p2.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,{actor:c.player,targets:[c.player],provinceId:p2.id}));
   });
 
   // ── Item 1: DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's
@@ -20348,8 +20513,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       for(const pi of reckoningCalls){
         const kingAlive=(G.characters||[]).some(c=>c.alive&&c.isKing&&c.player===pi);
         if(!kingAlive){ log('system',`Only a king may call the Reckoning.`,{actor:null,targets:[pi],system:true}); continue; }
-        const share=reckoningBlocShare(G, pi);
-        if(share>=thr){
+        const _el=reckoningCallEligibility(G, pi); // item 1: bloc bar AND the caller's own floor
+        const share=_el.blocShare;
+        if(_el.ok){
           const bloc=alliedBloc(G, pi);
           G.reckoning={by:pi, bloc, calledTurn:G.turn, resolveAtTurn:G.turn+2};
           const nm=G.players[pi]?.name||('Realm '+(pi+1));
@@ -20357,6 +20523,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           const blocNm=allies.length?` and their allies (${allies.join(', ')})`:'';
           log('system',`👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${dispFloor(share*100)}% of the world. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${dispFloor(thr*100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,{actor:null,targets:[],system:true,public:true});
           break;
+        } else if(_el.reason==='callerShort'){
+          // Item 1: the BLOC clears the bar, but this realm is a passenger in it — an ally who holds
+          // a sliver of the world cannot be the one to claim the throne on the bloc's strength.
+          log('system',`${G.players[pi]?.name||'A king'} calls for the Reckoning on the strength of their alliance, but their OWN realm commands only ${dispFloor(_el.ownShare*100)}% of the world — a claimant must personally hold at least ${dispFloor(_el.callerMin*100)}% (half the ${dispFloor(thr*100)}% bar) to press the claim. The throne is not won by riding a stronger ally's coat-tails; let the bloc's greatest realm lodge it.`,{actor:null,targets:[pi],system:true});
         } else {
           log('system',`${G.players[pi]?.name||'A king'} calls for the Reckoning, but commands only ${dispFloor(share*100)}% of the world — short of the ${dispFloor(thr*100)}% needed to press the claim.`,{actor:null,targets:[pi],system:true});
         }
@@ -20366,8 +20536,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       const thr=reckoningThreshold(G.players.length, reckoningDecayOf(G));
       const share=reckoningBlocShare(G, G.reckoning.by);
       const claimantAlive=((G.players[G.reckoning.by]?.provinces)||[]).length>0 || (G.characters||[]).some(c=>c.alive&&c.player===G.reckoning.by);
+      // Item 1: the claimant's PERSONAL floor is held for the life of the claim too, so rivals can
+      // break a bloc's claim by striking the claimant himself, not only by shrinking the whole bloc.
+      const _ownNow=reckoningOwnShare(G, G.reckoning.by), _minNow=reckoningCallerMin(G);
       if(!claimantAlive || share<thr){
         log('system',`The claim to the throne collapses — ${G.players[G.reckoning.by]?.name||'the claimant'}'s bloc no longer commands the world (${dispFloor(share*100)}% < ${dispFloor(thr*100)}%). The Reckoning is called off; the war goes on.`,{actor:null,targets:[],system:true,public:true});
+        delete G.reckoning;
+      } else if(_ownNow<_minNow){
+        log('system',`The claim to the throne collapses — ${G.players[G.reckoning.by]?.name||'the claimant'} has been cut down to ${dispFloor(_ownNow*100)}% of the world in their own right, beneath the ${dispFloor(_minNow*100)}% a claimant must personally hold. Their allies still stand, but the claim was theirs to carry and they can no longer carry it. The Reckoning is called off; the war goes on.`,{actor:null,targets:[],system:true,public:true});
         delete G.reckoning;
       } else if(G.turn>=G.reckoning.resolveAtTurn){
         const rw=reckoningWinner(G);
@@ -20799,7 +20975,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // THE HIEROPHANT — the largest skeletal army: name + province.
     { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${who(best)}${best.player!=null?` in ${prn(best.location)}`:''} — ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
     // THE DEATHPRIEST — Grave-sight: each province with Crack/Elite dead (own line).
-    { const pi=holder('necro'); if(pi!=null){ let any=false; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const n=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')).length; if(n>0){ any=true; log('system',`[The Deathpriest] Grave-sight: ${prn(pv.id)} holds ${n} crack/elite dead.`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
+    // Item 8 (2026-09-14): every Grave-sight find is also written into the realm's graveyard lore, so
+    // the Deathpriest's provinces appear in the report's Graveyards Known alongside what their own
+    // necromancers have walked over. The reading is PARTIAL — the title picks out crack and elite dead
+    // only and is blind to whatever lesser ranks lie beside them — so it is flagged as such and the
+    // report says "at least". A province with no crack/elite dead is left alone, never marked bare:
+    // Grave-sight seeing nothing worth naming there is not the same as seeing empty ground.
+    { const pi=holder('necro'); if(pi!=null){ let any=false; const _dpl=G.players[pi]; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const _fine=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')); const n=_fine.length; if(n>0){ any=true; if(_dpl) noteGraveIntel(_dpl, pv.id, G.turn, _fine, {partial:true}); log('system',`[The Deathpriest] Grave-sight: ${prn(pv.id)} holds ${n} crack/elite dead. (Filed under Graveyards Known.)`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
   })();
   // ── TITLE CHANGES (Item 2) ── compare this turn's holders to last turn's snapshot so each player's
   // report can announce titles their characters/realm newly won this turn (with how + effect).
@@ -21207,6 +21389,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.14-1644</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.14-1927</div>
 </body>
 </html>

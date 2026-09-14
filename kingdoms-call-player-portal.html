@@ -2365,8 +2365,10 @@ function renderReportView(report){
   if(graveIntel.length>0){
     otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#4a4a4a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Graveyards Known</div>`;
     otherForcesHtml+=graveIntel.map(g=>{
+      // item 8 (2026-09-14): a PARTIAL reading (the Deathpriest's Grave-sight) names only the crack
+      // and elite dead — say "at least", because lesser ranks may lie beside them unseen.
       const det=(g.detail&&g.detail.length)
-        ? `<span style="color:#5a3a7a">The dead:</span> ${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${(g.detailTurn&&g.detailTurn!==g.turn)?` <span style="color:#999">(read turn ${g.detailTurn})</span>`:''}`
+        ? `<span style="color:#5a3a7a">The dead:</span> ${g.detailPartial?'at least ':''}${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${g.detailPartial?' <span style="color:#888">— Grave-sight names only the crack and elite; lesser dead may lie here unseen.</span>':''}${(g.detailTurn&&g.detailTurn!==g.turn)?` <span style="color:#999">(read turn ${g.detailTurn})</span>`:''}`
         : '<span style="color:#777">Graves lie here — how many, and what they hold, is unknown.</span>';
       return `<div class="intel-entry" style="border-left-color:#4a4a4a;background:#f6f6f4">
         <strong>${g.name}</strong> <span style="color:#888;font-size:.78rem">(seen on turn ${g.turn!=null?g.turn:'?'})</span><br>
@@ -2778,6 +2780,8 @@ function renderTitles(report){
   }
   const nPlayers=(t.standings||[]).length||2;
   const pct=floorNumP((t.myShare||0)*100), thr=Math.ceil(floorNumP((t.threshold||0)*100*1e6)/1e6); // 2026-09-12 (item 5): a 41.6% share shows 41, never "42% (need 42%)"
+  // 2026-09-14 (Toby, item 1): the caller's OWN share and the personal floor (half the bar).
+  const ownPct=floorNumP((t.myOwnShare!=null?t.myOwnShare:(t.myShare||0))*100), minPct=Math.ceil(floorNumP((t.callerMin||0)*100*1e6)/1e6);
 
   // ── Item 2: titles newly WON this turn (character or realm), with how + effect ──
   let gainsHtml='';
@@ -2846,7 +2850,8 @@ function renderTitles(report){
     There is no turn limit — the game ends only when one realm is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
     <ul style="margin:4px 0 4px 16px;padding:0">
       <li>your <strong>King must be alive</strong> — it is a King-only act; and</li>
-      <li>your realm, <strong>or your mutually-allied bloc</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base (the bar for a ${nPlayers}-realm game — fewer realms need a higher share).</li>
+      <li>your realm, <strong>or your mutually-allied bloc</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base (the bar for a ${nPlayers}-realm game — fewer realms need a higher share); and</li>
+      <li>if the bar is carried by an alliance, <strong>you must personally hold at least ${minPct}%</strong> — half the bar — in your own right. The throne is claimed by a realm, not by a passenger in someone else's bloc, so it is the bloc's greatest realm that lodges the claim. (If the claimant is later cut below ${minPct}% the claim collapses, even if the bloc still clears ${thr}%.)</li>
     </ul>
     Calling it announces the claim to every realm and begins a <strong>2-turn grace period</strong>. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
   </div>`;
@@ -2859,7 +2864,9 @@ function renderTitles(report){
       : `<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
         <div style="font-size:.72rem;color:#777;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
   } else if(!t.reckoning){
-    callCtrl=`<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
+    callCtrl = (t.callBlockedReason==='callerShort')
+      ? `<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world — enough to Call the Reckoning — but your own realm holds just ${ownPct}% of it, and a claimant must personally hold ${minPct}%. The claim must be lodged by the greatest realm in your alliance.</div>`
+      : `<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
   }
 
   // ── Always show the realm's share of the world's total tax base (land AND sea) and the
@@ -2868,7 +2875,7 @@ function renderTitles(report){
   const throneMine=!!(t.holders&&t.holders.throne&&t.holders.throne.mine);
   const _gap=thr-pct;
   const shareLine=`<div style="background:#f0f4ea;border:1px solid #cdd8bf;border-radius:3px;padding:7px 10px;margin-bottom:10px;font-size:.78rem;color:#3a4a2a;line-height:1.5">
-    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#777">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>'}
+    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#777">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:(t.callBlockedReason==='callerShort'?` <span style="color:#8a6a1a">Your bloc meets the threshold, but your own realm holds ${ownPct}% and a claimant must personally hold ${minPct}% — your strongest ally must lodge the claim.</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>')}
   </div>`;
   el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
     + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
@@ -2901,6 +2908,8 @@ function renderReckoningOrders(){
   const w=document.getElementById('reckoning-wrap'); if(!w) return;
   const t=(currentReport&&currentReport.titles)||{};
   const pct=floorNumP((t.myShare||0)*100), thr=Math.ceil(floorNumP((t.threshold||0)*100*1e6)/1e6); // 2026-09-12 (item 5): a 41.6% share shows 41, never "42% (need 42%)"
+  // 2026-09-14 (Toby, item 1): the caller's OWN share and the personal floor (half the bar).
+  const ownPct=floorNumP((t.myOwnShare!=null?t.myOwnShare:(t.myShare||0))*100), minPct=Math.ceil(floorNumP((t.callerMin||0)*100*1e6)/1e6);
   if(t.gameOver){ w.innerHTML=`<div style="color:#777">The game is over — there is nothing left to call.</div>`; return; }
   if(t.reckoning){
     w.innerHTML=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:6px 8px">👑 <strong>The Reckoning has already been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of Turn ${t.reckoning.resolveAtTurn} unless the claim is broken.</div>`;
@@ -2917,6 +2926,7 @@ function renderReckoningOrders(){
   let why;
   if(t.public===false) why=`The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5} — the Reckoning cannot be called before then.`;
   else if(t.kingAlive===false) why=`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
+  else if(t.callBlockedReason==='callerShort') why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base — enough to call it — but the claim belongs to whoever lodges it, and your own realm holds only <strong>${ownPct}%</strong>. A claimant must personally hold <strong>${minPct}%</strong> (half the ${thr}% bar), so the greatest realm in your alliance must be the one to call it.`;
   else if(pct<thr) why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#777">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.`;
   else why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
   w.innerHTML=`<div style="color:#555;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
@@ -6878,6 +6888,28 @@ function _lairsClearedNote(pd){
   if(lairs.some(f=>!f.cleared)) return '';
   return `<br><span style="color:#4a8a4a;font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length===1?'its lair has':`all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
 }
+// ── GRAVES ON THE MAP (2026-09-14, Toby item 4) ────────────────────────────────────────────────
+// If this realm knows battlefield dead lie in a province, say so in the hex popup — the same lore
+// the report's Graveyards Known section shows, keyed by province id. Three readings are possible:
+// a full roll of the dead (Control Undead standing on the ground), a PARTIAL one (the Deathpriest's
+// Grave-sight, crack and elite only), or a bare sensing (a necromancer marching through). All three
+// are stamped with the turn they were learned, because none of them refreshes on its own — the
+// graves may since have been raised as skeletons or rotted to nothing.
+let _graveIntelById=null; // rebuilt each report load by _rebuildGraveIntelIndex()
+function _rebuildGraveIntelIndex(report){
+  _graveIntelById={};
+  ((report&&report.graveIntel)||[]).forEach(g=>{ if(g&&g.provinceId!=null) _graveIntelById[g.provinceId]=g; });
+}
+function _graveNote(pd){
+  if(!pd||pd.id==null||!_graveIntelById) return '';
+  const g=_graveIntelById[pd.id]; if(!g) return '';
+  const stamp=`<span style="opacity:.75">(known turn ${g.turn!=null?g.turn:'?'})</span>`;
+  if(g.detail&&g.detail.length){
+    const list=g.detail.map(d=>`${d.n}× ${d.k}`).join(', ');
+    return `<br><span style="color:#c9a0dc">\u{1F480} Battlefield graves: ${g.detailPartial?'at least ':''}${list}</span> ${stamp}${g.detailPartial?`<br><span style="opacity:.7;font-style:italic">Grave-sight names only the crack and elite — lesser dead may lie here unseen.</span>`:''}`;
+  }
+  return `<br><span style="color:#c9a0dc">\u{1F480} Battlefield graves lie here</span> <span style="opacity:.7;font-style:italic">— how many, and what they hold, is unknown</span> ${stamp}`;
+}
 // Task 5 (this session): tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
 // lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain text.
 function _lairName(f){
@@ -6959,6 +6991,7 @@ const CHIEFTAIN_MARKER_COLOR='#8f6a38'; // 2026-09-11 (Toby item 5): darkened fr
 function renderMapIntoSvg(svgEl, report){
   const svgNS='http://www.w3.org/2000/svg';
   svgEl.innerHTML='';
+  _rebuildGraveIntelIndex(report); // item 4 (2026-09-14): province-id lookup for the hex popup's grave line
 
   const worldMeta=report.worldMeta;
   if(!worldMeta){
@@ -7475,6 +7508,7 @@ function renderMapIntoSvg(svgEl, report){
           const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kc) h+=_kc;
           if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`).join('')}`;
+          h+=_graveNote(pd); // item 4 (2026-09-14): known battlefield graves
         } else if(isVisited){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
@@ -7491,12 +7525,14 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
           const _kcV=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kcV) h+=_kcV;
+          h+=_graveNote(pd); // item 4 (2026-09-14): known battlefield graves
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${pd.ownerName?'Owned by <strong>'+pd.ownerName+'</strong>':'Unclaimed'}`;
           h+=_grandDesignNote(pd);
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>\u2694 <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
+          h+=_graveNote(pd); // item 4 (2026-09-14): grave lore is remembered even for distant ground
         }
         tt.innerHTML=h+`<div style="text-align:right;margin-top:8px;border-top:1px solid #4a3a1a;padding-top:6px"><button onclick="_closeMapTip(event)" style="background:#7a1c1c;color:#fff;border:none;padding:6px 14px;border-radius:2px;cursor:pointer;font-family:Cinzel,serif;font-size:.72rem;pointer-events:auto">\u2715 Close</button></div>`;
         tt.style.display='block';
@@ -7628,6 +7664,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1644</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1927</div>
 </body>
 </html>
