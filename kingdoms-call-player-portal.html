@@ -476,7 +476,7 @@ section{display:none;}.section-active{display:block;}
 
         <div class="card" id="other-forces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>⚔ Other Armies &amp; Heroes</h2>
-          <div id="report-other-forces"><em style="color:#999;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em></div>
+          <div id="report-other-forces"><em style="color:#999;font-size:.85rem">No mercenary bands, loose heroes or known graveyards yet.</em></div>
         </div>
 
         <div class="card" id="lairs-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
@@ -563,9 +563,9 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
 // ── EQUIPMENT SLOTS (Item 11, Sept 2026) — mirror of the GM engine's tables ──
-const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,consumable:2}; // shield slot added 2026-09-10 (mirror) · consumable ×2 added 2026-09-11
-const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman',consumable:'Consumables (up to two)'};
-const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet','consumable'];
+const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}; // shield slot added 2026-09-10 (mirror) · combat ×2 added 2026-09-11 (as 'consumable'; renamed to the Combat Item slot 2026-09-14)
+const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman',combat:'Combat Items (up to two)'};
+const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet','combat'];
 const ITEM_SLOT_OF_P={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
@@ -591,9 +591,9 @@ function itemTierTagP(it){
 }
 function itemSlotP(it){ if(!it) return null;
   // A shield is a shield even when its power is a once-per-fight ward (Anvil-Brand Shield) - mirrors
-  // the GM engine, where the shield test runs before the consumable test.
+  // the GM engine, where the shield test runs before the combat-item test.
   if(ITEM_SLOT_OF_P[it.name]==='shield') return 'shield';
-  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // potions / scrolls / devices take a Consumable slot (two per character) — mirrors GM itemSlot
+  if(it.effect&&it.effect.stat==='combatUse') return 'combat'; // 2026-09-14 (Toby item 1): potions / scrolls / devices are COMBAT ITEMS and take a Combat Item slot (two per character) — mirrors GM itemSlot
   if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // Mithril is worn in the armour slot
   if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded.
@@ -2353,6 +2353,27 @@ function renderReportView(report){
         ?'<span style="font-size:.72rem;color:#5a3a7a">💀 A hero with the Resurrect spell can raise them from this province.</span>'
         :'<span style="font-size:.72rem;color:#888">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
     </div>`).join('');
+  }
+
+  // ── GRAVEYARDS KNOWN (2026-09-14, Toby item 2) ─────────────────────────────────────────────
+  // Every province this realm has learned holds battlefield graves. A necromancer standing on the
+  // ground senses only THAT they are there; Control Undead's province scan buys the roll of the
+  // dead, and that fuller reading is shown here too. Both are stamped with the turn they were
+  // learned, because neither is refreshed from a distance — the graves may since have been raised
+  // or rotted away.
+  const graveIntel=report.graveIntel||[];
+  if(graveIntel.length>0){
+    otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#4a4a4a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Graveyards Known</div>`;
+    otherForcesHtml+=graveIntel.map(g=>{
+      const det=(g.detail&&g.detail.length)
+        ? `<span style="color:#5a3a7a">The dead:</span> ${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${(g.detailTurn&&g.detailTurn!==g.turn)?` <span style="color:#999">(read turn ${g.detailTurn})</span>`:''}`
+        : '<span style="color:#777">Graves lie here — how many, and what they hold, is unknown.</span>';
+      return `<div class="intel-entry" style="border-left-color:#4a4a4a;background:#f6f6f4">
+        <strong>${g.name}</strong> <span style="color:#888;font-size:.78rem">(seen on turn ${g.turn!=null?g.turn:'?'})</span><br>
+        <span style="font-size:.78rem">${det}</span><br>
+        <span style="font-size:.72rem;color:#888">Older knowledge — these graves may since have been raised or rotted away.</span>
+      </div>`;
+    }).join('');
   }
 
   // Mercenary bands visible in accessible provinces → Other Armies & Heroes card
@@ -6028,7 +6049,7 @@ function buildTargetField(c, ph, saved){
       // this phase; target = comma-separated chosen item names. Unlisted slot items are unequipped;
       // a slot left on '— none —' is auto-filled by the engine with the first item held for it.
       const held=predictedItems(c.id,ph).filter(it=>it&&itemSlotP(it)&&itemUsableByP(it,c)); // Item 4: bound items you can't use aren't offered
-      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or consumable items)" disabled>`;
+      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)" disabled>`;
       const chosen=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
       const rows=ITEM_SLOT_ORDER_P.map(sl=>{
         const opts=held.filter(it=>itemSlotP(it)===sl); if(opts.length===0) return '';
@@ -7520,6 +7541,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1039</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.14-1250</div>
 </body>
 </html>

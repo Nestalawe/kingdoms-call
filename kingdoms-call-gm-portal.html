@@ -3140,7 +3140,7 @@ const SEA_GUARDIAN_NAMES=new Set(['Sea Serpent','Kraken Spawn','Storm Eagle','Gi
 // replaces the old name-regex traits in monsterTraits (kept only as a fallback for legacy saves).
 const MONSTER_CATS=['humanoid','undead','beast','vermin','giant','dragon','fiend','fey','aberration','elemental','construct'];
 const MONSTER_CAT_ITEM_USE={humanoid:'all',undead:'all',giant:'all',fiend:'all',fey:'trinket',dragon:'trinket',beast:'none',vermin:'none',aberration:'none',elemental:'none',construct:'none'};
-const _TRINKET_SLOTS=new Set(['ring','amulet','cloak','helm','consumable']); // consumable added 2026-09-11 (they had no slot before, so were always wieldable)
+const _TRINKET_SLOTS=new Set(['ring','amulet','cloak','helm','combat']); // combat items added 2026-09-11 as 'consumable' (they had no slot before, so were always wieldable); renamed to the Combat Item slot 2026-09-14
 function monsterCat(m){
   if(m&&m.cat) return m.cat;
   const n=((m&&m.name)||'').toLowerCase();
@@ -3599,7 +3599,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Amulet of the Deep Root',slot:'amulet',desc:'Amulet: recover 2 HP at the start of every combat round.',lore:'A knotted root that keeps drawing on something far below. Recover 2 HP at the start of every round.',effect:{stat:'pc',pc:{ward:'regen',amt:2}},tier:2},
   {name:'Charm of the Turned Blade',slot:'amulet',desc:'Amulet: melee blows deal 1 less damage to you.',lore:'A bent nail on a thong; it was bent stopping something. Melee blows deal 1 less damage to you.',effect:{stat:'pc',pc:{ward:'meleeDR',amt:1}},tier:1},
   {name:'Locket of the Hearthkeeper',slot:'amulet',desc:'Max HP +4',lore:'Someone at home is still waiting, and it matters. Maximum HP +4.',effect:{stat:'maxHp',bonus:4},tier:1},
-  // ── 2026-09-11 (Toby, session i): 41 further consumables, so the Consumable slot is as deep as every
+  // ── 2026-09-11 (Toby, session i): 41 further combat items, so the Combat Item slot is as deep as every
   // worn slot (90). One name per effect, as ruled in 84.3 — these are new DESIGNS, not renamed copies.
   {name:'Draught of the Badger',desc:'Combat use: recover 6 HP once per fight (drunk when below 60% health).',lore:'Thick, bitter and brewed by people who expect to be bitten. Used once per personal combat when below 60% health: recover 6 HP.',effect:{stat:'combatUse',use:'heal',amt:6,below:0.6,bonus:0},tier:1},
   {name:'Surgeon\'s Flask',desc:'Combat use: recover 11 HP once per fight (drunk when below half health).',lore:'Spirits strong enough to clean a wound and dull it at once. Used once per personal combat below half health: recover 11 HP.',effect:{stat:'combatUse',use:'heal',amt:11,below:0.5,bonus:0},tier:2},
@@ -3808,7 +3808,7 @@ const _ITEM_NAME_ALTS={
   const extra=[];
   ALL_MAGIC_ITEMS_P.forEach(it=>{
     if(it.tier!==1&&it.tier!==2) return;
-    if(it.effect&&it.effect.stat==='combatUse') return; // 2026-09-11 (Toby): ONE version of each consumable — no clones (their alt names stay in _ITEM_ALT_BASE so items already in saves still resolve)
+    if(it.effect&&it.effect.stat==='combatUse') return; // 2026-09-11 (Toby): ONE version of each combat item — no clones (their alt names stay in _ITEM_ALT_BASE so items already in saves still resolve)
     (_ITEM_NAME_ALTS[it.name]||[]).forEach(nm=>{
       extra.push({...it, effect:{...it.effect}, name:nm}); // same effect/desc/tier, new name
     });
@@ -3890,12 +3890,56 @@ function lairItemTier(power){ return ITEM_TIER_OF_POWER[power]||1; }
 //   1. every LEGENDARY (tier-3) item is placed — toughest guardians first, one per lair, then a second round if
 //      there are more legendaries than lairs — whatever the map size;
 //   2. every other hoard slot is filled so the item CATEGORIES (weapon, armour, shield, helm, cloak, ring, amulet,
-//      consumable, unslotted trinket) come out in equal proportion: each slot goes to the category with the
+//      combat item, unslotted trinket) come out in equal proportion: each slot goes to the category with the
 //      fewest items placed so far, preferring the tier the lair's power would have rolled.
 // Names stay unique game-wide (gs._awardedItems). Lairs created later in play (Discover Lost Ruin etc.) still
 // draw through rollMagicItem.
-const HOARD_CATEGORIES=['weapon','armour','shield','helm','cloak','ring','amulet','consumable','trinket'];
+const HOARD_CATEGORIES=['weapon','armour','shield','helm','cloak','ring','amulet','combat','trinket'];
 function itemHoardCategory(it){ return itemSlot(it)||'trinket'; }
+// 2026-09-14 (Toby item 1): the Consumable slot became the Combat Item slot. A live save still holds
+// its old tally under the retired key; fold it into the new one so the even-distribution draw does
+// not decide the realm has never found a combat item and flood it with them. Called by BOTH the
+// writer (noteItemFound) and the reader (rollMagicItemFor) — patching only one leaves the other stale.
+function migrateHoardTally(pl){
+  if(!pl||!pl._itemsFoundByCat) return;
+  const t=pl._itemsFoundByCat;
+  if(t.consumable!=null){ t.combat=(t.combat||0)+t.consumable; delete t.consumable; }
+}
+
+// ══ GRAVEYARD LORE (2026-09-14, Toby item 2) ═══════════════════════════════════════════════════
+// A character with any Necromancy at all feels the battlefield dead underfoot. At the end of their
+// last phase they learn that a province they stand in HOLDS graves — nothing more. A stronger
+// effect (Control Undead's province scan) records the roll of the dead as well.
+//
+// Stored per REALM, not per character, and kept forever: `pl._graveIntel[provId] =
+//   { turn, detail:[{k:'Average Orc Berserkers', n:2}]|null, detailTurn:N|null }`
+// The record is deliberately allowed to go stale — the graves may have been raised or rotted since
+// — so the report always stamps the turn it was learned. Detail once learned is never downgraded to
+// a bare sensing; it just keeps its own (older) turn stamp.
+function noteGraveIntel(pl, provId, turn, graves){
+  if(!pl||provId==null) return;
+  if(!pl._graveIntel||typeof pl._graveIntel!=='object'||Array.isArray(pl._graveIntel)) pl._graveIntel={};
+  const list=Array.isArray(graves)?graves:null;
+  // Standing in the province and finding it bare is knowledge too: forget the old record rather
+  // than keep promising graves the character can see are not there.
+  if(list&&list.length===0){ delete pl._graveIntel[provId]; return; }
+  const prev=pl._graveIntel[provId]||{};
+  const rec={turn:turn, detail:prev.detail||null, detailTurn:prev.detailTurn||null};
+  if(list&&list.length){
+    const counts={}; list.forEach(g=>{ const k=`${g&&g.quality||'Average'} ${g&&g.type||'unit'}`; counts[k]=(counts[k]||0)+1; });
+    rec.detail=Object.entries(counts).map(([k,n])=>({k,n})); rec.detailTurn=turn;
+  }
+  pl._graveIntel[provId]=rec;
+}
+// The realm's graveyard lore, shaped for the player report ("Graveyards known").
+function graveIntelFor(gs, pl){
+  if(!gs||!pl||!pl._graveIntel) return [];
+  return Object.keys(pl._graveIntel).map(k=>{
+    const pv=gs.world&&gs.world.provinces&&gs.world.provinces[k]; const rec=pl._graveIntel[k]||{};
+    return {provinceId:isNaN(+k)?k:+k, name:(pv&&pv.name)||'an unmapped province',
+            turn:rec.turn||null, detail:rec.detail||null, detailTurn:rec.detailTurn||null};
+  }).sort((a,b)=>(b.turn||0)-(a.turn||0)||String(a.name).localeCompare(String(b.name)));
+}
 // ── EVEN DISTRIBUTION PER PLAYER (2026-09-11, Toby: "so players won't keep finding the same type of
 // item all the time") ─────────────────────────────────────────────────────────────────────────────
 // Balancing the WORLD's hoards (84.5) does not by itself balance what any one realm finds: a player
@@ -3903,7 +3947,7 @@ function itemHoardCategory(it){ return itemSlot(it)||'trinket'; }
 //
 //   1. REGIONAL STOCKING (below). Every lair is assigned to the nearest king's home province, and the
 //      category counter is kept PER REGION — so each realm's own neighbourhood holds an even spread of
-//      weapons, armour, shields, helms, cloaks, rings, amulets, consumables and trinkets, not just the
+//      weapons, armour, shields, helms, cloaks, rings, amulets, combat items and trinkets, not just the
 //      world as a whole. A realm that never leaves home still sees one of everything.
 //   2. A CORRECTIVE DRAW (rollMagicItemFor). Items won in play — bonus finds, newly discovered ruins —
 //      are drawn from whichever category THAT player has found least of so far, so a run of, say, four
@@ -3928,6 +3972,7 @@ function noteItemFound(gs, playerIndex, it){
   if(!gs||playerIndex==null||!it) return;
   const pl=(gs.players||[])[playerIndex]; if(!pl) return;
   if(!pl._itemsFoundByCat) pl._itemsFoundByCat={};
+  migrateHoardTally(pl);
   const cat=itemHoardCategory(it);
   pl._itemsFoundByCat[cat]=(pl._itemsFoundByCat[cat]||0)+1;
 }
@@ -3937,6 +3982,7 @@ function rollMagicItemFor(gs, playerIndex, monsterPower, taken){
   taken=taken||new Set();
   const pl=(gs&&gs.players||[])[playerIndex];
   if(!pl) return rollMagicItem(monsterPower, taken);
+  migrateHoardTally(pl);
   const found=pl._itemsFoundByCat||{};
   const t=lairItemTier(monsterPower);
   const avail=(c,tt)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&(tt==null||it.tier===tt)&&!taken.has(it.name)&&itemHoardCategory(it)===c);
@@ -4189,8 +4235,8 @@ function encounterUntargetableReason(c){
 // slot items give their effect. Everything without a slot is always active. `activeItems(c)` is the
 // single gate every effect read goes through; it normalises first (auto-equips an empty slot with the
 // first item held, trims any over-cap), so pre-existing saves and new pick-ups need no migration.
-const ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,consumable:2}; // shield slot added 2026-09-10 · consumable ×2 added 2026-09-11
-const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (body armour, gauntlets, gloves, boots)',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant',consumable:'Consumables (two — potions, scrolls, devices)'};
+const ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}; // shield slot added 2026-09-10 · combat ×2 added 2026-09-11 (as 'consumable'; renamed to the Combat Item slot 2026-09-14)
+const ITEM_SLOT_LABEL={weapon:'Weapon (blades, bows, staves, wands, sceptres)',armour:'Armour (body armour, gauntlets, gloves, boots)',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (two)',amulet:'Amulet / talisman / pendant',combat:'Combat Items (two — potions, scrolls, devices)'};
 const ITEM_SLOT_OF={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
@@ -4209,7 +4255,7 @@ function itemSlot(it){ if(!it) return null;
   // 2026-09-11 (Toby): a SHIELD is a shield even when its power is a once-per-fight ward - the
   // Anvil-Brand Shield is strapped to the arm, not drunk. The shield test therefore comes first.
   if(_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name]||it.name)) return 'shield';
-  if(it.effect&&it.effect.stat==='combatUse') return 'consumable'; // every other potion / scroll / device takes a Consumable slot (two per character)
+  if(it.effect&&it.effect.stat==='combatUse') return 'combat'; // 2026-09-14 (Toby item 1): every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so items saved with the old inline slot:'consumable' re-resolve here with no migration.
   if(it.effect&&it.effect.stat==='mithrilArmour') return 'armour';  // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF[it.name]||ITEM_SLOT_OF[_ITEM_ALT_BASE[it.name]]||null; }
 
@@ -4244,9 +4290,9 @@ const LEGENDARY_ITEMS_P=[
   // -- amulet --
   {name:'Heartstone of the Deep Vigil',slot:'amulet',desc:'Max HP +10, immune to burns, poisons and bleeding, foes -8% to hit you.',lore:'A stone cut from the floor of a shrine that was watched, unbroken, for four hundred years. Maximum HP +10, no burn, poison or bleed ever takes hold, and the foe fights at -8% to hit.',effect:{stat:'maxHp',bonus:10,pc:{ward:'dotImmune',aura:8}},tier:4},
   {name:'Pendant of the Ten Thousand Eyes',slot:'amulet',desc:'Amulet: once per fight recover 35% of max HP when nearly spent; +16% to hit throughout.',lore:'Every facet holds a watcher, and between them they miss nothing - least of all the moment you are about to fall. Once per fight, driven near defeat, you recover 35% of your maximum HP; you fight at +16% to hit.',effect:{stat:'pc',pc:{ward:'secondWind',pct:35,hitBonus:16}},tier:4},
-  // -- consumable --
-  {name:'Vial of the Riven Sky',slot:'consumable',desc:'Combat use: 26-36 damage and the foe loses their next action.',lore:'A finger of the storm that split the sky over the Broken Field, stoppered while it was still screaming. 26-36 damage, and the foe loses an action.',effect:{stat:'combatUse',use:'dmg',dmg:[26,36],stun:1,bonus:0},tier:4},
-  {name:'Draught of the Undying',slot:'consumable',desc:'Combat use: recover 26 HP and shed every poison, burn and blinding.',lore:'Drawn from a well that the dying were once carried a hundred miles to reach. Recover 26 HP, and every affliction on you lifts at once.',effect:{stat:'combatUse',use:'secondwind',amt:26,below:0.6,bonus:0},tier:4},
+  // -- combat item --
+  {name:'Vial of the Riven Sky',slot:'combat',desc:'Combat use: 26-36 damage and the foe loses their next action.',lore:'A finger of the storm that split the sky over the Broken Field, stoppered while it was still screaming. 26-36 damage, and the foe loses an action.',effect:{stat:'combatUse',use:'dmg',dmg:[26,36],stun:1,bonus:0},tier:4},
+  {name:'Draught of the Undying',slot:'combat',desc:'Combat use: recover 26 HP and shed every poison, burn and blinding.',lore:'Drawn from a well that the dying were once carried a hundred miles to reach. Recover 26 HP, and every affliction on you lifts at once.',effect:{stat:'combatUse',use:'secondwind',amt:26,below:0.6,bonus:0},tier:4},
   // -- the six great unslotted relics --
   {name:'Crystal Orb',desc:'Spy always succeeds - no roll needed',lore:'It shows the watcher what they came to see, and does not ask whether they should see it. Every Spy order you give succeeds without a roll.',effect:{stat:'spyAuto'},tier:4,_unscorable:true},
   {name:'Battle Standard',desc:'All armies led: strength +4 each',lore:'A standard that has never touched the ground, through three dynasties and one long defeat. Every army you lead fights at +4 strength.',effect:{stat:'armyBonus',bonus:4},tier:4},
@@ -4267,7 +4313,7 @@ const LEGENDARY_NAMES_P=new Set(LEGENDARY_ITEMS_P.map(it=>it.name));
 //      LEGENDARY - the tier written in the table above is only a starting hint and is overwritten.
 //      Band sizes follow how common each guardian is, so the stock roughly matches the demand.
 //   3. TOP UP any (kind x tier) that is short, by minting further named versions of the designs
-//      already in that band. Consumables and legendary relics are NEVER minted: one name each.
+//      already in that band. Combat items and legendary relics are NEVER minted: one name each.
 //
 // Item count falls from ~860 to ~600 because a lair now takes one item instead of up to three.
 const ITEM_TIER_TARGET={1:34,2:25,3:10};   // stock per kind, per tier (legendaries are the curated list)
@@ -4432,7 +4478,7 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
   const taken=new Set(ALL_MAGIC_ITEMS_P.map(it=>it.name));
   const minted=[];
   HOARD_CATEGORIES.forEach(cat=>{
-    const bank=_VARIANT_BANK[cat]; if(!bank) return; // consumables have no bank: one name each, by ruling
+    const bank=_VARIANT_BANK[cat]; if(!bank) return; // combat items have no bank: one name each, by ruling
     const nounsFor=(seed)=>{
       if(cat!=='weapon') return bank.noun;
       const st=(seed.effect||{}).stat;
@@ -4451,7 +4497,7 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     [1,2,3].forEach(t=>{
       const want=ITEM_TIER_TARGET[t];
       const inBand=ALL_MAGIC_ITEMS_P.filter(it=>it.tier===t&&itemHoardCategory(it)===cat);
-      // Seeds should be usable by anyone, and never a consumable (one name each, by ruling). If a
+      // Seeds should be usable by anyone, and never a combat item (one name each, by ruling). If a
       // band holds nothing but race- or alignment-bound designs, seed from those instead and let the
       // minted versions carry the same binding - a short band would otherwise leave the stocker
       // handing that kind's lairs an item of the wrong tier.
@@ -8882,6 +8928,9 @@ function buildTurnReport(gameState, playerIndex){
     mercIntel,
     visibleDeadHeroes,
     knownDeadHeroes,
+    // 2026-09-14 (Toby item 2): every province this realm knows holds battlefield graves, with the
+    // turn it was learned. Deliberately stale-tolerant — the graves may since have been raised.
+    graveIntel:graveIntelFor(gameState, gameState.players[playerIndex]),
     // 2026-09-12 (item 3): guardian weaknesses this realm has learned — by scouting one, or by
     // watching one bite. Keyed by guardian NAME, so the lesson applies to every lair holding that kind.
     knownGuardianWeaknesses:(()=>{
@@ -8998,7 +9047,7 @@ const SAGE_DISCOVERIES_P=[
   // ── RACE-SPECIFIC (Item 5, 2026-09-07; reworked 2026-09-09 item 2) ── only a realm whose king is of that race can discover
   //    these. Each set now leans into the race's own gifts (Human drill & learning, Elven woods/bows/escape, Dwarven
   //    holds/smithing/mithril, Orcish assault/plunder/hardiness) — the old copy-paste generics are gone. ──
-  {id:"rh01",name:"Free Companies",category:"Human Heritage",race:"Human",desc:"Free Lances and Gilded Lances led by your characters fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,types:["Free Lances","Gilded Lances"]}},
+  {id:"rh01",name:"Free Companies",category:"Human Heritage",race:"Human",desc:"Free Lances and Gilded Lances of your realm fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,types:["Free Lances","Gilded Lances"]}},
   {id:"rh02",name:"Yeoman Musters",category:"Human Heritage",race:"Human",desc:"Shieldwall Levies and Yeoman Longbows cost 1g less to recruit (minimum 1g).",effect:{kind:"recruitCost",delta:-1,types:["Shieldwall Levies","Yeoman Longbows"]}},
   {id:"rh03",name:"Drill Fields",category:"Human Heritage",race:"Human",desc:"Armies your characters lead are 15% more likely to be promoted after a battle (on top of the Drillmasters gift).",effect:{kind:"promo",pct:0.15}},
   {id:"rh04",name:"Plainsman's Stride",category:"Human Heritage",race:"Human",desc:"Human armies of your realm fight at +10% strength on plains.",effect:{kind:"unitStr",pct:0.1,race:"Human",terrain:["plain"]}},
@@ -9008,20 +9057,20 @@ const SAGE_DISCOVERIES_P=[
   {id:"rh08",name:"Wandering Scholars",category:"Human Heritage",race:"Human",desc:"Every Research order your characters give has +5% discovery chance.",effect:{kind:"research",pct:5}},
   {id:"rh09",name:"Toll Roads",category:"Human Heritage",race:"Human",desc:"Human land armies of Speed 1-2 in your service gain +1 move point per turn.",effect:{kind:"move",extra:1,race:"Human"}},
   {id:"rh10",name:"Household Knights",category:"Human Heritage",race:"Human",desc:"Cavalry led by your KING in person fights at +20% strength.",effect:{kind:"unitStr",pct:0.2,cls:"cavalry",king:true}},
-  {id:"re01",name:"Silverwood Bows",category:"Elven Heritage",race:"Elven",desc:"Elven Bowmen and Shadow Archers led by your characters fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,types:["Elven Bowmen","Shadow Archers"]}},
+  {id:"re01",name:"Silverwood Bows",category:"Elven Heritage",race:"Elven",desc:"Elven Bowmen and Shadow Archers of your realm fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,types:["Elven Bowmen","Shadow Archers"]}},
   {id:"re02",name:"Eagle Aeries",category:"Elven Heritage",race:"Elven",desc:"Eagle Riders cost 2g less to recruit (minimum 1g).",effect:{kind:"recruitCost",delta:-2,types:["Eagle Riders"]}},
   {id:"re03",name:"Starlight Paths",category:"Elven Heritage",race:"Elven",desc:"All your Explore orders map 25% more of the province.",effect:{kind:"explore",mult:1.25}},
   {id:"re04",name:"Wardens of the Glade",category:"Elven Heritage",race:"Elven",desc:"Elven armies of your realm defending in forest or jungle fight at +15% strength (on top of Woodland Mastery).",effect:{kind:"unitStr",pct:0.15,race:"Elven",terrain:["forest","jungle"],side:"def"}},
   {id:"re05",name:"Silent Scouts",category:"Elven Heritage",race:"Elven",desc:"+10% to all Spy order success chances for your characters.",effect:{kind:"spy",pct:0.1}},
-  {id:"re06",name:"Moonlit Sails",category:"Elven Heritage",race:"Elven",desc:"Elven Galleys led by your characters fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Elven Galleys"]}},
+  {id:"re06",name:"Moonlit Sails",category:"Elven Heritage",race:"Elven",desc:"Elven Galleys of your realm fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Elven Galleys"]}},
   {id:"re07",name:"Sylvan Glamours",category:"Elven Heritage",race:"Elven",desc:"Illusory Magic spells cast by your characters have +10% chance of success (capped at 95%).",effect:{kind:"cast",pct:10,school:"illusory"}},
   {id:"re08",name:"Hidden Trails",category:"Elven Heritage",race:"Elven",desc:"Enemy Spy orders on your provinces have 15% lower success chance.",effect:{kind:"counterSpy",pct:0.15}},
   {id:"re09",name:"Forest Bounty",category:"Elven Heritage",race:"Elven",desc:"Forest and jungle provinces you own yield +1 gold per turn.",effect:{kind:"tax",bonus:1,terrains:["forest","jungle"]}},
   {id:"re10",name:"Homeward Song",category:"Elven Heritage",race:"Elven",desc:"Your elven units that would die in battle are 15% more likely to slip away and make for home (Homeward Flight).",effect:{kind:"elvenEscape",pct:15}},
   {id:"rd01",name:"Deep Delving",category:"Dwarven Heritage",race:"Dwarven",desc:"Mountain provinces you own yield +2 gold per turn.",effect:{kind:"tax",bonus:2,terrains:["mountain"]}},
   {id:"rd02",name:"Runeforged Mail",category:"Dwarven Heritage",race:"Dwarven",desc:"Dwarven armies of your realm have 25% less chance of dying in battle.",effect:{kind:"deathRed",pct:0.25,race:"Dwarven"}},
-  {id:"rd03",name:"Master Gunners",category:"Dwarven Heritage",race:"Dwarven",desc:"Mountain Guns led by your characters fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Mountain Guns"]}},
-  {id:"rd04",name:"Ironclad Hulls",category:"Dwarven Heritage",race:"Dwarven",desc:"Dwarf Ironclads led by your characters fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Dwarf Ironclads"]}},
+  {id:"rd03",name:"Master Gunners",category:"Dwarven Heritage",race:"Dwarven",desc:"Mountain Guns of your realm fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Mountain Guns"]}},
+  {id:"rd04",name:"Ironclad Hulls",category:"Dwarven Heritage",race:"Dwarven",desc:"Dwarf Ironclads of your realm fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Dwarf Ironclads"]}},
   {id:"rd05",name:"Hold-Fast",category:"Dwarven Heritage",race:"Dwarven",desc:"Your forces defending a province you own fight at +10% strength (on top of the Bulwark gift).",effect:{kind:"defOwn",pct:0.1}},
   {id:"rd06",name:"Stonecunning",category:"Dwarven Heritage",race:"Dwarven",desc:"Explore orders in mountain provinces map 50% more.",effect:{kind:"explore",mult:1.5,terrains:["mountain"]}},
   {id:"rd07",name:"Guild Halls",category:"Dwarven Heritage",race:"Dwarven",desc:"Dwarven units cost 1g less to recruit (minimum 1g).",effect:{kind:"recruitCost",delta:-1,race:"Dwarven"}},
@@ -9031,8 +9080,8 @@ const SAGE_DISCOVERIES_P=[
   {id:"ro01",name:"Blood Frenzy",category:"Orcish Heritage",race:"Orcish",desc:"Orcish armies of your realm fight at +15% strength when attacking.",effect:{kind:"unitStr",pct:0.15,race:"Orcish",side:"atk"}},
   {id:"ro02",name:"Wyvern Broods",category:"Orcish Heritage",race:"Orcish",desc:"Wyvern Riders cost 2g less to recruit (minimum 1g).",effect:{kind:"recruitCost",delta:-2,types:["Wyvern Riders"]}},
   {id:"ro03",name:"Plunder Hoards",category:"Orcish Heritage",race:"Orcish",desc:"Gold taken from lairs your characters clear is increased by 25%.",effect:{kind:"lairGold",pct:0.25}},
-  {id:"ro04",name:"Warg Packs",category:"Orcish Heritage",race:"Orcish",desc:"Warg Riders led by your characters fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Warg Riders"]}},
-  {id:"ro05",name:"Endless Horde",category:"Orcish Heritage",race:"Orcish",desc:"Goblin Hordes led by your characters fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Goblin Horde"]}},
+  {id:"ro04",name:"Warg Packs",category:"Orcish Heritage",race:"Orcish",desc:"Warg Riders of your realm fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Warg Riders"]}},
+  {id:"ro05",name:"Endless Horde",category:"Orcish Heritage",race:"Orcish",desc:"Goblin Hordes of your realm fight at +20% strength.",effect:{kind:"unitStr",pct:0.2,types:["Goblin Horde"]}},
   {id:"ro06",name:"Desert Raiders",category:"Orcish Heritage",race:"Orcish",desc:"Orcish armies of your realm fight at +15% strength in desert.",effect:{kind:"unitStr",pct:0.15,race:"Orcish",terrain:["desert"]}},
   {id:"ro07",name:"War Chants",category:"Orcish Heritage",race:"Orcish",desc:"Your forces are 10% more likely to be seized by fanatical zeal in battle.",effect:{kind:"fanatic",pct:0.1}},
   {id:"ro08",name:"Thick Hides",category:"Orcish Heritage",race:"Orcish",desc:"Every character in your service has +5 maximum HP (on top of the Iron Constitution gift).",effect:{kind:"maxHp",hp:5}},
@@ -9047,11 +9096,11 @@ const SAGE_DISCOVERIES_P=[
   {id:"ad04",name:"Tithes",category:"Divine Creed",alignment:"Divine",desc:"Every province you own with tax 4 or more yields +1 gold per turn.",effect:{kind:"tax",bonus:1,minTax:4}},
   {id:"ad05",name:"Sacred Oaths",category:"Divine Creed",alignment:"Divine",desc:"Your forces are 10% more likely to be seized by fanatical zeal in battle (60% for a Divine realm).",effect:{kind:"fanatic",pct:0.1}},
   {id:"ad06",name:"Healing Hands",category:"Divine Creed",alignment:"Divine",desc:"Every Rest order restores +4 HP (on top of the Divine threefold rest).",effect:{kind:"rest",hp:4}},
-  {id:"ad07",name:"Crusader Cavalry",category:"Divine Creed",alignment:"Divine",desc:"Cavalry led by your characters fights at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"cavalry"}},
+  {id:"ad07",name:"Crusader Cavalry",category:"Divine Creed",alignment:"Divine",desc:"Cavalry of your realm fights at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"cavalry"}},
   {id:"ad08",name:"Sanctified Walls",category:"Divine Creed",alignment:"Divine",desc:"Your forces defending a province you own fight at +10% strength.",effect:{kind:"defOwn",pct:0.1}},
   {id:"ad09",name:"Rites of Plenty",category:"Divine Creed",alignment:"Divine",desc:"Bless Province cast by your characters yields a further +20% of the province's tax (e.g. a Divine king's blessing gives +120%).",effect:{kind:"bless",pct:0.2}},
   {id:"ad10",name:"Relic Hunters",category:"Divine Creed",alignment:"Divine",desc:"+10% chance of finding a magic item in any lair your characters clear.",effect:{kind:"itemChance",pct:0.1}},
-  {id:"ag01",name:"Shield Brothers",category:"Good Creed",alignment:"Good",desc:"Infantry led by your characters fights at +10% strength.",effect:{kind:"unitStr",pct:0.1,cls:"infantry"}},
+  {id:"ag01",name:"Shield Brothers",category:"Good Creed",alignment:"Good",desc:"Infantry of your realm fights at +10% strength.",effect:{kind:"unitStr",pct:0.1,cls:"infantry"}},
   {id:"ag02",name:"Just Taxes",category:"Good Creed",alignment:"Good",desc:"Every province you own with tax 3 or more yields +1 gold per turn.",effect:{kind:"tax",bonus:1,minTax:3}},
   {id:"ag03",name:"Loyal Retainers",category:"Good Creed",alignment:"Good",desc:"The wages of every hero you employ are reduced by 1g (minimum 1g).",effect:{kind:"heroWage",amount:1}},
   {id:"ag04",name:"Shieldbearers",category:"Good Creed",alignment:"Good",desc:"All your armies have 15% less chance of dying in battle.",effect:{kind:"deathRed",pct:0.15}},
@@ -9061,7 +9110,7 @@ const SAGE_DISCOVERIES_P=[
   {id:"ag08",name:"Common Cause",category:"Good Creed",alignment:"Good",desc:"Allied contingents converging on the same battle unify a further +15% more readily (on top of the Banner of Fellowship).",effect:{kind:"unify",pct:15}},
   {id:"ag09",name:"Righteous Fervour",category:"Good Creed",alignment:"Good",desc:"Your forces are 10% more likely to be seized by fanatical zeal in battle.",effect:{kind:"fanatic",pct:0.1}},
   {id:"ag10",name:"Bulwark of the Realm",category:"Good Creed",alignment:"Good",desc:"Your forces defending a province you own fight at +10% strength (on top of Righteous Defence).",effect:{kind:"defOwn",pct:0.1}},
-  {id:"au01",name:"Beast Tongues",category:"Druidic Creed",alignment:"Druidic",desc:"Creature armies led by your characters fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"creature"}},
+  {id:"au01",name:"Beast Tongues",category:"Druidic Creed",alignment:"Druidic",desc:"Creature armies of your realm fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"creature"}},
   {id:"au02",name:"Wild Groves",category:"Druidic Creed",alignment:"Druidic",desc:"Forest and jungle provinces you own yield +1 gold per turn.",effect:{kind:"tax",bonus:1,terrains:["forest","jungle"]}},
   {id:"au03",name:"Great Migrations",category:"Druidic Creed",alignment:"Druidic",desc:"Creature armies of Speed 1-2 in your service gain +1 move point per turn.",effect:{kind:"move",extra:1,cls:"creature"}},
   {id:"au04",name:"Nest Wardens",category:"Druidic Creed",alignment:"Druidic",desc:"Creature armies cost 1g less to recruit (minimum 1g).",effect:{kind:"recruitCost",delta:-1,cls:"creature"}},
@@ -9085,14 +9134,14 @@ const SAGE_DISCOVERIES_P=[
   {id:"ap02",name:"Blood Runes",category:"Pagan Creed",alignment:"Pagan",desc:"Your forces are 10% more likely to be seized by fanatical zeal in battle.",effect:{kind:"fanatic",pct:0.1}},
   {id:"ap03",name:"The Old Ways",category:"Pagan Creed",alignment:"Pagan",desc:"Elemental Magic spells cast by your characters have +10% chance of success (capped at 95%).",effect:{kind:"cast",pct:10,school:"elemental"}},
   {id:"ap04",name:"Hill Tribes",category:"Pagan Creed",alignment:"Pagan",desc:"Mountain and forest provinces you own yield +1 gold per turn.",effect:{kind:"tax",bonus:1,terrains:["mountain","forest"]}},
-  {id:"ap05",name:"Wolf Brothers",category:"Pagan Creed",alignment:"Pagan",desc:"Monster armies led by your characters fight at +10% strength.",effect:{kind:"unitStr",pct:0.1,cls:"monster"}},
-  {id:"ap06",name:"Berserk Oaths",category:"Pagan Creed",alignment:"Pagan",desc:"Infantry led by your characters fights at +10% strength when attacking.",effect:{kind:"unitStr",pct:0.1,cls:"infantry",side:"atk"}},
+  {id:"ap05",name:"Wolf Brothers",category:"Pagan Creed",alignment:"Pagan",desc:"Monster armies of your realm fight at +10% strength.",effect:{kind:"unitStr",pct:0.1,cls:"monster"}},
+  {id:"ap06",name:"Berserk Oaths",category:"Pagan Creed",alignment:"Pagan",desc:"Infantry of your realm fights at +10% strength when attacking.",effect:{kind:"unitStr",pct:0.1,cls:"infantry",side:"atk"}},
   {id:"ap07",name:"Spirit Walkers",category:"Pagan Creed",alignment:"Pagan",desc:"All your Explore orders map 25% more of the province.",effect:{kind:"explore",mult:1.25}},
   {id:"ap08",name:"The Long Hunt",category:"Pagan Creed",alignment:"Pagan",desc:"Creatures bound by the Rite of the Wild Hunt serve one full turn longer before the binding fails.",effect:{kind:"wildHunt",turns:1}},
   {id:"ap09",name:"Skull Tithe",category:"Pagan Creed",alignment:"Pagan",desc:"Blood Harvest yields +1g more for every enemy unit your characters destroy in a victory (2g each).",effect:{kind:"bloodHarvest",gold:1}},
   {id:"ap10",name:"Rune Wards",category:"Pagan Creed",alignment:"Pagan",desc:"Enemy Spy orders on your provinces have 15% lower success chance.",effect:{kind:"counterSpy",pct:0.15}},
   {id:"ae01",name:"Slave Markets",category:"Evil Creed",alignment:"Evil",desc:"Humanoid units cost 1g less to recruit (minimum 1g).",effect:{kind:"recruitCost",delta:-1,cls:"humanoid"}},
-  {id:"ae02",name:"Monster Pits",category:"Evil Creed",alignment:"Evil",desc:"Monster armies led by your characters fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"monster"}},
+  {id:"ae02",name:"Monster Pits",category:"Evil Creed",alignment:"Evil",desc:"Monster armies of your realm fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"monster"}},
   {id:"ae03",name:"Reign of Terror",category:"Evil Creed",alignment:"Evil",desc:"Terror bites deeper: each terror stack your victories leave on a province costs its next defenders a further 5% strength (15% per stack instead of 10%).",effect:{kind:"terror",pct:0.05}},
   {id:"ae04",name:"Poisoners' Guild",category:"Evil Creed",alignment:"Evil",desc:"+10% to all Spy order success chances for your characters.",effect:{kind:"spy",pct:0.1}},
   {id:"ae05",name:"Dark Pacts",category:"Evil Creed",alignment:"Evil",desc:"All spells cast by your characters have +5% chance of success (capped at 95%).",effect:{kind:"cast",pct:5}},
@@ -9100,8 +9149,8 @@ const SAGE_DISCOVERIES_P=[
   {id:"ae07",name:"Whip and Chain",category:"Evil Creed",alignment:"Evil",desc:"Armies your characters lead are 10% more likely to be promoted after a battle.",effect:{kind:"promo",pct:0.1}},
   {id:"ae08",name:"Scavengers",category:"Evil Creed",alignment:"Evil",desc:"Gold taken from lairs your characters clear is increased by 25%.",effect:{kind:"lairGold",pct:0.25}},
   {id:"ae09",name:"Sack and Burn",category:"Evil Creed",alignment:"Evil",desc:"Plunder on conquest seizes 75% of a captured province's tax value in gold instead of 50%.",effect:{kind:"plunder",pct:0.25}},
-  {id:"ae10",name:"Warmongers",category:"Evil Creed",alignment:"Evil",desc:"Armies your characters lead fight at +10% strength when attacking.",effect:{kind:"unitStr",pct:0.1,side:"atk"}},
-  {id:"az01",name:"Bone Legions",category:"Undead Creed",alignment:"Undead",desc:"Skeletal armies led by your characters fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"skeletal"}},
+  {id:"ae10",name:"Warmongers",category:"Evil Creed",alignment:"Evil",desc:"Your armies fight at +10% strength when attacking.",effect:{kind:"unitStr",pct:0.1,side:"atk"}},
+  {id:"az01",name:"Bone Legions",category:"Undead Creed",alignment:"Undead",desc:"Skeletal armies of your realm fight at +15% strength.",effect:{kind:"unitStr",pct:0.15,cls:"skeletal"}},
   {id:"az02",name:"Grave Wardens",category:"Undead Creed",alignment:"Undead",desc:"Your skeletal armies have 25% less chance of being destroyed in battle.",effect:{kind:"deathRed",pct:0.25,cls:"skeletal"}},
   {id:"az03",name:"Death's Whisper",category:"Undead Creed",alignment:"Undead",desc:"Necromancy spells cast by your characters have +10% chance of success (capped at 95%).",effect:{kind:"cast",pct:10,school:"necromancy"}},
   {id:"az04",name:"Tireless March",category:"Undead Creed",alignment:"Undead",desc:"Skeletal armies of Speed 1-2 in your service gain +1 move point per turn.",effect:{kind:"move",extra:1,cls:"skeletal"}},
@@ -12997,7 +13046,7 @@ const BATTLE_ARMY_SPELLS={
   // Item 5: which magic items a combatant brings to bear — announced at the start of a battle or duel
   // so every item "in play" is acknowledged (passive stat items boost the fight; Mithril also calls out
   // each blow it turns aside, see pcTakeHit). Only combat-relevant effects are listed.
-  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','armour','maxHp','white','black','pagan','psychic','elemental','illusory','necromancy','spellcasting','pc','combatUse']); // 2026-09-11: + illusory, pc riders, consumables
+  const _COMBAT_ITEM_STATS=new Set(['melee','archery','druid','tactical','mithrilArmour','armour','maxHp','white','black','pagan','psychic','elemental','illusory','necromancy','spellcasting','pc','combatUse']); // 2026-09-11: + illusory, pc riders, combat-item riders. consumables
   function magicItemsLine(ch){
     const its=activeItems(ch).filter(it=>it&&it.name&&(!it.effect||_COMBAT_ITEM_STATS.has(it.effect.stat)||it.effect.combat));
     if(!its.length) return null;
@@ -17087,11 +17136,13 @@ const BATTLE_ARMY_SPELLS={
           if(extra==='__scan__'){
             const graves=prov.battleGraves||[];
             if(graves.length===0){
+              noteGraveIntel(G.players[c.player], prov.id, G.turn, []); // 2026-09-14 (item 2): seen bare — forget any stale record
               log('explore',`✨ ${c.name}'s Control Undead searches ${prov.name} for the dead — but no fallen army units lie here to sense.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             } else {
               const counts={};
               graves.forEach(g=>{const k=`${g.quality||'Average'} ${g.type}`;counts[k]=(counts[k]||0)+1;});
               const list=Object.entries(counts).map(([k,nn])=>`${nn}× ${k}`).join(', ');
+              noteGraveIntel(G.players[c.player], prov.id, G.turn, graves); // 2026-09-14 (item 2): the fuller reading is kept in Graveyards known
               log('explore',`💀 ${c.name}'s Control Undead senses the dead of ${prov.name}: ${list}. (${graves.length} grave${graves.length!==1?'s':''} that could be raised as skeletal servants.)`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             }
             trySkillGain(c, school, SKILLGAIN_STD);
@@ -20015,10 +20066,28 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   _currentPhase=null; // Item 6: the phase loop is over — any later gain belongs to END OF TURN
   _afterPhases=true;  // 2026-09-13 (item 2): …and so does every later LOG LINE (see log() above)
 
+
   // A stand-off struck in the final phase is still a stand-off: flag it now so the state that is
   // SAVED (and every player's map) shows the province as contested, and the fight is joined at the
   // first sweep of next turn rather than being invisible for a whole season.
   flagEnemyStandoffs();
+
+  // ── GRAVES UNDERFOOT (2026-09-14, Toby item 2) ──────────────────────────────────────────────
+  // Every character with at least one level of Necromancy senses the battlefield dead of the
+  // province they END the turn in. They learn only THAT graves are there, never what lies in them
+  // — Control Undead's province scan is what buys the roll of the dead, and it records its own
+  // richer entry when it is cast (see necromancy_control __scan__). Run here, after the phase
+  // loop, so the location is the one the character finished on however many times they marched.
+  (G.characters||[]).forEach(c=>{
+    if(!c||!c.alive||c.player==null) return;
+    if(effStat(c,'necromancy')<1) return;
+    const pv=G.world.provinces[c.location]; if(!pv) return;
+    const n=(pv.battleGraves||[]).length;
+    const pl=G.players[c.player]; if(!pl) return;
+    if(n===0){ noteGraveIntel(pl, pv.id, G.turn, []); return; } // standing here and finding it bare
+    noteGraveIntel(pl, pv.id, G.turn, null); // bare sensing: existence only, detail untouched
+    log('explore',`💀 ${c.name} feels the dead of ${pv.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,{actor:c.player,targets:[c.player],provinceId:pv.id});
+  });
 
   // ── Item 1: DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's
   // hands this turn (captured by an enemy, or otherwise no longer owned) loses its blessing — which
@@ -21080,6 +21149,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.14-1039</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.14-1250</div>
 </body>
 </html>
