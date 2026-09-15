@@ -3005,7 +3005,7 @@ const MONSTERS_P=[
   {name:"Abyssal Horror",cat:"aberration",desc:"A nightmare of eyes and groping arms that boils up from the lightless deep.",hp:57,power:"Powerful",melee:6,archery:0,speed:"medium",minG:5,maxG:9,spells:[{"name":"Enveloping Arms","school":"elemental","dmgW":2,"effect":"","castChance":64,"flavour":"A dozen slick limbs lash out of the dark all at once!"},{"name":"Maddening Gaze","school":"psychic","dmgW":1,"effect":"hero loses next attack","castChance":53,"flavour":"A ring of pale eyes fixes on you — reason falters."}],passive:{"name":"Maddening Presence","fx":{"aura":10},"desc":"foe −10% to hit all fight"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Deep Leviathan",cat:"beast",desc:"The old terror of the deep water — a serpent vast enough to swallow a longship whole.",hp:60,power:"Powerful",melee:7,archery:0,speed:"medium",minG:5,maxG:9,spells:[{"name":"Sounding Dive","school":"elemental","dmgW":2,"effect":"","castChance":65,"flavour":"The leviathan rolls and its flukes come down like a falling cliff!"},{"name":"Tidal Surge","school":"elemental","dmgW":1.5,"effect":"hero -20% to hit","castChance":55,"flavour":"Its passing throws up a wall of water that hurls you off your feet!"}],passive:{"name":"Leviathan Hide","fx":{"ward":"meleeDR","amt":2},"desc":"melee blows deal 2 less"},weak:{"kind": "school", "key": "psychic", "name": "Open Mind", "desc": "Psychic magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Death Knight",cat:"undead",desc:"A fallen paladin in blackened plate, bound to unlife by a broken oath, its greatsword rimed with frost.",hp:54,power:"Powerful",melee:7,archery:0,speed:"medium",minG:5,maxG:8,spells:[{"name":"Unholy Cleave","school":"necromancy","dmgW":2,"effect":"","castChance":62,"flavour":"The black blade comes down in a hissing arc!"},{"name":"Aura of Despair","school":"necromancy","dmgW":1,"effect":"hero -20% to hit for 3 rounds","castChance":53,"flavour":"Hope drains out of you like blood from a wound."}],passive:{"name":"Cursed Plate","fx":{"ward":"meleeDR","amt":2},"desc":"melee blows deal 2 less"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
-  {name:"Banshee",cat:"undead",desc:"The wailing ghost of a murdered queen, whose scream stops hearts and whose touch withers flesh.",hp:50,power:"Powerful",melee:5,archery:0,speed:"fast",minG:4,maxG:7,spells:[{"name":"Death Wail","school":"necromancy","dmgW":1.5,"effect":"hero must pass courage test or flee","castChance":55,"flavour":"A scream that is not a sound tears through your mind!"},{"name":"Withering Touch","school":"necromancy","dmgW":1.5,"effect":"hero -1 melee for next round","castChance":60,"flavour":"Her fingers brush your cheek and the skin beneath goes grey."}],passive:{"name":"Wail of Dread","fx":{"aura":10},"desc":"foe −10% to hit all fight"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
+  {name:"Banshee",cat:"undead",desc:"The wailing ghost of a murdered queen, whose scream stops hearts and whose touch withers flesh.",hp:50,power:"Powerful",melee:5,archery:0,speed:"fast",minG:4,maxG:7,spells:[{"name":"Death Wail","school":"necromancy","dmgW":1.5,"effect":"hero loses next attack, -15%","castChance":55,"flavour":"A scream that is not a sound tears through your mind \u2014 the heart stutters, and the guard drops with it."},{"name":"Withering Touch","school":"necromancy","dmgW":1.5,"effect":"hero -1 melee for next round","castChance":60,"flavour":"Her fingers brush your cheek and the skin beneath goes grey."}],passive:{"name":"Wail of Dread","fx":{"aura":10},"desc":"foe −10% to hit all fight"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Bone Colossus",cat:"undead",desc:"A towering thing lashed together from a thousand skeletons, lurching forward on a dozen legs.",hp:58,power:"Powerful",melee:6,archery:0,speed:"slow",minG:5,maxG:9,spells:[{"name":"Skeletal Avalanche","school":"necromancy","dmgW":2,"effect":"","castChance":60,"flavour":"A wall of bone crashes down on top of you!"},{"name":"Reknit","school":"necromancy","dmgW":0,"effect":"colossus regains 16 HP","castChance":55,"flavour":"Loose bones rattle back into place across its frame."}],passive:{"name":"Bone Mountain","fx":{"ward":"cap","pct":25},"desc":"no single hit deals more than 25% of its HP"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Frost Giant Jarl",cat:"giant",desc:"A blue-skinned lord of the high ice, swinging an axe of frozen iron taller than a man.",hp:57,power:"Powerful",melee:6,archery:4,speed:"slow",minG:5,maxG:8,spells:[{"name":"Glacier Axe","school":"elemental","dmgW":2,"effect":"","castChance":60,"flavour":"The frozen axe shears the air with a shriek of ice!"},{"name":"Winter's Breath","school":"elemental","dmgW":1,"effect":"hero -20% to hit","castChance":55,"flavour":"A killing cold pours from his lungs and your fingers stop answering."}],passive:{"name":"Rime-Frost Aura","fx":{"burn":1},"desc":"a foe at melee range freezes for 1 each round"},weak:{"kind": "school", "key": "illusory", "name": "Easily Deceived", "desc": "Illusory magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Hill Giant Chieftain",cat:"giant",desc:"A boulder-shouldered chief of the hill clans, hurling rocks and roaring challenges from his cairn-throne.",hp:57,power:"Powerful",melee:6,archery:5,speed:"slow",minG:4,maxG:8,spells:[{"name":"Rock Throw","school":"elemental","dmgW":2,"effect":"","castChance":62,"flavour":"A boulder the size of a barrel whistles past — and the next one doesn't miss!"},{"name":"Ground Slam","school":"elemental","dmgW":1.5,"effect":"hero knocked back","castChance":50,"flavour":"Both fists hammer the earth and you are thrown off your feet!"}],passive:{"name":"Giant's Might","fx":{"dmgBonus":2},"desc":"+2 damage on every melee hit"},weak:{"kind": "race", "key": "Elven", "name": "Old Enemy: Elven", "desc": "a character of Elven blood deals double damage to it"}},
@@ -3018,13 +3018,13 @@ const MONSTERS_P=[
   {name:"Sea Wyrm",cat:"dragon",desc:"A finned dragon of the deep trenches, breathing scalding steam and lashing with a rudder-like tail.",hp:57,power:"Powerful",melee:6,archery:0,speed:"fast",minG:5,maxG:9,spells:[{"name":"Scalding Breath","school":"elemental","dmgW":2,"effect":"","castChance":62,"flavour":"A gout of boiling steam erupts from its jaws!"},{"name":"Tail Lash","school":"elemental","dmgW":1.5,"effect":"hero knocked back","castChance":53,"flavour":"The great tail sweeps across the deck!"}],passive:{"name":"Sea-Wyrm Scales","fx":{"ward":"meleeDR","amt":2},"desc":"melee blows deal 2 less"},weak:{"kind": "archery", "key": "archery", "name": "Open to Arrows", "desc": "arrows strike it for double damage"}},
   {name:"Giant Octopus",cat:"aberration",desc:"A boulder-headed monster of the kelp forest, eight crushing arms and a beak that opens hulls.",hp:58,power:"Powerful",melee:6,archery:0,speed:"medium",minG:4,maxG:8,spells:[{"name":"Eightfold Grip","school":"elemental","dmgW":1.5,"effect":"hero loses next attack","castChance":58,"flavour":"Arms wrap you from every side and squeeze!"},{"name":"Ink Jet","school":"illusory","dmgW":1,"effect":"hero -20% to hit","castChance":55,"flavour":"The water goes black around you."}],passive:{"name":"Boneless","fx":{"ward":"arrowDR","amt":3},"desc":"arrows deal 3 less"},weak:{"kind": "school", "key": "psychic", "name": "Open Mind", "desc": "Psychic magic always takes hold against it, and its damage and effects are doubled"}},
   // ── Legendary (hp 75–90, melee 7–9, archery 0–8) ──
-  {name:"Elder Dragon",cat:"dragon",desc:"An ancient winged tyrant whose fire and terror have ended a hundred would-be heroes.",hp:82,power:"Legendary",melee:8,archery:6,speed:"fast",minG:7,maxG:10,spells:[{"name":"Fire Breath","school":"elemental","dmgW":2,"effect":"","castChance":85,"flavour":"The dragon inhales — then a torrent of searing dragonfire engulfs you!"},{"name":"Wing Storm","school":"elemental","dmgW":1.5,"effect":"hero knocked back","castChance":65,"flavour":"Wings the size of sails create a hurricane blast!"},{"name":"Dragon Terror","school":"psychic","dmgW":0,"effect":"hero must pass courage test or flee","castChance":75,"flavour":"The dragon's ancient gaze radiates primal terror — your every instinct screams to run!"}],passive:{"name":"Dragonscale","fx":{"ward":"meleeDR","amt":4,"dmgBonus":5},"desc":"melee blows deal 4 less, and +5 damage on every hit"},weak:{"kind": "school", "key": "psychic", "name": "Open Mind", "desc": "Psychic magic always takes hold against it, and its damage and effects are doubled"}},
+  {name:"Elder Dragon",cat:"dragon",desc:"An ancient winged tyrant whose fire and terror have ended a hundred would-be heroes.",hp:82,power:"Legendary",melee:8,archery:6,speed:"fast",minG:7,maxG:10,spells:[{"name":"Fire Breath","school":"elemental","dmgW":2,"effect":"","castChance":85,"flavour":"The dragon inhales — then a torrent of searing dragonfire engulfs you!"},{"name":"Wing Storm","school":"elemental","dmgW":1.5,"effect":"hero knocked back","castChance":65,"flavour":"Wings the size of sails create a hurricane blast!"},{"name":"Tyrant's Gaze","school":"psychic","dmgW":1,"effect":"hero loses next attack, -25%","castChance":75,"flavour":"The dragon's ancient gaze finds you, and for one long moment your body simply will not answer."}],passive:{"name":"Dragonscale","fx":{"ward":"meleeDR","amt":4,"dmgBonus":5},"desc":"melee blows deal 4 less, and +5 damage on every hit"},weak:{"kind": "school", "key": "psychic", "name": "Open Mind", "desc": "Psychic magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Lich Sovereign",cat:"undead",desc:"An undead archmage of terrible power, pointing a bony finger that carries instant death.",hp:84,power:"Legendary",melee:8,archery:0,speed:"slow",minG:6,maxG:10,spells:[{"name":"Finger of Death","school":"necromancy","dmgW":2,"effect":"20% halves current HP","castChance":75,"flavour":"A bony finger points — black death magic surges towards you!"},{"name":"Necrotic Burst","school":"necromancy","dmgW":1.5,"effect":"hero -25% to hit for 3 rounds","castChance":75,"flavour":"A wave of entropic energy corrodes your very essence!"},{"name":"Undead Thralls","school":"necromancy","dmgW":0,"effect":"lich regains 17 HP as it draws power from nearby dead","castChance":70,"flavour":"The lich stretches its hands wide, drinking the death-energy of the battlefield!"},{"name":"Paralyse","school":"psychic","dmgW":0,"effect":"hero loses 2 rounds completely paralysed","castChance":70,"flavour":"Iron bands of psychic force clamp around your mind and body!"}],passive:{"name":"Phylactery Bond","fx":{"ward":"secondWind","pct":30,"dmgBonus":5},"desc":"once per fight, recovers 30% HP when first below 30%, and +5 damage on every hit"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Ancient Wyrm",cat:"dragon",desc:"The eldest of dragons, its flame older than realms and its presence a crushing weight on the mind.",hp:80,power:"Legendary",melee:9,archery:7,speed:"fast",minG:8,maxG:10,spells:[{"name":"Ancient Flame","school":"elemental","dmgW":2,"effect":"","castChance":85,"flavour":"Flame older than civilisation pours from the Ancient Wyrm's jaws!"},{"name":"Psychic Roar","school":"psychic","dmgW":1,"effect":"hero loses all Archery this round","castChance":75,"flavour":"The wyrm's mindless roar shatters conscious thought!"},{"name":"Tail Sweep","school":"elemental","dmgW":1,"effect":"hero knocked back","castChance":70,"flavour":"A tail like a castle wall sweeps everything aside!"},{"name":"Draconic Presence","school":"psychic","dmgW":1,"effect":"hero -30% to hit for encounter","castChance":70,"flavour":"The wyrm's sheer age and power exerts a crushing mental weight!"}],passive:{"name":"Ancient Scales","fx":{"ward":"meleeDR","amt":4,"dmgBonus":5},"desc":"melee blows deal 4 less, and +5 damage on every hit"},weak:{"kind": "archery", "key": "archery", "name": "Open to Arrows", "desc": "arrows strike it for double damage"}},
   {name:"Elder Titan",cat:"giant",desc:"A primordial colossus that shakes the world with a step and calls down divine fire.",hp:85,power:"Legendary",melee:9,archery:6,speed:"slow",minG:7,maxG:10,spells:[{"name":"World-Shaker","school":"elemental","dmgW":2,"effect":"hero knocked back","castChance":70,"flavour":"The Elder Titan stamps — the very world shakes to its foundations!"},{"name":"Divine Wrath","school":"white","dmgW":2,"effect":"ignores all armour and defensive bonuses","castChance":70,"flavour":"Pillars of divine fire rain down from the heavens — the titan is an instrument of godly judgement!"},{"name":"Time Stop","school":"illusory","dmgW":0,"effect":"hero loses 2 rounds completely","castChance":60,"flavour":"Reality stutters. You blink and two rounds have passed — you've been standing frozen!"}],passive:{"name":"Titanic Frame","fx":{"ward":"cap","pct":20,"dmgBonus":5},"desc":"no single hit deals more than 20% of its HP, and +5 damage on every hit"},weak:{"kind": "school", "key": "illusory", "name": "Easily Deceived", "desc": "Illusory magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Dread Vampire Sovereign",cat:"undead",desc:"The eldest of the night-nobles, a thousand years dead and lord of every shadow in the land.",hp:90,power:"Legendary",melee:9,archery:0,speed:"fast",minG:7,maxG:10,spells:[{"name":"Sanguine Feast","school":"necromancy","dmgW":2,"effect":"vampire heals half the damage dealt","castChance":78,"flavour":"It is on you before you can blink, and the world goes red."},{"name":"Dominating Gaze","school":"psychic","dmgW":0,"effect":"hero loses 2 rounds completely paralysed","castChance":68,"flavour":"Its eyes hold yours and your body simply stops obeying."},{"name":"Cloud of Bats","school":"necromancy","dmgW":1.5,"effect":"","castChance":75,"flavour":"The night comes apart into ten thousand shrieking wings!"}],passive:{"name":"Sovereign's Thirst","fx":{"drain":0.5,"dmgBonus":5},"desc":"heals half the melee damage it deals, and +5 damage on every hit"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Dracolich",cat:"undead",desc:"A dragon that cheated death — bare bone and green witchfire, its breath a wind of corruption.",hp:90,power:"Legendary",melee:8,archery:6,speed:"medium",minG:8,maxG:10,spells:[{"name":"Corpse Breath","school":"necromancy","dmgW":2,"effect":"","castChance":80,"flavour":"Green fire pours from the skull's empty jaws!"},{"name":"Bone Storm","school":"necromancy","dmgW":1.5,"effect":"hero -25% to hit for 3 rounds","castChance":70,"flavour":"Splinters of its own ribs whirl around you like a blizzard!"},{"name":"Deathless","school":"necromancy","dmgW":0,"effect":"dracolich regains 17 HP","castChance":65,"flavour":"Witchfire flares in every joint and the shattered bone knits."}],passive:{"name":"Bone Plate","fx":{"ward":"meleeDR","amt":4,"dmgBonus":5},"desc":"melee blows deal 4 less, and +5 damage on every hit"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
-  {name:"Archdemon",cat:"fiend",desc:"A prince of the pit, crowned in horns and wrapped in the screams of the damned.",hp:90,power:"Legendary",melee:8,archery:0,speed:"medium",minG:8,maxG:10,spells:[{"name":"Infernal Blade","school":"elemental","dmgW":2,"effect":"","castChance":80,"flavour":"A sword of liquid fire carves the air!"},{"name":"Damnation","school":"psychic","dmgW":1,"effect":"hero must pass courage test or flee","castChance":70,"flavour":"It speaks your name and every sin you have ever committed."},{"name":"Hellfire Mantle","school":"elemental","dmgW":0,"effect":"demon reflects 3 dmg back each time hero hits","castChance":65,"flavour":"It wraps itself in a cloak of burning brimstone!"}],passive:{"name":"Infernal Aura","fx":{"burn":3,"dmgBonus":5},"desc":"a foe at melee range burns for 3 each round, and +5 damage on every hit"},weak:{"kind": "align", "key": "Good", "name": "Anathema: Good", "desc": "a character of a Good realm deals double damage to it"}},
+  {name:"Archdemon",cat:"fiend",desc:"A prince of the pit, crowned in horns and wrapped in the screams of the damned.",hp:90,power:"Legendary",melee:8,archery:0,speed:"medium",minG:8,maxG:10,spells:[{"name":"Infernal Blade","school":"elemental","dmgW":2,"effect":"","castChance":80,"flavour":"A sword of liquid fire carves the air!"},{"name":"Damnation","school":"psychic","dmgW":1,"effect":"30% halves current hp","castChance":70,"flavour":"It speaks your name, and every sin you have ever committed, and the weight of them buckles your knees."},{"name":"Hellfire Mantle","school":"elemental","dmgW":0,"effect":"demon reflects 3 dmg back each time hero hits","castChance":65,"flavour":"It wraps itself in a cloak of burning brimstone!"}],passive:{"name":"Infernal Aura","fx":{"burn":3,"dmgBonus":5},"desc":"a foe at melee range burns for 3 each round, and +5 damage on every hit"},weak:{"kind": "align", "key": "Good", "name": "Anathema: Good", "desc": "a character of a Good realm deals double damage to it"}},
   {name:"Storm Titan",cat:"giant",desc:"A primordial giant who walks in thunderheads and throws lightning as a man throws stones.",hp:84,power:"Legendary",melee:7,archery:8,speed:"medium",minG:7,maxG:10,spells:[{"name":"Thunderbolt","school":"elemental","dmgW":2,"effect":"","castChance":80,"flavour":"Lightning leaps from its outstretched hand!"},{"name":"Hurricane Grasp","school":"elemental","dmgW":1.5,"effect":"hero knocked back","castChance":70,"flavour":"A wind like a falling mountain hurls you across the ground!"},{"name":"Deafening Peal","school":"psychic","dmgW":1,"effect":"hero loses all Archery this round","castChance":70,"flavour":"The thunder of its voice leaves you reeling and blind!"}],passive:{"name":"Storm Mantle","fx":{"ward":"thorns","amt":3,"dmgBonus":5},"desc":"every melee hit on it costs the striker 3, and +5 damage on every hit"},weak:{"kind": "school", "key": "illusory", "name": "Easily Deceived", "desc": "Illusory magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Sphinx",cat:"beast",desc:"A winged lion with a woman's face, guarding a riddle-locked treasury with claws and mind alike.",hp:92,power:"Legendary",melee:8,archery:6,speed:"fast",minG:7,maxG:10,spells:[{"name":"Riddle of Madness","school":"psychic","dmgW":1.5,"effect":"hero loses 2 rounds completely (lost in the riddle)","castChance":68,"flavour":"She asks a question and your mind folds in on itself trying to answer."},{"name":"Talon Sweep","school":"elemental","dmgW":1.5,"effect":"","castChance":78,"flavour":"Claws like scythes rake across you!"},{"name":"Mind Lock","school":"psychic","dmgW":1,"effect":"hero -30% to hit for encounter","castChance":65,"flavour":"Her gaze settles on you and you feel every move being read before you make it."}],passive:{"name":"Riddling Mind","fx":{"ward":"spellPct","pct":40,"dmgBonus":5},"desc":"spells deal 40% less, and +5 damage on every hit"},weak:{"kind": "school", "key": "psychic", "name": "Open Mind", "desc": "Psychic magic always takes hold against it, and its damage and effects are doubled"}},
   {name:"Kraken",cat:"aberration",desc:"The full-grown terror of the abyss — a mountain of tentacles that drags whole fleets to the sea floor.",hp:92,power:"Legendary",melee:9,archery:0,speed:"medium",minG:8,maxG:10,spells:[{"name":"Crushing Tentacles","school":"elemental","dmgW":2,"effect":"","castChance":80,"flavour":"A tentacle thick as a mainmast smashes down!"},{"name":"Maelstrom","school":"elemental","dmgW":1.5,"effect":"hero loses next attack","castChance":70,"flavour":"The sea spins into a whirlpool and drags you under!"},{"name":"Abyssal Ink","school":"illusory","dmgW":1,"effect":"hero -25% to hit","castChance":70,"flavour":"Blackness swallows the light."}],passive:{"name":"Abyssal Bulk","fx":{"ward":"cap","pct":20,"dmgBonus":7},"desc":"no single hit deals more than 20% of its HP, and +7 damage on every hit"},weak:{"kind": "school", "key": "white", "name": "Hallowed Bane", "desc": "White Magic always takes hold against it, and its damage and effects are doubled"}},
@@ -3261,6 +3261,32 @@ const FEATURE_POOLS_P={
 // Comprehensive magic items — one or more per skill, plus special army-type bonuses
 const ALL_MAGIC_ITEMS_P=[
   // ── Melee ──
+  // ── POWERFUL WEAPONS, OPEN TO ANYONE (2026-09-15, Toby) ───────────────────────────────────
+  // Every Powerful-tier weapon in the game was gated by race or alignment, so a Human hero of a
+  // Neutral realm had NO Powerful weapon to find at all — the tier-3 weapon slot was a downgrade
+  // rather than a prize. Twenty unrestricted designs, one focus for each school, at +3 to their
+  // stat (the gated designs keep the top of the band, upgraded so a restriction still buys
+  // something). The weapon band at tier 3 is widened to 25 to hold them — see ITEM_TIER_TARGET.
+  {name:'Sundered Greatsword',desc:'Melee +3',lore:'A blade broken and reforged so many times that the seams have become its strength. Melee counts 3 levels higher.',effect:{stat:'melee',bonus:3},slot:'weapon',tier:3},
+  {name:'Kingsteel Longsword',desc:'Melee +3, and +1 damage on every melee hit.',lore:'Steel of the old royal foundries, still unmatched by anything poured since. Melee counts 3 levels higher and every melee hit deals 1 extra damage.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:1}},slot:'weapon',tier:3},
+  {name:'Warden\'s Poleaxe',desc:'Melee +3, and +8% to hit.',lore:'A gate-guard\'s weapon, long enough to keep trouble at arm\'s length. Melee counts 3 levels higher and you strike at +8% to hit.',effect:{stat:'melee',bonus:3,pc:{hitBonus:8}},slot:'weapon',tier:3},
+  {name:'Bleakiron Maul',desc:'Melee +3, and +1 damage on every melee hit.',lore:'Dull grey, absurdly heavy, and it has never once glanced off. Melee counts 3 levels higher and every melee hit deals 1 extra damage.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:1}},slot:'weapon',tier:3},
+  {name:'Duellist\'s Rapier',desc:'Melee +3, and +8% to hit.',lore:'Light, quick and entirely unsuited to a battlefield; in a single combat there is nothing better. Melee counts 3 levels higher and you strike at +8% to hit.',effect:{stat:'melee',bonus:3,pc:{hitBonus:8}},slot:'weapon',tier:3},
+  {name:'Riverstone Axe',desc:'Melee +3',lore:'A head of grey river stone bound to a haft of black ash, older than any forge. Melee counts 3 levels higher.',effect:{stat:'melee',bonus:3},slot:'weapon',tier:3},
+  {name:'Oathkeeper\'s Blade',desc:'Melee +3, and foes -6% to hit you.',lore:'Swear on it once and you will find you cannot let your guard fall. Melee counts 3 levels higher and the foe fights at -6% to hit.',effect:{stat:'melee',bonus:3,pc:{aura:6}},slot:'weapon',tier:3},
+  {name:'Serpent-Fang Sabre',desc:'Melee +3, and +1 damage on every melee hit.',lore:'Curved like a striking snake, and about as forgiving. Melee counts 3 levels higher and every melee hit deals 1 extra damage.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:1}},slot:'weapon',tier:3},
+  {name:'Warden-Bow of the Marches',desc:'Archery +3',lore:'A border-watch bow that takes two men to string and one to loose. Archery counts 3 levels higher.',effect:{stat:'archery',bonus:3},slot:'weapon',tier:3},
+  {name:'Hunter\'s Arbalest',desc:'Archery +3, and +1 damage on every hit.',lore:'Slow to wind and impossible to argue with. Archery counts 3 levels higher and every hit deals 1 extra damage.',effect:{stat:'archery',bonus:3,pc:{dmgBonus:1}},slot:'weapon',tier:3},
+  {name:'Stormwood Longbow',desc:'Archery +3, and +8% to hit.',lore:'Cut from a tree that was struck twice and grew straighter for it. Archery counts 3 levels higher and you shoot at +8% to hit.',effect:{stat:'archery',bonus:3,pc:{hitBonus:8}},slot:'weapon',tier:3},
+  {name:'Falconer\'s Recurve',desc:'Archery +3',lore:'Short, savage, and made to be drawn from the saddle. Archery counts 3 levels higher.',effect:{stat:'archery',bonus:3},slot:'weapon',tier:3},
+  {name:'Ironthread Crossbow',desc:'Archery +3, and +1 damage on every hit.',lore:'Strung with drawn iron wire; the bolt arrives before the sound does. Archery counts 3 levels higher and every hit deals 1 extra damage.',effect:{stat:'archery',bonus:3,pc:{dmgBonus:1}},slot:'weapon',tier:3},
+  {name:'Windcut Flatbow',desc:'Archery +3, and +8% to hit.',lore:'A plain stave of yew that seems to decide where the arrow goes. Archery counts 3 levels higher and you shoot at +8% to hit.',effect:{stat:'archery',bonus:3,pc:{hitBonus:8}},slot:'weapon',tier:3},
+  {name:'Staff of the Burning Year',desc:'Elemental Magic +3',lore:'Charred at one end and warm at the other, whatever the season. Elemental Magic counts 3 levels higher.',effect:{stat:'elemental',bonus:3},slot:'weapon',tier:3},
+  {name:'Rod of Quiet Hours',desc:'Psychic Magic +3',lore:'Holding it, you find the room has gone very still and you can hear yourself think. Psychic Magic counts 3 levels higher.',effect:{stat:'psychic',bonus:3},slot:'weapon',tier:3},
+  {name:'Sceptre of the Pale Hour',desc:'Necromancy +3',lore:'Bone-white, cold, and heavier at dusk. Necromancy counts 3 levels higher.',effect:{stat:'necromancy',bonus:3},slot:'weapon',tier:3},
+  {name:'Staff of the Shrouded Lamp',desc:'Illusory Magic +3',lore:'The lamp at its head sheds no light and casts a great many shadows. Illusory Magic counts 3 levels higher.',effect:{stat:'illusory',bonus:3},slot:'weapon',tier:3},
+  {name:'Crozier of the Kept Vigil',desc:'White Magic +3',lore:'Carried through one long night by somebody who did not sit down. White Magic counts 3 levels higher.',effect:{stat:'white',bonus:3},slot:'weapon',tier:3},
+  {name:'Stave of the Deep Wood',desc:'Druid Mastery +3',lore:'Still green, still growing, and it will put out a leaf if you leave it in water. Druid Mastery counts 3 levels higher.',effect:{stat:'druid',bonus:3},slot:'weapon',tier:3},
   {name:'Blade of Fury',desc:'Melee +2',lore:'A sword that hums with barely held anger; those who bear it strike faster and harder than their training alone allows. Melee skill counts as 2 levels higher in personal combat.',effect:{stat:'melee',bonus:2},tier:2},
   {name:'Warbringer Gauntlets',desc:'Melee +1, +2 damage per successful melee attack in personal combat',lore:'Iron-banded gauntlets that drive every blow home with bone-jarring weight. Melee skill counts 1 level higher, and each melee hit you land in personal combat deals 2 extra damage.',effect:{stat:'melee',bonus:1},tier:1},
   // ── Archery ──
@@ -3436,17 +3462,17 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Beastbane Snare',desc:'Combat use: a beast or vermin foe is snared and loses its next 2 actions.',lore:'An iron net a trapper would envy. Used once per personal combat, only against beasts and vermin: the foe is snared and loses its next 2 actions.',effect:{stat:'combatUse',use:'banestun',stun:2,vs:['beast','vermin'],bonus:0},tier:1},
   // ── RACE- AND ALIGNMENT-BOUND ITEMS (2026-09-07, item 4): only a character of the named race or alignment can
   //    equip or use these; in any other hand they are inert (and still worth giving to the right ally). ──
-  {name:'Dwarf-Forged Warhammer',desc:'[Dwarves only] Melee +2.',lore:'Forged in the deep halls and balanced for a dwarven grip. Dwarves only: Melee skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
+  {name:'Dwarf-Forged Warhammer',race:'Dwarven',desc:'[Dwarves only] Melee +3, and +3 damage on every melee hit.',lore:'Forged in the deep halls and quenched in meltwater, it falls with the weight of the mountain behind it. Dwarves only: Melee counts 3 levels higher and every melee hit deals 3 extra damage.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:3}},slot:'weapon',tier:3},
   {name:'Deep-Delver\'s Lantern',desc:'[Dwarves only] Explorer +2.',lore:'A miner\'s lamp that shows every seam and side-tunnel. Dwarves only: Explorer skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'explorer',bonus:2},tier:1},
   {name:'Runic Ale-Horn',desc:'[Dwarves only] Max HP +6.',lore:'Ale drunk from it puts iron in the belly. Dwarves only: maximum HP +6; inert in any other hand.',race:'Dwarven',effect:{stat:'maxHp',bonus:6},tier:1},
   {name:'Ironclad Captain\'s Chain',desc:'[Dwarves only] Naval +2.',lore:'The chain of office of the Iron Fleet\'s first admiral. Dwarves only: Naval skill counts as 2 levels higher; inert in any other hand.',race:'Dwarven',effect:{stat:'naval',bonus:2},slot:'amulet',tier:1},
   {name:'Anvil-Brand Shield',desc:'[Dwarves only] Shield — combat use: a ward that soaks 12 damage, once per fight.',lore:'A shield stamped with the mark of the mountain forges. Dwarves only, used once per personal combat: a ward that soaks 12 damage; inert in any other hand.',race:'Dwarven',effect:{stat:'combatUse',use:'absorb',absorb:12,bonus:0},slot:'shield',tier:2},
-  {name:'Moonsilver Bow',desc:'[Elves only] Archery +2.',lore:'Strung with moonlight, or something very like it. Elves only: Archery skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'archery',bonus:2},slot:'weapon',tier:1},
+  {name:'Moonsilver Bow',race:'Elven',desc:'[Elves only] Archery +3, +10% to hit and +2 damage on every hit.',lore:'Strung with a thread of moonlight that does not fray. Elves only: Archery counts 3 levels higher, you shoot at +10% to hit, and every hit deals 2 extra damage.',effect:{stat:'archery',bonus:3,pc:{hitBonus:10,dmgBonus:2}},slot:'weapon',tier:3},
   {name:'Starlight Diadem',desc:'[Elves only] Illusory Magic +2.',lore:'A circlet that scatters starlight into a hundred false shapes. Elves only: Illusory Magic skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'illusory',bonus:2},slot:'helm',tier:1},
   {name:'Cloak of Leaves',desc:'[Elves only] Spy +2.',lore:'Its wearer is just another shadow beneath the trees. Elves only: Spy skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'spy',bonus:2},slot:'cloak',tier:1},
   {name:'Wardancer\'s Anklets',desc:'[Elves only] March +2.',lore:'Bells of the swift dance that lighten every step. Elves only: March skill counts as 2 levels higher; inert in any other hand.',race:'Elven',effect:{stat:'march',bonus:2},slot:'armour',tier:1},
   {name:'Phial of Elvenmead',desc:'[Elves only] Combat use: recover 12 HP once per fight (used below half health).',lore:'The wine of the elven courts, sweet and restoring. Elves only, used once per personal combat when below half health: recover 12 HP; inert in any other hand.',race:'Elven',effect:{stat:'combatUse',use:'heal',amt:12,below:0.5,bonus:0},tier:2},
-  {name:'Skull-Cleaver',desc:'[Orcs only] Melee +2.',lore:'A brutal orcish blade, notched from a hundred skulls. Orcs only: Melee skill counts as 2 levels higher; inert in any other hand.',race:'Orcish',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
+  {name:'Skull-Cleaver',race:'Orcish',desc:'[Orcs only] Melee +3, and +3 damage on every melee hit.',lore:'A notched, top-heavy thing that has never been sharpened and has never needed to be. Orcs only: Melee counts 3 levels higher and every melee hit deals 3 extra damage.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:3}},slot:'weapon',tier:3},
   {name:'Warg-Hide Mantle',desc:'[Orcs only] Max HP +8.',lore:'The pelt of a black warg still keeps its savage vitality. Orcs only: maximum HP +8; inert in any other hand.',race:'Orcish',effect:{stat:'maxHp',bonus:8},slot:'cloak',tier:1},
   {name:'Blood-Drum of the Horde',desc:'[Orcs only] Tactical +2.',lore:'Its beat sets the whole horde moving as one. Orcs only: Tactical skill counts as 2 levels higher; inert in any other hand.',race:'Orcish',effect:{stat:'tactical',bonus:2},tier:1},
   {name:'Tusk Fetish',desc:'[Orcs only] Necromancy +2.',lore:'Tusks and finger-bones strung on a sinew cord; the dead answer to it. Orcs only: Necromancy skill counts as 2 levels higher; inert in any other hand.',race:'Orcish',effect:{stat:'necromancy',bonus:2},slot:'amulet',tier:1},
@@ -3456,7 +3482,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Guildmaster\'s Seal',desc:'[Humans only] +5g collected each tax season.',lore:'The seal of the counting-houses opens purses across the realm. Humans only: +5 gold collected each tax season; inert in any other hand.',race:'Human',effect:{stat:'taxBonus',bonus:5},slot:'ring',tier:1},
   {name:'Knight-Marshal\'s Baton',desc:'[Humans only] Tactical +2.',lore:'The baton of the crown\'s constable. Humans only: Tactical skill counts as 2 levels higher; inert in any other hand.',race:'Human',effect:{stat:'tactical',bonus:2},tier:1},
   {name:'Chirurgeon\'s Kit',desc:'[Humans only] Combat use: recover 10 HP once per fight (used below half health).',lore:'Needles, gut and a steady hand. Humans only, used once per personal combat when below half health: recover 10 HP; inert in any other hand.',race:'Human',effect:{stat:'combatUse',use:'heal',amt:10,below:0.5,bonus:0},tier:1},
-  {name:'Paladin\'s Sword',desc:'[Good characters only] Melee +2.',lore:'A blade that will not be drawn in an unjust cause. Good characters only: Melee skill counts as 2 levels higher; inert in any other hand.',alignment:'Good',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
+  {name:'Paladin\'s Sword',alignment:'Good',desc:'[Good characters only] Melee +3, +10% to hit and +2 damage on every melee hit.',lore:'Plain, well kept, and carried by better people than most. Good characters only: Melee counts 3 levels higher, you strike at +10% to hit, and every melee hit deals 2 extra damage.',effect:{stat:'melee',bonus:3,pc:{hitBonus:10,dmgBonus:2}},slot:'weapon',tier:3},
   {name:'Shield of the Innocent',desc:'[Good characters only] All armies led: +1 quality tier when defending a home province.',lore:'The folk fight the harder knowing who they shield. Good characters only: every army you lead fights one quality tier higher when defending a home province; inert in any other hand.',alignment:'Good',effect:{stat:'homeDefBonus',bonus:1},slot:'shield',tier:2},
   {name:'Oathkeeper\'s Ring',desc:'[Good characters only] Max HP +6.',lore:'The wearer\'s word holds, and so does the wearer. Good characters only: maximum HP +6; inert in any other hand.',alignment:'Good',effect:{stat:'maxHp',bonus:6},slot:'ring',tier:1},
   {name:'Tyrant\'s Sceptre',desc:'[Evil characters only] +5g collected each tax season.',lore:'A rod of iron rule; the taxes come in on time. Evil characters only: +5 gold collected each tax season; inert in any other hand.',alignment:'Evil',effect:{stat:'taxBonus',bonus:5},slot:'weapon',tier:1},
@@ -3476,7 +3502,7 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Blood-Rune Knife',desc:'[Pagan characters only] Combat use: 6-10 damage to the foe, and you recover the same (used when hurt).',lore:'A sacrificial blade that feeds the old gods and the hand that wields it. Pagan characters only, used once per personal combat when hurt: 6-10 damage to the foe, and you recover the same; inert in any other hand.',alignment:'Pagan',effect:{stat:'combatUse',use:'drain',dmg:[6,10],below:0.75,bonus:0},tier:2},
   {name:'Lich\'s Phylactery Shard',desc:'[Undead characters only] Necromancy +2.',lore:'A splinter of a soul-jar, still cold with what it held. Undead characters only: Necromancy skill counts as 2 levels higher; inert in any other hand.',alignment:'Undead',effect:{stat:'necromancy',bonus:2},slot:'amulet',tier:1},
   {name:'Crown of the Barrow-King',desc:'[Undead characters only] Skeletal Legions you lead: +4 strength.',lore:'The bone lord\'s diadem; the dead march the harder beneath it. Undead characters only: Skeletal Legions you lead fight at +4 strength; inert in any other hand.',alignment:'Undead',effect:{stat:'undeadBonus',bonus:1},slot:'helm',tier:1},
-  {name:'Grave-Cold Blade',desc:'[Undead characters only] Melee +2.',lore:'A sword drawn from a sepulchre, never warm. Undead characters only: Melee skill counts as 2 levels higher; inert in any other hand.',alignment:'Undead',effect:{stat:'melee',bonus:2},slot:'weapon',tier:1},
+  {name:'Grave-Cold Blade',alignment:'Undead',desc:'[Undead characters only] Melee +3, +1 damage on every melee hit, and you drink a quarter of the harm you deal.',lore:'It is never warm, and neither is the hand that holds it. Undead characters only: Melee counts 3 levels higher, every melee hit deals 1 extra damage, and a quarter of the damage you deal returns to you as health.',effect:{stat:'melee',bonus:3,pc:{dmgBonus:1,drain:0.25}},slot:'weapon',tier:3},
   // ── Economy ──
   {name:'Ring of Wealth',desc:'+5g collected each tax season',lore:'Gold seems to find its way to whoever wears it. +5 gold collected each tax season.',effect:{stat:'taxBonus',bonus:5},tier:1},
   {name:'Merchant\'s Ledger',desc:'+1g collected per province owned',lore:'A trader\'s tally-book that finds a coin or two in every province. +1 gold collected per province owned.',effect:{stat:'taxPerProv',bonus:1},tier:1},
@@ -4018,7 +4044,10 @@ function takeBestGrave(prov){
 // `emit` is the log function to use (the callers differ in phase/context), or null for silent.
 function senseGravesUnderfoot(state, c, pv, emit){
   if(!c||!c.alive||c.player==null||!pv) return false;
-  if(effStat(c,'necromancy')<1) return false;
+  // SCOPE TRAP (fixed 2026-09-15): runTurn declares its own effStat() helper, which is invisible to
+  // this module-level function — calling it threw ReferenceError and aborted EVERY turn. Go straight
+  // to the shared source of truth instead; runTurn's effStat() is only a thin wrapper over this.
+  if(effSkillOf(c,'necromancy',(state&&state.characters)||[])<1) return false;
   const pl=(state.players||[])[c.player]; if(!pl) return false;
   if(c._gravesSensedTurn!==state.turn){ c._gravesSensedTurn=state.turn; c._gravesSensedIds=[]; }
   if(!Array.isArray(c._gravesSensedIds)) c._gravesSensedIds=[];
@@ -4417,6 +4446,11 @@ const LEGENDARY_NAMES_P=new Set(LEGENDARY_ITEMS_P.map(it=>it.name));
 //
 // Item count falls from ~860 to ~600 because a lair now takes one item instead of up to three.
 const ITEM_TIER_TARGET={1:34,2:25,3:10};   // stock per kind, per tier (legendaries are the curated list)
+// 2026-09-15 (Toby): a per-kind override. The WEAPON band at tier 3 holds 30, because the ten gated
+// Powerful weapons now sit alongside twenty unrestricted ones and every one of the twenty-five is a
+// hand-written design rather than a minted rename.
+const ITEM_TIER_TARGET_BY_CAT={weapon:{3:25}};
+function itemTierTarget(tier,cat){ const o=ITEM_TIER_TARGET_BY_CAT[cat]; return (o&&o[tier]!=null)?o[tier]:ITEM_TIER_TARGET[tier]; }
 const LEGENDARY_PER_KIND=2;                // relics of each kind; each is worth RELIC_PRIZE_EACH at scoring
 const TIER_BAND_SHARE={1:0.48,2:0.35,3:0.13,4:0.04}; // how the curated designs of a kind are split
 const BALANCED_SLOTS=['weapon','armour','shield','helm','cloak','ring','amulet'];
@@ -4560,13 +4594,16 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     // even for a kind with few designs of its own (helms, say). Filling strongest-first instead would
     // hand the whole list to Powerful and Moderate and leave Weak with nothing to mint from.
     // The bands are then trimmed or minted to their exact targets below.
-    const nTop=Math.max(1,Math.round(ordinary.length*0.13));
+    // 2026-09-15: seed the top band with at least its own target where enough designs exist. The
+    // flat 13% share used to leave the band short and it was then filled with minted renames, so a
+    // hand-written design could be pushed down a tier by a clone of itself.
+    const nTop=Math.max(1,Math.min(ordinary.length,Math.max(Math.round(ordinary.length*0.13),itemTierTarget(3,cat))));
     const nMid=Math.max(1,Math.round(ordinary.length*0.37));
     ordinary.forEach((it,k)=>{ it.tier = k<nTop?3 : k<nTop+nMid?2 : 1; });
     // Trim any band that overflows its target, weakest and most interchangeable first.
     [1,2,3].forEach(t=>{
       const band=ordinary.filter(it=>it.tier===t);
-      for(let k=ITEM_TIER_TARGET[t];k<band.length;k++) band[k]._drop=true; // band is already strongest-first
+      for(let k=itemTierTarget(t,cat);k<band.length;k++) band[k]._drop=true; // band is already strongest-first
     });
   });
 
@@ -4595,7 +4632,7 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
       return out;
     };
     [1,2,3].forEach(t=>{
-      const want=ITEM_TIER_TARGET[t];
+      const want=itemTierTarget(t,cat);
       const inBand=ALL_MAGIC_ITEMS_P.filter(it=>it.tier===t&&itemHoardCategory(it)===cat);
       // Seeds should be usable by anyone, and never a combat item (one name each, by ruling). If a
       // band holds nothing but race- or alignment-bound designs, seed from those instead and let the
@@ -4792,7 +4829,7 @@ function migrateMaxHpV2(gs){
 }
 // 2026-09-10: guardian HP rescaled (Weak 15–20 [2026-09-11; was 15–25] / Moderate 30–45 / Powerful 55–65 / Legendary 75–90). Uncleared lairs in older
 // saves adopt the current table stats for their creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=11; // 11 (2026-09-15): band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10 (2026-09-12): every guardian gained a `weak` (exploitable weakness) · 9 (2026-09-11): every special castChance +20 (50–75%) · 8 (2026-09-11): Weak HP 15–20, five Weak passives stripped · 7 (2026-09-11): Weak-tier meleeDR passives capped at 1 · 6 (2026-09-10): skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+const GUARDIAN_TABLE_VER=12; // 12 (2026-09-15): no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11 (2026-09-15): band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10 (2026-09-12): every guardian gained a `weak` (exploitable weakness) · 9 (2026-09-11): every special castChance +20 (50–75%) · 8 (2026-09-11): Weak HP 15–20, five Weak passives stripped · 7 (2026-09-11): Weak-tier meleeDR passives capped at 1 · 6 (2026-09-10): skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -12385,6 +12422,24 @@ const BATTLE_ARMY_SPELLS={
   // Returns true if the spell resolved (successfully cast), false if it fizzled/was invalid.
   // NOTE: school-by-school CSV combat effects will be implemented here. For now it reproduces the
   // previous encounter behaviour so nothing regresses while schools are migrated.
+  // ── PERSONAL-COMBAT SPELL BALANCE (2026-09-15, Toby) ─────────────────────────────────────────
+  // Measured across the whole bestiary at hero level 6, the five schools were not close: Elemental
+  // 80%, Necromancy 78%, Illusory 74%, Psychic 72%, White 66% — against 72% for a plain Blade with
+  // no magic at all, which is to say White was worse than carrying nothing. Two faults ran through
+  // the set. First, the best spells did not read the caster: Fireball, Psychic Blast, Telekinetic
+  // Storm and Invisibility were identical at school level 1 and level 5, so a dabbler got a master's
+  // spell. Second, White had no way to convert an action into an advantage at all. Each spell keeps
+  // what it does; the numbers below are what changed.
+  const SPELL_FIREBALL_BASE_PCT=3, SPELL_FIREBALL_PCT_PER_LVL=1;   // burn, % of target max HP a round
+  const SPELL_HOLY_PEN_PER_LVL=8;                                   // Holy Symbol to-hit penalty a level
+  const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
+  const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (doubled vs undead and fiends)
+  const SPELL_SPIRITWRACK_BASE_ROUNDS=3;                            // +1 per two levels
+  const SPELL_BLAST_BASE_ROUNDS=1;                                  // +1 per two levels
+  const SPELL_TKS_BASE_PCT=12, SPELL_TKS_PCT_PER_LVL=3;             // Telekinetic Storm, % of target max HP
+  const SPELL_INVIS_BASE_PCT=10, SPELL_INVIS_PCT_PER_LVL=4;         // Invisibility, foe to-hit reduction
+  const SPELL_HOD_BITE_PCT=40, SPELL_HOD_MAX_PCT=60;                // Hand of Death
+  const SPELL_MIRROR_HP_PCT=40, SPELL_MIRROR_ROUNDS=3;              // Mirror Image, see the case below
   const PC_CAST_BASE=SPELL_CAST_BASE; // 2026-09-10 (Toby, item 2): personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
   function pcCastCombatSpell(caster, target, spellName, narrative, state){
     const SPELL_SCHOOL=PC_SPELL_SCHOOL_MAP; // 2026-09-12: one shared table (pcTakeHit reads it too)
@@ -12422,12 +12477,39 @@ const BATTLE_ARMY_SPELLS={
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
     switch(spellName){
       case 'Lightning Bolt':{ let d=0; const _lbLvl=Math.min(Math.max(1,lvl),5); for(let i=0;i<_lbLvl;i++) d+=rng(2,4); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
-      case 'Fireball':{ const _fbD=Math.max(1,Math.round(target.maxHp*0.10))*wx; const _fbE=pcPushDot(target,_fbD,3,'Fireball burns'); narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${wx>1?'20':'10'}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
+      case 'Fireball':{ // 2026-09-15 rebalance: the burn now reads the caster. It was a flat 10% of the target's
+        // maximum health a round whoever threw it, which made Elemental the strongest school at level 1 and
+        // no stronger at level 5. 3% + 1% a level: 4% a round at Elemental 1, 8% at Elemental 5.
+        const _fbPct=(SPELL_FIREBALL_BASE_PCT+SPELL_FIREBALL_PCT_PER_LVL*lvlEff);
+        const _fbD=Math.max(1,Math.round(target.maxHp*_fbPct/100))*wx; const _fbE=pcPushDot(target,_fbD,3,'Fireball burns');
+        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${Math.round(_fbPct*wx)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
       // ── WHITE (CSV) ──
-      case 'Holy Symbol':{ const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||''); const pen=lvlEff*10*(holy?2:1)*wx; target.status.hitPenalty=(target.status.hitPenalty||0)+pen; narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`); break; }
-      case 'Spiritwrack':{ const _swR=3*wx; target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} phases it cannot cast or use archery, and its melee is halved.`); break; }
-      case 'Psychic Blast':{ const _stunN=(3+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0))*wx; target.status.stun=(target.status.stun||0)+_stunN; narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
-      case 'Telekinetic Storm':{ const d=Math.max(1,Math.round(target.maxHp*0.25)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Holy Symbol':{ // 2026-09-15 rebalance: measured, a White adept was WORSE in a duel than carrying no
+        // magic at all — both its spells cost an action and neither did any harm. The symbol keeps its
+        // identity (a ward, not a weapon) but now sustains the one who raises it, and against the unclean it
+        // burns as well as blinds. The to-hit penalty comes down from 10 to 8 a level to pay for it.
+        const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||'');
+        const pen=lvlEff*SPELL_HOLY_PEN_PER_LVL*(holy?2:1)*wx; target.status.hitPenalty=(target.status.hitPenalty||0)+pen;
+        narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`);
+        const _hsHeal=Math.max(1,Math.round((caster.maxHp||20)*SPELL_HOLY_HEAL_PCT/100));
+        if(caster.hp<(caster.maxHp||20)){ const _h=Math.min(_hsHeal,(caster.maxHp||20)-caster.hp); caster.hp+=_h;
+          narrative.push(`  ✝ The light closes ${caster.name}'s hurts — ${_h} recovered. (HP ${dispFloor(caster.hp)})`); }
+        // The light burns whatever stands between a hero and a barrow, and burns the unclean twice as
+        // deep. Measured, a symbol that only blinded left White worse than carrying no magic at all
+        // against anything that was neither undead nor a fiend.
+        { const _hsD=Math.max(1,Math.round(target.maxHp*SPELL_HOLY_BURN_PCT*(holy?2:1)/100));
+          const _dealt=pcTakeHit(target,_hsD,narrative,caster.name,'Holy Symbol');
+          if(_dealt) narrative.push(`  ✝ ${holy?`The unclean flesh of ${target.name} chars at the sight of it`:`The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); }
+        break; }
+      case 'Spiritwrack':{ // 2026-09-15: the binding now lasts with the binder — 2 rounds + 1 per two levels
+        // (3 at White 1, 5 at White 5) instead of a flat 3 however little the caster had studied.
+        const _swR=(SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(lvlEff/2))*wx; target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} phases it cannot cast or use archery, and its melee is halved.`); break; }
+      case 'Psychic Blast':{ // 2026-09-15: three rounds of total helplessness was the same at Psychic 1 as at
+        // Psychic 5. Now 1 round + 1 per two levels (1 at Psychic 1, 3 at Psychic 5), Dreamstone still +1.
+        const _stunN=(SPELL_BLAST_BASE_ROUNDS+Math.floor(lvlEff/2)+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0))*wx; target.status.stun=(target.status.stun||0)+_stunN; narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
+      case 'Telekinetic Storm':{ // 2026-09-15: a quarter of the target's health whoever threw it. Now 10% + 3% a
+        // level — 27% at Psychic 5, half that from an apprentice. The recoil is unchanged.
+        const d=Math.max(1,Math.round(target.maxHp*(SPELL_TKS_BASE_PCT+SPELL_TKS_PCT_PER_LVL*lvlEff)/100)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
       case 'Mirror Image':{
         if(!state){ narrative.push(`  ${caster.name} conjures a Mirror Image.`); break; }
         if(state.mirror){ // casting again while an illusion fights dissipates both images
@@ -12443,17 +12525,30 @@ const BATTLE_ARMY_SPELLS={
         // meaningless and would only end its own duel).
         let _phTactics=((target.tactics)||['ME']).slice().filter(t=>!/mirror\s*image/i.test(t));
         if(!_phTactics.length) _phTactics=['ME'];
+        // 2026-09-15 (Toby) — MIRROR IMAGE, REBUILT. Measured, it was the worst thing a hero could do
+        // with an action: a fully trained Illusory adept beat a Lich Acolyte 100% of the time casting
+        // nothing at all, and 94.3% casting this. Two faults. The phantom was a FULL-strength copy of the
+        // victim, so shattering it took as long as winning the real fight; and the caster "concentrated",
+        // meaning they stood still for every round the illusion lasted. An illusion now carries a share
+        // of the victim's health, fades of its own accord after a few rounds, and — the change that
+        // matters — the caster is free to act while the victim's attention is on it.
+        const _phHp=Math.max(1,Math.round(target.hp*SPELL_MIRROR_HP_PCT/100));
         const ph={ ...target, kind:'phantasm', name:target.name+"'s mirror image", ref:target.ref,
-          hp:target.hp, maxHp:target.maxHp,
+          hp:_phHp, maxHp:_phHp,
           school:{...(target.school||{})}, specials:(target.specials||[]).slice(),
           tactics:_phTactics, tacIdx:0, planExhausted:false, neverFlees:true, // Item 6 (batch 2): an illusion never runs
           castSpells:[], castSchool:{}, status:pcNewStatus() };
-        state.mirror={ caster, victim:target, phantasm:ph };
-        narrative.push(`  🪞 ${caster.name} conjures a perfect phantom of ${target.name} — ${target.name} must fight their own mirror while ${caster.name} concentrates, taking no other action.`);
+        state.mirror={ caster, victim:target, phantasm:ph, life:SPELL_MIRROR_ROUNDS };
+        narrative.push(`  🪞 ${caster.name} conjures a phantom of ${target.name} — ${target.name} turns on their own mirror, and ${caster.name} is left free to act.`);
         break;
       }
-      case 'Invisibility':{ caster.status.toHitReduce=Math.max(caster.status.toHitReduce||0,25); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — enemies suffer \u221225% to hit, +30% flee.`); break; }
-      case 'Hand of Death':{ if(Math.random()*100<Math.min(95,lvlEff*10*wx)){ const _dfMult=(caster.ref&&hasItemBase(caster.ref,"Death's Finger Ring"))?1.1:1; const d=Math.max(1,Math.round(target.maxHp*0.5*_dfMult)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims 50% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${Math.min(95,lvlEff*10*wx)}%]`); break; }
+      case 'Invisibility':{ // 2026-09-15: 10% + 4% a level (14% at Illusory 1, 30% at Illusory 5) instead of a
+        // flat 25 at every level.
+        caster.status.toHitReduce=Math.max(caster.status.toHitReduce||0,SPELL_INVIS_BASE_PCT+SPELL_INVIS_PCT_PER_LVL*lvlEff); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — enemies suffer \u221225% to hit, +30% flee.`); break; }
+      case 'Hand of Death':{ // 2026-09-15: half the target's health on a coin flip was the single strongest thing a
+        // hero could do in a duel. The grip is the same, the bite is 40% rather than 50%, and the chance is
+        // capped at 60 rather than 95 so an item cannot push it to a near-certainty.
+        if(Math.random()*100<Math.min(SPELL_HOD_MAX_PCT,lvlEff*10*wx)){ const _dfMult=(caster.ref&&hasItemBase(caster.ref,"Death's Finger Ring"))?1.1:1; const d=Math.max(1,Math.round(target.maxHp*SPELL_HOD_BITE_PCT/100*_dfMult)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims ${SPELL_HOD_BITE_PCT}% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${Math.min(SPELL_HOD_MAX_PCT,lvlEff*10*wx)}%]`); break; }
       case 'Curse':{
         // Halve (round down) the target's best combat ability for the duration of the fight.
         const bestSchool=['white','psychic','illusory','elemental','necromancy'].reduce((b,s)=>(target.school[s]||0)>(target.school[b]||0)?s:b,'white');
@@ -13118,6 +13213,7 @@ const BATTLE_ARMY_SPELLS={
         pcAct(phantasm, victim, narrative, _mstate);
       }
       if(phantasm.hp<=0){ narrative.push(`  🪞 ${victim.name} shatters the phantom — the illusion ends.`); state.mirror=null; }
+      else if(state.mirror && --state.mirror.life<=0){ narrative.push(`  🪞 The phantom of ${victim.name} thins to nothing of its own accord.`); state.mirror=null; }
       if(victim.hp<=0){ narrative.push(`  ${victim.name} is struck down by their own mirror image!`); state.mirror=null; }
     };
 
@@ -13146,7 +13242,11 @@ const BATTLE_ARMY_SPELLS={
           // fall through to a normal round below
         } else {
           _mirrorExchange();
-          continue; // skip the normal round
+          // 2026-09-15: the caster's own action still happens. The victim is the one whose round is
+          // spent — on the illusion — which is what the spell is FOR. Guarded on both being alive and
+          // on the caster not having been the one struck down inside the exchange.
+          if(caster.hp>0 && victim.hp>0) pcAct(caster, victim, narrative, state);
+          continue; // the victim has already acted, against the phantom
         }
       }
 
@@ -13160,7 +13260,7 @@ const BATTLE_ARMY_SPELLS={
         // this round (caster held the initiative), the victim's action goes against the phantom at once —
         // they must not get a free swing at the concentrating caster before the illusion takes hold.
         if(!_mirrorBefore && state.mirror && actor===first && state.mirror.victim===second && second.hp>0){
-          _mirrorExchange();
+          _mirrorExchange();   // the victim's action this round goes to the phantom, not to the caster
           break;
         }
         // consume queued free attacks (Psychic Blast) — only land as strikes at melee range
@@ -21632,6 +21732,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.15-1258</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.15-2203</div>
 </body>
 </html>
