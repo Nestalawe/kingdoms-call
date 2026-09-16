@@ -1496,7 +1496,23 @@ async function joinGame(){
   await doJoinGame(joiningGame.id);
 }
 
+// 2026-09-16 (Toby): "Make sure a player cannot sign up for the same game more than once."
+// The OPEN GAMES list already hides a game you are in (`myGameIds.has(g.id)`), but that is a view
+// filter, not a guard — a stale tab, a second window, the browser back button or a double-click on
+// the Join button all reach this function with the list's opinion out of date, and nothing here ever
+// re-checked it. Two guards, the same defence-in-depth pattern the alignment and private-visibility
+// checks already use:
+//   1. `_joinInFlight` closes the double-click race, which no database round-trip can (both inserts
+//      would be in flight before either returned).
+//   2. A submit-time read of game_players for this game AND this user, so a stale page cannot insert
+//      a second realm however it got here.
+// NOTE FOR TOBY: the only absolute guarantee is a UNIQUE INDEX on game_players (game_id, user_id) in
+// Supabase. These two guards close every route the portal itself offers, but a unique index would
+// also cover anything talking to the database directly. Worth adding when you are next in the SQL
+// editor:  create unique index if not exists game_players_one_per_user on game_players (game_id, user_id);
+let _joinInFlight=false;
 async function doJoinGame(gameId){
+  if(_joinInFlight) return;
   const kingName=document.getElementById('join-king-name').value.trim();
   const kingdomName=document.getElementById('join-kingdom-name').value.trim()||kingName;
   const race=document.getElementById('join-race').value;
@@ -1517,6 +1533,18 @@ async function doJoinGame(gameId){
       return;
     }
   }
+  // ── ONE REALM PER PLAYER PER GAME ── checked at submit time, not just hidden from the list.
+  {
+    const {data:mine,error:meErr}=await sb.from('game_players')
+      .select('id,player_index').eq('game_id',gameId).eq('user_id',currentUser.id);
+    if(meErr){ msg.innerHTML=`<div class="msg-error">${meErr.message}</div>`; return; }
+    if(mine&&mine.length){
+      msg.innerHTML='<div class="msg-error">You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.</div>';
+      setTimeout(()=>{show('sec-games');loadAllGames();},2500);
+      return;
+    }
+  }
+  _joinInFlight=true;
   msg.innerHTML='<div class="msg-info">Joining game…</div>';
 
   // Defense-in-depth: re-check visibility at submit time. A Private game may only be joined by an
@@ -1551,6 +1579,7 @@ async function doJoinGame(gameId){
     turn_report:JSON.stringify({playerSetup, status:'joined', waitingForTurn0:true})
   }).select().single();
 
+  _joinInFlight=false;
   if(error){msg.innerHTML=`<div class="msg-error">${error.message}<br><small>If this keeps happening, try refreshing the page and joining again.</small></div>`;return;}
   msg.innerHTML='<div class="msg-success">You have joined the game! Waiting for the GM to start Turn 0.</div>';
   setTimeout(()=>{show('sec-games');loadAllGames();},2000);
@@ -3187,13 +3216,18 @@ const rawMagicLvl=(charObj,school)=>((charObj&&charObj.skills)||{})[school]||0;
 // magic-skill bonus (e.g. Death's Finger Ring → Necromancy +1) lets a hero with 0 base skill cast at
 // the item's effective level. The engine already casts off effStat; this keeps the ORDER-ENTRY spell
 // dropdowns in step so those spells can actually be selected.
+// 2026-09-16 (Toby): the five magic schools join melee and archery as skills whose ITEM bonuses carry
+// past a trained 5 to the ceiling of 9. Declared HERE, above effMagicLvl, its first reader — a const
+// declared further down the file is in the temporal dead zone for everything above it, which is this
+// project's oldest and most expensive bug class.
+const ITEM_UNCAPPED_SKILLS_P=new Set(['melee','archery','white','psychic','illusory','elemental','necromancy']);
 function effMagicLvl(charObj, school){
   const base=((charObj&&charObj.skills)||{})[school]||0;
   // Item 2 (2026-09-07): only EQUIPPED slot items count (unslotted items are always active).
   const bonus=((charObj&&charObj.items)||[]).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school&&itemUsableByP(it,charObj)&&(!itemSlotP(it)||it.equipped!==false))?(it.effect.bonus||0):0),0);
-  // 2026-09-13: magic schools are NOT among the uncapped skills (only melee and archery are), so this
-  // still mirrors the engine's flat ceiling of 5.
-  return Math.max(0,Math.min(5,base+bonus));
+  // 2026-09-16: reads the same set the engine does, so the spell dropdown and the cast chance it quotes
+  // cannot drift from what will actually be rolled. Spell EFFECTS still read the level counted to 5.
+  return Math.max(0,Math.min(ITEM_UNCAPPED_SKILLS_P.has(school)?9:5,base+bonus));
 }
 
 // Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
@@ -3329,7 +3363,7 @@ const ENCOUNTER_TACTICS=[
   {code:'TA',label:'Talk — attempt to negotiate or parley',retired:true},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter (does not affect duels; see Duel stance)'},
-  {code:'SC',label:'Scout — scout the lair for secrets and special functions'},
+  {code:'SC',label:'Scout — scout the lair for secrets and special functions',retired:true}, // 2026-09-16: withdrawn; mirrors SCOUT_ENABLED in the GM engine
 ];
 
 // ── Royal succession skill allocation ─────────────────────────────────────────
@@ -5334,9 +5368,7 @@ function effSkillP(c, k){
   return ((c&&c.skills)||{})[k]||0;
 }
 
-// Mirrors ITEM_UNCAPPED_SKILLS in the GM engine: the only two skills whose item/aura bonuses may
-// carry a character past an effective 5 (levels past 5 drive damage and to-hit for these).
-const ITEM_UNCAPPED_SKILLS_P=new Set(['melee','archery']);
+// (ITEM_UNCAPPED_SKILLS_P is declared above effMagicLvl — see the note there.)
 // ── BONUS SOURCE COLOURS (2026-09-16, Toby item 1) ───────────────────────────────────────────
 // Every skill bonus is coloured by WHERE it comes from, and every one is named in full beneath the
 // skill list rather than hidden in a hover tooltip (a tooltip is unreachable on a phone, which is
@@ -7783,6 +7815,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1622</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1723</div>
 </body>
 </html>

@@ -743,7 +743,14 @@ const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thi
 // march and the five magic schools) has no defined behaviour above 5, and the engine is tuned around
 // that cap in a dozen places, so their bonuses still stop at 5.
 const SKILL_BENEFIT_CAP=5, SKILL_MAX=9;
-const ITEM_UNCAPPED_SKILLS=new Set(['melee','archery']);
+// 2026-09-16 (Toby): the five magic schools JOIN melee and archery as skills whose item and aura
+// bonuses stack on top of a trained 5, to the ceiling of 9. What that buys is CAST CHANCE only —
+// +10% a level to the 95% ceiling — because every spell EFFECT is computed on `Math.min(lvl,5)`
+// (pcCastCombatSpell's `lvlEff`, the action phase's `spellLevelEff`, the Bless ward, Phantasmal
+// Armies). The per-turn cast limit already tops out at 3 from level 4, and the per-fight limit at 2
+// from level 2, so neither moves either. A relic focus therefore makes a master more RELIABLE, never
+// more powerful — which is the distinction Toby asked for.
+const ITEM_UNCAPPED_SKILLS=new Set(['melee','archery','white','psychic','illusory','elemental','necromancy']);
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
 // Item 10 (this session): when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a
 // skill — reachable only through hard experience, never the practice ground), their own report
@@ -786,7 +793,7 @@ const ENCOUNTER_TACTICS=[
   {code:'TA',label:'Talk — attempt to negotiate or parley',retired:true},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter'},
-  {code:'SC',label:'Scout — scout the lair for secrets'},
+  {code:'SC',label:'Scout — scout the lair for secrets',retired:true}, // 2026-09-16: withdrawn (SCOUT_ENABLED); label kept so an older Chronicle still reads
 ];
 
 // currentReport is used by buildTargetField — GM portal sets it to a stub before calling
@@ -952,9 +959,12 @@ function getAlreadyRecruitedThisTurn(charId,upToPhaseExclusive){
 function _gmEffMagicLvl(c,school){
   const base=((c&&c.skills)||{})[school]||0;
   const bonus=activeItems(c).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===school)?(it.effect.bonus||0):0),0); // Item 2: equipped only
-  // 2026-09-13: magic schools are NOT among the uncapped skills (only melee and archery are), so this
-  // still mirrors skillBonusBreakdown's flat ceiling of 5.
-  return Math.max(0,Math.min(SKILL_BENEFIT_CAP,base+bonus));
+  // 2026-09-16 (Toby): the schools are now in ITEM_UNCAPPED_SKILLS, so an item carries a caster past a
+  // trained 5 to the ceiling of 9 — and this mirror has to follow, or the order form would quote a
+  // cast chance the engine will not roll. Read the ceiling off the same set the engine uses rather
+  // than hard-coding it, so the two can never drift again.
+  const _ceil=ITEM_UNCAPPED_SKILLS.has(school)?SKILL_MAX:SKILL_BENEFIT_CAP;
+  return Math.max(0,Math.min(_ceil,base+bonus));
 }
 
 function buildTargetField(c,ph,saved){
@@ -4866,6 +4876,9 @@ const PC_WEAK_MULT=2;
 // 2026-09-16 (Toby): the Talk/Parley encounter tactic is withdrawn. Set true to bring it back — see the
 // 'TA' case in pcRunTactic for the full checklist of what else to restore alongside it.
 const PARLEY_ENABLED=false;
+// 2026-09-16 (Toby): the Scout encounter tactic is withdrawn too. Same pattern — the mechanic below is
+// intact; see the 'SC' case in pcRunTactic for what else to restore alongside it.
+const SCOUT_ENABLED=false;
 // ── DAMAGE FLOOR (2026-09-12b, Toby) ─────────────────────────────────────────────────────────
 // Soaks, wards, armour and hides used to stack until almost every landed attack was scraped down
 // to the 1-damage minimum (Cautious 2 + Mithril 2 + meleeDR + a rage soak reaches that easily on a
@@ -8678,7 +8691,7 @@ function buildTurnReport(gameState, playerIndex){
         // ASSASSINATE (Spy 9) — 25% + 6% per RAW Spy level, cap 80, less 25 against a king.
         out.assassinate={ level:raw('spy'), chance:Math.min(80,25+raw('spy')*6), kingPenalty:25 };
         // STEAL / GRAND HEIST — the thief's own odds before the target's circumstances.
-        out.steal={ level:eff('thief'), chance:50+10*Math.min(eff('thief'),5), escape:Math.min(95,eff('thief')*20) };
+        out.steal={ level:eff('thief'), chance:Math.min(95,50+10*Math.min(eff('thief'),5)), escape:Math.min(95,eff('thief')*20) }; // 2026-09-16: 95% ceiling, matching the engine
         out.grandHeist={ level:raw('thief'), chance:Math.min(95,60+5*Math.max(0,raw('thief')-5)), escape:Math.min(95,raw('thief')*20) };
         // PRACTICE — the solo chance at each level; a peer adds half as much again, a mentor makes it certain.
         out.practice={ byLevel:[25,20,15,10,5], astro:has('sd26')?5:0, discovery:discSumOf(pl,'practice','pct')*100 };
@@ -11578,7 +11591,12 @@ const BATTLE_ARMY_SPELLS={
 
     const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc);
     { const _bl=battleLineNarrative(cName,armiesWithStr,lineWidth,atkFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
-    if(archSkillAtk>0&&armies.some(a=>MISSILE_ARMIES.has(a.type))) narrative.push(`${cName}'s Archery ${archSkillAtk} grants +${(archSkillAtk*10)}% strength to missile units.`);
+    // 2026-09-16 (Toby: "in battle reports it says archery gives bonuses to missile units") — ROOT
+    // CAUSE: this line ANNOUNCED a +10%/level strength bonus that the engine has never applied. Unit
+    // strength comes from `armStr`, which does not read archery at all, and `rawAtkStr` is computed
+    // above this line from exactly that. It is a leftover from the mechanic 103.4 corrected in the
+    // rulebook — the prose was fixed and this narrative string was missed. Archery's whole battlefield
+    // effect is the pre-battle volley, which the Archery Phase block narrates with its own total.
     // Show Druid shortfall warnings
     const druIdLvl=effStat(c,'druid');
     armies.forEach(a=>{
@@ -11616,7 +11634,7 @@ const BATTLE_ARMY_SPELLS={
       if(landUnit&&prov.terrain!=='sea') base*=tacMulted(defTactBonus,defHero);
       return{a,base,fly:FLYING_TYPES.has(a.type)};
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
-    if(archSkillDef>0&&(prov.neutralDefenders||[]).some(a=>MISSILE_ARMIES.has(a.type))) narrative.push(`${defHero.name}'s Archery ${archSkillDef} grants the defenders +${(archSkillDef*10)}% strength to missile units.`);
+    // 2026-09-16: the defender's half of the same phantom bonus, removed for the same reason.
     if(navalSkillDef>0&&(prov.neutralDefenders||[]).some(a=>SEA_TYPES.has(a.type))) narrative.push(`${defHero.name}'s Naval ${navalSkillDef} grants the defenders +${(navalSkillDef*20)}% strength to fleet units${isLandBattle?' (Naval command holds on land as at sea)':''}.`);
     // Tactical on every land unit of a land battle — the same scope the attacker and both PvP sides use.
     const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc);
@@ -13255,6 +13273,12 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'SC': case 'SCOUT':{
+        // 2026-09-16 (Toby): "Remove the Scout tactic from the game for now, I may add it back in
+        // later." Switched off, not deleted — as with Parley. A saved encounter plan in a live game
+        // may still carry 'SC', so it must fall through to an ordinary attack rather than keep
+        // working invisibly. To restore: set SCOUT_ENABLED true, drop `retired` from the SC entry in
+        // ENCOUNTER_TACTICS in BOTH portals, and put the Explorer bullet back in the rulebook.
+        if(!SCOUT_ENABLED){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         const ex=actor.kind==='character'?effStat(actor.ref,'explorer'):0;
         const b=ex*5;
         // Item 13b: Scout is no longer a no-op — it reveals what the guardian is worth. It reports the
@@ -17189,7 +17213,10 @@ const BATTLE_ARMY_SPELLS={
         const thiefLevel=effStat(c,'thief');
         if(thiefLevel<1){log('system',`${c.name} has no Thief skill — light fingers take training.`,{actor:c.player,targets:[c.player]});break;}
         const _tgtRaw=String(target||'').trim().toLowerCase();
-        const stealBase=50+10*Math.min(thiefLevel,5);
+        // 2026-09-16 (Toby): cap at 95%. 50 + 10×5 reached a flat 100 at Thief 5, and nothing in this
+        // engine is ever certain — every other roll is clamped short of it. The halved variants (a
+        // target leading troops, a guarded paymaster) floor out of this figure, so they cap at 47%.
+        const stealBase=Math.min(95,50+10*Math.min(thiefLevel,5));
         const escapeChance=Math.min(95,thiefLevel*20); // chance to slip away unnoticed on a failure
         if(_tgtRaw==='garrison'){
           // (e) The garrison paymaster: 1g per unit standing garrison here, from the province's owner.
@@ -21939,6 +21966,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1622</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1723</div>
 </body>
 </html>
