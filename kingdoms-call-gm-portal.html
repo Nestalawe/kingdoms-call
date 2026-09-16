@@ -8016,11 +8016,22 @@ function reckoningThresholdPct(nPlayers, decaySteps, blocSize){
 function reckoningThreshold(nPlayers, decaySteps, blocSize){ return reckoningThresholdPct(nPlayers, decaySteps, blocSize)/100; }
 // Steps read off a game state, wherever the state is called `G` or `gameState` or `state`.
 function reckoningDecayOf(state){ return (state&&state.reckoningDecaySteps)|0; }
-// Alignment signature merit multiplier — each alignment's natural title lane costs less to win (#6).
-const ALIGN_TITLE_BOOST={
-  Divine:{hiero:1.25}, Good:{marshal:1.25}, Druidic:{monster:1.25},
-  Neutral:{vault:1.25, lore:1.25}, Pagan:{lore:1.25}, Evil:{marshal:1.25, necro:1.25}, Undead:{marshal:1.25, necro:1.25},
-};
+// 2026-09-16 (Toby) — THE ALIGNMENT TITLE BOOST IS WITHDRAWN. Every alignment now competes for every
+// Imperial Title on exactly the same terms. It used to be a \u00d71.25 multiplier on each creed's
+// "natural lane" (design clarification #6): Divine on the Hierophant, Good/Evil/Undead on the Grand
+// Marshal, Druidic on the Monster-Bane, Neutral and Pagan on the Loremaster, Evil/Undead on the
+// Deathpriest. Toby's ruling: "all alignments should be the same." A quarter of a title's merit is a
+// large thumb on the scale for something a player never chose for that reason, and it made two
+// characters with identical deeds and skills score differently.
+//
+// One entry in that table had NEVER done anything, and it is worth recording rather than quietly
+// dropping: `Neutral:{vault:1.25}`. The boost was applied only to the per-CHARACTER merit map, and
+// the Vaultkeeper is a REALM title scored straight off the treasury — `vault` was never a key in
+// `_charTitleMerit`'s return, so the multiplier had nothing to multiply. Four years of a table entry
+// that read as a live rule and was not one.
+//
+// Alignments keep every one of their other distinctions (zeal, hiring costs, signature actions, the
+// starting skill nudge); what they no longer get is a discount on the throne.
 const _MAGIC_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
 function _skillItem(c,stat){
   const base=((c&&c.skills)||{})[stat]||0;
@@ -8277,7 +8288,10 @@ function computeStandings(state){
   // 2026-09-16: sea provinces held, per realm — the Sea Lord's standing component (SEA_LORD_PROVINCE_PTS).
   // Counted once here rather than per character; every character of a realm carries their realm's figure.
   const seaProvByPlayer=players.map((p,pi)=>((state.world&&state.world.provinces)||[]).reduce((s,pv)=>s+((pv&&pv.owner===pi&&pv.terrain==='sea')?1:0),0));
-  chars.forEach(c=>{ const raw=_charTitleMerit(c,{seaProvinces:seaProvByPlayer[c.player]||0}); const boost=ALIGN_TITLE_BOOST[players[c.player]&&players[c.player].alignment]||{}; const m={}; for(const k in raw) m[k]=raw[k]*(boost[k]||1); perChar[c.id]=m; });
+  // 2026-09-16: the per-alignment \u00d71.25 lane boost is gone (see ALIGN_TITLE_BOOST's obituary above).
+  // A character's merit is now exactly what their deeds, skills and holdings come to, whatever creed
+  // their realm follows.
+  chars.forEach(c=>{ perChar[c.id]=_charTitleMerit(c,{seaProvinces:seaProvByPlayer[c.player]||0}); });
   const titles={};
   TITLE_DEFS.forEach(t=>{
     if(t.key==='throne'||t.key==='vault'){
@@ -10199,7 +10213,10 @@ async function runTurn(opts){
 
   // ── TITLE MERIT: battles ── Grand Marshal (land) / Sea Lord (sea): the winner gains +1 per enemy
   // unit destroyed; the loser loses 1 per own unit lost. Counted from the pooled battle copies, which
-  // still carry _died flags at the call site. Only credited for real player-vs-player battles.
+  // still carry _died flags at the call site. 2026-09-16 (Toby): credited for EVERY battle — a rival
+  // realm, a neutral province's chieftain and his guard, a leaderless neutral guard, or an enemy
+  // realm's bare garrison alike. The bucket is chosen off the province's terrain, so one helper pays
+  // the Grand Marshal ashore and the Sea Lord at sea.
   // 2026-09-12 (item 1): reads combatVsChar/combatVsNPC's OWN casualty counts. A leaderless defence
   // (an enemy realm's garrison) has no commander to debit, so only the attacker's merit moves; the
   // attacker is still debited for their own dead when a garrison throws them back.
@@ -12679,7 +12696,11 @@ const BATTLE_ARMY_SPELLS={
       }
       case 'Invisibility':{ // 2026-09-15: 10% + 4% a level (14% at Illusory 1, 30% at Illusory 5) instead of a
         // flat 25 at every level.
-        caster.status.toHitReduce=Math.max(caster.status.toHitReduce||0,SPELL_INVIS_BASE_PCT+SPELL_INVIS_PCT_PER_LVL*lvlEff); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — enemies suffer \u221225% to hit, +30% flee.`); break; }
+        // 2026-09-16: the line printed a hard-coded "\u221225%" — the flat figure this spell had BEFORE the
+        // 2026-09-15 rebalance — while the code applied 10 + 4/level. A player reading their own report was
+        // told the wrong number at every level. Quote the figure actually applied.
+        const _invPct=SPELL_INVIS_BASE_PCT+SPELL_INVIS_PCT_PER_LVL*lvlEff;
+        caster.status.toHitReduce=Math.max(caster.status.toHitReduce||0,_invPct); caster.status.fleeBonus=(caster.status.fleeBonus||0)+30; narrative.push(`  ${caster.name} fades from sight — enemies suffer \u2212${_invPct}% to hit, +30% flee.`); break; }
       case 'Hand of Death':{ // 2026-09-15: half the target's health on a coin flip was the single strongest thing a
         // hero could do in a duel. The grip is the same, the bite is 40% rather than 50%, and the chance is
         // capped at 60 rather than 95 so an item cannot push it to a near-certainty.
@@ -12698,7 +12719,8 @@ const BATTLE_ARMY_SPELLS={
         } else narrative.push(`  ${caster.name}'s Curse finds no ability in ${target.name} worth withering.`);
         break;
       }
-      case 'Control Undead':{ if(target.isUndead){ target.status.stun=(target.status.stun||0)+Math.max(1,lvlEff); narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${Math.max(1,lvl)} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
+      case 'Control Undead':{ if(target.isUndead){ const _cuR=Math.max(1,lvlEff); target.status.stun=(target.status.stun||0)+_cuR; // 2026-09-16: printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
+          narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${_cuR} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
       case 'Charm':{
         // Item 4 (2026-09-09): a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
         if(target&&target.kind==='character'&&target.ref&&target.ref.isKing){ narrative.push(`  ${caster.name}'s Charm washes over ${target.name} and finds nothing to grip — a crowned will cannot be swayed.`); break; }
@@ -21898,6 +21920,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1436</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1545</div>
 </body>
 </html>
