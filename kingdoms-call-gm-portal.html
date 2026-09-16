@@ -779,7 +779,11 @@ const ENCOUNTER_TACTICS=[
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
   {code:'CA',label:'Cast Spell — use a combat spell (requires magic skill)',hasSpell:true},
   {code:'CS',label:'Cast from School — random pre-battle spell from a chosen school',hasSchool:true},
-  {code:'TA',label:'Talk — attempt to negotiate or parley'},
+  // 2026-09-16 (Toby) — PARLEY IS WITHDRAWN FOR NOW. `retired:true` keeps the LABEL resolvable, so a
+  // Chronicle written before today still reads "Talk — attempt to negotiate or parley" instead of a
+  // bare "TA", while every order-form picker filters it out. The engine case is gated behind
+  // PARLEY_ENABLED (see pcRunTactic); flip that one constant and delete `retired` here to bring it back.
+  {code:'TA',label:'Talk — attempt to negotiate or parley',retired:true},
   {code:'ST',label:'Steal — attempt to steal treasure (requires Thief skill)'},
   {code:'FL',label:'Flee — attempt to escape from the encounter'},
   {code:'SC',label:'Scout — scout the lair for secrets'},
@@ -4859,6 +4863,9 @@ function migrateLairGuardiansV2(gs){
 // the Divine/Good; constructs shatter under Elemental force; fey wither under Necromancy or cold
 // dwarven iron; giants are easily deceived; dragons' vast prideful minds open to Psychic magic.
 const PC_WEAK_MULT=2;
+// 2026-09-16 (Toby): the Talk/Parley encounter tactic is withdrawn. Set true to bring it back — see the
+// 'TA' case in pcRunTactic for the full checklist of what else to restore alongside it.
+const PARLEY_ENABLED=false;
 // ── DAMAGE FLOOR (2026-09-12b, Toby) ─────────────────────────────────────────────────────────
 // Soaks, wards, armour and hides used to stack until almost every landed attack was scraped down
 // to the 1-damage minimum (Cautious 2 + Mithril 2 + meleeDR + a rage soak reaches that easily on a
@@ -7954,7 +7961,7 @@ const TITLE_DEFS=[
   {key:'vault',   name:'The Vaultkeeper',   prize:10, kingdomLevel:true, req:'Hold the largest treasury (most gold) in the world.', perk:'Each turn you are shown every rival realm\'s treasury.'},
   {key:'marshal', name:'The Grand Marshal', prize:10, req:'Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost). Battles against a neutral province\'s chieftain and his guard count the same as a war with a rival realm.', perk:'Each turn you are told the province holding each rival\'s strongest land army.'},
   {key:'sea',     name:'The Sea Lord',      prize:10, req:'Hold the highest Naval skill, plus every sea province your realm holds, plus sea-battle merit on the same terms as the Grand Marshal \u2014 battles with a neutral sea province\'s guardian count too.', perk:'Each turn you are told the province holding each rival\'s strongest fleet.'},
-  {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (half credit for beasts pacified).', perk:'Each turn you are told the name and province of the character ranked second for this title.'},
+  {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians.', perk:'Each turn you are told the name and province of the character ranked second for this title.'},
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'Each turn you learn which Sage discoveries your rivals made this turn \u2014 and copy one of them at random, for free.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage in every magic school.'},
   {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn you are told the location and strength of the largest skeletal army in the world.'},
@@ -13212,6 +13219,15 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'TA': case 'TALK':{
+        // 2026-09-16 (Toby): "take the Parley/Talk tactic out of the game for now. I may add it in
+        // again later." The mechanic below is intact and correct — it is simply switched off, the same
+        // way pcCourageChance was left in place at 109.1 when no guardian used it any more. A saved
+        // encounter plan from a live game may still carry 'TA', so this must not silently keep working:
+        // with the flag off the tactic falls through to an ordinary attack, exactly as an unusable
+        // tactic does. To restore: set PARLEY_ENABLED to true and drop `retired` from ENCOUNTER_TACTICS
+        // in BOTH portals, restore the Scout report's "a Druid could talk it down" clause, and put the
+        // Druid bullet and the Monster-Bane half-credit clause back in the rulebook.
+        if(!PARLEY_ENABLED){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         if(foe.kind==='monster'){
           const dr=actor.kind==='character'?effStat(actor.ref,'druid'):0;
           const chance=(foe.pacifiable===false)?0:(20+dr*15);
@@ -13284,7 +13300,10 @@ const BATTLE_ARMY_SPELLS={
             vulnClause+=` Its weakness: ${foe.weak.name} — ${foe.weak.desc}.`;
             if(actor.player!=null) pcLearnWeakness(G,actor.player,foe.name);
           }
-          if(foe.pacifiable) vulnClause+=' A Druid could talk it down rather than fight it.';
+          // 2026-09-16: the Scout report no longer offers to talk a beast down — the Talk tactic is
+          // withdrawn (PARLEY_ENABLED). The `pacifiable` trait itself is left on the creature data so
+          // nothing has to be re-derived when it comes back.
+          if(PARLEY_ENABLED && foe.pacifiable) vulnClause+=' A Druid could talk it down rather than fight it.';
           const descClause=(foe.ref&&foe.ref.desc)?` ${foe.ref.desc}`:'';
           narrative.push(`  🔍 ${actor.name} scouts the ${feat.name}: ${foe.name}${power?` (${power})`:''} stands guard at ${curHp}/${fullHp} HP.${descClause}${abilityClause}${vulnClause} Defeating it will yield exactly ${clearGold}g${itemOut}.`);
           feat.scouted=true;
@@ -21920,6 +21939,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1545</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1622</div>
 </body>
 </html>

@@ -170,7 +170,7 @@ footer.book .v{color:var(--gold-deep);}
   <div class="sub">The Player's Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival realms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
-  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 16 September 2026, 15:45 NZT</div>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 16 September 2026, 16:22 NZT</div>
 </header>
 
 <div class="shell">
@@ -474,7 +474,13 @@ footer.book .v{color:var(--gold-deep);}
 <!-- 7 ───────────────────────────────────────────────── -->
 <section id="skills">
   <h2>The Fifteen Skills</h2>
-  <p>Characters improve through fifteen skills in three groups. Each runs from level 0 to a <strong>cap of 9</strong>.</p>
+  <p>Characters improve through fifteen skills in three groups. Each runs from level 0 to a <strong>cap of 9</strong>. The table below lists <em>everything</em> each one does, with the actual figures — read your own hero's line before you decide what to train.</p>
+
+  <p>Two effects cut across every skill, whichever you raise:</p>
+  <ul>
+    <li><strong>Maximum hit points.</strong> Every level of every skill makes a character harder to kill (see the note under the table).</li>
+    <li><strong>Initiative.</strong> Your order within a phase is the <em>sum of all fifteen skill levels</em>, with <strong>March counted three times</strong>. A broadly-trained hero acts before a narrow one, which decides who reaches a contested province first and who casts at a target before it moves.</li>
+  </ul>
 
   <div class="grid">
     <div class="panel"><h4>Martial</h4>
@@ -488,25 +494,151 @@ footer.book .v{color:var(--gold-deep);}
       <p>The five schools of spellcraft. Any level in a school lets you cast all five of its core spells; higher levels raise your casting chance and how many you may cast a turn.</p></div>
   </div>
 
-  <p>What each level actually buys (levels 1–5; the mastery ladder at 6–9 is covered below):</p>
+  <p>What each level actually buys. Every figure below is the number the engine uses. Unless a line says otherwise, a skill's benefit is <strong>counted to level 5</strong> — see <em>the three caps</em> below.</p>
+
   <div class="wrap"><table class="tbl">
-    <caption>Skill effects per level (1–5)</caption>
-    <tr><th>Skill</th><th>Per level (1–5)</th></tr>
+    <caption>Skill effects per level (1–5) — everything each skill does</caption>
+    <tr><th style="width:11rem">Skill</th><th>What it does</th></tr>
+
     <tr class="grp"><td colspan="2"><strong>Martial</strong></td></tr>
-    <tr><td><strong>Melee</strong></td><td>+to-hit and damage in personal combat (duels, guardian fights).</td></tr>
-    <tr><td><strong>Archery</strong></td><td>Sharpens the <strong>pre-battle volley</strong>. Before the lines meet, every missile unit you lead shoots: each volley shaves <strong>6% + 2% per level</strong> of the target unit's own base strength (so 6% at Archery 0, 16% at Archery 5), scaled by how hard the shooting unit hits. <strong>Flyers take double</strong>, and no unit can be softened by more than 30% this way (60% for a flyer). Archery also adds <strong>+to-hit</strong> when you shoot in personal combat.</td></tr>
-    <tr><td><strong>Tactical</strong></td><td><strong>×1.2 army strength per level, up to ×2.0 at level 5</strong> (a hard cap, titles and items included). Applies to land battles only.</td></tr>
-    <tr><td><strong>March</strong></td><td>Adds land <strong>move points</strong>: slow armies (base speed ≤2) gain <strong>+0/+1/+1/+2/+3</strong> at levels 1–5; faster armies gain <strong>+1/+1/+2/+2/+2</strong>. A good marshal gets more out of a wallowing baggage column than out of troops already quick on their feet. Your column always moves at the pace of its slowest land unit.</td></tr>
-    <tr><td><strong>Naval</strong></td><td>The sea-going mirror of Tactical: <strong>×1.2 strength per level to every fleet and sea-beast you lead, up to ×2.0 at level 5 — in every battle, on land or at sea</strong> (a beached fleet fights at full strength under a good admiral; Tactical never reaches ships). As a lesser side-effect it also adds sea move points to a fleet you command, on the March ladder.</td></tr>
+
+    <tr><td><strong>Melee</strong></td><td><ul style="margin:0">
+      <li><strong>To hit in personal combat: 30% + 10% per level to 5, then +5% per level beyond</strong> — 40% at Melee 1, 80% at 5, 85% at 6, 90% at 7, 95% at 8, 100% at 9. Your temper, the defender's guard, spells and items are then applied to that figure, and only the <em>final</em> result is capped, at <strong>80%</strong>.</li>
+      <li><strong>Damage: 2–5, plus ⌈your Melee ÷ 2⌉, plus the amount you out-skill your foe by</strong>, plus your temper's damage bonus. The skill part reads your <em>raw</em> level 1–9, so mastery lands heavier blows even though the hit chance has stopped climbing.</li>
+      <li><strong>4 points of maximum HP per level</strong> — the heaviest contributor to hit points of any skill (see <a href="#characters">Hit points</a>).</li>
+      <li>Together with Archery, the <strong>only skill whose item and aura bonuses carry past an effective 5, to the ceiling of 9</strong>.</li>
+      <li>Decides the minor titles <em>The Duelist</em> (highest Melee), and feeds <em>The Widowmaker</em> and <em>The Relic-Hunter</em>; each grants +1 Melee in personal combat.</li>
+      <li>Slaying a lair guardian or an enemy character gives an extra chance to raise it, weighted by how dangerous the foe was.</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Archery</strong></td><td><ul style="margin:0">
+      <li><strong>The pre-battle volley.</strong> Before the lines close, every missile unit you lead shoots: each volley shaves <strong>6% + 2% per level</strong> of the target unit's own base strength (6% at Archery 0, 16% at Archery 5). That figure is then scaled by <strong>how hard the shooting unit itself hits</strong> — from ×0.5 for a Goblin Horde to ×2.0 for Elite Mountain Guns.</li>
+      <li><strong>Flyers take double</strong>, and archers are sent at the enemy's flyers first when any are present.</li>
+      <li>No unit can be softened by more than <strong>30% of its strength</strong> this way — <strong>60%</strong> for a flyer.</li>
+      <li>Archery gives your missile units <strong>no strength bonus at all</strong>. It sharpens the volley; that is the whole of its battlefield effect.</li>
+      <li><strong>To hit with a bow in personal combat: 30% + 10% per level to 5, then +5% beyond</strong> — the same ladder as Melee, capped at 80%. Your temper's archery bonus is added (Cowardly +22, Brave +8); a defender's temper <em>guard</em> does not turn arrows.</li>
+      <li><strong>Arrow damage: 2–5 plus ⌈your raw Archery ÷ 2⌉.</strong></li>
+      <li><strong>At Archery 3 and above you loose TWO arrows per Fire action</strong> instead of one — the single largest step in the skill.</li>
+      <li><strong>2 points of maximum HP per level.</strong></li>
+      <li>With Melee, the only skill whose item bonuses reach an effective 9.</li>
+      <li>Decides <em>The Marksman</em>; feeds <em>The Widowmaker</em> and <em>The Relic-Hunter</em> (+1 Archery in personal combat).</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Tactical</strong></td><td><ul style="margin:0">
+      <li><strong>×1.2 army strength per level — ×1.2 / ×1.4 / ×1.6 / ×1.8 / ×2.0 at levels 1–5.</strong> The ×2.0 is a <strong>hard cap</strong> that titles and items cannot exceed.</li>
+      <li><strong>Land battles only.</strong> It never touches fleets or sea-beasts, and it does nothing at all in a sea province — that is Naval's ground.</li>
+      <li><strong>Practising Tactical drills every land and air unit you lead.</strong> Each unit may rise one quality tier, at <strong>(Green 5% / Average 4% / Veteran 3% / Crack 2%) × your Tactical level</strong> per practice — doubled for Human drillmasters. The drills keep running at level 5, so a master tactician goes on sharpening his host.</li>
+      <li><strong>The standing measure of <a href="#victory">The Grand Marshal</a></strong> — your Tactical level (plus equipped items, counted to 9) is added to your land-battle merit.</li>
+      <li>Vulnerable in battle: an enemy <em>Telekinetic Storm</em> cast as battle magic negates it outright, and a <em>Curse</em> halves it.</li>
+      <li>The minor title <em>The Strategist</em> (highest Tactical) adds <strong>+1 Tactical in army battles</strong>.</li>
+      <li><strong>1 point of maximum HP per level to 3, then 2 per level from 4 to 9.</strong></li>
+    </ul></td></tr>
+
+    <tr><td><strong>March</strong></td><td><ul style="margin:0">
+      <li><strong>Adds land movement points</strong>, and helps a wallowing column more than a quick one. Added to the slowest unit's own rate:
+        <br><strong>Slow column (slowest unit base move 1–2): +0 / +1 / +1 / +2 / +3</strong> at levels 1–5.
+        <br><strong>Fast column (base move 3+): +1 / +1 / +2 / +2 / +2.</strong></li>
+      <li><strong>Counts THREE TIMES toward initiative</strong> — the order characters act in within a phase. No other skill is weighted. A high-March general recruits, casts and marches before a slower rival, which decides who reaches a contested province first.</li>
+      <li><strong>Flyers ignore March entirely</strong> — they already move at 5 and cross any terrain.</li>
+      <li>The minor title <em>The Swift</em> (highest March) adds <strong>+1 land movement point</strong>.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Naval</strong></td><td><ul style="margin:0">
+      <li><strong>×1.2 strength per level to every fleet and sea-beast you lead, capped at ×2.0</strong> — the sea-going mirror of Tactical.</li>
+      <li><strong>It applies in EVERY battle, on land and at sea alike.</strong> A beached fleet fights at full strength under a good admiral, where Tactical never reaches a ship at all.</li>
+      <li><strong>Adds sea movement points</strong> to a fleet you command, on exactly the March ladder (+0/+1/+1/+2/+3 for slow hulls of base move ≤2, +1/+1/+2/+2/+2 for faster ones). A hero with no ships gets the flat 5 sea points of light travel and Naval buys them nothing — Naval commands a fleet, not a passage.</li>
+      <li><strong>Practising Naval drills your fleets and sea-beasts</strong>, on the same table as Tactical's drills.</li>
+      <li><strong>The standing measure of <a href="#victory">The Sea Lord</a></strong> — your Naval level (plus equipped items, counted to 9) is added to your sea-battle merit and your realm's sea provinces.</li>
+      <li>Halved by an enemy <em>Curse</em> where it is your best command skill.</li>
+      <li>The minor title <em>The Sea-Wolf</em> (highest Naval) adds <strong>+1 sea movement point</strong>.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
     <tr class="grp"><td colspan="2"><strong>Special</strong></td></tr>
-    <tr><td><strong>Spy</strong></td><td>A Spy <em>action</em> succeeds at <strong>20% + 20% per level</strong> (level 5 is effectively certain). Intelligence accuracy scales too: 0–1 vague army estimates, 2–3 moderate, <strong>4–5 precise</strong> counts. Higher Spy also resists enemy spying and helps you run down a quarry.</td></tr>
-    <tr><td><strong>Thief</strong></td><td><strong>Thief 1 is required to Steal at all.</strong> A Steal <em>order</em> lands at <strong>50% + 10% per level</strong> (counted to 5), <strong>halved</strong> if the target is leading troops or you go for a guarded garrison paymaster. Thief also sets what you lift from a <strong>lair hoard</strong> when you slip past its guardian with the <em>Steal</em> tactic in a personal fight: <strong>10% of the hoard's original gold per level</strong> (to 5), so a master empties a lair in two visits. That in-combat steal runs off the same 50% + 10%/level, but the guardian's own watchfulness tells against you — <strong>−15% Moderate, −30% Powerful, −45% Legendary</strong> — while a <strong>Cowardly</strong> temper adds <strong>+15</strong> and casting <strong>Invisibility</strong> first adds another <strong>+15</strong>.</td></tr>
-    <tr><td><strong>Druid</strong></td><td>Lets you LEAD non-native races and wild units. The level required varies by unit (see the <a href="#armies">roster's Druid column</a>): tamer creatures need Druid 2–3, the mightiest monsters need Druid 5. Druidic realms lead all Creatures without any Druid skill; a Pagan Wild Hunt binds creatures or monsters without it. Beyond leading them, <strong>every level of Druid adds +5% strength to the Creature, Monster and primal armies you lead</strong> (counted to 5, so +25% at Druid 5), and from <strong>Druid 3</strong> a natural beast's blows land at <strong>half force</strong> against you in a personal encounter — a druid reads the animal's every move. (Undead, demons, constructs, dragons, giants and fey are outside that understanding and strike in full.)</td></tr>
-    <tr><td><strong>Sage</strong></td><td>Unlocks the <strong>Research</strong> order (Sage 1+). Each Research rolls for a realm Discovery at <strong>5% per level</strong>, so <strong>25% at level 5</strong> (the chance <strong>caps at 5</strong>). <strong>Neutral</strong> realms roll at double. Each discovery is a permanent realm-wide upgrade.</td></tr>
-    <tr><td><strong>Explorer</strong></td><td>Charts the map faster — each Explore order adds <strong>(terrain base) × (Explorer level + 1)%</strong>, so Explorer 4 maps five times as fast as Explorer 0. Terrain base per Explore: plains 35, desert/sea 25, forest/mountain 20, jungle 15 (percentage points).</td></tr>
-    <tr class="grp"><td colspan="2"><strong>Magic (each school)</strong></td></tr>
-    <tr><td><strong>White · Psychic · Illusory · Elemental · Necromancy</strong></td><td>Level 1 in a school already grants <strong>all five of its core spells</strong>; each further level raises your casting chance (+10%) and, at levels 3 and 4, how many action spells you may cast per turn. The <strong>per-turn casting benefit caps at level 5</strong>; levels 6–9 unlock mastery spells and count toward the Archmage title.</td></tr>
+
+    <tr><td><strong>Spy</strong></td><td><ul style="margin:0">
+      <li><strong>The Spy order succeeds at 20% + 20% per level</strong> — 40% at Spy 1, 60% at 2, 80% at 3, <strong>100% at Spy 4</strong> before any enemy counter-measures. It costs no gold.</li>
+      <li><strong>Accuracy of what you learn scales separately.</strong> At Spy <strong>0–1</strong> an enemy force is described vaguely; at <strong>2–3</strong> you get counts by broad category (so many cavalry-type, so many infantry-type, so many ships); at <strong>4–5</strong> you get the <strong>exact types and exact numbers</strong>.</li>
+      <li><strong>Stealth — being hard to find.</strong> When your character lurks in a province a rival owns and has no character in, their chance to spot you each turn is <strong>their exploration % of that province, −20% per level of YOUR Spy</strong> (counted to 5, so up to −100%), <strong>+10% per level of the best Spy they have standing there</strong> (to 5), clamped 5–95%. A character leading an army can never hide — a column leaves a plain trail.</li>
+      <li><strong>Counter-watch — being hard to fool.</strong> That same +10% per level applies to <em>your</em> provinces: the best Spy among your own or allied characters standing there raises the chance your garrison catches a lurking enemy.</li>
+      <li><strong>Spying a rival's home capital</strong> also reveals its tax income and how many heroes serve it, and can <strong>steal one of its Sage discoveries</strong> — at <strong>10% + 10% per level</strong>, clamped 5–95%. The victim keeps theirs; you simply copy it.</li>
+      <li><strong>Running down a quarry.</strong> An <em>Encounter Character</em> order corners its target each phase on a Spy contest: <strong>50%, +5% per level of your Spy, −5% per level of theirs</strong> — and <strong>doubled if the quarry is leading an army</strong>.</li>
+      <li>A successful Spy order is field experience toward raising the skill.</li>
+      <li><strong>Counts toward <a href="#victory">The Loremaster</a></strong>, alongside Explorer and Sage.</li>
+      <li>The minor title <em>The Shadow</em> (highest Spy) means <strong>your spies are never detected</strong> — no counter-intelligence alert ever names your realm.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Thief</strong></td><td><ul style="margin:0">
+      <li><strong>Thief 1 is required to Steal at all.</strong> With no levels the order is simply unavailable.</li>
+      <li><strong>The Steal order lands at 50% + 10% per level</strong> (counted to 5) — 60% at Thief 1, <strong>100% at Thief 5</strong>. <strong>Halved</strong> if the target is leading troops, or if you go for a guarded garrison paymaster.</li>
+      <li><strong>Getting away with it: Thief × 20%</strong> (capped 95%) to slip off unseen after a failure. Fail that too and the victim draws steel — a personal fight follows unless their duel stance is <em>Refuse</em>.</li>
+      <li><strong>What you take:</strong> one magic item from the target's pack, or <strong>5% of their realm's treasury</strong>; a target carrying no magic is robbed of gold instead. A garrison paymaster yields <strong>1 gold per garrison unit</strong> standing there.</li>
+      <li><strong>Robbing a lair hoard</strong> (the <em>Steal</em> tactic in a personal fight): you lift <strong>10% of the hoard's ORIGINAL gold per level</strong>, counted to 5 — so a master takes half of it at a stroke and empties the lair in two visits.</li>
+      <li><strong>Lifting one of the hoard's magic items as well: 30% + 10% per level, capped 80%.</strong></li>
+      <li><strong>The in-combat steal roll: 50% + 10% per level</strong> (to 5), less the guardian's own watchfulness — <strong>−15% Moderate, −30% Powerful, −45% Legendary</strong> — plus <strong>+15 for a Cowardly temper</strong>, <strong>+15 for casting Invisibility first</strong>, and <strong>+20 for the Lock-Pick of Legends</strong>. Clamped 5–95%.</li>
+      <li>The minor title <em>The Cutpurse</em> (highest Thief) pays <strong>+2 gold</strong> a turn.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Druid</strong></td><td><ul style="margin:0">
+      <li><strong>Lets you LEAD troops that are not your own race, and every wild thing.</strong> The level required rises with the beast:
+        <br><strong>Druid 1</strong> — all four humanoid races and their garrisons and fleets.
+        <br><strong>Druid 2</strong> — Gnomish Gyrocopters.
+        <br><strong>Druid 3</strong> — Eagle Riders, Wyvern Riders, Noble Griffons, Whale Cohort.
+        <br><strong>Druid 4</strong> — Stone Giants, Forest Ents, Giant Eagles, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles.
+        <br><strong>Druid 5</strong> — Elder Dragons, Crimson Rocs, Titan Warbeasts, Leviathan Pods.</li>
+      <li><strong>Falling short costs 20% of that unit's strength per missing level</strong> — lead an Elder Dragon at Druid 3 and it fights at 60%.</li>
+      <li><strong>+5% strength per level to every Creature, Monster and primal army you lead</strong>, counted to 5 — <strong>+25% at Druid 5</strong>, on top of being able to lead them at all.</li>
+      <li><strong>The chance your primal units land their special strike</strong> in a battle (a dragon's breath, an ent's spores) scales with your Druid level.</li>
+      <li><strong>From Druid 3, a natural beast's blows land at HALF force against you</strong> in a personal encounter — a druid reads the animal's every move. Undead, demons, constructs, dragons, giants and fey are outside that understanding and strike in full.</li>
+      <li><strong>Druidic realms lead every Creature with no Druid skill whatever</strong>, and a Pagan <em>Wild Hunt</em> binds Creatures or Monsters without it.</li>
+      <li>Vulnerable in battle: an enemy <em>Psychic Blast</em> cast as battle magic negates your Druid outright; a <em>Curse</em> halves it.</li>
+      <li>Decides the minor titles <em>The Naturalist</em> and (by units led) <em>The Beastmaster</em> — each gives the primal armies you lead a further +5%.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Sage</strong></td><td><ul style="margin:0">
+      <li><strong>Sage 1 unlocks the Research order</strong> — the <em>only</em> way to make a realm-wide discovery. Practising Sage trains the skill and finds nothing.</li>
+      <li><strong>Each Research rolls at 5% per level</strong>, counted to 5 — 5% at Sage 1, <strong>25% at Sage 5</strong>.</li>
+      <li><strong>Neutral realms roll at double</strong> — 10% per level, <strong>50% at Sage 5</strong>.</li>
+      <li>The minor title <em>The Loreseeker</em> (highest Sage) adds <strong>a further 5%</strong>, and certain discoveries raise the rate again.</li>
+      <li>You choose a <strong>field of study</strong> with the order; a field your realm has exhausted is shown as such and cannot be chosen.</li>
+      <li>A successful discovery is itself field experience toward raising Sage.</li>
+      <li><strong>Counts toward <a href="#victory">The Loremaster</a></strong>, alongside Explorer and Spy — and each discovery your realm has made is worth double again toward that title.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
+    <tr><td><strong>Explorer</strong></td><td><ul style="margin:0">
+      <li><strong>Each Explore order charts (terrain base) × (Explorer level + 1) percentage points</strong>, counted to 5. Explorer 0 maps at the base rate, Explorer 4 maps <strong>five times</strong> as fast.</li>
+      <li><strong>Terrain base per Explore: plains 35, desert 25, sea 25, forest 20, mountain 20, jungle 15</strong> percentage points. So a plains province goes 35 → 100% in three orders at Explorer 0, or in one at Explorer 2.</li>
+      <li><strong>Exploration reveals the lairs</strong> hidden in a province — they surface gradually as the figure climbs — along with its terrain, wealth and defenders.</li>
+      <li><strong>Your exploration % of your own province is the base chance your garrison spots an enemy lurking there</strong>, so charting your own land is a defensive measure as well as a map.</li>
+      <li><strong>The <em>Scout</em> tactic in an encounter plan</strong> reads the guardian before you commit: its identity, power, remaining hit points, the gold in its hoard, whether a thief has been there, and its <strong>weakness</strong>. Reading the ground also steadies your hand for that exchange — <strong>Explorer × 5% off the to-hit penalty</strong>.</li>
+      <li><strong>Counts toward <a href="#victory">The Loremaster</a></strong>, and every lair your realm was first to discover is worth double again toward it.</li>
+      <li>The minor title <em>The Trailblazer</em> (highest Explorer) adds <strong>+5% exploration</strong>.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9.</li>
+    </ul></td></tr>
+
+    <tr class="grp"><td colspan="2"><strong>Magic — each of the five schools is its own skill</strong></td></tr>
+
+    <tr><td><strong>White<br>Psychic<br>Illusory<br>Elemental<br>Necromancy</strong></td><td><ul style="margin:0">
+      <li><strong>Level 1 in a school grants all five of its core spells at once</strong> — you never unlock them one by one. See <a href="#spells">The Spellbook</a>.</li>
+      <li><strong>Every cast succeeds at 30% + 10% per level, hard cap 95%</strong> — 40% at level 1, 60% at 3, 80% at 5, 90% at 7. This is the <em>one</em> effect that keeps climbing past 5, and it is the same roll whether the spell is an action, battle magic before an army clash, or a spell thrown in a duel.</li>
+      <li><strong>Action spells per school, per turn: 1 at levels 1–2, 2 at level 3, 3 at levels 4–5.</strong></li>
+      <li><strong>Combat spells per school, per fight: 1 at level 1, 2 from level 2 upward</strong> — and any one spell may be cast <strong>once per fight</strong>.</li>
+      <li><strong>Spell EFFECTS are worked out on your level counted to 5.</strong> Levels 6–9 buy cast chance and the mastery spells; they never make a Fireball burn hotter.</li>
+      <li><strong>A guardian weak to your school cannot resist you</strong>: the cast is a flat 95%, the damage doubles, and so does every non-damaging effect — twice the rounds of stun, twice the to-hit penalty.</li>
+      <li>Item bonuses to a school stop at an effective 5, unlike Melee and Archery.</li>
+      <li><strong>Titles:</strong> all five schools together decide <a href="#victory">The Archmage</a>; <strong>White</strong> (with Druid) decides <a href="#victory">The Hierophant</a>; <strong>Necromancy</strong> decides <a href="#victory">The Deathpriest</a>.</li>
+      <li><strong>Necromancy 1</strong> also lets a character <em>sense battlefield graves underfoot</em> in every province they set foot in, and is <strong>required to hold a skeletal army at all</strong> — see <a href="#armies">The dead need a master</a>.</li>
+      <li>The minor title <em>The Warlock</em> (highest single school) grants <strong>+1 action spell per turn in that school</strong>.</li>
+      <li>1 HP per level to 3, then 2 per level from 4 to 9 — a well-read mage is far from fragile.</li>
+    </ul></td></tr>
   </table></div>
+
+  <div class="note tip"><span class="lbl">Every skill makes you tougher</span>Maximum HP is earned from skill, so <em>any</em> level in <em>any</em> skill raises it. Count <strong>toughness points</strong>: <strong>4 per Melee level, 2 per Archery level, and for every other skill 1 per level up to 3 and 2 per level from 4 to 9</strong>. Maximum HP is <strong>15 + (points − 8)</strong>, halved in value past 50 points of gain, and capped at 100 (120 for an Orcish character of an Orcish realm). A warrior toughens fastest, but a scholar with levels spread across six skills is no pushover. See <a href="#characters">Hit points</a>.</div>
 
   <h3>How skills work — the three caps</h3>
   <ul>
@@ -514,6 +646,18 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Levels 6–9 are won only by experience in the field</strong> — fighting, casting, exploring, leading. You cannot buy them; you must earn them. A skill can rise through experience <strong>at most once per phase</strong>, and at most once across a battle and the carry-on battles that follow it; and each time a skill has already risen this way in a turn, the next chance to raise it the same way is <strong>×0.8</strong> (cumulative until the turn ends).</li>
     <li>The raw <strong>benefit</strong> of a skill caps at level 5. Levels 6–9 don't make the base effect bigger — instead each grants a <strong>distinct perk</strong>, and they count toward the Imperial Titles.</li>
   </ul>
+  <p><strong>Four things ignore that benefit cap</strong>, and they are the reason mastery is worth chasing: a <strong>magic school's chance to cast</strong> keeps climbing +10% a level to the 95% ceiling; <strong>Melee and Archery to-hit</strong> keep climbing at +5% a level past 5; <strong>Melee and Archery damage</strong> read your raw level, so a Melee 9 hero hits harder than a Melee 5 one; and <strong>the Imperial Titles count skill levels all the way to 9</strong>.</p>
+
+  <h3>Training a skill on the Practice ground</h3>
+  <p>Levels 1–5 can be trained deliberately, and the chance falls as the skill rises — mastery is harder. Practising <strong>alone</strong>:</p>
+  <div class="wrap"><table class="tbl">
+    <caption>Chance to gain the next level from one Practice order</caption>
+    <tr><th>Level gained</th><th class="num">0 → 1</th><th class="num">1 → 2</th><th class="num">2 → 3</th><th class="num">3 → 4</th><th class="num">4 → 5</th></tr>
+    <tr><td>Practising alone</td><td class="num">25%</td><td class="num">20%</td><td class="num">15%</td><td class="num">10%</td><td class="num">5%</td></tr>
+    <tr><td>With a peer at the same level (+50%)</td><td class="num">37.5%</td><td class="num">30%</td><td class="num">22.5%</td><td class="num">15%</td><td class="num">7.5%</td></tr>
+    <tr><td>Under a more-skilled mentor present</td><td class="num" colspan="5" style="text-align:center"><strong>Automatic — a guaranteed level</strong></td></tr>
+  </table></div>
+  <p><strong>Perseverance:</strong> every practice that <em>fails</em> multiplies that character's next practice chance this turn by <strong>×1.2</strong>, cumulatively — three failures make the fourth attempt ×1.73. A success resets it, and the count starts afresh each turn. Two or more of your characters practising the <strong>same skill in the same province</strong> drill together; the order form pre-selects a companion's skill for you.</p>
 
   <div class="note"><span class="lbl">What a magic item can add on top</span><p style="margin:0">Because <em>trained</em> benefit stops at 5, an item that grants skill levels normally stops there too: a Tactical 5 general who finds a +2 tome still commands at Tactical 5, and the same is true of Naval, Druid, Sage, Spy, Thief, Explorer, March and every magic school. <strong>Melee and Archery are the two exceptions.</strong> Levels past 5 genuinely mean something for those two — they drive damage and add +5% to hit per level — so item and aura bonuses <strong>stack on top of your trained 5, all the way to the ceiling of 9</strong>. A Melee 4 hero wielding a Legendary +4 blade under a Crown of Command fights at an effective <strong>Melee 9</strong>. Your character card shows exactly where every point comes from, coloured by its source.</p></div>
 
@@ -524,6 +668,10 @@ footer.book .v{color:var(--gold-deep);}
   <p>A character can hold levels in any mix of the fifteen skills; a skill a character has no levels in provides none of its effects (a character with no Druid cannot lead non-native or wild units, a character with no levels in a magic school cannot cast its spells, and so on). Levels 1–5 can be trained by the Practice Skill order, so a character can be developed across several skills over successive turns.</p>
 
   <div class="note tip"><span class="lbl">Minor Titles</span>Separate from the nine Imperial Titles are <strong>twenty Minor Titles</strong> — highest Melee, highest Archery, largest army, most magic items, and so on. Each is re-awarded every turn to the single leading living character and grants that character a small personal perk. Minor Titles do not count toward the Reckoning. Several of them change a skill in a particular situation only — The Strategist commands at +1 Tactical <em>in army battles</em>, The Duelist strikes at +1 Melee <em>in personal combat</em>, The Swift and The Sea-Wolf each add a movement point. Your character card lists every one of these beneath the skill it affects, with a marker saying when it applies.</div>
+  <p><strong>A skill at zero gives nothing at all</strong>, and several of them gate an order outright: no Sage, no Research; no Thief, no Steal; no levels in a school, no spells from it; no Druid, no leading another race or any wild thing; no Necromancy, and your skeletons crumble at the end of the turn. One level in a skill is often worth far more than a sixth level in one you already have.</p>
+
+  <p><strong>Seven of the nine Imperial Titles are won on skill</strong>, so what you train is also what you will be judged on at the Reckoning: Tactical feeds <em>The Grand Marshal</em>, Naval <em>The Sea Lord</em>, Explorer + Spy + Sage <em>The Loremaster</em>, all five magic schools <em>The Archmage</em>, White + Druid <em>The Hierophant</em>, and Necromancy <em>The Deathpriest</em>. Those count your level all the way to <strong>9</strong>, and count equipped item bonuses with it — see <a href="#victory">How to Win</a>.</p>
+
   <p>The <strong>Spy</strong> skill also governs what you see of your enemies, what they see of you, and whether a hunted hero can be run down — all of that is covered under <a href="#sight">Sight, Fog &amp; Intelligence</a> and the Encounter order.</p>
   <a class="totop" href="#overview">↑ top</a>
 </section>
@@ -1124,7 +1272,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td>The Vaultkeeper</td><td>Largest treasury.</td><td class="num">10</td></tr>
     <tr><td>The Grand Marshal</td><td>Highest Tactical skill, plus land-battle merit — <strong>+1</strong> for every enemy unit your commander destroys, <strong>−1</strong> for every one of their own lost. Battles with a neutral province's chieftain count exactly as a war with a rival realm does.</td><td class="num">10</td></tr>
     <tr><td>The Sea Lord</td><td>Highest Naval skill, plus <strong>every sea province your realm holds</strong>, plus sea-battle merit on the same terms as the Grand Marshal — and a neutral sea province's guardian counts too.</td><td class="num">10</td></tr>
-    <tr><td>The Monster-Bane</td><td>Greatest total HP of lair guardians slain (half credit if pacified).</td><td class="num">10</td></tr>
+    <tr><td>The Monster-Bane</td><td>Greatest total HP of lair guardians slain.</td><td class="num">10</td></tr>
     <tr><td>The Loremaster</td><td>Highest combined Explorer + Spy + Sage, lairs first found and discoveries made.</td><td class="num">10</td></tr>
     <tr><td>The Archmage</td><td>Most total magic-school levels, plus legendary casting items.</td><td class="num">10</td></tr>
     <tr><td>The Hierophant</td><td>Highest combined White + Druid, plus Bless / Consecrate / Resurrection casts.</td><td class="num">10</td></tr>
@@ -1194,7 +1342,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.16-1545</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.16-1622</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
