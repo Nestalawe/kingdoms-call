@@ -144,15 +144,15 @@ section{display:none;}.section-active{display:block;}
       <input type="text" id="new-game-name" placeholder="e.g. The War of Five Kings">
       <label>Map Size</label>
       <select id="new-game-mapsize" onchange="updateMaxPlayersForMap()">
-        <option value="p2">8×6 — 2 players</option>
-        <option value="p3">10×7 — up to 3 players</option>
-        <option value="p4">12×8 — up to 4 players</option>
-        <option value="p5" selected>13×9 — up to 5 players</option>
-        <option value="p6">15×9 — up to 6 players</option>
-        <option value="p7">16×10 — up to 7 players</option>
-        <option value="p8">17×11 — up to 8 players</option>
-        <option value="p9">18×11 — up to 9 players</option>
-        <option value="p10">19×12 — up to 10 players</option>
+        <option value="p2">8×5 — 2 players</option>
+        <option value="p3">8×7 — up to 3 players</option>
+        <option value="p4">9×7 — up to 4 players</option>
+        <option value="p5" selected>12×7 — up to 5 players</option>
+        <option value="p6">15×7 — up to 6 players</option>
+        <option value="p7">16×7 — up to 7 players</option>
+        <option value="p8">17×8 — up to 8 players</option>
+        <option value="p9">16×11 — up to 9 players</option>
+        <option value="p10">16×11 — up to 10 players</option>
       </select>
       <div style="font-size:.78rem;color:var(--stone);margin-top:-4px">Each map is the smallest that keeps every king at least 3 empty provinces apart. Smaller games can pick a larger map for more room.</div>
       <label>Maximum Players</label>
@@ -986,9 +986,16 @@ function buildTargetField(c,ph,saved){
     const sel=(target==='prov:'+nid||target==='dir:'+v)?'selected':'';
     return `<option value="prov:${nid}" ${sel}>${l}${nb&&nb.name?` (${nb.name})`:''}</option>`;
   }).filter(Boolean).join('');
+  // 2026-09-16 (Toby): the character's own province is a legal move target — a character displaced
+  // mid-turn (retreat, rout) can be ordered back into the province the player expected to hold. If
+  // they were not displaced the engine logs "already in X — moot" and spends nothing. Mirrors the
+  // player portal; both must change together or the two order forms disagree.
+  const stayOpt=_curProv
+    ? `<option value="prov:${_curProv.id}" ${target===`prov:${_curProv.id}`?'selected':''}>Stay in ${_curProv.name||'this province'} (return here if displaced)</option>`
+    : '';
   switch(action){
     case 'Move':
-      return`<select id="po-target-${c.id}-${ph}">${dirOpts}</select>`;
+      return`<select id="po-target-${c.id}-${ph}">${dirOpts}${stayOpt}</select>`;
     case 'Explore':case 'Spy':case 'Defend':case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(current province)" disabled>`;
     case 'Search Feature': // legacy label (pre-Lair rename) — falls through
@@ -2346,7 +2353,19 @@ async function runTurn0(){
   try{ cfg=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):currentGame.game_state||{}; }catch(e){}
   const mapSize=cfg.mapSize||'p5';
   const maxTurns=cfg.maxTurns||12;
-  const sizemap={p2:{cols:8,rows:6},p3:{cols:10,rows:7},p4:{cols:12,rows:8},p5:{cols:13,rows:9},p6:{cols:15,rows:9},p7:{cols:16,rows:10},p8:{cols:17,rows:11},p9:{cols:18,rows:11},p10:{cols:19,rows:12}};
+  // ── MAP LADDER (2026-09-16, Toby item B: "as small as possible for each player count") ──────────
+  // Every rung is the SMALLEST grid on which generateNewGame's own Phase-1 placement reliably meets
+  // its KING_MIN_SPACING=4 floor (>=3 neutral hexes between every pair of capitals) — measured, not
+  // guessed: 800 placement runs per grid, every rung at 100%, and 25 full live generations per rung
+  // with every world-gen invariant re-checked (22 legendary lairs, <=2 sea and <=1 primal on a home
+  // ring, poor + prosperous + own-race neighbours, naval king's sea). Grids one step smaller were
+  // rejected for measured spacing failures, e.g. 8p 16x9 (0.4% of worlds) and 6p 13x8 (0.25%).
+  // 9 and 10 realms share 16x11 because the floor needs 9 eligible rows (rows-2), so rows<11 cannot
+  // seat nine capitals at any width. Land per realm now runs 10.5-13.5 (was 14.3-16.0).
+  //   2  8x5=40  (was 8x6=48)    3  8x7=56  (was 10x7=70)    4  9x7=63   (was 12x8=96)
+  //   5 12x7=84  (was 13x9=117)  6 15x7=105 (was 15x9=135)   7 16x7=112  (was 16x10=160)
+  //   8 17x8=136 (was 17x11=187) 9 16x11=176 (was 18x11=198) 10 16x11=176 (was 19x12=228)
+  const sizemap={p2:{cols:8,rows:5},p3:{cols:8,rows:7},p4:{cols:9,rows:7},p5:{cols:12,rows:7},p6:{cols:15,rows:7},p7:{cols:16,rows:7},p8:{cols:17,rows:8},p9:{cols:16,rows:11},p10:{cols:16,rows:11}};
   const sz=sizemap[mapSize]||sizemap.p5;
   const {botCount, allBot}=botConfigFor(currentGame);
 
@@ -21966,6 +21985,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1723</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1744</div>
 </body>
 </html>

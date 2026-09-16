@@ -1303,10 +1303,15 @@ async function loadOpenGames(){
     const {data:gmProfiles}=await sb.from('profiles').select('id,name').in('id',gmIds);
     (gmProfiles||[]).forEach(pr=>{ gmNameById[pr.id]=pr.name; });
   }
-  const SIZE_LABEL={small:'Small (8×6)',medium:'Medium (12×8)',large:'Large (16×10)',huge:'Huge (20×12)'};
+  // 2026-09-16: these keys were 'small'/'medium'/'large'/'huge' — a naming from before the map ladder
+  // became p2..p10, so SIZE_LABEL[cfg.mapSize] NEVER matched and every joinable game was advertised as
+  // "Medium (12×8)" whatever its real size. Keyed to the real mapSize values now, and the dimensions
+  // match the GM portal's sizemap (both must change together).
+  const SIZE_LABEL={p2:'2 realms (8×5)',p3:'3 realms (8×7)',p4:'4 realms (9×7)',p5:'5 realms (12×7)',
+    p6:'6 realms (15×7)',p7:'7 realms (16×7)',p8:'8 realms (17×8)',p9:'9 realms (16×11)',p10:'10 realms (16×11)'};
   const gameInfo=g=>{
     let cfg={}; try{ cfg=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
-    return { gm: gmNameById[g.gm_user_id]||'the Game Master', size: SIZE_LABEL[cfg.mapSize]||'Medium (12×8)' };
+    return { gm: gmNameById[g.gm_user_id]||'the Game Master', size: SIZE_LABEL[cfg.mapSize]||'—' };
   };
   // Human-joinable capacity = max players minus GM bot realms (bots stay hidden from players).
   // An all-bot game has capacity 0 and never appears as joinable.
@@ -1401,7 +1406,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
     :'';
   const gmBox=`<div style="background:#f5f0e8;border:1px solid var(--gold);border-radius:3px;padding:8px 12px;font-size:.82rem;line-height:1.6;margin-bottom:8px">
       <div>\u{1F451} <strong>Game Master:</strong> ${joiningGame?.gmName||'the Game Master'}</div>
-      <div>\u{1F5FA}\uFE0F <strong>World size:</strong> ${joiningGame?.worldSize||'Medium (12×8)'}</div>
+      <div>\u{1F5FA}\uFE0F <strong>World size:</strong> ${joiningGame?.worldSize||'—'}</div>
     </div>`;
   infoEl.innerHTML=`${gmBox}<div class="msg-info">${joined}/${maxP} players have already joined. There ${maxP-joined===1?'is':'are'} ${maxP-joined} open slot${maxP-joined===1?'':'s'}.</div>${takenNote}`;
   updateAlignmentDesc();
@@ -6143,6 +6148,14 @@ function buildTargetField(c, ph, saved){
     const selOut=(target===valOut||target==='dir:'+v)?'selected':'';
     return`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
   }).filter(Boolean).join('');
+  // 2026-09-16 (Toby): the character's OWN province is offered as a move target too. Orders are written
+  // before the turn resolves, so a character can be displaced mid-turn — thrown back by a lost battle,
+  // routed by Terror — and land somewhere the player never chose. Naming the province they expected to
+  // be standing in lets a later phase march straight back into it. If they were NOT displaced the engine
+  // simply logs "already in X — the move order is moot" and spends no movement, so it is safe either way.
+  const stayOpt=curProv_
+    ? `<option value="prov:${curProv_.id}" ${target===`prov:${curProv_.id}`?'selected':''}>Stay in ${curProv_.name||'this province'} (return here if displaced)</option>`
+    : '';
 
   switch(action){
     // ── MOVE ──
@@ -6153,7 +6166,7 @@ function buildTargetField(c, ph, saved){
       // Item 6 (this session): editing THIS move changes where the character stands for every later
       // phase, so onMoveEdited re-renders the character's later Move orders (their direction labels
       // update relative to the new path) and flags each with an "update me" note to re-check.
-      return`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited('${c.id}',${ph})">${dirOpts}</select>${edgeNote}
+      return`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited('${c.id}',${ph})">${dirOpts}${stayOpt}</select>${edgeNote}
         <div id="po-move-note-${c.id}-${ph}" style="display:none;font-size:.72rem;color:#8a4a00;background:#fff3e0;border:1px solid #e0b070;border-radius:2px;padding:3px 6px;margin-top:3px"></div>`;
     }
 
@@ -7815,6 +7828,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1723</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1744</div>
 </body>
 </html>

@@ -170,7 +170,7 @@ footer.book .v{color:var(--gold-deep);}
   <div class="sub">The Player's Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival realms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
-  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 16 September 2026, 17:23 NZT</div>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 16 September 2026, 17:44 NZT</div>
 </header>
 
 <div class="shell">
@@ -341,7 +341,7 @@ footer.book .v{color:var(--gold-deep);}
   <p>The map is a grid of provinces, most of it hidden under <strong>fog of war</strong> at the start. You see only what your characters have visited or scouted; everything else is guesswork until you send someone to look. Intelligence you gather (and steal) persists across turns.</p>
 
   <h3>The size of the world</h3>
-  <p>The map is a wrapped hex grid whose size follows the number of realms: 2 realms 8×6 (48 provinces), 3 → 10×7, 4 → 12×8, 5 → 13×9, 6 → 15×9, 7 → 16×10, 8 → 17×11, 9 → 18×11, 10 → 19×12. Roughly 40% of it is sea, laid out as coherent coasts and inland seas; the rest is land shared exactly equally between the four humanoid races, with a portion of wild Primal (Creature / Monster) country. Every home province starts adjacent to one poor and one prosperous humanoid province, at least one of them the king's own race, plus a sea province for a king with any Naval skill. At most <strong>one</strong> Primal province ever borders a home (the Pagan or Druidic starting neighbour, where one is placed). No home ever borders <strong>more than two</strong> sea provinces, and a coastal home always has at least one <strong>open, undefended</strong> sea beside it, so a first fleet has somewhere to sail without a fight.</p>
+  <p>The map is a wrapped hex grid, kept as small as the placement rules allow so realms meet early and no campaign is spent marching through empty country. Its size follows the number of realms: 2 realms 8×5 (40 provinces), 3 → 8×7 (56), 4 → 9×7 (63), 5 → 12×7 (84), 6 → 15×7 (105), 7 → 16×7 (112), 8 → 17×8 (136), 9 and 10 → 16×11 (176). Each of these is the smallest grid on which every capital can still be set at least three neutral provinces away from every other, so no two kings ever open on each other’s doorstep. Roughly 40% of it is sea, laid out as coherent coasts and inland seas; the rest is land shared exactly equally between the four humanoid races, with a portion of wild Primal (Creature / Monster) country. Every home province starts adjacent to one poor and one prosperous humanoid province, at least one of them the king's own race, plus a sea province for a king with any Naval skill. At most <strong>one</strong> Primal province ever borders a home (the Pagan or Druidic starting neighbour, where one is placed). No home ever borders <strong>more than two</strong> sea provinces, and a coastal home always has at least one <strong>open, undefended</strong> sea beside it, so a first fleet has somewhere to sail without a fight.</p>
   <h3>Terrain</h3>
   <p>Provinces are plains, forest, jungle, mountain, desert or sea. Terrain shapes which troops thrive there and which suffer — cavalry flounder in forest, missile troops falter at sea, and mountains squeeze a battle line so numbers count for less. <strong>Sea</strong> provinces are open water: only fleets — or land troops carried by fleets, or armies crossing via <em>Part Sea</em> — may enter them. A fleet can hold a sea province, so open water can be captured and owned like any other tile; only sea that no one has claimed belongs to no realm. The deep is not empty: sea provinces pay a <strong>modest tax</strong> (0–2), can be guarded by sea-beasts and their guardians, and hide their own <strong>lairs and treasure</strong> — a navy is worth building for more than defence, and every sea province you hold also counts toward <a href="#victory">The Sea Lord</a>.</p>
 
@@ -854,6 +854,10 @@ footer.book .v{color:var(--gold-deep);}
   <h3>The golden rule: one Move = one province</h3>
   <p>A single <em>Move</em> order always advances a character <strong>exactly one province</strong>, into a tile adjacent to where they stand, no matter how large their movement pool is. What the pool decides is <strong>how many Move orders you can afford across the whole turn</strong> — and since a turn has only five phases (one order each), <strong>five provinces is the hard ceiling on how far anything can travel in a turn</strong>, however fast it is. A big pool doesn't let you leap; it lets you keep moving phase after phase without running dry.</p>
 
+  <h3>Naming the destination — and coming back</h3>
+  <p>A <em>Move</em> order names an <strong>actual province</strong>, not a compass heading. That matters because orders are written before the turn is fought: a character can be thrown out of a province by a lost battle, routed by Terror, or otherwise displaced between one phase and the next. Because the order names the ground you chose, a displaced character still heads for it — marching straight in if it is still adjacent, or taking one step along the shortest passable route toward it if the displacement carried them out of reach.</p>
+  <p>The dropdown also offers the province the character is <strong>standing in</strong> (&ldquo;Stay in &hellip;&rdquo;). Choose it when a later phase should hold ground, or — more usefully — to march back into a province you expected to be holding: if a battle throws you out in phase two, a phase-three order naming that province walks you straight back in. If you were never displaced, the order is simply moot: nothing happens and no movement point is spent.</p>
+
   <h3>How big is your pool?</h3>
   <p>A character's land pool is set by the <strong>slowest land unit they lead</strong> — a column marches at the pace of its slowest wagon — improved by that leader's <strong>March</strong> skill. A character <strong>leading no armies at all</strong> travels light and gets a flat, generous <strong>5</strong> land and <strong>5</strong> sea points (a lone rider or a hero taking ship's passage moves freely). Every unit has a base land <strong>Move</strong> rating (shown in the <a href="#armies">army roster</a>); the common values are:</p>
   <div class="wrap"><table class="tbl">
@@ -1327,7 +1331,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.16-1723</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.16-1744</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
