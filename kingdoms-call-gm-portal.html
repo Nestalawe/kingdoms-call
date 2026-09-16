@@ -7952,8 +7952,8 @@ function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,darkCasts:0
 const TITLE_DEFS=[
   {key:'throne',  name:'The Throne',        prize:20, kingdomLevel:true, req:'Hold the largest tax base (total province tax income) in the world.', perk:'Each turn you are shown every rival realm\'s share of the world tax base.'},
   {key:'vault',   name:'The Vaultkeeper',   prize:10, kingdomLevel:true, req:'Hold the largest treasury (most gold) in the world.', perk:'Each turn you are shown every rival realm\'s treasury.'},
-  {key:'marshal', name:'The Grand Marshal', prize:10, req:'Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost).', perk:'Each turn you are told the province holding each rival\'s strongest land army.'},
-  {key:'sea',     name:'The Sea Lord',      prize:10, req:'Amass the most sea-battle merit, plus rich sea provinces held and Naval skill levels.', perk:'Each turn you are told the province holding each rival\'s strongest fleet.'},
+  {key:'marshal', name:'The Grand Marshal', prize:10, req:'Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost). Battles against a neutral province\'s chieftain and his guard count the same as a war with a rival realm.', perk:'Each turn you are told the province holding each rival\'s strongest land army.'},
+  {key:'sea',     name:'The Sea Lord',      prize:10, req:'Hold the highest Naval skill, plus every sea province your realm holds, plus sea-battle merit on the same terms as the Grand Marshal \u2014 battles with a neutral sea province\'s guardian count too.', perk:'Each turn you are told the province holding each rival\'s strongest fleet.'},
   {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (half credit for beasts pacified).', perk:'Each turn you are told the name and province of the character ranked second for this title.'},
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'Each turn you learn which Sage discoveries your rivals made this turn \u2014 and copy one of them at random, for free.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage in every magic school.'},
@@ -8200,9 +8200,20 @@ function castChanceFor(c, school, player, opts){
 }
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
 function _legendaryNames(){ return new Set((ITEMS_BY_TIER[4]||[]).map(it=>it.name)); }
+// 2026-09-16 (Toby) — THE SEA LORD COUNTS THE WAVES. The title's published requirement has always
+// promised "sea provinces held" and the metric has never counted one. Toby's ruling: count them, and
+// count ALL of them rather than only the rich ones (the old text's "rich sea provinces" is withdrawn;
+// an owned sea province pays 0–2 tax, so a "rich" filter would have excluded most of a real navy's
+// conquests). Worth one point apiece. This is a REALM figure folded into every one of that realm's
+// characters, which is the only way a per-character title can read a realm-wide holding — the effect
+// is that a realm which rules the deep carries its best admiral over a rival's.
+const SEA_LORD_PROVINCE_PTS=1;
 // Per-character raw merit for the six non-realm titles (before alignment boost).
-function _charTitleMerit(c){
+// `ctx.seaProvinces` is the count of sea provinces the character's REALM holds (0 when not supplied,
+// so any caller that has not been taught about it still gets the old figure rather than NaN).
+function _charTitleMerit(c, ctx){
   const tm=c.tm||{};
+  const seaProv=((ctx&&ctx.seaProvinces)|0)||0;
   const magic=_MAGIC_SCHOOLS.reduce((s,sc)=>s+_skillItem(c,sc),0);
   const spellItems=activeItems(c).filter(it=>it.effect&&_MAGIC_SCHOOLS.includes(it.effect.stat)).length;
   return {
@@ -8217,7 +8228,7 @@ function _charTitleMerit(c){
     // this reason; the Grand Marshal now carries Tactical the same way. A realm's best general holds
     // the marshal's baton from turn one, and battle merit decides it the moment anyone fights.
     marshal:(tm.marshal||0)+_skillItem(c,'tactical'),
-    sea:(tm.sea||0)+_skillItem(c,'naval'),
+    sea:(tm.sea||0)+_skillItem(c,'naval')+seaProv*SEA_LORD_PROVINCE_PTS,
     monster:(tm.monster||0),
     lore:_skillItem(c,'explorer')+_skillItem(c,'spy')+_skillItem(c,'sage')+(tm.featuresFound||0)*2+(tm.discoveries||0)*2,
     arch:magic+spellItems,
@@ -8263,7 +8274,10 @@ function computeStandings(state){
   },0);
   const goldByPlayer=players.map(p=>(p&&p.gold)||0);
   const perChar={};
-  chars.forEach(c=>{ const raw=_charTitleMerit(c); const boost=ALIGN_TITLE_BOOST[players[c.player]&&players[c.player].alignment]||{}; const m={}; for(const k in raw) m[k]=raw[k]*(boost[k]||1); perChar[c.id]=m; });
+  // 2026-09-16: sea provinces held, per realm — the Sea Lord's standing component (SEA_LORD_PROVINCE_PTS).
+  // Counted once here rather than per character; every character of a realm carries their realm's figure.
+  const seaProvByPlayer=players.map((p,pi)=>((state.world&&state.world.provinces)||[]).reduce((s,pv)=>s+((pv&&pv.owner===pi&&pv.terrain==='sea')?1:0),0));
+  chars.forEach(c=>{ const raw=_charTitleMerit(c,{seaProvinces:seaProvByPlayer[c.player]||0}); const boost=ALIGN_TITLE_BOOST[players[c.player]&&players[c.player].alignment]||{}; const m={}; for(const k in raw) m[k]=raw[k]*(boost[k]||1); perChar[c.id]=m; });
   const titles={};
   TITLE_DEFS.forEach(t=>{
     if(t.key==='throne'||t.key==='vault'){
@@ -15376,6 +15390,13 @@ const BATTLE_ARMY_SPELLS={
           // and the surviving state written onto the copy (HP, items spent, skill gains) is synced back
           // onto the real commander who actually led.
           syncLeaderCopy(_aLead, battleAttacker);
+          // 2026-09-16 (Toby): a chieftain's guard is a real land (or sea) battle and pays Grand
+          // Marshal / Sea Lord merit exactly as a war with a rival realm does. `creditBattle` picks
+          // the bucket off the province's terrain, so a neutral SEA province pays the Sea Lord, and
+          // the neutral commander (player==null) is never debited — only the attacker's own losses
+          // count against them. Credited AFTER the copy is synced back, so the sync can never write
+          // a pre-battle snapshot of `tm` over the merit just earned.
+          creditBattle(_aLead,null,battle,toProv);
           if(battleAttacker.location!==_aLead.location||battleAttacker.location!==c.location){
             _aParty.forEach(m=>{ if(m.location!==battleAttacker.location) relocateChar(m, battleAttacker.location); });
           }
@@ -15780,6 +15801,7 @@ const BATTLE_ARMY_SPELLS={
             c._attackedFrom=prov.id;
             if(_fmSlip && Math.random()<0.5){ toProv._battleUnresolved=true; log('move',`⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true}); break; } // MARCH L7 slip
             const llBattle=combatVsNPC(c,toProv,null);
+            creditBattle(c,null,llBattle,toProv);   // 2026-09-16: a leaderless neutral guard still pays merit
             emitBattle(llBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!=null), {actor:c.player}); // item 5
             c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
             toProv._hadBattleThisTurn=true;
@@ -18840,6 +18862,10 @@ const BATTLE_ARMY_SPELLS={
         if(guard){ savedIntel=prov.neutralDefenders; prov.neutralDefenders=[...(guard.armies||[])]; }
         atkCopy._resumeBattle=true; // already in the province — suppress the "moves into" line
         const battle=combatVsNPC(atkCopy,prov,guard||null);
+        // 2026-09-16 (Toby): the resumed fight for a neutral province pays merit like the first one.
+        // Credited to the REAL attacker, never `atkCopy` — TM(c) creates the accumulator on whatever
+        // object it is handed, so crediting a shallow copy writes the merit somewhere nobody reads.
+        creditBattle(attacker,null,battle,prov);
         // Item 3: this character has now had their one battle for the phase. Pin them (STAGE 1b) so
         // a Move/Pursue order later this phase can't march them on to START A SECOND BATTLE — even if
         // this follow-up battle RESOLVED and the province is no longer flagged _battleUnresolved.
@@ -19230,6 +19256,7 @@ const BATTLE_ARMY_SPELLS={
       const _savedDefs=prov.neutralDefenders;
       prov.neutralDefenders=[...(neutralGuard.armies||[])];
       battle=combatVsNPC(c, prov, neutralGuard);
+      creditBattle(c,null,battle,prov);   // 2026-09-16: a neutral chieftain's guard pays merit here too
       if(neutralGuard.alive){
         neutralGuard.armies=[...(prov.neutralDefenders||[])];
         prov.neutralDefenders=_savedDefs;
@@ -19244,11 +19271,13 @@ const BATTLE_ARMY_SPELLS={
     } else if(llDefs.length>0){
       // Leaderless neutral garrison — fights without commander skills, straight off the province.
       battle=combatVsNPC(c, prov, null);
+      creditBattle(c,null,battle,prov);   // 2026-09-16: a leaderless neutral guard still pays merit
       prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
       emitBattle(battle, prov, ph, [c.player], {actor:c.player}); // item 5
     } else {
       const _savedDefs=prov.neutralDefenders; prov.neutralDefenders=[...garrison];
       battle=combatVsNPC(c, prov, null);
+      creditBattle(c,null,battle,prov);   // 2026-09-16: breaking an enemy realm's garrison pays merit
       prov.neutralDefenders=_savedDefs;
       emitBattle(battle, prov, ph, [c.player,prov.owner].filter(x=>x!=null), {actor:c.player}); // item 5
       if(battle.won){
@@ -21869,6 +21898,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1356</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1436</div>
 </body>
 </html>
