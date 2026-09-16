@@ -2845,15 +2845,22 @@ function renderTitles(report){
   }).join('');
 
   // ── Item 4: how to Call the Reckoning (always shown while titles are public) ──
+  const _minTurn=t.reckoningMinTurn||10;
+  const _solo=Math.ceil(floorNumP((t.soloThreshold!=null?t.soloThreshold:(t.threshold||0))*100*1e6)/1e6);
+  const _step=Math.round((t.allyStep||0)*100);
+  const _nAllies=Math.max(0,(t.blocSize||1)-1);
   const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#555;line-height:1.5">
     <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;font-weight:700">Calling the Reckoning</div>
     There is no turn limit — the game ends only when one realm is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
     <ul style="margin:4px 0 4px 16px;padding:0">
+      <li>it must be <strong>Turn ${_minTurn}</strong> or later — the throne cannot be claimed while the realms are still settling; and</li>
       <li>your <strong>King must be alive</strong> — it is a King-only act; and</li>
-      <li>your realm, <strong>or your mutually-allied bloc</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base (the bar for a ${nPlayers}-realm game — fewer realms need a higher share); and</li>
-      <li>if the bar is carried by an alliance, <strong>you must personally hold at least ${minPct}%</strong> — half the bar — in your own right. The throne is claimed by a realm, not by a passenger in someone else's bloc, so it is the bloc's greatest realm that lodges the claim. (If the claimant is later cut below ${minPct}% the claim collapses, even if the bloc still clears ${thr}%.)</li>
+      <li>your realm, <strong>together with the realms you are directly allied to</strong>, must control at least <strong>${thr}%</strong> of the world's total tax base.</li>
+      <li><strong>Every ally raises the bar.</strong> A realm standing alone needs <strong>${_solo}%</strong> in a ${nPlayers}-realm game; each ally in your bloc adds <strong>${_step} points</strong> to that (you have ${_nAllies} all${_nAllies===1?'y':'ies'}, so your bar is ${thr}%). An alliance is a way to reach the endgame, never a cheaper one — and an ally who brings less than ${_step}% of the world makes your claim harder, not easier.</li>
+      <li><strong>Your bloc is yours alone.</strong> It is you and the realms YOU are allied to. An ally's other alliances are their business and count for nothing here — so if you are allied to B and B is allied to D, D is not in your bloc.</li>
+      <li>if the bar is carried by an alliance, <strong>you must personally hold at least ${minPct}%</strong> — half your bloc's bar — in your own right. The throne is claimed by a realm, not by a passenger in someone else's bloc, so it is the bloc's greatest realm that lodges the claim. (If the claimant is later cut below ${minPct}% the claim collapses, even if the bloc still clears ${thr}%.)</li>
     </ul>
-    Calling it announces the claim to every realm and begins a <strong>2-turn grace period</strong>. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
+    Calling it announces the claim to every realm and begins a <strong>2-turn grace period</strong>. The bar is fixed at the moment you lodge the claim, so breaking off an alliance afterwards costs you your ally's lands without lowering what you must hold. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
   </div>`;
 
   // ── Call the Reckoning control ──
@@ -2863,6 +2870,8 @@ function renderTitles(report){
       ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
       : `<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
         <div style="font-size:.72rem;color:#777;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
+  } else if(!t.reckoning && t.callBlockedReason==='tooEarly'){
+    callCtrl = `<div style="font-size:.72rem;color:#999;margin-top:10px">The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
   } else if(!t.reckoning){
     callCtrl = (t.callBlockedReason==='callerShort')
       ? `<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world — enough to Call the Reckoning — but your own realm holds just ${ownPct}% of it, and a claimant must personally hold ${minPct}%. The claim must be lodged by the greatest realm in your alliance.</div>`
@@ -2924,10 +2933,12 @@ function renderReckoningOrders(){
   }
   // Not available — say why, and where the button will appear.
   let why;
-  if(t.public===false) why=`The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5} — the Reckoning cannot be called before then.`;
+  if(t.callBlockedReason==='tooEarly') why=`The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong> — the realms are still settling and the world will not yet be judged.`;
+  else if(t.public===false) why=`The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5} — the Reckoning cannot be called before then.`;
   else if(t.kingAlive===false) why=`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
   else if(t.callBlockedReason==='callerShort') why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base — enough to call it — but the claim belongs to whoever lodges it, and your own realm holds only <strong>${ownPct}%</strong>. A claimant must personally hold <strong>${minPct}%</strong> (half the ${thr}% bar), so the greatest realm in your alliance must be the one to call it.`;
-  else if(pct<thr) why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#777">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.`;
+  else if(pct<thr){ const _na=Math.max(0,(t.blocSize||1)-1), _so=Math.ceil(floorNumP((t.soloThreshold!=null?t.soloThreshold:(t.threshold||0))*100*1e6)/1e6);
+    why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#777">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.${_na>0?` <span style="color:#8a6a1a">Standing alone the bar would be ${_so}% — each of your ${_na} all${_na===1?'y':'ies'} raises it by ${Math.round((t.allyStep||0)*100)} points.</span>`:''}`; }
   else why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
   w.innerHTML=`<div style="color:#555;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
 }
@@ -5324,34 +5335,106 @@ function effSkillP(c, k){
 // Mirrors ITEM_UNCAPPED_SKILLS in the GM engine: the only two skills whose item/aura bonuses may
 // carry a character past an effective 5 (levels past 5 drive damage and to-hit for these).
 const ITEM_UNCAPPED_SKILLS_P=new Set(['melee','archery']);
+// ── BONUS SOURCE COLOURS (2026-09-16, Toby item 1) ───────────────────────────────────────────
+// Every skill bonus is coloured by WHERE it comes from, and every one is named in full beneath the
+// skill list rather than hidden in a hover tooltip (a tooltip is unreachable on a phone, which is
+// how half of these were effectively invisible). `kind` colours it; `scope` says when it applies.
+const BONUS_KIND_P={
+  item:      {c:'#9a6b12', bg:'#f7edd4', label:'Item'},
+  aura:      {c:'#b05e12', bg:'#fbe8d6', label:'Aura'},
+  title:     {c:'#6a4a9a', bg:'#ece5f6', label:'Title'},
+  perk:      {c:'#1f6f6f', bg:'#dcefef', label:'Perk'},
+  discovery: {c:'#2a5a8a', bg:'#dde9f5', label:'Discovery'},
+  curse:     {c:'#8b1a1a', bg:'#f6dede', label:'Curse'},
+};
+const BONUS_SCOPE_MARK_P={combat:'⚔', battle:'⚑', move:'➤', order:'✎'};
+const BONUS_SCOPE_TEXT_P={combat:'personal combat only', battle:'army battles only', move:'movement points only', order:'that order’s own roll only'};
+function _bonusKindP(k){ return BONUS_KIND_P[k]||{c:'#555',bg:'#eeeeee',label:'Other'}; }
+// Every source for one skill: the always-on ones the engine has already folded into the skill,
+// then the scoped extras (minor titles, discoveries) that bite only at their own moment.
+function _skillSourcesP(c,k){
+  const e=(c&&c.skillEff&&c.skillEff[k])||null;
+  const out=[];
+  if(e&&Array.isArray(e.sources)) e.sources.forEach(x=>out.push({label:x.label,delta:x.delta,kind:x.kind||'item',scope:'always'}));
+  const extra=(c&&(c.skillExtra||c.combatSkillBonus))||{};
+  (extra[k]||[]).forEach(x=>out.push({label:x.label,delta:x.delta,kind:x.kind||'title',scope:x.scope||'combat'}));
+  return out;
+}
 function skillRowHTML(c, style){
   const eff=c&&c.skillEff, raw=(c&&c.skills)||{};
-  const combat=(c&&c.combatSkillBonus)||{};
+  const extra=(c&&(c.skillExtra||c.combatSkillBonus))||{};
   const keys=eff?Object.keys(eff):Object.keys(raw).filter(k=>(raw[k]||0)>0);
+  // A skill with no training can still carry a bonus (an item that grants a school, a title perk);
+  // make sure those rows appear instead of being filtered out along with the untrained zeroes.
+  Object.keys(extra).forEach(k=>{ if(!keys.includes(k)) keys.push(k); });
+  const legendKinds=new Set(); const detail=[];
   const rows=keys.map(k=>{
     const e=eff?eff[k]:null;
     const base=e?e.base:(raw[k]||0);
     const bonus=e?(e.bonus||0):0;
-    const cb=(combat[k]||[]).reduce((sm,x)=>sm+(x.delta||0),0);
+    const srcs=_skillSourcesP(c,k);
+    const cb=srcs.filter(s=>s.scope!=='always').reduce((sm,x)=>sm+(x.delta||0),0);
     if(base<=0&&bonus<=0&&cb<=0) return '';
     const label=SKILL_LABELS[k]||k;
-    // Tooltip: every source, named, so a player can see WHERE a bonus comes from.
-    const parts=[];
-    if(e&&e.sources) e.sources.forEach(x=>parts.push(`${x.delta>0?'+':''}${x.delta} ${x.label}`));
-    (combat[k]||[]).forEach(x=>parts.push(`${x.delta>0?'+':''}${x.delta} ${x.label} (personal combat only)`));
+    const always=srcs.filter(s=>s.scope==='always');
+    const rawTotal=always.reduce((s,x)=>s+(x.delta||0),0);
+    // ── one coloured delta per SOURCE KIND, on the skill itself ──
+    // `bonus` is what the always-on extras are actually WORTH after the engine's cap, so the kinds
+    // are shaved pro-rata to it: the chips can never add up to more than the turn will use.
+    let chips='';
+    if(always.length && bonus!==0){
+      const byKind={}; const order=[];
+      always.forEach(s=>{ if(byKind[s.kind]===undefined){byKind[s.kind]=0;order.push(s.kind);} byKind[s.kind]+=(s.delta||0); });
+      const posRaw=order.filter(x=>byKind[x]>0).reduce((s,x)=>s+byKind[x],0);
+      const neg=order.filter(x=>byKind[x]<0).reduce((s,x)=>s+byKind[x],0);
+      const posShown=Math.max(0,bonus-neg);
+      let left=posShown;
+      order.forEach(kind=>{
+        const v=byKind[kind]; const st=_bonusKindP(kind);
+        let shown=v;
+        if(v>0){ shown=(posRaw>0)?Math.min(left,Math.round(v*posShown/posRaw)):0; left-=shown; }
+        if(!shown) return;
+        legendKinds.add(kind);
+        chips+=`<span style="color:${st.c};font-weight:600">${shown>0?'+':''}${shown}</span>`;
+      });
+    } else if(bonus!==0){
+      chips=`<span style="color:${bonus>0?'var(--gold)':'var(--crimson)'};font-weight:600">${bonus>0?'+':''}${bonus}</span>`;
+    }
+    // ── the scoped extras, each with the marker that says WHEN it bites ──
+    const scoped={}; const scOrder=[];
+    srcs.filter(s=>s.scope!=='always').forEach(s=>{ if(!scoped[s.scope]){scoped[s.scope]={};scOrder.push(s.scope);} scoped[s.scope][s.kind]=(scoped[s.scope][s.kind]||0)+(s.delta||0); });
+    scOrder.forEach(sc=>Object.keys(scoped[sc]).forEach(kind=>{
+      const v=scoped[sc][kind]; if(!v) return; const st=_bonusKindP(kind); legendKinds.add(kind);
+      chips+=`<span style="color:${st.c};font-weight:600">(${v>0?'+':''}${v}${BONUS_SCOPE_MARK_P[sc]||''})</span>`;
+    }));
+    // ── every source NAMED, collected for the breakdown line under the skills ──
+    if(srcs.length){
+      const bits=srcs.map(s=>{ const st=_bonusKindP(s.kind);
+        return `<span style="background:${st.bg};color:${st.c};border-radius:2px;padding:0 4px;white-space:nowrap">${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` ${BONUS_SCOPE_MARK_P[s.scope]||''}`:''}</span>`; });
+      if(rawTotal>0&&bonus<rawTotal) bits.push(`<span style="color:#999">(capped at ${ITEM_UNCAPPED_SKILLS_P.has(k)?9:5})</span>`);
+      detail.push(`<span style="white-space:normal"><strong style="color:#555">${label}</strong> ${bits.join(' ')}</span>`);
+    }
     // 2026-09-13: melee and archery let item/aura bonuses stack above trained 5 to the ceiling of 9;
     // every other skill still stops at 5. Mirrors ITEM_UNCAPPED_SKILLS in the GM engine.
     const _ceil=ITEM_UNCAPPED_SKILLS_P.has(k)?9:5;
-    if(e&&e.total>=_ceil&&((e.items||0)+(e.aura||0))>0&&e.bonus<((e.items||0)+(e.aura||0))) parts.push('capped at '+_ceil);
+    const parts=srcs.map(s=>`${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` (${BONUS_SCOPE_TEXT_P[s.scope]||''})`:''}`);
+    if(rawTotal>0&&bonus<rawTotal) parts.push('capped at '+_ceil);
     const tip=parts.length?` title="${(label+' '+base+' — '+parts.join(', ')).replace(/"/g,'&quot;')}"`:'';
-    const bonusStr=bonus>0?`<span style="color:var(--gold)">+${bonus}</span>`:(bonus<0?`<span style="color:var(--crimson)">${bonus}</span>`:'');
-    const combatStr=cb>0?`<span style="color:#6a4a9a">(+${cb}\u2694)</span>`:'';
     return style==='tags'
-      ? `<span class="skill-tag"${tip}>${label} ${base}${bonusStr}${combatStr}</span>`
-      : `<span style="color:var(--forest)"${tip}><strong>${label}:</strong> ${base}${bonusStr}${combatStr}</span>`;
+      ? `<span class="skill-tag"${tip}>${label} ${base}${chips}</span>`
+      : `<span style="color:var(--forest)"${tip}><strong>${label}:</strong> ${base}${chips}</span>`;
   }).filter(Boolean);
   if(!rows.length) return style==='tags'?'':'<span style="color:#aaa">No skills</span>';
-  return rows.join('');
+  let out=rows.join('');
+  if(detail.length){
+    const legend=[...legendKinds].map(kd=>{ const st=_bonusKindP(kd); return `<span style="color:${st.c}">● ${st.label}</span>`; }).join(' ');
+    out+=`<span style="flex-basis:100%;width:100%;margin-top:3px;font-size:.68rem;color:#666;line-height:1.8;display:block">`
+      +`<span style="color:#999;text-transform:uppercase;letter-spacing:.04em">Skill bonuses</span> ${legend}`
+      +`<span style="display:block;margin-top:2px">${detail.join(' &nbsp; ')}</span>`
+      +`<span style="display:block;color:#999;margin-top:1px">⚔ personal combat &middot; ⚑ army battles &middot; ➤ movement &middot; ✎ that order&rsquo;s roll — these never change the skill itself</span>`
+      +`</span>`;
+  }
+  return out;
 }
 
 function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
@@ -7698,6 +7781,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.15-2203</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1356</div>
 </body>
 </html>

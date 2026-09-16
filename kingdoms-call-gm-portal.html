@@ -4703,14 +4703,17 @@ function effTemper(c){ if(!c) return 'Brave'; const it=activeItems(c).find(x=>x&
 function skillBonusBreakdown(c, stat, chars){
   const out={base:(c&&c.skills||{})[stat]||0, items:0, aura:0, curse:0, sources:[]};
   if(!c) return out;
+  // 2026-09-16 (Toby, item 1): every source carries a `kind` so the portals can colour-code where a
+  // bonus comes from (item / aura / title / perk / discovery / curse) instead of running them all
+  // together into one anonymous "+3".
   dedupeItemsByName(activeItems(c)).forEach(it=>{
-    if(it.effect&&it.effect.stat===stat&&it.effect.bonus){ out.items+=it.effect.bonus; out.sources.push({label:it.name||'an item',delta:it.effect.bonus}); }
+    if(it.effect&&it.effect.stat===stat&&it.effect.bonus){ out.items+=it.effect.bonus; out.sources.push({label:it.name||'an item',delta:it.effect.bonus,kind:'item'}); }
   });
   const _cur=(c._curses||{})[stat]||0;
-  if(_cur){ out.curse=-_cur; out.sources.push({label:'Curse',delta:-_cur}); }
+  if(_cur){ out.curse=-_cur; out.sources.push({label:'Curse',delta:-_cur,kind:'curse'}); }
   if(c.location!=null&&Array.isArray(chars)){
     const bearer=chars.find(o=>o&&o.alive&&o.player===c.player&&o.location===c.location&&activeItems(o).some(it=>it.effect&&it.effect.stat==='aura'));
-    if(bearer){ out.aura=1; out.sources.push({label:bearer.id===c.id?'Crown of Command':`Crown of Command (${bearer.name})`,delta:1}); }
+    if(bearer){ out.aura=1; out.sources.push({label:bearer.id===c.id?'Crown of Command':`Crown of Command (${bearer.name})`,delta:1,kind:'aura'}); }
   }
   // 2026-09-13 (Toby item 4): TRAINING tops out at 5 for benefit purposes — levels 6-9 buy mastery perks
   // and mastery ORDERS instead of further scaling, which is the documented rule the engine is tuned
@@ -7949,7 +7952,7 @@ function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,darkCasts:0
 const TITLE_DEFS=[
   {key:'throne',  name:'The Throne',        prize:20, kingdomLevel:true, req:'Hold the largest tax base (total province tax income) in the world.', perk:'Each turn you are shown every rival realm\'s share of the world tax base.'},
   {key:'vault',   name:'The Vaultkeeper',   prize:10, kingdomLevel:true, req:'Hold the largest treasury (most gold) in the world.', perk:'Each turn you are shown every rival realm\'s treasury.'},
-  {key:'marshal', name:'The Grand Marshal', prize:10, req:'Amass the most land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost).', perk:'Each turn you are told the province holding each rival\'s strongest land army.'},
+  {key:'marshal', name:'The Grand Marshal', prize:10, req:'Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost).', perk:'Each turn you are told the province holding each rival\'s strongest land army.'},
   {key:'sea',     name:'The Sea Lord',      prize:10, req:'Amass the most sea-battle merit, plus rich sea provinces held and Naval skill levels.', perk:'Each turn you are told the province holding each rival\'s strongest fleet.'},
   {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (half credit for beasts pacified).', perk:'Each turn you are told the name and province of the character ranked second for this title.'},
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'Each turn you learn which Sage discoveries your rivals made this turn \u2014 and copy one of them at random, for free.'},
@@ -7983,14 +7986,34 @@ const RECKONING_FLOOR_PCT=25;        // and it never falls below this
 // cleared the bar could Call the Reckoning — including an ally holding 3% of the world, who would then
 // be the named claimant. Solo claimants are unaffected (their own share IS the bloc share).
 const RECKONING_CALLER_MIN_FRAC=0.5;
+// 2026-09-16 (Toby, item 3) — AN ALLY RAISES THE BAR. A flat threshold made an alliance the cheapest
+// route to the throne: measured over 30,000 random mature worlds, the realm that could call it on an
+// alliance's strength held on average only 0.71–0.82 of the share a SOLO claimant would have needed,
+// and the discount widened the more realms were on the table. Each ally in the claimant's bloc now
+// adds RECKONING_ALLY_STEP_PCT points to the bar. The step is half of ONE realm's fair share of the
+// world (50/n), which is what makes the rule scale: at that setting the ally-carried claimant holds
+// 0.98–1.03 of the solo bar at every player count, so joining a bloc buys a route to the endgame
+// but never a cheaper one. Ceiling at RECKONING_CAP_PCT so a large bloc is not locked out forever —
+// and the war-weariness decay still erodes the base underneath it.
+const RECKONING_CAP_PCT=80;                 // no bloc ever needs more than this
+function reckoningAllyStepPct(nPlayers){ return Math.round(50/Math.max(2,nPlayers|0)); }
+// 2026-09-16 (Toby, item 3): no claim before this turn, whatever anyone's share. Titles go public at
+// turn 5; the throne cannot be claimed for another five turns after that, so an early runaway start
+// cannot end the game before the other realms have had a chance to build.
+const RECKONING_MIN_TURN=10;
 function reckoningBasePct(nPlayers){ return RECKONING_BASE_PCT[nPlayers]||RECKONING_DEFAULT_PCT; }
-function reckoningThresholdPct(nPlayers, decaySteps){
+// INTEGER percentage points throughout (see the note above RECKONING_BASE_PCT). `blocSize` is the
+// number of realms in the claimant's bloc, 1 for a solo claim; it defaults to 1 so an older caller
+// that has not been taught about blocs still gets the solo bar rather than NaN.
+function reckoningThresholdPct(nPlayers, decaySteps, blocSize){
   const steps=Math.max(0, decaySteps|0);
-  return Math.max(RECKONING_FLOOR_PCT, reckoningBasePct(nPlayers) - RECKONING_DECAY_STEP_PCT*steps);
+  const k=Math.max(1, blocSize|0||1);
+  const base=Math.max(RECKONING_FLOOR_PCT, reckoningBasePct(nPlayers) - RECKONING_DECAY_STEP_PCT*steps);
+  return Math.min(RECKONING_CAP_PCT, base + reckoningAllyStepPct(nPlayers)*(k-1));
 }
 // Fraction form, for the share comparisons. `decaySteps` defaults to 0, so any caller that has not
 // been taught about the decay still gets the undecayed base rather than NaN.
-function reckoningThreshold(nPlayers, decaySteps){ return reckoningThresholdPct(nPlayers, decaySteps)/100; }
+function reckoningThreshold(nPlayers, decaySteps, blocSize){ return reckoningThresholdPct(nPlayers, decaySteps, blocSize)/100; }
 // Steps read off a game state, wherever the state is called `G` or `gameState` or `state`.
 function reckoningDecayOf(state){ return (state&&state.reckoningDecaySteps)|0; }
 // Alignment signature merit multiplier — each alignment's natural title lane costs less to win (#6).
@@ -8183,7 +8206,17 @@ function _charTitleMerit(c){
   const magic=_MAGIC_SCHOOLS.reduce((s,sc)=>s+_skillItem(c,sc),0);
   const spellItems=activeItems(c).filter(it=>it.effect&&_MAGIC_SCHOOLS.includes(it.effect.stat)).length;
   return {
-    marshal:(tm.marshal||0),
+    // 2026-09-16 (Toby, item 2) — ROOT CAUSE of "The Grand Marshal shows as vacant even though it is
+    // awarded". It was not a display fault: the title really WAS vacant. `marshal` was the only one of
+    // the nine titles whose metric was PURE battle merit with no standing component, and
+    // computeStandings requires merit > 0 to hand a title out. tm.marshal only ever moves in a
+    // player-vs-player land battle (creditBattle), and it moves DOWN for the loser — so in any game
+    // where the realms have not yet fought each other on land, or where the wins and losses have
+    // cancelled, every character sat at 0 and the title fell vacant while all eight others were held.
+    // The Sea Lord has always carried `_skillItem(c,'naval')` as its standing component for exactly
+    // this reason; the Grand Marshal now carries Tactical the same way. A realm's best general holds
+    // the marshal's baton from turn one, and battle merit decides it the moment anyone fights.
+    marshal:(tm.marshal||0)+_skillItem(c,'tactical'),
     sea:(tm.sea||0)+_skillItem(c,'naval'),
     monster:(tm.monster||0),
     lore:_skillItem(c,'explorer')+_skillItem(c,'spy')+_skillItem(c,'sage')+(tm.featuresFound||0)*2+(tm.discoveries||0)*2,
@@ -8192,13 +8225,28 @@ function _charTitleMerit(c){
     necro:_skillItem(c,'necromancy')+(tm.darkCasts||0),
   };
 }
-// Allied bloc = connected component under 'allied' relations (bloc-aware Reckoning trigger).
+// A realm's Reckoning bloc = THAT REALM AND ITS OWN DIRECT ALLIES. Nobody else.
+//
+// 2026-09-16 (Toby, item 3) — ROOT CAUSE of "the bloc maths makes no sense once players can ally
+// freely". This used to be the CONNECTED COMPONENT of the alliance graph — a transitive closure —
+// and alliances in this game are not transitive. Toby's own example: in a 4-realm game A is allied
+// with B and C, and B is separately allied with D. Those are two blocs (A+B+C, and B+D), but the
+// closure walked A→B→D and returned all four realms as ONE bloc holding 100% of the world, so every
+// one of them could Call the Reckoning on the strength of an alliance that half of them were not
+// party to — including realms actively at war with each other. Measured over 30,000 random mature
+// worlds the closure made a claim callable in 53% of them against 44.6% for direct allies, with an
+// average "bloc" of 3.3 realms.
+//
+// A claim is now carried by the realms the claimant is ACTUALLY allied to. An ally's own alliances
+// are that ally's business; they bring themselves to the claim, not their friends. Each of those
+// allies also raises the bar (reckoningAllyStepPct), so a bloc is a real commitment rather than a
+// free ride, and a bloc padded with tiny passengers is worse than no bloc at all.
 function alliedBloc(state, pi){
   const rel=state.relations||{}, np=(state.players||[]).length;
   const key=(a,b)=>a<b?a+'-'+b:b+'-'+a;
-  const seen=new Set([pi]), stack=[pi];
-  while(stack.length){ const x=stack.pop(); for(let y=0;y<np;y++){ if(!seen.has(y)&&rel[key(x,y)]==='allied'){ seen.add(y); stack.push(y); } } }
-  return [...seen];
+  const out=[pi];
+  for(let y=0;y<np;y++){ if(y!==pi&&rel[key(pi,y)]==='allied') out.push(y); }
+  return out;
 }
 // Main scoring — pure function over a game state. Returns titles, relics, per-realm standings, tax.
 function computeStandings(state){
@@ -8260,19 +8308,31 @@ function reckoningOwnShare(state, pi){
   const s=computeStandings(state);
   return s.worldTax>0 ? (s.taxByPlayer[pi]||0)/s.worldTax : 0;
 }
-// The personal floor a claimant must clear: half the current Reckoning threshold.
-function reckoningCallerMin(state){
-  return reckoningThreshold((state.players||[]).length, reckoningDecayOf(state))*RECKONING_CALLER_MIN_FRAC;
+// The bar THIS realm's claim must carry — its own bloc's size decides it (item 3, 2026-09-16).
+function reckoningThresholdFor(state, pi){
+  return reckoningThreshold((state.players||[]).length, reckoningDecayOf(state), alliedBloc(state, pi).length);
+}
+// The personal floor a claimant must clear: half of their OWN bloc's threshold. Because the bar
+// rises with every ally, so does the floor — a passenger in a large bloc is now doubly excluded.
+function reckoningCallerMin(state, pi){
+  return reckoningThresholdFor(state, pi!=null?pi:0)*RECKONING_CALLER_MIN_FRAC;
 }
 // May THIS realm lodge the claim? Bloc share carries the bar; the caller still has to be a
-// contributor worth naming. Returns {ok, blocShare, ownShare, threshold, callerMin, reason}.
+// contributor worth naming; and no claim at all stands before RECKONING_MIN_TURN.
+// Returns {ok, blocShare, ownShare, threshold, callerMin, blocSize, soloThreshold, minTurn, reason}.
+// `reason` is one of null | 'tooEarly' | 'blocShort' | 'callerShort'.
 function reckoningCallEligibility(state, pi){
-  const thr=reckoningThreshold((state.players||[]).length, reckoningDecayOf(state));
+  const nP=(state.players||[]).length, dec=reckoningDecayOf(state);
+  const bloc=alliedBloc(state, pi);
+  const thr=reckoningThreshold(nP, dec, bloc.length);
   const callerMin=thr*RECKONING_CALLER_MIN_FRAC;
   const blocShare=reckoningBlocShare(state, pi);
   const ownShare=reckoningOwnShare(state, pi);
-  const reason = blocShare<thr ? 'blocShort' : (ownShare<callerMin ? 'callerShort' : null);
-  return {ok:!reason, blocShare, ownShare, threshold:thr, callerMin, reason};
+  const tooEarly=(state.turn||1)<RECKONING_MIN_TURN && !state.gameOver;
+  const reason = tooEarly ? 'tooEarly' : (blocShare<thr ? 'blocShort' : (ownShare<callerMin ? 'callerShort' : null));
+  return {ok:!reason, blocShare, ownShare, threshold:thr, callerMin, reason,
+          blocSize:bloc.length, allyStep:reckoningAllyStepPct(nP)/100,
+          soloThreshold:reckoningThreshold(nP, dec, 1), minTurn:RECKONING_MIN_TURN};
 }
 // Phase 5 — a bot KING calls the Reckoning when it dominates the world, so bots actually END (and win)
 // games instead of expanding forever. Bots never ally, so this is always a single-realm claim. The
@@ -8283,8 +8343,7 @@ function reckoningCallEligibility(state, pi){
 function runBotReckoning(G, botIdxSet, reckoningCalls){
   if(!botIdxSet||!botIdxSet.size||!reckoningCalls) return;
   if(G.reckoning || G.gameOver) return;                       // a claim is already live / game already decided
-  if((G.turn||0) < TITLES_PUBLIC_FROM_TURN) return;           // standings (and the call) unlock at turn 5
-  const thr=reckoningThreshold((G.players||[]).length, reckoningDecayOf(G));
+  if((G.turn||0) < RECKONING_MIN_TURN) return;                // item 3 (2026-09-16): no claim before turn 10
   botIdxSet.forEach(pi=>{
     if(botConceded(G,pi)) return;                                      // item 2: a conceded realm claims nothing
     const kingAlive=(G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===pi);
@@ -8329,6 +8388,58 @@ function computeMinorTitles(state){
     chars.forEach(c=>{ const v=t.metric(c,state)||0; if(v>best){best=v;bc=c;} });
     if(bc) out[t.key]={charId:bc.id,playerIndex:bc.player,name:t.name,perk:t.perk};
   });
+  return out;
+}
+
+// ── EXTRA SKILL BONUSES (2026-09-16, Toby item 1) ─────────────────────────────────────────────
+// skillBonusBreakdown covers everything that changes the skill ITSELF — equipped items, the Crown of
+// Command aura and the Curse spell. It does NOT cover the bonuses the engine adds at the point of
+// use: the minor titles and the Veteran Training discovery. Those were invisible on the character
+// card (only the four personal-combat ones were shipped, and nothing said where they came from), so
+// a player holding The Strategist saw no sign of the +1 Tactical every one of his battles is fought
+// with. This is the single module-level place those are enumerated; both the report card and the
+// orders column render from it, and every entry carries a `kind` (for colour) and a `scope` (for
+// when it applies), so the display can never claim a personal-combat bonus applies to a battle.
+//
+// SCOPES:  'always' — folded into the skill itself (handled by skillBonusBreakdown)
+//          'combat' — personal combat only (duels, encounters, lair fights) — pcCharCombatant
+//          'battle' — army battles only — combatVsChar / combatVsNPC command bonus
+//          'move'   — movement points only — computeMovePoolMax
+//          'order'  — the order's own success roll only (e.g. Sage research)
+// Every entry here must correspond to a REAL engine site; the harness asserts each one.
+const SKILL_EXTRA_MINORS=[
+  // key            skills                 delta  kind     scope
+  ['duelist',      ['melee'],                 1, 'title', 'combat'],
+  ['marksman',     ['archery'],               1, 'title', 'combat'],
+  ['widowmaker',   ['melee','archery'],       1, 'title', 'combat'],
+  ['relichunter',  ['melee','archery'],       1, 'title', 'combat'],
+  ['strategist',   ['tactical'],              1, 'title', 'battle'],
+  ['swift',        ['march'],                 1, 'title', 'move'  ],
+  ['seawolf',      ['naval'],                 1, 'title', 'move'  ],
+  ['loreseeker',   ['sage'],                  1, 'title', 'order' ],
+];
+const SKILL_EXTRA_SCOPE_NOTE={
+  combat:'personal combat only', battle:'army battles only',
+  move:'movement points only',   order:'this skill’s own order roll only',
+};
+// `minorHolders` is the freshly-computed map where one is to hand; the last resolved turn's map is
+// the fallback, so a character still sees their own perk before Titles go public.
+function extraSkillBonuses(c, state, minorHolders){
+  const out={};
+  if(!c) return out;
+  const mh=minorHolders||((state&&state._minorHolders)||{});
+  const nameOf=k=>((MINOR_TITLES.find(t=>t.key===k)||{}).name)||k;
+  const add=(skill,label,delta,kind,scope)=>{ (out[skill]=out[skill]||[]).push({label,delta,kind,scope,note:SKILL_EXTRA_SCOPE_NOTE[scope]||''}); };
+  SKILL_EXTRA_MINORS.forEach(([key,skills,delta,kind,scope])=>{
+    const h=mh[key]; if(!(h&&h.charId===c.id)) return;
+    skills.forEach(sk=>add(sk,nameOf(key),delta,kind,scope));
+  });
+  // sd37 Veteran Training — a realm-wide Heroic discovery, +1 melee/archery in personal combat.
+  const pl=(state&&state.players&&c.player!=null)?state.players[c.player]:null;
+  if(pl&&(pl.discoveries||[]).some(d=>d&&d.id==='sd37')){
+    add('melee','Veteran Training',1,'discovery','combat');
+    add('archery','Veteran Training',1,'discovery','combat');
+  }
   return out;
 }
 
@@ -8489,8 +8600,10 @@ function buildTurnReport(gameState, playerIndex){
       // by skillBonusBreakdown — the very function the engine's effStat uses — so the player's own
       // character card can show exactly the numbers the turn will be resolved with.
       skillEff:(()=>{ const out={};
+        // 2026-09-16: items/aura/curse are shipped too — the player portal's "capped at 5/9" note
+        // reads them and had been silently dead because they were never sent.
         ABILITIES_P.forEach(k=>{ const b=skillBonusBreakdown(c,k,gameState.characters||[]);
-          if(b.base>0||b.total>0) out[k]={base:b.base,total:b.total,bonus:b.bonus,sources:b.sources}; });
+          if(b.base>0||b.total>0) out[k]={base:b.base,total:b.total,bonus:b.bonus,items:b.items,aura:b.aura,curse:b.curse,sources:b.sources}; });
         return out; })(),
       // Cast chance per school, exactly as the action phase will roll it (see castChanceFor). Includes
       // the flat 95% of a spell worked from an ITEM and whether a Wailing Phylactery still has its
@@ -8538,19 +8651,21 @@ function buildTurnReport(gameState, playerIndex){
         out.blockade={ chance:50 };
         return out; })(),
       necroAutoReady:!!(!c._necroAutoUsed&&activeItems(c).some(it=>it.effect&&it.effect.stat==='necroAuto')),
-      // Bonuses that apply only in PERSONAL COMBAT (they never change the skill itself): minor titles,
-      // the Veteran Training discovery, and any others wired into pcCharCombatant.
-      combatSkillBonus:(()=>{
-        const out={melee:[],archery:[]};
+      // 2026-09-16 (Toby, item 1): EVERY bonus that is not already folded into the skill itself —
+      // minor titles and the Veteran Training discovery — with the `kind` that colours it and the
+      // `scope` that says when it bites. Single source: extraSkillBonuses at module level. This
+      // replaces the old hand-rolled list, which knew only the four personal-combat titles and so
+      // left The Strategist's +1 Tactical, The Swift, The Sea-Wolf and The Loreseeker invisible.
+      skillExtra:(()=>{
         // Prefer this report's freshly-computed holders; fall back to the set the last turn resolved
-        // with, so a character sees their own combat bonus even before titles become public.
-        const _mt=(key)=>{ const h=(_minT&&_minT[key])||((gameState._minorHolders||{})[key]); return !!(h&&h.charId===c.id); };
-        const _mtName=(key)=>((MINOR_TITLES.find(t=>t.key===key)||{}).name)||key;
-        [['duelist',['melee']],['marksman',['archery']],['widowmaker',['melee','archery']],['relichunter',['melee','archery']]]
-          .forEach(([key,stats])=>{ if(_mt(key)) stats.forEach(st=>out[st].push({label:_mtName(key),delta:1})); });
-        if(c.player!=null&&(gameState.players[c.player]?.discoveries||[]).some(d=>d&&d.id==='sd37'))
-          { out.melee.push({label:'Veteran Training',delta:1}); out.archery.push({label:'Veteran Training',delta:1}); }
-        if(!out.melee.length) delete out.melee; if(!out.archery.length) delete out.archery;
+        // with, so a character sees their own perk even before titles become public.
+        const mh={}; MINOR_TITLES.forEach(t=>{ const h=(_minT&&_minT[t.key])||((gameState._minorHolders||{})[t.key]); if(h) mh[t.key]=h; });
+        return extraSkillBonuses(c, gameState, mh); })(),
+      // Kept as-is for any cached older player portal: the personal-combat subset only, same shape.
+      combatSkillBonus:(()=>{
+        const mh={}; MINOR_TITLES.forEach(t=>{ const h=(_minT&&_minT[t.key])||((gameState._minorHolders||{})[t.key]); if(h) mh[t.key]=h; });
+        const all=extraSkillBonuses(c, gameState, mh), out={};
+        Object.keys(all).forEach(sk=>{ const only=all[sk].filter(x=>x.scope==='combat'); if(only.length) out[sk]=only; });
         return out; })(),items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it),lore:itemLore(it)}):it)),pay:c.pay||0,
       locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,
       effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,
@@ -9193,11 +9308,17 @@ function buildTurnReport(gameState, playerIndex){
         public:isPublic,
         gains:(gameState._titleGainsByPlayer||{})[playerIndex]||[],   // Item 2: titles this player won this turn
         losses:(gameState._titleLossesByPlayer||{})[playerIndex]||[], // Item 4: titles this player LOST this turn
-        threshold:st.threshold,
+        // 2026-09-16 (item 3): the bar THIS realm must carry — its own bloc's size raises it. The
+        // solo bar is shipped alongside so the portal can say what an alliance is costing.
+        threshold:_elig.threshold,
+        soloThreshold:_elig.soloThreshold,
+        blocSize:_elig.blocSize,
+        allyStep:_elig.allyStep,
+        reckoningMinTurn:RECKONING_MIN_TURN,
         myShare,
         myOwnShare:_elig.ownShare,        // item 1: this realm's tax base WITHOUT its allies
         callerMin:_elig.callerMin,        // item 1: the personal floor a claimant must clear
-        callBlockedReason:_elig.reason,   // 'blocShort' | 'callerShort' | null
+        callBlockedReason:_elig.reason,   // 'tooEarly' | 'blocShort' | 'callerShort' | null
         canCallReckoning: isPublic && kingAlive && !rk && !over && _elig.ok,
         kingAlive, // 2026-09-11: Orders → Realm shows why the call is unavailable
         reckoning: rk?{byName:gameState.players[rk.by]?.name||null, calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
@@ -20840,20 +20961,32 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // 6e. VICTORY — THE RECKONING (KC end-game). Process new claims, grace-period lapse, resolution.
   {
-    if(!G.reckoning && reckoningCalls.size>0 && G.turn>=TITLES_PUBLIC_FROM_TURN){
-      const thr=reckoningThreshold(G.players.length, reckoningDecayOf(G));
+    // 2026-09-16 (item 3): the earliest turn a claim may be lodged is RECKONING_MIN_TURN, not the
+    // turn titles go public. A realm that lodges one earlier is told when the throne opens.
+    if(!G.reckoning && reckoningCalls.size>0 && G.turn<RECKONING_MIN_TURN){
+      for(const pi of reckoningCalls){
+        log('system',`${G.players[pi]?.name||'A king'} calls for the Reckoning, but the throne cannot be claimed before Turn ${RECKONING_MIN_TURN} — the realms are barely settled and the world will not yet be judged. The claim may be lodged again from that turn.`,{actor:null,targets:[pi],system:true});
+      }
+    }
+    if(!G.reckoning && reckoningCalls.size>0 && G.turn>=RECKONING_MIN_TURN){
       for(const pi of reckoningCalls){
         const kingAlive=(G.characters||[]).some(c=>c.alive&&c.isKing&&c.player===pi);
         if(!kingAlive){ log('system',`Only a king may call the Reckoning.`,{actor:null,targets:[pi],system:true}); continue; }
-        const _el=reckoningCallEligibility(G, pi); // item 1: bloc bar AND the caller's own floor
+        const _el=reckoningCallEligibility(G, pi); // item 1: bloc bar AND the caller's own floor; item 3: bloc-sized bar
+        const thr=_el.threshold;                   // THIS claimant's bar — raised by every ally in their bloc
         const share=_el.blocShare;
         if(_el.ok){
           const bloc=alliedBloc(G, pi);
-          G.reckoning={by:pi, bloc, calledTurn:G.turn, resolveAtTurn:G.turn+2};
+          // 2026-09-16 (item 3): the bar is FIXED at the moment the claim is lodged (`thrPct`), while
+          // the share is recomputed live. Without this a claimant could break off a small alliance
+          // mid-claim to drop their own bar by reckoningAllyStepPct and save a failing claim. The
+          // price of the throne is set when you reach for it; desert an ally now and you lose their
+          // tax base without getting the bar back.
+          G.reckoning={by:pi, bloc, calledTurn:G.turn, resolveAtTurn:G.turn+2, thrPct:reckoningThresholdPct(G.players.length, reckoningDecayOf(G), bloc.length)};
           const nm=G.players[pi]?.name||('Realm '+(pi+1));
           const allies=bloc.filter(b=>b!==pi).map(b=>G.players[b]?.name).filter(Boolean);
           const blocNm=allies.length?` and their allies (${allies.join(', ')})`:'';
-          log('system',`👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${dispFloor(share*100)}% of the world. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${dispFloor(thr*100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,{actor:null,targets:[],system:true,public:true});
+          log('system',`👑 THE RECKONING IS CALLED. ${nm}${blocNm} lay claim to the vacant Imperial throne, commanding ${dispFloor(share*100)}% of the world${allies.length?` — a bar of ${dispFloor(thr*100)}%, raised by ${allies.length} all${allies.length===1?'y':'ies'} standing with the claim`:''}. The realms have TWO turns to contest it — drive ${nm}'s bloc below ${dispFloor(thr*100)}% and the claim collapses. Otherwise the world is judged at the end of Turn ${G.reckoning.resolveAtTurn}.`,{actor:null,targets:[],system:true,public:true});
           break;
         } else if(_el.reason==='callerShort'){
           // Item 1: the BLOC clears the bar, but this realm is a passenger in it — an ally who holds
@@ -20865,12 +20998,16 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       }
     }
     if(G.reckoning){
-      const thr=reckoningThreshold(G.players.length, reckoningDecayOf(G));
+      // Item 3: the bar recorded when the claim was lodged. Older saves carrying a live claim with no
+      // `thrPct` fall back to the claimant's bar as it stands now, so nothing breaks on load.
+      const thr=(G.reckoning.thrPct!=null)
+        ? G.reckoning.thrPct/100
+        : reckoningThresholdFor(G, G.reckoning.by);
       const share=reckoningBlocShare(G, G.reckoning.by);
       const claimantAlive=((G.players[G.reckoning.by]?.provinces)||[]).length>0 || (G.characters||[]).some(c=>c.alive&&c.player===G.reckoning.by);
       // Item 1: the claimant's PERSONAL floor is held for the life of the claim too, so rivals can
       // break a bloc's claim by striking the claimant himself, not only by shrinking the whole bloc.
-      const _ownNow=reckoningOwnShare(G, G.reckoning.by), _minNow=reckoningCallerMin(G);
+      const _ownNow=reckoningOwnShare(G, G.reckoning.by), _minNow=thr*RECKONING_CALLER_MIN_FRAC;
       if(!claimantAlive || share<thr){
         log('system',`The claim to the throne collapses — ${G.players[G.reckoning.by]?.name||'the claimant'}'s bloc no longer commands the world (${dispFloor(share*100)}% < ${dispFloor(thr*100)}%). The Reckoning is called off; the war goes on.`,{actor:null,targets:[],system:true,public:true});
         delete G.reckoning;
@@ -20894,7 +21031,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       if(before>RECKONING_FLOOR_PCT){
         G.reckoningDecaySteps=reckoningDecayOf(G)+1;
         const after=reckoningThresholdPct(nP, reckoningDecayOf(G));
-        log('system',`⏳ The world grows weary of the long war. No throne has been claimed, and the crown's price falls: a realm (or allied bloc) now needs only ${after}% of the world's tax base to Call the Reckoning— down from ${before}%.${after<=RECKONING_FLOOR_PCT?' It will fall no further.':` It will fall another ${RECKONING_DECAY_STEP_PCT}% at the end of next turn.`}`,{actor:null,targets:[],system:true,public:true});
+        log('system',`⏳ The world grows weary of the long war. No throne has been claimed, and the crown's price falls: a realm standing alone now needs only ${after}% of the world's tax base to Call the Reckoning — down from ${before}%. (A claim carried by allies still costs ${reckoningAllyStepPct(nP)} points more for every ally standing with it.)${after<=RECKONING_FLOOR_PCT?' It will fall no further.':` It will fall another ${RECKONING_DECAY_STEP_PCT}% at the end of next turn.`}`,{actor:null,targets:[],system:true,public:true});
       }
     }
   }
@@ -21732,6 +21869,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.15-2203</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1356</div>
 </body>
 </html>
