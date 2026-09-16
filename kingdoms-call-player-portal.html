@@ -1430,7 +1430,9 @@ const SKILL_INFO={
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
   illusory:'Illusory Magic — deception spells: Mirror Image, Phantasmal Armies, Illusory Terrain, Invisibility and Hide Lairs. Confuse enemy intelligence and battles.',
   elemental:'Elemental Magic — destruction spells: Lightning Bolt, Fireball, Earthquake, Flood and Elemental Summon. Raw offensive power against armies and provinces.',
-  necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Kill Enemy (Undead realms start with Necromancy 1).',
+  // 2026-09-16: this blurb still advertised "Kill Enemy", a spell that does not exist in the engine
+  // (see the note beside SPELLS_BY_SCHOOL in the GM portal). The level-5 Necromancy spell is Plague.
+  necromancy:'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Plague (Undead realms start with Necromancy 1).',
 };
 // Column grouping for the join screen: martial | special | magic
 const SKILL_COLUMNS=[
@@ -1511,11 +1513,18 @@ async function joinGame(){
 //      would be in flight before either returned).
 //   2. A submit-time read of game_players for this game AND this user, so a stale page cannot insert
 //      a second realm however it got here.
-// NOTE FOR TOBY: the only absolute guarantee is a UNIQUE INDEX on game_players (game_id, user_id) in
-// Supabase. These two guards close every route the portal itself offers, but a unique index would
-// also cover anything talking to the database directly. Worth adding when you are next in the SQL
-// editor:  create unique index if not exists game_players_one_per_user on game_players (game_id, user_id);
+// 2026-09-16 UPDATE: Toby has now run
+//   create unique index if not exists game_players_one_per_user on game_players (game_id, user_id);
+// so the database itself is the third and absolute guard — it covers anything talking to Supabase
+// directly, not just this portal. A violation comes back as Postgres error code 23505, which is
+// handled at the insert below and turned into the SAME sentence the portal-side check uses, so the
+// three guards never disagree in front of the player. The two portal guards are kept: they are
+// faster (no failed round-trip) and _joinInFlight still closes the double-click race that the
+// database can only resolve AFTER both inserts have been sent.
 let _joinInFlight=false;
+// One sentence for "you are already in this game", wherever it is detected — portal check or
+// database constraint. Kept in one place so the three guards can never word it differently.
+const JOIN_DUP_MSG='You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.';
 async function doJoinGame(gameId){
   if(_joinInFlight) return;
   const kingName=document.getElementById('join-king-name').value.trim();
@@ -1544,7 +1553,7 @@ async function doJoinGame(gameId){
       .select('id,player_index').eq('game_id',gameId).eq('user_id',currentUser.id);
     if(meErr){ msg.innerHTML=`<div class="msg-error">${meErr.message}</div>`; return; }
     if(mine&&mine.length){
-      msg.innerHTML='<div class="msg-error">You have already joined this game — a player may hold only one realm in any game. Open it from <strong>My Games</strong> instead.</div>';
+      msg.innerHTML=`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
       setTimeout(()=>{show('sec-games');loadAllGames();},2500);
       return;
     }
@@ -1560,6 +1569,10 @@ async function doJoinGame(gameId){
     if(gRow?.status==='setup' && cfg.visibility==='private'){
       const inv=Array.isArray(cfg.invited)?cfg.invited:[];
       if(!inv.includes(currentUser.id)){
+        // 2026-09-16: _joinInFlight is set ABOVE this block, so an early return here used to leave it
+        // latched true for the life of the page — every later Join click then hit `if(_joinInFlight)
+        // return;` and did nothing at all, with no message to say why. Clear it on every exit path.
+        _joinInFlight=false;
         msg.innerHTML='<div class="msg-error">This is a private game and you are not on its invite list. Ask the GM to invite you.</div>';
         return;
       }
@@ -1572,7 +1585,7 @@ async function doJoinGame(gameId){
   const maxP=joiningGame.maxP||4;
   let nextIndex=0;
   while(takenIndices.has(nextIndex)&&nextIndex<maxP) nextIndex++;
-  if(nextIndex>=maxP){msg.innerHTML='<div class="msg-error">This game is now full.</div>';return;}
+  if(nextIndex>=maxP){_joinInFlight=false;msg.innerHTML='<div class="msg-error">This game is now full.</div>';return;} // clear the flag — see the private-game note above
 
   const playerSetup={kingName,kingdomName,race,alignment,temper,skills:joinSkills};
   const {data:slot,error}=await sb.from('game_players').insert({
@@ -1585,7 +1598,22 @@ async function doJoinGame(gameId){
   }).select().single();
 
   _joinInFlight=false;
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}<br><small>If this keeps happening, try refreshing the page and joining again.</small></div>`;return;}
+  if(error){
+    // ── 2026-09-16: the database's own guard speaking ────────────────────────────────────────────
+    // game_players_one_per_user (unique on game_id, user_id) rejects a second realm with Postgres
+    // 23505. Raw, that reads "duplicate key value violates unique constraint …" — meaningless to a
+    // player and alarming besides. Show the same sentence the portal-side check uses and send them
+    // to My Games, so a race the two portal guards cannot see still ends in a sensible place.
+    // (Supabase surfaces the code on error.code; the message text is matched too in case a proxy or
+    // a future client version drops the code field.)
+    const _dup=error.code==='23505'||/duplicate key|unique constraint|one_per_user/i.test(error.message||'');
+    if(_dup){
+      msg.innerHTML=`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
+      setTimeout(()=>{show('sec-games');loadAllGames();},2500);
+      return;
+    }
+    msg.innerHTML=`<div class="msg-error">${error.message}<br><small>If this keeps happening, try refreshing the page and joining again.</small></div>`;return;
+  }
   msg.innerHTML='<div class="msg-success">You have joined the game! Waiting for the GM to start Turn 0.</div>';
   setTimeout(()=>{show('sec-games');loadAllGames();},2000);
 }
@@ -5384,19 +5412,29 @@ const BONUS_KIND_P={
   title:     {c:'#6a4a9a', bg:'#ece5f6', label:'Title'},
   perk:      {c:'#1f6f6f', bg:'#dcefef', label:'Perk'},
   discovery: {c:'#2a5a8a', bg:'#dde9f5', label:'Discovery'},
-  curse:     {c:'#8b1a1a', bg:'#f6dede', label:'Curse'},
+  // 2026-09-16: was a hardcoded #8b1a1a — an off-palette near-miss for the portal's own --crimson,
+  // and it disagreed with the no-sources fallback a few lines below, which already paints a negative
+  // delta with var(--crimson). One token, used by both branches, so every penalty reads the same red.
+  curse:     {c:'var(--crimson)', bg:'#f6dede', label:'Curse'},
 };
 const BONUS_SCOPE_MARK_P={combat:'⚔', battle:'⚑', move:'➤', order:'✎'};
 const BONUS_SCOPE_TEXT_P={combat:'personal combat only', battle:'army battles only', move:'movement points only', order:'that order’s own roll only'};
 function _bonusKindP(k){ return BONUS_KIND_P[k]||{c:'#555',bg:'#eeeeee',label:'Other'}; }
 // Every source for one skill: the always-on ones the engine has already folded into the skill,
 // then the scoped extras (minor titles, discoveries) that bite only at their own moment.
+// 2026-09-16 (sweep, harness 0909h C4): the kind fallbacks used to be flat — `x.kind||'item'` and
+// `x.kind||'title'`. A report SNAPSHOTTED BEFORE the engine began tagging sources carries no `kind`
+// at all, so every source in it fell to the default, and a Curse of −1 was therefore painted in the
+// gold ITEM colour: a penalty that read on screen as a bonus. Old reports stay readable in the
+// Chronicle for the life of a game, so the fallback has to be sign-aware — nothing that subtracts
+// from a skill can be an item or a title.
+const _kindFallbackP=(delta,pos)=>((delta||0)<0?'curse':pos);
 function _skillSourcesP(c,k){
   const e=(c&&c.skillEff&&c.skillEff[k])||null;
   const out=[];
-  if(e&&Array.isArray(e.sources)) e.sources.forEach(x=>out.push({label:x.label,delta:x.delta,kind:x.kind||'item',scope:'always'}));
+  if(e&&Array.isArray(e.sources)) e.sources.forEach(x=>out.push({label:x.label,delta:x.delta,kind:x.kind||_kindFallbackP(x.delta,'item'),scope:'always'}));
   const extra=(c&&(c.skillExtra||c.combatSkillBonus))||{};
-  (extra[k]||[]).forEach(x=>out.push({label:x.label,delta:x.delta,kind:x.kind||'title',scope:x.scope||'combat'}));
+  (extra[k]||[]).forEach(x=>out.push({label:x.label,delta:x.delta,kind:x.kind||_kindFallbackP(x.delta,'title'),scope:x.scope||'combat'}));
   return out;
 }
 function skillRowHTML(c, style){
@@ -7828,6 +7866,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1744</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1835</div>
 </body>
 </html>

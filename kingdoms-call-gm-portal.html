@@ -732,7 +732,17 @@ const SPELLS_BY_SCHOOL={
   psychic:['Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm','Mass Confusion','Dominate'],
   illusory:['Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Mirror Image','Phantom Host','Veil'],
   elemental:['Lightning Bolt','Fireball','Earthquake','Flood','Elemental Summon','Chain Lightning','Cataclysm'],
-  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Kill Enemy','Raise Wraiths',"Death's Dominion"],
+  // 2026-09-16 (sweep, found while regenerating the content CSV): this slot read 'Kill Enemy', a spell
+  // that has NO entry in SPELL_DEFS_P. Two faults in one, pointing opposite ways:
+  //   • a Necromancer saw "Kill Enemy" in the GM-side spell picker, ordered it, and got back
+  //     `unknown spell "Kill Enemy"` — a wasted order and a wasted phase;
+  //   • 'Plague' — fully implemented (necromancy_plague), cast by items and by bots, documented in the
+  //     rulebook at 10% + 5%/level — was defined but listed nowhere, so it could never be chosen.
+  // The PLAYER portal already had 'Plague' in this slot: the two lists had silently desynced and this
+  // one was the stale copy. Position 4 is the level-5 spell in every school (white Spiritwrack, psychic
+  // Telekinetic Storm, illusory Mirror Image, elemental Elemental Summon); positions 5-6 are the L7/L9
+  // mastery spells. Plague belongs here and Kill Enemy never existed.
+  necromancy:['Control Undead','Skeletal Armies','Curse','Hand of Death','Plague','Raise Wraiths',"Death's Dominion"],
 };
 const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
 // TRAINING gives its benefit up to level 5; levels 6-9 buy mastery perks and mastery orders instead.
@@ -3592,7 +3602,12 @@ const ALL_MAGIC_ITEMS_P=[
   {name:'Leech-Blade',slot:'weapon',desc:'Weapon: you recover half the damage you deal with melee hits.',lore:'A black sword that drinks. Half of every melee wound you deal returns to you as health.',effect:{stat:'pc',pc:{drain:0.5}},tier:2},
   {name:'Brand of the Salamander',slot:'weapon',desc:'Weapon: a foe in melee reach takes 2 fire damage every round.',lore:'A blade that never cools. Any foe at melee range takes 2 damage at the end of each round.',effect:{stat:'pc',pc:{burn:2}},tier:2},
   {name:'Executioner\'s Maul',slot:'weapon',desc:'Weapon: +4 damage on every successful melee attack.',lore:'Ugly, heavy and final. Every melee hit you land deals 4 extra damage.',effect:{stat:'pc',pc:{dmgBonus:4}},tier:2},
-  {name:'Duellist\'s Rapier',slot:'weapon',desc:'Melee +1, foes −10% to hit you.',lore:'Light, quick and made for the salle. Melee counts 1 higher and your guard gives enemies −10% to hit you.',effect:{stat:'melee',bonus:1,pc:{ward:'dodge',pct:10}},tier:2},
+  // 2026-09-16: renamed from "Duellist's Rapier". There were TWO different items under that one name —
+  // this tier-2 defensive blade and the tier-3 Melee +3 / +8%-to-hit rapier at ~3307 — and every item
+  // lookup in the engine is keyed by NAME (ITEM_SLOT_OF, _ITEM_ALT_BASE, ITEM_LORE_BY_NAME, the
+  // _awardedItems reservation and the lair-uniqueness check). A saved item called "Duellist's Rapier"
+  // therefore resolved to whichever of the two the scan reached first. Distinct name, distinct item.
+  {name:'Fencer\'s Rapier',slot:'weapon',desc:'Melee +1, foes −10% to hit you.',lore:'Light, quick and made for the salle. Melee counts 1 higher and your guard gives enemies −10% to hit you.',effect:{stat:'melee',bonus:1,pc:{ward:'dodge',pct:10}},tier:2},
   {name:'Staff of Ashes',slot:'weapon',desc:'Elemental Magic +2',lore:'Charred oak that still smoulders at the tip. Elemental Magic counts 2 levels higher.',effect:{stat:'elemental',bonus:2},tier:2},
   {name:'Flail of Thunder',slot:'weapon',desc:'Melee +1, +2 damage per melee hit.',lore:'Each strike lands like a thunderclap. Melee counts 1 higher and every melee hit deals 2 extra damage.',effect:{stat:'melee',bonus:1,pc:{dmgBonus:2}},tier:2},
   // ── Helms ──
@@ -12678,7 +12693,7 @@ const BATTLE_ARMY_SPELLS={
         // no stronger at level 5. 3% + 1% a level: 4% a round at Elemental 1, 8% at Elemental 5.
         const _fbPct=(SPELL_FIREBALL_BASE_PCT+SPELL_FIREBALL_PCT_PER_LVL*lvlEff);
         const _fbD=Math.max(1,Math.round(target.maxHp*_fbPct/100))*wx; const _fbE=pcPushDot(target,_fbD,3,'Fireball burns');
-        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${Math.round(_fbPct*wx)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
+        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${dispFloor(_fbPct*wx)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ // 2026-09-15 rebalance: measured, a White adept was WORSE in a duel than carrying no
         // magic at all — both its spells cost an action and neither did any harm. The symbol keeps its
@@ -21985,6 +22000,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1744</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.16-1835</div>
 </body>
 </html>
