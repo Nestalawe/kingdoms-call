@@ -411,7 +411,7 @@ section{display:none;}.section-active{display:block;}
             <svg width="16" height="16" viewBox="0 0 16 16" style="display:inline-block"><circle cx="8" cy="8" r="7" fill="#8f6a38" stroke="#fff" stroke-width="1"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">!</text></svg> Local chieftain</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚔️</span> Battle last turn</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#b060ff">⚔</span> Personal combat (duel, encounter or assassination)</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;font-family:Cinzel,serif">♛</span> Home capital (top-left, in that realm's colour)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;font-family:Cinzel,serif">♛</span> Home capital (left flank, in that realm's colour)</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⚑</span> Your army in the field</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">🌙</span> Ritual site</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem">⭐</span> Lair</span>
@@ -421,6 +421,8 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#FFD700;border:2px solid #FFA500;box-shadow:0 0 3px #FFD700"></span> Rich</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#C0C0C0;border:2px solid #A8A8A8"></span> Prosperous</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#CD7F32;border:2px solid #A0522D"></span> Poor</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#9de89d">✝</span> Army graves — known this turn (certainly there)</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="font-size:1rem;color:#9a9a9a">✝</span> Army graves — older knowledge (may be gone)</span>
           <span style="display:flex;align-items:center;gap:5px"><strong style="color:#ddd">%</strong> = explored</span>
           <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#999">Race (bottom-right):</span>
             <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#c9a961;color:#1a1208;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">H</span> Human
@@ -566,6 +568,34 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}; // shield slot added 2026-09-10 (mirror) · combat ×2 added 2026-09-11 (as 'consumable'; renamed to the Combat Item slot 2026-09-14)
 const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman',combat:'Combat Items (up to two)'};
 const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet','combat'];
+// ── ONLY THE LIVING TAKE ORDERS (2026-09-17, Toby item 4) ───────────────────────────────────────
+// `report.characters` deliberately carries a hero (or king) who FELL THIS TURN, so the Chronicle can
+// still print their final section. Every ORDER form that lists characters as targets or recipients
+// must therefore filter them out: a corpse cannot be handed an item, take command of armies, be
+// mustered fresh recruits, or be the target of a spell. Resurrect is the one exception, and it works
+// off knownDeadHeroes / the graveyard, never off this list.
+function orderTargetCharsP(report){
+  return ((report&&report.characters)||[]).filter(x=>x&&x.alive!==false);
+}
+// ── PACK ORDER (2026-09-17, Toby item 1) ────────────────────────────────────────────────────────
+// A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm, rings,
+// amulet, combat items), with everything else — unequipped slot items, and the unslotted trinkets
+// that are always active — below. DISPLAY ONLY: the returned array is a copy, because the Send Item
+// order addresses items by their INDEX into the character's real `items` array and the GM engine
+// splices by that same index. Reordering the underlying array would hand the wrong item to the
+// courier, so nothing here ever touches `c.items`.
+function itemsForDisplayP(c){
+  const src=(c&&c.items)||[];
+  const rank=it=>{
+    const sl=itemSlotP(it);
+    const equipped=!!sl && it && it.equipped!==false && itemUsableByP(it,c);
+    if(equipped){ const i=ITEM_SLOT_ORDER_P.indexOf(sl); return [0, i<0?99:i]; }
+    return [1, sl?ITEM_SLOT_ORDER_P.indexOf(sl):99];
+  };
+  return src.map((it,i)=>({it,i,r:rank(it)}))
+    .sort((a,b)=>(a.r[0]-b.r[0])||(a.r[1]-b.r[1])||(a.i-b.i))  // stable within a slot group
+    .map(x=>x.it);
+}
 const ITEM_SLOT_OF_P={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
@@ -2282,7 +2312,7 @@ function renderReportView(report){
           <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd!==1?'s':''}/turn</span>
           ${!c.isKing?`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
           ${skillRow}
-          ${(c.items||[]).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}</div>`).join('')}
+          ${itemsForDisplayP(c).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}</div>`).join('')}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
             if(!maj.length && !min.length) return '';
@@ -3083,14 +3113,14 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
         } else if(selSpell==='Oratory'){
           // Oratory: self, or own characters predicted to be in the same province this phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          const allies=orderTargetCharsP(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         } else if(selSpell==='Phantasmal Armies'){
           // Phantasmal Armies: self, or any friendly hero in the SAME province this phase. The buff
           // no longer requires armies at cast time (item 12) — it sits on the target and is spent by
           // their next battle, so it still helps if they pick up or recruit armies in a later phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          const allies=orderTargetCharsP(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
           charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
         } else if(selSpell==='Clairvoyance'){
           // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
@@ -3722,7 +3752,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${(c.items||[]).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${itemsForDisplayP(c).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -4239,7 +4269,7 @@ function _onSpellChange_DEPRECATED(charId, ph, selectedSpell){
     // Phantasmal Armies can only target a friendly hero in the SAME province this phase.
     const casterLoc=isPhantasmal?predictedLocation(charId,ph):null;
     const casterLocId=casterLoc?casterLoc.id:null;
-    const charOpts=(report.characters||[]).filter(x=>{
+    const charOpts=orderTargetCharsP(report).filter(x=>{
         if(String(x.id)===String(charId)) return false;
         if(isPhantasmal){ const xl=predictedLocation(x.id,ph); return xl&&casterLocId!=null&&xl.id===casterLocId; }
         return true;
@@ -6635,7 +6665,7 @@ function buildTargetField(c, ph, saved){
       // ── Recruit destination ── self (default), a friendly character standing in this province
       // this phase, or (in a controlled province) straight into the garrison.
       const _destSaved=((target||'').split(',').map(t=>t.trim()).find(t=>t.startsWith('to:'))||'to:self');
-      const _destAllies=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===(loc&&loc.id));
+      const _destAllies=orderTargetCharsP(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===(loc&&loc.id));
       const _destRow=(allowGarrison)=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:.75rem">
           <span style="color:var(--stone)">Muster to:</span>
           <select class="po-recruit-dest" onchange="updateRecruitTarget('${c.id}',${ph})" style="flex:1;font-size:.75rem;padding:1px 3px">
@@ -6774,7 +6804,7 @@ function buildTargetField(c, ph, saved){
       // recipient in the SAME province gets the item at once (usable later this turn); one ELSEWHERE
       // receives it at the END of the turn — a courier carries it — ready to use from next turn.
       const loc4=predictedLocation(c.id,ph);
-      const chars=(report.characters||[]).filter(x=> x.id!==c.id && x.player===c.player );
+      const chars=orderTargetCharsP(report).filter(x=> x.id!==c.id && x.player===c.player );
       if(chars.length===0) return`${_giWrap}
         <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`;
       const recipOpts=chars.map(x=>{
@@ -6803,9 +6833,10 @@ function buildTargetField(c, ph, saved){
       const ownsHere=cLocId!=null&&ownedIds.has(cLocId);
       const canGarrison=cLocId!=null; // offer garrison wherever this character stands this phase
       // Recipients: only the player's OWN characters predicted to be in the SAME province this phase.
-      // (report.characters already contains only this player's living characters, so neutral heroes
-      // and enemy characters can never appear here.)
-      const othersHere=(report.characters||[]).filter(x=>{
+      // (orderTargetCharsP drops anyone who fell — report.characters still carries a hero killed
+      // this turn so the Chronicle can print their last section; neutral and enemy characters are
+      // never in report.characters at all.)
+      const othersHere=orderTargetCharsP(report).filter(x=>{
         if(x.id===c.id) return false;
         const xl=predictedLocation(x.id,ph);
         return xl&&cLocId!=null&&xl.id===cLocId;
@@ -7358,10 +7389,13 @@ function renderMapIntoSvg(svgEl, report){
         Poor:    {fill:'#CD7F32',stroke:'#A0522D',glow:null},
       };
       const ws=wStyles[pd.wealth]||wStyles.Poor;
-      // Position: the LEFT FLANK of the hex. Nudged down from the old top-left spot (2026-09-13) so
-      // the capital crown can take the top-left corner without the two sitting on top of one another.
-      const dotX=x-HS*0.66;
-      const dotY=y-HS*0.12;
+      // Position: the TOP-LEFT CORNER of the hex (2026-09-17, Toby item 2). It had been nudged down
+      // the left flank on 2026-09-13 to make room for the capital crown; the crown has now moved down
+      // to that left-flank spot instead, and the prosperity dot has its corner back. A pointy-top hex
+      // narrows above dy=-HS/2, so the dot sits at dy≈-0.55·HS where roughly 14px of half-width is
+      // still available for the dot's own top edge — it sits comfortably inside the outline at r=1.75.
+      const dotX=x-HS*0.477;
+      const dotY=y-HS*0.50;
       const dot=document.createElementNS(svgNS,'circle');
       dot.setAttribute('cx',dotX);dot.setAttribute('cy',dotY);dot.setAttribute('r','1.75');
       dot.setAttribute('fill',ws.fill);
@@ -7624,7 +7658,11 @@ function renderMapIntoSvg(svgEl, report){
       // puts the white ring
       // OUTSIDE the glyph — at this size a centred stroke would eat the crown itself — and the drop
       // shadow is softened to 1px so it frames the white border rather than smearing over it.
-      const kx=x-HS+11, ky=y-HS+12;
+      // 2026-09-17 (Toby, item 2): the crown gives the TOP-LEFT CORNER back to the prosperity dot and
+      // takes the upper LEFT FLANK instead (dy≈-0.05·HS) — the hex is at its full width there, so the
+      // larger glyph has more room than it did in the corner, and it stays clear of the grave cross
+      // below it on the same flank and of the battle swords top-middle.
+      const kx=x-HS*0.62, ky=y-HS*0.145;
       const ktxt=document.createElementNS(svgNS,'text');
       ktxt.setAttribute('x',kx);ktxt.setAttribute('y',ky);
       // 2026-09-15 (Toby, item 4): the home-capital crown is 50% larger — 4.5 → 6.75 — so a realm's
@@ -7642,6 +7680,36 @@ function renderMapIntoSvg(svgEl, report){
       ktxt.appendChild(_kt);
       mapTextGlyph(ktxt,'\u265B');
       ktxt.setAttribute('class','sym-capital'); symbolLayer.appendChild(ktxt);
+    }
+
+    // ── BATTLEFIELD GRAVES (2026-09-17, Toby item 3) ────────────────────────────────────────────
+    // A small cross on the LEFT FLANK of any hex this realm knows holds the graves of fallen army
+    // units (the same lore the report lists under "Graveyards Known" and the hex popup spells out).
+    // Two readings, and the colour is the whole point of the marker:
+    //   • LIGHT GREEN — learned THIS turn. The graves are certainly there right now.
+    //   • GREY — learned on an earlier turn. The knowledge is stale: the dead may since have been
+    //     raised as skeletons or rotted away, so it is a place worth marching to, not a promise.
+    // Sits below the capital crown on the same flank and above the bottom-left banner row.
+    if(_graveIntelById && pd.id!=null && _graveIntelById[pd.id]){
+      const _gi=_graveIntelById[pd.id];
+      const _fresh=(_gi.turn!=null && report.turnNumber!=null && _gi.turn===report.turnNumber);
+      const vx=x-HS*0.62, vy=y+HS*0.227;
+      const vtxt=document.createElementNS(svgNS,'text');
+      vtxt.setAttribute('x',vx);vtxt.setAttribute('y',vy);
+      vtxt.setAttribute('text-anchor','middle');vtxt.setAttribute('font-size','8');
+      vtxt.setAttribute('font-weight','700');
+      vtxt.setAttribute('fill',_fresh?'#9de89d':'#9a9a9a');
+      vtxt.setAttribute('stroke','#000');vtxt.setAttribute('stroke-width','0.35');
+      vtxt.setAttribute('paint-order','stroke');
+      vtxt.setAttribute('filter','drop-shadow(0 0 1px rgba(0,0,0,.7))');
+      vtxt.setAttribute('pointer-events','auto');
+      const _vt=document.createElementNS(svgNS,'title');
+      _vt.textContent=_fresh
+        ? 'Battlefield graves lie here — read this turn, so the dead are certainly still in the ground.'
+        : `Battlefield graves were here as of turn ${_gi.turn!=null?_gi.turn:'?'} — they may since have been raised or rotted away.`;
+      vtxt.appendChild(_vt);
+      mapTextGlyph(vtxt,'✝');
+      vtxt.setAttribute('class','sym-graves'); symbolLayer.appendChild(vtxt);
     }
 
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
@@ -7797,6 +7865,7 @@ const MAP_ICON_TYPES=[
   {key:'consec',   label:'✨ Consecrated'},
   {key:'ritual',   label:'🌙 Ritual sites'},
   {key:'prosper',  label:'● Prosperity'},
+  {key:'graves',   label:'✝ Graves'},
   {key:'race',     label:'Ⓗ Races'},
 ];
 const _mapIconOff=new Set();
@@ -7871,6 +7940,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.17-1249</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.17-1410</div>
 </body>
 </html>

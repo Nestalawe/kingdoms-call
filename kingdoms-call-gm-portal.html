@@ -986,6 +986,15 @@ function _gmEffMagicLvl(c,school){
   return Math.max(0,Math.min(_ceil,base+bonus));
 }
 
+// ── ONLY THE LIVING TAKE ORDERS (2026-09-17, Toby item 4) ───────────────────────────────────────
+// The GM mirror form is built from a report stub that includes any character who FELL THIS TURN
+// (the per-player report needs them so a king who died still gets his own Chronicle section). Order
+// forms must not: a corpse can never be a Send Item recipient, an army-transfer recipient, a
+// pick-up source or a Recruit muster destination. Resurrect is the sole order that reaches the dead,
+// and it reads knownDeadHeroes / the graveyard, never this list.
+function orderTargetCharsGM(report){
+  return ((report&&report.characters)||[]).filter(x=>x&&x.alive!==false);
+}
 function buildTargetField(c,ph,saved){
   const action=saved.action||'';
   const target=saved.target||'';
@@ -1146,7 +1155,7 @@ function buildTargetField(c,ph,saved){
       // phase, or (in a controlled province) straight into the garrison. Emits a 'to:' token that
       // the engine's recruit handler consumes.
       const _destSavedG=((target||'').split(',').map(t=>t.trim()).find(t=>t.startsWith('to:'))||'to:self');
-      const _destAlliesG=(report.characters||[]).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)||{}).id??x.locationId)===(loc&&loc.id));
+      const _destAlliesG=orderTargetCharsGM(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)||{}).id??x.locationId)===(loc&&loc.id));
       const _destRowG=(allowGarrison)=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:.72rem">
           <span style="color:#666">Muster to:</span>
           <select class="po-recruit-dest" onchange="updateRecruitTarget('${c.id}',${ph})" style="flex:1;font-size:.72rem;padding:1px 3px">
@@ -1201,20 +1210,20 @@ function buildTargetField(c,ph,saved){
       const items=predictedItems(c.id,ph);
       const startNames=new Set((c.items||[]).map(it=>it&&it.name));
       if(!items.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to send (none held, or all sent away earlier this turn)" disabled>`;
-      const others=(report.characters||[]).filter(x=>x.id!==c.id);
+      const others=orderTargetCharsGM(report).filter(x=>x.id!==c.id);
       return`<select id="po-target-${c.id}-${ph}">${items.map((it,i)=>`<option value="${i}" ${target==i?'selected':''}>${isLegendaryItem(it)?'✦ Legendary — ':''}${it.name}${startNames.has(it.name)?'':' (received earlier this turn)'}</option>`).join('')}</select>
         <select id="po-extra-${c.id}-${ph}" style="margin-top:3px">${others.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('')}</select>`;}
     case 'Leave/Transfer Army':{
       const armies=c.armies||[];
       if(!armies.length)return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to leave" disabled>`;
-      const others=(report.characters||[]).filter(x=>x.id!==c.id);
+      const others=orderTargetCharsGM(report).filter(x=>x.id!==c.id);
       return`<select id="po-target-${c.id}-${ph}"><option value="all">All armies</option>${armies.map(a=>`<option value="${a.type}" ${target===a.type?'selected':''}>${a.unitName?a.unitName+' ('+a.type+', '+a.quality+')':a.type+' ('+a.quality+')'}</option>`).join('')}</select>
         <select id="po-extra-${c.id}-${ph}" style="margin-top:3px"><option value="-1">Garrison in province</option>${others.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`).join('')}</select>`;}
     case 'Pick Up Army':{
       const loc2=predictedLocation(c.id,ph);
       const pd2=loc2?provOrderData[loc2.id]:null;
       const garrisons=(pd2?.garrisonArmies||[]).map((a,i)=>`<option value="-1:${i}">${a.type} (${a.quality}) — garrison</option>`).join('');
-      const others=(report.characters||[]).filter(x=>x.id!==c.id&&(x.armies||[]).length>0);
+      const others=orderTargetCharsGM(report).filter(x=>x.id!==c.id&&(x.armies||[]).length>0);
       const heroArmy=others.flatMap(x=>(x.armies||[]).map((a,i)=>`<option value="${x.id}:${i}">${a.type} from ${x.name}</option>`)).join('');
       const all=garrisons+heroArmy;
       return all?`<select id="po-target-${c.id}-${ph}">${all}</select>`
@@ -1905,7 +1914,7 @@ function renderGMCharOrders(player, char, existingOrders){
   const allChars=(gs.characters||[]).filter(c=>c.player===char.player&&(c.alive||c.killedThisTurn));
   const reportStub={
     characters:allChars.map(c=>({
-      id:c.id,name:c.name,isKing:c.isKing,skills:c.skills||{},aptitude:c.aptitude||{},armies:c.armies||[],items:c.items||[],
+      id:c.id,name:c.name,isKing:c.isKing,alive:c.alive!==false,skills:c.skills||{},aptitude:c.aptitude||{},armies:c.armies||[],items:c.items||[],
       locationId:c.location,locationName:(gs.world?.provinces||[])[c.location]?.name||'?',
       effectiveSpeed:c.armies?.length===0?5:Math.min(...(c.armies||[]).map(a=>ARMY_SPEED_GM[a.type]||3)),
       hiredInPhase:-1,encounterPlan:c.encounterPlan||{tactics:['ME']},
@@ -2144,7 +2153,7 @@ function onGMActionChange(playerId, charId, ph){
   if(!gp) return;
   const reportStub={
     characters:(gs.characters||[]).filter(c=>c.player===char.player&&(c.alive||c.killedThisTurn)).map(c=>({
-      id:c.id,name:c.name,isKing:c.isKing,skills:c.skills||{},aptitude:c.aptitude||{},armies:c.armies||[],items:c.items||[],
+      id:c.id,name:c.name,isKing:c.isKing,alive:c.alive!==false,skills:c.skills||{},aptitude:c.aptitude||{},armies:c.armies||[],items:c.items||[],
       locationId:c.location,locationName:(gs.world?.provinces||[])[c.location]?.name||'?',
       effectiveSpeed:c.armies?.length===0?5:Math.min(...(c.armies||[]).map(a=>ARMY_SPEED_GM[a.type]||3)),
       hiredInPhase:-1,encounterPlan:c.encounterPlan||{tactics:['ME']},
@@ -17246,7 +17255,11 @@ const BATTLE_ARMY_SPELLS={
         const srcId=parseInt(target);
         if(srcId>=0){
           const src=G.characters[srcId];
-          if(!src||src.location!==c.location||src.player!==c.player||(src.armies||[]).length===0){log('system',`${c.name}: cannot pick up army.`);break;}
+          // 2026-09-17 (Toby, item 4): `!src.alive` added. Without it a stale saved order could strip
+          // the armies off a comrade who fell EARLIER THIS TURN — the one order besides Resurrect that
+          // could still reach a dead character. A fallen commander's troops are handled by the death
+          // routine (they scatter or pass to the king); they are not there to be picked up.
+          if(!src||!src.alive||src.location!==c.location||src.player!==c.player||(src.armies||[]).length===0){log('system',`${c.name}: cannot pick up army.`);break;}
           const army=src.armies.pop();c.armies=(c.armies||[]);c.armies.push(army);
           log('hire',`${c.name} takes command of ${army.unitName?army.unitName+' ('+army.quality+' '+army.type+')':army.quality+' '+army.type} from ${src.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else {
@@ -22090,6 +22103,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-1249</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-1410</div>
 </body>
 </html>
