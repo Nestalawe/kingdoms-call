@@ -711,7 +711,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const DIRECTIONS = DIRS;
-const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Release Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items','Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
+const ACTIONS = ['Move','Explore','Search Lair','Hunting Rumours','Recruit Armies','Hire Hero','Release Hero','Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items','Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field','Defend','Rest'];
 // Alignment-signature actions and king-only actions — mirrored from the player portal.
 const ALIGN_ACTIONS_G={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Harvest the Field':'Undead'};
 const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker','Consecrate']);
@@ -719,7 +719,7 @@ const KING_ONLY_ACTIONS_G=new Set(['Call to Arms','Broker','Consecrate']);
 // then most-used first. (This GM mirror lists a subset of orders; the sort tolerates that.)
 const ACTION_DISPLAY_ORDER_G=[
   'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Harvest the Field',
-  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Encounter Character',
+  'Move','Explore','Defend','Rest','Recruit Armies','Cast Spell','Search Lair','Hunting Rumours','Encounter Character',
   'Spy','Steal','Practice Skill','Research',
   'Use Item','Equip Items','Send Item','Hire Hero','Release Hero','Leave/Transfer Army','Pick Up Army','Disband Army',
 ];
@@ -985,6 +985,15 @@ function _gmEffMagicLvl(c,school){
   const _ceil=ITEM_UNCAPPED_SKILLS.has(school)?SKILL_MAX:SKILL_BENEFIT_CAP;
   return Math.max(0,Math.min(_ceil,base+bonus));
 }
+// Same mirror for any skill (2026-09-17 (late): the Hunting Rumours form quotes Spy). Equipped items only,
+// capped at the benefit ceiling — the engine's effStat reads the same items and the same cap.
+function _gmEffSkill(c,stat){ return _gmEffMagicLvl(c,stat); }
+// Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
+function updateRumourTargetG(charId, ph){
+  const wrap=document.getElementById(`po-rumour-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
+  if(!wrap||!hidden) return;
+  hidden.value=[...wrap.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value).join(',');
+}
 
 // ── ONLY THE LIVING TAKE ORDERS (2026-09-17, Toby item 4) ───────────────────────────────────────
 // The GM mirror form is built from a report stub that includes any character who FELL THIS TURN
@@ -1036,6 +1045,22 @@ function buildTargetField(c,ph,saved){
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs here" disabled>`;}
+    case 'Hunting Rumours':{
+      // 2026-09-17 (late) (Toby item 3): tick as many of the province's known lairs as you like; target =
+      // comma-separated feature idx. Cost by grade (RUMOUR_COST_BY_POWER). Mirrors the player portal.
+      const loc=predictedLocation(c.id,ph);
+      const pd=loc?provOrderData[loc.id]:null;
+      const feats=(pd?.features||[]).filter(f=>!f.ritualSite&&f.monster);
+      if(!feats.length) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs here to ask about" disabled>`;
+      const chosen=new Set(String(target||'').split(',').map(t=>t.trim()).filter(Boolean));
+      const spy=Math.min(5,_gmEffSkill(c,'spy'));
+      const chance=Math.min(95,RUMOUR_BASE_PCT+RUMOUR_PER_SPY_PCT*spy);
+      const rows=feats.map(f=>{ const price=RUMOUR_COST_BY_POWER[f.monsterPower]||1;
+        return `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:.78rem"><input type="checkbox" value="${f.idx}" ${chosen.has(String(f.idx))?'checked':''} onchange="updateRumourTargetG('${c.id}',${ph})"> ${f.name} (${f.monsterPower||'?'}) — ${[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ')} — <strong>${price}g</strong></label>`; }).join('');
+      return `<div id="po-rumour-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid #6b5a42;border-radius:2px;padding:4px 6px">${rows}
+        <div style="font-size:.68rem;color:#777;margin-top:3px">Each fact (weakness · hoard · your odds) is learned at ${chance}% (Spy ${spy}). Gold is paid per lair, in the order listed.</div>
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${[...chosen].join(',')}"></div>`;
+    }
     case 'Cast Spell':{
       const skills=c.skills||{};
       const spellList=Object.entries(SPELLS_BY_SCHOOL).filter(([school])=>_gmEffMagicLvl(c,school)>=1)
@@ -1063,7 +1088,10 @@ function buildTargetField(c,ph,saved){
       } else if(NEEDS_CHAR_G.has(selSpell)){
         let chOpts='';
         if(selSpell==='Resurrect'){
-          chOpts=(report.knownDeadHeroes||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${x.isMonarch?' (your fallen monarch)':(x.wasOwnHero?'':' ⚔')} — body in ${x.locationName||'?'} (t${x.killedOnTurn||'?'})</option>`).join('');
+          // 2026-09-17 (late) (Toby, item 2): only bodies lying in the caster's (predicted) province — mirrors the player portal.
+          chOpts=(report.knownDeadHeroes||[]).filter(x=>x.locationId!=null&&casterLocG!=null&&String(x.locationId)===String(casterLocG))
+            .map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${x.isMonarch?' (your fallen monarch)':(x.wasOwnHero?'':' ⚔')} — body in ${x.locationName||'?'} (t${x.killedOnTurn||'?'})</option>`).join('');
+          if(!chOpts) chOpts='<option value="" disabled>No fallen hero lies in this province</option>';
         } else if(selSpell==='Clairvoyance'){
           chOpts=(report.everSeenChars||[]).map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — last seen ${x.lastLocName||'?'}</option>`).join('');
         } else if(selSpell==='Oratory'||selSpell==='Phantasmal Armies'){
@@ -4948,6 +4976,11 @@ const PARLEY_ENABLED=false;
 // 2026-09-16 (Toby): the Scout encounter tactic is withdrawn too. Same pattern — the mechanic below is
 // intact; see the 'SC' case in pcRunTactic for what else to restore alongside it.
 const SCOUT_ENABLED=false;
+// ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── the order that replaces most of what Scout did,
+// bought in the taverns rather than read off the beast. Cost per lair by grade; each fact rolls at
+// RUMOUR_BASE_PCT + RUMOUR_PER_SPY_PCT × Spy (Spy counted to 5, result never above 95).
+const RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
+const RUMOUR_BASE_PCT=50, RUMOUR_PER_SPY_PCT=10;
 // ── DAMAGE FLOOR (2026-09-12b, Toby) ─────────────────────────────────────────────────────────
 // Soaks, wards, armour and hides used to stack until almost every landed attack was scraped down
 // to the 1-damage minimum (Cautious 2 + Mithril 2 + meleeDR + a rage soak reaches that easily on a
@@ -5033,6 +5066,16 @@ function pcLearnWeakness(gs, playerIndex, monsterName){
   if(!pl._knownWeak||typeof pl._knownWeak!=='object') pl._knownWeak={};
   if(pl._knownWeak[monsterName]) return false;
   pl._knownWeak[monsterName]=true; return true;
+}
+// ── LAIR RUMOURS REMEMBERED (2026-09-18, Toby) ── what Hunting Rumours learned about a lair's HOARD,
+// keyed `<provinceId>:<featureIndex>` (the same idx the order forms and the search handler use), so the
+// Known Lairs card can show it every turn after. Only the hoard is kept; a weakness goes to _knownWeak
+// and the odds are never stored.
+function lairRumourKey(provId, idx){ return String(provId)+':'+String(idx); }
+function noteLairRumour(pl, provId, idx, rec){
+  if(!pl) return;
+  if(!pl._lairRumours||typeof pl._lairRumours!=='object') pl._lairRumours={};
+  pl._lairRumours[lairRumourKey(provId,idx)]=rec;
 }
 // ── ARMOUR (2026-09-10) ── fold every worn `stat:'armour'` item into one ward table for personal combat.
 // Flat reductions add, percentages take the best, flags OR. Used by pcCharCombatant and by a guardian
@@ -8416,6 +8459,51 @@ function _skillItem(c,stat){
 // Skill LEVEL (base proficiency, 0–9) for perk unlocks; perkTier = levels past 5 (0–4).
 function skillLevel(c,stat){ return Math.max(0,Math.min(9,((c&&c.skills)||{})[stat]||0)); }
 function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
+
+// ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ── see the end-of-turn call in runTurn.
+// Pure function of the game state plus an optional rng/emit, so the harness can fuzz it directly.
+// Returns the list of {id, skill, from, to, teacher} gains applied this call.
+const NEUTRAL_PROG_FROM_TURN=5;   // first END OF TURN at which neutral heroes roll
+const NEUTRAL_PROG_PCT=50;        // chance per neutral hero per turn of gaining one point
+function progressNeutralHeroes(gs, emit, rng){
+  rng=rng||Math.random;
+  const turn=(gs&&gs.turn)||0;
+  if(turn<NEUTRAL_PROG_FROM_TURN) return [];
+  const chars=(gs&&gs.characters)||[];
+  const neutrals=chars.filter(c=>c&&c.alive&&c.player===null&&!c.isKing);
+  // Snapshot every neutral's skills BEFORE anyone gains, so two heroes in one province read each
+  // other's start-of-sweep levels — order of iteration must not change who learns what.
+  const snap=new Map(neutrals.map(c=>[c.id,{...(c.skills||{})}]));
+  const topSkillsOf=(sk)=>{ let best=0; ALL_SKILLS.forEach(k=>{ best=Math.max(best,sk[k]||0); }); return best>0?ALL_SKILLS.filter(k=>(sk[k]||0)===best):[]; };
+  const pick=(arr)=>arr[Math.floor(rng()*arr.length)];
+  const gains=[];
+  neutrals.forEach(c=>{
+    if(rng()*100>=NEUTRAL_PROG_PCT) return;
+    c.skills=c.skills||{};
+    const own=ALL_SKILLS.filter(k=>(c.skills[k]||0)>0&&(c.skills[k]||0)<SKILL_MAX);
+    const peers=neutrals.filter(o=>o!==c&&o.location===c.location);
+    let skill=null, teacher=null;
+    if(peers.length){
+      const t=pick(peers);
+      const cand=topSkillsOf(snap.get(t.id)||{}).filter(k=>(c.skills[k]||0)<SKILL_MAX);
+      if(cand.length){ skill=pick(cand); teacher=t; }
+    }
+    if(!skill && own.length) skill=pick(own);
+    if(!skill) return;
+    const from=c.skills[skill]||0, to=from+1;
+    c.skills[skill]=to;
+    gains.push({id:c.id, skill, from, to, teacher:teacher?teacher.id:null});
+    if(emit){
+      const pv=gs.world&&gs.world.provinces?gs.world.provinces[c.location]:null;
+      const nm=String(c.name||'').replace(/\s*\(wandering\)/i,'');
+      const lbl=(typeof SKILL_LABELS!=='undefined'&&SKILL_LABELS[skill])||skill;
+      emit(teacher
+        ? `📜 ${nm}${pv?` in ${pv.name}`:''} learns from ${String(teacher.name||'').replace(/\s*\(wandering\)/i,'')} — ${lbl} rises to ${to}.`
+        : `📜 ${nm}${pv?` in ${pv.name}`:''} hones their craft — ${lbl} rises to ${to}.`, pv);
+    }
+  });
+  return gains;
+}
 // MAGIC L8 PERK — "+10% to cast ANY spell" for each magic school mastered to level 8, stacking across
 // schools (five schools → up to +50%). Applied at EVERY point a character rolls to cast a spell:
 // phase-action casts, personal-combat spells, and pre-battle/battle magic. Each call site keeps its
@@ -9181,8 +9269,11 @@ function buildTurnReport(gameState, playerIndex){
   // unowned land) — otherwise the site shows on the map but not in the report or order forms.
   const _kfOcc=new Set(gameState.characters.filter(c=>c.alive&&c.player===playerIndex).map(c=>c.location));
   gameState.world.provinces.filter(p=>visitedProvIds.has(p.id)||ownedProvIds.has(p.id)||_kfOcc.has(p.id)).forEach(p=>{
-    (p.features||[]).filter(f=>featDiscovered(f,playerIndex)||(ownedProvIds.has(p.id)&&!!f.ritualSite)).forEach(f=>{
+    const _rum=((gameState.players||[])[playerIndex]||{})._lairRumours||{};
+    (p.features||[]).forEach((f,_fi)=>{
+      if(!(featDiscovered(f,playerIndex)||(ownedProvIds.has(p.id)&&!!f.ritualSite))) return;
       knownFeatures.push({province:p.name,name:f.name,cleared:f.cleared,
+      rumour:(!f.cleared&&_rum[lairRumourKey(p.id,_fi)])||null,   // 2026-09-18: hoard learned by Hunting Rumours
       ritualSite:!!f.ritualSite,
       monster:f.ritualSite?'':(f.monster?.name||'unknown guardian'),
       monsterCat:f.ritualSite?'':monsterCatLabel(f.monster),
@@ -10798,8 +10889,11 @@ async function runTurn(opts){
   // flushed at the END of the phase, so a line like "…Explorer rises to level 1…" reads as the
   // consequence it is — reported after the move/action that earned it, not jumping ahead of it.
   let _deferredSkillLogs=[];
+  // 2026-09-17 (late): set while the Hunting Rumours odds simulation runs fights in the background — no
+  // sandbox fight may ever train a real skill (see simulateLairOdds).
+  let _pcSimulating=false;
   function trySkillGain(char, skill, base, narr, mult){
-    if(!char) return; mult=(mult>0?mult:1);
+    if(!char||_pcSimulating) return; mult=(mult>0?mult:1);
     const real=(char.id!=null && G.characters[char.id]) ? G.characters[char.id] : char;
     if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
     const lvl=(real.skills||{})[skill]||0;
@@ -14971,6 +15065,90 @@ const BATTLE_ARMY_SPELLS={
   // handles only the framing (scene description) and the feature-level consequences
   // (treasure stolen, monster cleared, hero slain).
   // Returns {won, fled, damageToHero, heroHpAfter, heroKilled, narrative:[...strings]}
+  // ── THE GUARDIAN AS A COMBATANT (2026-09-17 (late)) ── factored out of resolveEncounter so the Hunting
+  // Rumours simulation builds the guardian EXACTLY as a real lair fight does — hoard items wielded,
+  // nature-based vulnerabilities, pacifiable flag. `m` may be the live feature.monster (a real fight)
+  // or a deep copy of it (a simulation); the hoard is read from the feature either way.
+  function pcBuildGuardian(feature, m, narrative){
+    narrative=narrative||[];
+    const traits=monsterTraits(m);
+    const mon=pcMonsterCombatant(m);
+    // Item 4 (2026-09-07): a guardian that can wield the hoard's magic brings it into the fight — skill items
+    // raise its Melee/Archery/HP, combat-use items are drunk/read when the moment is right.
+    ensureLairHoard(feature,G);
+    { const _wield=(feature.hoardItems||[]).filter(it=>guardianCanUseItem(m,it));
+      if(_wield.length){
+        mon.wielded=_wield; mon.combatItems=[]; mon._hpItemBonus=0;
+        _wield.forEach(it=>{ const e=it.effect||{};
+          if(e.stat==='melee') mon.melee=(mon.melee||0)+(e.bonus||0);
+          else if(e.stat==='archery') mon.archery=(mon.archery||0)+(e.bonus||0);
+          else if(e.stat==='maxHp'&&mon.hp>=mon.maxHp){ mon.maxHp+=e.bonus; mon.hp+=e.bonus; mon._hpItemBonus+=e.bonus; }
+          else if(e.stat==='combatUse') mon.combatItems.push(it);
+          else if(e.stat==='armour') mon.arm=pcArmourMerge(mon.arm,e,it.name); // 2026-09-10: a guardian in the hoard's armour
+          if(e.pc) pcApplyFx(mon,e.pc,it.name); // 2026-09-11: a guardian wearing a new rider item feels it too
+          if((_ITEM_ALT_BASE[it.name]||it.name)==='Warbringer Gauntlets') mon.gauntlets=true;
+        });
+        narrative.push(`The ${m.name} has turned the hoard's magic to its own use — it bears ${_wield.map(x=>x.name).join(', ')}.`);
+      } }
+    // The monster's nature decides what hurts it: blades, arrows or magic.
+    mon.vuln={melee:traits.mods.melee, archery:traits.mods.archery, spell:traits.mods.spell};
+    mon.pacifiable=!!traits.pacifiable;
+    return mon;
+  }
+
+  // ── HUNTING RUMOURS: THE ODDS (2026-09-17 (late), Toby item 3) ──────────────────────────────────────
+  // "The likelihood the hero has of defeating the guardian" is MEASURED, not estimated: the real
+  // personal-combat engine fights the lair RUMOUR_SIM_FIGHTS times in the background, on deep copies
+  // of the hero and the guardian, and the kill rate is banded into one of five narrative lines.
+  // A kill is the only success — death, flight, a 20-round draw and a mercy plea all leave the
+  // guardian on its hoard. The hero fights as they stand TODAY (current HP, current kit, their own
+  // Encounter Plan if they have set one, else the standard plan an unordered character fights with).
+  //
+  // ISOLATION. Every combat write goes through `ref` (hp, mercy items, _mercyFledTurn, skill gains
+  // in trySkillGain, _selfHealUsed, _hpFull) — so both combatants are built from JSON copies with
+  // ids no live character carries. The two writes that reach OUTSIDE the refs are guarded here:
+  // `_pcSimulating` mutes trySkillGain, and pcLearnWeakness's realm-level record is snapshotted and
+  // restored, so a weakness that happens to bite in the sandbox teaches the realm nothing.
+  const RUMOUR_SIM_FIGHTS=300;
+  // (`_pcSimulating` itself is declared beside trySkillGain, above every call site, so it can never be read in its TDZ.)
+  const RUMOUR_ODDS_BANDS=[ // upper bound of the band (kill %), and the line read to the player
+    {max:20,  text:(g)=>`the talk is grim: you would have no real chance against the ${g} — it would leave you in the dust with the rest`},
+    {max:40,  text:(g)=>`the odds are against you: the ${g} would most likely be the end of you, though a lucky hand might yet see it done`},
+    {max:60,  text:(g)=>`it could go either way: you and the ${g} are evenly matched, and the dice will decide who walks out`},
+    {max:80,  text:(g)=>`the odds favour you: you would likely bring the ${g} down, but not without real danger`},
+    {max:101, text:(g)=>`the talk is confident: you are almost certain to defeat the ${g} — only ill fortune could turn it`},
+  ];
+  function rumourOddsBand(pct){ return RUMOUR_ODDS_BANDS.find(b=>pct<b.max)||RUMOUR_ODDS_BANDS[RUMOUR_ODDS_BANDS.length-1]; }
+  function simulateLairOdds(c, feature, fights){
+    fights=fights||RUMOUR_SIM_FIGHTS;
+    const m0=feature&&feature.monster; if(!c||!m0) return null;
+    const pl=(c.player!=null)?G.players[c.player]:null;
+    const _kwSnap=pl?JSON.stringify(pl._knownWeak||{}):null;
+    const _prevSim=_pcSimulating; _pcSimulating=true;
+    let wins=0, ran=0;
+    try{
+      const heroSrc=JSON.parse(JSON.stringify(c));
+      // a plan of their own if set; else the standard unordered-character plan
+      const ownPlan=c.encounterPlan&&Array.isArray(c.encounterPlan.tactics)&&c.encounterPlan.tactics.length?c.encounterPlan.tactics.slice():null;
+      for(let i=0;i<fights;i++){
+        const hc=JSON.parse(JSON.stringify(heroSrc)); hc.id='rumour_sim_'+i;   // no live character carries this id
+        hc.encounterPlan={tactics:ownPlan||autoEncounterPlan(hc), duelStance:'accept', _auto:true};
+        const mc=JSON.parse(JSON.stringify(m0)); if(mc._hpFull==null) mc._hpFull=(mc.hp||10); mc.hp=mc._hpFull;
+        const hero=pcCharCombatant(hc); hero.tactics=hc.encounterPlan.tactics.slice(); hero._vsGuardian=true;
+        const mon=pcBuildGuardian(feature, mc, []);
+        const res=resolvePersonalCombat(hero, mon, {maxRounds:20, feature});
+        ran++;
+        if(res && res.winner===hero && !res.fledBy && !res.parley && !res.stoleBy) wins++;
+      }
+    } catch(e){ console.warn('simulateLairOdds failed',e); }
+    finally{
+      _pcSimulating=_prevSim;
+      if(pl) pl._knownWeak=JSON.parse(_kwSnap);
+    }
+    if(!ran) return null;
+    return {pct:Math.round(100*wins/ran), wins, fights:ran};
+  }
+
   function resolveEncounter(c, feature, prov, tactics, effStat, rng, player){
     const m=feature.monster||{name:'creature',hp:10,power:'',minG:1,maxG:3};
     const narrative=[];
@@ -15015,27 +15193,7 @@ const BATTLE_ARMY_SPELLS={
     // Set on the CHARACTER's combatant, so the cap can never apply to the hero's own blows, to a
     // PvP duel, or to any fight that has no guardian in it.
     hero._vsGuardian=true;
-    const mon=pcMonsterCombatant(m);
-    // Item 4 (2026-09-07): a guardian that can wield the hoard's magic brings it into the fight — skill items
-    // raise its Melee/Archery/HP, combat-use items are drunk/read when the moment is right.
-    ensureLairHoard(feature,G);
-    { const _wield=(feature.hoardItems||[]).filter(it=>guardianCanUseItem(m,it));
-      if(_wield.length){
-        mon.wielded=_wield; mon.combatItems=[]; mon._hpItemBonus=0;
-        _wield.forEach(it=>{ const e=it.effect||{};
-          if(e.stat==='melee') mon.melee=(mon.melee||0)+(e.bonus||0);
-          else if(e.stat==='archery') mon.archery=(mon.archery||0)+(e.bonus||0);
-          else if(e.stat==='maxHp'&&mon.hp>=mon.maxHp){ mon.maxHp+=e.bonus; mon.hp+=e.bonus; mon._hpItemBonus+=e.bonus; }
-          else if(e.stat==='combatUse') mon.combatItems.push(it);
-          else if(e.stat==='armour') mon.arm=pcArmourMerge(mon.arm,e,it.name); // 2026-09-10: a guardian in the hoard's armour
-          if(e.pc) pcApplyFx(mon,e.pc,it.name); // 2026-09-11: a guardian wearing a new rider item feels it too
-          if((_ITEM_ALT_BASE[it.name]||it.name)==='Warbringer Gauntlets') mon.gauntlets=true;
-        });
-        narrative.push(`The ${m.name} has turned the hoard's magic to its own use — it bears ${_wield.map(x=>x.name).join(', ')}.`);
-      } }
-    // The monster's nature decides what hurts it: blades, arrows or magic.
-    mon.vuln={melee:traits.mods.melee, archery:traits.mods.archery, spell:traits.mods.spell};
-    mon.pacifiable=!!traits.pacifiable;
+    const mon=pcBuildGuardian(feature, m, narrative);
     narrative.push(`The ${m.name} is ${mon.speedName}-moving${mon.speedName==='fast'?' (it closes two ranges at a stride)':''}${pcHasRanged(mon)?', and fights at range as well as close':''}. Its plan: ${mon.tactics.slice(0,6).join(', ')}…`);
 
     const res=resolvePersonalCombat(hero, mon, {maxRounds:20, feature});
@@ -15363,6 +15521,7 @@ const BATTLE_ARMY_SPELLS={
   const PHASE_ACTION_MAP={
     'move':'move','explore':'explore','explore province':'explore',
     'search':'search','search lair':'search','search feature':'search', // 'search feature' kept as a backward-compat alias for orders written before the Lair rename
+    'hunting rumours':'hunt_rumours','hunt rumours':'hunt_rumours','hunt_rumours':'hunt_rumours', // 2026-09-17 (late) (Toby item 3)
     'recruit':'recruit','recruit armies':'recruit',
     'hire':'hire','hire hero':'hire',
     'release':'release','release hero':'release','dismiss hero':'release',
@@ -16514,6 +16673,69 @@ const BATTLE_ARMY_SPELLS={
         log('combat',`\u{1FA78} ${c.name} makes a Blood Offering at the ${_riteSite.name} — ${_sac.map(a=>a.unitName||a.type).join(', ')} (${_bn} unit${_bn!==1?'s':''}) are given to the old gods, and their strength passes to ${_ben.map(a=>`${a.unitName||a.type} (rise to ${a.quality})`).join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         break;
       }
+      // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ────────────────────────────────────────────
+      // The character spends the phase in the taverns and byways of the province asking after the
+      // lairs they know of there. Target: comma-separated indexes into prov.features (the same idx
+      // the Search Lair form uses). Each lair costs gold by grade (RUMOUR_COST_BY_POWER), paid up
+      // front and in the order chosen; when the purse runs dry the rest are skipped. For each lair
+      // paid for, THREE facts are rolled separately at 50% + 10% per Spy level (counted to 5, so
+      // never above the 95% ceiling): the guardian's weakness (learned for good, exactly as a Scout
+      // would learn it), the hoard behind it (exact gold and the magic that lies there), and the
+      // hero's own odds — measured by simulateLairOdds and read back as one of five narrative bands.
+      case 'hunt_rumours':{
+        const _cost=RUMOUR_COST_BY_POWER;
+        const _idxs=[...new Set(String(target||'').split(',').map(s=>parseInt(String(s).trim())).filter(n=>!isNaN(n)&&n>=0))];
+        const _total=(prov.features||[]).length, _explHere=(prov.exploredBy&&prov.exploredBy[c.player])||0;
+        const _feats=_idxs.map(i=>({f:(prov.features||[])[i],i})).filter(({f,i})=>{
+          if(!f||f.cleared||f.ritualSite||!f.monster) return false;
+          const thr=_total>0?Math.ceil(100/_total)*(i+1):100;          // the order form's own visibility rule
+          return featDiscovered(f,c.player)||(_explHere>=thr);
+        });
+        if(!_feats.length){ log('explore',`${c.name} asks after the lairs of ${prov.name}, but no one has anything to tell — there is no known lair here to ask about.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
+        const _spy=Math.min(5,effStat(c,'spy'));
+        const _chance=Math.min(95,RUMOUR_BASE_PCT+RUMOUR_PER_SPY_PCT*_spy);
+        log('explore',`🍺 ${c.name} spends the season in the taverns and on the roads of ${prov.name}, hunting rumours of ${_feats.length} lair${_feats.length!==1?'s':''} (Spy ${_spy} — each piece of lore is learned at ${_chance}%).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        for(const {f,i:_fi} of _feats){
+          const m=f.monster; const grade=(m&&m.power)||f.tier||'Weak'; const price=_cost[grade]||1;
+          if((player.gold||0)<price){ log('explore',`  ${c.name} cannot afford the ${price}g the ${f.name}'s rumours would cost (${player.gold||0}g in the treasury) — the rest of the hunt is abandoned.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
+          player.gold-=price;
+          const gname=`${m.name}${monsterCatLabel(m)?` (${monsterCatLabel(m).toLowerCase()})`:''}`;
+          const lines=[`  💰 ${price}g buys the talk of the ${f.name} — ${gname}, a ${String(grade).toLowerCase()} guardian.`];
+          // 1) the weakness
+          { const r=d100(); const ok=r<=_chance;
+            if(ok){
+              if(m.weak){ const fresh=pcLearnWeakness(G,c.player,m.name); lines.push(`  ✓ Its weakness [${fmtRoll(_chance,r)}]: ${m.weak.name} — ${m.weak.desc}.${fresh?' Your realm marks every '+m.name+' with it from now on.':''}`); }
+              else lines.push(`  ✓ Its weakness [${fmtRoll(_chance,r)}]: none that anyone knows of — the ${m.name} has no exploitable flaw.`);
+            } else lines.push(`  ✗ Its weakness [${fmtRoll(_chance,r)}]: the talk is all boasting and nobody agrees — nothing learned.`); }
+          // 2) the hoard
+          { const r=d100(); const ok=r<=_chance;
+            if(ok){
+              ensureLairHoard(f,G);
+              const gold=encounterClearGold(f);
+              const _hi=(f.hoardItems||[]), _st=(f._stolenItems||[]);
+              let itemOut=_hi.length?`, and ${itemNameList(_hi)}`:'';
+              if(!_hi.length) itemOut=_st.length?` — its magic (${_st.join(', ')}) has already been lifted by a thief`:' — no magic lies there';
+              else if(_st.length) itemOut+=` (a thief has already made off with ${_st.join(', ')})`;
+              const _wield=_hi.filter(it=>guardianCanUseItem(m,it));
+              if(_wield.length) itemOut+=`. Beware: it wields ${_wield.map(x=>x.name).join(', ')} against all comers`;
+              lines.push(`  ✓ Its hoard [${fmtRoll(_chance,r)}]: the ${m.name} sits on exactly ${gold}g${itemOut}.`);
+              // Remembered on the realm so the Known Lairs card shows it next turn and after (the odds are
+              // deliberately NOT stored — they belong to one hero on one day, and that hero will change).
+              noteLairRumour(player, prov.id, _fi, {turn:G.turn, gold, items:_hi.map(x=>x.name), stolen:_st.slice(), wields:_wield.map(x=>x.name)});
+            } else lines.push(`  ✗ Its hoard [${fmtRoll(_chance,r)}]: every teller names a different treasure — nothing learned.`); }
+          // 3) the odds
+          { const r=d100(); const ok=r<=_chance;
+            if(ok){
+              const odds=simulateLairOdds(c,f);
+              if(odds){ const band=rumourOddsBand(odds.pct); lines.push(`  ✓ Your chances [${fmtRoll(_chance,r)}]: as you stand today, ${band.text(m.name)}.`); }
+              else lines.push(`  ✓ Your chances [${fmtRoll(_chance,r)}]: nobody could say how ${c.name} would fare.`);
+            } else lines.push(`  ✗ Your chances [${fmtRoll(_chance,r)}]: the tellers know the beast but not you — nothing learned.`); }
+          lines.forEach(t=>log('explore',t,{actor:c.player,targets:[c.player],provinceId:prov.id}));
+        }
+        trySkillGain(c,'spy',SKILLGAIN_COMMON); // a season of asking questions is Spy fieldwork, at the common (move/explore) rate
+        break;
+      }
+
       case 'search':{
         // Find the feature
         let fi=0;
@@ -21345,6 +21567,19 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     senseGravesUnderfoot(G, c, pv, (p2)=>log('explore',`💀 ${c.name} feels the dead of ${p2.name} stirring underfoot — battlefield graves lie in this province, though nothing tells how many or what they hold.`,{actor:c.player,targets:[c.player],provinceId:p2.id}));
   });
 
+  // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ──────────────────────────────────────
+  // Wandering heroes and local chieftains do not stand still while nobody commands them. From the
+  // END of turn NEUTRAL_PROG_FROM_TURN onward, every living neutral hero (player===null — wanderers
+  // and neutral-guard chieftains alike) rolls NEUTRAL_PROG_PCT once a turn. On a success, exactly ONE
+  // skill point is gained:
+  //   • sharing a province with another neutral hero → they learn from them: the skill raised is the
+  //     OTHER hero's highest skill (a random one of them if several tie);
+  //   • alone → one of their own EXISTING skills (level ≥1), chosen at random.
+  // Never more than one point per hero per turn, never past SKILL_MAX. A learner already at the cap
+  // in the peer's best skill falls back to the alone rule rather than wasting the roll.
+  // Implemented in progressNeutralHeroes (module scope) so the harness can drive it directly.
+  progressNeutralHeroes(G, (txt,pv)=>log('system',txt,{targets:[],provinceId:pv?pv.id:null,system:true}));
+
   // ── Item 1: DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's
   // hands this turn (captured by an enemy, or otherwise no longer owned) loses its blessing — which
   // also frees a slot so the king may hallow new ground next turn (up to his White skill level).
@@ -22607,6 +22842,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-2126</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.18-1012</div>
 </body>
 </html>

@@ -642,6 +642,18 @@ function itemSlotTag(it,c){
   const st=it.equipped===false?'not equipped':'equipped';
   return ` <span style="color:${it.equipped===false?'#999':'#6b5a2a'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
+// Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
+const RUMOUR_COST_BY_POWER_P={Weak:1,Moderate:2,Powerful:3,Legendary:4}; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
+const RUMOUR_BASE_PCT_P=50, RUMOUR_PER_SPY_PCT_P=10;
+function updateRumourTarget(charId, ph){
+  const wrap=document.getElementById(`po-rumour-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
+  if(!wrap||!hidden) return;
+  const boxes=[...wrap.querySelectorAll('input[type=checkbox]')];
+  hidden.value=boxes.filter(b=>b.checked).map(b=>b.value).join(',');
+  const tot=document.getElementById(`po-rumour-total-${charId}-${ph}`);
+  if(tot){ let sum=0; boxes.filter(b=>b.checked).forEach(b=>{ const m=(b.parentNode.textContent||'').match(/(\d+)g\s*$/); if(m) sum+=parseInt(m[1]); });
+    tot.innerHTML=tot.innerHTML.replace(/Cost of the ticked lairs: <strong>\d+g<\/strong>/,`Cost of the ticked lairs: <strong>${sum}g</strong>`); }
+}
 function updateEquipTarget(charId, ph){
   const wrap=document.getElementById(`po-equip-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(!wrap||!hidden) return;
@@ -651,7 +663,7 @@ function updateEquipTarget(charId, ph){
 
 const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
-const ACTIONS = ['Move','Explore','Search Lair','Recruit Armies','Hire Hero','Release Hero','Encounter Character','Steal','Disband Army',
+const ACTIONS = ['Move','Explore','Search Lair','Hunting Rumours','Recruit Armies','Hire Hero','Release Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items',
   'Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
@@ -710,7 +722,7 @@ const ACTION_DISPLAY_ORDER=[
   'Feigned Retreat','Grand Stratagem','Lightning Advance','Raid the Coast',
   'Wild Calling','Grand Design',
   // ── Everyday orders — exact order requested (item 7) ──
-  'Move','Practice Skill','Research','Cast Spell','Explore','Search Lair','Recruit Armies',
+  'Move','Practice Skill','Research','Cast Spell','Explore','Search Lair','Hunting Rumours','Recruit Armies',
   'Pick Up Army','Leave/Transfer Army','Disband Army','Hire Hero','Release Hero','Defend',
   'Encounter Character','Spy','Send Item','Use Item','Equip Items','Steal','Rest',
 ];
@@ -2634,8 +2646,17 @@ function renderReportView(report){
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
         ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
-        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}`}
+        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}${_rumourLine(f)}`}
       </div>`;
+    };
+    // 2026-09-18 (Toby): what Hunting Rumours learned of the hoard, remembered on the realm and shipped
+    // as `f.rumour` ({turn, gold, items, stolen, wields}). The ODDS are never shown here \u2014 they belonged
+    // to one hero on one day. Stamped with the turn, because a thief may have been through since.
+    const _rumourLine=(f)=>{
+      const r=f.rumour; if(!r||f.cleared) return '';
+      const items=(r.items||[]).length?`, and ${(r.items||[]).join(', ')}`:((r.stolen||[]).length?` \u2014 its magic (${r.stolen.join(', ')}) was already lifted by a thief`:' \u2014 no magic lies there');
+      const wield=(r.wields||[]).length?` <span style="color:#8a1c1c">It wields ${r.wields.join(', ')} against all comers.</span>`:'';
+      return `<br><span style="font-size:.76rem;color:#6b5a2a">\u{1F4B0} Hoard known (turn ${r.turn}) \u2014 exactly <strong>${r.gold}g</strong>${items}.${wield}</span>`;
     };
     const featuresByProvince={};
     knownFeatures.forEach(f=>{
@@ -3085,19 +3106,24 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // than silently dropped — a body on the map that is simply absent from this list reads as
           // a bug. Raisable bodies sort first. Older reports carry no flags, so default to raisable
           // and fall back to the previous king filter.
+          // 2026-09-17 (late) (Toby, item 2): ONLY the bodies lying in the caster's province (predicted for
+          // this phase) are listed. A body elsewhere is not offered at all — move there first, and the
+          // later-phase form will show it.
           const casterHereName=(predictedLocation(c.id,ph)||{}).name;
-          const _bodies=(report.knownDeadHeroes||report.deadHeroes||[]).map(x=>{
+          const _bodies=(report.knownDeadHeroes||report.deadHeroes||[]).filter(x=>{
+            if(x.locationId!=null&&casterLoc!=null) return String(x.locationId)===String(casterLoc);
+            return casterHereName&&x.locationName===casterHereName;   // older reports carry no locationId
+          }).map(x=>{
             const _r=(x.raisable!==undefined)?!!x.raisable:(!x.isKing||!!x.isMonarch);
             const _w=x.whyNot||(x.isKing&&!x.isMonarch?'kings cannot be resurrected':'not a legal target');
             return {...x,_r,_w};
           }).sort((a,b)=>(b._r?1:0)-(a._r?1:0));
           charOpts=_bodies.map(x=>{
-            const here=casterHereName&&x.locationName===casterHereName;
             const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':' ⚔ (enemy hero)');
-            if(!x._r) return `<option value="" disabled>${x.isMonarch?'👑 ':''}${x.name} — in ${x.locationName||'?'} — cannot be raised: ${x._w}</option>`;
-            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — in ${x.locationName||'?'}, died turn ${x.killedOnTurn||'?'}${here?' ✓ (body is where you will stand)':' — move there first!'}</option>`;
+            if(!x._r) return `<option value="" disabled>${x.isMonarch?'👑 ':''}${x.name} — cannot be raised: ${x._w}</option>`;
+            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — died turn ${x.killedOnTurn||'?'}</option>`;
           }).join('');
-          if(!charOpts) charOpts='<option value="" disabled>No fallen hero you know of — you must own the ground a body lies on, stand a character there, or have witnessed the death</option>';
+          if(!charOpts) charOpts=`<option value="" disabled>No fallen hero lies in ${casterHereName||'this province'} — only bodies in the caster's province can be raised; move there first</option>`;
         } else if(selSpell==='Charm'){
           // Charm: a LONE hero (leading no armies) in the caster's province — wandering (joins you) or
           // enemy (command seized for the turn). Kings are immune, army-leaders are beyond its reach.
@@ -6348,6 +6374,31 @@ function buildTargetField(c, ph, saved){
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
 
+    // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ──
+    // Tick any of the known lairs in the province the character will stand in; target = comma-separated
+    // feature idx (the same idx Search Lair uses). Each lair costs gold by grade — Weak 1, Moderate 2,
+    // Powerful 3, Legendary 4 — and for each one paid for, three facts are rolled separately at
+    // 50% + 10% × Spy (counted to 5, capped 95%): the guardian's weakness, its hoard, and this hero's
+    // own odds of beating it (measured by the engine fighting the lair in the background).
+    case 'Hunting Rumours':{
+      const loc=predictedLocation(c.id,ph);
+      const pd=(loc?provOrderData[loc.id]:null)||provOrderData[c.locationId]||null;
+      const feats=(pd?.features||[]).filter(f=>!f.ritualSite&&f.monster);
+      if(!feats.length) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in ${loc?loc.name:'this province'} to ask about — explore, or move to a province with a known lair" disabled>`;
+      const chosen=new Set(String(target||'').split(',').map(t=>t.trim()).filter(Boolean));
+      const spy=Math.min(5,effSkillP(c,'spy'));
+      const chance=Math.min(95,RUMOUR_BASE_PCT_P+RUMOUR_PER_SPY_PCT_P*spy);
+      const gold=(report.kingdom&&report.kingdom.gold!=null)?report.kingdom.gold:null;
+      const rows=feats.map(f=>{ const price=RUMOUR_COST_BY_POWER_P[f.monsterPower]||1;
+        const kind=[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');
+        return `<label style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:.78rem;cursor:pointer"><input type="checkbox" value="${f.idx}" ${chosen.has(String(f.idx))?'checked':''} onchange="updateRumourTarget('${c.id}',${ph})"> <span>${f.name} <span style="color:var(--stone)">(${f.monsterPower||'?'})</span> — ${kind} — <strong>${price}g</strong></span></label>`; }).join('');
+      const total=[...chosen].reduce((s,ix)=>{ const f=feats.find(x=>String(x.idx)===String(ix)); return s+(f?(RUMOUR_COST_BY_POWER_P[f.monsterPower]||1):0); },0);
+      return `<div id="po-rumour-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
+        <div id="po-rumour-total-${c.id}-${ph}" style="font-size:.72rem;color:var(--stone);margin-top:3px">Cost of the ticked lairs: <strong>${total}g</strong>${gold!=null?` (treasury ${gold}g)`:''} — paid per lair, in the order listed, until the purse runs dry.</div>
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">For every lair paid for, ${c.name} learns each of three things at <strong>${chance}%</strong> (Spy ${spy}, counted to 5, never above 95%), each rolled separately: the guardian's <strong>weakness</strong> (marked on your Known Lairs for good), its <strong>hoard</strong> (exact gold and the magic that lies there), and <strong>your own odds</strong> of defeating it as you stand today — told as one of five bands, from no chance to almost certain.</div>
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${[...chosen].join(',')}"></div>`;
+    }
+
     // ── USE ITEM (active magic items only) ──
     case 'Equip Items':{
       // Item 11: one select per slot (two for rings) listing the slot items this character will hold at
@@ -8037,6 +8088,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.17-2126</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1012</div>
 </body>
 </html>
