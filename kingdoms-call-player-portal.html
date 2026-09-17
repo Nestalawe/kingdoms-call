@@ -132,6 +132,8 @@ section{display:none;}.section-active{display:block;}
 .cc-toggle:hover{border-color:#fff;}
 .secall-btn{background:transparent;border:1px solid var(--stone);color:var(--stone);cursor:pointer;font-size:.62rem;padding:2px 6px;border-radius:2px;font-family:'Cinzel',serif;letter-spacing:.03em;}
 .secall-btn:hover{border-color:var(--gold);color:var(--gold);}
+.rj-btn{background:var(--parchment);border:1px solid var(--stone);color:var(--ink);cursor:pointer;font-size:.62rem;padding:3px 7px;border-radius:2px;font-family:'Cinzel',serif;letter-spacing:.02em;white-space:nowrap;}
+.rj-btn:hover{border-color:var(--gold);color:var(--gold);}
 .orders-char-body{padding:12px;}
 .phase-order{display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;margin-bottom:7px;align-items:center;}
 .phase-label{font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em;}
@@ -451,6 +453,21 @@ section{display:none;}.section-active{display:block;}
           <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#7a5510;cursor:pointer;border-radius:2px">← Current Turn</button>
         </div>
 
+        <!-- 2026-09-18 (Toby item 8): section jump-bar — sticks to the top of the report column while it
+             scrolls, so any main heading of the report is one tap away. -->
+        <div id="report-jumpbar" style="position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;background:var(--parchment-dark);border-bottom:2px solid var(--stone);box-shadow:0 2px 4px rgba(0,0,0,.15)">
+          <button class="rj-btn" onclick="jumpToReportSection('report-chronicle-card')" title="Chronicle">📜 Chronicle</button>
+          <button class="rj-btn" onclick="jumpToReportSection('realm-card')" title="Your Realm">👑 Realm</button>
+          <button class="rj-btn" onclick="jumpToReportSection('provinces-card')" title="Your Provinces">🗺 Provinces</button>
+          <button class="rj-btn" onclick="jumpToReportSection('intel-card')" title="Intelligence">🕵 Intel</button>
+          <button class="rj-btn" onclick="jumpToReportSection('other-forces-card')" title="Other Armies &amp; Heroes">⚔ Others</button>
+          <button class="rj-btn" onclick="jumpToReportSection('lairs-card')" title="Known Lairs">🐉 Lairs</button>
+          <button class="rj-btn" onclick="jumpToReportSection('diplomacy-card')" title="Diplomacy">🤝 Diplomacy</button>
+          <button class="rj-btn" onclick="jumpToReportSection('titles-card')" title="Titles &amp; Victory">🏆 Titles</button>
+          <button class="rj-btn" id="rj-mastery" onclick="jumpToReportSection('mastery-card')" title="Skill Mastery" style="display:none">🎓 Mastery</button>
+          <button class="rj-btn" onclick="jumpToReportSection('discoveries-card')" title="Sage Discoveries">💡 Discoveries</button>
+        </div>
+
         <div class="card" id="report-chronicle-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2 style="display:flex;align-items:center;gap:8px">📜 Chronicle
             <span style="margin-left:auto;display:flex;gap:4px">
@@ -461,17 +478,17 @@ section{display:none;}.section-active{display:block;}
           <div id="report-log"><em style="color:#999;font-size:.85rem">No events yet.</em></div>
         </div>
 
-        <div class="card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+        <div class="card" id="realm-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>👑 Your Realm</h2>
           <div id="report-kingdom"></div>
         </div>
 
-        <div class="card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+        <div class="card" id="provinces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🗺 Your Provinces</h2>
           <div id="report-provinces"></div>
         </div>
 
-        <div class="card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+        <div class="card" id="intel-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🕵 Intelligence</h2>
           <div id="report-intel"><em style="color:#999;font-size:.85rem">No intelligence gathered yet.</em></div>
         </div>
@@ -577,6 +594,18 @@ const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amule
 function orderTargetCharsP(report){
   return ((report&&report.characters)||[]).filter(x=>x&&x.alive!==false);
 }
+// ── REALM NAMES IN TARGET LISTS (2026-09-18, Toby item 5) ──────────────────────────────────────
+// A target dropdown used to say "(enemy)". Every realm's name and colour ship on report.allKingdoms,
+// so a rival's character is now labelled with their realm's name, and the <option> is tinted in that
+// realm's colour (browsers honour an inline colour on <option> in the open list; the closed control
+// shows plain text). A wandering hero has no realm and keeps its "(wandering)" label.
+function realmOfP(playerIdx, report){
+  const rep=report||currentReport||{};
+  if(playerIdx==null) return null;
+  return ((rep.allKingdoms)||[]).find(k=>k&&k.index===playerIdx)||null;
+}
+function realmNameP(playerIdx, report){ const k=realmOfP(playerIdx,report); return k?k.name:'enemy'; }
+function realmOptStyleP(playerIdx, report){ const k=realmOfP(playerIdx,report); return (k&&k.color)?` style="color:${k.color};font-weight:600"`:''; }
 // ── PACK ORDER (2026-09-17, Toby item 1) ────────────────────────────────────────────────────────
 // A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm, rings,
 // amulet, combat items), with everything else — unequipped slot items, and the unslotted trinkets
@@ -879,8 +908,28 @@ async function init(){
   }
 }
 
+// 2026-09-18 (Toby item 8): scroll the report column to one of its main sections, keeping the target
+// heading clear of the sticky jump-bar. On desktop the middle column is its own scroll container; on a
+// phone (single-column view) the page scrolls, so fall back to scrollIntoView there.
+function jumpToReportSection(id){
+  const tgt=document.getElementById(id); if(!tgt) return;
+  if(tgt.style.display==='none') return;
+  const col=document.getElementById('rp-report-col');
+  const bar=document.getElementById('report-jumpbar');
+  const barH=bar?bar.offsetHeight:0;
+  if(col && col.scrollHeight>col.clientHeight && getComputedStyle(col).overflowY!=='visible'){
+    const top=col.scrollTop+tgt.getBoundingClientRect().top-col.getBoundingClientRect().top-barH;
+    col.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+  } else {
+    tgt.style.scrollMarginTop=barH+'px';
+    tgt.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
 function show(id){
   try{ _closeMapTip(); }catch(e){} // item 6 (2026-09-11): dismiss any province popup when leaving/entering a section
+  // 2026-09-18 (item 12): leaving the report drops the "#game=…" address, so a refresh from any other
+  // screen does not bounce back into a report.
+  if(id!=='sec-report'&&/^#game=/.test(location.hash||'')){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
   document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
   // On a phone, default the report screen to the Report view the first time it's shown.
@@ -1149,9 +1198,27 @@ async function onSignedIn(){
   currentProfile=profile;
   const displayName=profile?.name||currentUser.user_metadata?.display_name||currentUser.email.split('@')[0];
   document.getElementById('player-name-display').textContent=displayName;
+  // 2026-09-18 (Toby item 12): a game opened from My Games reloads the page with "#game=<slot>" in the
+  // address, so this fresh load lands straight in that game's report (and a browser refresh while
+  // reading a report comes back to the same report, not to My Games). The games list still loads,
+  // in the background, so polling and the "← My Games" list are ready when needed.
+  const _gm=(location.hash||'').match(/^#game=([A-Za-z0-9_-]+)$/);
+  if(_gm){
+    show('sec-report');
+    loadAllGames().then(()=>startUpdatePolling()).catch(()=>{});
+    await openReport(_gm[1]);
+    return;
+  }
   show('sec-games');
   await loadAllGames();
   startUpdatePolling(); // Item 1: keep the games list live and flag newly-resolved turns
+}
+// 2026-09-18 (Toby item 12): open a game with a FULL browser reload. The reload picks up the latest
+// portal build and a clean state; the hash tells onSignedIn which report to open. Nothing unsaved can
+// be lost here — this is only reachable from the My Games list, never from inside an orders form.
+function openGameFresh(gamePlayerId){
+  try{ history.replaceState(null,'',location.pathname+location.search+'#game='+encodeURIComponent(gamePlayerId)); }catch(e){}
+  location.reload();
 }
 
 // ── GAME LISTS ────────────────────────────────────────
@@ -1253,7 +1320,7 @@ async function loadMyGames(){
     if(!g) return `<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
     const statusLabel=slot.orders_submitted?'Orders submitted':g.status==='active'?'Orders needed':g.status==='setup'?'Waiting to start':'Complete';
     const pillClass=slot.orders_submitted?'pill-blue':g.status==='active'?'pill-amber':g.status==='setup'?'pill-green':'';
-    return`<div class="game-card clickable" onclick="openReport('${slot.id}')">
+    return`<div class="game-card clickable" onclick="openGameFresh('${slot.id}')">
       <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span></div>
       <div class="gc-meta">
         Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
@@ -2115,6 +2182,7 @@ function returnToCurrentReport(){
 // ── TURN REPORT ───────────────────────────────────────
 async function openReport(gamePlayerId){
   currentGamePlayerId=gamePlayerId;
+  try{ history.replaceState(null,'',location.pathname+location.search+'#game='+encodeURIComponent(gamePlayerId)); }catch(e){} // 2026-09-18 (item 12): a refresh returns here
   show('sec-report');
   { const _ntb=document.getElementById('new-turn-banner'); if(_ntb) _ntb.style.display='none'; } // clear any stale new-turn notice
   document.getElementById('report-title').textContent='Loading…';
@@ -2406,7 +2474,21 @@ function renderReportView(report){
             else _seaNote=` · ⚓ <span style="color:var(--crimson)">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown!==1?'s':''}, has ${_hullHave} — ${_hullNeedShown-_hullHave} more fleet unit${_hullNeedShown-_hullHave!==1?'s':''} to carry the whole force</span>`;
             const druNote=druidUnits>0?` · 🌿 ${druidUnits} unit${druidUnits!==1?'s':''} need Druid ${druidShort>0?`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>`:`<span style="color:#2d7a2d">(${c.name.split(' ')[0]} qualifies)</span>`}`:'';
             const summary=`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2!==1?'s':''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
-            return head+lines+summary+`</div>`;
+            // 2026-09-18 (Toby item 7): ONE line stands for the whole army — strength, a count of each
+            // unit type, and the land / flying / sea pace — with a button that unfolds the full unit
+            // list (and the upkeep/druid/sea-transport notes) beneath it. The list starts folded.
+            const _typeCounts={}; arr.forEach(a=>{ const k=a.type||'unit'; _typeCounts[k]=(_typeCounts[k]||0)+1; });
+            const _typeLine=Object.keys(_typeCounts).map(k=>`${unitEmoji(k)} ${_typeCounts[k]>1?_typeCounts[k]+'× ':''}${k}`).join(', ');
+            const _airSpd=(c.effectiveAirSpeed!=null)?c.effectiveAirSpeed:0;
+            const _seaSpd=(c.effectiveSeaSpeed!=null)?c.effectiveSeaSpeed:0;
+            const _paceBits=[`🏃 Land <strong>${effSpd2}</strong>`];
+            if(_airSpd>0) _paceBits.push(`🦅 Flying <strong>${_airSpd}</strong>`);
+            if(_seaSpd>0) _paceBits.push(`⚓ Sea <strong>${_seaSpd}</strong>`);
+            const _oneLine=`<div style="font-size:.74rem;line-height:1.5;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">
+              <span style="flex:1;min-width:0">⚔ <strong>${arr.length}</strong> unit${arr.length!==1?'s':''} · strength <strong>${totalStr}</strong>${druidShort>0?` <span style="color:var(--crimson);font-size:.66rem">(${druidShort} under-led)</span>`:''} · ${_typeLine} · ${_paceBits.join(' · ')}</span>
+              <button type="button" class="secall-btn" style="flex-shrink:0" aria-expanded="false" onclick="var d=this.parentNode.nextElementSibling;var open=d.style.display==='none';d.style.display=open?'block':'none';this.setAttribute('aria-expanded',open?'true':'false');this.textContent=open?'▾ hide units':'▸ show units'">&#9656; show units</button>
+            </div>`;
+            return head+_oneLine+`<div style="display:none">`+lines+summary+`</div></div>`;
           })()}
         </div>
       </div>`;
@@ -2865,8 +2947,9 @@ function renderMastery(report){
       ${skillBlocks}
     </div>`);
   });
-  if(rows.length===0){ card.style.display='none'; el.innerHTML=''; return; }
-  card.style.display='';
+  const _rjM=document.getElementById('rj-mastery'); // 2026-09-18 (item 8): the jump-bar button follows the card
+  if(rows.length===0){ card.style.display='none'; el.innerHTML=''; if(_rjM) _rjM.style.display='none'; return; }
+  card.style.display=''; if(_rjM) _rjM.style.display='';
   el.innerHTML=`<div style="font-size:.72rem;color:#888;margin-bottom:6px">A standing reference to the mastery each of your characters has earned — consult it whenever you plan their orders.</div>`+rows.join('');
 }
 
@@ -3119,9 +3202,9 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
             return {...x,_r,_w};
           }).sort((a,b)=>(b._r?1:0)-(a._r?1:0));
           charOpts=_bodies.map(x=>{
-            const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':' ⚔ (enemy hero)');
+            const who=x.isMonarch?' 👑 (your fallen monarch — reclaims the throne)':(x.wasOwnHero?'':` ⚔ (${x.player!=null?realmNameP(x.player,report)+' hero':'wandering hero'})`);
             if(!x._r) return `<option value="" disabled>${x.isMonarch?'👑 ':''}${x.name} — cannot be raised: ${x._w}</option>`;
-            return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — died turn ${x.killedOnTurn||'?'}</option>`;
+            return `<option value="${x.id}"${x.wasOwnHero?'':realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.isMonarch?'👑 ':''}${x.name}${who} — died turn ${x.killedOnTurn||'?'}</option>`;
           }).join('');
           if(!charOpts) charOpts=`<option value="" disabled>No fallen hero lies in ${casterHereName||'this province'} — only bodies in the caster's province can be raised; move there first</option>`;
         } else if(selSpell==='Charm'){
@@ -3132,7 +3215,7 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           const targets=(report.visibleChars||[]).filter(x=>
             x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 && !x.charmImmune &&
             (x.player===null || x.player!==c.player));
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':' ⚔ (enemy, no armies — yours for the turn)'} — ${x.locationName||'?'}</option>`).join('');
+          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':` ⚔ (${realmNameP(x.player,report)}, no armies — yours for the turn)`} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune, and so is anyone charmed last turn)</option>';
         } else if(selSpell==='Oratory'){
           // Oratory: self, or own characters predicted to be in the same province this phase.
@@ -3152,7 +3235,7 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           const seen=(report.everSeenChars&&report.everSeenChars.length?report.everSeenChars:(report.visibleChars||[]))
             .filter(x=>x && x.player!=null && !x.isWandering) // Task 7(b): neutral/wandering heroes are not valid Clairvoyance targets
             .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-          charOpts=seen.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':' ⚔ (enemy)'} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
+          charOpts=seen.map(x=>`<option value="${x.id}"${x.player===c.player?'':realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===c.player?' (yours)':` ⚔ (${realmNameP(x.player,report)})`} — last seen: ${x.lastLocName||x.locationName||'?'}${x.lastSeenTurn?` (turn ${x.lastSeenTurn})`:''}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>You have not seen any enemy characters yet</option>';
         } else if(selSpell==='Control Undead'){
           // Control Undead: seize an undead unit from an enemy/neutral hero here, OR scan this province
@@ -3164,21 +3247,21 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           const _cuNoTarget=(extra===''||extra==null);
           const scanOpt=`<option value="__scan__" ${(extra==='__scan__'||_cuNoTarget)?'selected':''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
           const targets=(report.visibleChars||[]).filter(x=>x.player!==c.player && x.locationId===casterLoc);
-          const enemyOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — seize one undead unit from them</option>`).join('');
+          const enemyOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — seize one undead unit from them</option>`).join('');
           charOpts=scanOpt+enemyOpts;
         } else if(selSpell==='Telekinetic Storm'){
           // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
           // there is nothing to scatter around a hero marching alone.
           const targets=(report.visibleChars||[]).filter(x=>
             x.player!==c.player && x.locationId===casterLoc && (x.armies||0)>0);
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
+          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
         } else {
           // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
           // Target visible enemy/neutral characters in the same province.
           const targets=(report.visibleChars||[]).filter(x=>
             x.player!==c.player && x.locationId===casterLoc);
-          charOpts=targets.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral heroes in this province</option>';
         }
         // Control Undead is the one spell here whose default is a PROVINCE, not a character, so it
@@ -6186,7 +6269,7 @@ function buildTargetField(c, ph, saved){
     if(cfg.target==='character'){
       const here=predictedLocation(c.id,ph)?.id??c.locationId;
       const foes=(report.visibleChars||[]).filter(x=>x.locationId===here&&(x.player===null||x.player!==c.player));
-      const opts=foes.map(x=>`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''}${x.player===null?' (wandering)':' ⚔'} — ${x.locationName||'?'}</option>`).join('');
+      const opts=foes.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}</option>`).join('');
       return opts
         ?`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy hero in your province this phase" disabled>${hintHtml}`;
@@ -6279,7 +6362,7 @@ function buildTargetField(c, ph, saved){
       const foes=(report.visibleChars||[]).filter(x=>x.id!==c.id&&x.locationId===hereId&&(x.player===null||x.player!==c.player));
       const spyLvl=effSkillP(c,'spy');
       const charPct=Math.max(5,Math.min(95,25+10*spyLvl));
-      const opts=foes.map(x=>`<option value="char:${x.id}" ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' ⚔ (king)':''}${x.isWandering?' (wandering)':''} — ~${charPct}% to learn their skills, items and army</option>`).join('');
+      const opts=foes.map(x=>`<option value="char:${x.id}"${realmOptStyleP(x.player,report)} ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' 👑 (king)':''}${x.isWandering?' (wandering)':(x.player!=null?` ⚔ (${realmNameP(x.player,report)})`:'')} — ~${charPct}% to learn their skills, items and army</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})"><option value="" ${!target?'selected':''}>Spy on the province (${here?here.name:'here'})</option>${opts}</select>
         ${String(target||'').startsWith('char:')
           ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
@@ -6319,7 +6402,7 @@ function buildTargetField(c, ph, saved){
       const reasonOf=(x)=>x.untargetable==='faceless'?'no face anyone can remember — cannot be hunted':(x.isKing&&!c.isKing)?'only your king may hunt a king':null;
       const targets=allSeen.filter(x=>!reasonOf(x));
       if(allSeen.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
-      const opts=allSeen.map(x=>{ const why=reasonOf(x); return `<option value="${why?'':x.id}" ${why?'disabled':''} ${(!why&&target==x.id)?'selected':''}>${x.name}${x.isKing?' ⚔ (king)':''} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}${why?` — ${why}`:''}</option>`; }).join('');
+      const opts=allSeen.map(x=>{ const why=reasonOf(x); return `<option value="${why?'':x.id}"${realmOptStyleP(x.player,report)} ${why?'disabled':''} ${(!why&&target==x.id)?'selected':''}>${x.name}${x.isKing?' 👑 (king)':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}${why?` — ${why}`:''}</option>`; }).join('');
       if(targets.length===0) return`<select id="po-target-${c.id}-${ph}"><option value="" selected>— No character here can be hunted by ${c.name} —</option>${opts}</select>`;
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
         <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if they run out of movement). When they catch up: two columns give battle; otherwise it is a personal duel (a quarry leading troops won't break ranks for one). Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
@@ -6342,18 +6425,14 @@ function buildTargetField(c, ph, saved){
       const garrN=(pdS&&pdS.owner!=null&&pdS.owner!==c.player)?((pdS.garrisonArmies||[]).length):0;
       if(visibleEnemyChars.length===0&&garrN===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc?loc.name:'this province'}${_elsewhere>0?` (${_elsewhere} rival${_elsewhere!==1?'s':''} in sight elsewhere — a thief must stand in the same province; move there first)`:' — you need a rival character or an enemy garrison'}" disabled>`;
       const base=50+10*Math.min(thiefLvl,5);
+      // 2026-09-18 (Toby item 3): the target's pack is NEVER described — the thief takes a random magic
+      // item if one can be lifted (weighted toward the lesser ones), or gold if there is none.
       const opts=visibleEnemyChars.map(x=>{
-        const hasItems=(x.items||[]).length>0;
-        return`<option value="${x.id}" ${target==x.id?'selected':''}>${x.name}${hasItems?` (${x.items.length} item${x.items.length!==1?'s':''})`:' (no items)'} — ~${base}% base chance</option>`;
+        return`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''} ⚔ (${realmNameP(x.player,report)})${x.armies>0?' — leads troops (halved)':''} — ~${x.armies>0?Math.floor(base/2):base}% chance</option>`;
       }).join('');
       const garrOpt=garrN>0?`<option value="garrison" ${target==='garrison'?'selected':''}>The garrison paymaster of ${pdS.name||'this province'} (${garrN} unit${garrN!==1?'s':''}) — ~${Math.floor(base/2)}%</option>`:'';
-      const prize=String(extra||'item').toLowerCase()==='gold'?'gold':'item';
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}${garrOpt}</select>
-        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">
-          <option value="item" ${prize==='item'?'selected':''}>Lift a magic item</option>
-          <option value="gold" ${prize==='gold'?'selected':''}>Pick their strongbox — 5% of their treasury</option>
-        </select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc?loc.name:'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere>0?` (${_elsewhere} other rival${_elsewhere!==1?'s':''} in sight elsewhere.)`:''} A target with no items is robbed of gold instead. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${orderChanceNote(c,'Steal',ph)}`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc?loc.name:'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere>0?` (${_elsewhere} other rival${_elsewhere!==1?'s':''} in sight elsewhere.)`:''} You cannot tell what a rival carries: a successful theft lifts one of their magic items at random (the lesser trinkets come to hand far more readily than a legendary relic), or 5% of their realm's treasury if they carry no magic. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${orderChanceNote(c,'Steal',ph)}`;
     }
 
     // ── SEARCH LAIR ──
@@ -7242,6 +7321,21 @@ function _rebuildGraveIntelIndex(report){
   _graveIntelTurn=(report&&report.turnNumber!=null)?report.turnNumber:null;
   ((report&&report.graveIntel)||[]).forEach(g=>{ if(g&&g.provinceId!=null) _graveIntelById[g.provinceId]=g; });
 }
+// ── 2026-09-18 (Toby item 1): GARRISON IN THE MAP POP-UP ────────────────────────────────────────
+// A province whose standing garrison the player can see — their own (owned tier) or one they have a
+// character standing in right now (live tier; the GM ships garrisonArmies on that tier) — reports how
+// many units are garrisoned and what they are, tinted in the owner's colour. Nothing is shown for
+// border/remembered ground: the report never carries a garrison the player cannot see.
+function _garrisonNote(pd){
+  if(!pd||!(pd.tier==='owned'||pd.tier==='live')) return '';
+  const g=pd.garrisonArmies||[];
+  if(!g.length) return '';
+  const col=_tintForDarkTooltip(pd.ownerColor)||'#e8d8b0';
+  const counts={};
+  g.forEach(a=>{ const k=a.type||'unit'; counts[k]=(counts[k]||0)+1; });
+  const list=Object.keys(counts).map(k=>`${unitEmoji(k)} ${counts[k]>1?counts[k]+'× ':''}${k}`).join(', ');
+  return `<br>\u{1F6E1} <span style="color:${col}">${g.length} unit${g.length!==1?'s':''} garrisoned${pd.tier==='live'&&pd.ownerName?` (${pd.ownerName})`:''}</span> <span style="opacity:.8;font-size:.9em">— ${list}</span>`;
+}
 function _graveNote(pd){
   if(!pd||pd.id==null||!_graveIntelById) return '';
   const g=_graveIntelById[pd.id]; if(!g) return '';
@@ -7919,6 +8013,7 @@ function renderMapIntoSvg(svgEl, report){
           const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kc) h+=_kc;
           if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`).join('')}`;
+          h+=_garrisonNote(pd); // 2026-09-18 (item 1): the standing garrison
           h+=_graveNote(pd); // item 4 (2026-09-14): known battlefield graves
         } else if(isVisited){
           h+=`${capitalise(pd.terrain||'?')} · ${pd.wealth||'?'}`;
@@ -7936,6 +8031,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.tier==='remembered') h+=`<br><span style="color:#c8922a;font-style:italic">\u{1F441} Last seen turn ${pd.seenTurn??'?'}</span>`;
           const _kcV=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kcV) h+=_kcV;
+          h+=_garrisonNote(pd); // 2026-09-18 (item 1): a garrison seen by a character standing here
           h+=_graveNote(pd); // item 4 (2026-09-14): known battlefield graves
         } else {
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
@@ -8088,6 +8184,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1012</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1107</div>
 </body>
 </html>

@@ -9090,6 +9090,14 @@ function buildTurnReport(gameState, playerIndex){
         const flyerSpeeds=armies.filter(a=>AERIAL_UNIT_TYPES.has(a.type)).map(a=>repSpd(a));
         if(flyerSpeeds.length){ effSpd=Math.min(...flyerSpeeds); effSeaSpd=effSpd; }
       }
+      // 2026-09-18 (Toby item 7): the force's FLYING pace for the army summary line — the slowest
+      // flyer when the whole column takes to the air (all winged, or the flyers carry every foot
+      // soldier); 0 when anything is left on the ground.
+      var _effAirSpd=0;
+      if(armies.length>0&&(canFlyRep||armies.every(a=>AERIAL_UNIT_TYPES.has(a.type)))){
+        const _fs=armies.filter(a=>AERIAL_UNIT_TYPES.has(a.type)).map(a=>repSpd(a));
+        if(_fs.length) _effAirSpd=Math.min(..._fs);
+      }
     }
     return{
       id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,temperEff:effTemper(c), // Item 7
@@ -9166,7 +9174,7 @@ function buildTurnReport(gameState, playerIndex){
         Object.keys(all).forEach(sk=>{ const only=all[sk].filter(x=>x.scope==='combat'); if(only.length) out[sk]=only; });
         return out; })(),items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it),lore:itemLore(it)}):it)),pay:c.pay||0,
       locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,
-      effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,
+      effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,effectiveAirSpeed:_effAirSpd,
       hiredInPhase:c.hiredInPhase??-1,  // -1 = was hired before this turn
       encounterPlan:c.encounterPlan||{tactics:['ME'],notes:''},
       alive:c.alive!==false, killedThisTurn:!!c.killedThisTurn,   // so the report can show a fallen hero's own section
@@ -9339,6 +9347,7 @@ function buildTurnReport(gameState, playerIndex){
       isMonarch:g._monarch===true,
       isKing:!!g.isKing,
       raisable, whyNot,
+      player:(g.player!=null?g.player:null), // 2026-09-18 (item 5): the realm the body served, so the form can name it
       wasOwnHero:g.player===playerIndex};
     });
 
@@ -9531,6 +9540,9 @@ function buildTurnReport(gameState, playerIndex){
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           grandDesign:(p.grandDesign?{name:p.grandDesign.name,ownerName:(gameState.players[p.grandDesign.owner]||{}).name||null,active:gdActiveFor(gameState,p.grandDesign.owner)}:null), // 2026-09-14: a Wonder of the age is visible to anyone who can see the province
           characters:liveChars(), ownArmyHere:_ownArmyHere,
+          // 2026-09-18 (Toby item 1): a character standing here sees the standing garrison, whoever
+          // owns it — the map pop-up reports how many units are garrisoned (type and quality only).
+          garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||''})),
         };
       } else if(isBorder){
         // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
@@ -10679,6 +10691,29 @@ async function runTurn(opts){
       spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
   }
 
+  // ── PROVINCE CAPTURE (2026-09-18, Toby item 6) ─────────────────────────────
+  // Every path that hands a province to a new realm goes through here. When the ground was another
+  // player's, that player gets a line in their REALM EVENTS for the phase — who took it (hero and
+  // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
+  // notifies nobody. Written straight to turnLog with charId:null (as notifyProvinceOwner does) so
+  // the line never inherits the conqueror's log context and never lands in a character section.
+  function setProvinceOwner(prov, newOwner, byChar, ph){
+    if(!prov) return;
+    const prev=prov.owner;
+    prov.owner=newOwner;
+    if(prev==null||prev===newOwner||newOwner==null) return;
+    const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
+    const who=byChar?byChar.name:'an unknown commander';
+    const realm=(newOwner!=null&&G.players[newOwner])?G.players[newOwner].name:'an enemy realm';
+    const n=byChar?(byChar.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom).length:0;
+    const led=byChar?(n>0?`, leading ${n} unit${n!==1?'s':''}`:', leading no units'):'';
+    const text=`🏴 ${prov.name} has been captured from you by ${who} (${realm})${led}.`;
+    // type 'system', NOT 'combat': the report re-files combat lines under the viewer's commander who
+    // fought in that province that phase (battleCommanders), which would pull this out of Realm Events.
+    turnLog.push({type:'system', text, actor:null, targets:[prev], provinceId:prov.id, public:false,
+      spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
+  }
+
   // ── DIPLOMACY (KC alliance system) ─────────────────────────────────────────
   // Relations live in G.relations, keyed "minIdx-maxIdx" → 'enemy' | 'allied'. A pair with no
   // entry is NEUTRAL (the default). These helpers are the single source of truth consulted by the
@@ -10889,6 +10924,18 @@ async function runTurn(opts){
   // flushed at the END of the phase, so a line like "…Explorer rises to level 1…" reads as the
   // consequence it is — reported after the move/action that earned it, not jumping ahead of it.
   let _deferredSkillLogs=[];
+  // 2026-09-18 (Toby item 11): a character who dies later in the phase must not have a skill rise
+  // reported AFTER the fight that killed them ("📈 … March rises to level 1" trailing a duel death).
+  // The rise was real — earned on the march that carried them INTO the battle — so at the moment of
+  // death every deferred line of theirs is written out at once, i.e. before the battle narrative is
+  // emitted, exactly where the march sits in the sequence of events.
+  function flushDeferredSkillLogsFor(charId){
+    if(charId==null||!_deferredSkillLogs.length) return;
+    const mine=_deferredSkillLogs.filter(([,meta])=>meta&&meta.charId===charId);
+    if(!mine.length) return;
+    _deferredSkillLogs=_deferredSkillLogs.filter(([,meta])=>!(meta&&meta.charId===charId));
+    mine.forEach(([msg,meta])=>log('system',msg,meta));
+  }
   // 2026-09-17 (late): set while the Hunting Rumours odds simulation runs fights in the background — no
   // sandbox fight may ever train a real skill (see simulateLairOdds).
   let _pcSimulating=false;
@@ -11696,7 +11743,8 @@ const BATTLE_ARMY_SPELLS={
     { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // item 5: commander's magic items in play
     { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
-    narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name}, leading`)); // item 8: realm named, as in PvP
+    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain):0),0)); // 2026-09-18 (item 10)
+      narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, leading`)); } // item 8: realm named, as in PvP
     if(neutralGuardHero){
       narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`, {guard:true}));
     } else {
@@ -14274,8 +14322,12 @@ const BATTLE_ARMY_SPELLS={
     { const _ia=magicItemsLine(atk), _id=magicItemsLine(def); if(_ia)narrative.push(_ia); if(_id)narrative.push(_id); } // item 5
     { const _kA=kinNarrative(atkArmies,atk,(G.players[atk.player]?.race||null),`${atk.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defArmies,def,(G.players[def.player]?.race||null),`${def.name}'s host`); if(_kD) narrative.push(_kD); }
-    narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''}, with`));
-    narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''}, with`));
+    // 2026-09-18 (Toby item 10): each side's army strength on the ground (terrain applied, before
+    // tactics, fanaticism and the dice — the Battle stats block below carries the full figure).
+    { const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain):0),0));
+      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain):0),0));
+      narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''} — army strength ${_aS}, with`));
+      narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''} — army strength ${_dS}, with`)); }
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now (stacking).
     consumeTerror(prov, defArmies, narrative);
 
@@ -15513,6 +15565,8 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     deadChar.alive=false;deadChar.killedThisTurn=true;
+    flushDeferredSkillLogsFor(deadChar.id); // 2026-09-18 (item 11): rises earned before death are reported now, not after the fight
+    delete deadChar._defend; delete deadChar._pursuit; // 2026-09-18 (item 4): the dead keep no watch and chase nobody
     return true;
   }
 
@@ -15687,7 +15741,13 @@ const BATTLE_ARMY_SPELLS={
       const pool=transferableItems(items); // a granted Mithril suit cannot be lifted off its wearer
       if(!pool.length) return null;
       if(perkTier(victim,'thief')>=3) return {guarded:true}; // THIEF L8 (Toby 2026-09-09): a master thief's own pockets cannot be picked
-      const it=pool[Math.floor(Math.random()*pool.length)];
+      // 2026-09-18 (Toby item 3): the thief grabs what comes to hand — the pick is weighted TOWARD the
+      // lesser trinkets. Weak 8 : Moderate 4 : Powerful 2 : Legendary 1, so a hero carrying one item of
+      // each tier loses the Weak one 53% of the time and the Legendary one under 7%.
+      const STEAL_TIER_W={1:8,2:4,3:2,4:1};
+      const wsum=pool.reduce((t,x)=>t+(STEAL_TIER_W[x.tier||1]||8),0);
+      let r=Math.random()*wsum, it=pool[pool.length-1];
+      for(const x of pool){ r-=(STEAL_TIER_W[x.tier||1]||8); if(r<0){ it=x; break; } }
       items.splice(items.indexOf(it),1); applyItemMaxHp(victim,it);
       thief.items=(thief.items||[]); thief.items.push(it); applyItemMaxHp(thief,it);
       return it;
@@ -16124,7 +16184,7 @@ const BATTLE_ARMY_SPELLS={
             }
             // Province is claimed when all defenders are eliminated (no survivors to rally)
             if(defSurvivors.length===0){
-            toProv.owner=c.player;toProv.neutralDefenders=[];
+            setProvinceOwner(toProv,c.player,c,ph);toProv.neutralDefenders=[];
             player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
             applyEvilConquest(c, toProv, player); // Evil doctrine: loot or enslave
             toProv._hadBattleThisTurn=true;
@@ -16330,8 +16390,8 @@ const BATTLE_ARMY_SPELLS={
                 log('combat',`${c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
               } else {
                 G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-                toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-                log('combat',`${c.name} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+                setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                log('combat',`${c.alive?c.name:`${c.name}'s leaderless host`} claims ${toProv.name} for ${player.name}!`,{actor:c.player,targets,provinceId:toProv.id,public:true});
                 applyEvilConquest(c, toProv, player);
               }
             } else {
@@ -16425,7 +16485,7 @@ const BATTLE_ARMY_SPELLS={
                     toProv.garrisonArmies=[];
                     log('combat',`The garrison of ${toProv.name} is broken and falls back to ${_dest.name} rather than be overrun.`,{actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:_dest.id,public:true});
                     G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-                    toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                    setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                     log('combat',`${c.name} takes ${toProv.name} as its garrison withdraws!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
                     applyEvilConquest(c, toProv, player);
                   } else {
@@ -16435,7 +16495,7 @@ const BATTLE_ARMY_SPELLS={
                   }
                 } else {
                   G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-                  toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+                  setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                   log('combat',`${c.name} breaks through the last of the garrison and seizes ${toProv.name}!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
                   applyEvilConquest(c, toProv, player);
                 }
@@ -16456,7 +16516,7 @@ const BATTLE_ARMY_SPELLS={
               const _prevOwnerIdx=(toProv.owner!=null&&toProv.owner!==c.player)?toProv.owner:null; // capture before ownership transfers
               const _prevOwnerName=_prevOwnerIdx!=null?(G.players[_prevOwnerIdx]?.name||null):null;
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
-              toProv.owner=c.player;if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
+              setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
               log('move',`${c.name} seizes the undefended province of ${toProv.name}${_prevOwnerName?` from ${_prevOwnerName}`:''} for ${player.name}!`,{actor:c.player,targets:_prevOwnerIdx!=null?[_prevOwnerIdx]:[],provinceId:toProv.id,public:true});
               applyEvilConquest(c, toProv, player);
@@ -16485,7 +16545,7 @@ const BATTLE_ARMY_SPELLS={
                 toProv._battleUnresolved=true;
                 log('combat',`💢 The leaderless garrison of ${toProv.name} refuses to yield — ${llSurv.length} unit${llSurv.length!==1?'s':''} still contest the province!`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
               } else {
-                toProv.owner=c.player; delete toProv._leaderlessDefenders;
+                setProvinceOwner(toProv,c.player,c,ph); delete toProv._leaderlessDefenders;
                 player.merits+=toProv.tax; c.merits=(c.merits||0)+toProv.tax;
                 if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
                 log('combat',`${c.name} overcomes the last of the leaderless defenders and claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
@@ -16505,7 +16565,7 @@ const BATTLE_ARMY_SPELLS={
             // stale intel, but the real defenders live on the guard hero — and there is none here).
             // Only armies can claim a province — a hero without troops cannot conquer
             if((c.armies||[]).length>0){
-              toProv.owner=c.player;
+              setProvinceOwner(toProv,c.player,c,ph);
               toProv.neutralDefenders=[];toProv.npcArmies=0;delete toProv._leaderlessDefenders; // clear any stale intel now it's ours
               if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
               if(!toProv.visitedBy.includes(c.player))toProv.visitedBy.push(c.player);
@@ -16533,7 +16593,10 @@ const BATTLE_ARMY_SPELLS={
             log('move',`💰 ${c.name}'s coastal raid sacks ${toProv.name} — ${_loot}g plundered${_raidPriorOwner!=null?` from ${G.players[_raidPriorOwner]?.name||'the enemy'}`:''}.`,{actor:c.player,targets:[c.player].concat(_raidPriorOwner!=null?[_raidPriorOwner]:[]),provinceId:toProv.id,public:true});
           }
         }
-        _discoveryLines.forEach(([msg,meta])=>log('explore',msg,meta));
+        // 2026-09-18 (Toby item 4): a commander slain in the battle this march led to reports nothing
+        // more this turn — the "notices the Lost City" lines they earned on arrival are dropped rather
+        // than trailing their own death (the exploration itself was already credited to the realm).
+        if(c.alive) _discoveryLines.forEach(([msg,meta])=>log('explore',msg,meta));
         break;
       }
       case 'explore':{
@@ -17924,8 +17987,12 @@ const BATTLE_ARMY_SPELLS={
         if(!victim){log('system',`${c.name} finds no suitable target to steal from in ${prov.name}.`,{actor:c.player,targets:[c.player]});break;}
         if(victim.player===c.player){log('system',`${c.name} will not rob a comrade.`,{actor:c.player,targets:[c.player]});break;}
         if(isVanished(victim)){log('system',`${c.name} reaches for ${victim.name}'s purse and closes on nothing — the man has vanished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        const hasItems=(victim.items||[]).length>0;
-        const wantGold=(String(extra||'').toLowerCase()==='gold')||!hasItems;
+        // 2026-09-18 (Toby item 3): the player never chooses the prize and is never told whether the
+        // target carries anything. A magic item is lifted if one can be (random, weighted toward the
+        // weaker tiers — see liftRandomItem); a target with nothing liftable is robbed of gold instead.
+        // The saved `extra` ('item'/'gold') from older order forms is ignored.
+        const hasItems=transferableItems(victim.items||[]).length>0;
+        const wantGold=!hasItems;
         if(wantGold&&victim.player==null){log('system',`${c.name} finds ${victim.name} carries no purse worth the risk and no magic to lift.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const leadsArmies=(victim.armies||[]).length>0;
         let stealChance=stealBase; if(leadsArmies) stealChance=Math.floor(stealChance/2);
@@ -18186,6 +18253,7 @@ const BATTLE_ARMY_SPELLS={
             targetProv._partSea={orig:targetProv.terrain, turn:G.turn, blockFleetsFromPhase:ph+1};
             targetProv.terrain='plains';
             log('explore',`✨ ${c.name} raises their hands and the waters of ${targetProv.name} draw back — the seabed lies bare as dry plains for the rest of the turn. Land armies may cross freely, but no fleet can enter or leave from the next phase onward.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true,env:true});
+            notifyProvinceOwner(targetProv, `🌊 ${c.name} (${G.players[c.player]?.name||'a foreign realm'}) has parted the sea at ${targetProv.name} — it lies as dry plains for the rest of the turn; land armies may cross it and no fleet may enter or leave from the next phase.`, c.player, ph); // 2026-09-18 (item 6): the owner is told
           } else {
             // Cast on dry land — the anticipated Flood never came (or was already parted). There is no sea
             // to part; clear any lingering flood marker and note it. The cast is spent but harmless.
@@ -18582,6 +18650,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv.id!==c.location&&!adjIds.has(targetProv.id)){log('system',`${c.name}: Sanctuary must ward your province or one adjacent.`,{actor:c.player,targets:[c.player]});break;}
           targetProv._sanctuaryTurn=G.turn; targetProv._sanctuaryBy=c.player;
           log('explore',`✨ ${c.name} raises a Sanctuary over ${targetProv.name} — hostile armies that give battle here fight at −25% strength this turn.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:true});
+          notifyProvinceOwner(targetProv, `✨ ${c.name} (${G.players[c.player]?.name||'a foreign realm'}) has raised a Sanctuary over ${targetProv.name} — armies hostile to that realm that give battle there fight at −25% strength this turn.`, c.player, ph); // 2026-09-18 (item 6): the owner is told
         }
         else if(fn==='white_judgment'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Divine Judgment: no valid enemy hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
@@ -19662,7 +19731,7 @@ const BATTLE_ARMY_SPELLS={
               guard._isNeutralGuard=false; guard._justDefeated=true;
               if(!guard.name.includes('(wandering)')) guard.name=guard.name+' (wandering)';
             }
-            prov.owner=attacker.player; prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
+            setProvinceOwner(prov,attacker.player,attacker,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
             const pl=G.players[attacker.player];
             if(pl){ pl.merits=(pl.merits||0)+(prov.tax||0); if(!pl.provinces.includes(prov.id)) pl.provinces.push(prov.id); applyEvilConquest(attacker, prov, pl); } // 2026-09-10: Evil doctrine now fires on this capture path too
             attacker.merits=(attacker.merits||0)+(prov.tax||0);
@@ -19741,7 +19810,7 @@ const BATTLE_ARMY_SPELLS={
         const enemyStillHere=(G.characters||[]).some(ch=>ch.alive&&ch.location===prov.id&&(ch.armies||[]).length>0&&ch.player!==winner.player);
         if(!enemyStillHere && prov.owner!==winner.player){
           G.players.forEach((p,pi)=>{if(pi!==winner.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-          prov.owner=winner.player; const wp=G.players[winner.player];
+          setProvinceOwner(prov,winner.player,winner,ph); const wp=G.players[winner.player];
           if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
           if(wp) applyEvilConquest(winner, prov, wp); // 2026-09-10: Evil doctrine on stand-off capture (was skipped)
           log('combat',`${forceLabel(winner)} secures ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
@@ -19761,7 +19830,7 @@ const BATTLE_ARMY_SPELLS={
       const lone=playerForces[0];
       if(prov.owner!==lone.player && !guard){
         G.players.forEach((p,pi)=>{if(pi!==lone.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-        prov.owner=lone.player; prov.neutralDefenders=[]; prov.npcArmies=0;
+        setProvinceOwner(prov,lone.player,lone,ph); prov.neutralDefenders=[]; prov.npcArmies=0;
         const lp=G.players[lone.player]; if(lp&&!lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
         log('combat',`${forceLabel(lone)} holds ${prov.name} unopposed and secures it.`,{charId:_ctxCharId,phase:ph,actor:lone.player,targets:[],provinceId:prov.id,public:true});
       }
@@ -19969,7 +20038,7 @@ const BATTLE_ARMY_SPELLS={
       // runDefendMaterializedReactions).
       if(prov.owner!=null&&prov.owner!==c.player) prov._takenByUnitGain={turn:G.turn,ph:ph,from:prov.owner};
       G.players.forEach((p,pi)=>{if(pi!==c.player){const i=(p.provinces||[]).indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-      prov.owner=c.player; prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
+      setProvinceOwner(prov,c.player,c,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
       if(!player.provinces.includes(prov.id)) player.provinces.push(prov.id);
       applyEvilConquest(c, prov, player); // 2026-09-10: Evil doctrine on this capture path (was skipped)
       if(!prov.visitedBy) prov.visitedBy=[]; if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
@@ -20304,6 +20373,15 @@ const BATTLE_ARMY_SPELLS={
   function isHostileInvasion(it){
     if(!it||it.cancelled||it.action!=='move'||!it.leadsArmy||!it.dest) return false;
     const d=it.dest;
+    // 2026-09-18 (Toby item 9): a column with NO movement left in the pool this march would draw on
+    // is not an invasion — the move case will refuse it ("no movement points remaining"). Counting it
+    // sent a general on Defend riding out to meet an enemy who never arrived: the player read "march
+    // to meet the threat" and then no battle. Pools are per-turn and set at turn start; an undefined
+    // pool (never computed) is left to the move case to settle, so it still counts here.
+    { const from=G.world.provinces[it.fromId];
+      const bySea=(d.terrain==='sea')||(!!from&&from.terrain==='sea');
+      const pool=bySea?seaMovePoints[it.id]:movePoints[it.id];
+      if(pool!==undefined&&pool!==null&&pool<=0) return false; }
     // DIPLOMACY: an invasion is hostile only if the mover is at WAR with the province's owner.
     // Marching into an ally's land (free passage) or a neutral's (turned back at the border) is not
     // an invasion — it must not pin defenders or trigger Defend reactions.
@@ -20566,10 +20644,38 @@ const BATTLE_ARMY_SPELLS={
       if(_bySea){ seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1); } else { movePoints[c.id]=Math.max(0,(movePoints[c.id]??0)-1); }
       c._defendReactedPhase=ph;
       c._attackedFrom=here.id;
+      c._defendRideOut={ph, provId:P.id, fromId:here.id, names:target.names.slice()}; // 2026-09-18 (item 9): reconciled at the end of the phase
       log('move',`🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length>1?'are':'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
         {actor:c.player,targets:[c.player],provinceId:P.id,public:true,charId:c.id,phase:ph}); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
       // Reacting is a march: the same skill gain a normal move would give.
       trySkillGain(c,'march',SKILLGAIN_COMMON);
+    });
+  }
+
+  // ── 2026-09-18 (Toby item 9): DEFEND RIDE-OUT RECONCILIATION ──────────────
+  // A general who rode out this phase to meet an invasion is checked once every order has resolved.
+  // If no battle was fought in the province he rode to (the invader's march was refused — no
+  // movement, a blocked crossing, a border turned back — or the column slipped past, or was veiled),
+  // the player is told so in the general's own section, instead of a "march to meet the threat" line
+  // followed by silence. battleCommanders is keyed prov@phase and records both sides of every PvP
+  // battle, so it is the authoritative "did a battle happen here with him in it" test.
+  function reconcileDefendRideOuts(ph){
+    (G.characters||[]).forEach(c=>{
+      const r=c._defendRideOut; if(!r) return;
+      if(r.ph!==ph){ delete c._defendRideOut; return; }
+      delete c._defendRideOut;
+      if(!c.alive||c.player==null) return;
+      // Any PvP battle in that province this phase counts — a defender there with troops fights in it
+      // whether as the recorded commander or as a pooled reinforcement (only the leader's id is recorded).
+      const fought=((battleCommanders[r.provId+'@'+ph]||[]).length>0);
+      if(fought) return;
+      const P=G.world.provinces[r.provId]; if(!P) return;
+      const enemyHere=(G.characters||[]).some(e=>e&&e.alive&&e.player!=null&&e.player!==c.player&&areEnemies(c.player,e.player)&&e.location===P.id&&(e.armies||[]).length>0&&!isVeiled(e));
+      if(c.location===P.id&&!enemyHere){
+        log('move',`🛡 ${c.name} reaches ${P.name} in battle order, but ${r.names.join(' and ')} never crossed the border — no battle is fought, and they hold ${P.name} for the rest of the season.`,{actor:c.player,targets:[c.player],provinceId:P.id,public:false,charId:c.id,phase:ph});
+      } else if(c.location===P.id&&enemyHere){
+        log('move',`🛡 ${c.name} stands in ${P.name} facing an enemy column, but no battle was joined this season — the contest will be settled next phase.`,{actor:c.player,targets:[c.player],provinceId:P.id,public:false,charId:c.id,phase:ph});
+      }
     });
   }
 
@@ -20672,7 +20778,7 @@ const BATTLE_ARMY_SPELLS={
         const _enemyLeft=(G.characters||[]).some(e=>e&&(e.alive||e._leaderlessHost)&&e.location===prov.id&&(e.armies||[]).length>0&&e.player!=null&&e.player!==c.player&&areEnemies(c.player,e.player));
         if(!_enemyLeft){
           G.players.forEach((p,pi)=>{if(pi!==c.player){const i=(p.provinces||[]).indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
-          prov.owner=c.player; const wp=G.players[c.player]; if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
+          setProvinceOwner(prov,c.player,c,ph); const wp=G.players[c.player]; if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
           if(wp) applyEvilConquest(c, prov, wp); // 2026-09-10: Evil doctrine on this capture path (was skipped)
           delete prov._takenByUnitGain;
           log('combat',`${c.name} drives the interlopers out and secures ${prov.name} for ${wp?wp.name:'their realm'}!`,{actor:c.player,targets:[],provinceId:prov.id,public:true});
@@ -21117,7 +21223,10 @@ const BATTLE_ARMY_SPELLS={
         const _heal=Math.min(Math.max(1,Math.round(_dmg*0.40)),(c.maxHp||20)-c.hp);
         if(_heal>0){
           c.hp=c.hp+_heal;
-          log('system',`🌿 Herbal Lore: ${c.name}'s wounds are dressed with healing herbs — 40% of the ${_dmg} damage taken in the fighting is mended. +${_heal} HP (${c.hp}/${c.maxHp||20}).`,{actor:c.player,targets:[c.player],provinceId:(c.location!=null?c.location:undefined)});
+          // 2026-09-18 (Toby item 2): filed under the CHARACTER for THIS phase (charId + phase stated
+          // explicitly — _logCtx is clear at the top of the phase loop, so the line used to fall into
+          // Realm Events with no owner). It is the first line of the phase, before any order resolves.
+          log('system',`🌿 Herbal Lore: ${c.name}'s wounds from the previous season are dressed with healing herbs — 40% of the ${_dmg} damage taken is mended. +${_heal} HP (${c.hp}/${c.maxHp||20}).`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph,provinceId:(c.location!=null?c.location:undefined)});
         }
       }
       c._hpAtPhaseStart=(c.alive&&c.hp!=null)?c.hp:null;
@@ -21247,6 +21356,7 @@ const BATTLE_ARMY_SPELLS={
     // Task 4: lone characters on Defend now spring their Spy-gated ambushes on this phase's incursions.
     runDefendAmbush(ph);
     _combatSkillProv=null;
+    reconcileDefendRideOuts(ph); // 2026-09-18 (item 9): a ride-out that met no battle is explained
 
     // Item 12: all this phase's actions have resolved — now report any incidental skill-rises they
     // earned (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each
@@ -22842,6 +22952,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.18-1012</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.18-1107</div>
 </body>
 </html>
