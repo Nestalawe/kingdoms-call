@@ -5645,6 +5645,34 @@ function generateBotSetups(humanSetups, count, startIndex){
 // The utility weights that govern bot competence, centralised in one place so a single edit re-tunes
 // behaviour and — later — a scalar difficulty knob can multiply them without touching any decision code
 // (BOT_PLAYERS_DESIGN §2 #7 / §8.2). v1 keeps a single fixed strength; these are those fixed values.
+// ══ REALM COLOURS — COLOUR-BLIND SAFE (2026-09-17, Toby item 2) ══════════════════════════════════
+// The ten realm colours, and the one fallback for an eleventh seat. Chosen by search rather than by
+// eye: every pair was measured with CIEDE2000 under normal vision AND under simulated protanopia,
+// deuteranopia and tritanopia (Machado 2009, severity 1.0), and the set maximises the SMALLEST of
+// those distances.
+//
+//   worst-case min pairwise ΔE2000   old palette 0.5   →   this palette 11.9
+//   normal 16.0 · protanopia 12.3 · deuteranopia 11.9 · tritanopia 12.5
+//
+// The old palette's crimson #c0392b and magenta #c2185b were ΔE 0.5 apart under tritanopia — the
+// same colour, in other words — and its orange #e67e22 / gold #d4ac0d (ΔE 5.6 under deuteranopia)
+// and navy #1a3a6a / slate #2c3e50 (ΔE 8.4 even to normal vision) were barely better.
+//
+// Three further constraints shape the set, and they are why it runs bright rather than sombre:
+//   1. Every colour stands ≥ ΔE 9 clear of all six terrain fills (TERRAIN_COLORS_P) in every vision
+//      model. This is what rules out the heraldic dark reds, greens and golds a medieval map wants:
+//      under red-green colour blindness a crimson banner collapses onto the desert and mountain
+//      hexes, and a green one onto forest and jungle.
+//   2. Every colour has perceived luma ≥ 114, so the player portal's dark-tooltip lift
+//      (_tintForDarkTooltip, threshold 110) never re-tints a realm colour — map, report and tooltip
+//      always show a realm in exactly the same colour.
+//   3. No two realms sit within 3 luma of one another: lightness is the one channel every kind of
+//      colour blindness keeps intact, so it is the fallback cue when hue fails.
+// Names are for the design notes only; nothing in the code reads them.
+//   Rose · Straw · Chartreuse · Emerald · Aqua · Slate · Cornflower · Amethyst · Mauve · Fuchsia
+const REALM_COLOURS=['#fcb4c0','#d8d890','#b4f000','#0cb478','#48fcfc','#789090','#90c0fc','#9c78fc','#906090','#fc78c0'];
+const REALM_COLOUR_FALLBACK='#c8b48c';   // an 11th seat should never happen; parchment-tan if it does
+
 const BOT_TUNING={
   kingAttackMargin: 1.35,  // battle-model force ratio a bot KING needs before attacking (≈63% on the fortune curve; kings play safer — a king's death is costly)
   heroAttackMargin: 1.2,   // battle-model force ratio a bot HERO needs before attacking (≈58%)
@@ -5694,6 +5722,123 @@ function botNeighbourProv(G,prov,i){
   return G.world.provinces[nr*cols+nc];
 }
 function botForceStrength(armies){ return (armies||[]).reduce((s,a)=>s+unitBaseStrength(a),0); }
+
+// ══ BOT INTEL — WHAT A BOT REALM IS ALLOWED TO KNOW (2026-09-17, Toby item 1) ═════════════════════
+// Bots plan straight off the live game state, which made them omniscient: a bot would march five hops
+// across unmapped country to hire a wandering hero standing in a HUMAN'S province no bot had ever laid
+// eyes on, weigh a garrison it had never scouted, and pick out battlefield graves no necromancer of
+// its had ever felt underfoot. None of that is reachable by a human, who plans from a turn report.
+//
+// This layer gives a bot the SAME four tiers buildTurnReport draws for a human, computed from the very
+// same records the report reads (province ownership, character locations, player._provMemory,
+// player._spiedProvincesLastTurn, visitedBy, _graveIntel, featDiscovered):
+//
+//   SIGHT      owned · occupied by one of its characters · spied last turn
+//              → live truth: enemy characters (through enemyCharVisibleTo, so Invisibility, cloaks
+//                and the Spy contest all still apply), garrisons, neutral defenders, graves.
+//   BORDER     adjacent to a SIGHT province
+//              → terrain, owner, tax band, recruitable army types. NO characters, NO force counts —
+//                exactly what the report's 'border' tier sends. A defender count here is a GUESS.
+//   REMEMBERED in _provMemory, or ever visited
+//              → the frozen snapshot: name, terrain, tax, owner AS LAST SEEN. No live forces.
+//   UNKNOWN    never seen → may not be reasoned about at all. Not a target, not a destination.
+//
+// Where a bot cannot see a province's defenders it now ESTIMATES them from the wealth band, which is
+// the same public rule a human reads off the map (Rich 3–4 / Prosperous 2–3 / Poor 1–2 neutral units),
+// rather than reading the true array. So bots still expand and still fight — they simply plan on
+// belief, and are wrong exactly where a human would be wrong.
+//
+// NOTE ON TIMING: bots plan at order-merge time, so the state they read is the end of LAST turn — the
+// same snapshot the human's turn report was built from. Parity is therefore exact, not approximate.
+// _spiedProvincesThisTurn is cleared earlier in runTurn, so the previous turn's spy set is preserved
+// as _spiedProvincesLastTurn at that reset for this layer to read.
+const _botIntelCache=new WeakMap();
+function botIntel(G,pi){
+  let per=_botIntelCache.get(G);
+  if(!per||per.turn!==G.turn){ per={turn:G.turn,by:{}}; _botIntelCache.set(G,per); }
+  if(per.by[pi]) return per.by[pi];
+  const pl=(G.players||[])[pi]||{};
+  const owned=new Set(), occupied=new Set();
+  (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi) owned.add(p.id); });
+  (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player===pi&&c.location!=null) occupied.add(c.location); });
+  const spied=new Set(pl._spiedProvincesLastTurn||pl._spiedProvincesThisTurn||[]);
+  const sight=new Set([...owned,...occupied,...spied]);
+  const border=new Set();
+  sight.forEach(id=>{ const p=G.world.provinces[id]; if(!p) return;
+    for(let i=0;i<6;i++){ const N=botNeighbourProv(G,p,i); if(N&&!sight.has(N.id)) border.add(N.id); } });
+  const remembered=new Set(), visited=new Set();
+  Object.keys(pl._provMemory||{}).forEach(k=>{ const n=+k; if(!isNaN(n)) remembered.add(n); });
+  (G.world.provinces||[]).forEach(p=>{ if(p&&(p.visitedBy||[]).includes(pi)){ remembered.add(p.id); visited.add(p.id); } });
+  const known=new Set([...sight,...border,...remembered]);
+  const o={owned,occupied,spied,sight,border,remembered,visited,known,
+           ctx:{ownedProvIds:owned,ownCharLocs:occupied,spiedThisTurn:spied},
+           mem:(pl._provMemory||{}), graves:(pl._graveIntel||{})};
+  per.by[pi]=o; return o;
+}
+// Live forces in this province are visible to the realm.
+function botSees(G,pi,provId){ return provId!=null && botIntel(G,pi).sight.has(provId); }
+// Current terrain / owner / tax are visible (sight or border) — but NOT the forces standing there.
+function botScouted(G,pi,provId){ const I=botIntel(G,pi); return provId!=null && (I.sight.has(provId)||I.border.has(provId)); }
+// The realm has seen this ground at some point and may reason about it at all.
+function botKnows(G,pi,provId){ return provId!=null && botIntel(G,pi).known.has(provId); }
+// One rule for "can this realm see that character", shared with the human report.
+function botSeesChar(G,pi,c){
+  if(!c||!c.alive) return false;
+  if(c.player===pi) return true;
+  try{ return enemyCharVisibleTo(G,pi,c,botIntel(G,pi).ctx); }catch(e){ return botSees(G,pi,c.location); }
+}
+// Every character standing in `prov` that this realm may account for (its own always; others only
+// where it has line of sight and they are not hidden).
+function botVisibleCharsIn(G,pi,prov){
+  if(!prov) return [];
+  return (G.characters||[]).filter(c=>c&&c.alive&&c.location===prov.id&&botSeesChar(G,pi,c));
+}
+// The province as this realm believes it to be: live when scouted, else the remembered snapshot,
+// else null (never seen — must not be reasoned about).
+function botBelief(G,pi,prov){
+  if(!prov) return null;
+  if(botScouted(G,pi,prov.id)) return {id:prov.id,row:prov.row,col:prov.col,terrain:prov.terrain,
+    owner:prov.owner,tax:prov.tax,armyTypes:prov.armyTypes||[],live:true};
+  const m=botIntel(G,pi).mem[prov.id];
+  if(m) return {id:prov.id,row:prov.row,col:prov.col,terrain:m.terrain,owner:m.owner,tax:m.tax,
+    armyTypes:m.armyTypes||[],live:false};
+  return null;
+}
+// Owner as believed (live if scouted, else last seen). `undefined` = never seen this ground.
+function botBelievedOwner(G,pi,prov){ const b=botBelief(G,pi,prov); return b?b.owner:undefined; }
+// A GUESS at a province's defending strength when the realm cannot see into it. Neutral land is read
+// off the wealth band the map shows everyone (the same Rich 3-4 / Prosperous 2-3 / Poor 1-2 spread the
+// world generator uses); a rival's province is guessed from its tax, because a wealthy realm garrisons
+// what it values. Deliberately a rough number: a bot marching on unscouted ground should be able to be
+// unpleasantly surprised, exactly as a human is.
+function botGuessDefence(G,pi,prov,terrain){
+  const b=botBelief(G,pi,prov); if(!b) return 0;
+  const AVG_UNIT=6;                              // ≈ an average line unit's base strength
+  const I=botIntel(G,pi);
+  // GROUND THIS REALM HAS WALKED ON. The human report prints an intelligence line for every VISITED
+  // province — "N neutral defenders (composition unknown — Spy this province to reveal)" — and that
+  // count is read live every turn. So a bot that has been here knows HOW MANY hold it, never what
+  // they are, and prices them at an average unit.
+  if(prov && I.visited.has(prov.id) && (prov.owner==null||prov.owner===b.owner)){
+    if(b.owner==null){
+      const guard=(prov.characters||[]).map(id=>(G.characters||[]).find(x=>x&&x.id===id)).find(x=>x&&x.alive&&x.player===null&&(x.armies||[]).length);
+      const n=guard?(guard.armies||[]).length:((prov.neutralDefenders||[]).length);
+      return n*AVG_UNIT*BOT_DEF_BONUS;
+    }
+  }
+  // Otherwise: the wealth band, which is public on the map to anyone who can see the hex at all
+  // (Rich 3-4 / Prosperous 2-3 / Poor 1-2 defenders is how the world was stocked). A rival's own
+  // province is assumed a shade more heavily held than neutral ground of the same wealth.
+  const tax=b.tax||0;
+  const units=tax>=7?3.5:tax>=3?2.5:1.5;
+  const owned=(b.owner!=null&&b.owner!==pi);
+  return units*AVG_UNIT*(owned?1.25:1)*BOT_DEF_BONUS;
+}
+// Discovered features only — an undiscovered lair is not on this realm's map at all.
+function botKnownFeatures(G,pi,prov){ return ((prov&&prov.features)||[]).filter(f=>f&&featDiscovered(f,pi)); }
+// Does this realm know battlefield graves lie here? Reads the very record the report's "Graveyards
+// Known" section is built from, so a bot needs a necromancer on the ground exactly as a player does.
+function botKnowsGraves(G,pi,provId){ const g=botIntel(G,pi).graves; return !!(g&&provId!=null&&g[provId]); }
 // Sept 2026 (bot upgrade): the strength a commander REALLY brings — every unit discounted by the Druid
 // shortfall penalty the engine will apply (same-race rule, Druidic realm, sd40 Dragon Taming all honoured
 // via druIdPenaltyMult). Bots used to sum raw base strength and march primal hosts into fights at −20..−80%.
@@ -5727,12 +5872,18 @@ function botBattleForce(G,c,armies,terrain){
 // What an assault on province N is really up against: the standing defenders on N's own terrain
 // (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
 const BOT_DEF_BONUS=1.25;
+// 2026-09-17 (Toby, item 1): only counted from GROUND THE REALM CAN SEE INTO. On a province it has
+// merely scouted from across the border — or only remembers — it gets botGuessDefence's wealth-band
+// estimate instead of the true order of battle, which is all a human has to go on there.
 function botTargetDefence(G,pi,N){
-  const guard=(N.characters||[]).map(id=>(G.characters||[]).find(x=>x&&x.id===id)).find(x=>x&&x.alive&&x.player===null&&(x.armies||[]).length);
+  if(!N) return 0;
+  if(!botSees(G,pi,N.id)) return botGuessDefence(G,pi,N,N.terrain);
+  const seen=botVisibleCharsIn(G,pi,N);
+  const guard=seen.find(x=>x.player===null&&(x.armies||[]).length);
   let s=0;
   if(N.owner==null){ s=guard?botBattleForce(G,guard,guard.armies,N.terrain):botBattleForce(G,null,N.neutralDefenders||[],N.terrain); }
   else {
-    (N.characters||[]).forEach(id=>{ const x=(G.characters||[]).find(y=>y&&y.id===id); if(x&&x.alive&&x.player===N.owner) s+=botBattleForce(G,x,x.armies,N.terrain); });
+    seen.forEach(x=>{ if(x.player===N.owner) s+=botBattleForce(G,x,x.armies,N.terrain); });
     s+=botBattleForce(G,null,N.garrisonArmies||[],N.terrain);
   }
   return s*BOT_DEF_BONUS;
@@ -5801,15 +5952,24 @@ function botMutualFoe(G,pi,j){
 function botConceded(G,pi){ return !!(((G.players||[])[pi]||{}).conceded); }
 // Strength of the neutral guard holding an UNOWNED province (its guard hero's live force, else the
 // province's neutralDefenders list). Only meaningful for owner==null land.
-function botGuardStrength(G,prov){
-  const guard=(prov.characters||[]).map(id=>(G.characters||[]).find(c=>c&&c.id===id)).find(c=>c&&c.player===null&&(c.armies||[]).length);
+function botGuardStrength(G,prov,pi){
+  // 2026-09-17 (item 1): with a realm index, the true guard is read only where the realm has eyes;
+  // elsewhere it is the public wealth-band guess. Called without pi (legacy) it still reads truth.
+  if(pi!=null && !botSees(G,pi,prov&&prov.id)) return botGuessDefence(G,pi,prov,prov&&prov.terrain)/BOT_DEF_BONUS;
+  const pool=(pi!=null)?botVisibleCharsIn(G,pi,prov):(prov.characters||[]).map(id=>(G.characters||[]).find(c=>c&&c.id===id)).filter(Boolean);
+  const guard=pool.find(c=>c&&c.player===null&&(c.armies||[]).length);
   return botForceStrength(guard?guard.armies:(prov.neutralDefenders||[]));
 }
 // Defending strength of an ENEMY PLAYER's province (Phase 4): the owner's characters standing there
 // (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
-function botEnemyDefence(G,prov,ownerPi){
+// 2026-09-17 (item 1): `viewerPi` is the realm doing the looking. Without sight of the province it
+// gets the wealth-band guess, never the true garrison.
+function botEnemyDefence(G,prov,ownerPi,viewerPi){
+  if(!prov) return 0;
+  if(viewerPi!=null && !botSees(G,viewerPi,prov.id)) return botGuessDefence(G,viewerPi,prov,prov.terrain)/BOT_DEF_BONUS;
   let s=0;
-  (prov.characters||[]).forEach(id=>{ const c=(G.characters||[]).find(x=>x&&x.id===id); if(c&&c.alive&&c.player===ownerPi) s+=botEffForce(G,c); });
+  const pool=(viewerPi!=null)?botVisibleCharsIn(G,viewerPi,prov):(prov.characters||[]).map(id=>(G.characters||[]).find(x=>x&&x.id===id)).filter(Boolean);
+  pool.forEach(c=>{ if(c&&c.alive&&c.player===ownerPi) s+=botEffForce(G,c); });
   (prov.garrisonArmies||[]).forEach(a=>{ s+=unitBaseStrength(a); });
   return s;
 }
@@ -5828,8 +5988,11 @@ function botDefenceNeed(G, prov, pi){
   let threat=0;
   for(let i=0;i<6;i++){
     const N=botNeighbourProv(G,prov,i); if(!N) continue;
+    // 2026-09-17 (item 1): a massing enemy is only a known threat if the realm can SEE it. A hex
+    // merely bordering our land shows terrain and ownership, never the host standing on it — so an
+    // army gathering in unseen country now falls on the bot unannounced, as it would on a player.
     let s=0;
-    (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') s+=botForceStrength(e.armies); });
+    botVisibleCharsIn(G,pi,N).forEach(e=>{ if(e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') s+=botForceStrength(e.armies); });
     if(s>threat) threat=s;
   }
   if(threat<=0) return 0;
@@ -5858,7 +6021,8 @@ function botPlanAssaults(G, pi, chars, assigned){
       (P.characters||[]).forEach(id=>{ if(id===c.id) return; const f=(G.characters||[]).find(x=>x&&x.id===id); if(f&&f.alive&&f.player===pi) remaining+=botForceStrength(f.armies); });
       (P.garrisonArmies||[]).forEach(a=>{ remaining+=unitBaseStrength(a); });
       let maxAdj=0;
-      for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N) continue; let s=0; (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') s+=botForceStrength(e.armies); }); if(s>maxAdj) maxAdj=s; }
+      // 2026-09-17 (item 1): the host next door counts only if the realm can see it standing there.
+      for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N) continue; let s=0; botVisibleCharsIn(G,pi,N).forEach(e=>{ if(e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') s+=botForceStrength(e.armies); }); if(s>maxAdj) maxAdj=s; }
       if(maxAdj>=remaining) return true;              // pinned to hold this province
     }
     // needed to reinforce a threatened valuable neighbour?
@@ -5945,10 +6109,12 @@ function botSeaCap(armies){
 }
 // A force carrying land troops it can ferry (has fleets AND land armies) — the invasion package.
 function botIsLoadedFleet(armies){ armies=armies||[]; return armies.some(a=>a&&BOT_CARRIER_TYPES.has(a.type)) && armies.some(a=>a&&!BOT_AERIAL_TYPES.has(a.type)&&!BOT_SEA_ALL.has(a.type)); }
+// 2026-09-17 (item 1): only the enemy characters this realm can actually see. On ground it cannot see
+// into, the answer is honestly empty — the bot then judges the province on its wealth-band guess alone.
 function botEnemyChars(G, prov, pi){
   let force=0, value=0, hasKing=false, units=0;
-  (prov.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id);
-    if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy'){
+  botVisibleCharsIn(G,pi,prov).forEach(e=>{
+    if(e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy'){
       force+=botEffForce(G,e); value+=(e.isKing?50:15); if(e.isKing)hasKing=true; units+=(e.armies||[]).length;
     }});
   return {force, value, hasKing, units};
@@ -5973,8 +6139,11 @@ function botFrontierDir(G, P, pi){
 // Item 8 (movement) — seek out a beatable, uncleared lair in our OWN adjacent land (safe to enter) so
 // heroes actively go clear hoards rather than only searching lairs they happen to stand on.
 function botLairDir(G, P, c, pi){
+  // 2026-09-17 (Toby, item 1): botKnownFeatures — an UNDISCOVERED lair is not on this realm's map. A
+  // player must Explore or Search to find one; bots were reading every hoard in their territory the
+  // moment the world was generated.
   for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea'||N.owner!==pi) continue;
-    if((N.features||[]).some(f=>f&&!f.cleared&&!f.ritualSite&&botCanBeatGuardian(c,f.monster))) return i;
+    if(botKnownFeatures(G,pi,N).some(f=>f&&!f.cleared&&!f.ritualSite&&botCanBeatGuardian(c,f.monster))) return i;
   }
   return -1;
 }
@@ -6075,7 +6244,10 @@ function botSpend(L,cost){ L.budget-=cost; L.upkeep+=cost; }
 // to hold. Only once a player is actually on our doorstep (in or beside our land) do valuable provinces
 // get 2 and the capital 3.
 function botUnderAttack(G,pi){
+  // 2026-09-17 (item 1): an enemy host counts only once the realm can see it (in our own land, or in
+  // ground we have eyes on beside it) — botSeesChar is the same rule the player's map uses.
   return (G.characters||[]).some(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)==='enemy')) return false;
+    if(!botSeesChar(G,pi,e)) return false;
     const P=G.world.provinces[e.location]; if(!P) return false; if(P.owner===pi) return true;
     for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N&&N.owner===pi) return true; } return false; });
 }
@@ -6127,14 +6299,19 @@ function botRecruitOrder(tokens, destId){
 }
 // HERO HIRING (item 3): a wandering (non-guard, not just-defeated) hero standing here that this crown may
 // hire, or null. Bots hire every hero they can — more commanders means more feeders and more hosts.
+// 2026-09-17 (Toby, item 1): a wandering hero must be VISIBLE to the realm — the same rule that builds
+// the human's Hire dropdown (availableHeroesByProv → enemyCharVisibleTo).
 function botHireableHeroAt(G,pi,provId){
   const player=G.players[pi]||{};
-  return (G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===provId&&!h._isNeutralGuard&&!h._justDefeated&&heroHireWage(player.alignment||'Neutral',h.alignment,false)!=null)||null;
+  return (G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===provId&&!h._isNeutralGuard&&!h._justDefeated&&botSeesChar(G,pi,h)&&heroHireWage(player.alignment||'Neutral',h.alignment,false)!=null)||null;
 }
 function botHeroCap(G,pi){ const land=(G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea').length; return 3+land; }   // Toby 2026-09-10: more heroes = more actions (was 2+land/2)
 function botHireOrder(G,pi,c,L){
   L.hired=L.hired||new Set();                                   // 2026-09-10: one claimant per wanderer per turn
-  const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id)&&heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)!=null); if(!hh) return null;
+  // 2026-09-17 (Toby, item 1): botSeesChar — a hero standing beside our own character is normally
+  // plainly visible, but one who moved in unspotted, is Invisible or wears a Cloak of Many Faces is
+  // not, and the human's Hire list would not offer them either.
+  const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id)&&botSeesChar(G,pi,h)&&heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)!=null); if(!hh) return null;
   // Self-play finding: an uncapped court (15 heroes, no army) ate the whole wage budget. Cap heroes to the
   // realm's size so wages stay with the field army.
   const heroes=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length;
@@ -6176,16 +6353,19 @@ function botHasMetPlayers(G,pi){
   const cache=botTurnCache(G); cache.met=cache.met||{}; if(cache.met[pi]!=null) return cache.met[pi];
   let met=false;
   const rel=G.relations||{}; for(const k of Object.keys(rel)){ if(rel[k]!=='neutral'&&k.split('-').map(Number).includes(pi)){ met=true; break; } }
-  if(!met){ const mine=(G.world.provinces||[]).filter(p=>p&&p.owner===pi);
-    const near=X=>!!X&&mine.some(m=>botHexDist(G,m,X)<=2);
-    met=(G.world.provinces||[]).some(x=>x&&x.owner!=null&&x.owner!==pi&&near(x))
-      || (G.characters||[]).some(e=>e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&near(G.world.provinces[e.location])); }
+  // 2026-09-17 (Toby, item 1): "have we met another crown" is now the engine's OWN encounter record
+  // (player._encountered), which updateProvinceMemory fills from provinces and characters this realm
+  // actually observed — the same list that gates a human's Treat / Declare War controls. The old test
+  // measured raw hex distance to any rival province or host, so a bot knew it had neighbours before it
+  // had seen one.
+  if(!met){ met=(((G.players||[])[pi]||{})._encountered||[]).length>0; }
   cache.met[pi]=met; return met;
 }
 // A non-allied player's armed host within 2 hexes of this character — reason for an early watch.
 function botNearbyThreat(G,pi,c){
   const P=G.world.provinces[c.location]; if(!P) return false;
-  return (G.characters||[]).some(e=>e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)!=='allied'&&(()=>{ const X=G.world.provinces[e.location]; return X&&botHexDist(G,P,X)<=2; })());
+  // 2026-09-17 (item 1): a host two hexes away sets a watch only if the realm can see it standing there.
+  return (G.characters||[]).some(e=>e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)!=='allied'&&botSeesChar(G,pi,e)&&(()=>{ const X=G.world.provinces[e.location]; return X&&botHexDist(G,P,X)<=2; })());
 }
 // Fill a 5-phase order list. Toby 2026-09-10: a Defend watch is set EARLY (phase 0) and only when it is
 // needed — other crowns met and a hostile host within 2 hexes — so the general answers an incursion at the
@@ -6224,7 +6404,9 @@ function botIsEdge(G,pi,prov){ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,
   if(N.owner==null || (N.owner!==pi && botRelationRaw(G,pi,N.owner)==='enemy')) return true; } return false; }
 function botFrontierTarget(G,pi,P){
   if(botIsEdge(G,pi,P)) return null;
-  const openCount=prov=>{ let n=0; for(let j=0;j<6;j++){ const K=botNeighbourProv(G,prov,j); if(!K||K.terrain==='sea')continue; if(K.owner==null||(K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy')) n++; } return n; };
+  // 2026-09-17 (item 1): counted on BELIEVED ownership — staging through an ally's land can look two
+  // hops past our own border, and unmapped ground is not counted as open country.
+  const openCount=prov=>{ let n=0; for(let j=0;j<6;j++){ const K=botNeighbourProv(G,prov,j); if(!K||K.terrain==='sea')continue; const ko=botBelievedOwner(G,pi,K); if(ko===undefined) continue; if(ko==null||(ko!==pi&&botRelationRaw(G,pi,ko)==='enemy')) n++; } return n; };
   const seen=new Set([P.id]); let q=[P], depth=0, best=null;
   while(q.length && depth<8){ const next=[]; depth++;
     q.forEach(cur=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||seen.has(N.id)||!botPassable(G,pi,N)) continue; seen.add(N.id);
@@ -6238,6 +6420,7 @@ function botHomeThreat(G,pi){
   const hid=botHomeId(G,pi); const H=hid!=null?G.world.provinces[hid]:null; if(!H) return null;
   let best=null;
   (G.characters||[]).forEach(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)==='enemy')) return;
+    if(!botSeesChar(G,pi,e)) return;                                  // 2026-09-17 (item 1): only a host we can see
     const P=G.world.provinces[e.location]; if(!P||botHexDist(G,P,H)>2) return;
     const f=botForceStrength(e.armies); if(!best||f>best.force) best={force:f,provId:P.id}; });
   return best;
@@ -6254,8 +6437,10 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
   let best=null, reinforce=null, maxThreat=0, threatDir=-1;
   for(let i=0;i<6;i++){
     const N=botNeighbourProv(G,P,i); if(!N) continue;
+    // 2026-09-17 (item 1): the doorstep threat is what the realm can SEE next door — a hex bordering
+    // our land shows terrain and ownership, never the column standing on it.
     let enemyForceInN=0;
-    (N.characters||[]).forEach(id=>{ const e=(G.characters||[]).find(x=>x&&x.id===id); if(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botEffForce(G,e); });
+    botVisibleCharsIn(G,pi,N).forEach(e=>{ if(e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botEffForce(G,e); });
     if(enemyForceInN>maxThreat){ maxThreat=enemyForceInN; threatDir=i; }
     if(visited&&visited.has(N.id)) continue;
     if(N.terrain==='sea' && botSeaCap(c.armies)==='land') continue;      // no shipping — can't put to sea
@@ -6314,6 +6499,9 @@ function botDistantStrike(G,pi,c,P,myStr,T,maxHops){
       // does N border something we can take?
       let sc=null;
       for(let j=0;j<6;j++){ const X=botNeighbourProv(G,N,j); if(!X||X.terrain==='sea'||X.owner===pi) continue;
+        // 2026-09-17 (item 1): a staging province may be an ALLY's, whose far side is two hops past
+        // our own border and may never have been seen. Unmapped ground is not a target.
+        if(!botKnows(G,pi,X.id)) continue;
         if(X.owner!=null && botRelationRaw(G,pi,X.owner)!=='enemy') continue;
         const ec=botEnemyChars(G,X,pi); let tStr, enemyTarget=false;
         if(X.owner==null) tStr=botTargetDefence(G,pi,X)+ec.force*BOT_DEF_BONUS; else { tStr=botTargetDefence(G,pi,X); enemyTarget=true; }
@@ -6362,29 +6550,43 @@ function botInfiltrateSchool(c){
 // All of this character's units are conjured skeletons (i.e. everything he has, he raised himself).
 function botOnlySkeletal(c){ const a=(c.armies||[]); return a.length>0 && a.every(x=>x&&x._isSkeletal); }
 // Nothing in this province can fight for it.
+// 2026-09-17 (Toby, item 1): "undefended" is now a BELIEF, not a fact. Where the realm has eyes it
+// still reads the ground truthfully; where it does not, an empty-looking province is only believed
+// empty if the realm has seen it before AND its wealth band suggests little there — and the caster
+// can still walk into a garrison nobody told him about, exactly as a player's infiltrator can.
 function botProvUndefended(G,prov,pi){
   if(!prov||prov.terrain==='sea') return false;
+  if(!botKnows(G,pi,prov.id)) return false;                 // never seen — not a plan, a guess in the dark
+  if(!botSees(G,pi,prov.id)){
+    const b=botBelief(G,pi,prov);
+    return !!b && (b.tax||0)<3 && b.owner==null;            // only poor, unowned ground is ASSUMED empty
+  }
   if((prov.garrisonArmies||[]).length>0) return false;
   if((prov.neutralDefenders||[]).length>0||(prov.npcArmies||0)>0) return false;
-  return !(prov.characters||[]).some(id=>{
-    const e=(G.characters||[]).find(x=>x&&x.id===id);
-    return e&&e.alive&&e.player!==pi&&(e.armies||[]).length>0&&!e._justDefeated;
-  });
+  return !botVisibleCharsIn(G,pi,prov).some(e=>e.player!==pi&&(e.armies||[]).length>0&&!e._justDefeated);
 }
 // Best province to conjure a host in, within `range` hops. {P,d,sc} or null.
 function botInfiltrateTarget(G,pi,c,school,range){
   const from=G.world.provinces[c.location]; if(!from) return null;
-  const graves=X=>((X.battleGraves||[]).length);
+  // 2026-09-17 (Toby, item 1): the scan is confined to ground this realm has SEEN, judged on what it
+  // believes rather than on the live arrays. Graves are read from the realm's own Graveyard lore
+  // (_graveIntel — filled only by a necromancer standing on the ground or a Control Undead scan), not
+  // from prov.battleGraves, so a bot can no longer smell every corpse in the world.
+  const gravesKnown=X=>botKnowsGraves(G,pi,X.id);
+  const graveCount=X=>(botSees(G,pi,X.id)?((X.battleGraves||[]).length):(gravesKnown(X)?2:0));
   let best=null;
   (G.world.provinces||[]).forEach(X=>{
-    if(!X||X.terrain==='sea'||X.owner===pi) return;
-    const enemyLand=X.owner!=null&&botRelationRaw(G,pi,X.owner)==='enemy';
-    if(X.owner!=null&&!enemyLand) return;                       // never an ally's or a at-peace crown's land
-    if(school==='necromancy'&&graves(X)===0) return;            // no dead here to answer the call
+    if(!X||X.terrain==='sea') return;
+    if(!botKnows(G,pi,X.id)) return;                            // unmapped country — not a target
+    const b=botBelief(G,pi,X); if(!b) return;
+    if(b.owner===pi) return;
+    const enemyLand=b.owner!=null&&botRelationRaw(G,pi,b.owner)==='enemy';
+    if(b.owner!=null&&!enemyLand) return;                       // never an ally's or a at-peace crown's land
+    if(school==='necromancy'&&!gravesKnown(X)) return;          // no dead here that this realm knows of
     if(!botProvUndefended(G,X,pi)) return;
     const d=(X.id===from.id)?0:botPathLenAny(G,from,X.id,range); if(d==null) return;
-    let depth=0; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N&&N.owner!=null&&N.owner!==pi&&botRelationRaw(G,pi,N.owner)==='enemy') depth++; }
-    const sc=(X.tax||0)*2 + depth*4 + (enemyLand?10:0) + Math.min(3,graves(X))*2 - d*3;
+    let depth=0; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); const no=botBelievedOwner(G,pi,N); if(N&&no!=null&&no!==pi&&botRelationRaw(G,pi,no)==='enemy') depth++; }
+    const sc=(b.tax||0)*2 + depth*4 + (enemyLand?10:0) + Math.min(3,graveCount(X))*2 - d*3;
     if(!best||sc>best.sc) best={P:X,d,sc};
   });
   return best;
@@ -6519,7 +6721,14 @@ function runBotMovement(G, botIdxSet, hooks){
         //    turn of escort duty; the recruit becomes the next companion. ──
         let bestH=null;
         const _heroesNow=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length;
+        // ── 2026-09-17 (Toby, item 1): THE WANDERER MUST BE ONE THE REALM CAN SEE. ──────────────
+        // This scan used to walk the whole character list and send a seeker five hops across unmapped
+        // country to a hero standing in a HUMAN'S province that no character of the bot's had ever
+        // been near — the exact leak Toby reported. botSeesChar is the human Hire list's own rule
+        // (owned ground, a character of ours standing there, or a Spy this turn; never a hero who
+        // moved in unspotted or is cloaked), so a bot now only chases wanderers it has actually seen.
         if(_heroesNow<botHeroCap(G,pi)) (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated)) return;
+          if(!botSeesChar(G,pi,h)) return;
           if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)==null) return;
           if(h.location===c.location||heroClaimed.has(h.id)) return;
           // 2026-09-10: seekers walk through neutral country too (an unarmed character is never engaged by a
@@ -6628,7 +6837,7 @@ function runBotMovement(G, botIdxSet, hooks){
       // would actually fall as it stands.
       if(c.id===roles.primaryId && homeThreat && homeId!=null && !(best&&best.dirIdx===threatDir&&maxThreat>0)){
         const H=G.world.provinces[homeId];
-        if(homeThreat.force > botEnemyDefence(G,H,pi)-(c.location===homeId?myStr:0)){
+        if(homeThreat.force > botEnemyDefence(G,H,pi,pi)-(c.location===homeId?myStr:0)){
           const margin=c.isKing?T.kingAttackMargin:T.heroAttackMargin;
           if(myStr >= homeThreat.force*margin){
             // Path to a province adjacent to the threat, then strike.
@@ -6742,17 +6951,20 @@ function botAtWar(G, pi){
 // Item 3 — the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide
 // when to go to a war footing and roughly how big an army to build toward.
 function botMaxEnemyStack(G, pi){
-  let mx=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player!=null&&c.player!==pi&&botRelationRaw(G,pi,c.player)==='enemy'){ const n=(c.armies||[]).length; if(n>mx)mx=n; } }); return mx;
+  // 2026-09-17 (item 1): the biggest host this realm has EYES ON, not the biggest in the world.
+  let mx=0; (G.characters||[]).forEach(c=>{ if(c&&c.alive&&c.player!=null&&c.player!==pi&&botRelationRaw(G,pi,c.player)==='enemy'&&botSeesChar(G,pi,c)){ const n=(c.armies||[]).length; if(n>mx)mx=n; } }); return mx;
 }
 // Item 1a — a CARRIER fleet type this province can raise (for sea conquest / troop transport), else null.
 function botCoastalFleetType(prov){ return (prov.armyTypes||[]).find(t=>BOT_CARRIER_TYPES.has(t))||null; }
 // Item 1a — does the bot have a naval reason here: a sea province to take, or an at-war enemy coast one
 // sea-hop away (an invasion route)? Only then is spending on a fleet worthwhile.
 function botNavalUseful(G, prov, pi){
+  // 2026-09-17 (item 1): the coast ACROSS the water is two hops out — beyond the border tier — so it
+  // counts as an invasion route only if this realm has actually seen it (botBelievedOwner).
   for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(!N) continue;
     if(N.terrain==='sea'){
       if(N.owner==null || (N.owner!==pi && botRelationRaw(G,pi,N.owner)==='enemy')) return true;   // sea to conquer
-      for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy') return true; } // enemy coast across the water
+      for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); const ko=botBelievedOwner(G,pi,K); if(K&&K.terrain!=='sea'&&ko!=null&&ko!==pi&&botRelationRaw(G,pi,ko)==='enemy') return true; } // enemy coast across the water
     }
   }
   return false;
@@ -6761,7 +6973,7 @@ function botNavalUseful(G, prov, pi){
 // while land remains to conquer).
 function botNavalEnemyCoast(G, prov, pi){
   for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(!N||N.terrain!=='sea') continue;
-    for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy') return true; } }
+    for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); const ko=botBelievedOwner(G,pi,K); if(K&&K.terrain!=='sea'&&ko!=null&&ko!==pi&&botRelationRaw(G,pi,ko)==='enemy') return true; } }   // 2026-09-17 (item 1): believed owner, not the true one
   return false;
 }
 // Item 5 — how many fleet hulls the bot already leads across its whole roster (so it stops over-building ships).
@@ -6841,11 +7053,15 @@ function botCastPlan(G, pi, c, prov, opts){
   const can=s=>lvl(s)>=1 && (used[s]||0)<botSchoolLimit(lvl(s));
   const push=(school,spell,extra,desc)=>{ if(out.length>=max||!can(school)) return false; used[school]=(used[school]||0)+1; out.push({action:'cast_spell',target:spell,extra:extra==null?'':String(extra),desc}); return true; };
   const enemyRel=j=>j!=null&&j!==pi&&botRelationRaw(G,pi,j)==='enemy';
-  const charsIn=P=>(P.characters||[]).map(id=>(G.characters||[]).find(x=>x&&x.id===id)).filter(x=>x&&x.alive);
-  const hereEnemies=charsIn(prov).filter(e=>e.player!=null&&enemyRel(e.player)); // (a cloaked/veiled target simply makes the cast fizzle — the engine reports it)
-  const near=[prov]; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(N) near.push(N); }
+  // 2026-09-17 (Toby, item 1): targets are drawn from what this realm can see. charsIn goes through
+  // botVisibleCharsIn (so a cloaked or unspotted hero is not picked as a target at all, rather than
+  // being targeted and fizzling), and a neighbouring province is only a spell target if the realm has
+  // at least scouted it — ownership on the border tier is public, the host standing there is not.
+  const charsIn=P=>botVisibleCharsIn(G,pi,P);
+  const hereEnemies=charsIn(prov).filter(e=>e.player!=null&&enemyRel(e.player));
+  const near=[prov]; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,prov,i); if(N&&botScouted(G,pi,N.id)) near.push(N); }
   const enemyProvs=near.filter(N=>N.owner!=null&&enemyRel(N.owner)&&N.terrain!=='sea');
-  const armiesIn=N=>botEnemyDefence(G,N,N.owner);
+  const armiesIn=N=>botEnemyDefence(G,N,N.owner,pi);   // 2026-09-17 (item 1): judged on what this realm can see
   const skillTotal=e=>Object.values(e.skills||{}).reduce((a,b)=>a+(b||0),0);
   // ── OFFENCE: enemies standing WITH the caster ──
   const armyLeader=[...hereEnemies].filter(e=>(e.armies||[]).length>=2).sort((a,b)=>(b.armies||[]).length-(a.armies||[]).length)[0];
@@ -6886,7 +7102,9 @@ function botCastPlan(G, pi, c, prov, opts){
     const own=near.filter(N=>N.owner===pi&&N._blessedTurn!==G.turn&&N.terrain!=='sea').sort((a,b)=>(b.tax||0)-(a.tax||0))[0];
     if(own) push('white','Bless Province',own.id,'Cast Bless Province on '+own.name);
   }
-  if(lvl('necromancy')>=1 && (prov.battleGraves||[]).length>0) push('necromancy','Skeletal Armies','','Cast Skeletal Armies');
+  // Skeletal Armies: the caster is STANDING here, so he feels the dead underfoot if he has the
+  // Necromancy to feel them — but the realm's own grave lore is the record, not prov.battleGraves.
+  if(lvl('necromancy')>=1 && (botKnowsGraves(G,pi,prov.id) || (botSees(G,pi,prov.id)&&(prov.battleGraves||[]).length>0))) push('necromancy','Skeletal Armies','','Cast Skeletal Armies');
   return out;
 }
 // Legacy entry point kept for callers that want a single best cast.
@@ -6898,10 +7116,14 @@ function botDuelRating(c){ const s=c.skills||{}; const bm=(s.elemental||0)+(s.ne
 // Nearest at-war enemy province worth raiding (rich, or holding enemy characters/armies) within `maxD`
 // hops for an UNARMED character (who may cross anyone's land). Returns {P, d} or null.
 function botRaidTarget(G,pi,from,maxD){
+  // 2026-09-17 (Toby, item 1): only ground this realm has seen, valued on the owner and wealth it
+  // BELIEVES are there plus whatever characters it can actually see standing in it.
   let best=null;
-  (G.world.provinces||[]).forEach(P=>{ if(!P||P.terrain==='sea'||P.owner==null||P.owner===pi||botRelationRaw(G,pi,P.owner)!=='enemy') return;
-    const chars=(P.characters||[]).map(id=>(G.characters||[]).find(x=>x&&x.id===id)).filter(x=>x&&x.alive&&x.player===P.owner);
-    const value=(P.tax||0)+chars.reduce((s,e)=>s+(e.isKing?12:6)+(e.armies||[]).length*2,0);
+  (G.world.provinces||[]).forEach(P=>{ if(!P||P.terrain==='sea') return;
+    if(!botKnows(G,pi,P.id)) return;
+    const b=botBelief(G,pi,P); if(!b||b.owner==null||b.owner===pi||botRelationRaw(G,pi,b.owner)!=='enemy') return;
+    const chars=botVisibleCharsIn(G,pi,P).filter(x=>x.player===b.owner);
+    const value=(b.tax||0)+chars.reduce((s,e)=>s+(e.isKing?12:6)+(e.armies||[]).length*2,0);
     if(value<4) return;
     const d=botPathLenAny(G,from,P.id,maxD); if(d==null) return;
     const sc=value-d*2; if(!best||sc>best.sc) best={P,d,sc}; });
@@ -6924,6 +7146,10 @@ function botHuntTarget(G,pi,c,maxD,duelSim){
   const mine=botDuelRating(c); const from=G.world.provinces[c.location]; if(!from) return null;
   const cands=[];
   (G.characters||[]).forEach(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy')) return;
+    // 2026-09-17 (Toby, item 1): a quarry must be one this realm can SEE right now — the same rule
+    // that builds a human's Encounter Character dropdown (enemyCharVisibleTo). Bots were hunting
+    // heroes across the map by reading their true position out of the game state.
+    if(!botSeesChar(G,pi,e)) return;
     if(e.isKing&&!c.isKing) return; if(e._invisTurn===G.turn) return;
     if(mine < botDuelRating(e)*1.2) return;                       // cheap pre-filter
     const d=botPathLenAny(G,from,e.location,maxD); if(d==null) return;
@@ -7016,14 +7242,21 @@ function botCanBeatGuardian(c, m){
   return charRating >= monRating*1.5;                  // conservative — demand a clear edge (deaths are permanent)
 }
 function botBeatableLair(G, c){ return botBeatableLairIn(G, c, G.world.provinces[c.location]); }
+// 2026-09-17 (Toby, item 1): only lairs this realm has DISCOVERED are candidates, and they are ranked
+// by the guardian's danger rather than by the hoard inside — the size of a hoard is not something a
+// player knows before opening the chest, and bots were sorting the world's treasure by value.
+// The index returned is still the index into prov.features, which is what the Search order expects.
 function botBeatableLairIn(G, c, prov){
   if(!prov||!prov.features) return -1;
-  let bestIdx=-1, bestTreasure=-1;
+  const pi=(c&&c.player!=null)?c.player:null;
+  let bestIdx=-1, bestRating=-1;
   prov.features.forEach((f,idx)=>{
     if(!f||f.cleared||f.ritualSite) return;
+    if(pi!=null && !featDiscovered(f,pi)) return;      // not on this realm's map
     if(!botCanBeatGuardian(c, f.monster)) return;      // too dangerous for this hero right now
-    const tr=f.treasure||0;
-    if(tr>bestTreasure){ bestTreasure=tr; bestIdx=idx; }
+    const POWER_RANK={'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4};
+    const rating=POWER_RANK[(f.monster&&f.monster.power)||'']||0;   // the guardian's power band IS public once discovered
+    if(rating>bestRating){ bestRating=rating; bestIdx=idx; }
   });
   return bestIdx;
 }
@@ -7826,7 +8059,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // homeProvinceId is the founding capital and is written ONCE, here. It is deliberately separate
     // from provinces[0], which shifts as land is won and lost — the player map is centred on this
     // province for the whole game, so it must never move under them mid-campaign.
-    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:['#c0392b','#1a3a6a','#27ae60','#8e44ad','#e67e22','#16a085','#d35400','#2c3e50','#c2185b','#d4ac0d'][pi]||'#7f8c8d',race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
+    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:REALM_COLOURS[pi]||REALM_COLOUR_FALLBACK,race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
       // ── Diplomacy (KC alliance system) ── players this king has ENCOUNTERED (seen a character or
       // province of). Only encountered players may be treated with. Accumulated in updateProvinceMemory.
       _encountered:[]};
@@ -10236,6 +10469,33 @@ async function runTurn(opts){
     console.log(`[${type}] ${text}`);
   };
 
+  // ── PRIVATE LINES INSIDE A SHARED NARRATIVE (2026-09-17, Toby item 3) ──────
+  // A battle or duel narrative is written once and then shown to EVERY participant — that is the
+  // whole point of a blow-by-blow. But a handful of lines in it belong to one realm alone: a hero's
+  // skill rising through experience, the mastery that crossing 6+ unlocks, and the wage rise that
+  // follows. An enemy commander has no way of knowing that the man across the field just got better
+  // at archery, and reading it told them his exact skill level for free.
+  //
+  // So a narrative array may now hold OBJECTS as well as strings:
+  //     { text:'…', onlyPlayer:<realm index>, charId:<that realm's character> }
+  // Every consumer of a narrative array routes each entry through emitNarrLine(), which logs a
+  // private entry to that realm alone (targets:[owner], public:false, no charIds spill) and an
+  // ordinary shared entry for everything else. Because it is logged in sequence with the rest of the
+  // narrative, the owner still reads it exactly where it happened in the fight.
+  // narrText() is for the rare consumer that needs the raw string (splice-point searches, etc.).
+  function narrText(line){ return (line&&typeof line==='object'&&line.text!=null)?line.text:line; }
+  function emitNarrLine(type, line, meta){
+    meta=meta||{};
+    if(line&&typeof line==='object'&&line.text!=null){
+      if(line.onlyPlayer==null){ log(type,line.text,meta); return; }
+      log(type,line.text,{...meta, actor:null, public:false, summary:false, battleDetail:false,
+        targets:[line.onlyPlayer], charIds:null,
+        charId:(line.charId!=null?line.charId:meta.charId)});
+      return;
+    }
+    log(type,line,meta);
+  }
+
   // ── Item 9: TARGET NOTIFICATIONS ───────────────────────────────────────────
   // When something happens TO a character that they'd know about — receiving items, armies mustered
   // to them, a spell cast on them (friendly or hostile) — file a line in THAT character's own
@@ -10528,7 +10788,11 @@ async function runTurn(opts){
       // phase it happened in, so it is reported inside THAT character's Chronicle section at the end of
       // the phase — not adrift in Realm Events. (_logCtx holds the acting character + phase here.)
       const _skCharId=real.id, _skPhase=(_logCtx.phase!=null?_logCtx.phase:_currentPhase);
-      if(narr&&narr.push) narr.push(line);
+      // 2026-09-17 (Toby, item 3): a skill rise is the OWNER'S news. Pushed into a battle or duel
+      // narrative as a bare string it went out to every participant, telling an enemy commander both
+      // that the man improved and exactly what level he reached. It now goes in as a private marker
+      // that emitNarrLine() routes to this realm alone, still in its proper place in the fight.
+      if(narr&&narr.push) narr.push({text:line, onlyPlayer:real.player, charId:_skCharId});
       else _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       // Item 10 (this session): crossing a mastery threshold (6/7/8/9) earns a congratulation that
       // spells out the new level's benefits — the passive that deepens, and any new mastery order or
@@ -10537,13 +10801,13 @@ async function runTurn(opts){
       if(_newLvl>=6){
         const _mu=(MASTERY_UNLOCKS[skill]||{})[_newLvl];
         const _mline=`🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill]||skill} — level ${_newLvl}!${_mu?' '+_mu:''}`;
-        if(narr&&narr.push) narr.push(_mline);
+        if(narr&&narr.push) narr.push({text:_mline, onlyPlayer:real.player, charId:_skCharId});
         else _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       }
       // Item 9: when the higher skill raises the hero's wage, say so in the player's report.
       if(_payAfter>_payBefore){
         const wline=`💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
-        if(narr&&narr.push) narr.push(wline);
+        if(narr&&narr.push) narr.push({text:wline, onlyPlayer:real.player, charId:_skCharId});
         else _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       }
       // 2026-09-17 (item 7, same class of bug as the hardening rollback): when this rise happened in a
@@ -11227,7 +11491,7 @@ const BATTLE_ARMY_SPELLS={
     const base={provinceId:(prov&&prov.id), phase:(ph!=null?ph:undefined), public:true,
       actor:(opts.actor!=null?opts.actor:null), charId:(opts.charId!==undefined?opts.charId:null),
       charIds:(opts.charIds||null), targets:parts};
-    (battle&&battle.narrative||[]).forEach(line=>log('combat',line,{...base, battleDetail:true}));
+    (battle&&battle.narrative||[]).forEach(line=>emitNarrLine('combat',line,{...base, battleDetail:true}));
     const sTxt=opts.summaryText||battle&&battle.summaryText;
     if(sTxt) log('combat',sTxt,{...base, summary:true});
   }
@@ -15177,7 +15441,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat',`⚔ ${victim.name} catches ${thief.name} ${what} — blades are drawn!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
       markProvinceCombat(prov,[thief.player,victim.player]); // purple swords: a personal combat, not a field battle
       const enc=resolveCharVsChar(thief,victim,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>log('combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       thief.hp=Math.max(1,enc.atkHp);
       if(victim.player!==null) victim.hp=Math.max(1,enc.defHp);
       if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(thief,victim); awardKillXP(victim,thief); } }
@@ -15742,7 +16006,7 @@ const BATTLE_ARMY_SPELLS={
             // forms up. Splice after that line if present (first-contact battle); otherwise (no move-in
             // line, e.g. a suppressed/edge case) prepend so they still lead the block.
             if(_defFormupLines.length && battle && Array.isArray(battle.narrative)){
-              let _mi=battle.narrative.findIndex(l=>typeof l==='string' && l.includes('a battle is initiated'));
+              let _mi=battle.narrative.findIndex(l=>typeof narrText(l)==='string' && String(narrText(l)).includes('a battle is initiated'));
               battle.narrative.splice(_mi>=0?_mi+1:0, 0, ..._defFormupLines);
             }
             // 2026-09-09 (item 1): charIds names EVERY commander who fought — attacker + his reinforcements,
@@ -16189,7 +16453,7 @@ const BATTLE_ARMY_SPELLS={
         const plan=c.encounterPlan||{tactics:['ME']};
         markProvinceCombat(prov,[c.player]); // purple swords: a personal combat, not a field battle
         const encounter=resolveEncounter(c,f,prov,plan.tactics||['ME'],effStat,rng,player);
-        encounter.narrative.forEach(line=>{log('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
+        encounter.narrative.forEach(line=>{emitNarrLine('explore',line,{actor:c.player,targets:[c.player],provinceId:prov.id});});
 
         // Hero killed by monster?
         if(encounter.heroKilled){
@@ -19555,7 +19819,11 @@ const BATTLE_ARMY_SPELLS={
   // Items 6 & 7 — per-turn spy tracking. Reset the "provinces spied THIS turn" set on every player
   // at the start of resolution (used to gate non-controlled army DETAIL to spied provinces only).
   // _spiedHeroSkills is NOT reset — it persists across turns and is refreshed on each new spy.
-  (G.players||[]).forEach(p=>{ p._spiedProvincesThisTurn=[]; p._clairCharThisTurn=null; if(!p._spiedHeroSkills) p._spiedHeroSkills={}; }); // _clairCharThisTurn: 2026-09-12 Clairvoyance reveal (one per realm)
+  // 2026-09-17 (Toby, item 1): keep the OUTGOING set as _spiedProvincesLastTurn before clearing it.
+  // Bots plan their orders later in this same runTurn, from the end-of-last-turn state — the same
+  // snapshot a human's turn report was built from — so their intel layer needs last turn's spy
+  // results, exactly as the report that reached the human did.
+  (G.players||[]).forEach(p=>{ p._spiedProvincesLastTurn=(p._spiedProvincesThisTurn||[]).slice(); p._spiedProvincesThisTurn=[]; p._clairCharThisTurn=null; if(!p._spiedHeroSkills) p._spiedHeroSkills={}; }); // _clairCharThisTurn: 2026-09-12 Clairvoyance reveal (one per realm)
 
   // Defend watches and Pursuits last for the rest of the TURN only — never across turns.
   (G.characters||[]).forEach(c=>{ delete c._defend; delete c._pursuit; delete c._defendReactedPhase; });
@@ -20165,7 +20433,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat',`⚔ ${c.name} springs from cover and sets upon ${quarry.name} in ${prov.name}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
       const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
       if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${c.name} is cut down in the ambush they laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(c,quarry); awardKillXP(quarry,c); } }
@@ -20387,7 +20655,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat',`⚔ ${c.name} finally corners ${quarry.name} in ${prov.name}.`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:prov.owner!==null,charIds:_duelChars});
       markProvinceCombat(prov,[c.player,quarry.player]); // purple swords: a personal combat, not a field battle
       const enc=resolveCharVsChar(c,quarry,atkPlan,defPlan,prov,effStat,rng,G);
-      enc.narrative.forEach(line=>log('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       // Item 3 (this session): a hero beaten to 0 HP in the duel DIES outright — the old "capitulates
       // and survives at 1 HP" reprieve is gone. atkKilled/defKilled still cover the explicit-slaying
       // path; the hp<=0 checks catch every other felling.
@@ -22103,6 +22371,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-1410</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-1824</div>
 </body>
 </html>
