@@ -1417,7 +1417,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Missile combat. In battle it adds +10% strength per level to your bow/crossbow units (Yeoman Longbows, Elven Bowmen, Ironwood Crossbows, etc.). In personal combat a Fire Arrow action hits at 30% +10% per level for 1d6 damage, +1 damage for every third level; at <strong>Archery 3 and above you loose two arrows per Fire action instead of one</strong>. Remember that a Fire action must first reach bow range — from spell range that is a speed check, and from melee range you must break away from your opponent. The King starts with Archery 1.',
+  archery:'Missile combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your missile units loose before the lines close (6% + 2% per level of the target unit\'s strength, doubled against flyers) — it adds no strength to the units themselves. In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 2–5 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land units only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in every battle, on land or at sea (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
@@ -2606,7 +2606,7 @@ function renderReportView(report){
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
         ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
-        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}`}
+        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}`}
       </div>`;
     };
     const featuresByProvince={};
@@ -6312,7 +6312,10 @@ function buildTargetField(c, ph, saved){
       const _provId=loc?loc.id:c.locationId;
       // Item 7 (2026-09-11): no saved target → the weakest lair not already chosen by another Search Lair order here.
       const _lairSel=(target!==''&&target!=null)?String(target):defaultLairTarget(c,ph,_provId,pd?.features||[]);
-      const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');return `<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}</option>`;}).join('');
+      // 2026-09-17 (item 3): the dropdown names the guardian and its KIND as well as the grade, so a
+      // player choosing which lair to send a hero to can see they are picking a fight with an undead
+      // thing (White Magic doubles) rather than a beast, without opening the Known Lairs card.
+      const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');const _g=f.ritualSite?'':[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');return `<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}${_g?` — ${_g}`:''}</option>`;}).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
@@ -7048,7 +7051,9 @@ function _lairStar(f){
   const _pw=f.monsterPower||f.power;
   const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[_pw]||'#7a5510';
   const _tag=_pw?` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
-  return `<span style="color:${col}">\u2b50 ${f.name}${_tag}</span>`;
+  // item 3 (2026-09-17): the guardian's kind rides along in the popup too.
+  const _cat=(!f.cleared&&f.monsterCat)?` <span style="font-size:.68rem;opacity:.7">${f.monsterCat.toLowerCase()}</span>`:'';
+  return `<span style="color:${col}">\u2b50 ${f.name}${_tag}${_cat}</span>`;
 }
 // ── LAIRS CLEARED (2026-09-09, Toby) ─────────────────────────────────────────────────────────
 // The popup lists only lairs that still STAND, so a province whose lairs have all been cleared looked
@@ -7866,6 +7871,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.16-1835</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.17-1249</div>
 </body>
 </html>
