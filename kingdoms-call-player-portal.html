@@ -2270,8 +2270,6 @@ function renderReportView(report){
         if((kingdom.sdGrand||0)>0) parts.push(`+${kingdom.sdGrand}g Grand Design`);
         if((kingdom.sdCreed||0)>0) parts.push(`+${kingdom.sdCreed}g heritage/creed discoveries`);
         // Item 3: Imperial Title / minor-title perks that add tax-season gold.
-        if((kingdom.throneG||0)>0) parts.push(`+${kingdom.throneG}g the Throne`);
-        if((kingdom.vaultG||0)>0) parts.push(`+${kingdom.vaultG}g Vaultkeeper interest`);
         if((kingdom.cutpurseG||0)>0) parts.push(`+${kingdom.cutpurseG}g the Cutpurse`);
         if((kingdom.championG||0)>0) parts.push(`+${kingdom.championG}g Champion of the People`);
         if((kingdom.castellanG||0)>0) parts.push(`+${kingdom.castellanG}g the Castellan`);
@@ -8039,6 +8037,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.17-1824</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.17-2126</div>
 </body>
 </html>

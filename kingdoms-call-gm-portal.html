@@ -7196,13 +7196,16 @@ function botCrossTrainSkill(G, c, pi){
 function botTargetTitles(G, pi){
   const p=G.players[pi]; if(!p) return [];
   if(p._botTitles) return p._botTitles;
-  let magic=0, combat=0, explore=0, naval=0;
+  let magic=0, combat=0, naval=0, sage=0, spy=0, expl=0;
   (G.characters||[]).filter(c=>c&&c.player===pi).forEach(c=>{ const s=c.skills||{};
     magic+=(s.white||0)+(s.psychic||0)+(s.illusory||0)+(s.elemental||0)+(s.necromancy||0);
     combat+=(s.melee||0)+(s.tactical||0)+(s.march||0)+(s.archery||0);
-    explore+=(s.explorer||0)+(s.sage||0); naval+=(s.naval||0);
+    naval+=(s.naval||0); sage+=(s.sage||0); spy+=(s.spy||0); expl+=(s.explorer||0);
   });
-  const cand=[['marshal',combat+5],['monster',combat+2],['arch',magic*2],['lore',explore*2],['sea',naval*2]];
+  // 2026-09-17 (Toby): the four new titles join the bot's candidate list. `explore` no longer stands
+  // for the Loremaster alone \u2014 Sage and Explorer are now separate prizes \u2014 so each is weighed on its
+  // own skill. The beast titles are deed-only and are not chased by training, so they are absent here.
+  const cand=[['marshal',combat+5],['monster',combat+2],['arch',magic*2],['lore',sage*2],['sea',naval*2],['spy',spy*2],['carto',expl*2]];
   cand.sort((a,b)=>b[1]-a[1]);
   const picks=cand.filter(x=>x[1]>0).slice(0,3).map(x=>x[0]);
   p._botTitles = picks.length?picks:['marshal','monster'];
@@ -7217,8 +7220,10 @@ function botTitleFocusSkill(c, titles){
   for(const t of (titles||[])){
     if(t==='arch'){ const m=pickHighest(['elemental','necromancy','psychic','white','illusory']); if(m)return m; }
     if(t==='marshal'||t==='monster'){ const m=pickHighest(['melee','tactical','march','archery']); if(m)return m; }
-    if(t==='lore'){ const m=pickHighest(['explorer','sage']); if(m)return m; }
+    if(t==='lore'){ const m=pickHighest(['sage']); if(m)return m; }
     if(t==='sea'){ const m=pickHighest(['naval']); if(m)return m; }
+    if(t==='spy'){ const m=pickHighest(['spy']); if(m)return m; }
+    if(t==='carto'){ const m=pickHighest(['explorer']); if(m)return m; }
   }
   return null;
 }
@@ -8269,18 +8274,66 @@ function hexDistP(a,b,cols){
 // ── BUILD PLAYER TURN REPORT ──────────────────────────
 // ══ VICTORY & TITLES (KC Reckoning system) — see KC-design-victory-and-titles.md ══════════════
 // Per-character merit accumulators, ensured lazily so existing saves upgrade cleanly.
-function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,darkCasts:0,featuresFound:0,discoveries:0}; return c.tm; }
+// 2026-09-17 (Toby): four new accumulators. `TM` is ensured LAZILY, so a character created before
+// this build has a `tm` object without the new keys \u2014 every read therefore uses `||0` rather than
+// trusting the shape, and every write uses `=(x||0)+n`. Do not "tidy" those into bare `+=`.
+function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,darkCasts:0,featuresFound:0,discoveries:0,
+  spyActions:0,explored:0,monsterHost:0,wildHost:0}; return c.tm; }
 
+// ── BEAST CATEGORIES FOR THE TWO NEW TITLES (2026-09-17, Toby) ────────────────────────────────────
+// The engine already carries these two rosters in three separate places (the movement helper's local
+// CREATURE_ARMIES/MONSTER_ARMIES at the top of the script, the bot's BOT_ copies, and the report
+// builder's MON_REP). Title scoring gets ONE module-level pair rather than a fourth private copy, and
+// every one of the four lists holds exactly the same members \u2014 if a new beast unit is ever added it
+// must be added to all of them.
+//   Creature = the free beasts a realm persuades to fight beside it.
+//   Monster  = the horrors a realm breaks to its will.
+const TITLE_CREATURE_ARMIES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+const TITLE_MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+// 2026-09-17 (Toby): file one entry in the Spymaster's ledger. The AGENT is recorded by id and by the
+// name they carried at the time, not just their realm: the Spymaster's whole business is knowing WHO
+// is in your country, and a realm name tells you nothing you could act on. The name is snapshotted
+// because the agent may be dead, charmed or renamed by the time the intel line is written at end of
+// turn, and a ledger that resolved ids late would print "undefined" for exactly the most interesting
+// entries. `byPi` is kept alongside so the line can still say which crown the agent serves.
+function noteEspionage(G, c, provId, kind){
+  if(!G||!c||provId==null) return;
+  try{ (G._espionageLedger=G._espionageLedger||[]).push({
+    byPi:(c.player!=null?c.player:null), charId:c.id, charName:c.name, isKing:!!c.isKing, provId, kind
+  }); }catch(_e){}
+}
+// TITLE MERIT: Cartographer. Banks the percentage points of ground a character's own marching and
+// exploring actually ADDED \u2014 the delta after the 100% clamp, never the raw roll, so grinding Explore
+// on a fully-charted province earns nothing. Raw points are stored; _charTitleMerit divides by 10.
+function creditMapped(c, before, after){
+  const d=(after||0)-(before||0);
+  if(d>0) TM(c).explored=(TM(c).explored||0)+d;
+}
+// Credit a muster or a victory to whichever beast title the unit belongs to. Safe on any object.
+function creditBeastUnit(tmRec, unit, n){
+  if(!tmRec||!unit) return;
+  const t=unit.type;
+  if(TITLE_MONSTER_ARMIES.has(t))      tmRec.monsterHost=(tmRec.monsterHost||0)+(n||1);
+  else if(TITLE_CREATURE_ARMIES.has(t)) tmRec.wildHost=(tmRec.wildHost||0)+(n||1);
+}
 const TITLE_DEFS=[
   {key:'throne',  name:'The Throne',        prize:20, kingdomLevel:true, req:'Hold the largest tax base (total province tax income) in the world.', perk:'Each turn you are shown every rival realm\'s share of the world tax base.'},
   {key:'vault',   name:'The Vaultkeeper',   prize:10, kingdomLevel:true, req:'Hold the largest treasury (most gold) in the world.', perk:'Each turn you are shown every rival realm\'s treasury.'},
   {key:'marshal', name:'The Grand Marshal', prize:10, req:'Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost). Battles against a neutral province\'s chieftain and his guard count the same as a war with a rival realm.', perk:'Each turn you are told the province holding each rival\'s strongest land army.'},
-  {key:'sea',     name:'The Sea Lord',      prize:10, req:'Hold the highest Naval skill, plus every sea province your realm holds, plus sea-battle merit on the same terms as the Grand Marshal \u2014 battles with a neutral sea province\'s guardian count too.', perk:'Each turn you are told the province holding each rival\'s strongest fleet.'},
-  {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians.', perk:'Each turn you are told the name and province of the character ranked second for this title.'},
-  {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest combined Explorer + Spy + Sage skill, plus lairs first discovered and Sage discoveries.', perk:'Each turn you learn which Sage discoveries your rivals made this turn \u2014 and copy one of them at random, for free.'},
-  {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage in every magic school.'},
-  {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest combined White + Druid skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn you are told the location and strength of the largest skeletal army in the world.'},
+  {key:'sea',     name:'The Sea Lord',      prize:10, req:'Hold the highest Naval skill, plus sea-battle merit on the same terms as the Grand Marshal \u2014 battles with a neutral sea province\'s guardian count too.', perk:'Each turn you are told the province holding each rival\'s strongest fleet.'},
+  {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (a pacified guardian counts half).', perk:'Each turn you are named the foremost monster-slayer of every rival realm, with their province and tally.'},
+  {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest Sage skill, plus one point per Sage discovery made.', perk:'Each turn you are shown every discovery each rival realm holds \u2014 and copy one you lack, for free.'},
+  {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage of each magic school outside your own realm.'},
+  {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest White skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.'},
   {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead \u2014 and files each one under Graveyards Known in your report.'},
+  // ── 2026-09-17 (Toby): FOUR NEW TITLES ──────────────────────────────────────────────────────────
+  // Espionage, cartography and the two beast-leading traditions had no prize of their own; the Spy and
+  // Explorer skills in particular were only ever scored as part of the Loremaster's bundle, which has
+  // now been narrowed to the Sage alone. Each new title reports intel nothing else reports.
+  {key:'spy',     name:'The Spymaster',     prize:10, req:'Hold the highest Spy skill, plus one point per successful act of espionage \u2014 spying out a province, reading a rival character, sabotage, and an assassination that finds its mark.', perk:'Each turn you are handed the counter-intelligence ledger: every HERO who spied on, sabotaged or robbed your lands this turn, what they did, whose crown they serve and the province they did it in.'},
+  {key:'carto',   name:'The Cartographer',  prize:10, req:'Hold the highest Explorer skill, plus one point per 10% of a province mapped by your own marching and exploring (every province counts separately, and the survey spilling onto neighbouring ground counts too).', perk:'Each turn your surveyors lay out the rival atlas: for every realm, how many provinces they have charted in full and what share of the world they have mapped.'},
+  {key:'beast',   name:'The Beastlord',     prize:10, req:'Muster and win with monsters \u2014 one point per Monster-category unit you recruit, and one per Monster-category unit still under your banner when you win a battle.', perk:'Each turn the beast-tongues take the rival menagerie: for every realm, how many Monster units they have under arms and the province holding their largest monster host.'},
+  {key:'wild',    name:'The Wildwarden',    prize:10, req:'Muster and win with the free beasts \u2014 one point per Creature-category unit you recruit (griffons, eagles, ents, giants, rocs, whales), and one per Creature-category unit still under your banner when you win a battle.', perk:'Each turn the wild reports its own: for every realm, how many Creature units they field and the province holding their greatest wild host.'},
 ];
 const RELIC_PRIZE_EACH=1;                 // 1 point per LEGENDARY relic held. 2026-09-11: the legendary
                                           // tier is now two relics of each kind, so the relic pool is worth
@@ -8533,40 +8586,50 @@ function castChanceFor(c, school, player, opts){
 }
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
 function _legendaryNames(){ return new Set((ITEMS_BY_TIER[4]||[]).map(it=>it.name)); }
-// 2026-09-16 (Toby) — THE SEA LORD COUNTS THE WAVES. The title's published requirement has always
-// promised "sea provinces held" and the metric has never counted one. Toby's ruling: count them, and
-// count ALL of them rather than only the rich ones (the old text's "rich sea provinces" is withdrawn;
-// an owned sea province pays 0–2 tax, so a "rich" filter would have excluded most of a real navy's
-// conquests). Worth one point apiece. This is a REALM figure folded into every one of that realm's
-// characters, which is the only way a per-character title can read a realm-wide holding — the effect
-// is that a realm which rules the deep carries its best admiral over a rival's.
-const SEA_LORD_PROVINCE_PTS=1;
-// Per-character raw merit for the six non-realm titles (before alignment boost).
-// `ctx.seaProvinces` is the count of sea provinces the character's REALM holds (0 when not supplied,
-// so any caller that has not been taught about it still gets the old figure rather than NaN).
+// 2026-09-17 (Toby): THE SEA LORD NO LONGER COUNTS THE WAVES. `SEA_LORD_PROVINCE_PTS` gave one merit
+// point per sea province the character's REALM held, folded into every one of that realm's characters.
+// It was the only territorial component in any character title, and it meant a realm that ruled the
+// deep could hold the Sea Lord's baton on geography alone with a mediocre admiral. Withdrawn: the
+// title is now the admiral's own Naval skill and the battles they have actually won at sea.
 function _charTitleMerit(c, ctx){
   const tm=c.tm||{};
-  const seaProv=((ctx&&ctx.seaProvinces)|0)||0;
   const magic=_MAGIC_SCHOOLS.reduce((s,sc)=>s+_skillItem(c,sc),0);
   const spellItems=activeItems(c).filter(it=>it.effect&&_MAGIC_SCHOOLS.includes(it.effect.stat)).length;
   return {
-    // 2026-09-16 (Toby, item 2) — ROOT CAUSE of "The Grand Marshal shows as vacant even though it is
+    // 2026-09-16 (Toby, item 2) \u2014 ROOT CAUSE of "The Grand Marshal shows as vacant even though it is
     // awarded". It was not a display fault: the title really WAS vacant. `marshal` was the only one of
     // the nine titles whose metric was PURE battle merit with no standing component, and
     // computeStandings requires merit > 0 to hand a title out. tm.marshal only ever moves in a
-    // player-vs-player land battle (creditBattle), and it moves DOWN for the loser — so in any game
+    // player-vs-player land battle (creditBattle), and it moves DOWN for the loser \u2014 so in any game
     // where the realms have not yet fought each other on land, or where the wins and losses have
     // cancelled, every character sat at 0 and the title fell vacant while all eight others were held.
     // The Sea Lord has always carried `_skillItem(c,'naval')` as its standing component for exactly
     // this reason; the Grand Marshal now carries Tactical the same way. A realm's best general holds
     // the marshal's baton from turn one, and battle merit decides it the moment anyone fights.
     marshal:(tm.marshal||0)+_skillItem(c,'tactical'),
-    sea:(tm.sea||0)+_skillItem(c,'naval')+seaProv*SEA_LORD_PROVINCE_PTS,
+    sea:(tm.sea||0)+_skillItem(c,'naval'),
     monster:(tm.monster||0),
-    lore:_skillItem(c,'explorer')+_skillItem(c,'spy')+_skillItem(c,'sage')+(tm.featuresFound||0)*2+(tm.discoveries||0)*2,
+    // 2026-09-17 (Toby): the Loremaster was a THREE-SKILL BUNDLE (Explorer + Spy + Sage) that also
+    // counted every map feature stumbled across at double weight. It swallowed the whole espionage and
+    // exploration space, so no Spy or Explorer character could ever be honoured for what they actually
+    // did. Explorer now belongs to the Cartographer and Spy to the Spymaster; the Loremaster keeps the
+    // scholar's own skill and the discoveries their research has produced, at one point apiece.
+    lore:_skillItem(c,'sage')+(tm.discoveries||0),
     arch:magic+spellItems,
-    hiero:_skillItem(c,'white')+_skillItem(c,'druid')+(tm.holyCasts||0),
+    // 2026-09-17 (Toby): Druid withdrawn \u2014 the Hierophant is a title of the White faith, and folding
+    // in a second skill let a druid with no holy casts at all out-score a working priest.
+    hiero:_skillItem(c,'white')+(tm.holyCasts||0),
     necro:_skillItem(c,'necromancy')+(tm.darkCasts||0),
+    // ── 2026-09-17 (Toby): the four new titles ───────────────────────────────────────────────────
+    // `tm.spyActions` counts SUCCESSES only (see the spy/sabotage/assassination sites); a failed
+    // infiltration earns nothing. `tm.explored` banks raw percentage POINTS of ground mapped and is
+    // divided down here, so the accumulator keeps its precision and only the score is coarse.
+    spy:_skillItem(c,'spy')+(tm.spyActions||0),
+    carto:_skillItem(c,'explorer')+Math.floor((tm.explored||0)/10),
+    // Pure deed titles, like the Monster-Bane: no standing skill floor, so they sit vacant until
+    // somebody actually musters beasts. That is intended \u2014 there is no "beast skill" to stand on.
+    beast:(tm.monsterHost||0),
+    wild:(tm.wildHost||0),
   };
 }
 // A realm's Reckoning bloc = THAT REALM AND ITS OWN DIRECT ALLIES. Nobody else.
@@ -8607,13 +8670,10 @@ function computeStandings(state){
   },0);
   const goldByPlayer=players.map(p=>(p&&p.gold)||0);
   const perChar={};
-  // 2026-09-16: sea provinces held, per realm — the Sea Lord's standing component (SEA_LORD_PROVINCE_PTS).
-  // Counted once here rather than per character; every character of a realm carries their realm's figure.
-  const seaProvByPlayer=players.map((p,pi)=>((state.world&&state.world.provinces)||[]).reduce((s,pv)=>s+((pv&&pv.owner===pi&&pv.terrain==='sea')?1:0),0));
   // 2026-09-16: the per-alignment \u00d71.25 lane boost is gone (see ALIGN_TITLE_BOOST's obituary above).
   // A character's merit is now exactly what their deeds, skills and holdings come to, whatever creed
   // their realm follows.
-  chars.forEach(c=>{ perChar[c.id]=_charTitleMerit(c,{seaProvinces:seaProvByPlayer[c.player]||0}); });
+  chars.forEach(c=>{ perChar[c.id]=_charTitleMerit(c); });
   const titles={};
   TITLE_DEFS.forEach(t=>{
     if(t.key==='throne'||t.key==='vault'){
@@ -8700,7 +8760,7 @@ function runBotReckoning(G, botIdxSet, reckoningCalls){
     if(kingAlive && reckoningCallEligibility(G, pi).ok) reckoningCalls.add(pi); // item 1: bloc bar AND the caller's own floor
   });
 }
-const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant',necro:'Deathpriest'};
+const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',sea:'Sea Lord',monster:'Monster-Bane',lore:'Loremaster',arch:'Archmage',hiero:'Hierophant',necro:'Deathpriest',spy:'Spymaster',carto:'Cartographer',beast:'Beastlord',wild:'Wildwarden'};
 
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
@@ -9473,7 +9533,12 @@ function buildTurnReport(gameState, playerIndex){
   // Item 3: title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings
   // / computeMinorTitles are module-level and already used above, so the report builder can read the
   // live holders without runTurn's G-scoped helpers. Each perk is tracked separately for itemisation.
-  let throneG=0,vaultG=0,cutpurseG=0,championG=0,castellanG=0,_hostLeaderChar=null;
+  // 2026-09-17 (Toby): `throneG` / `vaultG` REMOVED. The Throne and the Vaultkeeper once paid
+  // tax-season gold; when they became pure intel titles the payout was dropped but the two
+  // variables were left behind, declared at 0 and never assigned. They were still summed into
+  // titlePerkGold, still shipped in the report, and still itemised by the player portal — two
+  // income lines that could never print. Gone, along with their report fields.
+  let cutpurseG=0,championG=0,castellanG=0,_hostLeaderChar=null;
   try{
     if(!_titlesPublic) throw 'titles-hidden'; // Item: title perks (incl. their tax gold) take effect only once Titles are revealed at turn 5 — matching the gated end-of-turn collection.
     const _std=(computeStandings(gameState).titles)||{};
@@ -9485,7 +9550,7 @@ function buildTurnReport(gameState, playerIndex){
     if(_charHasMinor('castellan')){ const _owned=(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length; castellanG=Math.floor(_owned/5); }
     if(_charHasMinor('hostleader')) _hostLeaderChar=_pChars.find(c=>c.id===_min.hostleader.charId)||null; // 2026-09-09: wage forecast mirror
   }catch(e){}
-  const titlePerkGold=throneG+vaultG+cutpurseG+championG+castellanG;
+  const titlePerkGold=cutpurseG+championG+castellanG;
   const baseTaxIncome=provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)
   const thiefStipend=_pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0); // THIEF L6: +5g income per Thief-6 character
   const taxIncome=provTaxIncome+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+_sdRecords+titlePerkGold+thiefStipend;
@@ -9591,7 +9656,7 @@ function buildTurnReport(gameState, playerIndex){
     } }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,throneG,vaultG,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
     discoveries:(player.discoveries||[]).map(d=>{ const m=DISC_BY_ID[d.id]; return {id:d.id,name:(m&&m.name)||d.name,category:(m&&m.category)||d.category,desc:(m&&m.desc)||d.desc,turnDiscovered:d.turnDiscovered}; }), // item 2 (2026-09-09): master text wins over the copy stored at discovery time
     // Item 6 (2026-09-07): the Research order's category dropdown — every category this realm is eligible for,
     // with how many of its discoveries are already known (the portal greys out exhausted ones). Names and
@@ -10577,6 +10642,13 @@ async function runTurn(opts){
     const defCmdr=(defChar&&defChar.player!=null)?defChar:null;
     if(battle.won){ TM(atkChar)[bucket]+=defLost; if(defCmdr) TM(defCmdr)[bucket]-=defLost; }
     else          { if(defCmdr) TM(defCmdr)[bucket]+=atkLost; TM(atkChar)[bucket]-=atkLost; }
+    // 2026-09-17 (Toby): THE BEASTLORD AND THE WILDWARDEN. The WINNER is credited one point for every
+    // Monster- or Creature-category unit still under their banner when the fighting stops. Counted
+    // from the survivors on purpose: a commander who threw a dragon into the line and lost it has
+    // won the field but not shown mastery of the beast. The loser is not debited \u2014 unlike the
+    // Marshal's ledger these titles only ever rise, matching the Monster-Bane's shape.
+    const victor=battle.won?atkChar:defCmdr;
+    if(victor) (victor.armies||[]).forEach(a=>creditBeastUnit(TM(victor),a,1));
   }
 
   // (Sept 2026: the Task-12 max-HP cap, raiseMaxHp and hpCapFor were removed — maximum HP is now a
@@ -11259,6 +11331,9 @@ const BATTLE_ARMY_SPELLS={
       id:hero.id, name:hero.name.replace(' (wandering)',''),
       player:hero.player, race:hero.race, alignment:hero.alignment,
       temper:hero.temper, skills:{...hero.skills}, maxHp:hero.maxHp||20,
+      isKing:!!hero.isKing, // 2026-09-17: was never stored, so every `g.isKing` reader (the report's
+                            // visibleDeadHeroes among them) silently read undefined and no fallen king
+                            // was ever marked as one. The Hierophant's new reading needs it.
       killedOnTurn:G.turn, location:hero.location,
     });
   }
@@ -15688,11 +15763,12 @@ const BATTLE_ARMY_SPELLS={
           const prevExp=toProv.exploredBy[c.player]||0;
           toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove);
           toProv.explored=toProv.exploredBy[c.player];
+          creditMapped(c, prevExp, toProv.exploredBy[c.player]); // TITLE MERIT: Cartographer
           // NAVAL L6 — charting the coast: entering a SEA province while leading naval units adds +5%
           // exploration to each LAND province adjacent to this sea province.
           if(toProv.terrain==='sea' && perkTier(c,'naval')>0 && (c.armies||[]).some(a=>SEA_TYPES.has(a.type))){
             getNeighborsP(toProv,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{
-              if(nb && nb.terrain!=='sea'){ if(!nb.exploredBy) nb.exploredBy={}; const _npe=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_npe+5); nb.explored=nb.exploredBy[c.player]; }
+              if(nb && nb.terrain!=='sea'){ if(!nb.exploredBy) nb.exploredBy={}; const _npe=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_npe+5); nb.explored=nb.exploredBy[c.player]; creditMapped(c, _npe, nb.exploredBy[c.player]); }
             });
           }
           // Item 12: tell the player how far this move mapped the province, and its new total (or that
@@ -16322,13 +16398,14 @@ const BATTLE_ARMY_SPELLS={
         const before=prov.exploredBy[c.player]||0;
         prov.exploredBy[c.player]=Math.min(100,before+gain);
         prov.explored=prov.exploredBy[c.player]; // keep legacy field for compatibility
+        creditMapped(c, before, prov.exploredBy[c.player]); // TITLE MERIT: Cartographer
         // EXPLORER L8 — surveying the ground sometimes reveals richer land: 50% chance to +2 tax base (max 10), permanent.
         // EXPLORER L8 (capped Toby 2026-09-09): the rich-land survey can only pay off ONCE per province —
         // repeated Explore orders on the same ground no longer keep rolling the tax base upward.
         if(perkTier(c,'explorer')>=3 && !prov._richSurveyed && Math.random()<0.5){ prov._richSurveyed=true; const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
         // ANCIENT LORE (sd32) — the same Explore action also maps 10% of each adjacent province.
         if(hasDisc(c.player,'sd32')){
-          getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+10); nb.explored=nb.exploredBy[c.player]; });
+          getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+10); nb.explored=nb.exploredBy[c.player]; creditMapped(c, _ab, nb.exploredBy[c.player]); });
         }
         // Feature discovery: proportional thresholds based on how many features exist
         // At 100% explored, all features visible. 1 feature=100%, 2=50%/100%, 4=25%/50%/75%/100% etc.
@@ -16596,6 +16673,10 @@ const BATTLE_ARMY_SPELLS={
         const _pushRecruit=(unit)=>{
           if(_destGarrison){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit); }
           else { _destChar.armies=_destChar.armies||[]; _destChar.armies.push(unit); }
+          // TITLE MERIT: Beastlord / Wildwarden. Credited to the RECRUITER `c`, not the recipient:
+          // the merit is for finding and mustering the beast, and a hero who musters a griffon wing
+          // and hands it straight to a colleague has still done the mustering. Garrison musters count.
+          creditBeastUnit(TM(c), unit, 1);
         };
         const _mercTokens=new Set();
         let mHired=false;
@@ -16771,6 +16852,8 @@ const BATTLE_ARMY_SPELLS={
           const _ok=_auto||_roll<=_chance;
           log('system',`📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_chance,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           if(_ok){
+            TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster
+            noteEspionage(G, c, prov.id, 'read one of your heroes');
             trySkillGain(c,'spy',SKILLGAIN_STD);
             const _ap=G.players[c.player];
             if(_ap){ _ap._spiedHeroSkills=_ap._spiedHeroSkills||{}; _ap._spiedHeroSkills[_tgt.id]={name:_tgt.name,isKing:!!_tgt.isKing,alignment:_tgt.alignment||null,race:_tgt.race||null,kingdom:(_tgt.player!=null)?(G.players[_tgt.player]?.name||null):null,skills:{...(_tgt.skills||{})},turn:G.turn}; }
@@ -16816,6 +16899,8 @@ const BATTLE_ARMY_SPELLS={
           log('system',`📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(50,_dgRoll)} — ${c._spyDisguised?'the disguise holds; no alarm is raised.':'the disguise slips; the province\u2019s watch will report the intrusion.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         if(success){
+          TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster
+          noteEspionage(G, c, prov.id, 'spied out the province');
           applySpySuccess(c, prov);
         } else log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]});
         break;
@@ -17599,6 +17684,7 @@ const BATTLE_ARMY_SPELLS={
           const ownerP=G.players[prov.owner]; const chance=Math.floor(stealBase/2); const roll=d100();
           log('system',`📊 Steal — ${c.name} (Thief ${thiefLevel}) goes for the garrison paymaster of ${prov.name} (${_gN} unit${_gN!==1?'s':''}, guarded — halved): ${fmtRoll(chance,roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           if(roll<=chance){
+            noteEspionage(G, c, prov.id, 'robbed the garrison paymaster');
             const take=Math.min(ownerP.gold||0,_gN);
             if(take>0){ ownerP.gold-=take; player.gold=(player.gold||0)+take; c.merits=(c.merits||0)+1; }
             log('hire',`💰 ${c.name} lifts ${take}g from the garrison paymaster's strongbox in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -17624,6 +17710,7 @@ const BATTLE_ARMY_SPELLS={
         const stealRoll=d100();
         log('system',`📊 Steal — ${c.name} (Thief ${thiefLevel}) targets ${victim.name} (${wantGold?'gold':'a magic item'}): ${fmtRoll(stealChance, stealRoll)}${leadsArmies?' (halved — target leads armies)':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(stealRoll<=stealChance){
+          noteEspionage(G, c, prov.id, wantGold?'picked a hero\u2019s purse':'lifted a magic item from a hero');
           if(wantGold){
             const purse=G.players[victim.player]?.gold||0; const take=Math.min(purse,Math.max(1,Math.floor(purse*0.05)));
             if(purse<=0){ log('system',`${c.name} picks ${victim.name}'s purse — and finds it empty.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
@@ -18401,6 +18488,8 @@ const BATTLE_ARMY_SPELLS={
         let disbanded='';
         if((tp.garrisonArmies||[]).length>0){ const u=tp.garrisonArmies.splice(Math.floor(Math.random()*tp.garrisonArmies.length),1)[0]; disbanded=u?` A ${u.quality||''} ${u.type} of its garrison is put to the torch.`:''; }
         log('spy',`🕵 ${c.name}'s agents sabotage ${tp.name} — its coffers yield nothing this turn.${disbanded}`,{actor:c.player,targets:[c.player,tp.owner].filter(x=>x!=null),provinceId:tp.id});
+        TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster
+        noteEspionage(G, c, tp.id, 'worked sabotage');
         trySkillGain(c,'spy',SKILLGAIN_STD);
         break;
       }
@@ -18437,6 +18526,7 @@ const BATTLE_ARMY_SPELLS={
         const _hRoll=d100();
         log('system',`📊 Grand Heist — ${c.name} (Thief ${_hLvl}) cracks the vaults of ${_ghHome?'the enemy capital of ':'the rich province of '}${prov.name} (${G.players[vp]?.name||'an enemy realm'}): ${fmtRoll(_hChance,_hRoll)}${_ghGuarded?' (halved — the vaults are guarded)':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(_hRoll<=_hChance){
+          noteEspionage(G, c, prov.id, 'cracked the vaults');
           const purse=G.players[vp]?.gold||0;
           let take=Math.floor(purse*0.25);
           if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — the thief takes the full amount even if the realm cannot cover it (floored at 0 below)
@@ -18585,7 +18675,9 @@ const BATTLE_ARMY_SPELLS={
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
           else { log('combat',`🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          handleHeroDeath(victim, c); awardKillXP(c, victim); c.merits=(c.merits||0)+2; }
+          handleHeroDeath(victim, c); awardKillXP(c, victim); c.merits=(c.merits||0)+2;
+          TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster — only a blade that lands
+          noteEspionage(G, c, prov.id, 'put a blade in one of your heroes'); }
         } else {
           log('spy',`${c.name}'s attempt on ${victim.name} fails — the mark slips the knife.`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
         }
@@ -19823,6 +19915,12 @@ const BATTLE_ARMY_SPELLS={
   // Bots plan their orders later in this same runTurn, from the end-of-last-turn state — the same
   // snapshot a human's turn report was built from — so their intel layer needs last turn's spy
   // results, exactly as the report that reached the human did.
+  // 2026-09-17 (Toby): THE SPYMASTER'S LEDGER. Every successful act of espionage against a province
+  // is filed here as {byPi, provId, kind}, cleared with the rest of the espionage scratch each turn.
+  // It is the RAW record \u2014 disguise and counter-intelligence rolls do not touch it, because the
+  // Spymaster's whole perk is seeing what the province watch missed. Never persisted to a report
+  // except through the title line, so it cannot leak to a realm that does not hold the title.
+  G._espionageLedger=[];
   (G.players||[]).forEach(p=>{ p._spiedProvincesLastTurn=(p._spiedProvincesThisTurn||[]).slice(); p._spiedProvincesThisTurn=[]; p._clairCharThisTurn=null; if(!p._spiedHeroSkills) p._spiedHeroSkills={}; }); // _clairCharThisTurn: 2026-09-12 Clairvoyance reveal (one per realm)
 
   // Defend watches and Pursuits last for the rest of the TURN only — never across turns.
@@ -21937,14 +22035,62 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     { const pi=holder('marshal'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,false); log('system',`[The Grand Marshal] Your realm: ${oc?`strongest land army led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,false)})`:'no land army in the field'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,false); if(c){ any=true; log('system',`[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,false)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); } }
     // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
     { const pi=holder('sea'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,true); log('system',`[The Sea Lord] Your realm: ${oc?`strongest fleet led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,true)})`:'no fleet at sea'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,true)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
-    // THE MONSTER-BANE — the runner-up for this title: name + province.
-    { const pi=holder('monster'); if(pi!=null){ const rank=(G.characters||[]).filter(c=>c.alive).map(c=>({c,m:(c.tm&&c.tm.monster)||0})).sort((a,b)=>b.m-a.m); if(rank.length>=2&&rank[1].m>0){ const sec=rank[1].c; const top=rank.find(r=>r.c.player===pi)||rank[0]; log('system',`[The Monster-Bane] Your champion: ${top.c.name} with ${top.m} monster-blood to their name.`,{actor:pi,targets:[pi]}); log('system',`[The Monster-Bane] Your closest rival for the title: ${who(sec)}${sec.player!=null?`, last seen in ${prn(sec.location)}`:''} — ${sec.m} monster-blood.`,{actor:pi,targets:[pi]}); } else log('system',`[The Monster-Bane] No rival has yet drawn monster-blood worth noting.`,{actor:pi,targets:[pi]}); } }
-    // THE LOREMASTER — each rival discovery this turn (own line), then copy one for free.
-    { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const found=[]; G.players.forEach((pl,i)=>{ if(i===pi)return; (pl.discoveries||[]).forEach(d=>{ if(d.turnDiscovered===tt) found.push({d,i}); }); }); if(found.length){ found.forEach(f=>log('system',`[The Loremaster] ${pnm(f.i)} discovered ${f.d.name} this turn.`,{actor:pi,targets:[pi]})); const lp=G.players[pi]; if(lp){ const owned=new Set((lp.discoveries||[]).map(d=>d.id)); const learn=found.filter(f=>!owned.has(f.d.id)); if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d; (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn}); log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's notes — you now hold this discovery.`,{actor:pi,targets:[pi]}); } } } else log('system',`[The Loremaster] No rival made a new discovery this turn.`,{actor:pi,targets:[pi]}); } }
-    // THE ARCHMAGE — foremost mage of each school (own line): name + province.
-    { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0); [['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].forEach(([sk,lab])=>{ let best=null,bl=-1,bt=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } }); if(best&&bl>0) log('system',`[The Archmage] ${lab}: ${who(best,bl)}${best.player!=null?` in ${prn(best.location)}`:''}.`,{actor:pi,targets:[pi]}); else log('system',`[The Archmage] ${lab}: no mage of note.`,{actor:pi,targets:[pi]}); }); } }
-    // THE HIEROPHANT — the largest skeletal army: name + province.
-    { const pi=holder('hiero'); if(pi!=null){ let best=null,bc=-1; (G.characters||[]).filter(c=>c.alive).forEach(c=>{ const n=(c.armies||[]).filter(a=>a._isSkeletal).length; if(n>bc){bc=n;best=c;} }); if(best&&bc>0){ const str=(best.armies||[]).filter(a=>a._isSkeletal).reduce((s,a)=>s+unitBaseStrength(a),0); log('system',`[The Hierophant] The greatest host of the dead: ${who(best)}${best.player!=null?` in ${prn(best.location)}`:''} — ${bc} skeletal unit${bc!==1?'s':''}, total strength ${str}.`,{actor:pi,targets:[pi]}); } else log('system',`[The Hierophant] No skeletal army walks the world this turn.`,{actor:pi,targets:[pi]}); } }
+    // THE MONSTER-BANE — 2026-09-17 (Toby): was the single runner-up for the title. Now the foremost
+    // monster-slayer of EVERY rival realm, each on their own line with province and tally, so the
+    // holder can see the whole field coming rather than only the nearest challenger. An unsworn hero
+    // (player==null) is nobody's champion and is left out.
+    { const pi=holder('monster'); if(pi!=null){
+        const bestOf=(i)=>{ let b=null,bm=0; (G.characters||[]).filter(c=>c.alive&&c.player===i).forEach(c=>{ const m=(c.tm&&c.tm.monster)||0; if(m>bm){bm=m;b=c;} }); return b?{c:b,m:bm}:null; };
+        const own=bestOf(pi);
+        log('system',`[The Monster-Bane] Your champion: ${own?`${own.c.name} in ${prn(own.c.location)} with ${own.m} monster-blood to their name`:'no hero of yours has drawn monster-blood'}.`,{actor:pi,targets:[pi]});
+        let any=false;
+        G.players.forEach((pl,i)=>{ if(i===pi)return; const r=bestOf(i); if(r){ any=true;
+          log('system',`[The Monster-Bane] ${pnm(i)}: ${r.c.name} in ${prn(r.c.location)} — ${r.m} monster-blood.`,{actor:pi,targets:[pi]}); } });
+        if(!any) log('system',`[The Monster-Bane] No rival realm has a hero who has drawn monster-blood worth noting.`,{actor:pi,targets:[pi]});
+      } }
+    // THE LOREMASTER — 2026-09-17 (Toby): was this turn's discoveries only, which in most turns is
+    // nothing at all. Now the FULL holding of every rival realm, so the holder can see the whole shape
+    // of what others know. The free copy still comes from what was discovered THIS turn: the title
+    // reads a rival's library, it does not empty it.
+    { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const fresh=[]; let anyHeld=false;
+        G.players.forEach((pl,i)=>{ if(i===pi)return; const ds=(pl&&pl.discoveries)||[];
+          if(ds.length){ anyHeld=true;
+            log('system',`[The Loremaster] ${pnm(i)} holds ${ds.length} discover${ds.length===1?'y':'ies'}: ${ds.map(d=>d.name).join(', ')}.`,{actor:pi,targets:[pi]}); }
+          else log('system',`[The Loremaster] ${pnm(i)} holds no discoveries at all.`,{actor:pi,targets:[pi]});
+          ds.forEach(d=>{ if(d.turnDiscovered===tt) fresh.push({d,i}); }); });
+        if(!anyHeld) log('system',`[The Loremaster] No rival realm has yet learned anything worth copying.`,{actor:pi,targets:[pi]});
+        const lp=G.players[pi];
+        if(lp&&fresh.length){ const owned=new Set((lp.discoveries||[]).map(d=>d.id)); const learn=fresh.filter(f=>!owned.has(f.d.id));
+          if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d;
+            (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn});
+            log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's fresh notes — you now hold this discovery.`,{actor:pi,targets:[pi]}); } }
+      } }
+    // THE ARCHMAGE — 2026-09-17 (Toby): the foremost mage of each school OUTSIDE the holder's own
+    // realm. Naming the holder's own archmage back to them was the one line in the whole title system
+    // that told a player something they already knew; this is a rivals' board.
+    { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0);
+        [['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].forEach(([sk,lab])=>{
+          let best=null,bl=-1,bt=-1;
+          (G.characters||[]).filter(c=>c.alive&&c.player!==pi).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } });
+          if(best&&bl>0) log('system',`[The Archmage] ${lab}: ${who(best,bl)}${best.player!=null?` in ${prn(best.location)}`:''}.`,{actor:pi,targets:[pi]});
+          else log('system',`[The Archmage] ${lab}: no mage of note outside your own realm.`,{actor:pi,targets:[pi]});
+        }); } }
+    // THE HIEROPHANT — 2026-09-17 (Toby): was the largest skeletal army, which is the Deathpriest's
+    // ground and read as a necromancer's perk on a title of the White faith. Now the priest reads the
+    // dead: every fallen hero this realm can SEE gives up the skills they carried in life. Visibility
+    // mirrors buildTurnReport's `visibleDeadHeroes` — own dead, a fall witnessed this turn, or a body
+    // lying in a province the realm holds or has a character standing in — so the title never reveals a
+    // corpse the player could not already see on their map, only what that corpse knew.
+    { const pi=holder('hiero'); if(pi!=null){
+        const seen=new Set((G.players[pi]&&G.players[pi].seenDeadHeroIds)||[]);
+        const eyes=new Set(provs.filter(pv=>pv&&pv.owner===pi).map(pv=>pv.id));
+        (G.characters||[]).filter(c=>c&&c.alive&&c.player===pi).forEach(c=>{ if(c.location!=null) eyes.add(c.location); });
+        const vis=(G.heroGraveyard||[]).filter(g=>g&&(g.player===pi||seen.has(g.id)||(g.location!=null&&eyes.has(g.location))));
+        if(vis.length){ vis.forEach(g=>{
+            const sk=Object.entries(g.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'no skills the grave remembers';
+            log('system',`[The Hierophant] The dead speak: ${g.name}${g.player!=null?` of ${pnm(g.player)}`:''}${g.isKing?', a king,':''} lying in ${prn(g.location)} — ${sk}.`,{actor:pi,targets:[pi]}); }); }
+        else log('system',`[The Hierophant] No fallen hero lies where your priests can read them this turn.`,{actor:pi,targets:[pi]});
+      } }
     // THE DEATHPRIEST — Grave-sight: each province with Crack/Elite dead (own line).
     // Item 8 (2026-09-14): every Grave-sight find is also written into the realm's graveyard lore, so
     // the Deathpriest's provinces appear in the report's Graveyards Known alongside what their own
@@ -21953,6 +22099,96 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // report says "at least". A province with no crack/elite dead is left alone, never marked bare:
     // Grave-sight seeing nothing worth naming there is not the same as seeing empty ground.
     { const pi=holder('necro'); if(pi!=null){ let any=false; const _dpl=G.players[pi]; (G.world.provinces||[]).forEach(pv=>{ if(!pv)return; const _fine=(pv.battleGraves||[]).filter(g=>g&&(g.quality==='Crack'||g.quality==='Elite')); const n=_fine.length; if(n>0){ any=true; if(_dpl) noteGraveIntel(_dpl, pv.id, G.turn, _fine, {partial:true}); log('system',`[The Deathpriest] Grave-sight: ${prn(pv.id)} holds ${n} crack/elite dead. (Filed under Graveyards Known.)`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,{actor:pi,targets:[pi]}); } }
+    // ── THE FOUR NEW TITLES (2026-09-17, Toby) ──────────────────────────────────────────────────
+    // THE SPYMASTER — the counter-intelligence ledger. Every successful act of espionage worked
+    // against THIS realm's provinces this turn, named with the realm that worked it and where. This is
+    // the RAW ledger: a disguised agent who beat the province watch is still listed here, which is the
+    // whole point of the title. Only espionage against ground this realm actually owns is reported.
+    { const pi=holder('spy'); if(pi!=null){
+        const led=(G._espionageLedger||[]).filter(e=>e&&provs[e.provId]&&provs[e.provId].owner===pi&&e.byPi!==pi);
+        if(led.length){
+          // 2026-09-17 (Toby): NAME THE AGENT, not the crown. Knowing "Arden pried into your lands"
+          // is barely actionable; knowing WHICH hero did it, and where they were standing when they
+          // did, tells you who to hunt and where they are. The realm is still given, after the name.
+          led.forEach(e=>{
+            const agent=`${e.isKing?'\u265B ':''}${e.charName||'an unknown agent'}${e.byPi!=null?` of ${pnm(e.byPi)}`:', unsworn to any crown'}`;
+            log('system',`[The Spymaster] ${agent} ${e.kind} in ${prn(e.provId)}.`,{actor:pi,targets:[pi]});
+          });
+          // A hero who worked twice in one turn is ONE name on the roll, with a count — the per-act
+          // lines above already carry the detail, and the roll is meant to be read at a glance.
+          const byChar=new Map();
+          led.forEach(e=>{ const k=e.charId; const r=byChar.get(k)||{name:e.charName,pi:e.byPi,n:0}; r.n++; byChar.set(k,r); });
+          const roll=[...byChar.values()].sort((a,b)=>b.n-a.n)
+            .map(r=>`${r.name||'?'}${r.pi!=null?` (${pnm(r.pi)})`:''}${r.n>1?` \u00d7${r.n}`:''}`);
+          log('system',`[The Spymaster] ${led.length} intrusion${led.length===1?'':'s'} into your lands this turn by ${byChar.size} hero${byChar.size===1?'':'es'}: ${roll.join(', ')}.`,{actor:pi,targets:[pi]}); }
+        else log('system',`[The Spymaster] Your counter-intelligence reports a quiet turn — no hand was raised against your lands.`,{actor:pi,targets:[pi]});
+      } }
+    // ── 2026-09-17 (Toby): ALL THREE ARE NOW RIVAL-BY-RIVAL BOARDS ──────────────────────────────
+    // These three shipped as WORLD-facing lines (the far horizon, the breeding grounds, battles on
+    // wild ground). Toby's ruling: each should say something about every OTHER player, the shape the
+    // Throne, Vaultkeeper, Grand Marshal and Sea Lord already use. One line per rival, opening with
+    // the holder's own figure so the rivals' numbers can be read against something.
+    //
+    // THE CARTOGRAPHER — the rival atlas. For each realm: how many provinces they have charted to
+    // 100%, and their mapped ground as a share of the whole world. `exploredBy` is already kept per
+    // realm per province, so this is a straight read — nothing new is tracked for it.
+    { const pi=holder('carto'); if(pi!=null){
+        const land=provs.filter(pv=>pv);
+        const world=land.length||1;
+        const atlas=(i)=>{ let full=0, pts=0;
+          land.forEach(pv=>{ const e=(pv.exploredBy&&pv.exploredBy[i])||0; pts+=e; if(e>=100) full++; });
+          return {full, pct:Math.round(pts/world)};   // pts is a sum of 0-100 figures, so /world is the mean = the share
+        };
+        const own=atlas(pi);
+        log('system',`[The Cartographer] Your atlas: ${own.full} province${own.full===1?'':'s'} fully charted, ${own.pct}% of the world mapped.`,{actor:pi,targets:[pi]});
+        let any=false;
+        G.players.forEach((pl,i)=>{ if(i===pi)return; any=true; const a=atlas(i);
+          log('system',`[The Cartographer] ${pnm(i)}: ${a.full} province${a.full===1?'':'s'} fully charted, ${a.pct}% of the world mapped.`,{actor:pi,targets:[pi]}); });
+        if(!any) log('system',`[The Cartographer] No rival realm remains to survey.`,{actor:pi,targets:[pi]});
+      } }
+    // THE BEASTLORD — the rival menagerie. For each realm: how many Monster-category units they
+    // field, and the province holding their largest monster host. Garrisoned beasts are counted in the
+    // TOTAL (a realm can muster straight into a garrison) but the named host is always a commander's,
+    // because a garrison cannot march at you.
+    { const pi=holder('beast'); if(pi!=null){
+        const census=(i,set)=>{
+          let total=0, best=null, bn=0;
+          (G.characters||[]).filter(c=>c&&c.alive&&c.player===i).forEach(c=>{
+            const n=(c.armies||[]).filter(a=>a&&set.has(a.type)).length;
+            total+=n; if(n>bn){ bn=n; best=c; }
+          });
+          provs.forEach(pv=>{ if(pv&&pv.owner===i) total+=(pv.garrisonArmies||[]).filter(a=>a&&set.has(a.type)).length; });
+          return {total, best, bn};
+        };
+        const line=(i,label)=>{ const r=census(i,TITLE_MONSTER_ARMIES);
+          if(r.total===0){ log('system',`[The Beastlord] ${label}: no monsters under arms.`,{actor:pi,targets:[pi]}); return; }
+          log('system',`[The Beastlord] ${label}: ${r.total} monster unit${r.total===1?'':'s'} under arms${r.best?`, the largest host — ${r.bn} — with ${r.best.name} in ${prn(r.best.location)}`:' (all of them garrisoned)'}.`,{actor:pi,targets:[pi]}); };
+        line(pi,'Your realm');
+        let any=false;
+        G.players.forEach((pl,i)=>{ if(i===pi)return; any=true; line(i,pnm(i)); });
+        if(!any) log('system',`[The Beastlord] No rival realm remains to reckon.`,{actor:pi,targets:[pi]});
+      } }
+    // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: griffons, eagles,
+    // ents, giants, rocs and whale cohorts. Deliberately symmetrical with the Beastlord's board so a
+    // player holding both reads one format twice rather than two.
+    { const pi=holder('wild'); if(pi!=null){
+        const census=(i,set)=>{
+          let total=0, best=null, bn=0;
+          (G.characters||[]).filter(c=>c&&c.alive&&c.player===i).forEach(c=>{
+            const n=(c.armies||[]).filter(a=>a&&set.has(a.type)).length;
+            total+=n; if(n>bn){ bn=n; best=c; }
+          });
+          provs.forEach(pv=>{ if(pv&&pv.owner===i) total+=(pv.garrisonArmies||[]).filter(a=>a&&set.has(a.type)).length; });
+          return {total, best, bn};
+        };
+        const line=(i,label)=>{ const r=census(i,TITLE_CREATURE_ARMIES);
+          if(r.total===0){ log('system',`[The Wildwarden] ${label}: the wild answers to no one here.`,{actor:pi,targets:[pi]}); return; }
+          log('system',`[The Wildwarden] ${label}: ${r.total} creature unit${r.total===1?'':'s'} in the field${r.best?`, the greatest host — ${r.bn} — with ${r.best.name} in ${prn(r.best.location)}`:' (all of them garrisoned)'}.`,{actor:pi,targets:[pi]}); };
+        line(pi,'Your realm');
+        let any=false;
+        G.players.forEach((pl,i)=>{ if(i===pi)return; any=true; line(i,pnm(i)); });
+        if(!any) log('system',`[The Wildwarden] No rival realm remains to reckon.`,{actor:pi,targets:[pi]});
+      } }
   })();
   // ── TITLE CHANGES (Item 2) ── compare this turn's holders to last turn's snapshot so each player's
   // report can announce titles their characters/realm newly won this turn (with how + effect).
@@ -22371,6 +22607,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-1824</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.17-2126</div>
 </body>
 </html>
