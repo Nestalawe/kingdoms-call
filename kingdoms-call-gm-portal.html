@@ -800,6 +800,9 @@ const MASTERY_ORDER_LABEL={challenge:'Challenge',rampage:'Rampage',rain_of_arrow
 // Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
 // charmed enemy hero may not be made to do (2026-09-13, Toby item 2).
 const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','awaken_wild','harvest_field','rite']);
+// 2026-09-18 (Toby, charm item 2): the character-targeted hostile spells a seized enemy hero will not
+// aim at their ORIGINAL lord's characters (the Encounter order is refused on the same grounds).
+const CHARMED_NO_TURN_SPELLS=new Set(['Psychic Blast','Telekinetic Storm','Curse','Charm','Control Undead','Dominate']);
 const ENCOUNTER_TACTICS=[
   {code:'ME',label:'Melee — close and fight in hand-to-hand combat'},
   {code:'FI',label:'Fire Arrow — shoot arrows (requires Archery skill)'},
@@ -13309,6 +13312,8 @@ const BATTLE_ARMY_SPELLS={
         if(target&&target.kind==='character'&&target.ref&&target.ref.isKing){ narrative.push(`  ${caster.name}'s Charm washes over ${target.name} and finds nothing to grip — a crowned will cannot be swayed.`); break; }
         // ...and so is a mind swayed only last season (Toby 2026-09-09c) — the same immunity the action-phase Charm honours.
         if(target&&target.kind==='character'&&target.ref&&target.ref._charmImmuneTurn===G.turn){ narrative.push(`  ${caster.name}'s Charm slides off ${target.name} — a mind so lately swayed is closed to enchantment for a season.`); break; }
+        // 2026-09-18 (Toby, charm item 4): a mind swayed before resists any later Charm, combat casts included (10% per past charm, cumulative).
+        if(target&&target.kind==='character'&&target.ref&&(target.ref._charmResist||0)>0&&d100()<=target.ref._charmResist){ narrative.push(`  ${caster.name}'s Charm breaks against ${target.name}'s will (${target.ref._charmResist}% resistance) — a mind swayed before knows the feel of it, and shuts.`); break; }
         caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
       default: narrative.push(`  ${caster.name} casts ${spellName}.`);
     }
@@ -15750,7 +15755,41 @@ const BATTLE_ARMY_SPELLS={
       for(const x of pool){ r-=(STEAL_TIER_W[x.tier||1]||8); if(r<0){ it=x; break; } }
       items.splice(items.indexOf(it),1); applyItemMaxHp(victim,it);
       thief.items=(thief.items||[]); thief.items.push(it); applyItemMaxHp(thief,it);
+      it._stolenTurn=G.turn; // 2026-09-18 (Toby, charm item 1): a charmed hero's automatic Send Item hands over this turn's loot first
       return it;
+    };
+    // ── CHARM BACKLASH (2026-09-18, Toby charm item 5) ──────────────────────────────────────────
+    // A Charm that FAILS to take hold (fizzle, resisted, or sliding off a mind swayed last season)
+    // may bring the enchanter and their intended victim to blows: CHARM_BACKLASH_PCT chance of a
+    // personal encounter on both encounter plans. If EITHER hero leads their plan with Flee there is
+    // no encounter at all — one of them wants no part of it and the other cannot force it.
+    const CHARM_BACKLASH_PCT=50;
+    const charmBacklash=(caster, t, why)=>{
+      if(!t||t.alive===false||t.location!==caster.location) return;
+      const targetsPi=[caster.player,t.player].filter(x=>x!=null);
+      const roll=d100();
+      log('system',`📊 Charm backlash — ${t.name} may turn on ${caster.name} (${why}): ${fmtRoll(CHARM_BACKLASH_PCT,roll)}`,{actor:caster.player,targets:[caster.player],provinceId:prov.id});
+      if(roll>CHARM_BACKLASH_PCT) return;
+      ensureEncounterPlan(caster); ensureEncounterPlan(t);
+      const leadsFlee=(ch)=>{ const first=String(((ch.encounterPlan&&ch.encounterPlan.tactics)||['ME'])[0]||'').split(':')[0].toUpperCase(); return first==='FL'||first==='FLEE'; };
+      if(leadsFlee(caster)||leadsFlee(t)){
+        const who=leadsFlee(caster)?caster:t;
+        log('system',`${t.name} rounds on ${caster.name} as the enchantment fails — but ${who.name} is already slipping away, and there is no encounter.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:[caster.id,t.id]});
+        return;
+      }
+      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(x=>COMBAT_ONLY.has(String(x).split(':')[0].toUpperCase())||String(x).toUpperCase().startsWith('CA:'));
+      const atkPlan=filterPlan(t.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
+      const defPlan=filterPlan(caster.encounterPlan); if(!defPlan.length) defPlan.push('ME');
+      const _duelChars=[t.id,caster.id];
+      log('combat',`⚔ ${t.name} feels the enchantment clawing at their mind and rounds on ${caster.name} — blades are drawn!`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars});
+      markProvinceCombat(prov,[caster.player,t.player]);
+      const enc=resolveCharVsChar(t,caster,atkPlan,defPlan,prov,effStat,rng,G);
+      enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
+      if(t.player!==null) t.hp=Math.max(1,enc.atkHp);
+      caster.hp=Math.max(1,enc.defHp);
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(t)){ if(t.hp!=null&&t.hp<=0) t.hp=1; log('combat',_garrethEscapeLine(t),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${t.name} is cut down by the enchanter they turned on.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(t,caster); awardKillXP(caster,t); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(caster)){ if(caster.hp!=null&&caster.hp<=0) caster.hp=1; log('combat',_garrethEscapeLine(caster),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${caster.name} is slain — the failed Charm was their last spell.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(caster,t); awardKillXP(t,caster); } }
     };
 
     switch(action){
@@ -17677,9 +17716,13 @@ const BATTLE_ARMY_SPELLS={
         //   • DIFFERENT province → the items leave the sender NOW but travel by courier and ARRIVE with
         //     the recipient at the END of the turn (queued on G._itemDeliveries), ready to use next turn.
         // Item 9 (this session): the recipient is notified in THEIR own Chronicle section, this phase.
-        // 2026-09-12 (Toby, item 7): a CHARMED hero (enemy seized for the turn, or a wanderer swayed this turn) will not
-        // send their items away — the order is refused (the player portal no longer offers it either).
-        if(c._charmTempControl||c._charmedTurn===G.turn){ log('system',`${c.name} will not part with their possessions — a charmed mind still clutches what it owns.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
+        // 2026-09-12 (Toby, item 7) refused Send Item outright for a CHARMED hero (enemy seized for the turn, or a
+        // wanderer swayed this turn). 2026-09-18 (Toby, charm item 1) SUPERSEDES that refusal: A charmed hero will send ONE
+        // item, once per turn, and the charmer never chooses which — the hero hands over whatever they
+        // stole earlier this turn first (the loot was never theirs to keep), otherwise the WEAKEST thing
+        // they carry (lowest itemPowerScore, ties to the lower tier). Any item list in `target` is ignored.
+        const _charmedSender=!!(c._charmTempControl||c._charmedTurn===G.turn);
+        if(_charmedSender&&c._charmSendUsed===G.turn){ log('system',`${c.name} will part with no more — a charmed mind gives up one possession a season, and no more.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
         const recipId=parseInt(extra);
         const recip=G.characters[recipId];
         if(!recip){log('item',`${c.name}: cannot send item — no such recipient.`,{actor:c.player,targets:[c.player]});break;}
@@ -17687,7 +17730,16 @@ const BATTLE_ARMY_SPELLS={
         if(recip.id===c.id){log('item',`${c.name}: cannot send items to themselves.`,{actor:c.player,targets:[c.player]});break;}
         const _held=(c.items||[]);
         let idxs;
-        if(String(target||'').trim().toLowerCase()==='all'){ idxs=_held.map((_,i)=>i); }
+        if(_charmedSender){
+          c._charmSendUsed=G.turn; // the one order is spent whether or not anything is found to send
+          const pool=_held.map((it,i)=>({it,i})).filter(x=>x.it&&!isMithril(x.it));
+          if(!pool.length){ log('item',`${c.name} turns out their pack for ${recip.name} — and has nothing to give.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
+          const stolen=pool.filter(x=>x.it._stolenTurn===G.turn);
+          const pick=(stolen.length?stolen:pool).slice().sort((a,b)=>(itemPowerScore(a.it)-itemPowerScore(b.it))||((a.it.tier||1)-(b.it.tier||1)))[0];
+          idxs=[pick.i];
+          log('system',`${c.name}, charmed, hands over ${stolen.length?'what they stole this season':'the least of what they carry'} without being asked which.`,{actor:c.player,targets:[c.player],charId:c.id});
+        }
+        else if(String(target||'').trim().toLowerCase()==='all'){ idxs=_held.map((_,i)=>i); }
         else{ idxs=String(target||'').split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<_held.length); }
         let uniq=[...new Set(idxs)].sort((a,b)=>b-a);
         // A granted Mithril suit is forged to its wearer and cannot be sent on.
@@ -17925,6 +17977,12 @@ const BATTLE_ARMY_SPELLS={
         if(quarry.id===c.id){
           log('system',`${c.name} cannot set out to encounter themself.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
+        // 2026-09-18 (Toby, charm item 2): a seized ENEMY hero will not raise a hand against their own
+        // lord's people — no Encounter against a character of the original owner. Any other realm's
+        // heroes are fair game as usual.
+        if(c._charmTempControl&&c._charmOriginalPlayer!=null&&quarry.player===c._charmOriginalPlayer){
+          log('system',`${c.name} will not hunt ${quarry.name} — the Charm bends their will, but not so far as to turn them on their own lord's people.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+        }
         // Item 6 (this session): only a king may run down an enemy king. A common hero can never
         // force a meeting with a rival monarch — a king answers only to another crown. (Once caught,
         // a king is no harder to run down than any hero: pursuitCatchChance treats them the same.)
@@ -18056,6 +18114,13 @@ const BATTLE_ARMY_SPELLS={
         const spellDef=SPELL_DEFS_P[spellName];
         if(!spellDef){log('system',`${c.name}: unknown spell "${spellName}".`,{actor:c.player,targets:[c.player]});break;}
         if(!spellDef.phase){log('system',`${c.name}: ${spellName} cannot be used as a phase order.`,{actor:c.player,targets:[c.player]});break;}
+        // 2026-09-18 (Toby, charm item 2): a seized ENEMY hero will not turn hostile magic on their own
+        // lord's characters (the same rule as Encounter) — refused BEFORE the cast is even attempted, so
+        // it costs no casting slot. Other realms' heroes: as normal.
+        if(c._charmTempControl&&c._charmOriginalPlayer!=null&&CHARMED_NO_TURN_SPELLS.has(spellName)){
+          const _lordChar=G.characters.find(ch=>ch.alive&&ch.id===(parseInt(extra)||-1));
+          if(_lordChar&&_lordChar.player===c._charmOriginalPlayer){ log('system',`${c.name} lets the ${spellName} die on their lips — the Charm bends their will, but not so far as to turn them on their own lord's people.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break; }
+        }
 
         // Enforce action spell limits (AK rules): level 1-2 → 1/turn, level 3 → 2/turn, level 4-5 → 3/turn
         if(!_itemCast){
@@ -18111,6 +18176,8 @@ const BATTLE_ARMY_SPELLS={
 
         if(castRoll>castChance){
           log('system',`${c.name}'s ${spellName} fizzles — the spell dissipates without effect.`,{actor:c.player,targets:[c.player]});
+          // 2026-09-18 (Toby, charm item 5): a fizzled Charm may bring its intended victim down on the caster.
+          if(spellDef.fn==='psychic_charm'){ const _ct=G.characters.find(ch=>ch.alive&&ch.id===(parseInt(extra)||-1)); if(_ct&&_ct.player!==c.player&&!_ct.isKing) charmBacklash(c,_ct,'the spell fizzled'); }
           break;
         }
 
@@ -18300,7 +18367,27 @@ const BATTLE_ARMY_SPELLS={
           // the immunity holds; it deliberately survives the end-of-turn flag sweep, and is cleared lazily
           // once it has passed.
           if(t._charmImmuneTurn!=null&&t._charmImmuneTurn<G.turn) delete t._charmImmuneTurn;
-          if(t._charmImmuneTurn===G.turn){log('system',`${c.name}'s Charm slides off ${t.name} — a mind so lately swayed is closed to enchantment for a season.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+          if(t._charmImmuneTurn===G.turn){log('system',`${c.name}'s Charm slides off ${t.name} — a mind so lately swayed is closed to enchantment for a season.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); charmBacklash(c,t,'closed to enchantment this season'); break;}
+          // 2026-09-18 (Toby, charm item 4): every Charm that has ever taken hold leaves the mind 10%
+          // harder to sway — `_charmResist` is cumulative and permanent (it survives the turn-end flag
+          // sweep like _charmImmuneTurn does). Rolled here, after the cast itself has succeeded.
+          if((t._charmResist||0)>0){
+            const _rr=d100();
+            log('system',`📊 ${t.name} resists the Charm (${t._charmResist}% — swayed ${Math.round(t._charmResist/10)} time${t._charmResist===10?'':'s'} before): ${fmtRoll(t._charmResist,_rr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            if(_rr<=t._charmResist){
+              log('system',`${c.name}'s Charm breaks against ${t.name}'s will — a mind that has been swayed before knows the feel of it, and shuts.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+              if(t.player!=null) log('system',`${t.name} feels an enchantment reach for their mind — and throws it off.`,{actor:t.player,targets:[t.player],charId:t.id,provinceId:prov.id});
+              charmBacklash(c,t,'the Charm was resisted');
+              break;
+            }
+          }
+          // 2026-09-18 (Toby, charm item 3): the enchanter learns exactly what they have taken — the
+          // charmed hero's skills and every magic item they carry, reported to the CASTER only.
+          const _charmIntel=(hero)=>{
+            const sk=ABILITIES_P.filter(k=>skillLevel(hero,k)>0).map(k=>`${SKILL_LABELS[k]||k} ${skillLevel(hero,k)}`);
+            const its=(hero.items||[]).filter(Boolean);
+            log('system',`🔍 ${c.name} reads ${hero.name}'s mind as the Charm takes hold — Skills: ${sk.length?sk.join(', '):'none'}. Magic items: ${its.length?itemNameList(its,true):'none'}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          };
           // Charm cannot reach the dead. (targetChar is already alive-filtered at resolution, so a
           // hero who fell earlier this turn never arrives here — this makes the rule explicit and
           // guards any future path that might resolve a target without the alive check.)
@@ -18339,7 +18426,9 @@ const BATTLE_ARMY_SPELLS={
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
             if(typeof setMovePool==='function') setMovePool(t);
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
+            t._charmResist=(t._charmResist||0)+10; // 2026-09-18 (charm item 4): +10% resistance to every later Charm, cumulative
             log('hire',`✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            _charmIntel(t); // 2026-09-18 (charm item 3)
             const applied=_applyCharmOrders(t);
             if(applied>0) log('system',`${t.name} takes up the orders ${player.name} laid down for them — ${applied} phase${applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player]});
           } else {
@@ -18357,11 +18446,13 @@ const BATTLE_ARMY_SPELLS={
             t._charmedTurn=G.turn;                   // 2026-09-12 (item 7)
             t._charmControlFrom=ph;
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
+            t._charmResist=(t._charmResist||0)+10; // 2026-09-18 (charm item 4): +10% resistance to every later Charm, cumulative
             t.player=c.player;
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase; // drop any watch/chase set under their old lord
             if(typeof setMovePool==='function') setMovePool(t);
             const applied=_applyCharmOrders(t);
             log('hire',`✨ ${c.name}'s Charm grips ${t.name} — they fall under ${player.name}'s command until the season turns, when they return to their own lord (who still pays their wages).${applied>0?` ${applied} phase${applied!==1?'s':''} of orders await them.`:''}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            _charmIntel(t); // 2026-09-18 (charm item 3)
             // Item 4 (2026-09-09): file this under the CHARMED HERO (charId) — without it the entry inherited the
             // caster's charId from _logCtx, and the report's own-character rule handed the victim's warning to the
             // caster. After the ph-4 revert the hero belongs to _origOwner again, so it lands in THEIR section only.
@@ -22952,6 +23043,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.18-1107</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.18-1146</div>
 </body>
 </html>

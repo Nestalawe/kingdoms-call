@@ -771,7 +771,10 @@ function actionsFor(c){
     if(a==='Research'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
     if(a==='Steal'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only (2026-09-09) — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // 2026-09-08: a king cannot release himself
-    if(c&&c._hiddenSkills&&(a==='Send Item'||a==='Give Item'||a==='Release Hero')) return false; // 2026-09-12 (item 7): a charmed hero will not give up their possessions
+    // 2026-09-12 (item 7) hid Send Item from a charmed hero. 2026-09-18 (Toby, charm item 1) SUPERSEDES that:
+    // ONE Send Item may be ordered per turn, and the item is chosen by the engine (this season's loot first,
+    // else the weakest thing carried) — the charmer never sees the pack. Release Hero stays off the form.
+    if(c&&c._hiddenSkills&&(a==='Give Item'||a==='Release Hero')) return false;
     // 2026-09-13 (Toby item 2): an ENEMY hero whose command you have seized for the turn is held by an
     // enchantment, not an oath — they will not disband companies that are not theirs, perform your
     // realm's alignment rites, or spend their own mastery for you. The engine refuses these orders at
@@ -3413,7 +3416,7 @@ const SPELL_HINTS={
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
-  'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord. Kings and army-leaders are immune. Combat: doubles a later Flee attempt.',
+  'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord (and will not attack their own lord\'s heroes). On success you learn their skills and magic items. Kings and army-leaders are immune; each past Charm gives a hero +10% resistance (cumulative). A Charm that fails may provoke a personal encounter with the target — unless either leads their encounter plan with Flee. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose TWO skill levels, each taken from a randomly chosen skill they hold (both picks can land on the same skill, dropping it by 2). Combat: stuns them and grants you 3 free attacks. Battle: negates the enemy commander\u2019s Druid.',
@@ -4842,7 +4845,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
       <div style="color:#2a7a8a">These orders only take effect if the Charm succeeds. If the cast fails,
       or another realm charms ${wanderer.name} first, they are simply ignored.</div>
       <div style="color:var(--stone);margin-top:2px">${isEnemy
-        ? 'Their command is seized for the rest of this turn; at the season\u2019s end they return to their own lord (who still pays their wages).'
+        ? 'Their command is seized for the rest of this turn; at the season\u2019s end they return to their own lord (who still pays their wages). They will not attack their own lord\u2019s heroes, and will give up only one item this turn \u2014 of the engine\u2019s choosing.'
         : 'Joins your service at no hiring cost (you still pay their upkeep).'}</div>
     </div>
     <div class="orders-char-body"></div>`;
@@ -6645,6 +6648,9 @@ function buildTargetField(c, ph, saved){
     case 'Cast Spell':{
       const skills=c.skills||{};
       // 2026-09-12 (item 7): a charmed hero's schools and levels are hidden — offer every core phase spell without levels.
+      // 2026-09-18 (Toby, charm item 6): every BASE spell (levels 1-5) that can be a phase order is listed, whatever the
+      // school; L7/L9 mastery spells (SPELL_REQ_LEVEL) are not. Combat-only spells (Lightning Bolt, Fireball, Holy Symbol,
+      // Spiritwrack, Mirror Image, Hand of Death) are never phase orders. A spell the hero has not learned simply fails.
       if(c._hiddenSkills){
         const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
           'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Earthquake','Flood','Elemental Summon','Control Undead','Skeletal Armies','Curse','Plague']);
@@ -6898,6 +6904,24 @@ function buildTargetField(c, ph, saved){
 
     // ── GIVE ITEM ──
     case 'Send Item': case 'Give Item':{
+      // 2026-09-18 (Toby, charm item 1): a CHARMED hero (placeholder card, skills and items hidden) sends
+      // ONE item per turn and the engine picks it — whatever they stole earlier this turn, else the weakest
+      // thing they carry. No item list is shown; only the recipient is chosen. A second Send Item in
+      // another phase is refused here (and by the engine).
+      if(c._hiddenSkills){
+        const _otherPh=SEASONS.findIndex((_,p)=>p!==ph&&(document.getElementById(`po-action-${c.id}-${p}`)?.value||'')==='Send Item');
+        if(_otherPh>=0) return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
+          <div style="font-size:.74rem;color:#8a2a2a">A charmed hero gives up only ONE item a turn — Send Item is already ordered in ${SEASONS[_otherPh]}. Choose another action here.</div>`;
+        const chars=orderTargetCharsP(report).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
+        const loc4=predictedLocation(c.id,ph);
+        const recipOpts=chars.map(x=>{
+          const _same=(predictedLocation(x.id,ph)?.id)===(loc4?.id);
+          return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_same?'here now':'elsewhere — arrives end of turn'})</option>`;
+        }).join('');
+        return`<input type="hidden" id="po-target-${c.id}-${ph}" value="auto">
+          ${chars.length?`<select id="po-extra-${c.id}-${ph}">${recipOpts}</select>`:`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`}
+          <div style="font-size:.7rem;color:var(--stone)">You cannot see what this hero carries. They will hand over one item of the engine's choosing — anything they stole this turn first, otherwise their weakest — or nothing if their pack is empty.</div>`;
+      }
       // Predicted item list: starts from the report, then applies every earlier phase's Give Item
       // orders — so an item HANDED TO this character in an earlier phase can be given onward here,
       // and an item already given away no longer appears. Indices match GM resolution order.
@@ -8184,6 +8208,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1107</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1146</div>
 </body>
 </html>
