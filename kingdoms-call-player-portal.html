@@ -7252,10 +7252,16 @@ function _tintForDarkTooltip(hex){
 //   text:false → colour emoji, pinned with VS16; `fill` is ignored by the renderer, so these use
 //                opacity or nothing to carry meaning (the Wonder's gold/grey, per 107.7).
 //   fill:null  → the colour is dynamic (a realm's own colour); `legend` gives the swatch a stand-in.
+// 2026-09-18 (Toby): the graves cross is no longer a FONT glyph at all. ✝ (U+271D) has no text-style
+// glyph in the symbol fonts most phones ship, so even with VS15 pinned the emoji font answered and drew
+// its own picture in its own colour — different from the desktop's Segoe/Apple Symbols cross. A marker
+// with `path` is drawn as SVG geometry (box×box units, centred on 0,0) by BOTH renderers, so it is
+// pixel-for-pixel the same shape in the same fill on every platform, and `fill` is always honoured.
+const MAP_CROSS_PATH='M-1.2 -5H1.2V-2.6H3.6V-0.2H1.2V5H-1.2V-0.2H-3.6V-2.6H-1.2Z';
 const MAP_SYM={
   dead:         {glyph:'☠',  text:true,  fill:'#7a1f1f', label:'a fallen hero lies here'},
-  gravesFresh:  {glyph:'✝',  text:true,  fill:'#9de89d', label:'battlefield graves, read this turn'},
-  gravesStale:  {glyph:'✝',  text:true,  fill:'#9a9a9a', label:'battlefield graves, older knowledge'},
+  gravesFresh:  {glyph:'✝',  text:true,  fill:'#9de89d', label:'battlefield graves, read this turn',  path:MAP_CROSS_PATH, box:10},
+  gravesStale:  {glyph:'✝',  text:true,  fill:'#9a9a9a', label:'battlefield graves, older knowledge', path:MAP_CROSS_PATH, box:10},
   battle:       {glyph:'⚔',  text:true,  fill:'#ff4444', label:'a battle was fought here this turn'},
   battleOngoing:{glyph:'⚔',  text:true,  fill:'#ff8800', label:'a battle still raging — it carries on next turn'},
   duel:         {glyph:'⚔',  text:true,  fill:'#b060ff', label:'personal combat — a duel, encounter or assassination'},
@@ -7269,14 +7275,43 @@ const MAP_SYM={
 };
 // Paint one onto an SVG <text> node (the hex). `fill` overrides the table for the markers whose colour
 // is decided at draw time (a realm's crown, a player's banner, a Wonder that has changed hands).
+// 2026-09-18: a `path` marker RETURNS A NEW <g> in place of the <text> the caller built — the caller's
+// x/y/font-size/stroke/filter/title/pointer-events are carried across, so the caller must append the
+// RETURN VALUE, not its own text node. Callers of glyph markers still get their own node back.
 function mapSymSvg(el, sym, fill){
   const f=(fill!=null?fill:sym.fill);
+  if(sym.path){
+    const ns='http://www.w3.org/2000/svg';
+    const size=parseFloat(el.getAttribute('font-size'))||8, box=sym.box||10, sc=size/box;
+    const x=parseFloat(el.getAttribute('x'))||0, y=parseFloat(el.getAttribute('y'))||0;
+    const g=document.createElementNS(ns,'g');
+    // a text glyph of this font-size sits on the baseline `y`; centre the geometry where its middle was
+    g.setAttribute('transform',`translate(${x} ${y-size*0.4}) scale(${sc})`);
+    ['filter','pointer-events','opacity'].forEach(a=>{ if(el.hasAttribute(a)) g.setAttribute(a,el.getAttribute(a)); });
+    const p=document.createElementNS(ns,'path');
+    p.setAttribute('d',sym.path);
+    if(f!=null) p.setAttribute('fill',f);
+    if(el.hasAttribute('stroke')){
+      p.setAttribute('stroke',el.getAttribute('stroke'));
+      p.setAttribute('stroke-width',String((parseFloat(el.getAttribute('stroke-width'))||0.3)/sc));
+      p.setAttribute('paint-order','stroke'); p.setAttribute('stroke-linejoin','round');
+    }
+    Array.from(el.childNodes).forEach(n=>{ if(n.nodeType===1) g.appendChild(n); }); // keep the <title>
+    g.appendChild(p);
+    return g;
+  }
   if(f!=null) el.setAttribute('fill',f);
   (sym.text?mapTextGlyph:mapEmojiGlyph)(el,sym.glyph);
   return el;
 }
 // Render one as HTML (the popup), lifted for the dark ground.
 function mapSymHtml(sym, colour, size){
+  if(sym.path){ // 2026-09-18: geometry, not a font glyph — identical on every platform (see MAP_CROSS_PATH)
+    const raw=(colour!=null?colour:(sym.fill||sym.legend));
+    const col=raw?_tintForDarkTooltip(raw):'currentColor';
+    const b=sym.box||10, sz=size||'1em';
+    return `<svg viewBox="${-b/2} ${-b/2} ${b} ${b}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
+  }
   // The variation selector matters as much as the glyph: VS15 pins TEXT presentation so a phone's
   // emoji font cannot hijack ☠ or ✝ and draw a colour picture that ignores our fill (the 2026-09-07
   // mobile fault, DEV_LOG 107.7). MAP_SYMBOL_FONT is the same symbol-capable stack the hex uses.
@@ -7473,8 +7508,11 @@ function skillFameLabel(level){
 //   the garrison shield (navy was decoration) — but the Wonder's gold/grey DID carry meaning, so
 //   active vs dormant is now shown by OPACITY, which emoji honour on every platform.
 const MAP_SYMBOL_FONT="'Noto Sans Symbols 2','Noto Sans Symbols','Segoe UI Symbol','Apple Symbols','Symbola','DejaVu Sans',sans-serif";
-function mapTextGlyph(el, ch){ el.setAttribute('font-family',MAP_SYMBOL_FONT); el.textContent=ch+'\uFE0E'; return el; }
-function mapEmojiGlyph(el, ch){ el.textContent=ch+'\uFE0F'; return el; }
+// 2026-09-18: set the glyph WITHOUT wiping child elements \u2014 callers append a <title> tooltip before
+// calling these, and `textContent=` was silently deleting it.
+function _setGlyphText(el, s){ Array.from(el.childNodes).forEach(n=>{ if(n.nodeType===3) el.removeChild(n); }); el.appendChild(document.createTextNode(s)); }
+function mapTextGlyph(el, ch){ el.setAttribute('font-family',MAP_SYMBOL_FONT); _setGlyphText(el, ch+'\uFE0E'); return el; }
+function mapEmojiGlyph(el, ch){ _setGlyphText(el, ch+'\uFE0F'); return el; }
 
 const MAP_RACE_BADGE={
   Human:   {glyph:'H',fill:'#c9a961',text:'#1a1208'},
@@ -7970,8 +8008,10 @@ function renderMapIntoSvg(svgEl, report){
         ? 'Battlefield graves lie here — read this turn, so the dead are certainly still in the ground.'
         : `Battlefield graves were here as of turn ${_gi.turn!=null?_gi.turn:'?'} — they may since have been raised or rotted away.`;
       vtxt.appendChild(_vt);
-      mapSymSvg(vtxt, _fresh?MAP_SYM.gravesFresh:MAP_SYM.gravesStale);   // ✝ — shared with the popup
-      vtxt.setAttribute('class','sym-graves'); symbolLayer.appendChild(vtxt);
+      // 2026-09-18: the cross is SVG geometry now (MAP_CROSS_PATH), so mapSymSvg hands back a <g> built
+      // from vtxt's position/size/stroke/title — append THAT, not the text node.
+      const vnode=mapSymSvg(vtxt, _fresh?MAP_SYM.gravesFresh:MAP_SYM.gravesStale);   // shared with the popup
+      vnode.setAttribute('class','sym-graves'); symbolLayer.appendChild(vnode);
     }
 
     // Own commander leading an army (item): a banner at the BOTTOM-LEFT of the hex marks any province
@@ -8216,6 +8256,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1208</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1212</div>
 </body>
 </html>
