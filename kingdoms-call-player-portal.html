@@ -159,6 +159,14 @@ section{display:none;}.section-active{display:block;}
     position:static!important;height:auto!important;border-right:none!important;
     box-sizing:border-box;padding-bottom:66px!important;         /* clear the fixed tab bar */
   }
+  /* 2026-09-18 (Toby): the report jump-bar was not sticky on phones. position:sticky sticks to the nearest
+     SCROLL CONTAINER, and on mobile the page is what scrolls — but three ancestors were still scroll
+     containers that never move: the column's inline overflow-y:auto (height is auto here, so it never
+     scrolls), and overflow-x:hidden on #rp-layout / #sec-report (hidden on one axis forces the other to
+     auto). Make the column overflow-visible and swap the ancestors to overflow-x:clip, which clips
+     horizontally WITHOUT creating a scroll container, so the bar now sticks to the page viewport. */
+  #rp-report-col{overflow:visible!important;}
+  #sec-report,#rp-layout{overflow:visible!important;overflow-x:clip!important;}
   /* Show only the column matching the active view */
   #rp-layout.mv-map    #rp-report-col,
   #rp-layout.mv-map    #orders-column,
@@ -8208,6 +8216,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1146</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.18-1208</div>
 </body>
 </html>
