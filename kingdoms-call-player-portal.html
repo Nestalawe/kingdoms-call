@@ -113,6 +113,8 @@ section{display:none;}.section-active{display:block;}
 .log-entry.explore{border-left-color:var(--forest);}
 .log-entry.hire{border-left-color:var(--gold);}
 .log-entry.system{border-left-color:#888;font-style:italic;color:#666;}
+.intel-plain .log-entry,.intel-plain .log-entry.system{font-style:normal;color:var(--ink);}
+.intel-plain .ti-line{padding-left:10px;margin-top:1px;}
 .log-entry.stat{border-left-color:#4a90d9;background:#f0f6ff;font-family:'Courier New',monospace;font-size:.75rem;color:#2c4a6e;line-height:1.4;}
 
 /* Orders */
@@ -473,7 +475,7 @@ section{display:none;}.section-active{display:block;}
           <button class="rj-btn" onclick="jumpToReportSection('report-chronicle-card')" title="Chronicle">📜 Chronicle</button>
           <button class="rj-btn" onclick="jumpToReportSection('realm-card')" title="Your Realm">👑 Realm</button>
           <button class="rj-btn" onclick="jumpToReportSection('provinces-card')" title="Your Provinces">🗺 Provinces</button>
-          <button class="rj-btn" onclick="jumpToReportSection('intel-card')" title="Intelligence">🕵 Intel</button>
+          <button class="rj-btn" onclick="jumpToReportSection('intel-reports-section')" title="Intelligence Reports">🕵 Intelligence</button>
           <button class="rj-btn" onclick="jumpToReportSection('other-forces-card')" title="Other Armies &amp; Heroes">⚔ Others</button>
           <button class="rj-btn" onclick="jumpToReportSection('lairs-card')" title="Known Lairs">🐉 Lairs</button>
           <button class="rj-btn" onclick="jumpToReportSection('diplomacy-card')" title="Diplomacy">🤝 Diplomacy</button>
@@ -500,11 +502,6 @@ section{display:none;}.section-active{display:block;}
         <div class="card" id="provinces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🗺 Your Provinces</h2>
           <div id="report-provinces"></div>
-        </div>
-
-        <div class="card" id="intel-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
-          <h2>🕵 Intelligence</h2>
-          <div id="report-intel"><em style="color:#999;font-size:.85rem">No intelligence gathered yet.</em></div>
         </div>
 
         <div class="card" id="other-forces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
@@ -1755,6 +1752,20 @@ async function doJoinGame(gameId){
   setTimeout(()=>{show('sec-games');loadAllGames();},2000);
 }
 
+// The Chronicle's "Intelligence Reports" section. `inner` = the turn's logged intel (title
+// dispatches, standings, [Intelligence] lines). On the current-turn view it ends with #report-intel,
+// which renderReportView fills with the province reports, spied provinces and spy activity.
+function intelSectionShell(inner){
+  const host=(viewedTurn==null)?'<div id="report-intel"></div>':'';
+  return `<div class="char-chronicle intel-plain" id="intel-reports-section" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
+        <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
+          padding:7px 12px;background:#c8922a;display:flex;align-items:center;gap:8px">
+          <span style="font-size:1rem">👁</span>
+          <span style="font-weight:600">Intelligence Reports</span>
+          <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)">&#9662;</button>
+        </div>
+        <div style="padding:6px 8px">${inner||''}${host}</div></div>`;
+}
 function buildChronicle(log, chars_for_log){
   const PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];
   const PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555'];
@@ -1782,7 +1793,7 @@ function buildChronicle(log, chars_for_log){
   })();
 
   if(!log.length){
-    document.getElementById('report-log').innerHTML=_reckoningBanner+'<em style="color:#999;font-size:.85rem">No events yet.</em>';
+    document.getElementById('report-log').innerHTML=_reckoningBanner+'<em style="color:#999;font-size:.85rem">No events yet.</em>'+(viewedTurn==null?intelSectionShell(''):'');
   } else {
     // ── SORT ENTRIES INTO STRUCTURE ────
     // charEntries: charId → { name, isKing, phases: [ [], [], [], [], [] ] }
@@ -2065,15 +2076,11 @@ function buildChronicle(log, chars_for_log){
     // turn's Chronicle must not show today's standings.
     const _standHtml=(viewedTurn==null)?titleStandingIntelHTML(currentReport):'';
     const hasIntel=Object.values(intelByPhase).some(a=>a.length>0)||titleIntel.length>0||!!_standHtml;
-    if(hasIntel){
-      html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
-        <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
-          padding:7px 12px;background:#c8922a;display:flex;align-items:center;gap:8px">
-          <span style="font-size:1rem">👁</span>
-          <span style="font-weight:600">Intelligence Reports</span>
-          <button type="button" class="cc-toggle" title="Minimise / maximise" aria-expanded="true" onclick="toggleSection(this)">&#9662;</button>
-        </div>
-        <div style="padding:6px 8px">`;
+    // On the current-turn view the section ALWAYS renders: it also hosts the province / spy
+    // intelligence that used to have its own "Intelligence" card (filled by renderReportView into
+    // #report-intel). A past-turn view shows only that turn's logged intel.
+    if(hasIntel||viewedTurn==null){
+      let html0=html; html='';
 
       // ── Imperial Titles subsection ── the per-turn intel your held titles grant (rival
       // treasuries, strongest armies/fleets, rival discoveries, and so on), grouped apart from
@@ -2090,8 +2097,8 @@ function buildChronicle(log, chars_for_log){
         byTitle.forEach((parts,k)=>{
           const tag=`<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">[${k}]</span>`;
           // every character and realm name bold + tinted in its realm's colour
-          const body=parts.map(t=>colorizeNames(t,true)).join(' <span style="color:#c8922a">•</span> ');
-          html+=`<div class="log-entry system">${tag} ${body}</div>`;
+          const body=parts.map(t=>`<div class="ti-line">${colorizeNames(t,true)}</div>`).join('');
+          html+=`<div class="log-entry system">${tag}${body}</div>`;
         });
       }
       if(_standHtml){ html+=_subHead('📊 Your standing in the Imperial Titles')+_standHtml; }
@@ -2116,7 +2123,7 @@ function buildChronicle(log, chars_for_log){
           html+=`<div class="log-entry system">${text}</div>`;
         });
       }
-      html+=`</div></div>`;
+      html=html0+intelSectionShell(html);
     }
 
       document.getElementById('report-log').innerHTML=_reckoningBanner+(html||'<em style="color:#999;font-size:.85rem">No events yet.</em>');
@@ -2309,7 +2316,7 @@ async function openReport(gamePlayerId){
   if(report.waitingForTurn0||g.turn===0){
     document.getElementById('report-kingdom').innerHTML='<div class="msg-info">The GM is setting up the game world. Check back soon — your turn report will appear here once Turn 0 has been run.</div>';
     document.getElementById('report-provinces').innerHTML='';
-    document.getElementById('report-intel').innerHTML='';
+    { const _ri=document.getElementById('report-intel'); if(_ri) _ri.innerHTML=''; }
     { const _of=document.getElementById('report-other-forces'); if(_of)_of.innerHTML=''; const _lr=document.getElementById('report-lairs'); if(_lr)_lr.innerHTML=''; }
     document.getElementById('orders-card').style.display='none';
     refreshOrdersVisibility(false); // Turn 0 setup — no orders yet (desk-safe)
@@ -2799,8 +2806,9 @@ function renderReportView(report){
     }).join('');
   }
 
-  document.getElementById('report-intel').innerHTML=intelHtml||
-    '<em style="color:#999;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>';
+  { const _ri=document.getElementById('report-intel');
+    if(_ri){ const _sec=document.getElementById('intel-reports-section'); const _other=_sec?_sec.querySelectorAll('.log-entry').length:0;
+      _ri.innerHTML=intelHtml||(_other?'':'<em style="color:#999;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>'); } }
   const _ofEl=document.getElementById('report-other-forces');
   if(_ofEl) _ofEl.innerHTML=otherForcesHtml||
     '<em style="color:#999;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em>';
@@ -8378,6 +8386,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0241</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0254</div>
 </body>
 </html>
