@@ -8444,6 +8444,21 @@ async function runTurn(opts){
   // (charId null so it is NOT a character section, and env:false so it is NOT diverted to the quieter
   // Province Reports stream). No-op if the caster IS the owner (they already know) or the land is
   // unowned. targets makes the owner see it even though the caster was an enemy.
+  // ── ONE EVENT, TWO AUDIENCES ────
+  // A cast that raises troops is written for the caster ("…to fight under your command") but is
+  // also public, so an onlooker — the owner of the province, a spy, a hero standing there — read
+  // the same second-person sentence with no province in it. `logSplit` writes the caster's line
+  // privately and a third-person line for everyone else who can see the province (notFor keeps the
+  // caster from reading it twice). Both carry the province so the report can place them.
+  function logSplit(type, privText, pubText, meta={}){
+    const actor=meta.actor??null;
+    log(type, privText, {...meta, public:false, targets:(meta.targets&&meta.targets.length)?meta.targets:[actor].filter(x=>x!=null)});
+    turnLog.push({type, text:pubText, actor:null, targets:[], provinceId:meta.provinceId??null, public:true,
+      spy:false, system:false, armyEstimate:null, charId:null, charIds:null,
+      phase:(meta.phase??_logCtx.phase??(_afterPhases?99:null)), pinNotice:false, env:false,
+      notFor:[actor].concat(meta.alsoNotFor||[]).filter(x=>x!=null)});
+  }
+  function realmTag(pi){ return (pi!=null&&G.players[pi])?` (${G.players[pi].name})`:''; }
   function notifyProvinceOwner(prov, text, casterPlayer, ph){
     if(!prov || prov.owner==null || prov.owner===casterPlayer) return;
     const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
@@ -10293,7 +10308,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfNPC) narrative.push(`🛡 Shield Fort — ${cName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[c._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&isFriendlyProvFor(fromProv,c.player)&&fromProv.id!==prov.id)?fromProv:(friendlyAdj.find(p2=>p2.id!==prov.id)||friendlyAdj[0]);
+        const retreatTo=(fromProv&&fromProv.id!==prov.id&&friendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(friendlyAdj.find(p2=>p2.id!==prov.id)||friendlyAdj[0]); // must be ADJACENT (and friendly, enterable) — never a stale far-off origin
         narrative.push(`${cName}'s forces retreat to ${retreatTo.name}.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         retreatTo.characters=(retreatTo.characters||[]);
@@ -10630,6 +10645,8 @@ const BATTLE_ARMY_SPELLS={
   // aura and ward is applied to THAT real figure. Only the FINAL result is clamped, to a hard 80% —
   // so a Melee 6 hero meeting a −15% guardian hits at 75%, not 65%, while a Melee 5 hero meeting
   // the same guardian hits at 65%. No melee or arrow ever exceeds 80%, temper bonuses included.
+  // Encounter Character: an UNARMED challenger reaching an ARMED quarry (see advancePursuit).
+  const ENC_BREAK_RANKS_BASE=60, ENC_BREAK_RANKS_PER_UNIT=8, ENC_BREAK_RANKS_SPY=5, ENC_BREAK_RANKS_TAC=5, ENC_BREAK_RANKS_MIN=5, ENC_BREAK_RANKS_MAX=95;
   const PC_MELEE_HIT_BASE=30, PC_MELEE_HIT_PER_LVL=10, PC_HIT_SKILL_CAP=5, PC_HIT_PER_LVL_ABOVE=5, PC_HIT_MAX=80, PC_HIT_MIN=5;
   // Skill counted for to-hit: the character's RAW level (1–9) where known, else the combatant's
   // stat
@@ -12693,7 +12710,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfDef&&def.armies.length>0) narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const defFromProv=G.world.provinces[def._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const defRetreatTo=(defFromProv&&isFriendlyProvFor(defFromProv,def.player)&&defFromProv.id!==prov.id)?defFromProv:(defFriendlyAdj.find(p2=>p2.id!==prov.id)||defFriendlyAdj[0]);
+        const defRetreatTo=(defFromProv&&defFromProv.id!==prov.id&&defFriendlyAdj.some(p2=>p2.id===defFromProv.id))?defFromProv:(defFriendlyAdj.find(p2=>p2.id!==prov.id)||defFriendlyAdj[0]); // adjacent only
         narrative.push(`${defName} retreats to ${defRetreatTo.name}.`);
         const defSurvivors2=def.armies||[];
         if(defSurvivors2.length>0) narrative.push(`📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
@@ -12773,7 +12790,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfAtk&&atk.armies.length>0) narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[atk._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&isFriendlyProvFor(fromProv,atk.player)&&fromProv.id!==prov.id)?fromProv:(atkFriendlyAdj.find(p2=>p2.id!==prov.id)||atkFriendlyAdj[0]);
+        const retreatTo=(fromProv&&fromProv.id!==prov.id&&atkFriendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(atkFriendlyAdj.find(p2=>p2.id!==prov.id)||atkFriendlyAdj[0]); // adjacent only
         narrative.push(`${atkName} retreats to ${retreatTo.name}.`);
         // Summarise surviving attacker armies
         const atkSurvivors=atk.armies||[];
@@ -13198,7 +13215,7 @@ const BATTLE_ARMY_SPELLS={
         const neighbors=(prov?getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces):[]).filter(n=>n.terrain!=='sea');
         // Prefer the ground they actually came from — that is "the province they retreated to".
         const _cameFrom=G.world.provinces[deadChar._attackedFrom];
-        const safeProv=(_cameFrom&&_cameFrom.owner===deadChar.player&&_cameFrom.terrain!=='sea'?_cameFrom:null)
+        const safeProv=(_cameFrom&&_cameFrom.owner===deadChar.player&&_cameFrom.terrain!=='sea'&&neighbors.some(n=>n.id===_cameFrom.id)?_cameFrom:null)
           ||neighbors.find(n=>n.owner===deadChar.player)||null;
         if(safeProv){
           safeProv.garrisonArmies=(safeProv.garrisonArmies||[]).concat(deadArmies);
@@ -13777,6 +13794,7 @@ const BATTLE_ARMY_SPELLS={
         }
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         c.location=toProv.id;
+        c._attackedFrom=prov.id; // the ground they came from — where a later forced retreat this turn falls back to
         // Illusory Terrain: an enemy hero setting foot here dispels it — but not until the END of
         // this turn (the illusion holds for the rest of the turn they arrive, then lifts).
         if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ toProv._illusoryTerrain._enteredByEnemy=true; }
@@ -16459,7 +16477,8 @@ const BATTLE_ARMY_SPELLS={
           const elemental={type:pick.type,quality:'Veteran',race:'Elemental',unitName:pick.unitName,_temporary:true,_expiresAfterPhase:-1};
           c.armies=(c.armies||[]);c.armies.push(elemental);
           c._elementalSummonedThisTurn=true;
-          log('explore',`✨ ${c.name} tears open a rift and ${pick.unitName} — a ${pick.type} — surges forth to fight under your command! It will dissolve at the end of the turn.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          logSplit('explore',`✨ ${c.name} tears open a rift in ${prov.name} and ${pick.unitName} — a ${pick.type} — surges forth to fight under your command! It will dissolve at the end of the turn.`,
+            `✨ ${c.name}${realmTag(c.player)} tears open a rift in ${prov.name} — ${pick.unitName}, a ${pick.type}, surges forth to fight under their banner.`,{actor:c.player,provinceId:prov.id});
           resolveUnitGainInProvince(c, prov, ph);
         }
 
@@ -16518,7 +16537,9 @@ const BATTLE_ARMY_SPELLS={
           const pick=undeadIdxs[Math.floor(Math.random()*undeadIdxs.length)];
           const seized=targetChar.armies.splice(pick.i,1)[0];
           c.armies=(c.armies||[]); c.armies.push(seized);
-          log('hire',`✨ ${c.name}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} — it now marches under your banner!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
+          logSplit('hire',`✨ ${c.name}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} in ${prov.name} — it now marches under your banner!`,
+            `✨ ${c.name}${realmTag(c.player)}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name}${realmTag(targetChar.player)} in ${prov.name} — it now marches under ${c.name}'s banner.`,{actor:c.player,provinceId:prov.id,alsoNotFor:[targetChar.player]});
+          notifyTarget(targetChar,`✨ ${c.name}${realmTag(c.player)}'s Control Undead wrests the ${seized.unitName||seized.type} from ${targetChar.name} in ${prov.name} — it now marches under the enemy's banner.`,ph,'hire');
           resolveUnitGainInProvince(c, prov, ph);
         }
         else if(fn==='necromancy_skeletal'){
@@ -16606,8 +16627,9 @@ const BATTLE_ARMY_SPELLS={
           const idxs=shuffleP(src.map((_,i)=>i)).slice(0,take).sort((a,b)=>b-a);
           const seized=idxs.map(i=>src.splice(i,1)[0]);
           c.armies=(c.armies||[]).concat(seized);
-          log('hire',`✨ ${c.name} Dominates ${targetChar.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          notifyTarget(targetChar,`✨ ${c.name} Dominates ${targetChar.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and desert to the enemy.`,ph,'hire');
+          logSplit('hire',`✨ ${c.name} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under your banner!`,
+            `✨ ${c.name}${realmTag(c.player)} Dominates ${targetChar.name}${realmTag(targetChar.player)} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and march under ${c.name}'s banner.`,{actor:c.player,provinceId:prov.id,alsoNotFor:[targetChar.player]});
+          notifyTarget(targetChar,`✨ ${c.name}${realmTag(c.player)} Dominates ${targetChar.name} in ${prov.name} — ${seized.length} of their unit${seized.length!==1?'s':''} turn coat and desert to the enemy.`,ph,'hire');
           resolveUnitGainInProvince(c, prov, ph);
         }
         // ILLUSORY
@@ -16672,7 +16694,8 @@ const BATTLE_ARMY_SPELLS={
           const g=prov.battleGraves.splice(_wbi,1)[0];
           const wraith={type:g.type,quality:'Elite',race:'Undead',_isSkeletal:true,_isWraith:true,unitName:`Wraiths (${armyUnitName(g.type)})`};
           c.armies=(c.armies||[]);c.armies.push(wraith);
-          log('explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          logSplit('explore',`💀 ${c.name} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead at your side! (Upkeep 1g/turn.)`,
+            `💀 ${c.name}${realmTag(c.player)} binds the dead of ${prov.name} into ${wraith.unitName} — Elite undead now march at their side.`,{actor:c.player,provinceId:prov.id});
           resolveUnitGainInProvince(c, prov, ph);
         }
         else if(fn==='necromancy_dominion'){
@@ -16789,7 +16812,8 @@ const BATTLE_ARMY_SPELLS={
         if(prov.owner!==c.player||!okTerrain){log('system',`${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or primal province.`,{actor:c.player,targets:[c.player]});break;}
         const grove={type:'Forest Ents',quality:'Veteran',race:'Forest Ent',unitName:'an awakened Grove',_temporary:true,_expiresAfterPhase:-1};
         c.armies=(c.armies||[]);c.armies.push(grove);
-        log('explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        logSplit('explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,
+          `🌳 ${c.name}${realmTag(c.player)} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under their banner until the turn's end.`,{actor:c.player,provinceId:prov.id});
         resolveUnitGainInProvince(c, prov, ph);
         trySkillGain(c,'druid',SKILLGAIN_STD);
         break;
@@ -17034,7 +17058,8 @@ const BATTLE_ARMY_SPELLS={
         if(_wcWon.length===0){log('explore',`🐾 ${c.name} sounds a Wild Calling over ${_wcCalled} wild creature${_wcCalled!==1?'s':''} in ${prov.name} — not one of them breaks for the call.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});trySkillGain(c,'druid',SKILLGAIN_STD);break;}
         c.armies=(c.armies||[]).concat(_wcWon);
         const _wcFrom=_wcHeard.length?` (torn from ${_wcHeard.join(' and ')})`:'';
-        log('explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        logSplit('explore',`🐾 ${c.name} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} of ${_wcCalled} wild creature${_wcCalled!==1?'s':''} answer and fall in behind your banner${_wcFrom}!`,
+          `🐾 ${c.name}${realmTag(c.player)} sounds a Wild Calling in ${prov.name} — ${_wcWon.length} wild creature${_wcWon.length!==1?'s':''} answer and fall in behind their banner.`,{actor:c.player,provinceId:prov.id});
         if(typeof refreshMovePool==='function') refreshMovePool(c);
         resolveUnitGainInProvince(c, prov, ph);
         trySkillGain(c,'druid',SKILLGAIN_STD);
@@ -17948,7 +17973,12 @@ const BATTLE_ARMY_SPELLS={
     if((c.armies||[]).length===0) return false;  // no force present to fight or hold
     // DIPLOMACY: a force raised inside an ally's or a neutral's province cannot seize it or start a
     // war — it simply stands there. Only enemy-owned (or unowned) ground can be contested this way.
-    if(prov.owner!=null&&prov.owner!==c.player&&!areEnemies(c.player,prov.owner)) return false;
+    if(prov.owner!=null&&prov.owner!==c.player&&!areEnemies(c.player,prov.owner)){
+      // The owner saw the troops appear (public cast line) — tell them what it means: nothing, yet.
+      const _rel=areAllied(c.player,prov.owner)?'your realms are allied':'your realms are not at war';
+      notifyProvinceOwner(prov, `👁 ${c.name}${realmTag(c.player)} now leads ${(c.armies||[]).length} unit${(c.armies||[]).length!==1?'s':''} inside your province of ${prov.name}, but makes no move against it — ${_rel}. ${prov.name} remains yours.`, c.player, ph);
+      return false;
+    }
     const player=G.players[c.player];
     const enemyChar=G.characters.find(d=>d.alive&&d.id!==c.id&&d.location===prov.id&&d.player!=null&&d.player!==c.player&&areEnemies(c.player,d.player)&&(d.armies||[]).length>0);
     const neutralGuard=G.characters.find(d=>d.alive&&d.player===null&&d.location===prov.id&&(d.armies||[]).length>0&&!d._justDefeated);
@@ -18087,6 +18117,15 @@ const BATTLE_ARMY_SPELLS={
         log('combat',`${c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,{actor:c.player,targets,provinceId:prov.id,public:true});
       }
     }
+    // OUTCOME FOR THE OWNER. A capture already reaches the dispossessed realm through
+    // setProvinceOwner; the other two endings — the province held, or the fight left hanging —
+    // did not, so a player who watched an enemy raise troops on their land could not tell whether
+    // it had fallen. One line in their Realm Events settles it.
+    if(prov.owner!=null&&prov.owner!==c.player&&battle){
+      const _n=(c.armies||[]).filter(a=>a&&!a._died&&!a._disbanded).length;
+      if(battle.won) notifyProvinceOwner(prov, `⚔ ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and had the better of it, but your defenders still hold the ground — ${prov.name} is not yet taken. ${c.name} stands there with ${_n} unit${_n!==1?'s':''}.`, c.player, ph);
+      else notifyProvinceOwner(prov, `🛡 ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and was beaten back — ${prov.name} remains yours.`, c.player, ph);
+    }
     return true;
   }
 
@@ -18141,6 +18180,12 @@ const BATTLE_ARMY_SPELLS={
 
   // Defend watches and Pursuits last for the rest of the TURN only — never across turns.
   (G.characters||[]).forEach(c=>{ delete c._defend; delete c._pursuit; delete c._defendReactedPhase; });
+  // "The province they attacked from" is a fact about THIS turn's marching. It was never cleared,
+  // so a character who attacked out of some far-off province turns ago and later lost a battle
+  // elsewhere "retreated" straight back to that stale, distant province (five hexes in one case).
+  // Every retreat site now also refuses a non-adjacent _attackedFrom; this sweep stops the
+  // stale value existing at all.
+  (G.characters||[]).forEach(c=>{ delete c._attackedFrom; });
 
   // ════
   // PHASE PIPELINE — intent table, dependency ordering, movement interlocks
@@ -18982,13 +19027,31 @@ const BATTLE_ARMY_SPELLS={
       }
       prov._hadBattleThisTurn=true;
     } else {
-      // at least one side is travelling light — this is a PERSONAL duel, not a battle. A quarry
-      // still at the head of a column will not break ranks for a private quarrel
+      // at least one side is travelling light — this is a PERSONAL duel, not a battle
       // (only the both-armed case above becomes a battle). A King answers a challenge only if he set
       // out after the same man himself.
+      //
+      // BREAKING RANKS. A quarry at the head of a column used to refuse the duel outright. Now the
+      // unarmed challenger must get through the pickets to the commander's tent: one roll at
+      // ENC_BREAK_RANKS_BASE, less ENC_BREAK_RANKS_PER_UNIT for every unit the quarry leads (a
+      // bigger camp is a better-watched camp), plus ENC_BREAK_RANKS_SPY per level of the challenger's
+      // Spy (slipping the sentries), less ENC_BREAK_RANKS_TAC per level of the quarry's Tactical (a
+      // well-ordered camp), clamped 5–95. Success → the ordinary duel below. Failure → the sentries
+      // turn the challenger away, the chase ends (no free re-roll next phase) and the quarry's realm
+      // is told who came for him. Kings are unchanged — the crown-only rules still apply after this.
       if(themArmed){
-        log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but a commander at the head of their own column will not break ranks for a private quarrel.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),charId:c.id,charIds:[c.id,quarry.id],provinceId:prov.id});
-        endPursuit(c); return;
+        const _units=(quarry.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom).length;
+        const _spy=effStat(c,'spy'), _tac=effStat(quarry,'tactical');
+        const _pct=Math.max(ENC_BREAK_RANKS_MIN,Math.min(ENC_BREAK_RANKS_MAX,
+          ENC_BREAK_RANKS_BASE-ENC_BREAK_RANKS_PER_UNIT*_units+ENC_BREAK_RANKS_SPY*_spy-ENC_BREAK_RANKS_TAC*_tac));
+        const _roll=d100();
+        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''} (Tactical ${_tac}): ${fmtRoll(_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        if(_roll>_pct){
+          log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but the sentries of their column are awake — the challenger is turned away from the lines before reaching the commander, and the chase is abandoned.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:prov.id});
+          notifyTarget(quarry,`👁 ${c.name}${realmTag(c.player)} came for ${quarry.name} in ${prov.name} — a lone challenger, turned away by the sentries before reaching the tent.`,ph,'system');
+          endPursuit(c); return;
+        }
+        log('system',`${c.name} slips through the picket lines of ${quarry.name}'s column in ${prov.name} and forces the matter before the commander can rally the guard.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),charId:c.id,charIds:[c.id,quarry.id],provinceId:prov.id});
       }
       if(quarry.isKing){
         const _their=(G.turnOrders[quarry.id]||[])[ph];
@@ -20645,6 +20708,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     };
 
     const _filteredLog=turnLog.filter(e=>{
+      // 0. Written for everyone EXCEPT these realms (the private half of a logSplit pair covers them)
+      if(Array.isArray(e.notFor)&&e.notFor.includes(pi)) return false;
       // 1. Directly targeted at this player (wages, intel notifications, spell hits etc.)
       if((e.targets||[]).includes(pi)) return true;
       // 2. This player's own character performed the action
@@ -20896,6 +20961,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.19-0019</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.19-0112</div>
 </body>
 </html>

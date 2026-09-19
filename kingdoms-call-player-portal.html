@@ -6346,7 +6346,7 @@ function buildTargetField(c, ph, saved){
       const opts=allSeen.map(x=>{ const why=reasonOf(x); return `<option value="${why?'':x.id}"${realmOptStyleP(x.player,report)} ${why?'disabled':''} ${(!why&&target==x.id)?'selected':''}>${x.name}${x.isKing?' 👑 (king)':''}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.locationName||'?'}${x.leadsArmy?' (leads troops)':''}${why?` — ${why}`:''}</option>`; }).join('');
       if(targets.length===0) return`<select id="po-target-${c.id}-${ph}"><option value="" selected>— No character here can be hunted by ${c.name} —</option>${opts}</select>`;
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose character to hunt down —</option>${opts}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if they run out of movement). When they catch up: two columns give battle; otherwise it is a personal duel (a quarry leading troops won't break ranks for one). Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Your hero sets out after this character and chases them across provinces — one province per phase, a movement point each (the chase stalls if they run out of movement). When they catch up: two columns give battle; otherwise it is a personal duel — but to reach a quarry leading troops your hero must first slip through their camp: 60% less 8% per unit they lead, plus 5% per level of your Spy, less 5% per level of their Tactical (5–95%). Turned away by the sentries, the chase ends. Talk/Steal/Scout tactics don't apply — only combat tactics.</div>`;
     }
 
     // ── STEAL ──
@@ -8194,6 +8194,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-0019</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-0112</div>
 </body>
 </html>

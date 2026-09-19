@@ -170,7 +170,7 @@ footer.book .v{color:var(--gold-deep);}
   <div class="sub">The Player's Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival realms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
-  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 18 September 2026, 10:12 NZT</div>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 19 September 2026, 01:12 NZT</div>
 </header>
 
 <div class="shell">
@@ -580,6 +580,7 @@ footer.book .v{color:var(--gold-deep);}
       <li><strong>×1.2 army strength per level — ×1.2 / ×1.4 / ×1.6 / ×1.8 / ×2.0 at levels 1–5.</strong> The ×2.0 is a <strong>hard cap</strong> that titles and items cannot exceed.</li>
       <li><strong>Land battles only.</strong> It never touches fleets or sea-beasts, and it does nothing at all in a sea province — that is Naval's ground.</li>
       <li><strong>Practising Tactical drills every land and air unit you lead.</strong> Each unit may rise one quality tier, at <strong>(Green 5% / Average 4% / Veteran 3% / Crack 2%) × your Tactical level</strong> per practice — doubled for Human drillmasters. The drills keep running at level 5, so a master tactician goes on sharpening his host.</li>
+      <li><strong>A well-ordered camp.</strong> When a lone enemy hero tries to reach you through your column to force a duel (see <em>Encounter Character</em>), every level of your Tactical takes <strong>−5%</strong> off their chance of slipping past your sentries.</li>
       <li>Vulnerable in battle: an enemy <em>Telekinetic Storm</em> cast as battle magic negates it outright, and a <em>Curse</em> halves it.</li>
     </ul></td></tr>
 
@@ -608,6 +609,7 @@ footer.book .v{color:var(--gold-deep);}
       <li><strong>Counter-watch — being hard to fool.</strong> That same +10% per level applies to <em>your</em> provinces: the best Spy among your own or allied characters standing there raises the chance your garrison catches a lurking enemy.</li>
       <li><strong>Spying a rival's home capital</strong> also reveals its tax income and how many heroes serve it, and can <strong>steal one of its Sage discoveries</strong> — at <strong>10% + 10% per level</strong>, clamped 5–95%. The victim keeps theirs; you simply copy it.</li>
       <li><strong>Running down a quarry.</strong> An <em>Encounter Character</em> order corners its target each phase on a Spy contest: <strong>50%, +5% per level of your Spy, −5% per level of theirs</strong> — and <strong>doubled if the quarry is leading an army</strong>.</li>
+      <li><strong>Slipping the sentries.</strong> When a hero of yours who leads no army corners a quarry who does, every level of your Spy adds <strong>+5%</strong> to the chance of getting through the camp to the commander — see <em>Encounter Character</em>.</li>
       <li><strong>Hunting Rumours.</strong> Each fact bought about a lair's guardian — its weakness, its hoard, your own odds — is learned at <strong>50% + 10% per level</strong> (counted to 5, capped 95%). See <a href="#lairs">Hunting Rumours</a>.</li>
       <li>A successful Spy order is field experience toward raising the skill.</li>
     </ul></td></tr>
@@ -740,7 +742,14 @@ footer.book .v{color:var(--gold-deep);}
 
   <h4>Confrontation</h4>
   <ul>
-    <li><strong>Encounter Character</strong> — name any enemy character you can see and <strong>hunt them down</strong>, chasing wherever they flee (one province per phase, one movement point per step) until you corner them. The <strong>chance to corner them each phase</strong> once you share a province is a Spy contest: <strong>50%, +5% per level of your Spy, −5% per level of theirs</strong>, and <strong>doubled if the quarry is leading an army</strong> (a column leaves a plain trail). The meeting resolves as a personal duel — or, if both of you lead armies, as a full battle. A quarry still marching with a column won't break ranks to fight, and a king answers only a mutual challenge (only a king may run down another king). <em>(This order now does the work of the old Encounter and Pursue both.)</em></li>
+    <li><strong>Encounter Character</strong> — name any enemy character you can see and <strong>hunt them down</strong>, chasing wherever they flee (one province per phase, one movement point per step) until you corner them. The <strong>chance to corner them each phase</strong> once you share a province is a Spy contest: <strong>50%, +5% per level of your Spy, −5% per level of theirs</strong>, and <strong>doubled if the quarry is leading an army</strong> (a column leaves a plain trail). What happens once you have them depends on who is leading troops, and the arms are counted <strong>at the moment of the catch</strong> — a quarry who recruited earlier that phase counts as armed:
+      <ul>
+        <li><strong>Both of you lead armies</strong> — a full battle, the quarry's co-located comrades unifying behind them as in any other fight.</li>
+        <li><strong>You lead armies and the quarry does not</strong> — a personal duel.</li>
+        <li><strong>Neither leads armies</strong> — a personal duel.</li>
+        <li><strong>You lead no army and the quarry does</strong> — you must first <strong>slip through their camp</strong> to reach the commander. One roll: <strong>60%, less 8% for every unit the quarry leads, plus 5% per level of your Spy, less 5% per level of the quarry's Tactical</strong>, held between 5% and 95%. Get through and the duel is forced before the guard can rally; be turned away by the sentries and the chase ends there — the quarry's realm is told a lone challenger came for them, but no blow is struck and the duel cannot be attempted again that turn. A quarry at the head of one unit is reachable a little better than half the time; behind five, one time in four; behind seven or more, only the 5% floor remains (before your Spy is counted).</li>
+      </ul>
+      A king answers only a mutual challenge, and only a king may run down another king. <em>(This order now does the work of the old Encounter and Pursue both.)</em></li>
     <li><strong>Steal</strong> — <em>(needs Thief 1+)</em> rob a character standing in your province, or the province's <strong>garrison paymaster</strong>. Choose your prize: <strong>a magic item</strong> from their pack, or <strong>5% of their realm's treasury</strong> from their strongbox (a target carrying no magic is robbed of gold instead). A paymaster yields <strong>1 gold per garrison unit</strong> standing there. Success is <strong>50% + 10% per level of Thief</strong> (counted to 5), <strong>halved</strong> if the target leads troops or the paymaster is guarded. Fail and you are spotted unless you slip away (<strong>Thief × 20%</strong>) — and <strong>a spotted thief is set upon: the victim draws steel and a personal fight follows</strong>, unless their duel stance is <em>Refuse</em>, in which case they simply drive you off. <span class="pill">Tip</span> A thief who does not want that fight should put <strong>Flee</strong> at the head of their Encounter Plan.</li>
   </ul>
 
@@ -1399,7 +1408,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.18-1012</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.19-0112</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
