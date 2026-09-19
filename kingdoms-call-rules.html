@@ -127,6 +127,9 @@ em{color:var(--ink-light);}
 .calc .n{font-family:'Cinzel',serif; font-weight:800; color:var(--crimson); min-width:1.4em;}
 .calc .sum{font-family:'Cinzel',serif; font-size:1.05rem; color:var(--ink); text-align:center; margin:.8em 0 .2em; letter-spacing:.02em;}
 
+.calc.ex h4{margin:0 0 .35em; color:var(--crimson); font-size:.8rem;}
+.calc.ex ol,.calc.ex ul{margin:.35em 0 .2em;}
+.calc.ex .moral{margin:.5em 0 0; font-style:italic; color:var(--ink-light);}
 .totop{display:block; text-align:right; font-family:'Cinzel',serif; font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; color:var(--stone); margin-top:.4em;}
 
 footer.book{
@@ -170,7 +173,7 @@ footer.book .v{color:var(--gold-deep);}
   <div class="sub">The Player's Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival realms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
-  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 19 September 2026, 01:12 NZT</div>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 19 September 2026, 14:54 NZT</div>
 </header>
 
 <div class="shell">
@@ -232,10 +235,10 @@ footer.book .v{color:var(--gold-deep);}
   <ol>
     <li><strong>Unfinished battles resume.</strong> Any province still contested from the previous phase is fought over again before anyone new acts.</li>
     <li><strong>Invasions are announced and defenders react.</strong> A general whose province is about to be invaded by a faster enemy is pinned in place to fight (unless on Defend). Generals on <em>Defend</em> ride out to meet incursions into their watch, and characters ordered to reinforce a threatened province arrive early, so they are all standing there <em>before</em> the invader marches in.</li>
-    <li><strong>Orders resolve, in three tiers.</strong> First every order that does <em>not</em> relocate a character — casting, recruiting, practising, researching, searching lairs, spying, giving and using items, hiring, disbanding and the like — settles while everyone still stands where the phase began. Then every <strong>Move</strong> and <strong>Encounter Character</strong> resolves, and the battles they start are fought on arrival. Characters on <strong>Defend</strong> are counted last. So a co-located caster always gets to act before a fast general marches out of the province.</li>
+    <li><strong>Orders resolve, in three tiers.</strong> First every order that does <em>not</em> relocate a character — casting, recruiting, practising, researching, searching lairs, spying, giving and using items, hiring, disbanding and the like — settles while everyone still stands where the phase began. Then every <strong>Move</strong> and <strong>Encounter Character</strong> resolves, and the battles they start are fought on arrival. Characters on <strong>Defend</strong> are counted last. So a co-located caster always gets to act before a fast general marches out of the province. <strong>One thing interrupts this step:</strong> the moment an enemy character <em>raises, summons or seizes</em> troops inside a province of yours, any general of yours on Defend next door marches in <em>at once</em> — before the new host can form up — so the province is defended, not retaken (see <a href="#defend">The Defend order in full</a>).</li>
     <li><strong>Within a tier, initiative decides.</strong> Characters act from highest <strong>initiative</strong> to lowest: initiative is the sum of all a character's skill levels, with <strong>March counting three times</strong>. Ties go to the older character (the lower character number). A hero with the higher initiative recruits, casts or marches before a slower one — which matters when two forces race for the same province, or two casters target the same hero.</li>
     <li><strong>Dependencies override the tiers.</strong> A few pairings are ordered by need rather than speed: a character handing an item or troops to a co-located ally acts <em>before</em> that ally; a character marching in to receive something arrives <em>before</em> the giver gives; a Pick Up waits for any Leave in the same province; and a pursuer (Encounter Character) acts immediately <em>after</em> the character they are chasing, wherever they went.</li>
-    <li><strong>After all orders.</strong> Generals on Defend ride out against any enemy host that appeared in their watch <em>without marching</em> (raised, summoned or charmed there); lone characters on Defend spring their ambushes; then the phase's incidental skill-rises are reported and the next phase begins.</li>
+    <li><strong>After all orders.</strong> As a last sweep, a general on Defend who has not yet reacted this phase gives battle to any enemy host that has ended up inside his watch by some road the earlier steps did not catch; lone characters on Defend spring their ambushes; then the phase's incidental skill-rises are reported and the next phase begins.</li>
   </ol>
   <p>The practical upshot: a plan spread sensibly across the phases beats one crammed into a single phase, and where two characters must interact in the same phase, put the giver's action in the same phase as the receiver's and the engine will sequence them.</p>
 
@@ -243,7 +246,7 @@ footer.book .v{color:var(--gold-deep);}
   <p>After phase 5, the season closes: <strong>tax is collected and wages are paid</strong> (in that combined step), diplomacy declarations take effect, titles are re-awarded, and temporary effects expire. Then your chronicle is written and the next turn opens.</p>
 
   <h3>When the turn is resolved</h3>
-  <p>The GM chooses how each game's turns are run. In a <strong>manual</strong> game the GM resolves the turn by hand once orders are in. In an <strong>automatic</strong> game the turn resolves on its own as soon as every realm still in contention has sent its orders. In an <strong>automatic game with a deadline</strong>, the turn also resolves at a fixed clock time whether or not every realm has sent orders — your portal shows the next deadline in your own local time. Characters whose orders are not in when the turn resolves simply hold (Defend) for the season. Realms that have conceded or whose dynasty has ended are never waited on.</p>
+  <p>The GM chooses how each game's turns are run. In a <strong>manual</strong> game the GM resolves the turn by hand once orders are in. In an <strong>automatic</strong> game the turn resolves on its own as soon as every realm still in contention has sent its orders. In an <strong>automatic game with a deadline</strong>, the turn also resolves at a fixed clock time whether or not every realm has sent orders — your portal shows the next deadline in your own local time. Characters whose orders are not in when the turn resolves simply hold (Defend) for the season — and that is a <em>real</em> Defend order: any phase you leave blank is filled with Defend, so an idle general keeps a watch and will ride out to a threatened neighbour exactly as described under <a href="#defend">The Defend order in full</a>. Realms that have conceded or whose dynasty has ended are never waited on.</p>
 
   <div class="note warn"><span class="lbl">Remember</span>Provinces you conquer during a turn are counted <em>before</em> that turn's tax is collected — so a province taken in phase 3 pays you at the end of the very same turn. Conquest can fund itself within the turn.</div>
   <a class="totop" href="#overview">↑ top</a>
@@ -611,6 +614,7 @@ footer.book .v{color:var(--gold-deep);}
       <li><strong>Running down a quarry.</strong> An <em>Encounter Character</em> order corners its target each phase on a Spy contest: <strong>50%, +5% per level of your Spy, −5% per level of theirs</strong> — and <strong>doubled if the quarry is leading an army</strong>.</li>
       <li><strong>Slipping the sentries.</strong> When a hero of yours who leads no army corners a quarry who does, every level of your Spy adds <strong>+5%</strong> to the chance of getting through the camp to the commander — see <em>Encounter Character</em>.</li>
       <li><strong>Hunting Rumours.</strong> Each fact bought about a lair's guardian — its weakness, its hoard, your own odds — is learned at <strong>50% + 10% per level</strong> (counted to 5, capped 95%). See <a href="#lairs">Hunting Rumours</a>.</li>
+      <li><strong>Lying in wait.</strong> A character with no army on <em>Defend</em> ambushes an enemy character who marches into their province or one beside it at <strong>10% + 9% per level</strong> (counted to 5), halved against a commander leading an army — see <a href="#defend">The Defend order in full</a>.</li>
       <li>A successful Spy order is field experience toward raising the skill.</li>
     </ul></td></tr>
 
@@ -718,8 +722,149 @@ footer.book .v{color:var(--gold-deep);}
   <h4>Movement &amp; positioning</h4>
   <ul>
     <li><strong>Move</strong> — travel to a single adjacent province. One Move order always advances you exactly one province, no matter how many movement points you have; points instead govern how many such steps you can make across the whole turn. Moving into a defended enemy or neutral province triggers a battle. Bringing armies lets you conquer.</li>
-    <li><strong>Defend</strong> — stand ready to meet an assault for the rest of the turn. You hold your own province, and you also watch over its <strong>neighbours</strong>: if an enemy invades an adjacent province of yours, your general marches there to fight alongside its defenders (this costs a movement point, and a defeat ends their watch for the year). The march and the battle are recorded under that general in your Chronicle for the phase they happened; where several of your commanders share a battle, the full account sits under the one who led the defence and the others carry a pointer to it. The watch is kept from the <strong>very phase the order is given</strong>, and it also answers an enemy host that <em>appears</em> in the watch without marching — skeletons raised, an elemental summoned or troops charmed into a neighbouring province of yours; if such a force takes an empty province of yours, your general rides out that same phase to win it back.</li>
+    <li><strong>Defend</strong> — keep watch for the rest of the turn over the province you stand in <em>and every neighbouring province your realm owns</em>. If an enemy army marches into one of those neighbours — or an enemy hero raises, summons or seizes troops inside one — your general marches there at once and is <strong>standing in the line before the enemy can take it</strong>, so he fights as the <em>defender</em>, with the garrison at his side. A character with no army lies in ambush instead. The whole rule, with worked examples, is set out just below: <a href="#defend">The Defend order in full</a>.</li>
   </ul>
+
+
+  <h3 id="defend">The Defend order in full</h3>
+  <p><strong>Defend</strong> is the order that lets one general cover more ground than he can stand on. It needs no target. From the phase it is given, the character keeps a <strong>watch</strong> that lasts until the end of the turn, and the rest of this section is simply what that watch does.</p>
+
+  <h4>The watch</h4>
+  <ul>
+    <li><strong>What is watched.</strong> The province the character is standing in, plus <strong>every province adjacent to it that your realm owns</strong>. Neutral ground, an ally's land and enemy land are never part of a watch — a general on Defend is a shield for your own provinces, not a way to attack.</li>
+    <li><strong>When it starts.</strong> At the <em>very start</em> of the phase the order is given in — before anybody moves. A Defend written for phase 3 answers a phase-3 invasion. It then runs through every later phase of the turn without being ordered again. <strong>A phase you leave blank is a Defend order</strong>, so an idle general is always on watch.</li>
+    <li><strong>The watch travels with him.</strong> The watch is always centred on wherever the general stands <em>now</em>. If he rides out to a neighbour he stays there afterwards — he does not march home — and from the next phase he is watching that province and <em>its</em> neighbours.</li>
+    <li><strong>What ends it.</strong> The end of the turn; a <strong>Move</strong> or <strong>Encounter Character</strong> order in a later phase (the watch is dropped at the end of the phase before it); or <strong>losing a battle</strong> — every general on the beaten side has his watch broken for the rest of the year, unless you had already written him a fresh Defend order for a later phase, which sets a new one. Any <em>other</em> order (Recruit, Practice, Cast Spell, Rest…) leaves a standing watch in place: a general can Defend in phase 1, Recruit in phase 2 and still ride out in phase 2 or 3.</li>
+  </ul>
+
+  <h4>What makes a general ride out</h4>
+  <p>Only a character <strong>leading at least one army unit</strong> rides out (a lone character ambushes instead — see below). Two things trigger him, and both put him in the threatened province <strong>before the enemy can take it</strong>:</p>
+  <ol>
+    <li><strong>An enemy army marching in.</strong> At the start of each phase every Move is announced. If a realm you are <strong>at war</strong> with is about to march an army into a watched neighbour of yours, the general breaks camp and marches there first. He is standing in the line, with the garrison, when the invader arrives.</li>
+    <li><strong>An enemy host appearing inside the province.</strong> An enemy hero already lurking in one of your provinces can create an army out of nothing — <em>Skeletal Armies</em> from its graves, an <em>Elemental Summon</em>, troops wrested away by <em>Control Undead</em>, a hired mercenary band, a Pagan rite, or any other power that puts units under his banner where he stands. <strong>The instant those units appear</strong> — in the middle of the order step, at the moment of the casting — the watching general marches in. The new host does <em>not</em> get to seize the province first, even if it was standing empty: it must beat your general to take it.</li>
+  </ol>
+  <div class="note"><span class="lbl">Defended, not retaken</span>This is the heart of the order. Because the general arrives <em>first</em>, the province never changes hands unless he is beaten, and the battle is fought with him as the <strong>defender</strong>: he gets the defender's <strong>×1.25</strong> edge on his own ground (×1.5 in all at your home capital, and a Dwarven host's Bulwark on top), the province's <strong>garrison fights in his line</strong>, and any other commander of yours already there joins the same host under whichever of them is the best commander. The enemy is the attacker, with none of that.</div>
+
+  <h4>What the ride-out costs, and its limits</h4>
+  <ul>
+    <li><strong>One movement point</strong> — a land point for a land march, a sea point if the move leaves or enters a sea province. A general with no points of the right kind left cannot ride out; he still defends the province he stands in. A slow column (a garrison stack, Mountain Guns) usually has only one or two ride-outs in it per turn.</li>
+    <li><strong>One reaction per phase.</strong> A general who has ridden out this phase does not ride again until the next.</li>
+    <li><strong>His own gate comes first.</strong> If the province he is <em>standing in</em> is itself about to be invaded, he holds it and rides nowhere that phase — not even to a host raised next door. That decision is his reaction for the phase.</li>
+    <li><strong>Several threats at once.</strong> He answers the <em>strongest</em> marching column within his watch. He rides out however badly he is outnumbered — forcing a battle to slow an enemy down is a legitimate use of the order — so do not leave a weak general on Defend beside a province you would rather lose cheaply.</li>
+    <li><strong>Several generals.</strong> Every general on Defend whose watch covers the province rides in, and they fight as one host under the best commander among them.</li>
+    <li><strong>Ground he cannot cross.</strong> A land column cannot ride out into a sea province, a fleet cannot ride inland, and a land host stranded on flooded ground stays where it is.</li>
+    <li><strong>Locked in a battle.</strong> A general whose own province still holds an unfinished battle must see it through; Defend is not a way out of a fight.</li>
+    <li><strong>War only.</strong> Troops raised in your province by a realm you are <em>not</em> at war with cannot seize it and do not provoke a ride-out; you are simply told they are there.</li>
+    <li><strong>It is a march like any other.</strong> It may raise the March skill, and if the general is beaten he falls back toward the province he rode out from.</li>
+  </ul>
+
+  <h4>The order of events inside one phase</h4>
+  <div class="wrap"><table class="tbl">
+    <tr><th>When</th><th>What Defend does</th></tr>
+    <tr><td><strong>Start of phase</strong></td><td>Defend orders written for this phase take effect. Every army about to march into a watched province of yours is spotted; your general marches there first (or holds his own gate).</td></tr>
+    <tr><td><strong>Orders — first tier</strong><br>(casting, recruiting, hiring…)</td><td>The moment an enemy hero gains units inside a watched province of yours, your general marches in and the battle is fought there and then, with him defending.</td></tr>
+    <tr><td><strong>Orders — second tier</strong><br>(Moves and Encounters)</td><td>The invaders announced at the start of the phase arrive and find your general already in the line.</td></tr>
+    <tr><td><strong>After all orders</strong></td><td>A last sweep for any enemy host inside the watch that nothing above caught; lone characters on Defend spring their ambushes; a general who rode out to meet a column that never came is told so.</td></tr>
+    <tr><td><strong>End of phase</strong></td><td>If the general's next order is a Move or an Encounter, the watch is dropped.</td></tr>
+  </table></div>
+
+  <h4>Worked examples</h4>
+  <p>In all of these your realm is <strong>Belmarch</strong>, at war with <strong>Dunhold</strong>. You own <strong>Ashfen</strong> and its neighbours <strong>Stonedown</strong> and <strong>Redgrove</strong>. Your general <strong>Thora</strong> stands in Ashfen with six units and has three land movement points.</p>
+
+  <div class="calc ex"><h4>Example 1 — an army marches in next door</h4>
+    <p>Thora is given Defend in phase 1. In phase 2 Dunhold's general Korg, with five units, is ordered to Move into Stonedown, which holds a garrison of one.</p>
+    <ol>
+      <li>Start of phase 2: Korg's march is spotted. Thora breaks camp and marches to Stonedown (2 points left).</li>
+      <li>Korg's Move resolves. He finds Thora's six units <em>and</em> the garrison drawn up — seven units defending at ×1.25.</li>
+      <li>If Thora wins, Stonedown never left your hands. She stays in Stonedown; from phase 3 her watch covers Stonedown and its neighbours.</li>
+    </ol>
+    <p class="moral">Without the Defend, Korg would have fought one garrison unit and taken the province.</p></div>
+
+  <div class="calc ex"><h4>Example 2 — skeletons raised in an empty province</h4>
+    <p>Redgrove has no garrison, but an old battlefield lies there. Dunhold's necromancer Yarrow slipped into Redgrove last turn, alone and unseen. In phase 1 Thora is on Defend in Ashfen; Yarrow casts <em>Skeletal Armies</em>.</p>
+    <ol>
+      <li>The cast succeeds: an Elite skeletal unit claws up under Yarrow's banner.</li>
+      <li><strong>At that instant</strong> word reaches Thora. She marches into Redgrove (one movement point) and draws up to defend it. Redgrove is still yours.</li>
+      <li>Yarrow's new host must now attack her: one skeletal unit against six, with Thora holding the defender's edge. The battle is fought in that same phase.</li>
+      <li>Thora wins; the skeletons crumble. Redgrove never changed hands, and Yarrow — beaten, with no friendly province beside him — is in serious trouble.</li>
+    </ol>
+    <p class="moral">Without a general on Defend next door, an empty Redgrove would have fallen to Yarrow the moment the dead rose.</p></div>
+
+  <div class="calc ex"><h4>Example 3 — an elemental summoned into a garrisoned province</h4>
+    <p>Same as Example 2, but Stonedown holds a garrison of two and the intruder casts <em>Elemental Summon</em> there.</p>
+    <ol>
+      <li>The elemental appears. Thora marches into Stonedown at once.</li>
+      <li>The garrison rallies to her: eight units defend against one Veteran elemental.</li>
+      <li>Had Thora <em>not</em> been on Defend, the elemental would have fought the two garrison units alone — and an elemental is quite capable of winning that.</li>
+    </ol></div>
+
+  <div class="calc ex"><h4>Example 4 — her own province is attacked in the same phase</h4>
+    <p>In phase 2 Korg marches on <strong>Ashfen</strong>, where Thora stands, while Yarrow raises skeletons in empty Redgrove.</p>
+    <ol>
+      <li>Start of phase: Korg's march on Ashfen is spotted. Thora holds her own gate — that is her reaction for the phase.</li>
+      <li>Yarrow's skeletons rise in Redgrove. Thora does not ride out; with nobody there to contest it, Redgrove falls to Yarrow.</li>
+      <li>Korg arrives at Ashfen and fights Thora, defending.</li>
+      <li>In phase 3, if Thora won and her watch still stands, Redgrove is now <em>enemy</em> ground and outside her watch — winning it back takes a Move order.</li>
+    </ol>
+    <p class="moral">One general cannot be in two places. A coordinated feint and strike is the answer to a Defend order; a second general, or a garrison in Redgrove, is the answer to that.</p></div>
+
+  <div class="calc ex"><h4>Example 5 — two threats, one reaction</h4>
+    <p>In phase 2 Korg (five units) marches on Stonedown and a second Dunhold column of two units marches on Redgrove. In phase 3 Yarrow raises skeletons in Redgrove.</p>
+    <ol>
+      <li>Start of phase 2: Thora answers the <em>stronger</em> column and marches to Stonedown. The two-unit column takes Redgrove unopposed by her.</li>
+      <li>Phase 3: Thora now stands in Stonedown. Whether she can answer anything in Redgrove depends on whether Redgrove borders Stonedown <em>and</em> is still yours — it is not, so she does not.</li>
+    </ol>
+    <p class="moral">One ride-out per phase, always to the heaviest marching threat, and the watch moves with the general.</p></div>
+
+  <div class="calc ex"><h4>Example 6 — a slow column runs out of road</h4>
+    <p>Instead of Thora, Ashfen is held by a hero leading four <strong>garrison</strong> units (move 1, no March skill): one land movement point for the whole turn.</p>
+    <ol>
+      <li>Phase 1: skeletons are raised in Redgrove. He marches in and defends it. His pool is now empty.</li>
+      <li>Phase 3: an army marches on Ashfen, which he has left behind. He cannot ride back — no movement point remains — and Ashfen is defended only by whatever garrison you left there.</li>
+    </ol>
+    <p class="moral">Defend is strongest on a general with movement to spare. The March skill, and a column without slow units, buy you more ride-outs in a turn.</p></div>
+
+  <div class="calc ex"><h4>Example 7 — Defend ordered late, and Defend interrupted</h4>
+    <ul>
+      <li>Thora's orders are <em>Recruit, Recruit, Defend, Defend, Defend</em>. An army marching on Stonedown in phase 2 is <strong>not</strong> met — there is no watch yet. The same march in phase 3 <strong>is</strong> met: the watch begins at the very start of the phase it is ordered in.</li>
+      <li>Thora's orders are <em>Defend, Practice, Practice, Move, Rest</em>. She is on watch through phases 1, 2 and 3 (Practice does not end it). The watch is dropped at the end of phase 3 because phase 4 is a Move, and phase 5's Rest does not bring it back.</li>
+    </ul></div>
+
+  <div class="calc ex"><h4>Example 8 — the general loses</h4>
+    <p>Thora rides to Stonedown with six units and is beaten by Korg's much larger host.</p>
+    <ol>
+      <li>Her surviving units fall back to Ashfen — the province she rode out from — and the garrison's survivors fall back with her.</li>
+      <li>Stonedown is Korg's. Thora's watch is <strong>broken</strong>: she rides out to nothing more this year, though she still defends whatever province she is standing in if it is attacked.</li>
+      <li>Exception: if you had written her a fresh Defend order for a later phase, that order sets a new watch when its phase comes.</li>
+    </ol></div>
+
+  <div class="calc ex"><h4>Example 9 — what Defend will not do</h4>
+    <ul>
+      <li>An enemy marches into a <strong>neutral</strong> province next to Ashfen: no ride-out. The watch covers only provinces you own.</li>
+      <li>An enemy invades your <strong>ally's</strong> province next door: no ride-out. Send help with a Move order.</li>
+      <li>A realm you are <strong>at peace</strong> with raises an elemental inside Redgrove: no ride-out and no battle — the troops cannot seize the province, and you are told they are standing there.</li>
+      <li>A lone enemy hero with <strong>no army</strong> walks into empty Redgrove and takes it: a general does not ride out against a man on his own — only an army, marching or raised, triggers him. (A lone character of yours on Defend may ambush that hero — below.)</li>
+    </ul></div>
+
+  <h4>A lone character on Defend — the ambush</h4>
+  <p>A character leading <strong>no army</strong> cannot bar a road, so Defend makes them lie in wait instead. After all orders in a phase have resolved, they may <strong>ambush one enemy character who marched this phase</strong> into the province they stand in, or into any province adjacent to it (whoever owns it), forcing a personal combat.</p>
+  <ul>
+    <li><strong>Chance to spring it: 10% + 9% per level of Spy</strong> (counted to 5 — so 10% untrained, 55% for a master), <strong>halved</strong> if the quarry is leading an army. One attempt per phase, successful or not.</li>
+    <li>The ambusher prefers a king, then the heaviest column, then the best swordsman. <strong>Only a king may ambush a king.</strong></li>
+    <li>If the quarry is next door, the ambusher slips across to them at no movement cost and stays there afterwards.</li>
+    <li>It is an ambush, not a challenge: the quarry's duel stance does not let them refuse it, and a commander is pulled out of his column to fight. Both sides fight with their Encounter Plans. A sprung ambush is field experience for Spy.</li>
+    <li>An enemy who was <em>already</em> in the province when the phase began is not ambushed — only one who marched in this phase.</li>
+  </ul>
+  <div class="calc ex"><h4>Example 10 — the ambush</h4>
+    <p>Your spy-hero Ysra (Spy 3, no army) is on Defend in Ashfen. In phase 2 Korg marches his five units into Stonedown next door.</p>
+    <ol>
+      <li>Korg's Move and any battle for Stonedown resolve first.</li>
+      <li>After all orders, Ysra's ambush is rolled: 10 + 27 = 37%, halved to <strong>18%</strong> because Korg leads an army.</li>
+      <li>On a success she crosses into Stonedown and sets upon Korg in personal combat. On a failure she watches him pass, and may try again next phase only against someone who marches in <em>that</em> phase.</li>
+    </ol></div>
+
+  <h4>How it appears in your Chronicle</h4>
+  <p>The march and the battle are filed under the general, in the phase they happened. Where several of your commanders share a battle, the full account sits under the one who commanded and the others carry a pointer to it. A general who rode out to meet a column that never arrived (its march was refused, or it ran out of movement) is told so in his own section, so a ride-out is never followed by silence. A watch carried over from an earlier phase is not re-announced every phase.</p>
 
   <h4>Scouting &amp; knowledge</h4>
   <ul>
@@ -967,7 +1112,7 @@ footer.book .v{color:var(--gold-deep);}
   <ul>
     <li><strong>Attacking costs a move.</strong> Marching into a defended enemy or neutral province is a Move like any other — it spends <strong>one point</strong> and triggers the battle on arrival. A lone hero (no army) can walk into an <em>empty</em> province and take it, but <strong>cannot conquer a defended one</strong> — conquest needs armies.</li>
     <li><strong>A contested province can take more than one phase.</strong> Beaten defenders don't always vanish; a fight can carry on into later phases, and each carry-on round it grows bloodier for both sides (up to ×2.5 the casualty rate). Each phase you press the assault spends another movement point <em>if you have one</em> — but a carry-on battle is fought whether or not points remain, so an attacker who has run dry still finishes what they started.</li>
-    <li><strong>A standing <em>Defend</em> can march to a neighbour.</strong> A general on Defend who answers an assault in an adjacent province in their watch <strong>spends a movement point</strong> to march there and fight — and a defeat there ends their watch for the rest of the year. The watch begins in the phase the Defend order is given (so a phase-2 Defend meets a phase-2 invasion), and covers enemy hosts that are raised or summoned into a neighbouring province of yours as well as those that march in.</li>
+    <li><strong>A standing <em>Defend</em> can march to a neighbour.</strong> A general on Defend who answers a threat to an adjacent province of yours <strong>spends a movement point</strong> (a sea point if the march touches water) to get there, and with none left he cannot ride out. The watch begins in the phase the Defend order is given (so a phase-2 Defend meets a phase-2 invasion), and it answers an enemy host <em>raised or summoned inside</em> a neighbouring province of yours just as it answers one that marches in — in both cases the general arrives <strong>before</strong> the enemy can take the ground and fights as its defender. A defeat ends the watch for the rest of the year. Full rule and examples: <a href="#defend">The Defend order in full</a>.</li>
     <li><strong>Chasing spends points too.</strong> An <em>Encounter</em> order runs a quarry down one province per phase at <strong>one point per step</strong>, and stalls when the pool hits zero.</li>
     <li><strong>Picking up slow troops slows you.</strong> Take command of a plodding garrison mid-turn (<em>Pick Up Army</em>) and your column immediately moves at that slower unit's pace for the rest of the turn; drop a slow unit and you speed back up. Points already spent are never refunded or double-charged.</li>
   </ul>
@@ -1378,7 +1523,7 @@ footer.book .v{color:var(--gold-deep);}
 
   <h3>Turn 3 — the shape of your game emerges</h3>
   <ul>
-    <li><strong>Garrison what you take.</strong> A conquered province left empty is retaken for free by a single enemy hero. Leaving a cheap garrison unit behind is the cheapest insurance in the game.</li>
+    <li><strong>Garrison what you take.</strong> A conquered province left empty is retaken for free by a single enemy hero. Leaving a cheap garrison unit behind is the cheapest insurance in the game — and a general left on <a href="#defend">Defend</a> in the middle of your lands covers every province around him, against armies that march in and against hosts raised by a lurking necromancer or summoner alike.</li>
     <li><strong>Now Tactical earns its keep.</strong> Once your war-stacks reach five or six units, Tactical is the best gold-free multiplier there is — it costs orders, not coin. Keep training it on your main leader, and remember it is also the standing measure of <a href="#victory">The Grand Marshal</a>.</li>
     <li><strong>Keep cross-training the rest.</strong> A pinch of <strong>Explorer</strong> on scouts (faster charting, auto-spotting lairs), <strong>Spy</strong> on an intelligence hero, a magic school on a caster. Rounded heroes give you more good options every single turn, and every skill you push past 5 later feeds an Imperial Title.</li>
     <li><strong>Pick a direction.</strong> Look at where the neutral wild country and the other players are. Expanding toward a neighbour invites war before you're ready; expanding into the wild buys time, though primal guardians are tougher.</li>
@@ -1408,7 +1553,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.19-0112</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.19-1454</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
