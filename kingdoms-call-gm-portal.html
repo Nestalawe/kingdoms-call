@@ -8379,6 +8379,9 @@ async function runTurn(opts){
   // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
   // fights.
   let _combatSkillProv=null;
+  // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
+  // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.
+  let _tier0Open=false, _unitGainQueue=[];
   // while a duel against a LOCAL CHIEFTAIN (a neutral guard) is resolving, this holds
   // {used:false}. The FIRST skill advance of that duel closes it for every skill — melee, archery and
   // thief could each roll before, so one chieftain could train three skills at once. Unlike
@@ -15956,8 +15959,9 @@ const BATTLE_ARMY_SPELLS={
         const _carried=!!(c._defend&&c._defend.active&&(c._defend.carried||c._defend.setPhase<ph));
         c._defend={centre:centreProv.id,active:true,setPhase:ph,carried:_carried};
         if(!_preSet) delete c._defendReactedPhase;
-        if(_carried){
-          // still on watch — nothing new to report
+        if(_carried||(_preSet&&c._defendReactedPhase===ph)){
+          // still on watch — or the watch already acted this phase (rode out / held the gate) and
+          // said so; a "makes camp" line after the ride-out would read backwards
         } else if((c.armies||[]).length===0){
           log('move',`${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(centreProv.id===prov.id){
@@ -18035,6 +18039,18 @@ const BATTLE_ARMY_SPELLS={
       notifyProvinceOwner(prov, `👁 ${c.name}${realmTag(c.player)} now leads ${(c.armies||[]).length} unit${(c.armies||[]).length!==1?'s':''} inside your province of ${prov.name}, but makes no move against it — ${_rel}. ${prov.name} remains yours.`, c.player, ph);
       return false;
     }
+    // ── DEFEND, DEFERRED ── While the phase's NON-MOVING orders are still resolving (_tier0Open),
+    // a host raised where a Defend general would answer is not settled on the spot: it is queued,
+    // and settled at the Defend step (flushDefendStep in the phase loop) — after every order aimed
+    // AT that general this phase (a spell, a column handed over, an item) has taken effect, and
+    // before any army marches. He still arrives before the new host can take the ground; the
+    // battle is simply fought a moment later in the same phase. With no general to answer, nothing
+    // is deferred and the old immediate resolution stands.
+    if(_tier0Open && defendAnswerUnitGain(c, prov, ph, true).length>0){
+      if(!_unitGainQueue.some(q=>q.c===c&&q.prov===prov)) _unitGainQueue.push({c,prov});
+      log('system',`${c.name}'s new host is still forming up in ${prov.name} — whether the province can be taken will be settled before the season's marches begin.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+      return false;
+    }
     const player=G.players[c.player];
     // DEFEND: a general of the owning realm keeping watch next door reaches the province BEFORE the
     // new host can form up and seize it — he is then found below as an ordinary defender, so he
@@ -18648,7 +18664,11 @@ const BATTLE_ARMY_SPELLS={
   }
 
   function runDefendReactions(ph,intents){
-    const invasions=[...intents.values()].filter(isHostileInvasion);
+    // Runs at the DEFEND STEP — after the phase's non-moving orders, before any march — so an
+    // invader who was killed, stripped of his column or thrown out of his province by one of those
+    // orders is no longer a threat to ride out against.
+    const invasions=[...intents.values()].filter(isHostileInvasion)
+      .filter(inv=>inv.c&&inv.c.alive&&(inv.c.armies||[]).length>0&&inv.c.location===inv.fromId);
     if(!invasions.length) return;
     // Group incoming strength by target province.
     const threat=new Map();
@@ -18778,7 +18798,7 @@ const BATTLE_ARMY_SPELLS={
   // the old sequence — province falls unopposed, general rides out after every order to retake it
   // as the ATTACKER. runDefendMaterializedReactions remains as the end-of-phase safety net.
   // Returns the generals who rode in.
-  function defendAnswerUnitGain(raiser, prov, ph){
+  function defendAnswerUnitGain(raiser, prov, ph, dryRun){
     const riders=[];
     if(!raiser||!prov||prov.owner==null||prov.owner===raiser.player) return riders;
     if(!areEnemies(raiser.player,prov.owner)) return riders;
@@ -18796,8 +18816,9 @@ const BATTLE_ARMY_SPELLS={
       if(!canEnterTerrain(d,prov.terrain,sc)) return;
       const bySea=(here.terrain==='sea'||prov.terrain==='sea');
       if(here.terrain==='sea' && !(seaMoveActive[d.id] && (seaMovePoints[d.id]??0)>0)) return; // stranded on drowned ground
-      if(bySea){ if((seaMovePoints[d.id]??0)<=0) return; seaMovePoints[d.id]--; }
-      else { if((movePoints[d.id]??0)<=0) return; movePoints[d.id]--; }
+      if(bySea){ if((seaMovePoints[d.id]??0)<=0) return; } else { if((movePoints[d.id]??0)<=0) return; }
+      if(dryRun){ riders.push(d); return; }                   // "would he answer?" — nothing is moved or spent
+      if(bySea) seaMovePoints[d.id]--; else movePoints[d.id]--;
       here.characters=(here.characters||[]).filter(id=>id!==d.id);
       prov.characters=prov.characters||[]; if(!prov.characters.includes(d.id)) prov.characters.push(d.id);
       d.location=prov.id; d.locationName=prov.name; d._attackedFrom=here.id;
@@ -19482,7 +19503,8 @@ const BATTLE_ARMY_SPELLS={
       c._defend={centre:c.location,active:true,setPhase:ph,preActivated:true,carried:_carried};
       delete c._defendReactedPhase;
     });
-    runDefendReactions(ph,intents);
+    // (the Defend ride-out itself is NOT made here any more — see flushDefendStep below: it waits
+    // until every non-moving order of the phase, including any aimed at the general, has resolved)
     runReinforcementArrivals(ph,intents);
     intents.forEach(it=>{
       if(!it.cancelled||it.cancelReason!=='reinforced') return;
@@ -19493,7 +19515,33 @@ const BATTLE_ARMY_SPELLS={
 
     // ── STAGE 3: resolve orders, in initiative order adjusted for AK's [3.0] exceptions ──
     const sorted=orderPhaseActors(ph,intents);
+    // ── THE DEFEND STEP ── sits between the two order tiers. Every non-relocating order (casting,
+    // transfers, items, recruiting…) resolves first, in initiative order, with everyone still
+    // standing where the phase began — so an Oratory, a handed-over column or a hostile Curse aimed
+    // at a general on Defend finds him at home. THEN generals on Defend ride out to the marching
+    // threats announced at the top of the phase, THEN hosts raised/summoned during the order step
+    // are settled (the watching general arriving first), and only then does any Move resolve — so
+    // he is still in the line before the invader arrives and before a raised host can take ground.
+    // Fires once: before the first relocating or Defend-tier actor, or after the loop if none.
+    _tier0Open=true; _unitGainQueue=[];
+    const flushDefendStep=()=>{
+      if(!_tier0Open) return;
+      _tier0Open=false; _combatSkillProv=null; _logCtx={charId:null,phase:null};
+      runDefendReactions(ph,intents);
+      const q=_unitGainQueue; _unitGainQueue=[];
+      q.forEach(({c:rc,prov:rp})=>{
+        if(!rc||!rc.alive||rc.location!==rp.id||(rc.armies||[]).length===0) return; // the host is gone
+        _combatSkillProv=null; _logCtx={charId:rc.id,phase:ph};
+        resolveUnitGainInProvince(rc, rp, ph);
+        _logCtx={charId:null,phase:null};
+      });
+      _combatSkillProv=null;
+    };
     sorted.forEach(c=>{
+      if(_tier0Open){
+        const _a=normaliseAction((G.turnOrders[c.id]||[])[ph]);
+        if(_a==='move'||_a==='pursue'||_a==='encounter'||_a==='defend'||(c._pursuit&&c._pursuit.active)) flushDefendStep();
+      }
       _combatSkillProv=null; // between independent actors, no battle-series context is active
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
@@ -19510,6 +19558,7 @@ const BATTLE_ARMY_SPELLS={
       _logCtx={charId:null,phase:null}; // reset after each character
     });
 
+    flushDefendStep(); // a phase with no relocating or Defend-tier actor still gets its Defend step
     // every order this phase has resolved, so any enemy force RAISED or SUMMONED into a defender's
     // watch zone now exists — let generals on Defend ride out and give it battle.
     _combatSkillProv=null;
@@ -21128,6 +21177,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.19-1625</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.19-1644</div>
 </body>
 </html>
