@@ -5,7 +5,7 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.09.19-2145
+// Data file v2026.09.20-0153
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1379,7 +1379,7 @@ const SPELL_DEFS_P={
     desc:'Action: seize one random undead army unit from a neutral/enemy character in your province — or cast it on your own province to sense the battlefield dead lying there, unit by unit, and to learn which of the SURROUNDING provinces hold graves of their own (that they do, never how many or what). Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
     fn:'necromancy_control'},
   'Skeletal Armies':{school:'necromancy',target:'none',encounter:false,phase:true,
-    desc:'Action: raise one random dead army unit lying in your province as a skeletal version under your command.',
+    desc:'Action: raise the most experienced dead army units lying in your province as skeletal versions under your command — 1 unit at Necromancy 1–2, 2 at Necromancy 3–4, 3 at Necromancy 5+.',
     fn:'necromancy_skeletal'},
   'Curse':          {school:'necromancy',target:'character',encounter:true,phase:true,
     desc:'Action: EVERY skill the target has is halved (rounded down) for the rest of the turn. Combat: the target\'s best combat ability is halved for the fight. Battle magic: the enemy commander\'s best combat-affecting skill (Tactical, Druid or Naval) is halved for the battle.',
