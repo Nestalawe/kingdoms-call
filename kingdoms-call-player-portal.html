@@ -1797,8 +1797,10 @@ function buildChronicle(log, chars_for_log){
     const escapeHtml=(s)=>String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     // The imperial titles whose per-turn perk is an intelligence line (emitted end-of-turn to the
     // holder).
-    const TITLE_INTEL_TAGS=['[The Throne]','[The Vaultkeeper]','[The Grand Marshal]','[The Sea Lord]',
-      '[The Monster-Bane]','[The Loremaster]','[The Archmage]','[The Hierophant]','[The Deathpriest]'];
+    // ANY "[The …]" dispatch is a title's intel — matched by shape, not by a list of names. (The old
+    // list named nine titles, so the Spymaster, Cartographer, Beastlord and Wildwarden reports fell
+    // through to Realm Events → End of Turn.)
+    const TITLE_INTEL_RE=/^\[(The [^\]]+)\]\s*/;
 
     // Build char map keyed by id; king first
     const orderedChars=[...chars_for_log].sort((a,b)=>(b.isKing?1:0)-(a.isKing?1:0));
@@ -1817,7 +1819,7 @@ function buildChronicle(log, chars_for_log){
       const ph=(e.phase!=null&&e.phase>=0&&e.phase<=4)?e.phase:99;
       const _txt=e.text||'';
       const isIntel=_txt.startsWith('[Intelligence]');
-      const isTitleIntel=TITLE_INTEL_TAGS.some(t=>_txt.startsWith(t));
+      const isTitleIntel=TITLE_INTEL_RE.test(_txt);
       // Route to a character's section if the entry names one of THIS viewer's characters — either
       // as the primary charId, or via charIds.
       let _secCharId=(e.charId!=null&&(e.charId in charEntries))?e.charId
@@ -2059,7 +2061,10 @@ function buildChronicle(log, chars_for_log){
     // ════
     // SECTION 3: Intelligence entries — by phase
     // ════
-    const hasIntel=Object.values(intelByPhase).some(a=>a.length>0)||titleIntel.length>0;
+    // Where this realm stands in every title race (percentages only) — current turn only; a past
+    // turn's Chronicle must not show today's standings.
+    const _standHtml=(viewedTurn==null)?titleStandingIntelHTML(currentReport):'';
+    const hasIntel=Object.values(intelByPhase).some(a=>a.length>0)||titleIntel.length>0||!!_standHtml;
     if(hasIntel){
       html+=`<div class="char-chronicle" style="margin-bottom:22px;border:1px solid #c8922a;border-radius:3px;overflow:hidden">
         <div class="cc-head" style="font-family:'Cinzel',serif;font-size:.88rem;color:#fff;
@@ -2073,19 +2078,23 @@ function buildChronicle(log, chars_for_log){
       // ── Imperial Titles subsection ── the per-turn intel your held titles grant (rival
       // treasuries, strongest armies/fleets, rival discoveries, and so on), grouped apart from
       // field intelligence.
-      if(titleIntel.length){
-        html+=`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:#9a6a1a;
+      const _subHead=(t)=>`<div style="font-family:'Cinzel',serif;font-size:.68rem;color:#9a6a1a;
           text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;
-          border-bottom:1px dotted var(--parchment-dark);margin:2px 0 4px">👑 Imperial Titles</div>`;
-        titleIntel.forEach(e=>{
-          // Bold the "[The Title]" tag so each line reads as a titled dispatch…
-          let text=(e.text||'').replace(/^(\[The [^\]]+\])/,'<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">$1</span>');
-          // …and every character name and realm name in the dispatch is bold + tinted in the
-          // controlling player's colour (realms and rivals alike).
-          text=colorizeNames(text, true);
-          html+=`<div class="log-entry system">${text}</div>`;
+          border-bottom:1px dotted var(--parchment-dark);margin:2px 0 4px">${t}</div>`;
+      if(titleIntel.length){
+        html+=_subHead('👑 Imperial Titles');
+        // ONE block per title: the tag once, then every piece of that title's report together.
+        const byTitle=new Map();
+        titleIntel.forEach(e=>{ const m=TITLE_INTEL_RE.exec(e.text||''); const k=m?m[1]:'Titles';
+          if(!byTitle.has(k)) byTitle.set(k,[]); byTitle.get(k).push((e.text||'').replace(TITLE_INTEL_RE,'')); });
+        byTitle.forEach((parts,k)=>{
+          const tag=`<span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">[${k}]</span>`;
+          // every character and realm name bold + tinted in its realm's colour
+          const body=parts.map(t=>colorizeNames(t,true)).join(' <span style="color:#c8922a">•</span> ');
+          html+=`<div class="log-entry system">${tag} ${body}</div>`;
         });
       }
+      if(_standHtml){ html+=_subHead('📊 Your standing in the Imperial Titles')+_standHtml; }
 
       [0,1,2,3,4].forEach(ph=>{
         const entries=intelByPhase[ph]||[];
@@ -2996,6 +3005,25 @@ function renderMastery(report){
 
 // ── TITLES & VICTORY (Reckoning) ────
 const _TITLE_ORDER=[['throne','The Throne',20],['vault','The Vaultkeeper',10],['marshal','The Grand Marshal',10],['sea','The Sea Lord',10],['monster','The Monster-Bane',10],['lore','The Loremaster',10],['arch','The Archmage',10],['hiero','The Hierophant',10],['necro','The Deathpriest',10]];
+// One sentence on where this realm stands in a title race, from the engine's `race` record
+// (titleRaceFor in the GM portal). Shared by the Titles card and the Intelligence Reports block.
+function titleRaceLine(r){
+  if(!r) return '';
+  const who=r.charName?`<strong>${r.charName}</strong>`:'';
+  if(r.mine) return r.unchallenged
+    ? `${who||'Your realm'} holds this title <strong>unchallenged</strong> — no rival has any standing.`
+    : `${who||'Your realm'} holds this title, <strong>${r.leadPct} percentage point${r.leadPct===1?'':'s'}</strong> ahead of the closest rival${r.leadPct===0?' — level with them, and holding it only by precedence':''}.`;
+  if(r.vacant) return `Vacant — no character in the world has any standing yet.`;
+  if(!r.charName||!(r.pct>0)) return `None of your characters has any standing toward this title yet.`;
+  return `Your best: ${who} — at <strong>${r.pct}%</strong> of the holder's standing.`;
+}
+function titleStandingIntelHTML(report){
+  const t=(report&&report.titles)||{}; if(!t.public||t.gameOver||!t.holders) return '';
+  const rows=Object.keys(t.holders).map(k=>{ const h=t.holders[k]||{}; if(!h.race) return '';
+    const held=h.race.mine, col=held?'var(--forest)':'#5a4a2a';
+    return `<div class="log-entry system"><span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">[${h.name||k}]</span> <span style="color:${col}">${titleRaceLine(h.race)}</span></div>`; }).filter(Boolean);
+  return rows.join('');
+}
 function renderTitles(report){
   const el=document.getElementById('report-titles'); if(!el) return;
   const t=(report&&report.titles)||{};
@@ -3071,16 +3099,7 @@ function renderTitles(report){
     const h=holders[k]||{};
     // Your realm's place in the race for this title (percentages only — see titleRaceFor).
     const r=h.race||null;
-    let raceLine='';
-    if(r){
-      const who2=r.charName?`<strong>${r.charName}</strong>`:'';
-      if(r.mine) raceLine=r.unchallenged
-        ? `${who2||'Your realm'} holds this title <strong>unchallenged</strong> — no rival has any standing.`
-        : `${who2||'Your realm'} holds this title, <strong>${r.leadPct} percentage point${r.leadPct===1?'':'s'}</strong> ahead of the closest rival${r.leadPct===0?' — level with them, and holding it only by precedence':''}.`;
-      else if(r.vacant) raceLine=`Vacant — no character in the world has any standing yet.`;
-      else if(!r.charName||!(r.pct>0)) raceLine=`None of your characters has any standing toward this title yet.`;
-      else raceLine=`Your best: ${who2} — at <strong>${r.pct}%</strong> of the holder's standing.`;
-    }
+    const raceLine=r?titleRaceLine(r):'<span style="color:#999">Standing percentages are worked out when a turn is resolved — they will appear from the next turn report.</span>';
     const raceHtml=raceLine?`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
     const who = h.holderName
       ? (h.kingdomLevel
@@ -8359,6 +8378,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0153</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0241</div>
 </body>
 </html>
