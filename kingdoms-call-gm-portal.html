@@ -8074,6 +8074,12 @@ async function runTurn(opts){
     seedUsedArmyNames(G); seedUsedHeroNames(G);
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
+    // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
+    // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
+    // saved, so the saved state still carried them and the next turn loaded last turn's fights,
+    // reporting them a second time (the "duel icon that won't go away"). Clear them here, at the
+    // top of the turn, whatever the save held.
+    (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
   }catch(e){
     msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
   }
@@ -14735,8 +14741,10 @@ const BATTLE_ARMY_SPELLS={
         let fi=0;
         if(target&&!isNaN(parseInt(target))) fi=parseInt(target);
         if(!prov.features||prov.features.length===0){log('explore',`${c.name} searches ${prov.name} but finds nothing of note.`,{actor:c.player,targets:[c.player]});break;}
-        let f=prov.features[fi]||prov.features.find(fe=>!fe.cleared)||prov.features[0];
+        let f=prov.features[fi]||prov.features.find(fe=>fe&&!fe.cleared&&!fe.ritualSite)||prov.features.find(fe=>fe&&!fe.ritualSite)||prov.features[0];
         if(!f){break;}
+        // A RITUAL SITE CANNOT BE SEARCHED (Toby 2026-09-20): it holds no guardian and no hoard, and
+        // the order form no longer offers one. An old saved order that names one is refused here.
         if(f.ritualSite){
           // Nothing lairs at a ritual site — there is no guardian to fight and no treasure to lift.
           const isPagan=G.players[c.player]?.alignment==='Pagan';
@@ -14791,9 +14799,12 @@ const BATTLE_ARMY_SPELLS={
           }
           // a thief may also lift ONE of the hoard's magic items — 30% + 10% per Thief level (max
           // 80%).
-          { ensureLairHoard(f,G); const _hi=(f.hoardItems||[]);
+          // LEGENDARY relics can never be lifted from a lair (Toby 2026-09-20) — only won by
+          // beating the guardian. (They can still be stolen from another character.)
+          { ensureLairHoard(f,G); const _hiAll=(f.hoardItems||[]); const _hi=_hiAll.filter(it=>!isLegendaryItem(it));
+            if(!_hi.length&&_hiAll.length) log('explore',`${c.name} eyes the ${f.monster?.name||'guardian'}'s relic, but a Legendary treasure is not something that can be spirited away — it must be won by defeating its keeper.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             if(_hi.length){ const _th=effStat(c,'thief'); const _ch=Math.min(80,30+10*_th); const _r=d100();
-              if(_r<=_ch){ const _it=_hi.splice(Math.floor(Math.random()*_hi.length),1)[0]; c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
+              if(_r<=_ch){ const _it=_hi[Math.floor(Math.random()*_hi.length)]; _hiAll.splice(_hiAll.indexOf(_it),1); c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
                 f._stolenItems=(f._stolenItems||[]).concat(_it.name);
                 log('explore',`🗝 ${c.name} also slips ${(isLegendaryItem(_it)?'the LEGENDARY ':'the ')}${_it.name} (${_it.desc}) out from under the guardian's nose! ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
               } else log('explore',`${c.name} eyes the hoard's magic but cannot get near it. ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -21360,6 +21371,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-2145</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-2225</div>
 </body>
 </html>

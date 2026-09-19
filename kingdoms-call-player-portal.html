@@ -90,6 +90,10 @@ section{display:none;}.section-active{display:block;}
 .stat-box{background:#fdf8ee;border:1px solid var(--parchment-dark);padding:10px 12px;border-radius:2px;}
 .stat-label{font-size:.68rem;color:var(--stone);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
 .stat-value{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--crimson);font-weight:600;}
+.prov-link{color:var(--crimson);border-bottom:1px dotted currentColor;cursor:pointer;}
+.prov-link:hover{background:rgba(200,146,42,.18);}
+@keyframes provHlPulse{0%{stroke-opacity:1;fill-opacity:.35}50%{stroke-opacity:.45;fill-opacity:.12}100%{stroke-opacity:1;fill-opacity:.35}}
+.prov-hl{animation:provHlPulse 1.1s ease-in-out infinite;}
 .char-card{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:10px 12px;margin-bottom:8px;}
 .char-card-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .char-card-head .cname{font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink-light);flex:1;}
@@ -613,7 +617,7 @@ function realmOfP(playerIdx, report){
   return ((rep.allKingdoms)||[]).find(k=>k&&k.index===playerIdx)||null;
 }
 function realmNameP(playerIdx, report){ const k=realmOfP(playerIdx,report); return k?k.name:'enemy'; }
-function realmOptStyleP(playerIdx, report){ const k=realmOfP(playerIdx,report); return (k&&k.color)?` style="color:${k.color};font-weight:600"`:''; }
+function realmOptStyleP(playerIdx, report){ const k=realmOfP(playerIdx,report); return (k&&k.color)?` style="color:${reportColour(k.color)};font-weight:600"`:''; }
 // ── PACK ORDER ────
 // A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm,
 // rings, amulet, combat items), with everything else — unequipped slot items, and the unslotted
@@ -1845,7 +1849,7 @@ function buildChronicle(log, chars_for_log){
     // CHIEFTAIN_MARKER_COLOR everywhere in the Chronicle — the same brown as their map marker.
     function _registerName(nm, color, neutral, guard){
       if(!nm) return;
-      const add=(k)=>{ if(k && !nameColors.has(k)) nameColors.set(k,{color:guard?CHIEFTAIN_MARKER_COLOR:(neutral?null:color), neutral:(!!neutral&&!guard)}); };
+      const add=(k)=>{ if(k && !nameColors.has(k)) nameColors.set(k,{color:guard?CHIEFTAIN_MARKER_COLOR:(neutral?null:reportColour(color)), neutral:(!!neutral&&!guard)}); }; // realm colours darkened for the parchment
       add(nm);
       add(String(nm).replace(/\s*\(.*?\)\s*$/,'').trim());            // strip trailing "(Realm)"
       const km=String(nm).match(/\(([^)]+)\)\s*$/); if(km) add(km[1]); // the realm name itself
@@ -1920,7 +1924,7 @@ function buildChronicle(log, chars_for_log){
       return out;
     }
     function renderForceBlock(f){
-      const col=f.guard?CHIEFTAIN_MARKER_COLOR:(f.neutral?NEUTRAL_COLOR:(f.color||NEUTRAL_COLOR));
+      const col=f.guard?CHIEFTAIN_MARKER_COLOR:(f.neutral?NEUTRAL_COLOR:(reportColour(f.color)||NEUTRAL_COLOR));
       const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
       const rows=(f.armies||[]).length
         ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem${a.phantom?';opacity:.75;font-style:italic':''}">${a.phantom?'✨':unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
@@ -2413,7 +2417,7 @@ function renderReportView(report){
         <div class="char-detail" style="background:#fdf5e0;border:1px solid var(--parchment-dark);border-radius:2px;padding:5px 10px 6px;font-size:.76rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:8px">
           <span style="flex-basis:100%;width:100%;color:var(--stone)">${formatRace(c.race)} · ${c.alignment||'—'} · ${c.temper||'—'}${(c.temperEff&&c.temperEff!==c.temper)?` <span style="color:#6a4a9a">(fights as ${c.temperEff} — equipped item)</span>`:''}</span>
           <span><strong>HP:</strong> ${c.hp}/${c.maxHp}</span>
-          <span>📍 ${c.locationName||'Unknown'}</span>
+          <span>📍 In ${provLinkHtml(c.locationId,c.locationName||'Unknown')}</span>
           <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd!==1?'s':''}/turn</span>
           ${!c.isKing?`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
           ${skillRow}
@@ -2472,7 +2476,7 @@ function renderReportView(report){
               const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#2d7a2d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
               const feudTag=feudLed?` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
               const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
-              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(kingdom.color||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
+              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(reportColour(kingdom.color)||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
             }).join('');
             const effSpd2=(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...arr.map(a=>a.speed||3)));
             // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
@@ -2540,7 +2544,7 @@ function renderReportView(report){
             ?`<br>Cleared: ${p.features.filter(f=>f.cleared).map(f=>_lairName(f)).join(', ')}`
             :''}
           <br>Recruitable: ${(p.armyTypes||[]).map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)).join(' · ')||'none'}
-          ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${kingdom.color||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
+          ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
           ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`)).join('')}`:''}
         </div>
       </div>`).join('')
@@ -2682,7 +2686,7 @@ function renderReportView(report){
       const roster=others.length>0
         ? others.map(ch=>{
             const who=ch.category==='enemy'
-              ? `<strong${ch.color?` style="color:${ch.color}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
+              ? `<strong${ch.color?` style="color:${reportColour(ch.color)}"`:''}>${ch.name}</strong>${ch.isKing?' 👑':''} of ${ch.kingdom||'an enemy realm'}`
               : `<strong${ch.isNeutralGuard?` style="color:${CHIEFTAIN_MARKER_COLOR}"`:''}>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
             const force=(ch.armies&&ch.armies.length>0)
               ? ` — ${ch.armies.map(a=>armyLabel(a,{short:true})).join(', ')}`
@@ -2876,7 +2880,7 @@ function _renderDiplomacyInto(el, report, withControls){
     }
     return `<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong style="color:${k.color||'#333'}">${k.name}</strong>
+        <strong style="color:${reportColour(k.color)||'#333'}">${k.name}</strong>
         <span style="font-size:.72rem;color:#888">${k.alignment||''}</span>
         ${relBadge(k.relation)}
       </div>
@@ -2992,7 +2996,7 @@ function renderTitles(report){
   if(t.gameOver){
     const go=t.gameOver;
     const board=(go.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
-      `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#777">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
+      `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#777">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
     el.innerHTML=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
       <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field — every rival has conceded':'is judged supreme at the Reckoning'}!</div></div>
       <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#888;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Realm</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
@@ -3048,7 +3052,7 @@ function renderTitles(report){
 
   // ── Standings board ──
   const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
-    `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${s.color||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
+    `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
 
   // ── the eight Imperial Titles — holder (character + realm), how earned, perk while held ──
   const holders=t.holders||{};
@@ -6075,7 +6079,7 @@ function defaultLairTarget(c, ph, provId, feats){
       taken.add(String(d.target));
     }
   });
-  const ranked=(feats||[]).filter(f=>!taken.has(String(f.idx)))
+  const ranked=(feats||[]).filter(f=>!f.ritualSite&&!taken.has(String(f.idx)))
     .sort((a,b)=>((a.ritualSite?9:(LAIR_POWER_RANK[a.monsterPower]??5))-(b.ritualSite?9:(LAIR_POWER_RANK[b.monsterPower]??5)))||(a.idx-b.idx));
   return ranked.length?String(ranked[0].idx):'';
 }
@@ -6390,7 +6394,7 @@ function buildTargetField(c, ph, saved){
       // the dropdown names the guardian and its KIND as well as the grade, so a player choosing
       // which lair to send a hero to can see they are picking a fight with an undead thing (White
       // Magic doubles) rather than a beast, without opening the Known Lairs card.
-      const feats=(pd?.features||[]).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||'');const _g=f.ritualSite?'':[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');return `<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}${_g?` — ${_g}`:''}</option>`;}).join('');
+      const feats=(pd?.features||[]).filter(f=>!f.ritualSite).map(f=>{const diff=f.ritualSite?'Ritual Site':(f.monsterPower||''); /* ritual sites cannot be searched — only a Pagan's Perform Rite uses them */const _g=f.ritualSite?'':[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');return `<option value="${f.idx}" ${_lairSel===String(f.idx)?'selected':''}>${f.name}${diff?` (${diff})`:''}${_g?` — ${_g}`:''}</option>`;}).join('');
       return feats
         ?`<select id="po-target-${c.id}-${ph}">${feats}</select>`
         :`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in current province" disabled>`;}
@@ -7158,15 +7162,28 @@ function neutralCharLabel(c){
 }
 // the map tooltip has a very dark background, so a dark realm colour (e.g. navy) would be hard to
 // read. Lighten only low-luminance colours (mix toward white); bright ones pass through.
-function _tintForDarkTooltip(hex){
-  if(!hex||typeof hex!=='string'||hex[0]!=='#'||hex.length!==7) return hex;
-  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  if([r,g,b].some(isNaN)) return hex;
-  const lum=0.299*r+0.587*g+0.114*b;
-  if(lum>=110) return hex;
-  const mix=c=>Math.round(c+(255-c)*0.45), h2=c=>c.toString(16).padStart(2,'0');
-  return '#'+h2(mix(r))+h2(mix(g))+h2(mix(b));
+// ── TEXT COLOUR BY BACKGROUND (2026-09-20, Toby) ── One rule: on a DARK background (the map popup)
+// a colour is lightened until it reads; on a LIGHT background (the parchment turn report, order
+// forms, standings) it is darkened until it reads. Both keep the hue — a realm stays recognisably
+// its own colour — and move only as far as a contrast ratio needs (WCAG: 4.5 on the parchment,
+// 6 on the near-black popup). Map BORDERS and hex fills use the raw realm colour, untouched.
+function _hexRgb(hex){ if(!hex||typeof hex!=='string'||hex[0]!=='#'||hex.length!==7) return null; const v=[1,3,5].map(k=>parseInt(hex.slice(k,k+2),16)); return v.some(isNaN)?null:v; }
+function _relLum(rgb){ const f=c=>{ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }; return 0.2126*f(rgb[0])+0.7152*f(rgb[1])+0.0722*f(rgb[2]); }
+function _contrast(a,b){ const la=_relLum(a), lb=_relLum(b); return (Math.max(la,lb)+0.05)/(Math.min(la,lb)+0.05); }
+function _toHex(rgb){ return '#'+rgb.map(c=>Math.max(0,Math.min(255,Math.round(c))).toString(16).padStart(2,'0')).join(''); }
+function _shiftForContrast(hex, bgHex, target, toward){
+  const rgb=_hexRgb(hex), bg=_hexRgb(bgHex); if(!rgb||!bg) return hex;
+  if(_contrast(rgb,bg)>=target) return hex;
+  for(let t=0.05;t<=1.0001;t+=0.05){
+    const m=rgb.map(c=>c+(toward-c)*t);
+    if(_contrast(m,bg)>=target) return _toHex(m);
+  }
+  return _toHex(rgb.map(()=>toward));
 }
+// text on the dark map popup (#1a1208)
+function _tintForDarkTooltip(hex){ return _shiftForContrast(hex,'#1a1208',6,255); }
+// text on the light report parchment (checked against its palest card, #fdf5e0)
+function reportColour(hex){ return _shiftForContrast(hex,'#fdf5e0',4.5,0); }
 // ══ ONE SYMBOL TABLE FOR THE HEX AND ITS POPUP ════
 // The hex and the popup were drawing the same two things with different glyphs in different
 // colours: a fallen hero was ☠ in dark crimson on the map but \u{1F480} in purple in the popup, and
@@ -7292,7 +7309,7 @@ function _lairStar(f){
   // province feature data carries `monsterPower` (not `power`) — every popup lair was falling
   // through to the default brown. Difficulty now colours the map popup as everywhere else.
   const _pw=f.monsterPower||f.power;
-  const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[_pw]||'#7a5510';
+  const col=_tintForDarkTooltip({Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[_pw]||'#7a5510'); // lightened for the dark popup
   const _tag=_pw?` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
   // the guardian's kind rides along in the popup too.
   const _cat=(!f.cleared&&f.monsterCat)?` <span style="font-size:.68rem;opacity:.7">${f.monsterCat.toLowerCase()}</span>`:'';
@@ -7310,9 +7327,9 @@ function _lairStar(f){
 function _lairsClearedNote(pd){
   if(!pd || (pd.explored==null) || pd.explored<100) return '';
   const lairs=(pd.features||[]).filter(f=>f&&!f.ritualSite);
-  if(lairs.length===0) return `<br><span style="color:#6a7f5a;font-style:italic">\u{1F5FA} Fully mapped \u2014 no lair was ever found in this province.</span>`;
+  if(lairs.length===0) return `<br><span style="color:${_tintForDarkTooltip('#6a7f5a')};font-style:italic">\u{1F5FA} Fully mapped \u2014 no lair was ever found in this province.</span>`;
   if(lairs.some(f=>!f.cleared)) return '';
-  return `<br><span style="color:#4a8a4a;font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length===1?'its lair has':`all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
+  return `<br><span style="color:${_tintForDarkTooltip('#4a8a4a')};font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length===1?'its lair has':`all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
 }
 // ── GRAVES ON THE MAP ────
 // If this realm knows battlefield dead lie in a province, say so in the hex popup — the same lore
@@ -7464,6 +7481,46 @@ const MAP_RACE_BADGE={
   Monster: {glyph:'M',fill:'#7d4fb5',text:'#fff'},
 };
 const CHIEFTAIN_MARKER_COLOR='#8f6a38'; // darkened from #b08a5a — luminance 111 stays just above the tooltip's 110 lightening threshold so the popup shows the same brown
+// ── LOCATE A PROVINCE ON THE MAP (2026-09-20, Toby) ── A province name in the report can be
+// hovered to light up its hex on the map (desktop: the map sits beside the report), and clicked or
+// tapped to bring the map into view and light it up for a few seconds (phones: switches to the Map
+// tab). Every drawn hex group carries data-prov=<id>; the highlight is a pulsing outline laid over
+// the whole map (pointer-events:none) so it never blocks the hex popup.
+function provLinkHtml(id, name){
+  if(id==null||id==='') return name;
+  return `<span class="prov-link" onmouseenter="highlightMapProv(${Number(id)},true)" onmouseleave="highlightMapProv(${Number(id)},false)" onclick="locateOnMap(${Number(id)})" title="Hover to light up ${String(name).replace(/"/g,'&quot;')} on the map — click or tap to show it">${name}</span>`;
+}
+let _provHlTimer=null;
+function highlightMapProv(id, on){
+  document.querySelectorAll('.prov-hl').forEach(n=>n.remove());
+  if(!on) return;
+  const ns='http://www.w3.org/2000/svg';
+  document.querySelectorAll(`svg g[data-prov="${id}"]`).forEach(g=>{
+    const poly=g.querySelector('polygon'); const svg=g.ownerSVGElement; if(!poly||!svg) return;
+    const hl=document.createElementNS(ns,'polygon');
+    hl.setAttribute('points',poly.getAttribute('points'));
+    hl.setAttribute('fill','#fff'); hl.setAttribute('fill-opacity','.3');
+    hl.setAttribute('stroke','#ffe27a'); hl.setAttribute('stroke-width','3'); hl.setAttribute('stroke-linejoin','round');
+    hl.setAttribute('pointer-events','none'); hl.setAttribute('class','prov-hl');
+    hl.setAttribute('filter','drop-shadow(0 0 3px #ffe27a)');
+    svg.appendChild(hl);
+  });
+}
+function locateOnMap(id){
+  try{
+    if(window.innerWidth<821) setMobileView('map');
+    else if(typeof _deskLeftView!=='undefined'&&_deskLeftView!=='map'&&typeof setDeskView==='function') setDeskView('left','map');
+  }catch(e){}
+  setTimeout(()=>{
+    highlightMapProv(id,true);
+    const g=document.querySelector(`#report-map-svg g[data-prov="${id}"]`);
+    // scroll only the map's own container (a zoomed map), never the page or the report column
+    try{ const box=document.getElementById('report-map-container');
+      if(g&&box){ const r=g.getBoundingClientRect(), b=box.getBoundingClientRect();
+        box.scrollLeft+= (r.left+r.width/2)-(b.left+b.width/2); box.scrollTop+=(r.top+r.height/2)-(b.top+b.height/2); } }catch(e){}
+    clearTimeout(_provHlTimer); _provHlTimer=setTimeout(()=>highlightMapProv(id,false),4000);
+  },60);
+}
 function renderMapIntoSvg(svgEl, report){
   const svgNS='http://www.w3.org/2000/svg';
   svgEl.innerHTML='';
@@ -7561,6 +7618,7 @@ function renderMapIntoSvg(svgEl, report){
     const isAdj=tier==='border';
     const known=tier!=='unknown';
     const g=document.createElementNS(svgNS,'g');
+    g.setAttribute('data-prov',String(p.id)); // lets the report's province links find this hex (highlightMapProv)
 
     // Hex fill
     const fill=document.createElementNS(svgNS,'polygon');
@@ -8006,7 +8064,12 @@ function renderMapIntoSvg(svgEl, report){
     // Tooltip
     if(known){
       g.style.cursor='pointer';
-      g.addEventListener('mousemove',ev=>{
+      // the popup is built by ONE function called from both mousemove (desktop hover) and click
+      // (a tap). A tap that re-selects a hex after the popup was dismissed by tapping elsewhere does
+      // not always produce an emulated mousemove on touch browsers (the "hover" never left), so the
+      // click must draw the popup itself — before 2026-09-20 it only made it sticky, and a dismissed
+      // popup could not be re-opened until the view was switched.
+      const showTip=ev=>{
         let h=`<strong style="font-family:\'Cinzel\',serif;font-size:.8rem">${pd.name||capitalise(pd.terrain)||'Unknown'}</strong><br>`;
         if(isOwned){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
@@ -8023,7 +8086,7 @@ function renderMapIntoSvg(svgEl, report){
           else h+=`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           const _kc=popupKnownChars(pd, report.visibleDeadHeroes);
           if(_kc) h+=_kc;
-          if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`).join('')}`;
+          if(pd.neutralDefenders?.length) h+=`${pd.neutralGuard?`<br>\u{1F6E1} ${pd.neutralGuard.name} leads:`:''}${pd.neutralDefenders.map(d=>`<br>${unitEmoji(d.type)} <span style="color:#b8ad98">${armyLabel(d)}</span>`).join('')}`;
           h+=_garrisonNote(pd); // the standing garrison
           h+=_graveNote(pd); // known battlefield graves
         } else if(isVisited){
@@ -8057,12 +8120,13 @@ function renderMapIntoSvg(svgEl, report){
         tt.style.left=(ev.clientX+16)+'px';
         tt.style.top=(ev.clientY+16)+'px';
         _clampMapTip(tt); // keep the whole popup — Close button included — inside the viewport
-      });
+      };
+      g.addEventListener('mousemove',showTip);
       g.addEventListener('mouseleave',()=>{ if(!tt._sticky) tt.style.display='none'; });
       // a tap/click makes the popup STICKY and interactive (so the Close button works on mobile,
       // where there is no mouse-leave to dismiss it). Desktop hover still auto-hides on
       // mouse-leave.
-      g.addEventListener('click',ev=>{ tt._sticky=true; tt.style.pointerEvents='auto'; ev.stopPropagation(); });
+      g.addEventListener('click',ev=>{ showTip(ev); tt._sticky=true; tt.style.pointerEvents='auto'; ev.stopPropagation(); });
     }
 
     svgEl.appendChild(g);
@@ -8195,6 +8259,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-2145</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-2225</div>
 </body>
 </html>
