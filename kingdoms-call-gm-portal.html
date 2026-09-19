@@ -14600,6 +14600,13 @@ const BATTLE_ARMY_SPELLS={
         const _riteSite=(prov.features||[]).find(f=>f.ritualSite&&(featDiscovered(f,c.player)||prov.owner===c.player));
         if(!_riteSite){
           log('system',`${c.name} finds no ritual site in ${prov.name} — rites need standing stones, and stones must first be found.`,{actor:c.player,targets:[c.player]});break;}
+        // ONE RITE PER PROVINCE PER TURN (2026-09-19, Toby): once any realm's rite has been
+        // performed here this turn, every later attempt in the province fails, whoever makes it.
+        // Stamped with the turn number (prov._riteTurn) rather than a per-turn scratch flag, so there
+        // is nothing to clear. Only a rite that actually HAPPENS stamps it — one that fails for want
+        // of gold, creatures or units leaves the stones free for someone else.
+        if(prov._riteTurn===G.turn){
+          log('system',`${c.name} comes to the ${_riteSite.name} in ${prov.name}, but the stones have already answered once this turn — the old gods will hear no second rite here until the turn has passed.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const _rite=(target||'').toLowerCase();
         if(_rite.startsWith('wild')){
           // ── Rite of the Wild Hunt ── Bind the province's native primal creatures for this turn
@@ -14611,6 +14618,7 @@ const BATTLE_ARMY_SPELLS={
           if((player.gold||0)<_huntCost){
             log('system',`${c.name} cannot afford the Wild Hunt offerings (${_huntCost}g).`,{actor:c.player,targets:[c.player]});break;}
           player.gold-=_huntCost;
+          prov._riteTurn=G.turn;   // the province's one rite this turn is spent
           c.armies=c.armies||[];
           const _boundNames=[];
           for(let wi=0;wi<WILD_HUNT_UNITS;wi++){
@@ -14649,6 +14657,7 @@ const BATTLE_ARMY_SPELLS={
         const _bn=Math.min(_sacI.length,_benI.length);   // each sacrifice funds exactly one empowerment
         const _sac=_sacI.slice(0,_bn).map(i=>_army[i]);
         const _ben=_benI.slice(0,_bn).map(i=>_army[i]);
+        prov._riteTurn=G.turn;   // the province's one rite this turn is spent
         c.armies=_army.filter(a=>!_sac.includes(a));
         recordBattleGraves(prov,_sac);
         _ben.forEach(b=>{ const cur=_tiers.indexOf(b.quality); if(cur>-1) b.quality=_tiers[Math.min(4,cur+2)]; });
@@ -21214,6 +21223,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-1820</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-1857</div>
 </body>
 </html>
