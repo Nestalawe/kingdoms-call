@@ -2339,7 +2339,7 @@ function renderReportView(report){
   const playerAlignment=kingdom.alignment||'Neutral';
 
   const ALIGNMENT_SUMMARIES={
-    Divine:`Your realm walks in the light of the divine. All heroes recover twice as much HP when they Rest (60% of maximum HP rather than the usual 30%). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your heroes fall in battle, divine grace will return them to life at the start of the following turn, restored to half health in your wealthiest province, though stripped of their armies and items. Consecrate: your king or heroes may sanctify ONE owned province (not the home province or its neighbours — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and your resurrected heroes return there. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
+    Divine:`Your realm walks in the light of the divine. All heroes recover twice as much HP when they Rest (60% of maximum HP rather than the usual 30%). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your characters — king or hero — fall, divine grace will return them to life after one full turn in death, restored to half health but stripped of armies and items — but ONLY upon consecrated ground: they rise in the nearest consecrated province you still hold, and the miracle spends that province's consecration. If the realm holds no consecrated province when the time comes, the grace is lost (a fallen king is then succeeded by an heir). Consecrate: your king may sanctify owned provinces, up to his White skill level at once (not the home province or its neighbours, and never two side by side — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and it is where your fallen are restored. Guard it: a consecrated province that is captured loses its consecration at once, and each unit of the army that takes it has a 50% chance to gain an experience level. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
     Good:`Your realm is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever they happen to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
     Druidic:`Your realm is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Creature armies also fight with a +25% fanaticism bonus under your banner. Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
     Neutral:`Your realm prizes pragmatism above all. Province tax income flows 20% richer than other realms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — they may hire any wandering hero the realm can see without leaving their hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the realm has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
@@ -2370,28 +2370,32 @@ function renderReportView(report){
     <div class="report-grid">
       <div class="stat-box"><div class="stat-label">Treasury</div><div class="stat-value">${kingdom.gold||0}g</div></div>
       <div class="stat-box"><div class="stat-label">Tax Income</div><div class="stat-value">${taxIncome}g/turn</div>${(()=>{
-        const parts=[];
-        if((kingdom.neutralTradeBonus||0)>0) parts.push(`+${kingdom.neutralTradeBonus}g Neutral trade`);
-        if((kingdom.taxBonus||0)>0) parts.push(`+${kingdom.taxBonus}g tax bonus`);
-        if((kingdom.perProvBonus||0)>0) parts.push(`+${kingdom.perProvBonus}g Merchant's Ledger`);
-        if((kingdom.interestBonus||0)>0) parts.push(`+${kingdom.interestBonus}g interest`);
-        // Sage discoveries that lift province tax income, itemised by name.
-        if((kingdom.sdRecords||0)>0) parts.push(`+${kingdom.sdRecords}g Taxation Records`);
-        if((kingdom.sdAgri||0)>0) parts.push(`+${kingdom.sdAgri}g Advanced Agriculture`);
-        if((kingdom.sdMining||0)>0) parts.push(`+${kingdom.sdMining}g Mining Techniques`);
-        if((kingdom.sdAqueduct||0)>0) parts.push(`+${kingdom.sdAqueduct}g Aqueducts`);
-        if((kingdom.sdGrand||0)>0) parts.push(`+${kingdom.sdGrand}g Grand Design`);
-        if((kingdom.sdCreed||0)>0) parts.push(`+${kingdom.sdCreed}g heritage/creed discoveries`);
-        // Imperial Title / minor-title perks that add tax-season gold.
-        if((kingdom.cutpurseG||0)>0) parts.push(`+${kingdom.cutpurseG}g the Cutpurse`);
-        if((kingdom.championG||0)>0) parts.push(`+${kingdom.championG}g Champion of the People`);
-        if((kingdom.castellanG||0)>0) parts.push(`+${kingdom.castellanG}g the Castellan`);
-        if((kingdom.consecG||0)>0) parts.push(`+${kingdom.consecG}g consecrated ground`);
-        const incl=parts.length?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">incl. ${parts.join(', ')}</div>`:'';
-        const eq=(kingdom.earthquakeReduction||0);
-        const eqLine=eq>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${eq}g lost to earthquake damage</div>`:'';
-        const ens=(kingdom.enslaveReduction||0);
-        const ensLine=ens>0?`<div style="font-size:.62rem;color:#c00;margin-top:2px;line-height:1.3">−${ens}g enslaved provinces seethe</div>`:'';
+        // A ledger: the bare province tax first, then one line per SOURCE of bonus, then penalties —
+        // the lines always sum to the total above. Every gold-paying Sage discovery is ONE line.
+        const K=k=>(kingdom[k]||0);
+        const sage=kingdom.sageDiscG!=null?kingdom.sageDiscG:(K('sdRecords')+K('sdAgri')+K('sdMining')+K('sdAqueduct')+K('sdCreed')+K('interestBonus'));
+        const bonuses=[
+          [K('consecG'),'consecrated ground'],
+          [K('neutralTradeBonus'),'Neutral trade'],
+          [sage,'Sage Discoveries'],
+          [K('sdGrand'),'Grand Design'],
+          [K('taxBonus'),'magic items (tax bonus)'],
+          [K('perProvBonus'),"Merchant's Ledger"],
+          [K('thiefStipend'),'master Thief stipend'],
+          [K('cutpurseG'),'the Cutpurse'],
+          [K('championG'),'Champion of the People'],
+          [K('castellanG'),'the Castellan'],
+        ].filter(b=>b[0]>0);
+        const eq=K('earthquakeReduction'), ens=K('enslaveReduction');
+        const bonusSum=bonuses.reduce((a,b)=>a+b[0],0);
+        // older saved reports carry no rawTaxBase — derive it so the ledger still sums
+        const rawBase=kingdom.rawTaxBase!=null?kingdom.rawTaxBase:Math.max(0,taxIncome-bonusSum+eq+ens);
+        const row=(txt,col)=>`<div style="font-size:.62rem;color:${col};margin-top:1px;line-height:1.3">${txt}</div>`;
+        const incl=row(`Base province tax: ${rawBase}g`,'var(--stone)')
+          +bonuses.map(b=>row(`+${b[0]}g ${b[1]}`,'#2d7a2d')).join('')
+          +(bonuses.length?'':row('no bonuses','var(--stone)'));
+        const eqLine=eq>0?row(`−${eq}g lost to earthquake damage`,'#c00'):'';
+        const ensLine=ens>0?row(`−${ens}g enslaved provinces seethe`,'#c00'):'';
         // The box projects NEXT turn's collection from the realm as it stands now; what was
         // actually banked this turn (with any one-turn Bless / Earthquake / Sabotage effects) is
         // the "collects...g in taxes" line under Kingdom Events.
@@ -3057,10 +3061,27 @@ function renderTitles(report){
   const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
     `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
 
-  // ── the eight Imperial Titles — holder (character + realm), how earned, perk while held ──
+  // ── the Imperial Titles — holder (character + realm), how earned, perk while held ──
   const holders=t.holders||{};
-  const majorHtml=_TITLE_ORDER.map(([k,name,prize])=>{
+  // _TITLE_ORDER fixes the order of the original nine; every other title the engine ships (the
+  // Spymaster, Cartographer, Beastlord, Wildwarden and any added later) follows, named and priced
+  // from the payload — the list can no longer fall behind TITLE_DEFS.
+  const _titleRows=_TITLE_ORDER.concat(Object.keys(holders).filter(k=>!_TITLE_ORDER.some(r=>r[0]===k)).map(k=>[k,holders[k].name||k,holders[k].prize||0]));
+  const majorHtml=_titleRows.map(([k,name,prize])=>{
     const h=holders[k]||{};
+    // Your realm's place in the race for this title (percentages only — see titleRaceFor).
+    const r=h.race||null;
+    let raceLine='';
+    if(r){
+      const who2=r.charName?`<strong>${r.charName}</strong>`:'';
+      if(r.mine) raceLine=r.unchallenged
+        ? `${who2||'Your realm'} holds this title <strong>unchallenged</strong> — no rival has any standing.`
+        : `${who2||'Your realm'} holds this title, <strong>${r.leadPct} percentage point${r.leadPct===1?'':'s'}</strong> ahead of the closest rival${r.leadPct===0?' — level with them, and holding it only by precedence':''}.`;
+      else if(r.vacant) raceLine=`Vacant — no character in the world has any standing yet.`;
+      else if(!r.charName||!(r.pct>0)) raceLine=`None of your characters has any standing toward this title yet.`;
+      else raceLine=`Your best: ${who2} — at <strong>${r.pct}%</strong> of the holder's standing.`;
+    }
+    const raceHtml=raceLine?`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
     const who = h.holderName
       ? (h.kingdomLevel
           ? `${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
@@ -3072,6 +3093,7 @@ function renderTitles(report){
         <span style="color:#999;font-size:.72rem;white-space:nowrap">${prize} pts</span>
       </div>
       <div style="font-size:.78rem;margin:1px 0">Held by: ${who}</div>
+      ${raceHtml}
       <div style="font-size:.7rem;color:#777;line-height:1.4">Earn: ${h.req||''}<br><span style="color:#2d6a2d">While held: ${h.perk||''}</span></div>
     </div>`;
   }).join('');
@@ -3121,7 +3143,7 @@ function renderTitles(report){
   el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
     + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
        <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:12px"><tbody>${board}</tbody></table>
-       <div style="font-size:.75rem;color:#888;margin-bottom:2px">The eight Imperial Titles — who holds them &amp; how they are won</div>
+       <div style="font-size:.75rem;color:#888;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won</div>
        ${majorHtml}`
     + callCtrl + reckoningInfo + renderMinorTitles(t);
 }
@@ -3463,7 +3485,7 @@ const SPELL_HINTS={
   'Flood':'Target: a land province you\u2019re in or adjacent to. It acts as a sea province for the rest of the turn (land armies stranded). Cancels Part Sea.',
   'Elemental Summon':'Summons a random elemental (Air/Fire/Earth/Water/Darkness, Veteran) to fight under you for the rest of the turn, then it dissolves. One per turn.',
   'Control Undead':'Target: an enemy/neutral hero here to seize one random undead unit \u2014 OR cast on THIS province to reveal the dead army units lying here one by one, AND to sense which surrounding provinces hold graves of their own (that they do, not how many or what). All of it is filed under Graveyards Known in your report. Combat: an undead foe is frozen for your-level rounds. Battle: one enemy undead unit defects.',
-  'Skeletal Armies':'Raises one random battlefield-grave unit in your province as a Skeletal (Undead) unit under your command (1g upkeep). Needs fallen armies present.',
+  'Skeletal Armies':'Raises the most experienced battlefield-grave units in your province as Skeletal (Undead) units under your command (1g upkeep each): 1 unit at Necromancy 1–2, 2 at Necromancy 3–4, 3 at Necromancy 5+ — never more than lie buried there. Needs fallen armies present.',
   'Curse':'Target: an enemy/neutral hero here. EVERY skill they have is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
   'Hand of Death':'Combat: 10% per Necromancy level to deal damage equal to 50% of the target\u2019s max HP.',
   'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
@@ -5185,7 +5207,7 @@ function updateAlignmentDesc(){
   const desc=document.getElementById('join-alignment-desc');
   if(!sel||!desc) return;
   const DESCS={
-    Divine:'✨ <strong>Divine:</strong> All heroes heal 2× from Rest (60% of max HP vs 30%). Dead heroes auto-resurrect at your wealthiest province next turn. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king casts it in person. <strong>Consecrate</strong> one province: +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%, resurrections return there. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
+    Divine:'✨ <strong>Divine:</strong> All heroes heal 2× from Rest (60% of max HP vs 30%). Fallen characters return after one full turn dead at the nearest consecrated province, which then loses its consecration — no consecrated province, no return. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king casts it in person. <strong>Consecrate</strong> (king only, up to White level): +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%; if captured it is de-consecrated and each conquering unit has a 50% chance to gain a level. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
     Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
     Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, gain +25% fanaticism, and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
     Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 2g less. Sage discoveries twice as often.',
@@ -6493,7 +6515,7 @@ function buildTargetField(c, ph, saved){
         ? `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
         : `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
       return inputBox+
-        `<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%, fallen heroes return to hallowed ground. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured frees a slot.</div>`;}
+        `<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured loses its consecration at once (each unit of the conquering army has a 50% chance to gain an experience level) and frees a slot.</div>`;}
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good')
@@ -7915,6 +7937,8 @@ function renderMapIntoSvg(svgEl, report){
         dt.setAttribute('x',dx);dt.setAttribute('y',dy);
         dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','6'); // item: half size
         dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.25');
+        dt.setAttribute('paint-order','stroke');
+        dt.setAttribute('filter','drop-shadow(0 0 1px rgba(0,0,0,.7))'); // same shadow as the graves cross
         dt.setAttribute('pointer-events','none');
         mapSymSvg(dt, MAP_SYM.dead);   // ☠ — one definition, shared with the popup
         dt.setAttribute('class','sym-dead'); symbolLayer.appendChild(dt);
@@ -8335,6 +8359,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-2243</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0153</div>
 </body>
 </html>

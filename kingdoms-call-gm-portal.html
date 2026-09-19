@@ -2347,6 +2347,9 @@ function noteGraveIntel(pl, provId, turn, graves, opts){
 // YOU NOTHING ELSE. The count is gone from Skeletal Armies, Harvest the Field, Raise Wraiths and
 // Death's Dominion alike. The Control Undead SCAN still reports the roll of the dead in full:
 // naming them is the whole point of it.
+// Skeletal Armies: how many grave units one successful cast raises, by the caster's effective
+// Necromancy (0-5 benefit scale): 1 at level 1-2, 2 at level 3-4, 3 at level 5+.
+function skeletalRaiseCount(lvl){ lvl=lvl||0; return lvl>=5?3:lvl>=3?2:1; }
 function takeBestGrave(prov){
   const gs=(prov&&prov.battleGraves)||[];
   if(!gs.length) return null;
@@ -2557,6 +2560,7 @@ const MITHRIL_ARMOUR={name:'Mithril Armour',slot:'armour',desc:'Melee and arrow 
 // at any one time. Consecration is stored as a LIST
 // (player.consecratedProvIds); this helper returns it, migrating any legacy single `consecratedProvId`
 // save into the list on first read.
+const CONSEC_CAPTURE_XP_PCT=50; // chance per unit of a column that captures consecrated ground to gain an experience level
 function consecratedIds(pl){
   if(!pl) return [];
   if(!Array.isArray(pl.consecratedProvIds)){
@@ -2566,6 +2570,21 @@ function consecratedIds(pl){
   return pl.consecratedProvIds;
 }
 function isConsecrated(pl, provId){ return consecratedIds(pl).includes(provId); }
+// DIVINE RETURN needs holy ground. The consecrated provinces a realm still OWNS — the only places a
+// fallen Divine character can be restored. `nearestConsecratedProv` picks the one closest (hex
+// distance, ties → the richer) to where the body lies.
+function ownedConsecratedProvs(state, pi){
+  const pl=(state.players||[])[pi]; if(!pl) return [];
+  return consecratedIds(pl).map(id=>state.world.provinces[id]).filter(pv=>pv&&pv.owner===pi);
+}
+function nearestConsecratedProv(state, pi, fromProvId){
+  const list=ownedConsecratedProvs(state, pi); if(!list.length) return null;
+  const from=(fromProvId!=null)?state.world.provinces[fromProvId]:null;
+  if(!from) return list[0];
+  let best=null,bd=Infinity;
+  list.forEach(pv=>{ const d=hexDistP(from,pv,state.world.cols); if(d<bd||(d===bd&&(pv.tax||0)>((best&&best.tax)||0))){ bd=d; best=pv; } });
+  return best;
+}
 // a neutral province guard becomes an ordinary wandering hero (hireable, listed under Wandering
 // Heroes, labelled "(wandering)"). Used when a guard survives the loss of his last unit, and by the
 // turn-start / pre-report safety net for any guard left troopless or standing in a player's land.
@@ -4664,7 +4683,7 @@ function botDistantStrike(G,pi,c,P,myStr,T,maxHops){
 // A caster with Necromancy or Elemental magic takes provinces by himself, with no army at all. He
 // walks UNARMED into undefended enemy ground (no guard engages an unarmed character, so he can
 // cross the front line freely), then spends his remaining phases casting:
-// Necromancy → Skeletal Armies — raises one dead unit per success from the province's battleGraves
+// Necromancy → Skeletal Armies — raises 1–3 dead units per success (by Necromancy level) from the province's battleGraves
 // Elemental → Elemental Summon — tears an elemental out of the air (no prerequisite; always available)
 // Either way the caster GAINS a unit while standing on ground he does not own, and the engine's
 // resolveUnitGainInProvince hands him the province that same phase when nothing is there to contest
@@ -6889,6 +6908,45 @@ function computeStandings(state){
   relics.forEach(r=>{ if(r.playerIndex!=null){ standings[r.playerIndex].score+=RELIC_PRIZE_EACH; standings[r.playerIndex].relics++; } });
   return {titles,relics,standings,taxByPlayer,worldTax,goldByPlayer,threshold:reckoningThreshold(players.length, reckoningDecayOf(state)),perChar};
 }
+// THE TITLE RACE, as one realm sees it. For every Imperial Title: which of this realm's living
+// characters stands highest, and where that puts them —
+//   • not the holder → `pct` = their merit as a whole percentage of the HOLDER's (floored, 0-100);
+//   • the holder     → `leadPct` = 100 − (the closest RIVAL-realm character's merit as a percentage
+//                       of the holder's), i.e. how many percentage points clear they are. A rival
+//                       is a character of ANOTHER realm; the holder's own second-best is no rival.
+// Realm titles (Throne, Vaultkeeper) use the realm metric and name the king. Only percentages are
+// shipped — never a rival's name or raw merit — so this leaks nothing the standings board does not.
+function titleRaceFor(state, st, pi){
+  const chars=(state.characters||[]).filter(c=>c&&c.player!=null&&c.alive);
+  const out={};
+  const pctOf=(v,top)=>top>0?Math.max(0,Math.min(100,Math.floor((Math.max(0,v)/top)*100+1e-9))):0;
+  TITLE_DEFS.forEach(t=>{
+    const h=(st.titles||{})[t.key]||{};
+    const held=h.playerIndex!=null, top=held?(h.merit||0):0, mine=held&&h.playerIndex===pi;
+    let myBest=0, myChar=null, rivalBest=0;
+    if(t.key==='throne'||t.key==='vault'){
+      const metric=(t.key==='throne'?st.taxByPlayer:st.goldByPlayer)||[];
+      myBest=metric[pi]||0;
+      const k=chars.find(c=>c.isKing&&c.player===pi); myChar=k||null;
+      metric.forEach((v,i)=>{ if(i!==pi&&(v||0)>rivalBest) rivalBest=v||0; });
+    } else {
+      let b=-Infinity;
+      chars.forEach(c=>{ const v=((st.perChar||{})[c.id]||{})[t.key]||0;
+        if(c.player===pi){ if(v>b){ b=v; myChar=c; } }
+        else if(v>rivalBest) rivalBest=v; });
+      myBest=b>-Infinity?b:0;
+      if(mine&&h.charId!=null){ const hc=chars.find(c=>c.id===h.charId); if(hc) myChar=hc; }
+    }
+    out[t.key]={
+      charName:(myChar&&(myBest>0||mine))?myChar.name:null,
+      vacant:!held, mine,
+      pct:(!held||mine)?null:pctOf(myBest,top),
+      leadPct:mine?(100-pctOf(rivalBest,top)):null,
+      unchallenged:mine&&!(rivalBest>0),
+    };
+  });
+  return out;
+}
 // Winner at a Reckoning: highest standing, ties broken by tax base then treasury.
 function reckoningWinner(state){
   const s=computeStandings(state);
@@ -7701,6 +7759,7 @@ function buildTurnReport(gameState, playerIndex){
   // track each income modifier separately so the Tax Income box can itemise WHAT is lifting
   // (or cutting) the realm's revenue — mirroring the end-of-turn collection engine.
   let _sdAgri=0,_sdMining=0,_sdAqueduct=0,_sdGrand=0,_eqReduction=0,_sdCreed=0,_enslaveReduction=0,_consecG=0,_sdRecords=0;
+  let _rawTaxBase=0;
   // 2026-09-09. The box is a NEXT-turn projection and had drifted from the collector: it ignored
   // the Enslave resentment (-1 tax for 3 turns, persistent) and every heritage / creed `tax` and
   // `interest` discovery. Any base difference shifts the floor(base x 20%) Neutral bonus by a gold
@@ -7711,7 +7770,7 @@ function buildTurnReport(gameState, playerIndex){
   const _nextTurn=(gameState.turn||0); // reports are built AFTER the turn counter advances, so gameState.turn is already the turn whose end-of-turn collection this forecasts
   const provTaxIncome=(player.provinces||[]).reduce((s,pid)=>{
     const pv=gameState.world.provinces[pid]; if(!pv) return s;
-    let t=pv.tax||0;
+    let t=pv.tax||0; _rawTaxBase+=t; // the bare province tax, before any bonus or penalty
     // Consecrate is PERSISTENT (player.consecratedProvIds — broken only when the province changes
     // hands), not a one-turn effect, so it belongs in the forecast. Same position and rounding as
     // the collector: after Bless (a transient we still skip), before Enslave / earthquake damage.
@@ -7759,6 +7818,11 @@ function buildTurnReport(gameState, playerIndex){
   const baseTaxIncome=provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)
   const thiefStipend=_pChars.reduce((sm,ch)=>sm+(perkTier(ch,'thief')>0?5:0),0); // THIEF L6: +5g income per Thief-6 character
   const taxIncome=provTaxIncome+taxBonus+perProvBonus+interestBonus+neutralTradeBonus+_sdRecords+titlePerkGold+thiefStipend;
+  // Tax Income box ledger: bare base, then one line per SOURCE. Every Sage discovery that pays gold
+  // (Agriculture, Mining, Aqueducts, Taxation Records, Merchant Guilds interest, heritage / creed tax
+  // and interest discoveries) is rolled into ONE total. Must satisfy
+  // rawTaxBase + bonuses − reductions === taxIncome (asserted by the tax ledger test).
+  const sageDiscG=_sdAgri+_sdMining+_sdAqueduct+_sdCreed+_sdRecords+interestBonus;
   const ARMY_COST_TR=ARMY_COST_MASTER; // alias → master table at top of script
   const playerCharsForWages=gameState.characters.filter(c=>c.player===playerIndex&&c.alive);
   const allArmiesForWages=playerCharsForWages.flatMap(c=>c.armies||[]);
@@ -7860,7 +7924,7 @@ function buildTurnReport(gameState, playerIndex){
     } }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
     discoveries:(player.discoveries||[]).map(d=>{ const m=DISC_BY_ID[d.id]; return {id:d.id,name:(m&&m.name)||d.name,category:(m&&m.category)||d.category,desc:(m&&m.desc)||d.desc,turnDiscovered:d.turnDiscovered}; }), // master text wins over the copy stored at discovery time
     // the Research order's category dropdown — every category this realm is eligible for, with how
     // many of its discoveries are already known (the portal greys out exhausted ones). Names and
@@ -7923,6 +7987,7 @@ function buildTurnReport(gameState, playerIndex){
       const kingAlive=(gameState.characters||[]).some(c=>c.alive&&c.isKing&&c.player===playerIndex);
       const rk=gameState.reckoning||null, over=gameState.gameOver||null;
       const isPublic=turn>=TITLES_PUBLIC_FROM_TURN || !!over;
+      const _race=isPublic?titleRaceFor(gameState, st, playerIndex):{}; // this realm's best contender per title, as percentages only
       return {
         publicFromTurn:TITLES_PUBLIC_FROM_TURN,
         public:isPublic,
@@ -7944,7 +8009,7 @@ function buildTurnReport(gameState, playerIndex){
         reckoning: rk?{byName:gameState.players[rk.by]?.name||null, calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
         gameOver: over?{winner:over.winner, winnerName:over.winner!=null?(gameState.players[over.winner]?.name||null):null, byElimination:!!over.byElimination, byConcession:!!over.byConcession, standings:(over.standings||[]).map(s=>({...s,titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)}))}:null,
         standings: isPublic?st.standings.map(s=>({...s, titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)})):null,
-        holders: isPublic?Object.fromEntries(TITLE_DEFS.map(t=>{ const h=st.titles[t.key]; const hc=h.charId!=null?(gameState.characters||[]).find(c=>c.id===h.charId):null; return [t.key,{name:t.name,prize:t.prize,holderIndex:h.playerIndex,holderName:h.playerIndex!=null?(gameState.players[h.playerIndex]?.name||null):null,charName:hc?hc.name:null,kingdomLevel:!!t.kingdomLevel,req:t.req,perk:t.perk,mine:h.playerIndex===playerIndex}]; })):null,
+        holders: isPublic?Object.fromEntries(TITLE_DEFS.map(t=>{ const h=st.titles[t.key]; const hc=h.charId!=null?(gameState.characters||[]).find(c=>c.id===h.charId):null; return [t.key,{name:t.name,prize:t.prize,holderIndex:h.playerIndex,holderName:h.playerIndex!=null?(gameState.players[h.playerIndex]?.name||null):null,charName:hc?hc.name:null,kingdomLevel:!!t.kingdomLevel,req:t.req,perk:t.perk,mine:h.playerIndex===playerIndex,race:_race[t.key]||null}]; })):null,
         minor: isPublic?(()=>{
           const mh=computeMinorTitles(gameState);
           const chById=id=>(gameState.characters||[]).find(c=>c.id===id);
@@ -8533,10 +8598,34 @@ async function runTurn(opts){
   // realm) and how many units the conqueror was leading. A capture from neutral/unowned ground
   // notifies nobody. Written straight to turnLog with charId:null (as notifyProvinceOwner does) so
   // the line never inherits the conqueror's log context and never lands in a character section.
+  function breakConsecrationOnCapture(prov, prev, newOwner, byChar, _ph){
+    const pl=G.players[prev]; if(!pl) return;
+    const list=consecratedIds(pl); const at=list.indexOf(prov.id);
+    if(at<0) return;
+    list.splice(at,1);
+    turnLog.push({type:'system', text:`✨ The consecration of ${prov.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
+      actor:null, targets:[prev], provinceId:prov.id, public:false, spy:false, system:false, armyEstimate:null, charId:null, charIds:null, phase:_ph, pinNotice:false, env:false});
+    if(!byChar||newOwner==null) return;
+    const units=(byChar.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom);
+    if(!units.length) return;
+    const rose=[];
+    units.forEach(a=>{
+      const qi=QUALITY_TIERS.indexOf(a.quality);
+      if(a._isSkeletal) return;                                      // skeletons never change quality by any means
+      if(qi<0||qi>=QUALITY_TIERS.length-1) return;                  // Elite (or unknown) cannot rise
+      if(Math.random()*100<CONSEC_CAPTURE_XP_PCT){ a.quality=QUALITY_TIERS[qi+1]; rose.push(`${a.unitName||armyUnitName(a.type)} (now ${a.quality})`); }
+    });
+    log('combat',`✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length?`Flushed with the deed, ${rose.join(', ')} gain${rose.length===1?'s':''} an experience level.`:'None of the troops is the better for it.'}`,
+      {actor:newOwner,targets:[newOwner],provinceId:prov.id,charId:byChar.id,phase:_ph});
+  }
   function setProvinceOwner(prov, newOwner, byChar, ph){
     if(!prov) return;
     const prev=prov.owner;
     prov.owner=newOwner;
+    // HOLY GROUND FALLS. A consecrated province that changes hands loses its consecration at once
+    // (not at the end-of-turn sweep, which remains as the safety net), and every real unit of the
+    // conquering column has a CONSEC_CAPTURE_XP_PCT chance to gain an experience level.
+    if(prev!=null&&prev!==newOwner) breakConsecrationOnCapture(prov, prev, newOwner, byChar, (ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase)));
     if(prev==null||prev===newOwner||newOwner==null) return;
     const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
     const who=byChar?byChar.name:'an unknown commander';
@@ -13400,9 +13489,12 @@ const BATTLE_ARMY_SPELLS={
       const pKing=(deadChar.player!=null)?G.players[deadChar.player]:null;
       //a DIVINE king is not succeeded — the divine return them, exactly as their heroes
       // (one full turn in death, then back at half HP on consecrated/wealthiest ground, without armies or items).
-      if(pKing&&pKing.alignment==='Divine'&&((pKing.provinces||[]).length>0)){
+      // The return needs CONSECRATED ground: with none, the king is succeeded like any other.
+      if(pKing&&pKing.alignment==='Divine'&&((pKing.provinces||[]).length>0)&&ownedConsecratedProvs(G,deadChar.player).length>0){
         deadChar._divineReturn=true;
-        log('system',`✨ ${deadChar.name}, monarch of a Divine realm, has fallen — but the divine do not abandon their anointed. No heir will be crowned: the crown lies empty for one full turn, and ${deadChar.name} will rise again at the start of the turn after next, in a consecrated province (or the realm's wealthiest), at half health, without armies or items. Until then the realm has no king: no diplomacy may be declared and no Reckoning called.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+        log('system',`✨ ${deadChar.name}, monarch of a Divine realm, has fallen — but the divine do not abandon their anointed while the realm keeps holy ground. No heir will be crowned: the crown lies empty for one full turn, and ${deadChar.name} will rise again at the start of the turn after next, in the nearest consecrated province (which gives up its consecration to restore them), at half health, without armies or items. Should the realm lose all its consecrated ground first, the grace is lost and an heir is crowned. Until then the realm has no king: no diplomacy may be declared and no Reckoning called.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+      } else if(pKing&&pKing.alignment==='Divine'){
+        log('system',`✨ ${deadChar.name}, monarch of a Divine realm, has fallen — and the realm holds no consecrated ground to which the divine could return them. An heir must take the crown.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
       }
       if(pKing){
         // The previously-resurrectable monarch (whom this king's line replaced) passes beyond
@@ -15173,7 +15265,7 @@ const BATTLE_ARMY_SPELLS={
           log('system',`${c.name}: your White faith can sustain only ${_cLimit} consecrated province${_cLimit!==1?'s':''} at once (${_cList.map(id=>G.world.provinces[id]?.name).filter(Boolean).join(', ')||'—'}). One must be lost or captured before you can hallow ${prov.name}. (Raise your White skill to consecrate more.)`,{actor:c.player,targets:[c.player]});break;}
         _cList.push(prov.id);
         TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
-        log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and fallen heroes return to hallowed ground when divine grace restores them. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
+        log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
         break;
       }
       // GOOD — Call to Arms: the folk answer the king; a free Green garrison unit musters.
@@ -16685,12 +16777,19 @@ const BATTLE_ARMY_SPELLS={
           if(graves.length===0){
             log('explore',`${c.name} calls out to the fallen in ${prov.name}, but there are no battlefield dead here to answer. Seek a province where armies have previously perished.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
           }
-          const grave=takeBestGrave(prov); // the most experienced dead answer first
+          // Units raised per cast scale with the caster's Necromancy (benefit scale, items count):
+          // 1 at level 1-2, 2 at level 3-4, 3 at level 5+ — never more than the graves hold. An
+          // item-cast by a non-necromancer (Reaper's Bell, Ossuary Key) raises one.
+          const _skN=skeletalRaiseCount(effStat(c,'necromancy'));
           const _uTier=gdActive(c.player,'Undead'); // GRAND DESIGN — Undead: +1 tier when raised
-          const skel={ type:grave.type,quality:(_uTier?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[grave.quality]||grave.quality):grave.quality),race:'Undead',_isSkeletal:true,
-            unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)` };
-          c.armies=(c.armies||[]);c.armies.push(skel);
-          log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          for(let _sk=0;_sk<_skN&&(prov.battleGraves||[]).length>0;_sk++){
+            const grave=takeBestGrave(prov); // the most experienced dead answer first
+            if(!grave) break;
+            const skel={ type:grave.type,quality:(_uTier?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[grave.quality]||grave.quality):grave.quality),race:'Undead',_isSkeletal:true,
+              unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)` };
+            c.armies=(c.armies||[]);c.armies.push(skel);
+            log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          }
           // the caster has just gained a unit here — if this is a neutral/enemy province, that
           // force must fight any defenders this phase, or take control if the land is undefended.
           resolveUnitGainInProvince(c, prov, ph);
@@ -20427,6 +20526,18 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // 7. Advance turn counter
   G.turn=(G.turn||1)+1;
 
+  // 7a-bis. A Divine king awaiting return whose realm no longer holds ANY consecrated ground cannot
+  // come back (only a king can consecrate, so none can be made while he lies dead): the grace is
+  // lost now and 7b crowns an heir in this same pass.
+  (G.players||[]).forEach((p,pi)=>{
+    if(!p||p.alignment!=='Divine') return;
+    G.characters.filter(c=>c.isKing&&c.player===pi&&!c.alive&&c._divineReturn).forEach(k=>{
+      if(ownedConsecratedProvs(G,pi).length>0) return;
+      delete k._divineReturn;
+      log('system',`✨ The realm's last consecrated ground is gone, and with it the way back for ${k.name}: the divine cannot restore a monarch where no holy ground remains. An heir takes the crown.`,{actor:pi,targets:[pi]});
+    });
+  });
+
   // 7b. King succession — crown an heir for any player whose king has died.
   G.players.forEach((p,pi)=>{
     const aliveKing=G.characters.find(c=>c.isKing&&c.player===pi&&c.alive);
@@ -20633,14 +20744,20 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const hero=G.characters.find(h=>h.id===grave.id);
     if(!hero) return;
     const _wasKing=!!grave._monarch; // Divine kings return the same way
-    if(_wasKing){ hero.isKing=true; delete hero._divineReturn; if(G.players[grave.player]) delete G.players[grave.player]._resurrectableMonarchId; }
-    // Find the best province to resurrect in: player's home province, else wealthiest owned
+    // The fallen return ONLY to consecrated ground — the nearest consecrated province the realm
+    // still owns, measured from where the body lies — and the return SPENDS that consecration.
+    // With no holy ground the grace is lost for good: the body stays an ordinary grave (the
+    // Resurrect spell can still reach it) and is never tried again.
     const playerP=G.players[grave.player];
-    const ownedProvs=(playerP.provinces||[]).map(id=>G.world.provinces[id]).filter(Boolean);
-    if(!ownedProvs.length) return; // no province to return to
-    // Consecrated ground is where divine grace returns the fallen; wealthiest province otherwise.
-    const _cIds=consecratedIds(playerP); const consecP=ownedProvs.find(p=>_cIds.includes(p.id))||null;
-    const homeProv=consecP||ownedProvs.reduce((best,p)=>p.tax>=(best?.tax||0)?p:best, ownedProvs[0]);
+    if(grave._divineLost) return;
+    const homeProv=nearestConsecratedProv(G, grave.player, grave.location!=null?grave.location:hero.location);
+    if(!homeProv){
+      grave._divineLost=true; if(_wasKing) delete hero._divineReturn;
+      log('explore',`✨ ${hero.name} does not return. The divine restore the fallen only upon consecrated ground, and the realm holds none — the grace is lost. (The body remains where it lies; a Resurrect spell may yet reach it.)`,{actor:grave.player,targets:[grave.player]});
+      return;
+    }
+    if(_wasKing){ hero.isKing=true; delete hero._divineReturn; if(playerP) delete playerP._resurrectableMonarchId; }
+    { const _cl=consecratedIds(playerP); const _ci=_cl.indexOf(homeProv.id); if(_ci>=0) _cl.splice(_ci,1); }
     // Resurrect — strip armies and items (divine gift, not a free ride)
     hero.alive=true;hero.hp=Math.floor(hero.maxHp*0.5)||8;hero.killedThisTurn=false;
     hero.armies=[];hero.items=[];hero.location=homeProv.id;
@@ -20648,7 +20765,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     G.heroGraveyard=G.heroGraveyard.filter(g=>g.id!==grave.id);
     // Log to turn report
     const turnLog=G.turnLog||[];
-    log('explore',`✨ **Divine Resurrection**: ${hero.name}${_wasKing?', your monarch,':''} returns to life by the grace of the divine! They appear in ${homeProv.name} with ${hero.hp} HP — no armies or items, but their spirit and skills endure.${_wasKing?' The crown is worn once more.':''}`,{actor:grave.player,targets:[grave.player],provinceId:homeProv.id,public:true});
+    log('explore',`✨ **Divine Resurrection**: ${hero.name}${_wasKing?', your monarch,':''} returns to life by the grace of the divine! They appear in ${homeProv.name}, the nearest consecrated ground, with ${hero.hp} HP — no armies or items, but their spirit and skills endure. The miracle spends the province's consecration: ${homeProv.name} is holy ground no longer, and the crown may sanctify new ground in its place.${_wasKing?' The crown is worn once more.':''}`,{actor:grave.player,targets:[grave.player],provinceId:homeProv.id,public:true});
   });
 
   // 7e. Battlefield grave pool decay — ~10% of remaining graves rot each turn, halved to 5% in
@@ -21371,6 +21488,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-2243</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.20-0153</div>
 </body>
 </html>
