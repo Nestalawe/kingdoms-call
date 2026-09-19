@@ -687,6 +687,18 @@ const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','awaken
 // characters (the Encounter order is refused on the same grounds).
 const CHARMED_NO_TURN_SPELLS=new Set(['Psychic Blast','Telekinetic Storm','Curse','Charm','Control Undead','Dominate']);
 
+// Spells whose named CHARACTER target must be standing in the caster's own province. Each of these
+// branches already refuses an absent target — but it did so BELOW the cast roll, so a caster whose
+// target had marched away (most often a general on Defend who rode out at the top of the phase)
+// burned the roll and the per-turn casting slot on a spell that was never worked. The guard is
+// hoisted above the roll instead (DEV_LOG: "a guard after the cast roll is not a guard").
+// Keyed by SPELL_DEFS_P.fn. Province-targeted spells and the remote scry (Clairvoyance) are absent.
+const SPELL_FNS_NEED_COLOCATED_TARGET=new Set([
+  'psychic_charm','psychic_blast','psychic_storm','psychic_oratory','illusory_phantasmal',
+  'necromancy_control','necromancy_curse','white_judgment','psychic_massconfusion',
+  'psychic_dominate','elemental_chainlightning',
+]);
+
 
 let currentUser = null;
 let currentGame = null;
@@ -13901,9 +13913,13 @@ const BATTLE_ARMY_SPELLS={
             if(!ally.alive||ally.id===c.id||ally.player!==c.player) return;
             if((ally.armies||[]).length===0) return;
             const allyOrder=phOrders[ally.id]?.[ph];
-            if(!allyOrder||allyOrder.action!=='move') return;
-            const allyTarget=parseInt(allyOrder.target);
-            if(allyTarget!==toProv.id) return;
+            // Same normalisation trap as the casting limit: the player portal saves "Move" with a
+            // "prov:<id>" target, the bots save "move" with a bare id. The raw comparison matched
+            // only the bots, so allied contingents of a HUMAN realm never unified — and the Good
+            // realm's Banner of Fellowship had nothing to modify.
+            if(!allyOrder||normaliseAction(allyOrder)!=='move') return;
+            const allyDest=intendedDestination(ally,allyOrder);
+            if(!allyDest||allyDest.id!==toProv.id) return;
             // Roll contingent unify chance based on March skill and distance
             const marchLvl=effStat(c,'march');
             // AK [4.1.2]: the unify chance depends on how far apart the two contingents started — 0
@@ -14076,8 +14092,8 @@ const BATTLE_ARMY_SPELLS={
               if(!ally.alive||ally.id===c.id||ally.player!==c.player) return;
               if((ally.armies||[]).length===0) return;
               const allyOrder=G.turnOrders?.[ally.id]?.[ph];
-              if(!allyOrder||allyOrder.action!=='move') return;
-              if(parseInt(allyOrder.target)!==toProv.id) return;
+              if(!allyOrder||normaliseAction(allyOrder)!=='move') return;   // see the note on the NPC-side unify above
+              { const _aDest=intendedDestination(ally,allyOrder); if(!_aDest||_aDest.id!==toProv.id) return; }
               const marchLvl=effStat(c,'march');
               const unifyDist=Math.min(2,provDistance(ally.location,prov.id));
               const unifyPct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+(G.players[c.player]?.alignment==='Good'?15:0)+discSum(c.player,'unify','pct')); // GOOD — Banner of Fellowship; + ag08 Common Cause
@@ -15616,7 +15632,13 @@ const BATTLE_ARMY_SPELLS={
           // Transfer to another character: must be one of THIS player's own living characters,
           // standing in the same province. Never a neutral hero or another player's character.
           if(!recip2||!recip2.alive||recip2.player!==c.player||recip2.location!==c.location){
-            log('system',`${c.name} cannot transfer armies — the recipient must be one of your own characters standing in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+            // Name where they went: the commonest cause is a general on Defend who rode out to a
+            // threatened neighbour at the top of the phase, before this transfer resolved.
+            const _rp=(recip2&&recip2.alive&&recip2.player===c.player&&recip2.location!=null)?G.world.provinces[recip2.location]:null;
+            log('system', _rp
+              ? `${c.name} cannot hand the troops to ${recip2.name} — they had already marched on to ${_rp.name} before the column could be handed over. The troops stay under ${c.name}'s command.`
+              : `${c.name} cannot transfer armies — the recipient must be one of your own characters standing in ${prov.name}.`,
+              {actor:c.player,targets:[c.player],provinceId:prov.id});break;
           }
         } else {
           // Garrison: only allowed in a province the player actually controls.
@@ -15970,12 +15992,19 @@ const BATTLE_ARMY_SPELLS={
           const _lvl=effStat(c,_school);
           const _limit=(_lvl>=4?3:_lvl>=3?2:1)+((charMinor(c,'warlock')&&_BEST_SCHOOL(c)===skillLevel(c,_school))?1:0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
           const _divCath=gdActive(c.player,'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot
+          // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
+          // "cast_spell". Comparing the raw string counted only the bots' casts, so a human caster
+          // had NO per-turn limit at all (a Psychic 1 hero could work five action spells a season).
+          // The spell key is "Bless Province", never "Bless" — the old test never matched, so a
+          // Grand Cathedral's free Bless was not free either. An order the engine REFUSED before it
+          // was ever worked (_castNotWorked) costs no slot.
           const _castsSoFar=(G.turnOrders[c.id]||[]).slice(0,ph).filter(o=>{
-            if(!o||o.action!=='cast_spell') return false;
-            if(o.target==='Bless'&&_divCath) return false; // a Grand Cathedral's Bless never consumes a slot
+            if(!o||normaliseAction(o)!=='cast_spell') return false;
+            if(o._castNotWorked) return false;             // never left the caster's lips
+            if(o.target==='Bless Province'&&_divCath) return false; // a Grand Cathedral's Bless never consumes a slot
             return SPELL_DEFS_P[o.target]?.school===_school;
           }).length;
-          if(_castsSoFar>=_limit&&_lvl>0&&!(spellName==='Bless'&&_divCath)){
+          if(_castsSoFar>=_limit&&_lvl>0&&!(spellName==='Bless Province'&&_divCath)){
             log('system',`${c.name}: ${SKILL_LABELS[_school]||_school} level ${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,{actor:c.player,targets:[c.player]});break;
           }
         }
@@ -16013,6 +16042,22 @@ const BATTLE_ARMY_SPELLS={
         const necroAuto = school==='necromancy' && !c._necroAutoUsed && activeItems(c).some(it=>it.effect&&it.effect.stat==='necroAuto');
         const castChance=castChanceFor(c,school,G.players[c.player],{chars:G.characters||[],itemCast:!!_itemCast,necroAuto}).chance;
         if(necroAuto&&!_itemCast) c._necroAutoUsed=true;
+        // ── TARGET STILL HERE? ── Refused BEFORE the roll, so a spell that was never worked costs
+        // neither the cast nor the turn's casting slot. This is what a caster meets when the hero
+        // they aimed at has left the province — most often a general on Defend who rode out to a
+        // threatened neighbour at the top of the phase, before any order resolved.
+        if(SPELL_FNS_NEED_COLOCATED_TARGET.has(spellDef.fn)){
+          const _tid=parseInt(extra);
+          const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
+          if(_t&&_t.location!==c.location){
+            const _tp=G.world.provinces[_t.location];
+            const _own=(_t.player===c.player);
+            o._castNotWorked=true; // costs no casting slot for the rest of the turn
+            log('system',`${c.name} looks for ${_t.name} to work ${spellName} upon, and finds them gone — ${_own?'they had already marched':'they had already moved'} on to ${_tp?_tp.name:'another province'} before the spell could be shaped. It is never worked, and costs ${c.name} nothing.`,
+              {actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id,phase:ph});
+            break;
+          }
+        }
         const castRoll=d100();
         if(_itemCast) log('system',`🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         log('system',`📊 ${c.name} casts ${spellName} (${school} ${spellLevel}): ${castChance}% chance [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -16317,6 +16362,11 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='psychic_oratory'){
           // Self or an allied character in the same province — their travelling armies gain +1
           // quality this turn.
+          // A NAMED ally who is not here is caught above (free refusal). What is left is a named
+          // ally of another realm, or no target at all — self. Never silently swap a named target.
+          if(targetChar&&targetChar.player!==c.player){
+            log('system',`${c.name}'s Oratory can only stir their own realm's troops — ${targetChar.name} serves another crown.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+          }
           const oratoryTarget=(targetChar&&targetChar.player===c.player&&targetChar.location===c.location)?targetChar:c;
           const _oTiers=(perkTier(c,'psychic')>=1)?2:1; // PSYCHIC L6 (Words of Awe): +2 quality tiers instead of +1
           oratoryTarget._oratoryBoost=_oTiers; // read by armStr: +N effective quality tiers (not cumulative)
@@ -21078,6 +21128,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.19-1454</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — GM Portal v2026.09.19-1625</div>
 </body>
 </html>

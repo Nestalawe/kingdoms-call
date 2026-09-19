@@ -6324,7 +6324,8 @@ function buildTargetField(c, ph, saved){
       // The engine reads no target for Defend; a hidden field keeps the order shape consistent.
       return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
         <div style="font-size:.72rem;color:var(--forest)">🛡 Guards ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
-        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn, starting this phase. If an enemy army marches into a neighbouring province <em>of yours</em> — or an enemy hero <strong>raises, summons or seizes troops</strong> inside one — they march there at once (1 movement point) and are in the line <em>before</em> the enemy can take it, fighting as the <strong>defender</strong> with the garrison at their side, however strong the foe. One ride-out per phase; if their own province is attacked they hold it instead. The watch then carries on from wherever they stand. Ended by a later Move or Encounter order, or by losing a battle.</div>`;
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn, starting this phase. If an enemy army marches into a neighbouring province <em>of yours</em> — or an enemy hero <strong>raises, summons or seizes troops</strong> inside one — they march there at once (1 movement point) and are in the line <em>before</em> the enemy can take it, fighting as the <strong>defender</strong> with the garrison at their side, however strong the foe. One ride-out per phase; if their own province is attacked they hold it instead. The watch then carries on from wherever they stand. Ended by a later Move or Encounter order, or by losing a battle.</div>
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">⚠ Because they may ride out <em>before</em> your other characters act this phase, anything you want done <strong>to</strong> them — a spell cast on them, a column handed over — should be ordered in an <strong>earlier</strong> phase. If they have already gone, a spell on them is never worked (and costs no casting slot) and a transfer is refused with the troops kept; a Send Item follows by courier and arrives at turn's end.</div>`;
     }
 
     // ── PURSUE (AK [3.16]) ── ── ENCOUNTER CHARACTER ──
@@ -8193,6 +8194,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-1454</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-1625</div>
 </body>
 </html>
