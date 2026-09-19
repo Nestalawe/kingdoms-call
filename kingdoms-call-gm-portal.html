@@ -16276,6 +16276,26 @@ const BATTLE_ARMY_SPELLS={
             log('explore',`✨ ${c.name} calls the waters back from ${targetProv.name}, but the ground already lies dry — the spell finds no sea to part.`,{actor:c.player,targets:[c.player],provinceId:targetProv.id,public:false,env:true});
           }
         }
+        else if(fn==='white_holy_symbol'){
+          // ACTION FORM (Toby 2026-09-19): the Holy Symbol raised over the caster's own province lays
+          // its battlefield dead to rest — every grave there is cleansed, so no necromancer can raise
+          // them (Skeletal Armies, Harvest the Field, Raise Wraiths, Death's Dominion, Bind Wraith all
+          // draw on prov.battleGraves). Always the province the caster stands in; no target.
+          // The combat and battle-magic forms are unchanged.
+          const _hsProv=G.world.provinces[c.location]||prov;
+          const _dead=(_hsProv.battleGraves||[]).length;
+          TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
+          if(_dead===0){
+            log('explore',`✝ ${c.name} raises the Holy Symbol over ${_hsProv.name}, but no battlefield dead lie unquiet here — there is nothing to cleanse.`,{actor:c.player,targets:[c.player],provinceId:_hsProv.id});
+          } else {
+            _hsProv.battleGraves=[];
+            logSplit('explore',
+              `✝ ${c.name} raises the Holy Symbol over ${_hsProv.name} and the graves of its battlefield dead are cleansed — every fallen unit buried there is laid to rest, beyond the reach of any necromancer.`,
+              `✝ ${c.name}${realmTag(c.player)} raises a Holy Symbol over the battlefields of ${_hsProv.name}, and the dead buried there are laid to rest — the graves are cleansed and can no longer be raised.`,
+              {actor:c.player,provinceId:_hsProv.id,charId:c.id,phase:ph});
+          }
+          noteGraveIntel(G.players[c.player], _hsProv.id, G.turn, []); // the caster's realm now knows the ground is clean
+        }
         else if(fn==='white_bless_province'){
           const casterProv=G.world.provinces[c.location];
           const adjIds=new Set(getNeighborsP(casterProv,G.world.cols,G.world.rows,G.world.provinces).map(p2=>p2&&p2.id).filter(x=>x!=null));
@@ -17695,8 +17715,9 @@ const BATTLE_ARMY_SPELLS={
     return kept;
   }
 
-  function resolveStalledBattles(ph){
+  function resolveStalledBattles(ph, onlyProvId, freshWar){
     (G.world.provinces||[]).forEach(prov=>{
+      if(onlyProvId!=null&&(!prov||prov.id!==onlyProvId)) return; // resolveWarFronts settles one province
       _combatSkillProv=null; // reset before each province; combatVs* re-sets it to this prov
       if(!prov||!prov._battleUnresolved) return;
       // ILLUSORY L9 VEIL: while any armed force here is veiled, the contest is SUSPENDED — keep the
@@ -17817,8 +17838,18 @@ const BATTLE_ARMY_SPELLS={
         // next battle — so the attacker is whoever doesn't own the ground, not simply whoever is
         // strongest.
         let defender=ranked.find(f=>f.player===prov.owner), attacker;
-        if(defender){ attacker=ranked.find(f=>f.player!==prov.owner&&f.player!==defender.player); }
-        else { attacker=ranked[0]; defender=ranked.find(f=>f.player!==attacker.player); }
+        if(defender){ attacker=ranked.find(f=>f.player!==prov.owner&&f.player!==defender.player&&f.player!=null&&defender.player!=null&&areEnemies(f.player,defender.player)); }
+        if(!attacker){
+          // the owner's own forces (if any) are not party to the war — the contest is between two
+          // guests on the ground: the strongest force with an enemy present attacks that enemy
+          defender=null;
+          for(const a of ranked){ const d=ranked.find(f=>f.player!==a.player&&a.player!=null&&f.player!=null&&areEnemies(a.player,f.player)); if(d){ attacker=a; defender=d; break; } }
+        }
+        if(!attacker){ // no warring pair at all — the old pairing, which lapses just below
+          defender=ranked.find(f=>f.player===prov.owner);
+          if(defender){ attacker=ranked.find(f=>f.player!==prov.owner&&f.player!==defender.player); }
+          else { attacker=ranked[0]; defender=ranked.find(f=>f.player!==attacker.player); }
+        }
         if(!attacker||!defender) return;
         // DIPLOMACY: a contested battle only persists between players still at WAR. If the two sides
         // made peace at the turn boundary (mutual Treat, Enemy→Neutral), the contest lapses and they
@@ -17842,11 +17873,14 @@ const BATTLE_ARMY_SPELLS={
         const atkSea=prov.terrain==='sea';
         const atkPool=atkSea?seaMovePoints:movePoints;
         if((atkPool[attacker.id]??0)>0) atkPool[attacker.id]=Math.max(0,(atkPool[attacker.id]??0)-1);
-        log('combat',`⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} and ${forceLabel(defender)} clash again.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
+        log('combat',freshWar
+          ?`⚔ War has come to ${prov.name}: ${forceLabel(attacker)}${realmTag(attacker.player)} and ${forceLabel(defender)}${realmTag(defender.player)} have stood on the same ground since the season opened, and with ${SEASONS[ph]}'s orders done they fall upon each other.`
+          :`⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} and ${forceLabel(defender)} clash again.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player,defender.player],provinceId:prov.id,public:true});
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         const defCopy={...defender,armies:[...(defender.armies||[])]};
         atkCopy._attackedFrom=attacker._attackedFrom; defCopy._attackedFrom=defender._attackedFrom;
         atkCopy._resumeBattle=true; // already in the province — suppress the "moves into" line
+        if(freshWar) atkCopy._openingClash=true; // a war front's first clash is not a carry-on round
         const battle=combatVsChar(atkCopy,defCopy,prov);
         creditBattle(attacker,defender,battle,prov);
         // both sides have now had their battle for the phase — pin them (STAGE 1b) so neither can
@@ -17881,6 +17915,14 @@ const BATTLE_ARMY_SPELLS={
 
       // Only one player's force remains (the other broke away or was destroyed) — secure it
       const lone=playerForces[0];
+      // a lone survivor may only take ground from an ENEMY (or no one): an ally's or a neutral
+      // realm's province is not his to seize, and an enemy's standing garrison must still be beaten
+      if(prov.owner!=null&&prov.owner!==lone.player&&!areEnemies(lone.player,prov.owner)) return;
+      if(prov.owner!=null&&prov.owner!==lone.player&&!guard&&(prov.garrisonArmies||[]).length>0&&lone.alive){
+        resolveUnitGainInProvince(lone, prov, ph);
+        _logCtx={charId:_ctxCharId, phase:ph};
+        return;
+      }
       if(prov.owner!==lone.player && !guard){
         G.players.forEach((p,pi)=>{if(pi!==lone.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
         setProvinceOwner(prov,lone.player,lone,ph); prov.neutralDefenders=[]; prov.npcArmies=0;
@@ -18126,7 +18168,9 @@ const BATTLE_ARMY_SPELLS={
 
     if(!hasDefenders){
       claim();
-      log('combat',`With fresh troops now at their back, ${c.name} takes control of ${prov.name} for ${player.name}!`,{actor:c.player,targets:[],provinceId:prov.id,public:true});
+      log('combat',c._warFront
+        ?`No one stands to defend ${prov.name} — ${c.name} takes control of it for ${player.name}!`
+        :`With fresh troops now at their back, ${c.name} takes control of ${prov.name} for ${player.name}!`,{actor:c.player,targets:[],provinceId:prov.id,public:true});
       return false;
     }
 
@@ -18156,8 +18200,8 @@ const BATTLE_ARMY_SPELLS={
       creditBattle(c,_rbP.leader,battle,prov);
       if(battle&&Array.isArray(battle.narrative)){
         const _form=[];
-        if(c._openingClash) _form.push(`➡️ ${c.name}${realmTag(c.player)} turns a newly-gathered host on ${prov.name}, held by ${(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:(G.players[enemyChar.player]?.name||enemyChar.name)} — a battle is initiated.`);
-        if(_defRiders.length>0) _form.push(`🛡 ${_defRiders.map(d=>d.name).join(' and ')} ${_defRiders.length>1?'were':'was'} keeping watch over ${prov.name} and ${_defRiders.length>1?'are':'is'} already in the line when ${c.name}'s new host forms up — ${prov.name} is defended, not retaken.`);
+        if(c._openingClash&&!c._warFront) _form.push(`➡️ ${c.name}${realmTag(c.player)} turns a newly-gathered host on ${prov.name}, held by ${(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:(G.players[enemyChar.player]?.name||enemyChar.name)} — a battle is initiated.`);
+        if(_defRiders.length>0) _form.push(`🛡 ${_defRiders.map(d=>d.name).join(' and ')} ${_defRiders.length>1?'were':'was'} keeping watch over ${prov.name} and ${_defRiders.length>1?'are':'is'} already in the line when ${c.name}'s ${c._warFront?'host turns on the province':'new host forms up'} — ${prov.name} is defended, not retaken.`);
         if(defReinf.length>0) _form.push(`${enemyChar.name} is reinforced by ${defReinf.map(d=>d.name).join(', ')} in the defence of ${prov.name}!`);
         if(_garHere.length>0) _form.push(`🛡 The standing troops of ${prov.name} rally to ${_rbP.leader.name}: the garrison (${_garHere.length} unit${_garHere.length!==1?'s':''} — ${describeArmy(_garHere)}) joins the defence.`);
         if(_rbP.changed) _form.push(commandHandoverLine(_rbP.leader,enemyChar,prov.name));
@@ -18871,7 +18915,7 @@ const BATTLE_ARMY_SPELLS={
       d._defendReactedPhase=ph;
       if(!prov.visitedBy) prov.visitedBy=[];
       if(!prov.visitedBy.includes(d.player)) prov.visitedBy.push(d.player);
-      log('move',`🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(raiser.player)} is gathering a host inside ${prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
+      log('move',`🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(raiser.player)} ${raiser._warFront?'is turning the host camped inside '+prov.name+' on the province':'is gathering a host inside '+prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
         {actor:d.player,targets:[d.player],provinceId:prov.id,public:true,charId:d.id,phase:ph});
       trySkillGain(d,bySea?'naval':'march',bySea?SKILLGAIN_STD:SKILLGAIN_COMMON);
       riders.push(d);
@@ -19412,9 +19456,10 @@ const BATTLE_ARMY_SPELLS={
   // waiting to happen: flag it so resolveStalledBattles joins the fight and the province shows as
   // contested. This is the intermittent "holds armed forces of 2 players but is NOT flagged
   // _battleUnresolved" failure in scenario.js.
-  function flagEnemyStandoffs(){
+  function flagEnemyStandoffs(exceptProvIds){
     (G.world.provinces||[]).forEach(pv=>{
       if(!pv||pv._battleUnresolved) return;
+      if(exceptProvIds&&exceptProvIds.has(pv.id)) return; // a fresh war front — settled at the end of Spring (resolveWarFronts)
       const _vf=(G.characters||[]).filter(ch=>ch.alive&&ch.location===pv.id&&(ch.armies||[]).length>0&&ch.player!=null&&!isVeiled(ch));
       const _vpl=[...new Set(_vf.map(ch=>ch.player))];
       let _vep=false; for(let i=0;i<_vpl.length&&!_vep;i++) for(let j=i+1;j<_vpl.length;j++) if(areEnemies(_vpl[i],_vpl[j])){ _vep=true; break; }
@@ -19434,6 +19479,80 @@ const BATTLE_ARMY_SPELLS={
       const tgt=(ch.player!=null)?{actor:ch.player,targets:[ch.player],charId:ch.id,provinceId:prov?prov.id:undefined,public:true}:{actor:-1,targets:[]};
       log('system', d>0?`💪 ${ch.name}'s maximum HP rises by ${d} to ${ch.maxHp} (current HP ${dispFloor(ch.hp)}).`:`${ch.name}'s maximum HP falls by ${-d} to ${ch.maxHp}.`, tgt);
     });
+  }
+  // ── WAR FRONTS (Toby 2026-09-19) ── Two realms find themselves at war at the start of a turn
+  // while one's host already stands on the other's ground (it came in under an alliance, or war was
+  // declared with the columns side by side), or while both hosts share a province. Nothing marched,
+  // so no move triggered a battle — and before this rule nothing happened at all (a column could sit
+  // in enemy land indefinitely), or the co-located hosts clashed at the very top of Spring with no
+  // chance to withdraw. Now the host gets Spring to act: withdraw, reinforce, or be reinforced. At
+  // the END of Spring — after every order of the phase, the Defend step and all marches — any host
+  // still standing where it stood at the start of the turn turns on the province: it is the
+  // ATTACKER, exactly like a host raised there (resolveUnitGainInProvince), so the owner's
+  // commanders and standing garrison defend with the defender's edge, adjacent generals on Defend
+  // ride in first (defendAnswerUnitGain), and an undefended province is simply taken. A province
+  // already fought over in Spring (a march into it, a raised host) is not fought over twice here;
+  // anything still contested carries on through the ordinary stalled-battle sweep. Contests left
+  // over from LAST turn (already flagged _battleUnresolved) are not war fronts — they resume at the
+  // top of Spring as before.
+  function warFrontThreats(){
+    const out=[];
+    (G.characters||[]).forEach(c=>{
+      if(!c||!c.alive||c.player==null||c.location==null||!(c.armies||[]).some(a=>a&&!a._phantom)) return;
+      if(isVeiled(c)) return;
+      const p=G.world.provinces[c.location]; if(!p) return;
+      const onEnemyLand=p.owner!=null&&p.owner!==c.player&&areEnemies(c.player,p.owner);
+      const facesEnemyHost=(G.characters||[]).some(o=>o&&o.alive&&o.id!==c.id&&o.location===p.id&&o.player!=null&&o.player!==c.player
+        &&(o.armies||[]).some(a=>a&&!a._phantom)&&areEnemies(c.player,o.player)&&!isVeiled(o));
+      if(onEnemyLand||facesEnemyHost) out.push({c,prov:p,onEnemyLand,facesEnemyHost});
+    });
+    return out;
+  }
+  const _warFrontAtStart=new Map(); // charId → the province his host stood in when the turn began
+  warFrontThreats().forEach(({c,prov})=>{ if(!prov._battleUnresolved) _warFrontAtStart.set(c.id,prov.id); });
+  const _warFrontProvs=new Set(_warFrontAtStart.values());
+  function resolveWarFronts(ph){
+    if(!_warFrontAtStart.size) return;
+    _warFrontProvs.forEach(pid=>{
+      const prov=G.world.provinces[pid]; if(!prov) return;
+      // a province already fought over this phase (a march into it, a host raised there, a
+      // resumed contest) has had its battle — the ordinary sweep takes it from here
+      if(prov._battleUnresolved||prov._hadBattleThisTurn) return;
+      const here=()=>warFrontThreats().filter(t=>t.prov.id===pid&&_warFrontAtStart.get(t.c.id)===pid);
+      const byStr=(a,b)=>armyTotalStr(b.c,prov)-armyTotalStr(a.c,prov);
+      const assault=(c)=>{
+        const ownerNm=(prov.owner!=null&&G.players[prov.owner])?G.players[prov.owner].name:null;
+        _combatSkillProv=null; _logCtx={charId:c.id,phase:ph};
+        log('combat',`⚔ War stands between ${G.players[c.player]?.name||'their realm'} and ${ownerNm||'the realm whose host shares the ground'}, and ${c.name}${realmTag(c.player)} has held ${c.armies.length} unit${c.armies.length!==1?'s':''} in ${prov.name} since the season opened. With ${SEASONS[ph]}'s orders done, the host turns on the province${ownerNm?` of ${ownerNm}`:''}.`,
+          {actor:c.player,targets:[c.player,prov.owner].filter(x=>x!=null),provinceId:prov.id,public:true,charId:c.id,phase:ph});
+        c._warFront=true;
+        try{ resolveUnitGainInProvince(c,prov,ph); } finally { delete c._warFront; }
+        _logCtx={charId:null,phase:null}; _combatSkillProv=null;
+      };
+      // 1. hosts standing on ENEMY-OWNED ground — each column assaults in turn, strongest first,
+      // until the province falls or the fight is left hanging
+      const invaders=here().filter(t=>t.onEnemyLand).sort(byStr);
+      if(invaders.length){
+        for(const t of invaders){
+          const c=t.c;
+          if(prov._battleUnresolved) break;
+          if(!c.alive||c.location!==pid||!(c.armies||[]).length) continue;
+          if(prov.owner==null||prov.owner===c.player||!areEnemies(c.player,prov.owner)) continue;
+          assault(c);
+        }
+        return;
+      }
+      // 2. hosts of warring realms sharing ground neither of them owns
+      const facing=here().filter(t=>t.facesEnemyHost).sort(byStr);
+      if(!facing.length) return;
+      if(prov.owner==null){ assault(facing[0].c); return; }
+      // …a third realm's land (allied or neutral to both): the two hosts fight each other there and
+      // the province stays with its owner
+      prov._battleUnresolved=true;
+      resolveStalledBattles(ph,pid,true);
+      _logCtx={charId:null,phase:null}; _combatSkillProv=null;
+    });
+    settleRalliedGarrisons();
   }
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // reliable phase for skill-rises earned outside processOrder
@@ -19479,7 +19598,7 @@ const BATTLE_ARMY_SPELLS={
     // the force was hidden must be joined. Flag any province where two enemy players' armed,
     // UNVEILED forces now stand together and it is not already contested; resolveStalledBattles
     // (next) resolves it.
-    flagEnemyStandoffs();
+    flagEnemyStandoffs(ph===0?_warFrontProvs:null); // a fresh war front waits for the end of Spring
     resolveStalledBattles(ph);
     settleRalliedGarrisons(); // return rallied garrisons to their province if the contest is won, else keep them with the hero
     _logCtx={charId:null,phase:null}; // clear the battle-leader context set per province above
@@ -19605,6 +19724,7 @@ const BATTLE_ARMY_SPELLS={
     });
 
     flushDefendStep(); // a phase with no relocating or Defend-tier actor still gets its Defend step
+    if(ph===0) resolveWarFronts(ph); // hosts caught on a war front turn on the province at the end of Spring
     // every order this phase has resolved, so any enemy force RAISED or SUMMONED into a defender's
     // watch zone now exists — let generals on Defend ride out and give it battle.
     _combatSkillProv=null;
@@ -20156,6 +20276,23 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         else { mA=mB=`🕊 ${na} and ${nb} have made peace and are now NEUTRAL — neither may march an army across the other's border.`; }
         log('system',mA,{actor:null,targets:[a],system:true});
         log('system',mB,{actor:null,targets:[b],system:true});
+        // WAR FRONTS: hosts already standing on the new enemy's ground (or beside his host) will turn
+        // on that province at the END of next Spring unless they leave — both sides are told now,
+        // while they can still write orders for it (see resolveWarFronts).
+        if(next==='enemy'){
+          warFrontThreats().forEach(t=>{
+            const c=t.c, pv=t.prov;
+            if(c.player!==a&&c.player!==b) return;
+            if(pv._battleUnresolved) return; // already a contest — it resumes at the top of Spring
+            const foe=c.player===a?b:a;
+            const onFoeLand=pv.owner===foe;
+            const besideFoe=(G.characters||[]).some(o=>o&&o.alive&&o.location===pv.id&&o.player===foe&&(o.armies||[]).length>0);
+            if(!onFoeLand&&!besideFoe) return;
+            const n=(c.armies||[]).length, foeNm=G.players[foe]?.name||'the enemy', ownNm=G.players[c.player]?.name||'the enemy';
+            log('system',`⚠ War front: ${c.name}'s host (${n} unit${n!==1?'s':''}) stands in ${pv.name}, ${onFoeLand?`land of ${foeNm}`:`face to face with a host of ${foeNm}`}. If it is still there at the end of next Spring it will give battle for the province — march it out in Spring to avoid the fight, or reinforce it.`,{actor:null,targets:[c.player],system:true,provinceId:pv.id});
+            if(c._invisTurn!==G.turn) log('system',`⚠ War front: ${c.name} (${ownNm}) holds a host of ${n} unit${n!==1?'s':''} ${onFoeLand?`inside your province of ${pv.name}`:`beside your host in ${pv.name}`}. Unless it withdraws, it will attack at the end of next Spring — reinforce ${pv.name}, or keep a general on Defend next door to ride in.`,{actor:null,targets:[foe],system:true,provinceId:pv.id});
+          });
+        }
       }
     }
   }
@@ -21223,6 +21360,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-1857</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.19-2145</div>
 </body>
 </html>

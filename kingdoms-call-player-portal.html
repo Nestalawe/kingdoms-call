@@ -3439,7 +3439,7 @@ const SPELL_HINTS={
   'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
-  'Holy Symbol':'Combat: enemy \u221210%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
+  'Holy Symbol':'Action: no target \u2014 cleanses the province you stand in of ALL its battlefield dead. Every grave there is laid to rest and can never be raised by a necromancer. Combat: enemy \u22128%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: for 3 rounds the target can\u2019t cast or use archery and its melee is halved. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord (and will not attack their own lord\'s heroes). On success you learn their skills and magic items. Kings and army-leaders are immune; each past Charm gives a hero +10% resistance (cumulative). A Charm that fails may provoke a personal encounter with the target — unless either leads their encounter plan with Flee. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
@@ -6591,10 +6591,10 @@ function buildTargetField(c, ph, saved){
       // a charmed hero's schools and levels are hidden — offer every core phase spell without
       // levels. 2026-09-18: every BASE spell (levels 1-5) that can be a phase order is listed,
       // whatever the school; L7/L9 mastery spells (SPELL_REQ_LEVEL) are not. Combat-only spells
-      // (Lightning Bolt, Fireball, Holy Symbol, Spiritwrack, Mirror Image, Hand of Death) are never
-      // phase orders. A spell the hero has not learned simply fails.
+      // (Lightning Bolt, Fireball, Spiritwrack, Mirror Image, Hand of Death) are never phase orders.
+      // Holy Symbol has an action form (cleanses the caster's province of its graves). A spell the hero has not learned simply fails.
       if(c._hiddenSkills){
-        const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
+        const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
           'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Earthquake','Flood','Elemental Summon','Control Undead','Skeletal Armies','Curse','Plague']);
         const _hsList=Object.entries(SPELLS_BY_SCHOOL).flatMap(([school,list])=>list.filter(sp=>_hsPhase.has(sp)&&!SPELL_REQ_LEVEL[sp]).map(sp=>[sp,school]));
         const _hsSel=target||(_hsList[0]&&_hsList[0][0])||'';
@@ -6602,7 +6602,7 @@ function buildTargetField(c, ph, saved){
           <div style="font-size:.7rem;color:var(--stone)">You cannot see this hero's skills — a spell from a school they have not learned simply fails.</div>${spellSecondaryHtml(report,c,ph,_hsSel,extra,target)}`;
       }
       // Only show spells that are usable as phase orders
-      const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province',
+      const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol',
         'Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
         'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility',
         'Earthquake','Flood','Elemental Summon',
@@ -7192,7 +7192,7 @@ function _tintForDarkTooltip(hex){
 // picture in its own colour — different from the desktop's Segoe/Apple Symbols cross. A marker with
 // `path` is drawn as SVG geometry (box×box units, centred on 0,0) by BOTH renderers, so it is
 // pixel-for-pixel the same shape in the same fill on every platform, and `fill` is always honoured.
-const MAP_CROSS_PATH='M-1.2 -5H1.2V-2.6H3.6V-0.2H1.2V5H-1.2V-0.2H-3.6V-2.6H-1.2Z';
+const MAP_CROSS_PATH='M-0.7 -5H0.7V-2.2H3.2V-0.8H0.7V5H-0.7V-0.8H-3.2V-2.2H-0.7Z'; // slim Latin cross (2026-09-19: skinnier)
 const MAP_SYM={
   dead:         {glyph:'☠',  text:true,  fill:'#7a1f1f', label:'a fallen hero lies here'},
   gravesFresh:  {glyph:'✝',  text:true,  fill:'#9de89d', label:'battlefield graves, read this turn',  path:MAP_CROSS_PATH, box:10},
@@ -7935,9 +7935,9 @@ function renderMapIntoSvg(svgEl, report){
       const vx=x-HS*0.62, vy=y+HS*0.227;
       const vtxt=document.createElementNS(svgNS,'text');
       vtxt.setAttribute('x',vx);vtxt.setAttribute('y',vy);
-      vtxt.setAttribute('text-anchor','middle');vtxt.setAttribute('font-size','8');
+      vtxt.setAttribute('text-anchor','middle');vtxt.setAttribute('font-size','6.4'); // 80% of the old 8
       vtxt.setAttribute('font-weight','700');
-      vtxt.setAttribute('stroke','#000');vtxt.setAttribute('stroke-width','0.35');
+      vtxt.setAttribute('stroke','#000');vtxt.setAttribute('stroke-width','0.3');
       vtxt.setAttribute('paint-order','stroke');
       vtxt.setAttribute('filter','drop-shadow(0 0 1px rgba(0,0,0,.7))');
       vtxt.setAttribute('pointer-events','auto');
@@ -8195,6 +8195,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-1857</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-2145</div>
 </body>
 </html>

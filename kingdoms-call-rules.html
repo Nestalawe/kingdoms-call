@@ -173,7 +173,7 @@ footer.book .v{color:var(--gold-deep);}
   <div class="sub">The Player's Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival realms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
-  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 19 September 2026, 18:20 NZT</div>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 19 September 2026, 21:45 NZT</div>
 </header>
 
 <div class="shell">
@@ -239,6 +239,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Within a tier, initiative decides.</strong> Characters act from highest <strong>initiative</strong> to lowest: initiative is the sum of all a character's skill levels, with <strong>March counting three times</strong>. Ties go to the older character (the lower character number). A hero with the higher initiative recruits, casts or marches before a slower one — which matters when two forces race for the same province, or two casters target the same hero.</li>
     <li><strong>Dependencies override the tiers.</strong> A few pairings are ordered by need rather than speed: a character handing an item or troops to a co-located ally acts <em>before</em> that ally; a character marching in to receive something arrives <em>before</em> the giver gives; a Pick Up waits for any Leave in the same province; and a pursuer (Encounter Character) acts immediately <em>after</em> the character they are chasing, wherever they went.</li>
     <li><strong>After all orders.</strong> As a last sweep, a general on Defend who has not yet reacted this phase gives battle to any enemy host that has ended up inside his watch by some road the earlier steps did not catch; lone characters on Defend spring their ambushes; then the phase's incidental skill-rises are reported and the next phase begins.</li>
+    <li><strong>War fronts — end of phase 1 only.</strong> Any army that <em>began the turn</em> on the ground of a realm it is at war with, or in the same province as an army of such a realm, and is <em>still standing there</em> once every phase-1 order has resolved, now gives battle for that province — see <a href="#warfront">War fronts</a>.</li>
   </ol>
   <p>The practical upshot: a plan spread sensibly across the phases beats one crammed into a single phase, and where two characters must interact in the same phase, put the giver's action in the same phase as the receiver's and the engine will sequence them.</p>
 
@@ -756,6 +757,7 @@ footer.book .v{color:var(--gold-deep);}
     <li><strong>Ground he cannot cross.</strong> A land column cannot ride out into a sea province, a fleet cannot ride inland, and a land host stranded on flooded ground stays where it is.</li>
     <li><strong>Locked in a battle.</strong> A general whose own province still holds an unfinished battle must see it through; Defend is not a way out of a fight.</li>
     <li><strong>War only.</strong> Troops raised in your province by a realm you are <em>not</em> at war with cannot seize it and do not provoke a ride-out; you are simply told they are there.</li>
+    <li><strong>War fronts count too.</strong> An enemy army that was already camped in one of your provinces when the turn began (see <a href="#warfront">War fronts</a>) is treated like a host raised there: when it turns on the province at the end of phase 1, a general whose watch covers that province rides in first and defends it.</li>
     <li><strong>It is a march like any other.</strong> It may raise the March skill, and if the general is beaten he falls back toward the province he rode out from.</li>
   </ul>
 
@@ -1287,7 +1289,7 @@ footer.book .v{color:var(--gold-deep);}
     <tr><td><strong>Resurrect</strong> <span class="pill">A</span></td><td>Bring a dead hero back to full health under your command — stripped of all items and armies. This now includes your <strong>own fallen monarch</strong>: a slain king need not be the end of your dynasty, if your White magic can reach their resting place in time. One per body per turn. <strong>Only bodies lying in the caster's own province are offered</strong> — the order form lists nothing further afield, so march to the grave first and cast in a later phase.</td></tr>
     <tr><td><strong>Part Sea</strong> <span class="pill">A</span></td><td>Turn a sea province to plains for the turn so land armies may cross it; no fleet may pass while it holds. Cancels a Flood.</td></tr>
     <tr><td><strong>Bless Province</strong> <span class="pill">A</span></td><td>Raise a province's tax at collection this turn: <strong>+60%</strong>, or <strong>+80%</strong> if your realm is Divine, or <strong>+100%</strong> when a Divine <em>king</em> gives the blessing himself. The blessed ground is also <strong>warded</strong>: each enemy Flood, Earthquake, Plague or Part Sea cast on it this turn is rolled against, and turned aside on a <strong>50% + 5% per level of the blesser's White magic</strong> (counted to level 5 — so 50% from an untrained caster, 75% from a master). Your own spells are never blocked by your own ward. Doesn't stack with another Bless.</td></tr>
-    <tr><td><strong>Holy Symbol</strong> <span class="pill">C</span> <span class="pill">B</span></td><td>Combat: the raised symbol does three things at once. The foe suffers <strong>−8% to hit per level</strong> (counted to 5, so −8% to −40%), <strong>doubled against the undead and fiends</strong>; the holy light <strong>sears them for 6% of their maximum HP</strong> (<strong>12%</strong> against undead and fiends); and <strong>the caster recovers 10% of their own maximum HP</strong>. Battle: enemy undead fight at 75% strength.</td></tr>
+    <tr><td><strong>Holy Symbol</strong> <span class="pill">A</span> <span class="pill">C</span> <span class="pill">B</span></td><td>Action: raised over the province the caster stands in (no target), it <strong>cleanses every battlefield grave there</strong> — the dead are laid to rest and can never again be raised by <em>Skeletal Armies</em>, <em>Harvest the Field</em> or any other necromancy. It counts against White's action-spell allowance like any other. Combat: the raised symbol does three things at once. The foe suffers <strong>−8% to hit per level</strong> (counted to 5, so −8% to −40%), <strong>doubled against the undead and fiends</strong>; the holy light <strong>sears them for 6% of their maximum HP</strong> (<strong>12%</strong> against undead and fiends); and <strong>the caster recovers 10% of their own maximum HP</strong>. Battle: enemy undead fight at 75% strength.</td></tr>
     <tr><td><strong>Spiritwrack</strong> <span class="pill">C</span> <span class="pill">B</span></td><td>Combat: for <strong>3 rounds, plus 1 more for every two levels of White</strong> (3 rounds at White 1–2, 4 at 3–4, 5 at 5) the target cannot cast or shoot and its melee is halved. Battle: enemy missile units fight at half strength.</td></tr>
   </table></div>
 
@@ -1411,6 +1413,15 @@ footer.book .v{color:var(--gold-deep);}
   <ul>
     <li><strong>Propose peace / alliance (Treaty).</strong> If <em>both</em> sides offer it, relations improve one step — from War to Neutral, or from Neutral to Allied. <strong>An overture is always reported to the realm it is sent to</strong>, whether or not they answered it, so a proposal is never made into silence — the realm courted learns of it in their Chronicle and may answer with a Treaty of their own next turn.</li>
     <li><strong>Declare War.</strong> <em>Any one</em> declaration of war is enough — it takes two to make peace, but only one to break it. Most realms' declarations take effect at the end of the turn, in force from the next. <strong>Evil</strong> and <strong>Undead</strong> realms keep no faith: their declaration takes effect at the <strong>start of the very turn it is lodged</strong>, so their armies may attack at once — expect no warning from them.</li>
+  </ul>
+  <h3 id="warfront">War fronts — when war finds armies already in place</h3>
+  <p>An alliance lets armies walk through a partner's land, and a war can be declared while columns stand side by side. So a turn can open with two realms at war and an army of one already standing <strong>inside a province of the other</strong>, or with the two realms' armies <strong>sharing a province</strong>. Nobody marched, so no battle has been triggered — but the war cannot simply leave them there.</p>
+  <ul>
+    <li><strong>Phase 1 is yours to act.</strong> Nothing is fought at the start of the turn. Either side may use phase 1 to withdraw, to march in reinforcements, to attack first with a Move, or to put a general on <a href="#defend">Defend</a> next door.</li>
+    <li><strong>At the end of phase 1</strong> — after every phase-1 order, the Defend step and all marches — any army still standing where it stood when the turn began <strong>turns on the province</strong>. It is the <strong>attacker</strong>: the owner's commanders and standing garrison defend with the defender's ×1.25 edge, a general whose Defend watch covers the province rides in first, and a province nobody defends is simply taken. If several of your columns are camped there, each attacks in turn, strongest first, until the province falls or the fight is left unfinished.</li>
+    <li><strong>Two armies sharing a province neither of them owns</strong> fall on each other at the same moment. If the ground belongs to a third realm that is at war with neither, it stays that realm's whatever the result.</li>
+    <li><strong>Already fought over?</strong> A province that saw a battle during phase 1 — a march into it, a host raised there — has had its fight; nothing further happens at the end of the phase, and anything left unresolved carries on at the start of phase 2 as usual.</li>
+    <li><strong>You are warned.</strong> When war is declared at the end of a turn, both realms are told in their Chronicle which of their armies stand on a war front, so the next turn's orders can deal with it. (An Evil or Undead declaration takes effect before phase 1 of the turn it is made, so its armies attack at the end of that very phase 1 — no warning.)</li>
   </ul>
   <p>Allies open their borders to one another and can pool forces, and — importantly — an allied <strong>bloc</strong> can jointly reach the dominance needed to Call the Reckoning. But allies do not share a victory: at the Reckoning every realm still competes for the throne. Expect late betrayals as the endgame nears. Certain aggressive <a href="#mastery">mastery orders</a> can only be used against a realm you are at war with.</p>
 
@@ -1574,7 +1585,7 @@ footer.book .v{color:var(--gold-deep);}
 
 <footer class="book">
   Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.19-1857</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook v2026.09.19-2145</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
