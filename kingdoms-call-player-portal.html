@@ -92,6 +92,8 @@ section{display:none;}.section-active{display:block;}
 .stat-value{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--crimson);font-weight:600;}
 .prov-link{color:var(--crimson);border-bottom:1px dotted currentColor;cursor:pointer;}
 .prov-link:hover{background:rgba(200,146,42,.18);}
+.prov-link.on-dark{color:#ffe27a;}
+.prov-link.prov-auto{color:inherit;border-bottom:1px dotted rgba(122,28,28,.55);} /* names linked by the report-wide pass keep their own tint */ /* on the dark orders-column hero header */
 @keyframes provHlPulse{0%{stroke-opacity:1;fill-opacity:.35}50%{stroke-opacity:.45;fill-opacity:.12}100%{stroke-opacity:1;fill-opacity:.35}}
 .prov-hl{animation:provHlPulse 1.1s ease-in-out infinite;}
 .char-card{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:2px;padding:10px 12px;margin-bottom:8px;}
@@ -2831,6 +2833,7 @@ function renderReportView(report){
   const _repaintMap=()=>{ try{ renderPlayerMap(report); }catch(e){} };
   if(typeof requestAnimationFrame==='function'){ requestAnimationFrame(()=>requestAnimationFrame(_repaintMap)); }
   else { setTimeout(_repaintMap,0); }
+  try{ ensureProvinceLinking(); }catch(e){} // every province name in the report becomes a map link
 }
 
 // ── DIPLOMACY PANEL (alliance system) ────
@@ -3871,7 +3874,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
         ${c.isKing?'👑':'⚔'} ${c.name}
         ${hiredPh>=0?`<span style="background:#c8922a;color:#1a1208;font-size:.65rem;padding:1px 6px;border-radius:2px;margin-left:6px">Hired ${SEASONS[hiredPh]} — acts from ${SEASONS[hiredPh+1]||'next turn'}</span>`:''}
-        <span style="margin-left:auto;font-size:.7rem;opacity:.75">📍 ${c.locationName||'?'} · Land: ${c.effectiveSpeed||3}/turn${(c.skills?.march||0)>0?` (March ${c.skills.march})`:''}${c.effectiveSeaSpeed?` · Sea: ${c.effectiveSeaSpeed}/turn${(c.skills?.naval||0)>0?` (Naval ${c.skills.naval})`:''}`:''}</span>
+        <span style="margin-left:auto;font-size:.7rem;opacity:.85">📍 ${provLinkHtml(c.locationId,c.locationName||'?','on-dark')} · Land: ${c.effectiveSpeed||3}/turn${(c.skills?.march||0)>0?` (March ${c.skills.march})`:''}${c.effectiveSeaSpeed?` · Sea: ${c.effectiveSeaSpeed}/turn${(c.skills?.naval||0)>0?` (Naval ${c.skills.naval})`:''}`:''}</span>
         <button type="button" class="hero-move hero-move-up" ${_hi===0?'disabled':''} title="Move this hero up the orders column" onclick="moveHeroBlock('${c.id}',-1)">&#9650;</button>
         <button type="button" class="hero-move hero-move-down" ${_hi>=_hn-1?'disabled':''} title="Move this hero down the orders column" onclick="moveHeroBlock('${c.id}',1)">&#9660;</button>
       </div>
@@ -7486,9 +7489,82 @@ const CHIEFTAIN_MARKER_COLOR='#8f6a38'; // darkened from #b08a5a — luminance 1
 // tapped to bring the map into view and light it up for a few seconds (phones: switches to the Map
 // tab). Every drawn hex group carries data-prov=<id>; the highlight is a pulsing outline laid over
 // the whole map (pointer-events:none) so it never blocks the hex popup.
-function provLinkHtml(id, name){
+function provLinkHtml(id, name, extraCls){
   if(id==null||id==='') return name;
-  return `<span class="prov-link" onmouseenter="highlightMapProv(${Number(id)},true)" onmouseleave="highlightMapProv(${Number(id)},false)" onclick="locateOnMap(${Number(id)})" title="Hover to light up ${String(name).replace(/"/g,'&quot;')} on the map — click or tap to show it">${name}</span>`;
+  return `<span class="prov-link${extraCls?' '+extraCls:''}" onmouseenter="highlightMapProv(${Number(id)},true)" onmouseleave="highlightMapProv(${Number(id)},false)" onclick="locateOnMap(${Number(id)})" title="Hover to light up ${String(name).replace(/"/g,'&quot;')} on the map — click or tap to show it">${name}</span>`;
+}
+// ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the
+// ~40 places the report prints a province name (Chronicle lines, Realm Events, Your Provinces, Known
+// Lairs, Graveyards Known, sightings, spy reports, titles…), one pass walks the report column's TEXT
+// NODES and wraps every known province name (report.worldMeta names + owned provinces) in a
+// prov-link span with the same hover / click / tap behaviour as provLinkHtml. Only text is touched —
+// never attributes, form controls, buttons, links, SVG or an existing link — and the span inherits
+// the surrounding colour (realm tints stay). A MutationObserver on the column re-runs the pass
+// (debounced) whenever a section is re-rendered or loaded late; a pass that finds nothing new
+// changes nothing, so it cannot loop.
+const _PROV_LINK_SKIP=new Set(['SCRIPT','STYLE','BUTTON','SELECT','OPTION','TEXTAREA','INPUT','A','svg','SVG','LABEL']);
+let _provNameRe=null, _provNameMap=null, _provNameKey='';
+function _buildProvNameIndex(report){
+  const map=new Map();
+  const add=(id,name)=>{ if(id==null||!name||typeof name!=='string') return; const n=name.trim(); if(n.length<3) return; if(!map.has(n)) map.set(n,id); };
+  ((report&&report.worldMeta&&report.worldMeta.provinces)||[]).forEach(p=>add(p.id,p.name));
+  ((report&&report.ownedProvinces)||[]).forEach(p=>add(p.id,p.name));
+  const key=[...map.keys()].sort().join('|');
+  if(key===_provNameKey) return;
+  _provNameKey=key; _provNameMap=map;
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const names=[...map.keys()].sort((a,b)=>b.length-a.length).map(esc);
+  _provNameRe=names.length?new RegExp('(?<![A-Za-z\u00C0-\u024F])('+names.join('|')+')(?![A-Za-z\u00C0-\u024F])','g'):null;
+}
+function _makeProvLinkEl(id,name){
+  const sp=document.createElement('span');
+  sp.className='prov-link prov-auto'; sp.setAttribute('data-prov-link',String(id));
+  sp.title=`Hover to light up ${name} on the map — click or tap to show it`;
+  sp.textContent=name;
+  sp.onmouseenter=()=>highlightMapProv(id,true);
+  sp.onmouseleave=()=>highlightMapProv(id,false);
+  sp.onclick=ev=>{ ev.stopPropagation(); locateOnMap(id); };
+  return sp;
+}
+let _provLinking=false;
+function linkProvinceNames(root){
+  if(!root||_provLinking) return;
+  _buildProvNameIndex(viewingReport||currentReport);
+  if(!_provNameRe) return;
+  _provLinking=true;
+  try{
+    const walker=document.createTreeWalker(root,window.NodeFilter.SHOW_TEXT,{acceptNode(n){
+      if(!n.nodeValue||n.nodeValue.length<3) return window.NodeFilter.FILTER_REJECT;
+      for(let el=n.parentNode; el&&el!==root; el=el.parentNode){
+        if(_PROV_LINK_SKIP.has(el.nodeName)||el.namespaceURI==='http://www.w3.org/2000/svg') return window.NodeFilter.FILTER_REJECT;
+        if(el.classList&&(el.classList.contains('prov-link')||el.classList.contains('no-prov-link'))) return window.NodeFilter.FILTER_REJECT;
+        if(el.isContentEditable) return window.NodeFilter.FILTER_REJECT;
+      }
+      _provNameRe.lastIndex=0;
+      return _provNameRe.test(n.nodeValue)?window.NodeFilter.FILTER_ACCEPT:window.NodeFilter.FILTER_REJECT;
+    }});
+    const hits=[]; let n; while((n=walker.nextNode())) hits.push(n);
+    hits.forEach(t=>{
+      const txt=t.nodeValue; const frag=document.createDocumentFragment(); let last=0, m;
+      _provNameRe.lastIndex=0;
+      while((m=_provNameRe.exec(txt))){
+        if(m.index>last) frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+        frag.appendChild(_makeProvLinkEl(_provNameMap.get(m[1]),m[1]));
+        last=m.index+m[1].length;
+      }
+      if(last<txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+      t.parentNode.replaceChild(frag,t);
+    });
+  }catch(e){ /* a failed pass must never break the report */ }
+  finally{ _provLinking=false; }
+}
+let _provLinkObs=null, _provLinkTimer=null;
+function ensureProvinceLinking(){
+  const col=document.getElementById('rp-report-col'); if(!col) return;
+  linkProvinceNames(col);
+  if(_provLinkObs||typeof MutationObserver==='undefined') return;
+  _provLinkObs=new MutationObserver(()=>{ if(_provLinking) return; clearTimeout(_provLinkTimer); _provLinkTimer=setTimeout(()=>linkProvinceNames(document.getElementById('rp-report-col')),60); });
+  _provLinkObs.observe(col,{childList:true,subtree:true});
 }
 let _provHlTimer=null;
 function highlightMapProv(id, on){
@@ -8259,6 +8335,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-2225</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.19-2243</div>
 </body>
 </html>
