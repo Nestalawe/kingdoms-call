@@ -473,9 +473,9 @@ section{display:none;}.section-active{display:block;}
              scrolls, so any main heading of the report is one tap away. -->
         <div id="report-jumpbar" style="position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;background:var(--parchment-dark);border-bottom:2px solid var(--stone);box-shadow:0 2px 4px rgba(0,0,0,.15)">
           <button class="rj-btn" onclick="jumpToReportSection('report-chronicle-card')" title="Chronicle">📜 Chronicle</button>
+          <button class="rj-btn" onclick="jumpToReportSection('intel-reports-section')" title="Intelligence Reports">🕵 Intelligence</button>
           <button class="rj-btn" onclick="jumpToReportSection('realm-card')" title="Your Realm">👑 Realm</button>
           <button class="rj-btn" onclick="jumpToReportSection('provinces-card')" title="Your Provinces">🗺 Provinces</button>
-          <button class="rj-btn" onclick="jumpToReportSection('intel-reports-section')" title="Intelligence Reports">🕵 Intelligence</button>
           <button class="rj-btn" onclick="jumpToReportSection('other-forces-card')" title="Other Armies &amp; Heroes">⚔ Others</button>
           <button class="rj-btn" onclick="jumpToReportSection('lairs-card')" title="Known Lairs">🐉 Lairs</button>
           <button class="rj-btn" onclick="jumpToReportSection('diplomacy-card')" title="Diplomacy">🤝 Diplomacy</button>
@@ -3107,7 +3107,7 @@ function renderTitles(report){
     const h=holders[k]||{};
     // Your realm's place in the race for this title (percentages only — see titleRaceFor).
     const r=h.race||null;
-    const raceLine=r?titleRaceLine(r):'<span style="color:#999">Standing percentages are worked out when a turn is resolved — they will appear from the next turn report.</span>';
+    const raceLine=r?titleRaceLine(r):`<span style="color:#999">Standing percentages are missing from this turn report — it was resolved by ${(report&&report.engineStamp)?`<strong>GM Portal v${report.engineStamp}</strong>, which predates them`:'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
     const raceHtml=raceLine?`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
     const who = h.holderName
       ? (h.kingdomLevel
@@ -8386,6 +8386,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0254</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0814</div>
 </body>
 </html>

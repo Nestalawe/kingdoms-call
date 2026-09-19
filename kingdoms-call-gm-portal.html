@@ -8018,6 +8018,10 @@ function buildTurnReport(gameState, playerIndex){
         })():null,
       };
     })(),
+    // Which GM build wrote this report. The player portal shows it when a feature the report should
+    // carry is missing (e.g. the title-race percentages, added in v2026.09.20-0153), so a stale
+    // uploaded GM portal is visible at a glance instead of looking like a player-portal bug.
+    engineStamp:(typeof runningBuildStamp==='function'?runningBuildStamp():null),
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. ${player.name} stands ready.`}],
   };
 }
@@ -21488,6 +21492,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.20-0254</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.20-0814</div>
 </body>
 </html>
