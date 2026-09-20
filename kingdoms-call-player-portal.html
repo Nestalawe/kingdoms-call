@@ -40,6 +40,15 @@ h4{font-family:'Cinzel',serif;font-size:.78rem;color:var(--ink-light);margin-bot
 label{font-size:.78rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
 input,select,textarea{font-family:'Crimson Text',serif;font-size:.95rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:8px 10px;border-radius:2px;width:100%;margin-bottom:12px;}
 input:focus,select:focus,textarea:focus{outline:1px solid var(--gold);}
+/* 2026-09-21: a checkbox/radio is a CONTROL, not a text field. The rule above stretched every one
+   of them to width:100% with 8px/10px field padding and a 12px bottom margin, so the box swelled
+   across its row and shoved its own caption off to the right (or, inside a centred parent, left
+   the pair looking centred). Most call sites patched it inline with width:auto;margin:0 — the ones
+   that did not were the misaligned ones. Fixed once, here, so no call site has to remember.
+   The label rule pins the box and its text hard to the left; inline `display:flex/inline-flex`
+   styles on individual labels still win, so existing row layouts are untouched. */
+input[type="checkbox"],input[type="radio"]{width:auto;min-width:0;flex:0 0 auto;margin:0;padding:0;vertical-align:middle;}
+label:has(>input[type="checkbox"]),label:has(>input[type="radio"]){text-align:left;justify-content:flex-start;}
 .btn{font-family:'Cinzel',serif;font-size:.75rem;font-weight:600;padding:9px 18px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;transition:all .15s;display:inline-block;}
 .btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}.btn-crimson:hover{background:#9a2c2c;}
 .btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}.btn-gold:hover{background:var(--gold-light);}
@@ -2074,8 +2083,10 @@ function buildChronicle(log, chars_for_log){
     // ════
     // Where this realm stands in every title race (percentages only) — current turn only; a past
     // turn's Chronicle must not show today's standings.
-    const _standHtml=(viewedTurn==null)?titleStandingIntelHTML(currentReport):'';
-    const hasIntel=Object.values(intelByPhase).some(a=>a.length>0)||titleIntel.length>0||!!_standHtml;
+    // 2026-09-21: the "📊 Your standing in the Imperial Titles" block is gone from Intelligence.
+    // Every one of its percentages is already printed against its own title in 🏆 Titles & Victory,
+    // so this repeated the whole ladder a second time in another card.
+    const hasIntel=Object.values(intelByPhase).some(a=>a.length>0)||titleIntel.length>0;
     // On the current-turn view the section ALWAYS renders: it also hosts the province / spy
     // intelligence that used to have its own "Intelligence" card (filled by renderReportView into
     // #report-intel). A past-turn view shows only that turn's logged intel.
@@ -2101,7 +2112,6 @@ function buildChronicle(log, chars_for_log){
           html+=`<div class="log-entry system">${tag}${body}</div>`;
         });
       }
-      if(_standHtml){ html+=_subHead('📊 Your standing in the Imperial Titles')+_standHtml; }
 
       [0,1,2,3,4].forEach(ph=>{
         const entries=intelByPhase[ph]||[];
@@ -2602,7 +2612,12 @@ function renderReportView(report){
   // dead, and that fuller reading is shown here too. Both are stamped with the turn they were
   // learned, because neither is refreshed from a distance — the graves may since have been raised
   // or rotted away.
-  const graveIntel=report.graveIntel||[];
+  // 2026-09-21: ONLY graveyards this realm knows something SPECIFIC about are listed here. A bare
+  // "graves lie here, contents unknown" reading is already on the map as the ✝ marker, so printing
+  // a paragraph per province for it buried the two or three readings that actually name the dead.
+  // The bare sensings are untouched in `report.graveIntel` (and so on the map) — they are simply
+  // not repeated in this section.
+  const graveIntel=(report.graveIntel||[]).filter(g=>g&&g.detail&&g.detail.length>0);
   if(graveIntel.length>0){
     otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#4a4a4a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Graveyards Known</div>`;
     otherForcesHtml+=graveIntel.map(g=>{
@@ -3025,13 +3040,9 @@ function titleRaceLine(r){
   if(!r.charName||!(r.pct>0)) return `None of your characters has any standing toward this title yet.`;
   return `Your best: ${who} — at <strong>${r.pct}%</strong> of the holder's standing.`;
 }
-function titleStandingIntelHTML(report){
-  const t=(report&&report.titles)||{}; if(!t.public||t.gameOver||!t.holders) return '';
-  const rows=Object.keys(t.holders).map(k=>{ const h=t.holders[k]||{}; if(!h.race) return '';
-    const held=h.race.mine, col=held?'var(--forest)':'#5a4a2a';
-    return `<div class="log-entry system"><span style="color:#9a6a1a;font-family:Cinzel,serif;font-weight:700;font-size:.72rem">[${h.name||k}]</span> <span style="color:${col}">${titleRaceLine(h.race)}</span></div>`; }).filter(Boolean);
-  return rows.join('');
-}
+// (titleStandingIntelHTML removed 2026-09-21 — the Intelligence card's "Your standing in the
+// Imperial Titles" block duplicated the per-title percentages that 🏆 Titles & Victory already
+// prints against each title. titleRaceLine above is still the single source of that wording.)
 function renderTitles(report){
   const el=document.getElementById('report-titles'); if(!el) return;
   const t=(report&&report.titles)||{};
@@ -3102,7 +3113,28 @@ function renderTitles(report){
   // _TITLE_ORDER fixes the order of the original nine; every other title the engine ships (the
   // Spymaster, Cartographer, Beastlord, Wildwarden and any added later) follows, named and priced
   // from the payload — the list can no longer fall behind TITLE_DEFS.
-  const _titleRows=_TITLE_ORDER.concat(Object.keys(holders).filter(k=>!_TITLE_ORDER.some(r=>r[0]===k)).map(k=>[k,holders[k].name||k,holders[k].prize||0]));
+  const _titleRows=_TITLE_ORDER.map(r=>r.slice()).concat(Object.keys(holders).filter(k=>!_TITLE_ORDER.some(r=>r[0]===k)).map(k=>[k,holders[k].name||k,holders[k].prize||0]));
+  // 2026-09-21 — THE ORDER OF THIS LIST. The titles this realm HOLDS are printed first (keeping the
+  // canonical order among themselves); everything else follows, nearest-to-won first. "Nearest" is
+  // the engine's own `race` record: a VACANT title sorts to the head of the unheld group (no one
+  // holds it, so there is no standing to overhaul), then `race.pct` — this realm's best character
+  // as a percentage of the current holder's standing — highest first. A row whose report carries no
+  // `race` record at all (a turn resolved by a GM build that predates the percentages) keeps the
+  // canonical order at the tail rather than pretending to a position. The sort is stable, so equal
+  // percentages never shuffle between renders.
+  const _heldBy=(k)=>{ const h=holders[k]||{}; return !!(h.race?h.race.mine:h.mine); };
+  const _closeness=(k)=>{ const r=(holders[k]||{}).race; if(!r) return -1;
+    if(r.vacant) return 1000;
+    return (typeof r.pct==='number')?r.pct:0; };
+  _titleRows.forEach((row,i)=>{ row._i=i; });
+  _titleRows.sort((a,b)=>{
+    const ha=_heldBy(a[0]), hb=_heldBy(b[0]);
+    if(ha!==hb) return ha?-1:1;
+    if(ha) return a._i-b._i;
+    const ca=_closeness(a[0]), cb=_closeness(b[0]);
+    if(ca!==cb) return cb-ca;
+    return a._i-b._i;
+  });
   const majorHtml=_titleRows.map(([k,name,prize])=>{
     const h=holders[k]||{};
     // Your realm's place in the race for this title (percentages only — see titleRaceFor).
@@ -3170,7 +3202,7 @@ function renderTitles(report){
   el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
     + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
        <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:12px"><tbody>${board}</tbody></table>
-       <div style="font-size:.75rem;color:#888;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won</div>
+       <div style="font-size:.75rem;color:#888;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won <span style="color:#aaa">(yours first, then the ones you stand closest to winning)</span></div>
        ${majorHtml}`
     + callCtrl + reckoningInfo + renderMinorTitles(t);
 }
@@ -6653,9 +6685,12 @@ function buildTargetField(c, ph, saved){
         const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
           'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Earthquake','Flood','Elemental Summon','Control Undead','Skeletal Armies','Curse','Plague']);
         const _hsList=Object.entries(SPELLS_BY_SCHOOL).flatMap(([school,list])=>list.filter(sp=>_hsPhase.has(sp)&&!SPELL_REQ_LEVEL[sp]).map(sp=>[sp,school]));
-        const _hsSel=target||(_hsList[0]&&_hsList[0][0])||'';
-        return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${_hsList.map(([sp,school])=>`<option value="${sp}" ${target===sp?'selected':''}>${sp} (${SKILL_LABELS[school]})</option>`).join('')}</select>
-          <div style="font-size:.7rem;color:var(--stone)">You cannot see this hero's skills — a spell from a school they have not learned simply fails.</div>${spellSecondaryHtml(report,c,ph,_hsSel,extra,target)}`;
+        // same one-list rule as the visible-skills branch below: the option marked `selected` and
+        // the spell the target field is built for must be the same one, even when the saved spell
+        // is no longer in the list.
+        const _hsSel=(target&&_hsList.some(([sp])=>sp===target))?target:((_hsList[0]&&_hsList[0][0])||'');
+        return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${_hsList.map(([sp,school])=>`<option value="${sp}" ${sp===_hsSel?'selected':''}>${sp} (${SKILL_LABELS[school]})</option>`).join('')}</select>
+          <div style="font-size:.7rem;color:var(--stone)">You cannot see this hero's skills — a spell from a school they have not learned simply fails.</div>${spellSecondaryHtml(report,c,ph,_hsSel,(_hsSel===target?extra:''),target)}`;
       }
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol',
@@ -6688,7 +6723,19 @@ function buildTargetField(c, ph, saved){
         if(prevSchool) schoolCastCount[prevSchool]=(schoolCastCount[prevSchool]||0)+1;
       }
 
-      const spells=Object.entries(SPELLS_BY_SCHOOL)
+      // ── 2026-09-21: THE DROPDOWN AND THE TARGET FIELD ARE DECIDED FROM ONE LIST ──
+      // They used to be worked out separately: the <option> markup here, and `selSpell` (which
+      // picks the secondary target field — province vs character) from a second pass over the same
+      // tables. When nothing was saved yet, `selSpell` took the FIRST spell in that list while the
+      // BROWSER, per the HTML spec, selects the first NON-DISABLED option. Those are different
+      // spells the moment an earlier phase has spent a school's casting limit, so a hero who had
+      // already cast his one Psychic spell this turn opened the form showing "Earthquake" over a
+      // "— Target character —" box built for Charm. The same drift hit any saved spell whose option
+      // is no longer offered (a level lost, a mastery spell gated). Now the rows are built ONCE as
+      // data, the selection is resolved against them (saved spell if it is still offered and
+      // castable, else the first castable one), and that single answer both marks `selected` and
+      // builds the target field — so the two cannot disagree.
+      const _spellRows=Object.entries(SPELLS_BY_SCHOOL)
         .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school))
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s]))
           .map(s=>{
@@ -6705,9 +6752,14 @@ function buildTargetField(c, ph, saved){
             } else {
               label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — ${used}/${limit} used)`;
             }
-            return`<option value="${s}" ${target===s?'selected':''} ${atLimit?'disabled':''} style="${atLimit?'color:#aaa;':''}">  ${label}</option>`;
-          }))
-        .join('');
+            return{spell:s,atLimit,label};
+          }));
+      const _castable=_spellRows.filter(r=>!r.atLimit);
+      const _selSpell=(target&&_castable.some(r=>r.spell===target))
+        ? target
+        : ((_castable[0]&&_castable[0].spell)||(_spellRows[0]&&_spellRows[0].spell)||'');
+      const spells=_spellRows.map(r=>
+        `<option value="${r.spell}" ${r.spell===_selSpell?'selected':''} ${r.atLimit?'disabled':''} style="${r.atLimit?'color:#aaa;':''}">  ${r.label}</option>`).join('');
 
       // Check if ALL spells from known AND practising schools are at limit Note: [].every() returns
       // true in JS (vacuous truth) — guard against empty set
@@ -6723,13 +6775,11 @@ function buildTargetField(c, ph, saved){
       if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;
       if(allAtLimit) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="All magic school casting limits reached for this turn" disabled>`;
 
-      // Determine secondary target based on selected spell Default to the first spell in the list
-      // if nothing selected yet
-      const firstSpell=Object.entries(SPELLS_BY_SCHOOL)
-        .filter(([school])=>effMagicLvl(c,school)>=1||practisingSchools.has(school))
-        .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s])))[0]||'';
-      const selSpell=target||firstSpell;
-      const secondaryHtml=spellSecondaryHtml(report,c,ph,selSpell,extra,target);
+      // The secondary target field is built for the SAME spell the dropdown will show — see the
+      // note above _spellRows. `extra` (the saved target) is only meaningful for the saved spell,
+      // so it is dropped when the selection has fallen back to a different one.
+      const selSpell=_selSpell;
+      const secondaryHtml=spellSecondaryHtml(report,c,ph,selSpell,(selSpell===target?extra:''),target);
       return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${spells}</select>${castChanceNote(c,selSpell)}${secondaryHtml}`;}
 
     // ── PRACTICE SKILL ──
@@ -7262,8 +7312,22 @@ function reportColour(hex){ return _shiftForContrast(hex,'#fdf5e0',4.5,0); }
 // `path` is drawn as SVG geometry (box×box units, centred on 0,0) by BOTH renderers, so it is
 // pixel-for-pixel the same shape in the same fill on every platform, and `fill` is always honoured.
 const MAP_CROSS_PATH='M-0.7 -5H0.7V-2.2H3.2V-0.8H0.7V5H-0.7V-0.8H-3.2V-2.2H-0.7Z'; // slim Latin cross (2026-09-19: skinnier)
+// A bare skull (2026-09-21) — cranium and jaw as one outline, then the two eye sockets, the nasal
+// triangle and two tooth gaps as sub-paths that evenodd punches out. Box 10, centred on 0,0, same
+// convention as MAP_CROSS_PATH.
+const MAP_SKULL_PATH='M0,-4.8C3.3,-4.8 4,-2.2 4,0.1C4,1.5 3.35,2.25 2.5,2.6L2.5,3.9C2.5,4.5 2.1,4.9 1.5,4.9L-1.5,4.9C-2.1,4.9 -2.5,4.5 -2.5,3.9L-2.5,2.6C-3.35,2.25 -4,1.5 -4,0.1C-4,-2.2 -3.3,-4.8 0,-4.8Z'
+  +'M-2.95,-1A1.2,1.2 0 1,1 -0.55,-1A1.2,1.2 0 1,1 -2.95,-1Z'
+  +'M0.55,-1A1.2,1.2 0 1,1 2.95,-1A1.2,1.2 0 1,1 0.55,-1Z'
+  +'M0,0.45L0.8,1.95L-0.8,1.95Z'
+  +'M-1.15,2.95L-0.6,2.95L-0.6,4.75L-1.15,4.75Z'
+  +'M0.6,2.95L1.15,2.95L1.15,4.75L0.6,4.75Z';
 const MAP_SYM={
-  dead:         {glyph:'☠',  text:true,  fill:'#7a1f1f', label:'a fallen hero lies here'},
+  // 2026-09-21: the fallen hero is a plain WHITE SKULL, not a skull-and-crossbones. Like the graves
+  // cross it is SVG geometry rather than a font glyph (MAP_CROSS_PATH's reasoning applies twice over
+  // here: ☠ has no dependable text-style glyph on phones, so the emoji font answered with its own
+  // coloured picture and ignored `fill`). Drawn with fill-rule evenodd so the eye sockets, nose and
+  // tooth gaps are holes punched through the bone rather than filled lumps.
+  dead:         {glyph:'☠',  text:true,  fill:'#ffffff', label:'a fallen hero lies here', path:MAP_SKULL_PATH, box:10},
   gravesFresh:  {glyph:'✝',  text:true,  fill:'#9de89d', label:'battlefield graves, read this turn',  path:MAP_CROSS_PATH, box:10},
   gravesStale:  {glyph:'✝',  text:true,  fill:'#9a9a9a', label:'battlefield graves, older knowledge', path:MAP_CROSS_PATH, box:10},
   battle:       {glyph:'⚔',  text:true,  fill:'#ff4444', label:'a battle was fought here this turn'},
@@ -7296,6 +7360,7 @@ function mapSymSvg(el, sym, fill){
     ['filter','pointer-events','opacity'].forEach(a=>{ if(el.hasAttribute(a)) g.setAttribute(a,el.getAttribute(a)); });
     const p=document.createElementNS(ns,'path');
     p.setAttribute('d',sym.path);
+    p.setAttribute('fill-rule','evenodd'); // multi-subpath markers (the skull) punch holes; harmless on single-subpath ones
     if(f!=null) p.setAttribute('fill',f);
     if(el.hasAttribute('stroke')){
       p.setAttribute('stroke',el.getAttribute('stroke'));
@@ -7316,7 +7381,7 @@ function mapSymHtml(sym, colour, size){
     const raw=(colour!=null?colour:(sym.fill||sym.legend));
     const col=raw?_tintForDarkTooltip(raw):'currentColor';
     const b=sym.box||10, sz=size||'1em';
-    return `<svg viewBox="${-b/2} ${-b/2} ${b} ${b}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
+    return `<svg viewBox="${-b/2} ${-b/2} ${b} ${b}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" fill-rule="evenodd" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
   }
   // The variation selector matters as much as the glyph: VS15 pins TEXT presentation so a phone's
   // emoji font cannot hijack ☠ or ✝ and draw a colour picture that ignores our fill.
@@ -7963,12 +8028,16 @@ function renderMapIntoSvg(svgEl, report){
         const dt=document.createElementNS(svgNS,'text');
         dt.setAttribute('x',dx);dt.setAttribute('y',dy);
         dt.setAttribute('text-anchor','middle');dt.setAttribute('font-size','6'); // item: half size
-        dt.setAttribute('stroke','#f4ead8');dt.setAttribute('stroke-width','0.25');
+        // the skull is WHITE, so it needs a DARK keyline to hold its shape over pale terrain — the
+        // old parchment halo was there to lift a dark crimson ☠ and would now erase the mark.
+        dt.setAttribute('stroke','#241a12');dt.setAttribute('stroke-width','0.35');
         dt.setAttribute('paint-order','stroke');
         dt.setAttribute('filter','drop-shadow(0 0 1px rgba(0,0,0,.7))'); // same shadow as the graves cross
         dt.setAttribute('pointer-events','none');
-        mapSymSvg(dt, MAP_SYM.dead);   // ☠ — one definition, shared with the popup
-        dt.setAttribute('class','sym-dead'); symbolLayer.appendChild(dt);
+        // a `path` marker returns a NEW <g> carrying the attributes across — append the RETURN
+        // VALUE, never `dt` itself, or the skull is built and thrown away (see mapSymSvg).
+        const dNode=mapSymSvg(dt, MAP_SYM.dead);   // 💀 — one definition, shared with the popup
+        dNode.setAttribute('class','sym-dead'); symbolLayer.appendChild(dNode);
       }
     }
     // a small race badge in the BOTTOM-RIGHT corner of every known hex — H/E/D/O for the humanoid
@@ -8386,6 +8455,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.20-0814</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.21-1033</div>
 </body>
 </html>

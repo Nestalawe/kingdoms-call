@@ -21,6 +21,15 @@ h3{font-family:'Cinzel',serif;font-size:.85rem;color:var(--ink-light);margin-bot
 label{font-size:.78rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
 input,select,textarea{font-family:'Crimson Text',serif;font-size:.95rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:8px 10px;border-radius:2px;width:100%;margin-bottom:12px;}
 input:focus,select:focus{outline:1px solid var(--gold);}
+/* 2026-09-21: a checkbox/radio is a CONTROL, not a text field. The rule above stretched every one
+   of them to width:100% with 8px/10px field padding and a 12px bottom margin, so the box swelled
+   across its row and shoved its own caption off to the right (or, inside a centred parent, left
+   the pair looking centred). Most call sites patched it inline with width:auto;margin:0 — the ones
+   that did not were the misaligned ones. Fixed once, here, so no call site has to remember.
+   The label rule pins the box and its text hard to the left; inline `display:flex/inline-flex`
+   styles on individual labels still win, so existing row layouts are untouched. */
+input[type="checkbox"],input[type="radio"]{width:auto;min-width:0;flex:0 0 auto;margin:0;padding:0;vertical-align:middle;}
+label:has(>input[type="checkbox"]),label:has(>input[type="radio"]){text-align:left;justify-content:flex-start;}
 .btn{font-family:'Cinzel',serif;font-size:.75rem;font-weight:600;padding:9px 18px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;transition:all .15s;display:inline-block;text-align:center;}
 .btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}.btn-crimson:hover{background:#9a2c2c;}
 .btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}.btn-gold:hover{background:var(--gold-light);}
@@ -2649,7 +2658,19 @@ function detRoll(turn,viewerPi,charId,provId){
 // (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
 // for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
 function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
-  const explored=(prov.exploredBy&&prov.exploredBy[viewerPi])||0;
+  // 2026-09-21 — A PROVINCE YOU HOLD IS GROUND YOU KNOW.
+  // This read `exploredBy[viewerPi]`, and NOTHING writes that on conquest — only marching in does,
+  // at +10% (+5%/Explorer) a visit. So a province taken by the sword sat at 10–20% "explored" for
+  // its new owner forever, and the sum below fell straight through the 5% floor against any hero
+  // with a single point of Spy. The result: the surviving heroes of a realm whose lands had all
+  // been overrun could stand still in the conqueror's own province and be invisible ~95% of turns
+  // — never in a sighting, never on the map, never in the Encounter list, so no one could get at
+  // them at all. This function is ONLY ever called for a province the viewer owns (see
+  // enemyCharVisibleTo), so the owner's knowledge of the ground is full by definition: his
+  // tax-collectors, garrison and villagers walk it every day, whatever share of it his explorers
+  // happened to chart. The contest that remains is the one that was always meant to be here — the
+  // lurker's Spy against the watchers'.
+  const explored=100;
   const enemySpy=Math.min(5,(enemyChar.skills&&enemyChar.skills.spy)||0);
   let friendlySpy=0;
   (prov.characters||[]).forEach(cid=>{
@@ -2659,7 +2680,10 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
     if(friendly) friendlySpy=Math.max(friendlySpy,(f.skills&&f.skills.spy)||0);
   });
   friendlySpy=Math.min(5,friendlySpy);
-  let chance=Math.max(5, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
+  // …and no one hides in another realm's land indefinitely. The floor is 25%, not 5%: a Spy-5 hero
+  // squatting in a province you hold is now found roughly every fourth turn instead of every
+  // twentieth, so a hunt can always eventually be brought to him. Shimmer still halves it.
+  let chance=Math.max(25, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
   if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
 }
@@ -19444,7 +19468,14 @@ const BATTLE_ARMY_SPELLS={
         }
         log('system',`${c.name} slips through the picket lines of ${quarry.name}'s column in ${prov.name} and forces the matter before the commander can rally the guard.`,{actor:c.player,targets:[c.player,quarry.player].filter(x=>x!=null),charId:c.id,charIds:[c.id,quarry.id],provinceId:prov.id});
       }
-      if(quarry.isKing){
+      // A crowned head does not answer a challenge from a commoner. It DOES answer another crown:
+      // the order form already refuses a non-king who names a king, and the order-time gate above
+      // (`quarry.isKing && !c.isKing`) says the same — but this catch-time gate had no `!c.isKing`
+      // of its own, so a KING who ran a rival king to ground was turned away here too unless the
+      // rival happened to be hunting him back that same phase. That is the "my king cannot get at
+      // his king" report: the chase resolved, then silently ended in "the King rides on".
+      // 2026-09-21: king-on-king now goes to the duel; only a commoner is refused.
+      if(quarry.isKing && !c.isKing){
         const _their=(G.turnOrders[quarry.id]||[])[ph];
         const _mutual=normaliseAction(_their)==='encounter'&&parseInt(_their&&_their.target)===c.id;
         if(!_mutual){
@@ -21492,6 +21523,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.20-0814</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1033</div>
 </body>
 </html>
