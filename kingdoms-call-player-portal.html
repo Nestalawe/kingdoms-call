@@ -4978,11 +4978,10 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   if(!/^\d+$/.test(String(heroId))) return;
 
   const report=currentReport||{};
-  // Mounted Couriers (sd34) lets a newly hired hero act from the hire phase itself. 2026-09-13: the
-  // Broker exclusion is GONE — the engine's broker branch now runs the same immediate processOrder
-  // the Hire Hero branch does, so a brokered hero acts on the same terms as any other.
-  const immH=(report.discoveries||[]).some(d=>d&&d.id==='sd34');
-  const firstActable=immH?ph:ph+1;
+  // 2026-09-21: the 'Mounted Couriers' discovery (sd34), which let a newly hired hero act from the
+  // hire phase itself, has been withdrawn from the game. A hired hero — face to face or brokered —
+  // always takes up orders from the phase AFTER the hire (AK 3.5), so the card starts at ph+1.
+  const firstActable=ph+1;
   let heroData=null;
   Object.values(report.provinceOrderData||{}).forEach(pd=>{
     (pd.availableHeroes||[]).forEach(h=>{if(String(h.id)===String(heroId))heroData=h;});
@@ -8455,6 +8454,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.21-1221</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.21-1240</div>
 </body>
 </html>

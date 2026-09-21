@@ -5,7 +5,7 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.09.20-0153
+// Data file v2026.09.21-1240
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1175,7 +1175,9 @@ const SAGE_DISCOVERIES_P=[
   {id:'sd32',name:'Ancient Lore',category:'Scholarship',desc:'Every Explore action also maps 10% of each adjacent province.',effect:{type:'adjacentReveal'}},
   // ── Heroic ──
   {id:'sd33',name:'Duelling Code',category:'Heroic',desc:'Your characters gain +10% to hit in all personal duels and encounters.',effect:{type:'duelBonus',pct:0.10}},
-  {id:'sd34',name:'Mounted Couriers',category:'Heroic',desc:'Newly hired heroes may act from the phase they are hired (not the next phase).',effect:{type:'immediateHire'}},
+  // sd34 'Mounted Couriers' RETIRED 2026-09-21 (Toby). It let a newly hired hero act from the
+  // hire phase itself; the id is retired, not reused — runTurn's retireDiscoveries() strips it from
+  // any live save. Do not re-add an sd34.
   {id:'sd35',name:'Order of the Golden Shield',category:'Heroic',desc:'Your king is hardened twice as much by each victory: every HP gain from slaying an enemy commander, clearing a lair or winning a pre-battle duel is doubled.',effect:{type:'kingKillHpX2'}},
   {id:'sd36',name:'Battlefield Surgery',category:'Heroic',desc:'Any of your characters who would be slain — in a duel, an encounter, or a battle — has a 20% chance to be dragged from the field alive with 1 HP instead.',effect:{type:'nearDeathSurvival',chance:0.20}},
   {id:'sd37',name:'Veteran Training',category:'Heroic',desc:'All your characters fight in personal combat (duels, encounters, lair fights) as if their Melee and Archery were 1 level higher.',effect:{type:'skillBonusCombat',skills:['melee','archery'],bonus:1}},

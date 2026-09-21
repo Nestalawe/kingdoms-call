@@ -8220,6 +8220,23 @@ const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeom
 // at ingestion, so a player who lost the race — or never landed the cast at all — still set that
 // hero's combat stance, and an encounter plan PERSISTS from turn to turn. Plans on synthetic cards
 // are now held here and applied only inside the branch where the hero actually enters service.
+// ── RETIRED SAGE DISCOVERIES (2026-09-21) ────
+// A discovery removed from SAGE_DISCOVERIES_P still sits in the `discoveries` array of any realm
+// that had already researched it, where it is a dead entry the realm paid an order for and can
+// never benefit from. This sweep strips every retired id at the top of the turn. Note the id is
+// RETIRED, not recycled — reusing it would silently hand the old holders a new power. The
+// Loremaster merit already banked for researching it is left alone: that was a real deed.
+const RETIRED_DISCOVERY_IDS=new Set(['sd34']); // sd34 'Mounted Couriers' — never fired; removed at Toby's request
+function retireDiscoveries(G){
+  let n=0;
+  (G&&G.players||[]).forEach(pl=>{
+    if(!pl||!Array.isArray(pl.discoveries)) return;
+    const keep=pl.discoveries.filter(d=>!(d&&RETIRED_DISCOVERY_IDS.has(d.id)));
+    if(keep.length!==pl.discoveries.length){ n+=pl.discoveries.length-keep.length; pl.discoveries=keep; }
+  });
+  return n;
+}
+
 function applyPendingSynthPlan(G, hero, pi){
   if(!G||!hero||!Array.isArray(G._pendingSynthPlans)) return false;
   const p=G._pendingSynthPlans.find(x=>x&&x.heroId===hero.id&&x.player===pi&&x.plan);
@@ -8268,6 +8285,7 @@ async function runTurn(opts){
     seedUsedArmyNames(G); seedUsedHeroNames(G);
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
+    G._retiredDiscoveries=retireDiscoveries(G); // strip discoveries withdrawn from the game (reported at the integrity block; `log` is in its TDZ here)
     // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
     // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
     // saved, so the saved state still carried them and the next turn loaded last turn's fights,
@@ -15311,16 +15329,12 @@ const BATTLE_ARMY_SPELLS={
           if(_applied>0) log('system',`${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player],charId:h.id,phase:ph});
         }
         setMovePool(h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
-        // Mounted Couriers (sd34): newly hired hero may act from the phase they were hired, not the
-        // next
-        const _hCouriers=hasDisc(c.player,'sd34');
-        if(_hCouriers){
-          const ho=(G.turnOrders[h.id]||[])[ph];
-          if(ho&&ho.desc!=='(not yet hired)') processOrder(h,ho,ph);
-        }
+        // 2026-09-21: the 'Mounted Couriers' Sage discovery (sd34) is RETIRED. It let a newly hired
+        // hero act from the hire phase itself, but no pre-order could ever reach that phase's slot
+        // (order ingestion only ever writes phases AFTER the hire), so it never once fired. A hero
+        // now always takes up their orders from the following phase — AK 3.5, no exceptions.
         const _aDist=alignDistP(kingdomAlign,h.alignment);
-        // Both hire paths now say which it is.
-        const _hActs=_hCouriers?`Mounted Couriers bring the contract by fast rider — they act from ${SEASONS[ph]||'this season'}, at once.`:`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
+        const _hActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
         const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. ${_hActs}`;
         log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id});
         // also file the same line under the HIRED hero's own Chronicle section, at the hire phase,
@@ -15495,15 +15509,9 @@ const BATTLE_ARMY_SPELLS={
           if(!G.turnOrders[bh.id])G.turnOrders[bh.id]=[null,null,null,null,null];
           for(let p2=0;p2<=ph;p2++) G.turnOrders[bh.id][p2]=G.turnOrders[bh.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
           setMovePool(bh);
-          // Mounted Couriers (sd34) applies to a brokered hero exactly as to one hired face to face
-          // — the terms travel by courier either way, and the discovery is about how fast word
-          // moves.
-          const _bCouriers=hasDisc(c.player,'sd34');
-          if(_bCouriers){
-            const bo=(G.turnOrders[bh.id]||[])[ph];
-            if(bo&&bo.desc!=='(not yet hired)') processOrder(bh,bo,ph);
-          }
-          const _bActs=_bCouriers?`Mounted Couriers carry the terms by fast rider — they act from ${SEASONS[ph]||'this season'}, at once, from where they stand.`:`They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
+          // 2026-09-21: 'Mounted Couriers' (sd34) is retired — see the Hire branch. A brokered hero
+          // takes up orders from the following phase, exactly as one hired face to face.
+          const _bActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
           const _brokerLine=`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. ${_bActs}`;
           log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id});
           // mirror into the brokered hero's own Chronicle section at the hire phase.
@@ -21017,6 +21025,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     log('system',`[Integrity] ${G._nameRepairs} hero${G._nameRepairs!==1?'es':''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,{actor:null,targets:[]});
   }
   G._nameRepairs=0;
+  // 2026-09-21: report the turn-start retired-discovery sweep here, where `log` exists.
+  if(G._retiredDiscoveries>0){
+    log('system',`[Integrity] ${G._retiredDiscoveries} Sage discover${G._retiredDiscoveries!==1?'ies have':'y has'} been withdrawn from the game and removed from the realms holding ${G._retiredDiscoveries!==1?'them':'it'}.`,{actor:null,targets:[]});
+  }
+  G._retiredDiscoveries=0;
   // graveyard sweep — a grave whose character record is ALIVE is a doppelganger (dead in the
   // graveyard, alive in the realm). Purge it and say so in the GM log.
   if(Array.isArray(G.heroGraveyard)&&G.heroGraveyard.length){
@@ -21688,6 +21701,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1221</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1240</div>
 </body>
 </html>
