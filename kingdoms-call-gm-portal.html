@@ -1600,7 +1600,15 @@ async function runTurn0(){
   const startIndex=humanSetups.length;
   const botSetups=plannedBots>0?generateBotSetups(humanSetups, plannedBots, startIndex):[];
 
-  _pendingTurn0={humanSetups, botSetups, sz, maxTurns, mapSize};
+  // 2026-09-21: the map rung is chosen for the realm count at game creation, but humans + bots can
+  // exceed it (extra joins, bots added). Each rung is the smallest grid that reliably keeps >=3
+  // provinces between every pair of capitals, so size the map for the realms actually starting.
+  let _szUse=sz, _mapUse=mapSize;
+  if(totalKingdoms>(MAP_MAX_PLAYERS[mapSize]||10)){
+    _mapUse='p'+Math.min(10,totalKingdoms); _szUse=sizemap[_mapUse]||sz;
+    console.warn(`Turn 0: ${totalKingdoms} realms on a ${mapSize} map — using the ${_mapUse} map (${_szUse.cols}x${_szUse.rows}) so capitals stay 3+ provinces apart.`);
+  }
+  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse};
 
   if(botSetups.length>0){
     renderTurn0Preview();      // GM confirms the generated roster before we commit anything
@@ -2167,6 +2175,9 @@ const MONSTER_CAT_LABELS={humanoid:'Humanoid',undead:'Undead',beast:'Beast',verm
   dragon:'Dragon',fiend:'Fiend',fey:'Fey',aberration:'Aberration',elemental:'Elemental',construct:'Construct'};
 function monsterCatLabel(m){ if(!m) return ''; const c=monsterCat(m); return MONSTER_CAT_LABELS[c]||''; }
 // Which of a lair's items this guardian can bring to bear.
+// A guardian's use of its hoard is decided by its TYPE alone (MONSTER_CAT_ITEM_USE). Race- and
+// alignment-bound items are deliberately NOT gated here: itemUsableBy() binds them to characters of
+// that race/alignment, but a guardian wields whatever its kind can hold (confirmed 2026-09-21, Toby).
 function guardianCanUseItem(m, it){
   const pol=MONSTER_CAT_ITEM_USE[monsterCat(m)]||'none';
   if(pol==='none'||!it) return false;
@@ -3099,6 +3110,20 @@ function syncMaxHp(ch, players){
     else ch.hp=Math.max(ch.alive===false?0:Math.min(1,ch.hp), Math.min(ch.hp, nu));
   }
   return nu-old;
+}
+// Retired Sage discoveries (never recycle an id — add to this set, never remove from it).
+// sd34 'Mounted Couriers' retired 2026-09-21: it never fired (no pre-order reaches the hire phase's own slot).
+const RETIRED_DISCOVERY_IDS=new Set(['sd34']);
+function retireDiscoveries(gs){
+  let n=0;
+  ((gs&&gs.players)||[]).forEach(pl=>{
+    if(!pl||!Array.isArray(pl.discoveries)) return;
+    const before=pl.discoveries.length;
+    pl.discoveries=pl.discoveries.filter(d=>!RETIRED_DISCOVERY_IDS.has(typeof d==='string'?d:(d&&d.id)));
+    n+=before-pl.discoveries.length;
+  });
+  if(gs) gs._retiredDiscoveries=(gs._retiredDiscoveries||0)+n;
+  return n;
 }
 // Migration: any living character without an earned pool gets one from their current maximum —
 // earned base = maxHp minus item/discovery bonuses, clamped to HPGAIN_MIGRATE_CLAMP
@@ -5644,8 +5669,15 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // forces the degenerate "everyone on the extreme rows" result, so random-among-acceptable
   // matters.
   const KING_MIN_SPACING=4; // >=3 neutral hexes between capitals
-  const _cands=[]; for(let att=0;att<80;att++){ const c=buildLayout(); _cands.push([c,layoutMinDist(c)]); }
+  // 2026-09-21 (Toby: "make sure there are at least three provinces between homes, bots
+  // included"): 80 layouts were tried and, if NONE reached the floor, the roomiest was taken anyway.
+  // Now keep drawing layouts (up to 1,200) until at least one meets it, and only then fall back.
+  // `cellDistRC` is a lower bound on the true hex distance (max(|dc|,|dr|) on the wrapped offset
+  // grid), so a layout accepted here is never closer than the floor in reality.
+  const _cands=[]; let _nFloor=0;
+  for(let att=0;att<1200;att++){ const c=buildLayout(); const d=layoutMinDist(c); _cands.push([c,d]); if(isFinite(d)&&d>=KING_MIN_SPACING) _nFloor++; if(att>=79&&_nFloor>0) break; }
   const _atFloor=_cands.filter(x=>isFinite(x[1])&&x[1]>=KING_MIN_SPACING);
+  if(!_atFloor.length) console.warn(`World gen: no home layout on a ${cols}x${rows} map keeps ${KING_MIN_SPACING} hexes between all ${setupPlayers.length} capitals — the map is too small for this many realms.`);
   let _acceptable;
   if(_atFloor.length){ _acceptable=_atFloor; }
   else {
@@ -6331,6 +6363,19 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // at least 2 before garrisons are sized off its FINAL tax. Sea is deliberately exempt — open water
   // is pinned at tax 1 as the "worthless ocean" marker the home-coastal guarantee relies on.
   provinces.forEach(p=>{ if(p&&p.terrain!=='sea'&&(p.tax||0)<2) p.tax=2; });
+
+  // ── COASTAL SHIPYARDS (2026-09-21, Toby) ── EVERY humanoid land province that touches the sea offers
+  // its race's fleet. The earlier passes gave one to COASTAL_NAVAL_CHANCE (80%) of coasts, and the
+  // race-rebalance / re-race passes rebuild pools afterwards, so this final sweep is the authority.
+  provinces.forEach(p=>{
+    if(!p||p.terrain==='sea'||!HUMANOID_RACES_GEN.has(p.race)) return;
+    const coastal=neighbourCells(p.row,p.col).some(n=>{ const q=provinces[n.id]; return q&&q.terrain==='sea'; });
+    if(!coastal) return;
+    p.armyTypes=p.armyTypes||[];
+    if(p.armyTypes.some(t=>HUMANOID_FLEET_TYPES.has(t))) return;
+    const fleet=(FLEET_BY_RACE[p.race]||['Galleon Fleet'])[0];
+    p.armyTypes.push(fleet);
+  });
 
   // ── NEUTRAL DEFENDER BAND AUDIT ────
   // Every defender pass rolls its count from the province's tax AT THE TIME, but three passes above
@@ -8040,7 +8085,9 @@ function buildTurnReport(gameState, playerIndex){
     // the Research order's category dropdown — every category this realm is eligible for, with how
     // many of its discoveries are already known (the portal greys out exhausted ones). Names and
     // effects of the discoveries themselves are never sent.
-    researchCategories:(()=>{ const known=new Set((player.discoveries||[]).map(d=>d.id)); const m={};
+    // RESEARCH CHOICE: pairs awaiting the player's pick this turn (names and effects shown — the player found them)
+    pendingDiscoveryChoices:(player.pendingDiscoveryChoices||[]).filter(p=>p&&Array.isArray(p.options)).map(p=>({key:p.key,turn:p.turn,charName:p.charName||'',category:p.category||'',options:p.options.map(id=>{ const m=DISC_BY_ID[id]; return m?{id,name:m.name,category:m.category,desc:m.desc}:null; }).filter(Boolean)})),
+    researchCategories:(()=>{ const known=new Set((player.discoveries||[]).map(d=>d.id)); discBlockedIds(player).forEach(id=>known.add(id)); const m={}; // forgotten / awaiting-choice discoveries count as spent for the field's tally
       SAGE_DISCOVERIES_P.filter(d=>discEligible(d,player)&&!RESEARCH_HIDDEN_CATS.has(d.category)).forEach(d=>{ const e=m[d.category]||(m[d.category]={name:d.category,total:0,known:0}); e.total++; if(known.has(d.id)) e.known++; }); // hidden fields never listed
       return Object.values(m); })(),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting Any dead hero
@@ -8149,6 +8196,18 @@ const RESEARCH_HIDDEN_CATS=new Set(['Heroic','Special']);
 // character's ordinary Sage discovery chance. Divisor 5 with a 10% ceiling.
 const HIDDEN_DISCOVERY_DIVISOR=5;
 const HIDDEN_DISCOVERY_CAP_PCT=10;
+// ── RESEARCH CHOICE (2026-09-21, Toby) ── a successful Research order no longer hands over one random
+// discovery: it turns up TWO in the chosen field, held on the realm as a pending choice
+// (`pl.pendingDiscoveryChoices`: {key, turn, charId, charName, category, options:[id,id]}). In the
+// NEXT turn's orders the player keeps one; the other is FORGOTTEN for good (`pl.forgottenDiscoveries`,
+// ids) and never comes up again from Research, a Breakthrough or the Grand Library. No choice sent
+// (bots, or a player who left it blank) → one is kept at random. Options awaiting a choice are also
+// withheld from every other roll, so the same discovery is never offered twice at once.
+function discBlockedIds(pl){
+  const s=new Set(((pl&&pl.forgottenDiscoveries)||[]).map(String));
+  ((pl&&pl.pendingDiscoveryChoices)||[]).forEach(p=>(p&&p.options||[]).forEach(id=>s.add(String(id))));
+  return s;
+}
 // ── Discovery eligibility & generic effect readers ────
 // Race/alignment discoveries carry `race` / `alignment`; a realm can only research, breakthrough,
 // Grand-Library or steal (spy) a discovery it is eligible for. Their effects are data-driven
@@ -8220,23 +8279,6 @@ const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeom
 // at ingestion, so a player who lost the race — or never landed the cast at all — still set that
 // hero's combat stance, and an encounter plan PERSISTS from turn to turn. Plans on synthetic cards
 // are now held here and applied only inside the branch where the hero actually enters service.
-// ── RETIRED SAGE DISCOVERIES (2026-09-21) ────
-// A discovery removed from SAGE_DISCOVERIES_P still sits in the `discoveries` array of any realm
-// that had already researched it, where it is a dead entry the realm paid an order for and can
-// never benefit from. This sweep strips every retired id at the top of the turn. Note the id is
-// RETIRED, not recycled — reusing it would silently hand the old holders a new power. The
-// Loremaster merit already banked for researching it is left alone: that was a real deed.
-const RETIRED_DISCOVERY_IDS=new Set(['sd34']); // sd34 'Mounted Couriers' — never fired; removed at Toby's request
-function retireDiscoveries(G){
-  let n=0;
-  (G&&G.players||[]).forEach(pl=>{
-    if(!pl||!Array.isArray(pl.discoveries)) return;
-    const keep=pl.discoveries.filter(d=>!(d&&RETIRED_DISCOVERY_IDS.has(d.id)));
-    if(keep.length!==pl.discoveries.length){ n+=pl.discoveries.length-keep.length; pl.discoveries=keep; }
-  });
-  return n;
-}
-
 function applyPendingSynthPlan(G, hero, pi){
   if(!G||!hero||!Array.isArray(G._pendingSynthPlans)) return false;
   const p=G._pendingSynthPlans.find(x=>x&&x.heroId===hero.id&&x.player===pi&&x.plan);
@@ -8285,7 +8327,7 @@ async function runTurn(opts){
     seedUsedArmyNames(G); seedUsedHeroNames(G);
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
-    G._retiredDiscoveries=retireDiscoveries(G); // strip discoveries withdrawn from the game (reported at the integrity block; `log` is in its TDZ here)
+    retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
     // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
     // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
     // saved, so the saved state still carried them and the next turn loaded last turn's fights,
@@ -8360,6 +8402,7 @@ async function runTurn(opts){
   // Diplomacy declarations submitted this turn, keyed by player index → { targetPlayerIndex: 'treat'|'enemy' }.
   // Recorded here, applied at end of turn (relations change "at the start of the next turn").
   const diploDeclarations={};
+  const discoveryChoicePicks={}; // research choice: player index → {pendingKey: keptDiscoveryId}
   // Victory: players who Called the Reckoning this turn (king-only, one per realm).
   const reckoningCalls=new Set();
   // player-to-player messages submitted with orders, keyed by sender index → [{to, text}].
@@ -8389,6 +8432,9 @@ async function runTurn(opts){
       // Diplomacy declarations (king-only, one stance per target). Validated at resolution time
       // against the encountered set; stored raw here.
       if(raw.diplomacy && typeof raw.diplomacy==='object') diploDeclarations[gp.player_index]=raw.diplomacy;
+      // RESEARCH CHOICE: which of each pending pair to keep ({key: discoveryId}); honoured only when
+      // the payload is for this turn (a stale draft's picks are ignored like its orders).
+      if(raw.discoveryChoices && typeof raw.discoveryChoices==='object' && (raw.forTurn==null||raw.forTurn===expectedTurnToRun)) discoveryChoicePicks[gp.player_index]=raw.discoveryChoices;
       if(raw.callReckoning===true&&!(G.players[gp.player_index]||{}).conceded) reckoningCalls.add(gp.player_index);
       if(Array.isArray(raw.messages)) playerMessages[gp.player_index]=raw.messages;
       // CONCEDE. A realm that concedes is out of the game for good — its characters do nothing but
@@ -8572,7 +8618,12 @@ async function runTurn(opts){
     _botPlayerIdx.forEach(idx=>{
       if(_conceded(idx)) return;                                 // a conceded realm makes no declarations
       if(!_kingAliveIdx.has(idx)&&!_hasLand(idx)) return;
-      const denyingAClaim = claimBy>=0 && claimBy!==idx;
+      // 2026-09-21 (Toby): a bot ALLIED with the claimant AND of the same alignment keeps faith — it
+      // neither breaks with him nor joins a coalition against him; it just plays its ordinary
+      // alignment diplomacy (so it stays his ally).
+      const _loyalToClaimant = claimBy>=0 && claimBy!==idx && areAllied(idx,claimBy)
+        && ((G.players||[])[idx]||{}).alignment!=null && ((G.players||[])[idx]||{}).alignment===((G.players||[])[claimBy]||{}).alignment;
+      const denyingAClaim = claimBy>=0 && claimBy!==idx && !_loyalToClaimant;
       (_botEncounteredAtStart[idx]||[]).forEach(rival=>{
         if(rival==null||rival===idx) return;
         if(!(G.players||[])[rival]) return;
@@ -8823,6 +8874,29 @@ async function runTurn(opts){
   // declaration takes effect BEFORE phase 1, so their armies may cross the frontier this very turn.
   // Every other alignment's declaration still resolves at end of turn (step 6d), in force from next
   // turn. Bots declare here too (collectBotDiplomacy), so an Evil/Undead bot gets the same jump.
+  // ── RESEARCH CHOICE: settle last turn's pairs before anything else happens this turn ──
+  (G.players||[]).forEach((pl,pi)=>{
+    if(!pl||!Array.isArray(pl.pendingDiscoveryChoices)||!pl.pendingDiscoveryChoices.length) return;
+    const picks=discoveryChoicePicks[pi]||{};
+    const still=[];
+    pl.pendingDiscoveryChoices.forEach(p=>{
+      if(!p||!Array.isArray(p.options)||p.turn>=G.turn){ if(p) still.push(p); return; }
+      pl.discoveries=pl.discoveries||[];
+      const known=new Set(pl.discoveries.map(d=>d&&d.id));
+      const opts=p.options.filter(id=>DISC_BY_ID[id]&&!known.has(id)&&!RETIRED_DISCOVERY_IDS.has(id));
+      if(!opts.length) return;
+      const want=picks[p.key];
+      const chosen=opts.includes(want)?want:opts[Math.floor(Math.random()*opts.length)];
+      const d=DISC_BY_ID[chosen];
+      pl.discoveries.push({id:d.id,name:d.name,category:d.category,desc:d.desc,turnDiscovered:p.turn});
+      pl.forgottenDiscoveries=pl.forgottenDiscoveries||[];
+      const lost=p.options.filter(id=>id!==chosen);
+      lost.forEach(id=>{ if(!pl.forgottenDiscoveries.includes(id)) pl.forgottenDiscoveries.push(id); });
+      const lostNames=lost.map(id=>(DISC_BY_ID[id]&&DISC_BY_ID[id].name)||id).join(', ');
+      log('explore',`💡 ${opts.includes(want)?`${pl.name} pursues`:`No choice was sent, so ${pl.name}'s scholars choose for themselves and pursue`} **${d.name}** (${d.category}), found by ${p.charName||'a scholar'} last turn. ${d.desc}${lostNames?` The other lead — ${lostNames} — is set aside and forgotten for good.`:''}`,{actor:pi,targets:[pi],charId:null,phase:0});
+    });
+    pl.pendingDiscoveryChoices=still;
+  });
   collectBotDiplomacy();
   { const _npW=(G.players||[]).length;
     for(let a=0;a<_npW;a++){
@@ -8987,6 +9061,19 @@ async function runTurn(opts){
   // player report cannot disagree about what a character's skills actually are. Equipped items only
   //, minus any Curse, plus the Crown of Command aura; capped 0..5.
   function effStat(c,stat){ return effSkillOf(c,stat,G.characters||[]); }
+  // 2026-09-21 (Toby: "Illusory 3 … rises to level 1"): every skill-rise line quoted the character's
+  // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
+  // + aura). A hero with Illusory 0 and a +3 diadem cast "(Illusory 3)" and then "rose to level 1",
+  // which reads as a bug. Rise lines now add what the skill stands at in play whenever items / aura
+  // lift it above the trained level. `skillInPlayNote` returns '' when the two agree.
+  function skillInPlayNote(ch,skill){
+    if(!ch) return '';
+    const b=skillBonusBreakdown(ch,skill,G.characters||[]);
+    const raw=skillLevel(ch,skill);
+    if(!(b.total>raw)) return '';
+    const src=(b.sources||[]).filter(s=>s&&s.delta>0).map(s=>`${s.label} +${s.delta}`).join(', ');
+    return ` (${SKILL_LABELS[skill]||skill} ${b.total} in play${src?`, with ${src}`:''})`;
+  }
   function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
   // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter
   // Character. ILLUSORY L9 Veil — active only during the cast phase and the phase after it (two
@@ -9087,7 +9174,7 @@ async function runTurn(opts){
       // A March/Naval rise increases pace immediately: recompute this character's move pool so the
       // extra reach is available for the rest of THIS turn (preserving points already spent).
       if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
-      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
+      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${skillInPlayNote(real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle. the
       // deferred (non-battle) skill-rise carries the character's id and the phase it happened in,
@@ -9736,7 +9823,7 @@ const BATTLE_ARMY_SPELLS={
         const _spyLvl=effStat(c,'spy');
         const _stealPct=Math.max(5,Math.min(95,10+_spyLvl*10));
         const _mine=new Set((G.players[c.player]?.discoveries||[]).map(d=>d.id));
-        const _stealable=(_kp.discoveries||[]).filter(d=>!_mine.has(d.id)&&discEligible(DISC_BY_ID[d.id],G.players[c.player])); // a spy cannot carry off a race/alignment secret the realm cannot use
+        const _blkSpy=discBlockedIds(G.players[c.player]); const _stealable=(_kp.discoveries||[]).filter(d=>!_mine.has(d.id)&&!_blkSpy.has(String(d.id))&&discEligible(DISC_BY_ID[d.id],G.players[c.player])); // a spy cannot carry off a race/alignment secret the realm cannot use
         if(_stealable.length>0){
           const _sr=d100();
           log('spy',`[Intelligence] 📊 Discovery theft — ${c.name} (Spy ${_spyLvl}) rifling ${_kp.name}'s archives: ${fmtRoll(_stealPct,_sr)}`,{actor:c.player,targets:[c.player],provinceId:sprov.id});
@@ -10388,7 +10475,10 @@ const BATTLE_ARMY_SPELLS={
     // return) so the 📈 line closes the battle report instead of preceding it in the chronicle.
     const _rollTacticalGain=won && prov.terrain!=='sea';
     const _rollNavalGain=won && prov.terrain==='sea';   // winning a SEA battle trains Naval (the sea-combat skill), mirroring Tactical on land
-    const _rollDruidGain=won && (c.armies||[]).some(a=>a&&PRIMAL_ARMY_DEFS_P[a.type]);   // winning a battle while LEADING primal (Creature/Monster) armies trains Druid
+    // DRUID (2026-09-21, Toby): any battle with primal (Creature/Monster) units on EITHER side trains
+    // Druid — full chance for the winner, half for the loser. Read before casualties are removed.
+    const _primalInBattle=[...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].some(a=>a&&PRIMAL_ARMY_DEFS_P[a.type]);
+    const _rollDruidGain=_primalInBattle;
 
     // Closeness of battle affects retreat/stay and casualties
     const closenessRatio=Math.min(finalAtk,finalDef)/Math.max(finalAtk,finalDef);
@@ -10640,7 +10730,7 @@ const BATTLE_ARMY_SPELLS={
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGain) trySkillGain(c,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
-    if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative);       // Druid: won while leading primal armies
+    if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative,won?1:0.5); // Druid: fought beside or against primal armies (loser at half chance)
     // a one-line result that onlookers (a char present but not fighting) may see instead of the
     // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows
     // more.
@@ -11059,6 +11149,9 @@ const BATTLE_ARMY_SPELLS={
     return r<=PC_SUSTAIN_FULL_ROUNDS?1:(r<=PC_SUSTAIN_HALF_ROUNDS?0.5:0);
   }
   function pcTakeHit(target, dmg, narrative, srcName, kind){
+    // Beg-for-Mercy narration (2026-09-21): remember WHERE in the narrative a character's fatal blow
+    // began, so a Cowardly plea can be told just before that blow lands (see resolvePersonalCombat).
+    const _mkHpIn=target?target.hp:0, _mkIdx=(narrative&&narrative.length)||0;
     // Mirror images soak a hit first.
     if(target.status && target.status.mirrorImages>0){
       target.status.mirrorImages--;
@@ -11204,6 +11297,7 @@ const BATTLE_ARMY_SPELLS={
       if(d>_gCap) d=_gCap;
     }
     target.hp-=d;
+    if(_mkHpIn>0&&target.hp<=0&&target.kind==='character'&&narrative) target._fatalMark={arr:narrative,idx:_mkIdx,blow:(srcName&&srcName!==target.name)?srcName:null,kind:kind||''};
     // Last-Stand Plate: once per fight, the first time the wearer drops below 30% they recover 25%
     // of max.
     if(_arm&&_arm.secondWind&&!target._armSecondWindUsed&&target.hp>0&&target.hp<(target.maxHp||20)*0.30){
@@ -11419,7 +11513,16 @@ const BATTLE_ARMY_SPELLS={
     }
     // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
     // the encounter report, not log()'d ahead of it at the top of the phase.
-    if(caster.kind==='character'&&caster.ref){ trySkillGain(caster.ref, school, SKILLGAIN_STD, narrative); if(caster.ref.skills) caster.school[school]=caster.ref.skills[school]||caster.school[school]; }
+    if(caster.kind==='character'&&caster.ref){
+      // 2026-09-21 (found with Toby's "Illusory 3 … rises to level 1"): after the roll this used to
+      // write the RAW trained level back into the fighter's school — `ref.skills[school]||…` — so a
+      // mage casting on item bonuses (Illusory 0 + a +3 diadem) dropped to Illusory 1 for the rest of
+      // the fight the moment the skill rose, and a trained 6+ mage jumped past the level-5 cap. The
+      // level in play is re-read exactly as pcCharCombatant built it, and only when it actually rose.
+      const _lvB=skillLevel(caster.ref,school);
+      trySkillGain(caster.ref, school, SKILLGAIN_STD, narrative);
+      if(skillLevel(caster.ref,school)>_lvB) caster.school[school]=Math.max(caster.school[school]||0, effStat(caster.ref,school));
+    }
     return true;
   }
 
@@ -11799,6 +11902,7 @@ const BATTLE_ARMY_SPELLS={
     if(!pick) return false;
     actor._itemsUsed.add(pick.name);
     pcUseCombatItem(actor, foe, pick, narrative, state);
+    if(actor.kind==='character'&&actor.ref) trySkillGain(actor.ref,'sage',SKILLGAIN_COMMON,narrative); // 2026-09-21: using a magic item may teach Sage (small chance)
     return true;
   }
   function pcUseCombatItem(actor, foe, it, narrative, state){
@@ -12110,13 +12214,21 @@ const BATTLE_ARMY_SPELLS={
       if(victim.hp<=0){ narrative.push(`  ${victim.name} is struck down by their own mirror image!`); state.mirror=null; }
     };
 
+    // Step marks for Beg-for-Mercy narration: any death not caused through pcTakeHit (lingering
+    // harm, auras, thorns) is pinned to the START of the step that caused it.
+    const _stepMark=()=>({n:narrative.length,a:A.hp,b:B.hp});
+    const _stepCheck=(m)=>{ [[A,m.a],[B,m.b]].forEach(([cb,h])=>{ if(h>0&&cb.hp<=0&&cb.kind==='character'){ const fm=cb._fatalMark; if(!(fm&&fm.arr===narrative&&fm.idx>=m.n)) cb._fatalMark={arr:narrative,idx:m.n,blow:null}; } }); };
+    A._fatalMark=null; B._fatalMark=null;
     for(let round=0; round<maxRounds; round++){
       if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
+      let _sm=_stepMark();
       pcRoundStart(A,narrative); pcRoundStart(B,narrative);
+      _stepCheck(_sm); _sm=_stepMark();
       A._fleeAttempted=false; B._fleeAttempted=false;
       // Guardian burn aura: a foe standing at melee range is scorched / frozen each round (never
       // soaked).
       if(state.range==='melee') for(const [me,foe] of [[A,B],[B,A]]){ if(me.burn>0&&me.hp>0&&foe.hp>0){ foe.hp-=me.burn; narrative.push(`  🜏 ${me.passiveName||'The aura'} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0,Math.round(foe.hp))})`); } }
+      _stepCheck(_sm); _sm=_stepMark();
       if(A.hp<=0||B.hp<=0) break;
 
       // ── Mirror Image: while an illusion fights, the victim battles their own phantom and the
@@ -12141,6 +12253,7 @@ const BATTLE_ARMY_SPELLS={
           // the illusion — which is what the spell is FOR. Guarded on both being alive and on the
           // caster not having been the one struck down inside the exchange.
           if(caster.hp>0 && victim.hp>0) pcAct(caster, victim, narrative, state);
+          _stepCheck(_sm);
           continue; // the victim has already acted, against the phantom
         }
       }
@@ -12149,6 +12262,7 @@ const BATTLE_ARMY_SPELLS={
       for(const actor of [first,second]){
         const foe=actor===A?B:A;
         if(actor.hp<=0||foe.hp<=0) break;
+        _stepCheck(_sm); _sm=_stepMark();
         const _mirrorBefore=state.mirror;
         pcAct(actor, foe, narrative, state);
         // 2026-09-10 item 2: if this action just conjured a Mirror Image and the victim has NOT yet
@@ -12168,6 +12282,7 @@ const BATTLE_ARMY_SPELLS={
         if(actor.hp<=0 && actor._rebirth){ actor._rebirth=false; actor.hp=Math.max(5,Math.round(actor.maxHp*0.4)); narrative.push(`  🔥 ${actor.name} bursts into ash — then blazes back to life! (HP ${actor.hp})`); }
         if(state.fledBy||state.parley||state.stoleBy||foe.hp<=0||actor.hp<=0) break;
       }
+      _stepCheck(_sm); _sm=_stepMark();
 
       // ── Second Wind: a level-headed fighter steadies themselves once, when the fight turns. ──
       for(const cbt of [A,B]){
@@ -12199,11 +12314,21 @@ const BATTLE_ARMY_SPELLS={
         }
         if(state.fledBy) break;
       }
+      _stepCheck(_sm);
     }
     // Write back HP to underlying characters.
     [A,B].forEach(cbt=>{ if(cbt.kind==='character'&&cbt.ref){ cbt.ref.hp=Math.max(0,Math.round(cbt.hp)); } });
     // ── Begging for Mercy (AK §2.4): a Cowardly fighter felled in combat may plead and be spared,
     // fleeing the field instead of dying. It works best against Good/similar alignments. ──
+    // NARRATION (2026-09-21, Toby): the plea is told JUST BEFORE the killing blow, not after the
+    // fighter has already been described falling. `_fatalMark` (set in pcTakeHit, or by the round's
+    // step marks) says where that blow began in the narrative. Granted → the blow is stayed: the
+    // lines of the blow are dropped (private skill-rise markers are kept) and the coward escapes.
+    // Refused → the plea is spliced in before the blow, which then falls as already written.
+    // The odds, the roll and every consequence are exactly as before — only the telling moved.
+    let _mercyShift=[]; // [index, lines inserted] — keeps a second combatant's mark true after a splice
+    const _mercyAt=(fm)=>{ let at=(fm&&fm.arr===narrative&&fm.idx<=narrative.length)?fm.idx:narrative.length; _mercyShift.forEach(([ix,n])=>{ if(ix<=at) at+=n; }); return Math.min(at,narrative.length); };
+    const _pick=(arr)=>arr[Math.floor(Math.random()*arr.length)];
     for(const cbt of [A,B]){
       const foe=cbt===A?B:A;
       if(cbt.hp<=0 && cbt.kind==='character' && temperOf(cbt.temper).mercy && !state.fledBy && !cbt._begged){
@@ -12211,9 +12336,49 @@ const BATTLE_ARMY_SPELLS={
         let mercy=50;
         if(foeAlign==='Good'||foeAlign==='Divine'||foeAlign==='Druidic') mercy=75;
         else if(foeAlign==='Evil'||foeAlign==='Undead') mercy=20;
-        if(Math.random()*100<mercy){
+        const _r=Math.random()*100, _granted=_r<mercy, _shown=Math.floor(_r)+1; // same odds as ever; shown as a d100
+        const fm=cbt._fatalMark;
+        const _blow=!!(fm&&fm.blow);                 // a struck blow (not lingering harm or an aura)
+        const at=_mercyAt(fm);
+        const who=cbt.name, foeWho=foe.kind==='monster'?`the ${foe.name}`:foe.name, FoeWho=foe.kind==='monster'?`The ${foe.name}`:foe.name;
+        const _odds=` (${mercy}% chance of mercy) [roll ${_shown}${_granted?' ✓':' ✗'}]`;
+        // what kind of killing blow is coming: a weapon stroke, an arrow, or a spell / power
+        const _k=String((fm&&fm.kind)||'');
+        const _cls=/^(blow|free strike|counterattack)$/i.test(_k)?'melee':/arrow|shot/i.test(_k)?'ranged':'power';
+        const _pow=_k&&_cls==='power'?_k:'its power';
+        const plea=!_blow
+          ? `  🙏 As their strength fails and death closes in, ${who} begs ${foeWho} for mercy!${_odds}`
+          : _cls==='ranged' ? _pick([
+              `  🙏 As ${foeWho} draws for the killing shot, ${who} throws down their weapon and begs for their life!${_odds}`,
+              `  🙏 Pinned and bleeding, ${who} cries out for mercy before the last arrow can fly!${_odds}`,
+            ])
+          : _cls==='power' ? `  🙏 As ${foeWho} readies ${_pow} for the killing stroke, ${who} falls to their knees and begs to be spared!${_odds}`
+          : _pick([
+              `  🙏 Beaten and bleeding, ${who} sees the killing blow coming — they throw down their weapon and beg ${foeWho} for their life!${_odds}`,
+              `  🙏 As ${foeWho} closes for the kill, ${who} flings up their hands and cries out for mercy!${_odds}`,
+              `  🙏 ${who} drops to their knees before the final stroke can fall, pleading to be spared!${_odds}`,
+            ]);
+        const _falls=_cls==='ranged'?' The arrow flies.':_cls==='power'?` ${_pow==='its power'?'The power':'The '+_pow} is loosed.`:' The blow falls.';
+        if(_granted){
           cbt.hp=1; if(cbt.ref)cbt.ref.hp=1; cbt._begged=true; state.fledBy=cbt;
-          narrative.push(`  🙏 ${cbt.name} falls, but begs for mercy — and ${foe.name} grants it. ${cbt.name} flees the field with their life.`);
+          const spared=foe.kind==='monster'
+            ? `  ${FoeWho} pauses over its prey — and, for reasons of its own, lets ${who} crawl away. ${who} flees the field with their life. (HP 1)`
+            : !_blow ? `  ${FoeWho} lets them go — ${who} staggers from the field with their life. (HP 1)`
+            : _cls==='ranged' ? `  ${FoeWho} lowers their bow. "Go, while you still can." ${who} flees the field with their life. (HP 1)`
+            : _cls==='power' ? `  ${FoeWho} lets ${_pow} die unspent and waves ${who} away. ${who} flees the field with their life. (HP 1)`
+            : _pick([
+                `  ${FoeWho} stays the blow. "Go — and never let me see your face again." ${who} scrambles away and flees the field with their life. (HP 1)`,
+                `  ${FoeWho} lowers their weapon in disgust and lets ${who} go. ${who} flees the field, alive but broken. (HP 1)`,
+                `  The stroke never falls — ${foeWho} spares them. ${who} stumbles from the field with their life. (HP 1)`,
+              ]);
+          if(_blow){
+            // the killing blow never landed: drop its lines, keep the owner's private skill markers
+            const tail=narrative.splice(at);
+            const kept=tail.filter(x=>typeof x!=='string'||/^\s*(📈|🎉|💰)/.test(x));
+            narrative.push(plea, spared, ...kept);
+          } else {
+            narrative.push(plea, spared);
+          }
           // Consequences of a spared coward (design update): they are broken for the rest of the
           // turn
           // (all remaining actions lost), slink back to their home province by next turn, and yield a
@@ -12228,6 +12393,14 @@ const BATTLE_ARMY_SPELLS={
               narrative.push(`  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
             }
           }
+        } else {
+          const refused=foe.kind==='monster'
+            ? `  ${FoeWho} knows nothing of mercy.${_blow?_falls:''}`
+            : (foeAlign==='Evil'||foeAlign==='Undead')
+              ? `  ${FoeWho} laughs at the plea.${_blow?_falls:''}`
+              : _pick([`  ${FoeWho} is deaf to the plea.${_blow?_falls:''}`, `  There is no pity in ${foeWho} today.${_blow?_falls:''}`]);
+          if(_blow){ narrative.splice(at,0,plea,refused); _mercyShift.push([at,2]); }
+          else narrative.push(plea, refused);
         }
       }
     }
@@ -12865,7 +13038,7 @@ const BATTLE_ARMY_SPELLS={
     // Tactical gain deferred to the end of the battle narrative — see the return below.
     const _rollTacticalGainPvP=prov.terrain!=='sea';
     const _rollNavalGainPvP=prov.terrain==='sea';   // sea-battle winner trains Naval (mirrors Tactical on land)
-    const _rollDruidGainPvP=(won?atkArmies:defArmies).some(a=>a&&PRIMAL_ARMY_DEFS_P[a.type]);   // the winner trains Druid if they led primal (Creature/Monster) armies
+    const _rollDruidGainPvP=[...atkArmies,...defArmies].some(a=>a&&PRIMAL_ARMY_DEFS_P[a.type]);   // primal (Creature/Monster) units on EITHER side: both commanders may train Druid — winner full, loser half (2026-09-21)
     const margin=Math.abs(atkStr-defStr);
     const totalStrPvP=Math.max(1,atkStr+defStr);
     const margRatioPvP=margin/totalStrPvP;
@@ -13138,7 +13311,7 @@ const BATTLE_ARMY_SPELLS={
     noteBattleLoss(won?def.id:atk.id, narrative);
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
-    if(_rollDruidGainPvP) trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative);       // Druid: won while leading primal armies
+    if(_rollDruidGainPvP){ trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative); trySkillGain(won?def:atk,'druid',SKILLGAIN_STD,narrative,0.5); } // Druid: winner full, loser half
     // onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless
     // host.
     const summaryText=`⚔ Battle at ${prov.name}: ${won?`${atkName}'s forces defeat ${defName}`:`${defName}'s forces hold against ${atkName}`}.`;
@@ -14115,10 +14288,13 @@ const BATTLE_ARMY_SPELLS={
         if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ toProv._illusoryTerrain._enteredByEnemy=true; }
         // Skill gains from movement: March (land move leading an army) / Naval (sea move with a
         // fleet).
-        if((c.armies||[]).length>0){
-          if(toProv.terrain==='sea'){ if((c.armies||[]).some(a=>SEA_TYPES.has(a.type))) trySkillGain(c,'naval',SKILLGAIN_STD); }
-          else { trySkillGain(c,'march',SKILLGAIN_COMMON); }
-        }
+        // 2026-09-21 (Toby): ANY sea voyage trains Naval — commanding a fleet at the standard rate,
+        // anyone else aboard (a passenger, an unled hero, a host carried in another's hulls) at the
+        // smaller frequent-action rate.
+        if(toProv.terrain==='sea'){
+          if((c.armies||[]).some(a=>SEA_TYPES.has(a.type))) trySkillGain(c,'naval',SKILLGAIN_STD);
+          else trySkillGain(c,'naval',SKILLGAIN_COMMON);
+        } else if((c.armies||[]).length>0){ trySkillGain(c,'march',SKILLGAIN_COMMON); }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
         // remember which province this character MARCHED INTO this phase, so a lone defender on
@@ -14144,6 +14320,9 @@ const BATTLE_ARMY_SPELLS={
           // (The old Elven "Pathfinder" forest/jungle exploration doubling is REPLACED this session by
           // the Elven escape ability — no exploration bonus now.)
           const prevExp=toProv.exploredBy[c.player]||0;
+          // 2026-09-21 (Toby): the FIRST time a character sets foot in a province their realm has not
+          // fully mapped, they may learn Explorer (frequent-action rate). Remembered per character.
+          if(prevExp<100){ c._xpFirstEntry=c._xpFirstEntry||[]; if(!c._xpFirstEntry.includes(toProv.id)){ c._xpFirstEntry.push(toProv.id); trySkillGain(c,'explorer',SKILLGAIN_COMMON); } }
           toProv.exploredBy[c.player]=Math.min(100,prevExp+explGainMove);
           toProv.explored=toProv.exploredBy[c.player];
           creditMapped(c, prevExp, toProv.exploredBy[c.player]); // TITLE MERIT: Cartographer
@@ -15083,6 +15262,7 @@ const BATTLE_ARMY_SPELLS={
           const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct'))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
+          if(goldFinal>0) trySkillGain(c,'thief',SKILLGAIN_STD); // 2026-09-21 (Toby): carrying off a lair's gold trains Thief
           // the tier-weighted fighting-skill experience roll for a lair clear is DROPPED; the only
           // permanent reward is the earned-HP gain. A pacified beast earns nothing.
           if(!encounter.pacified) awardWinHp(c, null, 'lair'); // clearing a lair by force hardens the hero (earned HP)
@@ -15251,6 +15431,7 @@ const BATTLE_ARMY_SPELLS={
           const recruitRace=(armyType==='Whale Cohort')?'Primal':(prov.race||'Human');
           _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
           if(!HUMANOID_RACES_SG.has(recruitRace)&&!_destGarrison) trySkillGain(_destChar,'druid',SKILLGAIN_STD); // Druid: led a non-humanoid recruit
+          else if(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)) trySkillGain(_destGarrison?c:_destChar,'druid',SKILLGAIN_COMMON); // 2026-09-21: any primal recruit (incl. into a garrison) — small chance for the recruiter
           }
           recordRecruit(armyType,prov.id,actualQty);
           recruited.push(`${actualQty}× ${armyType}`);
@@ -15329,11 +15510,8 @@ const BATTLE_ARMY_SPELLS={
           if(_applied>0) log('system',`${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player],charId:h.id,phase:ph});
         }
         setMovePool(h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
-        // 2026-09-21: the 'Mounted Couriers' Sage discovery (sd34) is RETIRED. It let a newly hired
-        // hero act from the hire phase itself, but no pre-order could ever reach that phase's slot
-        // (order ingestion only ever writes phases AFTER the hire), so it never once fired. A hero
-        // now always takes up their orders from the following phase — AK 3.5, no exceptions.
         const _aDist=alignDistP(kingdomAlign,h.alignment);
+        // Both hire paths now say which it is.
         const _hActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
         const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. ${_hActs}`;
         log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -15509,8 +15687,6 @@ const BATTLE_ARMY_SPELLS={
           if(!G.turnOrders[bh.id])G.turnOrders[bh.id]=[null,null,null,null,null];
           for(let p2=0;p2<=ph;p2++) G.turnOrders[bh.id][p2]=G.turnOrders[bh.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
           setMovePool(bh);
-          // 2026-09-21: 'Mounted Couriers' (sd34) is retired — see the Hire branch. A brokered hero
-          // takes up orders from the following phase, exactly as one hired face to face.
           const _bActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
           const _brokerLine=`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. ${_bActs}`;
           log('hire',_brokerLine,{actor:c.player,targets:[c.player],provinceId:bhProv.id});
@@ -15606,7 +15782,7 @@ const BATTLE_ARMY_SPELLS={
         const _catFilter=(d)=>!RESEARCH_HIDDEN_CATS.has(d.category)&&(!_rcat||_rcat.toLowerCase()==='any'||(d.category||'').toLowerCase()===_rcat.toLowerCase());
         { const _knownPre=new Set((player.discoveries||[]).map(d=>d.id));
           if(_rcat&&_rcat.toLowerCase()!=='any'&&!discAvailableFor(c.player,_knownPre).some(_catFilter)){
-            log('system',`${c.name}: every ${_rcat} discovery has already been made by your realm — choose another field of study.`,{actor:c.player,targets:[c.player]});break; } }
+            log('system',`${c.name}: every ${_rcat} discovery has already been made, set aside, or is awaiting your choice — choose another field of study.`,{actor:c.player,targets:[c.player]});break; } }
         // the HIDDEN-FIELD roll is made FIRST and, when it lands, it is the discovery this research
         // yields — an unlooked-for find INSTEAD of the ordinary one, never as well as it. Half the
         // discovery chance, as before.
@@ -15638,18 +15814,31 @@ const BATTLE_ARMY_SPELLS={
           if(!player.discoveries) player.discoveries=[];
           const known=new Set(player.discoveries.map(d=>d.id));
           const available=discAvailableFor(c.player, known).filter(_catFilter); // race/alignment eligibility; category
-          if(available.length>0){
+          if(available.length>=2){
+            // RESEARCH CHOICE: two finds, one to keep next turn (see discBlockedIds)
+            const _i1=Math.floor(Math.random()*available.length);
+            let _i2=Math.floor(Math.random()*(available.length-1)); if(_i2>=_i1) _i2++;
+            const d1=available[_i1], d2=available[_i2];
+            player.pendingDiscoveryChoices=player.pendingDiscoveryChoices||[];
+            player.pendingDiscoveryChoices.push({key:`rc${G.turn}_${c.id}_${ph}`,turn:G.turn,charId:c.id,charName:c.name,category:(_rcat&&_rcat.toLowerCase()!=='any')?_rcat:'',options:[d1.id,d2.id]});
+            TM(c).discoveries+=1; // TITLE MERIT: Loremaster — the deed is the research, whichever is kept
+            if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
+            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } } // SAGE L8
+            log('explore',`💡 ${c.name}'s research bears fruit — two discoveries come to light: **${d1.name}** (${d1.category}) and **${d2.name}** (${d2.category}). Only one can be pursued: choose which to keep in next turn's orders (the 💡 Research box just under the Realm section). The other will be lost for good.`,{actor:c.player,targets:[c.player]});
+            trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
+          } else if(available.length>0){
             const disc=available[Math.floor(Math.random()*available.length)];
             player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1; // TITLE MERIT: Loremaster
             if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
             if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } } // SAGE L8: +2 tax (max 10) to the province you are in
-            log('explore',`💡 ${c.name}'s research bears fruit! **${disc.name}** (${disc.category}) discovered. ${disc.desc}`,{actor:c.player,targets:[c.player]});
+            log('explore',`💡 ${c.name}'s research bears fruit! **${disc.name}** (${disc.category}) discovered — the last discovery this field still holds for your realm, so there is nothing to choose between. ${disc.desc}`,{actor:c.player,targets:[c.player]});
             trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
           } else {
             log('system',`${c.name} researches diligently — the roll succeeded but all known discoveries have already been made by your realm.`,{actor:c.player,targets:[c.player]});
           }
         } else {
           log('system',`${c.name} researches hard but makes no new discovery this turn.`,{actor:c.player,targets:[c.player]});
+          trySkillGain(c,'sage',SKILLGAIN_COMMON); // 2026-09-21 (Toby): even a fruitless season in the archives teaches a little
         }
         break;
       }
@@ -15743,10 +15932,13 @@ const BATTLE_ARMY_SPELLS={
           // up in phase 1 is proportionally harder to raise again in the field later on.
           if(!c._sgLog || c._sgLog.turn!==G.turn) c._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
           c._sgLog.turnGains=c._sgLog.turnGains||{}; c._sgLog.turnGains[skill]=(c._sgLog.turnGains[skill]||0)+1;
+          const _prPayBefore=c.pay||0;
           recalcHeroPay(c);
+          const _prPayAfter=c.pay||0;
           const _prHp=syncMaxHp(c,G.players);
           // a mentored improvement is guaranteed — no roll to show.
-          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}${_prHp>0?` (Max HP +${_prHp} → ${c.maxHp}.)`:''}`,{actor:c.player,targets:[c.player]});
+          log('hire',`${c.name} practises ${SKILL_LABELS[skill]||skill} and improves to level ${c.skills[skill]}${skillInPlayNote(c,skill)}!${mentors.length>0?'':' '+fmtRoll(_prPct,_prRoll)}${bonusReason}${pupilNote}${_prHp>0?` (Max HP +${_prHp} → ${c.maxHp}.)`:''}`,{actor:c.player,targets:[c.player]});
+          if(_prPayAfter>_prPayBefore) log('hire',`💰 ${c.name}'s growing renown raises their wage to ${_prPayAfter}g/turn (was ${_prPayBefore}g/turn).`,{actor:c.player,targets:[c.player]}); // 2026-09-21: practice raised the wage silently
         } else {
           c._practiceFailStreak={turn:G.turn,n:_streak+1}; // the next practice this turn is ×1.2 likelier
           log('system',`${c.name} practises ${SKILL_LABELS[skill]||skill} but makes no measurable progress this season. ${fmtRoll(_prPct,_prRoll)}${bonusReason?` ${bonusReason}.`:''}${pupilNote?` ${pupilNote.slice(3)}.`:''}`,{actor:c.player,targets:[c.player]});
@@ -15863,6 +16055,7 @@ const BATTLE_ARMY_SPELLS={
           const _parts=[`${led} marching under your commanders`,`${garr} in your garrisons`].filter((_,i)=>(i===0?led:garr)>0);
           // The owner's own account — what it did for them, and what it cost.
           log('explore',`✨ ${c.name} invokes the ${_stoneName} — a wave of power sweeps the realm and ${n} army unit${n!==1?'s':''} advance one quality tier (${_parts.join(', ')}${already>0?`; ${already} already Elite and unchanged`:''}). The Stone crumbles to grey dust in ${c.name}'s hands: its work is done, and there is not another in the world.`,{actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id});
+          trySkillGain(c,'sage',SKILLGAIN_COMMON); // 2026-09-21: using a magic item may teach Sage
           // ...and the whole world sees the sky change. Every realm is told, by name — an artefact
           // of this order leaving the world is news, and its loss is a fact all players should
           // know.
@@ -16396,8 +16589,8 @@ const BATTLE_ARMY_SPELLS={
           }
         }
         const castRoll=d100();
-        if(_itemCast) log('system',`🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
-        log('system',`📊 ${c.name} casts ${spellName} (${school} ${spellLevel}): ${castChance}% chance [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        if(_itemCast){ log('system',`🔮 ${c.name} invokes the ${_itemCast.item} to work ${spellName}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); trySkillGain(c,'sage',SKILLGAIN_COMMON); } // 2026-09-21: using a magic item may teach Sage (small chance)
+        log('system',`📊 ${c.name} casts ${spellName} (${SKILL_LABELS[school]||school} ${spellLevel}${(()=>{ const _tr=skillLevel(c,school); return (_tr<spellLevel)?` — ${_tr} trained, +${spellLevel-_tr} from ${_itemCast?'the item':'items'}`:''; })()}): ${castChance}% chance [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`,{actor:c.player,targets:[c.player],provinceId:prov.id});
 
         if(castRoll>castChance){
           log('system',`${c.name}'s ${spellName} fizzles — the spell dissipates without effect.`,{actor:c.player,targets:[c.player]});
@@ -16793,6 +16986,10 @@ const BATTLE_ARMY_SPELLS={
           if(_pbDrops.length===0){log('combat',`✨ ${c.name}'s Psychic Blast rakes ${targetChar.name}'s mind, but they have no trained skills left to lose.`,{actor:c.player,charIds:[c.id,targetChar.id].filter(v=>v!=null),targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id});break;}
           log('combat',`✨ ${c.name} unleashes Psychic Blast — ${targetChar.name}'s mind buckles, losing ${_pbDrops.join(' and ')}!`,{actor:c.player,targets:[c.player,targetChar.player].filter(x=>x!=null),provinceId:prov.id,public:true});
           notifyTarget(targetChar,`🧠 ${targetChar.name} reels — ${c.name}'s Psychic Blast sears away ${_pbDrops.join(' and ')}.`,ph,'combat');
+          // 2026-09-21 (Toby): a hero stripped of skill levels commands a lower wage — re-evaluate it,
+          // exactly as a skill rise does, and tell the hero's own realm.
+          { const _pbPay0=targetChar.pay||0; recalcHeroPay(targetChar); const _pbPay1=targetChar.pay||0;
+            if(targetChar.player!=null&&_pbPay1!==_pbPay0) log('system',`💰 ${targetChar.name}'s lost skill lowers their wage to ${_pbPay1}g/turn (was ${_pbPay0}g/turn).`,{actor:targetChar.player,targets:[targetChar.player],charId:targetChar.id,phase:ph}); }
         }
         else if(fn==='psychic_storm'){
           if(!targetChar||targetChar.location!==c.location){log('system',`Telekinetic Storm: no valid target hero in ${prov.name} this phase.`,{actor:c.player,targets:[c.player]});break;}
@@ -17738,7 +17935,7 @@ const BATTLE_ARMY_SPELLS={
   function discDeathMult(pi, army){ if(pi==null||!army) return 1; let r=0; discEff(pi,'deathRed').forEach(e=>{ if(discUnitMatch(e,army)) r+=(e.pct||0); }); return Math.max(0.25,1-r); }
   // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
   // stolen.
-  function discAvailableFor(pi, known){ const pl=G.players[pi]; return SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id)&&discEligible(d,pl)); }
+  function discAvailableFor(pi, known){ const pl=G.players[pi]; const _blk=discBlockedIds(pl); return SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id)&&!_blk.has(String(d.id))&&discEligible(d,pl)); } // forgotten + awaiting-choice ids excluded (research choice)
   // Get global army bonus from discoveries
   function discoveryArmyBonus(playerIdx){
     let pct=0;
@@ -18368,6 +18565,30 @@ const BATTLE_ARMY_SPELLS={
         const sp=G.world.provinces[sc.location];
         pl.seenCharIntel[sc.id]={id:sc.id,name:sc.name,isKing:!!sc.isKing,race:sc.race,alignment:sc.alignment,
           player:sc.player,isWandering:sc.player===null,lastSeenTurn:G.turn,lastLocId:sc.location,lastLocName:sp?sp.name:'?'};
+      });
+      // ── SPY EXPERIENCE (2026-09-21, Toby): spotting a hidden enemy in your own land. ──
+      // A lone enemy (at war, leading no column, not Invisible, with Spy 1+ to hide by) standing in a
+      // province this realm owns is "spotted" by the realm's character standing there — or, if none
+      // is, by the realm's watchers in neighbouring owned provinces when the ordinary Spy contest
+      // (spotEnemyInOwnedProvince) finds him. The best Spy among the spotters rolls for Spy, once per
+      // lurker per turn.
+      (G.characters||[]).forEach(sc=>{
+        if(!sc||!sc.alive||sc.player==null||sc.player===pi||sc.location==null) return;
+        if((sc.armies||[]).length>0||sc._invisTurn===G.turn||((sc.skills||{}).spy||0)<1) return;
+        const sp=G.world.provinces[sc.location]; if(!sp||sp.owner!==pi||!areEnemies(pi,sc.player)) return;
+        let watchers=(G.characters||[]).filter(w=>w&&w.alive&&w.player===pi&&w.location===sp.id);
+        if(!watchers.length){
+          if(!spotEnemyInOwnedProvince(G,pi,sp,sc)) return;
+          const _nb=new Set(getNeighborsP(sp,cols,rows,G.world.provinces).filter(n=>n&&n.owner===pi).map(n=>n.id));
+          watchers=(G.characters||[]).filter(w=>w&&w.alive&&w.player===pi&&_nb.has(w.location));
+        }
+        if(!watchers.length) return;
+        const best=watchers.reduce((a,b)=>((b.skills||{}).spy||0)>((a.skills||{}).spy||0)?b:a);
+        if(!best._spySpotted||best._spySpotted.turn!==G.turn) best._spySpotted={turn:G.turn,ids:[]};
+        if(best._spySpotted.ids.includes(sc.id)) return;
+        best._spySpotted.ids.push(sc.id);
+        const _prevCtx=_logCtx; _logCtx={charId:best.id,phase:ph};
+        try{ trySkillGain(best,'spy',SKILLGAIN_STD); } finally { _logCtx=_prevCtx; }
       });
       // Provinces entered this phase — and their neighbours — even if the character was thrown back
       // out again. Marching in and being repelled still buys you the same look at the country that
@@ -19135,8 +19356,8 @@ const BATTLE_ARMY_SPELLS={
       c._defendRideOut={ph, provId:P.id, fromId:here.id, names:target.names.slice()}; // reconciled at the end of the phase
       log('move',`🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length>1?'are':'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
         {actor:c.player,targets:[c.player],provinceId:P.id,public:true,charId:c.id,phase:ph}); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
-      // Reacting is a march: the same skill gain a normal move would give.
-      trySkillGain(c,'march',SKILLGAIN_COMMON);
+      // Reacting is a march: the same skill gain a normal move would give (a sea crossing trains Naval).
+      trySkillGain(c,_bySea?'naval':'march',SKILLGAIN_COMMON);
     });
   }
 
@@ -19279,7 +19500,7 @@ const BATTLE_ARMY_SPELLS={
         if(!prov.visitedBy) prov.visitedBy=[];
         if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
         log('move',`🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
-        trySkillGain(c,'march',SKILLGAIN_COMMON);
+        trySkillGain(c,toSea?'naval':'march',SKILLGAIN_COMMON);
       } else {
         log('move',`🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
       }
@@ -19538,6 +19759,7 @@ const BATTLE_ARMY_SPELLS={
       if(!step.visitedBy) step.visitedBy=[];
       if(!step.visitedBy.includes(c.player)) step.visitedBy.push(c.player);
       if((c.armies||[]).length>0&&!toSea) trySkillGain(c,'march',SKILLGAIN_COMMON);
+      if(toSea) trySkillGain(c,'naval',SKILLGAIN_COMMON); // any sea voyage trains Naval (2026-09-21)
       trySkillGain(c,'spy',SKILLGAIN_STD); // AK [3.19]: Spy/Trail/Pursue trains Spy
       if(c.location!==quarry.location){
         log('move',`${c.name} presses on into ${step.name}, hard on the trail of ${quarry.name}.`,{actor:c.player,targets:[c.player],provinceId:step.id});
@@ -20890,7 +21112,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(!gdActive(pi,'Neutral')) return;
     pl.discoveries=pl.discoveries||[];
     const _known=new Set(pl.discoveries.map(d=>d.id));
-    const _avail=SAGE_DISCOVERIES_P.filter(d=>!_known.has(d.id)&&discEligible(d,pl)); // race/alignment eligibility
+    const _blkGL=discBlockedIds(pl);
+    const _avail=SAGE_DISCOVERIES_P.filter(d=>!_known.has(d.id)&&!_blkGL.has(String(d.id))&&discEligible(d,pl)); // race/alignment eligibility; never a forgotten or awaiting-choice discovery
     if(_avail.length===0){ log('system',`\ud83d\udcda Grand Library: your scholars have already unlocked every known discovery.`,{actor:pi,targets:[pi]}); return; }
     const _d=_avail[Math.floor(Math.random()*_avail.length)];
     pl.discoveries.push({id:_d.id,name:_d.name,category:_d.category,desc:_d.desc,turnDiscovered:G.turn});
@@ -21025,11 +21248,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     log('system',`[Integrity] ${G._nameRepairs} hero${G._nameRepairs!==1?'es':''} in a realm's service still bore the \u201c(wandering)\u201d tag \u2014 the name has been corrected.`,{actor:null,targets:[]});
   }
   G._nameRepairs=0;
-  // 2026-09-21: report the turn-start retired-discovery sweep here, where `log` exists.
   if(G._retiredDiscoveries>0){
-    log('system',`[Integrity] ${G._retiredDiscoveries} Sage discover${G._retiredDiscoveries!==1?'ies have':'y has'} been withdrawn from the game and removed from the realms holding ${G._retiredDiscoveries!==1?'them':'it'}.`,{actor:null,targets:[]});
+    log('system',`[Integrity] ${G._retiredDiscoveries} retired Sage discover${G._retiredDiscoveries!==1?'ies were':'y was'} removed from realm records.`,{actor:null,targets:[]});
   }
-  G._retiredDiscoveries=0;
+  delete G._retiredDiscoveries;
   // graveyard sweep — a grave whose character record is ALIVE is a doppelganger (dead in the
   // graveyard, alive in the realm). Purge it and say so in the GM log.
   if(Array.isArray(G.heroGraveyard)&&G.heroGraveyard.length){
@@ -21701,6 +21923,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1240</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1611</div>
 </body>
 </html>

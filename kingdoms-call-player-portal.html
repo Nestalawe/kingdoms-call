@@ -827,6 +827,35 @@ let _heroOrder = [];
 // the player may concede the game with their orders. Once the GM runs a turn with concede=true the
 // realm is out for good — its heroes only Defend from then on.
 let concedeGame = false;
+// RESEARCH CHOICE (2026-09-21): a successful Research order turns up TWO discoveries; in the next
+// turn's orders the player keeps one and the other is forgotten for good. Keyed by the pending
+// pair's key → the kept discovery id. Submitted with orders as `discoveryChoices`.
+let discoveryChoices = {};
+function _pendingDiscChoices(){ return ((currentReport&&currentReport.pendingDiscoveryChoices)||[]).filter(p=>p&&p.key&&Array.isArray(p.options)&&p.options.length); }
+function discoveryChoiceBlockHTML(){
+  const pend=_pendingDiscChoices(); if(!pend.length) return '';
+  return `<div id="orders-discovery-top" class="orders-char-block" style="background:#f4f7ec">
+      <div class="orders-char-head" style="background:#3e5a1c">
+        <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
+        💡 Research — choose which discover${pend.length!==1?'ies':'y'} to keep
+      </div>
+      <div id="orders-discovery-choice" style="padding:6px 10px 10px"></div>
+    </div>`;
+}
+function renderDiscoveryChoices(){
+  const w=document.getElementById('orders-discovery-choice'); if(!w) return;
+  const pend=_pendingDiscChoices();
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  w.innerHTML=`<div style="font-size:.72rem;color:var(--stone);margin-bottom:6px">Your scholars turned up two leads for each discovery below, but only one can be pursued. Keep one — the other is <strong>forgotten for good</strong> and will never come up again. Left unchosen, one is kept at random.</div>`+
+    pend.map((p,i)=>`<div style="${i?'border-top:1px solid var(--parchment-dark);margin-top:8px;padding-top:8px;':''}">
+      <div style="font-family:Cinzel,serif;font-size:.78rem;font-weight:600;color:var(--ink);margin-bottom:4px">Found by ${esc(p.charName||'a scholar')}${p.category?` — ${esc(p.category)} research`:''}${p.turn?` (turn ${esc(p.turn)})`:''}</div>
+      ${p.options.map(o=>`<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;margin:3px 0;border:1px solid ${discoveryChoices[p.key]===o.id?'var(--forest)':'var(--parchment-dark)'};border-radius:3px;background:${discoveryChoices[p.key]===o.id?'#e8f1dc':'#fffdf6'};cursor:pointer;font-size:.76rem;line-height:1.4">
+          <input type="radio" name="dc-${esc(p.key)}" value="${esc(o.id)}" ${discoveryChoices[p.key]===o.id?'checked':''} onchange="setDiscoveryChoice('${esc(p.key)}','${esc(o.id)}')" style="margin-top:3px">
+          <span><strong>${esc(o.name)}</strong> <span style="color:var(--stone)">(${esc(o.category)})</span><br>${esc(o.desc)}</span>
+        </label>`).join('')}
+    </div>`).join('');
+}
+function setDiscoveryChoice(key,id){ discoveryChoices[key]=id; renderDiscoveryChoices(); }
 function renderConcede(){
   const w=document.getElementById('concede-wrap'); if(!w) return;
   const k=currentReport?.kingdom||{};
@@ -2282,6 +2311,7 @@ async function openReport(gamePlayerId){
     });
   }catch(e){/* no draft yet — heir shows freshly-crowned base skills */}
   diploChoices={}; // fresh pending diplomacy each time a report opens (restored from any saved draft below)
+  discoveryChoices={};
   reckoningCall=false; concedeGame=false;
   viewingReport=report;              // map/history starts on the current report
 
@@ -3909,6 +3939,8 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // Restore any diplomacy declarations saved in this turn's draft so they survive a re-render.
   if(rawSaved.diplomacy && typeof rawSaved.diplomacy==='object') diploChoices={...rawSaved.diplomacy};
   if(rawSaved.callReckoning===true) reckoningCall=true;
+  if(rawSaved.discoveryChoices && typeof rawSaved.discoveryChoices==='object') discoveryChoices={...rawSaved.discoveryChoices};
+  setTimeout(renderDiscoveryChoices,0);
   concedeGame=(rawSaved.concede===true); setTimeout(renderConcede,0); setTimeout(renderReckoningOrders,0); // the Reckoning control lives here too
 
   // realm-level controls FIRST — dispatches to other realms, the diplomacy declarations (moved here
@@ -3937,7 +3969,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   const _reorderNote=_orderChars.length>1
     ? `<div style="font-size:.72rem;color:var(--stone);padding:2px 2px 8px">Use the <strong>▲ ▼</strong> arrows on a hero's header to move them up or down this column — group your heroes however suits your planning. The arrangement is kept from turn to turn.</div>`
     : '';
-  el.innerHTML=_realmTop+_reorderNote+heirSelectorHTML(chars)+_orderChars.map((c,_hi)=>{
+  el.innerHTML=_realmTop+discoveryChoiceBlockHTML()+_reorderNote+heirSelectorHTML(chars)+_orderChars.map((c,_hi)=>{
     const _hn=_orderChars.length; // for the ▲ ▼ reorder arrows below
     const hiredPh=c.hiredInPhase??-1; // -1 = available all turn
     const savedEP=savedEncounterPlans[c.id]||c.encounterPlan||{tactics:['ME'],notes:''};
@@ -4978,9 +5010,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   if(!/^\d+$/.test(String(heroId))) return;
 
   const report=currentReport||{};
-  // 2026-09-21: the 'Mounted Couriers' discovery (sd34), which let a newly hired hero act from the
-  // hire phase itself, has been withdrawn from the game. A hired hero — face to face or brokered —
-  // always takes up orders from the phase AFTER the hire (AK 3.5), so the card starts at ph+1.
+  // A newly hired hero acts from the phase AFTER the hire (sd34 Mounted Couriers retired 2026-09-21).
   const firstActable=ph+1;
   let heroData=null;
   Object.values(report.provinceOrderData||{}).forEach(pd=>{
@@ -5186,11 +5216,12 @@ async function submitOrders(){
     // Also check hired heroes (injected cards) These use a different charId format:
     // hired_X_via_Y_phZ
   });
-  if(missingCount>0){
+  const _dcUnpicked=_pendingDiscChoices().filter(pc=>!pc.options.some(o=>o.id===discoveryChoices[pc.key])).length;
+  if(missingCount>0||_dcUnpicked>0){
     // The warning goes in the bottom block's message slot and its buttons REPLACE the submit
     // buttons in the wrap directly beneath it, so every control to do with submitting stays in one
     // place.
-    msg.innerHTML=`<div class="msg-warning">⚠ ${missingCount} phase${missingCount!==1?'s':''} still have no action selected. You can submit anyway, and the GM will treat unfilled phases as Defend.</div>`;
+    msg.innerHTML=`<div class="msg-warning">${missingCount>0?`⚠ ${missingCount} phase${missingCount!==1?'s':''} still have no action selected. You can submit anyway, and the GM will treat unfilled phases as Defend.`:''}${_dcUnpicked>0?`${missingCount>0?'<br>':''}⚠ ${_dcUnpicked} research discover${_dcUnpicked!==1?'ies are':'y is'} still unchosen (💡 Research box near the top of your orders). If you submit anyway, one of each pair will be kept at random.`:''}</div>`;
     const w=document.getElementById('orders-submit-wrap');
     if(w){
       w.innerHTML=`
@@ -5435,7 +5466,7 @@ async function doSaveOrders(){
   // Stamp the draft with the turn it belongs to, as a submission is — so neither this form nor the
   // GM engine can mistake last turn's draft for this turn's orders.
   const _draftTurn=currentReport?._liveTurn||currentReport?.turn||1;
-  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:_draftTurn});
+  const _payload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,discoveryChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:_draftTurn});
   const {error:saveErr}=await sb.from('game_players').update({
     orders:_payload,
     orders_submitted:false
@@ -5567,7 +5598,7 @@ async function doSubmitOrders(){
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:expectedTurn}),
+    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,discoveryChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:expectedTurn}),
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -6811,7 +6842,7 @@ function buildTargetField(c, ph, saved){
       const catOpts=`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
         <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).</div>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. Research does not train the Sage skill itself — use Practice Skill for that. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>`+orderChanceNote(c,'Research',ph);}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. A successful roll turns up <strong>two</strong> discoveries in the field; in next turn's orders you keep one and the other is forgotten for good. Research trains Sage only when it makes a discovery — use Practice Skill to train it reliably. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>`+orderChanceNote(c,'Research',ph);}
 
     // ── RECRUIT ARMIES ──
     case 'Recruit Armies':{
@@ -8454,6 +8485,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.21-1240</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.21-1611</div>
 </body>
 </html>
