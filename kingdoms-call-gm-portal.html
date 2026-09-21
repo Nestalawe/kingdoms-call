@@ -3361,13 +3361,17 @@ function humanXPMult(a, ownerPi, gs){
 
 function rP(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 // Starting neutral defender count by wealth tier. MUST use the SAME tax thresholds as the
-// player-facing wealth label (tax>=7 Rich / tax>=3 Prosperous / else Poor) — otherwise a province
+// player-facing wealth label (tax>=7 Rich / tax>=4 Prosperous / else Poor) — otherwise a province
 // shown as "Prosperous"
 // (e.g. tax 3) quietly fell into the poor band and was defended by a single unit. Rich 3-4 / Prosperous 2-3 / Poor 1-2.
+// 2026-09-21 (Toby): the Poor/Prosperous cut moved from tax 3 to tax 4, so the bands now read
+// Poor 2-3 · Prosperous 4-6 · Rich 7-10 — matching the rulebook and the 'Poor is 2-3 tax' rule.
+// The LABEL and the GARRISON BAND must move together or a province shown as Poor is defended like
+// a Prosperous one (the bug this single source of truth exists to prevent).
 // Single source of truth used by every world-gen defender pass (land, sea, primal, home-race
 // conversion). 2026-09-13: the BAND is split out so the count and the audit sweep can never drift
 // apart. neutralDefBand returns [lo,hi] for a tax value; neutralDefCount rolls inside it.
-function neutralDefBand(tax){return tax>=7?[3,4]:tax>=3?[2,3]:[1,2];}
+function neutralDefBand(tax){return tax>=7?[3,4]:tax>=4?[2,3]:[1,2];}
 function neutralDefCount(tax){const b=neutralDefBand(tax);return rP(b[0],b[1]);}
 // Bring a neutral LAND province's defender list back inside the band its FINAL tax demands. Called
 // by the end-of-worldgen audit below, because several home-tailoring passes raise or lower a
@@ -4053,7 +4057,7 @@ function botGuessDefence(G,pi,prov,terrain){
   // (Rich 3-4 / Prosperous 2-3 / Poor 1-2 defenders is how the world was stocked). A rival's own
   // province is assumed a shade more heavily held than neutral ground of the same wealth.
   const tax=b.tax||0;
-  const units=tax>=7?3.5:tax>=3?2.5:1.5;
+  const units=tax>=7?3.5:tax>=4?2.5:1.5; // 2026-09-21: tracks neutralDefBand's Poor/Prosperous cut (now tax 4)
   const owned=(b.owner!=null&&b.owner!==pi);
   return units*AVG_UNIT*(owned?1.25:1)*BOT_DEF_BONUS;
 }
@@ -6341,7 +6345,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // Rather than patch each mutation site (and have the next one reintroduce it), this single sweep
   // is the authority: after ALL world-gen tailoring and BEFORE the neutral-guard heroes take
   // command of these arrays, every neutral land province is brought inside the band its FINAL tax
-  // demands. Rich (tax>=7) 3-4 · Prosperous (tax 3-6) 2-3 · Poor (tax 1-2) 1-2 — the same
+  // demands. Rich (tax>=7) 3-4 · Prosperous (tax 4-6) 2-3 · Poor (tax 2-3) 1-2 — the same
   // thresholds as the player-facing wealth label. Provinces already in band are left exactly as
   // generated.
   provinces.forEach(p=>{ if(p&&p.owner===null&&p.terrain!=='sea') resyncNeutralDefenders(p); });
@@ -7788,7 +7792,7 @@ function buildTurnReport(gameState, playerIndex){
         // Full live info — your own province.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:p.terrain,tier:'owned',
           isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // Grand Heist needs to know a capital when it sees one
-          tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor', ownArmyHere:_ownArmyHere,
+          tax:p.tax,wealth:p.tax>=7?'Rich':p.tax>=4?'Prosperous':'Poor', ownArmyHere:_ownArmyHere,
           consecrated:isConsecrated(gameState.players[playerIndex],p.id), // DIVINE — Consecrate: mark the realm's holy ground so the player can confirm it is active
           hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
           race:p.race,owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
@@ -7802,7 +7806,7 @@ function buildTurnReport(gameState, playerIndex){
         // characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'live',race:p.race,
           isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // Grand Heist eligibility
-          wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          wealth:p.tax>=7?'Rich':p.tax>=4?'Prosperous':'Poor',
           consecrated:provinceConsecrated(gameState,p), // holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
@@ -7817,7 +7821,7 @@ function buildTurnReport(gameState, playerIndex){
         // Adjacent to your land: current core info + CURRENT ownership. No enemy units/characters.
         return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'border',race:p.race,
           isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // crown marker
-          wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',
+          wealth:p.tax>=7?'Rich':p.tax>=4?'Prosperous':'Poor',
           consecrated:provinceConsecrated(gameState,p), // holy ground is visible to anyone who can see the province
           owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
@@ -7829,7 +7833,7 @@ function buildTurnReport(gameState, playerIndex){
         // Remembered: frozen at the last phase one of your characters could see it. Core info and
         // ownership are as last observed (may be out of date); no live units/characters shown.
         return{id:p.id,row:p.row,col:p.col,name:memo.name,terrain:memo.terrain,tier:'remembered',race:memo.race,
-          wealth:memo.tax>=7?'Rich':memo.tax>=3?'Prosperous':'Poor',
+          wealth:memo.tax>=7?'Rich':memo.tax>=4?'Prosperous':'Poor',
           owner:memo.owner,ownerName:memo.ownerName??null,ownerColor:memo.ownerColor??null,
           armyTypes:memo.armyTypes||[],neighbors,explored,seenTurn:memo.turn,
           isHomeCapitalOfOwner:!!memo.isHomeCapitalOfOwner, // crown marker, as it stood when last observed
@@ -7845,7 +7849,7 @@ function buildTurnReport(gameState, playerIndex){
           // Never seen by this realm, but the Clairvoyant sees through the watched character's
           // eyes.
           return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'remembered',race:p.race,
-            wealth:p.tax>=7?'Rich':p.tax>=3?'Prosperous':'Poor',owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
+            wealth:p.tax>=7?'Rich':p.tax>=4?'Prosperous':'Poor',owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
             ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,armyTypes:p.armyTypes||[],neighbors,explored,seenTurn:gameState.turn,
             isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id), // crown marker
             features:[],characters:_clairCharsHere(),ownArmyHere:_ownArmyHere};
@@ -8210,6 +8214,20 @@ const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeom
 // opts.auto — called by the auto-turn watcher: no confirm dialog, status goes to the watcher banner
 // opts.game — the game row to run (defaults to currentGame); the watcher may run a game the GM
 // isn't viewing
+// ── PENDING SYNTHETIC ENCOUNTER PLANS (2026-09-21) ────
+// A pre-order card for a hero a realm only INTENDS to take into service (hired_/resurrect_/charm_)
+// carries an encounter plan as well as orders. The plan used to be written onto the real character
+// at ingestion, so a player who lost the race — or never landed the cast at all — still set that
+// hero's combat stance, and an encounter plan PERSISTS from turn to turn. Plans on synthetic cards
+// are now held here and applied only inside the branch where the hero actually enters service.
+function applyPendingSynthPlan(G, hero, pi){
+  if(!G||!hero||!Array.isArray(G._pendingSynthPlans)) return false;
+  const p=G._pendingSynthPlans.find(x=>x&&x.heroId===hero.id&&x.player===pi&&x.plan);
+  if(!p) return false;
+  hero.encounterPlan=p.plan;
+  return true;
+}
+
 async function runTurn(opts){
   opts=opts||{};
   const auto=!!opts.auto;
@@ -8312,6 +8330,8 @@ async function runTurn(opts){
   G._resurrectedThisTurn=[];
   G._pendingResurrectOrders=[];
   G._pendingCharmOrders=[];
+  G._pendingHireOrders=[];   // 2026-09-21: hire pre-orders are held, not written straight to the real hero
+  G._pendingSynthPlans=[];   // 2026-09-21: encounter plans from hire/resurrect/charm pre-order cards
   (G.characters||[]).filter(c=>c.player!==null&&c.alive).forEach(c=>{
     G.turnOrders[c.id]=[null,null,null,null,null];
   });
@@ -8387,19 +8407,23 @@ async function runTurn(opts){
         });
         return;
       }
-      // Handle synthetic hired hero IDs: 'hired_HEROID_via_CHARID_phPH'
-      const hiredMatch=charId.match(/^hired_(\d+)_via_.+_ph(\d+)$/); // caster may itself be a synthetic (nested-hire) id
+      // Handle synthetic hired hero IDs: 'hired_HEROID_via_CHARID_phPH'.
+      // 2026-09-21: these are now held as PENDING and written into turnOrders only inside the
+      // successful `case 'hire'` branch — never here. Previously they were committed to the REAL
+      // hero's turnOrders at ingestion, before any hire was attempted, so a player who LOST the
+      // race (a rival hired the same wandering hero first, or the offer was refused / unaffordable)
+      // still puppeted that hero for the rest of the turn, under the winner's banner. Resurrect and
+      // Charm were given exactly this protection; hire had the identical exposure and none of it.
+      const hiredMatch=charId.match(/^hired_(\d+)_via_(.+)_ph(\d+)$/); // the hirer may itself be a synthetic (nested-hire) id
       if(hiredMatch){
-        const realHeroId=parseInt(hiredMatch[1]);
-        const hiredAtPh=parseInt(hiredMatch[2]);
-        // Apply orders to the real hero's turnOrders, only for phases after hiring
-        const existing=G.turnOrders[realHeroId]||[null,null,null,null,null];
-        phaseOrders.forEach((o,ph)=>{
-          if(ph>hiredAtPh&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){
-            existing[ph]=o;
-          }
+        if(!G._pendingHireOrders) G._pendingHireOrders=[];
+        G._pendingHireOrders.push({
+          heroId:parseInt(hiredMatch[1]),
+          viaId:String(hiredMatch[2]),      // the hiring character's id (or a nested synthetic id)
+          plannedPhase:parseInt(hiredMatch[3]),
+          player:gp.player_index,
+          orders:phaseOrders,
         });
-        G.turnOrders[realHeroId]=existing;
         return;
       }
       // Handle synthetic CHARM IDs: 'charm_HEROID_via_CASTERID_phPH'. A player who orders Charm on
@@ -8428,8 +8452,16 @@ async function runTurn(opts){
     // Apply encounter plans to characters.
     Object.entries(epObj).forEach(([charId,plan])=>{
       const syn=String(charId).match(/^(?:hired|resurrect|charm)_(\d+)_via_.+_ph\d+$/); // allow synthetic (nested) caster id
-      const realId=syn?parseInt(syn[1]):parseInt(charId);
-      const ch=G.characters.find(c=>c.id===realId);
+      if(syn){
+        // 2026-09-21: a plan on a card for a hero not yet in this realm's service is held until the
+        // hire/raise/charm actually lands (see applyPendingSynthPlan). An encounter plan persists
+        // turn to turn, so writing it here let a rival set a hero's combat stance for good.
+        if(!plan) return;
+        if(!G._pendingSynthPlans) G._pendingSynthPlans=[];
+        G._pendingSynthPlans.push({heroId:parseInt(syn[1]),player:gp.player_index,plan});
+        return;
+      }
+      const ch=G.characters.find(c=>c.id===parseInt(charId));
       if(ch&&plan) ch.encounterPlan=plan;
     });
     // Apply royal-succession skill allocations to a newly-crowned heir, then retire the flags.
@@ -15251,6 +15283,33 @@ const BATTLE_ARMY_SPELLS={
         if(!G.turnOrders[h.id])G.turnOrders[h.id]=[null,null,null,null,null];
         // Default unfilled phases (before hire) to a "not yet hired" placeholder
         for(let p2=0;p2<=ph;p2++) G.turnOrders[h.id][p2]=G.turnOrders[h.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
+        // ── 2026-09-21: the hirer's pre-written orders are applied HERE, now the hire has landed.
+        // Matched on hero + this realm (an exact match on the hiring character wins if two cards
+        // were somehow submitted), so a rival's pre-orders for the same hero are ignored. Phases are
+        // bounded by the ACTUAL hire phase, not the phase the player planned to hire in — if the
+        // hire slipped a phase, the orders for the phases he was not yet sworn are dropped.
+        {
+          const _ph=(G._pendingHireOrders||[]);
+          const _pend=_ph.find(x=>x.heroId===h.id&&x.player===c.player&&x.viaId===String(c.id))
+                    ||_ph.find(x=>x.heroId===h.id&&x.player===c.player);
+          let _applied=0;
+          if(_pend&&Array.isArray(_pend.orders)){
+            const slots=G.turnOrders[h.id]||[null,null,null,null,null];
+            _pend.orders.forEach((o,pi2)=>{
+              if(pi2>ph&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){ slots[pi2]=o; _applied++; }
+            });
+            G.turnOrders[h.id]=slots;
+          }
+          // Step 3 of order ingestion only defaults LIVING OWNED characters to Defend, and this
+          // hero belonged to nobody when it ran, so his post-hire phases were left empty and he
+          // simply did nothing (no watch) for the rest of the turn. Fill them in like everyone else
+          // — the same closing step Resurrect and Charm already do.
+          const fin=G.turnOrders[h.id]||[null,null,null,null,null];
+          for(let pz=0;pz<5;pz++){ if(pz>ph&&!fin[pz]) fin[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
+          G.turnOrders[h.id]=fin;
+          applyPendingSynthPlan(G,h,c.player);
+          if(_applied>0) log('system',`${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player],charId:h.id,phase:ph});
+        }
         setMovePool(h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
         // Mounted Couriers (sd34): newly hired hero may act from the phase they were hired, not the
         // next
@@ -16466,6 +16525,7 @@ const BATTLE_ARMY_SPELLS={
             const fin=G.turnOrders[deadHero.id]||[null,null,null,null,null];
             for(let pz=0;pz<5;pz++){ if(pz>ph&&!fin[pz]) fin[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
             G.turnOrders[deadHero.id]=fin;
+            applyPendingSynthPlan(G,deadHero,c.player); // 2026-09-21: the card's encounter plan lands only now
           }
         }
         else if(fn==='white_part_sea'){
@@ -16595,6 +16655,7 @@ const BATTLE_ARMY_SPELLS={
             }
             for(let pz=0;pz<5;pz++){ if(pz>ph&&!slots[pz]) slots[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
             G.turnOrders[hero.id]=slots;
+            applyPendingSynthPlan(G,hero,c.player); // 2026-09-21: the card's encounter plan lands only now
             return applied;
           };
           if(t.player===null){
@@ -21006,7 +21067,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // intentionally KEPT so a player's chosen combat plan carries over turn to turn until they change
   // it.
   G.turnOrders={};
-  delete G._resurrectedThisTurn; delete G._pendingResurrectOrders; delete G._pendingCharmOrders; // per-turn scratch — never persist
+  delete G._resurrectedThisTurn; delete G._pendingResurrectOrders; delete G._pendingCharmOrders; delete G._pendingHireOrders; delete G._pendingSynthPlans; // per-turn scratch — never persist
   // Final reconcile before the state is persisted AND before reports are built. Steps 7-9 (Raise
   // Hero, Divine resurrection, wandering-hero drift) all relocate characters, and the turn report
   // reads province.characters for the map. Rebuilding here means what is saved, what is rendered
@@ -21627,6 +21688,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1121</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1221</div>
 </body>
 </html>
