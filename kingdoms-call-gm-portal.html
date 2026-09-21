@@ -5656,7 +5656,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
 
   // ── PHASE 2: tailor each king's home NEIGHBOURHOOD ── Pre-assign terrain (and a tax band) to
   // specific ring cells so every home satisfies its rules:
-  // >=2 adjacent land, >=1 poor (tax 1-3) land, >=1 prosperous (tax 4-7) land, and >=1 adjacent
+  // >=2 adjacent land, >=1 poor (tax 2-3) land, >=1 prosperous (tax 4-6) land, and >=1 adjacent
   // sea IF that king started with Naval>=1. Everything else is filled by the general rule.
   // constraint[id] = { terrain, taxBand:'poor'|'prosperous'|null, isHome:bool }
   const constraint={};
@@ -5708,7 +5708,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       if(con){
         // Home / tailored-neighbour cell: terrain (and sometimes tax band) was decided in Phase 2.
         terrain=con.terrain;
-        if(con.taxBand==='poor') taxOverride=rP(1,3);
+        if(con.taxBand==='poor') taxOverride=rP(2,3);   // Poor = 2-3 (2026-09-21: no province is ever tax 1)
         else if(con.taxBand==='prosperous') taxOverride=rP(4,6); // Prosperous = 3-6; capped at 6 so this band never leaks into the Rich tier (tax>=7)
       } else {
         // General fill: aim for ~40% sea overall, clustering next to existing water so seas form
@@ -5719,7 +5719,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         if(Math.random()<seaChance){ terrain='sea'; }
         else { terrain=pickLand(); }
       }
-      const baseTax = taxOverride!=null ? taxOverride : {plain:rP(4,9),desert:rP(1,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
+      const baseTax = taxOverride!=null ? taxOverride : {plain:rP(4,9),desert:rP(2,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
       // PRIMAL_LAND_CHANCE of LAND provinces are Primal (non-humanoid), split evenly Creature /
       // Monster. Each such province recruits exactly ONE unit type — a single wild unit makes these
       // provinces special. Sea is never Primal at this stage (the sea post-pass below assigns sea
@@ -5912,7 +5912,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   });
   // Sea provinces: only non-humanoid sea armies — no Fleet/Corsair/Galleys/Longships Sea provinces
   // get non-humanoid sea armies only (no player fleets). Their army pool and tax are decided purely
-  // by type: 20% Primal (Prosperous, tax 4-6), 20% Whale Cohort (Poor, tax 1-3), 60% open water (no
+  // by type: 20% Primal (Prosperous, tax 4-6), 20% Whale Cohort (Poor, tax 2-3), 60% open water (no
   // armies, tax 1).
   const PRIMAL_SEA_TYPES=['Sea Giants','Kraken Tentacles','Leviathan Pods'];
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
@@ -5936,7 +5936,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
       // Whale Cohort waters — Poor (tax 1-3)
       p.armyTypes=['Whale Cohort'];
       p.race='Primal:Whale';
-      p.tax=rP(1,3); // Poor waters — set before count so the wealth helper reads it
+      p.tax=rP(2,3); // Poor waters — 2-3, matching the poor land band (2026-09-21: no 1-tax band province)
       const defCount=neutralDefCount(p.tax);
       p.neutralDefenders=Array.from({length:defCount},()=>({type:'Whale Cohort',quality:'Average',race:'Primal',unitName:armyUnitName('Whale Cohort')}));
       p.npcArmies=defCount;
@@ -6024,7 +6024,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // 100% explored = all features discovered at start (by the home's OWNER only)
     (best.features||[]).forEach(f=>{discoverFeat(f,pi);});
 
-    // ── Guarantee: the home is adjacent to one POOR (tax 1-3) and one PROSPEROUS (tax 4-6) land
+    // ── Guarantee: the home is adjacent to one POOR (tax 2-3) and one PROSPEROUS (tax 4-6) land
     // province, BOTH of them HUMANOID, and at least one of the two of the king's OWN race. The
     // Phase-2 ring constraints usually place the tax bands; here we fix any shortfall (edge of map
     // / clustered starts) and enforce the race rules by re-racing the chosen neighbours in place
@@ -6068,8 +6068,8 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     const homeLandNbrs=[..._rawLandNbrs.filter(n=>!_earlierPair.has(n.id)),..._rawLandNbrs.filter(n=>_earlierPair.has(n.id))];
     // Pick the poor neighbour: an existing poor humanoid, else an existing poor primal, else force
     // one.
-    let poorNbr=homeLandNbrs.find(n=>n.tax>=1&&n.tax<=3&&_isHumanoid(n))||homeLandNbrs.find(n=>n.tax>=1&&n.tax<=3)||null;
-    if(!poorNbr&&homeLandNbrs.length>=1){ poorNbr=homeLandNbrs[0]; poorNbr.tax=rP(1,3); }
+    let poorNbr=homeLandNbrs.find(n=>n.tax>=2&&n.tax<=3&&_isHumanoid(n))||homeLandNbrs.find(n=>n.tax>=2&&n.tax<=3)||null;
+    if(!poorNbr&&homeLandNbrs.length>=1){ poorNbr=homeLandNbrs[0]; poorNbr.tax=rP(2,3); }
     let prospNbr=homeLandNbrs.find(n=>n!==poorNbr&&n.tax>=4&&n.tax<=6&&_isHumanoid(n))||homeLandNbrs.find(n=>n!==poorNbr&&n.tax>=4&&n.tax<=6)||null;
     if(!prospNbr){ const cands=homeLandNbrs.filter(n=>n!==poorNbr); if(cands.length){ prospNbr=cands[0]; prospNbr.tax=rP(4,6); } }
     // Both must be humanoid; at least one must be the king's race.
@@ -6266,17 +6266,72 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     // homeProvinceId is the founding capital and is written ONCE, here. It is deliberately separate
     // from provinces[0], which shifts as land is won and lost — the player map is centred on this
     // province for the whole game, so it must never move under them mid-campaign.
-    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:REALM_COLOURS[pi]||REALM_COLOUR_FALLBACK,race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:15,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
+    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:REALM_COLOURS[pi]||REALM_COLOUR_FALLBACK,race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:20,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
       // ── Diplomacy (KC alliance system) ── players this king has ENCOUNTERED (seen a character or
       // province of). Only encountered players may be treated with. Accumulated in
       // updateProvinceMemory.
       _encountered:[]};
   });
 
+  // ── NEUTRAL RACE REBALANCE (2026-09-21) ── The allocation pass above deals the four humanoid
+  // races EXACTLY evenly (to within one province) — but the home-tailoring passes that follow then
+  // re-race provinces one at a time (own-race neighbour, primal-cap re-race to a RANDOM race,
+  // alignment primal conversion), and an audit measured the final spread drifting up to 8 provinces
+  // apart on a 5-realm map. This pass restores the promise for the NEUTRAL world. Home provinces are
+  // left out of the count (their race is the king's choice), and nothing inside ANY home ring is
+  // touched, so every home-neighbourhood guarantee stands exactly as tailored. A province is moved
+  // from the most- to the least-held race, preferring one on the receiving race's heartland terrain
+  // so the heartland clustering survives.
+  {
+    const _homeRing=new Set();
+    playerStarts.forEach(h=>{ _homeRing.add(h.id); getNeighborsP(h,cols,rows,provinces).forEach(n=>{ if(n) _homeRing.add(n.id); }); });
+    const _neutralHum=()=>provinces.filter(p=>p&&p.terrain!=='sea'&&p.owner===null&&HUMANOID_RACES_GEN.has(p.race));
+    const _reRace=(conv,_race)=>{
+      conv.race=_race;
+      const cHp=buildHumanoidPool(conv.terrain,_race,rP(2,3),Math.random);
+      conv.armyTypes=[...cHp.types,...cHp.garrison];
+      const offs=conv.row%2===0?offEven:offOdd;
+      const coastal=offs.some(([dr,dc])=>{ const nr=conv.row+dr; if(nr<0||nr>=rows) return false;
+        const nb=provinces[nr*cols+(((conv.col+dc)%cols+cols)%cols)]; return nb&&nb.terrain==='sea'; });
+      if(coastal&&Math.random()<COASTAL_NAVAL_CHANCE){
+        const f=({Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'})[_race];
+        if(f&&!conv.armyTypes.includes(f)) conv.armyTypes.push(f);
+      }
+      const pool=conv.armyTypes.filter(t=>!t.toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t));
+      const draw=pool.length?pool:conv.armyTypes;
+      conv.neutralDefenders=Array.from({length:neutralDefCount(conv.tax)},()=>{
+        const dt=draw[Math.floor(Math.random()*draw.length)];
+        return {type:dt,quality:'Average',race:_race,unitName:armyUnitName(dt)};
+      });
+      conv.npcArmies=conv.neutralDefenders.length;
+      conv.name=null; // renamed by the thematic naming pass below
+    };
+    for(let guard=0;guard<500;guard++){
+      const cnt={}; RACES_P.forEach(r=>cnt[r]=0);
+      _neutralHum().forEach(p=>cnt[p.race]++);
+      const order=shuffleP(RACES_P).sort((a,b)=>cnt[b]-cnt[a]);
+      const hi=order[0], lo=order[order.length-1];
+      if(cnt[hi]-cnt[lo]<=1) break;
+      const movable=shuffleP(_neutralHum().filter(p=>p.race===hi&&!_homeRing.has(p.id)));
+      if(!movable.length) break;
+      const pick=movable.find(p=>SIGNATURE_TERRAIN_P[lo]===p.terrain)
+              ||movable.find(p=>SIGNATURE_TERRAIN_P[hi]!==p.terrain)
+              ||movable[0];
+      _reRace(pick,lo);
+    }
+  }
+
+  // ── MINIMUM TAX FLOOR (2026-09-21) ── No LAND province may be worth 1 tax. The Poor band is
+  // 2-3 everywhere it is rolled above, but terrain rolls, re-racing and future tailoring passes all
+  // touch tax independently, so this single sweep is the authority: every land province is lifted to
+  // at least 2 before garrisons are sized off its FINAL tax. Sea is deliberately exempt — open water
+  // is pinned at tax 1 as the "worthless ocean" marker the home-coastal guarantee relies on.
+  provinces.forEach(p=>{ if(p&&p.terrain!=='sea'&&(p.tax||0)<2) p.tax=2; });
+
   // ── NEUTRAL DEFENDER BAND AUDIT ────
   // Every defender pass rolls its count from the province's tax AT THE TIME, but three passes above
   // change a province's tax AFTERWARDS and do not rebuild the garrison:
-  // • the home poor-neighbour force (`poorNbr.tax=rP(1,3)`) — a Rich/Prosperous province keeps
+  // • the home poor-neighbour force (`poorNbr.tax=rP(2,3)`) — a Rich/Prosperous province keeps
   // its 3-4 or 2-3 defenders while displaying as Poor;
   // • the home prosperous-neighbour force (`prospNbr.tax=rP(4,6)`) — a POOR province is promoted to
   // Prosperous and keeps its 1-2 defenders. This is the reported bug: a province the player is
@@ -6701,6 +6756,16 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   const wantLeg=Math.min(lairs.length, relicCount);
   const legs=[];
   const pool=lairs.slice();
+  // 2026-09-21: a king's OWN province never holds a Legendary lair. The farthest-point walk
+  // starts far from home but, on a crowded map with 22 relics to place, it could still reach a
+  // capital — an audit found an Archdemon sitting in a home province on turn one. Home lairs sit
+  // out the walk (whenever the rest of the world has enough lairs to carry all 22 relics) and
+  // rejoin the pool for the ordinary grading below.
+  const _homeIdSet=new Set(homes.map(h=>h.id));
+  const _homeHeld=[];
+  if(pool.filter(L=>!_homeIdSet.has(L.p.id)).length>=wantLeg){
+    for(let i=pool.length-1;i>=0;i--) if(_homeIdSet.has(pool[i].p.id)) _homeHeld.push(pool.splice(i,1)[0]);
+  }
   if(wantLeg>0){
     let first=0;
     for(let i=1;i<pool.length;i++) if(pool[i].dHome>pool[first].dHome) first=i;
@@ -6718,6 +6783,7 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
     }
   }
   legs.forEach(L=>{ L.grade='Legendary'; });
+  _homeHeld.forEach(L=>pool.push(L)); // home lairs back in for ordinary grading
 
   // 3: the rest, graded by distance from home.
   // ── 2026-09-14: A MIX AT EVERY DISTANCE ────
@@ -6769,6 +6835,23 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   far.forEach((L,i)=>{ L._rank=i+(Math.random()-0.5)*2*jitter; });
   far.sort((a,b)=>a._rank-b._rank);
   far.forEach((L,i)=>{ L.grade = i<remW?'Weak' : i<remW+remM?'Moderate' : 'Powerful'; delete L._rank; });
+
+  // ── HOME WEAK-LAIR GUARANTEE (2026-09-21) ── World gen promises every king at least one WEAK
+  // lair in his own province, and seeds one there — but this function runs afterwards and re-grades
+  // every lair in the world. The home band is 60/30/10 BY LOT across ALL home-band lairs pooled
+  // together, so a particular capital could draw nothing but Moderate/Powerful (an audit measured
+  // ~7-10% of homes). Fix by SWAPPING grades with a Weak lair elsewhere, so the 22-Legendary count
+  // and the world's Weak/Moderate/Powerful totals are exactly what they were.
+  homes.forEach(h=>{
+    const mine=lairs.filter(L=>L.p===h);
+    if(!mine.length||mine.some(L=>L.grade==='Weak')) return;
+    const target=mine.find(L=>L.grade!=='Legendary')||mine[0];
+    const donors=lairs.filter(L=>L.grade==='Weak'&&!_homeIdSet.has(L.p.id));
+    // prefer a donor in the home band (keeps that band's mix intact), else the nearest one
+    const donor=donors.filter(L=>L.dHome<=NEAR_D)[0]||donors.sort((a,b)=>a.dHome-b.dHome)[0];
+    if(donor){ const g=target.grade; target.grade='Weak'; donor.grade=g; }
+    else target.grade='Weak';
+  });
 
   // Re-draw each guardian from the beasts of its lair's new standing.
   const seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name));
@@ -8718,6 +8801,10 @@ async function runTurn(opts){
   // attacker is still debited for their own dead when a garrison throws them back.
   function creditBattle(atkChar, defChar, battle, prov){
     if(!atkChar||!battle||atkChar.player==null) return;
+    // 2026-09-21: a commander killed in this battle's pre-battle duel earns nothing from it.
+    // handleHeroDeath docks 25% of accumulated Title merit AT the moment of death, so anything
+    // credited afterwards escapes that penalty entirely and can swing a Title race.
+    if(atkChar.alive===false) return;
     const bucket=(prov&&prov.terrain==='sea')?'sea':'marshal';
     const atkLost=battle.atkLost||0, defLost=battle.defLost||0;
     const defCmdr=(defChar&&defChar.player!=null)?defChar:null;
@@ -8729,7 +8816,7 @@ async function runTurn(opts){
     // field but not shown mastery of the beast. The loser is not debited \u2014 unlike the
     // Marshal's ledger these titles only ever rise, matching the Monster-Bane's shape.
     const victor=battle.won?atkChar:defCmdr;
-    if(victor) (victor.armies||[]).forEach(a=>creditBeastUnit(TM(victor),a,1));
+    if(victor&&victor.alive!==false) (victor.armies||[]).forEach(a=>creditBeastUnit(TM(victor),a,1)); // a dead victor showed no mastery of the beast
   }
 
   // (Sept 2026: the Task-12 max-HP cap, raiseMaxHp and hpCapFor were removed — maximum HP is now a
@@ -8897,7 +8984,7 @@ async function runTurn(opts){
   let _pcSimulating=false;
   function trySkillGain(char, skill, base, narr, mult){
     if(!char||_pcSimulating) return; mult=(mult>0?mult:1);
-    const real=(char.id!=null && G.characters[char.id]) ? G.characters[char.id] : char;
+    const real=(char.id!=null && ((G.characters||[]).find(r=>r&&r.id===char.id))) || char; // 2026-09-21: match by id, never by array index — an index lookup could check a DIFFERENT character's alive flag
     if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
     const lvl=(real.skills||{})[skill]||0;
     if(lvl>=9) return; // SKILL CAP raised to 9 — but only EXPERIENCE (this path) may pass level 5.
@@ -11274,7 +11361,7 @@ const BATTLE_ARMY_SPELLS={
         // ...and so is a mind swayed only last season — the same immunity the action-phase Charm
         // honours.
         if(target&&target.kind==='character'&&target.ref&&target.ref._charmImmuneTurn===G.turn){ narrative.push(`  ${caster.name}'s Charm slides off ${target.name} — a mind so lately swayed is closed to enchantment for a season.`); break; }
-        // a mind swayed before resists any later Charm, combat casts included (10% per past charm,
+        // a mind swayed before resists any later Charm, combat casts included (30% per past charm,
         // cumulative).
         if(target&&target.kind==='character'&&target.ref&&(target.ref._charmResist||0)>0&&d100()<=target.ref._charmResist){ narrative.push(`  ${caster.name}'s Charm breaks against ${target.name}'s will (${target.ref._charmResist}% resistance) — a mind swayed before knows the feel of it, and shuts.`); break; }
         caster.status.fleeDoubled=true; narrative.push(`  ${caster.name} charms ${target.name}'s wits — their next attempt to slip away will come far more easily.`); break; }
@@ -14217,10 +14304,10 @@ const BATTLE_ARMY_SPELLS={
             // Province is claimed when all defenders are eliminated (no survivors to rally)
             if(defSurvivors.length===0){
             setProvinceOwner(toProv,c.player,c,ph);toProv.neutralDefenders=[];
-            player.merits+=toProv.tax;c.merits=(c.merits||0)+toProv.tax;
+            player.merits+=toProv.tax;if(c.alive!==false)c.merits=(c.merits||0)+toProv.tax; // 2026-09-21: a commander slain in the pre-battle duel earns no personal merit
             applyEvilConquest(c, toProv, player); // Evil doctrine: loot or enslave
             toProv._hadBattleThisTurn=true;
-          log('combat',`${c.name} claims ${toProv.name} for ${player.name}! (+${toProv.tax} merit)`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
+          log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} claims ${toProv.name} for ${player.name}!${c.alive===false?'':` (+${toProv.tax} merit)`}`,{actor:c.player,targets:[],provinceId:toProv.id,public:true});
             if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
             } // end if(defSurvivors.length===0)
           } else {
@@ -14344,8 +14431,10 @@ const BATTLE_ARMY_SPELLS={
             // pointer line.
             const _battleChars=[c.id,...pvpReinforcements.map(r=>r.id),defChar.id,...defReinforcements.map(d=>d.id)];
             emitBattle(battle, toProv, ph, targets, {actor:c.player, charIds:_battleChars}); // item 5
-            defReinforcements.forEach(d=>notifyTarget(d,`⚔ ${d.name} stands in the battle line beside ${defChar.name} in the defence of ${toProv.name} — the full account is under ${defChar.name}.`,ph,'combat'));
-            pvpReinforcements.forEach(r=>notifyTarget(r,`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
+            // 2026-09-21: these pointers are written AFTER the battle, so a same-side hero who fell in
+            // its pre-battle duel must be told in the past tense, not as if he still marches.
+            defReinforcements.forEach(d=>notifyTarget(d,d.alive===false?`⚔ ${d.name} stood in the battle line beside ${defChar.name} in the defence of ${toProv.name}, and fell there — the full account is under ${defChar.name}.`:`⚔ ${d.name} stands in the battle line beside ${defChar.name} in the defence of ${toProv.name} — the full account is under ${defChar.name}.`,ph,'combat'));
+            pvpReinforcements.forEach(r=>notifyTarget(r,r.alive===false?`⚔ ${r.name} marched in ${c.name}'s host against ${toProv.name}, and fell there — the full account is under ${c.name}.`:`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
             // combatVsChar fights on pooled COPIES (combinedAtk/combinedDef) and marks fallen units
             // with _died on the shared army objects. Write those casualties back to the real
             // characters and their reinforcements so destroyed armies are actually removed
@@ -14425,7 +14514,7 @@ const BATTLE_ARMY_SPELLS={
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
               if(_hostileLeft){
                 toProv._battleUnresolved=true;
-                log('combat',`${c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+                log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
               } else {
                 G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
                 setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
@@ -14627,7 +14716,7 @@ const BATTLE_ARMY_SPELLS={
           }
         }
         // now that the move action has been reported, emit any discovery lines after it.
-        if(_raidActive && toProv.owner===c.player && _raidPriorOwner!==c.player){ // NAVAL L9: the coastal raid took the province — plunder its treasury
+        if(_raidActive && c.alive!==false && toProv.owner===c.player && _raidPriorOwner!==c.player){ // NAVAL L9: the coastal raid took the province — plunder its treasury (2026-09-21: a raider slain in the landing plunders nothing)
           const _loot=Math.max(0, toProv.tax||0);
           if(_loot>0){
             if(_raidPriorOwner!=null && G.players[_raidPriorOwner]) G.players[_raidPriorOwner].gold=Math.max(0,(G.players[_raidPriorOwner].gold||0)-_loot);
@@ -16467,12 +16556,12 @@ const BATTLE_ARMY_SPELLS={
           // and is cleared lazily once it has passed.
           if(t._charmImmuneTurn!=null&&t._charmImmuneTurn<G.turn) delete t._charmImmuneTurn;
           if(t._charmImmuneTurn===G.turn){log('system',`${c.name}'s Charm slides off ${t.name} — a mind so lately swayed is closed to enchantment for a season.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); charmBacklash(c,t,'closed to enchantment this season'); break;}
-          // every Charm that has ever taken hold leaves the mind 10% harder to sway —
+          // every Charm that has ever taken hold leaves the mind 30% harder to sway —
           // `_charmResist` is cumulative and permanent (it survives the turn-end flag sweep like
           // _charmImmuneTurn does). Rolled here, after the cast itself has succeeded.
           if((t._charmResist||0)>0){
             const _rr=d100();
-            log('system',`📊 ${t.name} resists the Charm (${t._charmResist}% — swayed ${Math.round(t._charmResist/10)} time${t._charmResist===10?'':'s'} before): ${fmtRoll(t._charmResist,_rr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`📊 ${t.name} resists the Charm (${t._charmResist}% — swayed ${Math.round(t._charmResist/30)} time${t._charmResist===30?'':'s'} before): ${fmtRoll(t._charmResist,_rr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             if(_rr<=t._charmResist){
               log('system',`${c.name}'s Charm breaks against ${t.name}'s will — a mind that has been swayed before knows the feel of it, and shuts.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
               if(t.player!=null) log('system',`${t.name} feels an enchantment reach for their mind — and throws it off.`,{actor:t.player,targets:[t.player],charId:t.id,provinceId:prov.id});
@@ -16526,7 +16615,7 @@ const BATTLE_ARMY_SPELLS={
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase;
             if(typeof setMovePool==='function') setMovePool(t);
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
-            t._charmResist=(t._charmResist||0)+10; // +10% resistance to every later Charm, cumulative
+            t._charmResist=Math.min(95,(t._charmResist||0)+30); // +30% resistance to every later Charm, cumulative (capped 95%)
             log('hire',`✨ ${c.name}'s Charm sways ${t.name} — the wandering hero joins ${player.name} at no cost (you must still pay their upkeep).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             _charmIntel(t); // 2026-09-18
             const applied=_applyCharmOrders(t);
@@ -16546,7 +16635,7 @@ const BATTLE_ARMY_SPELLS={
             t._charmedTurn=G.turn;                   // 2026-09-12
             t._charmControlFrom=ph;
             t._charmImmuneTurn=G.turn+1;  // closed to any further Charm for the whole of next turn
-            t._charmResist=(t._charmResist||0)+10; // +10% resistance to every later Charm, cumulative
+            t._charmResist=Math.min(95,(t._charmResist||0)+30); // +30% resistance to every later Charm, cumulative (capped 95%)
             t.player=c.player;
             delete t._defend; delete t._pursuit; delete t._defendReactedPhase; // drop any watch/chase set under their old lord
             if(typeof setMovePool==='function') setMovePool(t);
@@ -17945,7 +18034,7 @@ const BATTLE_ARMY_SPELLS={
             setProvinceOwner(prov,attacker.player,attacker,ph); prov.neutralDefenders=[]; prov.npcArmies=0; delete prov._leaderlessDefenders;
             const pl=G.players[attacker.player];
             if(pl){ pl.merits=(pl.merits||0)+(prov.tax||0); if(!pl.provinces.includes(prov.id)) pl.provinces.push(prov.id); applyEvilConquest(attacker, prov, pl); } // Evil doctrine now fires on this capture path too
-            attacker.merits=(attacker.merits||0)+(prov.tax||0);
+            if(attacker.alive!==false) attacker.merits=(attacker.merits||0)+(prov.tax||0); // 2026-09-21: no personal merit for a fallen commander
             log('combat',`${forceLabel(attacker)} finally overcomes the defenders and claims ${prov.name}!`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true});
           }
         } else {
@@ -17958,10 +18047,10 @@ const BATTLE_ARMY_SPELLS={
               prov.characters=(prov.characters||[]).filter(id=>id!==attacker.id);
               dest.characters=dest.characters||[]; if(!dest.characters.includes(attacker.id)) dest.characters.push(attacker.id);
               attacker.location=dest.id; attacker.locationName=dest.name;
-              log('combat',`${attacker.name} breaks off and retreats to ${dest.name}.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:dest.id});
+              log('combat',`${forceLabel(attacker)} breaks off and retreats to ${dest.name}.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:dest.id});
             } else {
               prov._battleUnresolved=true;
-              log('combat',`${attacker.name} is pinned in ${prov.name} with no way out — the struggle continues next phase.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id});
+              log('combat',`${forceLabel(attacker)} is pinned in ${prov.name} with no way out — the struggle continues next phase.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id});
             }
           }
         }
@@ -18346,7 +18435,7 @@ const BATTLE_ARMY_SPELLS={
         if(_form.length){ const _bi=battle.narrative.findIndex(l=>typeof narrText(l)==='string'&&String(narrText(l)).includes('Battle for ')); battle.narrative.splice(_bi>=0?_bi:0,0,..._form); }
       }
       emitBattle(battle, prov, ph, targets, {actor:c.player, charIds:[c.id,enemyChar.id,...defReinf.map(d=>d.id)]}); // item 5; 2026-09-09 item 1
-      [enemyChar,...defReinf].filter(d=>d.id!==_rbP.leader.id).forEach(d=>notifyTarget(d,`⚔ ${d.name} stands in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name} — the full account is under ${_rbP.leader.name}.`,ph,'combat'));
+      [enemyChar,...defReinf].filter(d=>d.id!==_rbP.leader.id).forEach(d=>notifyTarget(d,d.alive===false?`⚔ ${d.name} stood in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name}, and fell there — the full account is under ${_rbP.leader.name}.`:`⚔ ${d.name} stands in the battle line beside ${_rbP.leader.name} in the defence of ${prov.name} — the full account is under ${_rbP.leader.name}.`,ph,'combat'));
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       if(battle&&battle.won) [enemyChar,...defReinf].forEach(d=>noteBattleLoss(d.id)); // every beaten defender's watch is broken
@@ -18451,19 +18540,22 @@ const BATTLE_ARMY_SPELLS={
         &&(d.armies||[]).length>0&&d.player!=null&&d.player!==c.player);
       if(guardLeft>0){
         prov._battleUnresolved=true;
-        log('combat',`⚔ ${c.name} has the better of the fighting in ${prov.name}, but ${neutralGuard.name.replace(' (wandering)','')} still holds the field with ${guardLeft} unit${guardLeft!==1?'s':''} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+        log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but ${neutralGuard.name.replace(' (wandering)','')} still holds the field with ${guardLeft} unit${guardLeft!==1?'s':''} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(llLeft>0){
         prov._battleUnresolved=true;
-        log('combat',`⚔ ${c.name} has the better of the fighting in ${prov.name}, but ${llLeft} leaderless defending unit${llLeft!==1?'s':''} still hold the field — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+        log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but ${llLeft} leaderless defending unit${llLeft!==1?'s':''} still hold the field — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(_hostileLeft){
         prov._battleUnresolved=true;
-        log('combat',`⚔ ${c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+        log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(_garrisonUnfought&&(prov.garrisonArmies||[]).length>0){
         // a third party's column was beaten, but the owner's garrison never fought — the walls still stand
-        log('combat',`⚔ ${c.name} has the better of the fighting in ${prov.name}, but its garrison still mans the walls — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+        log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but its garrison still mans the walls — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else {
         claim();
-        log('combat',`${c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,{actor:c.player,targets,provinceId:prov.id,public:true});
+        // 2026-09-21: the commander can have fallen in this battle's pre-battle duel while his
+        // leaderless host fought on and won — name the host, not the corpse (same idiom as the
+        // move case's PvP branch and resolveStalledBattles' forceLabel).
+        log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,{actor:c.player,targets,provinceId:prov.id,public:true});
       }
     }
     // OUTCOME FOR THE OWNER. A capture already reaches the dispossessed realm through
@@ -18472,7 +18564,7 @@ const BATTLE_ARMY_SPELLS={
     // it had fallen. One line in their Realm Events settles it.
     if(prov.owner!=null&&prov.owner!==c.player&&battle){
       const _n=(c.armies||[]).filter(a=>a&&!a._died&&!a._disbanded).length;
-      if(battle.won) notifyProvinceOwner(prov, `⚔ ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and had the better of it, but your defenders still hold the ground — ${prov.name} is not yet taken. ${c.name} stands there with ${_n} unit${_n!==1?'s':''}.`, c.player, ph);
+      if(battle.won) notifyProvinceOwner(prov, `⚔ ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and had the better of it, but your defenders still hold the ground — ${prov.name} is not yet taken. ${c.alive===false?`${c.name} fell in the fighting; his leaderless host`:c.name} stands there with ${_n} unit${_n!==1?'s':''}.`, c.player, ph);
       else notifyProvinceOwner(prov, `🛡 ${c.name}${realmTag(c.player)} fought for ${prov.name} this phase and was beaten back — ${prov.name} remains yours.`, c.player, ph);
     }
     return true;
@@ -19275,6 +19367,7 @@ const BATTLE_ARMY_SPELLS={
     const invadedProvIds=new Set(invasions.map(i=>i.toId));
 
     [...intents.values()].forEach(it=>{
+      if(!it.c||it.c.alive===false) return; // 2026-09-21: `intents` is the STAGE-1 snapshot — never march a commander who has since fallen
       if(it.cancelled||it.action!=='move'||!it.leadsArmy||!it.dest) return;
       const P=it.dest;
       if(!invadedProvIds.has(P.id)) return;
@@ -19864,6 +19957,17 @@ const BATTLE_ARMY_SPELLS={
       // orders.
       if(c._mercyFledTurn===G.turn){ _logCtx={charId:null,phase:null}; return; }
       const o=(G.turnOrders[c.id]||[])[ph];
+      // 2026-09-21: processOrder returns silently for a dead character, so a hero killed in an
+      // earlier phase simply stopped mid-Chronicle with no explanation for the orders his player
+      // had submitted. Say it plainly instead.
+      if(o&&c.alive===false){
+        if(c.killedThisTurn&&!c._fallenOrderNoted){
+          c._fallenOrderNoted=true;
+          log('system',`${c.name} has fallen — their remaining orders for this turn go unanswered.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
+        }
+        _logCtx={charId:null,phase:null};
+        return;
+      }
       if(o)processOrder(c,o,ph);
       _logCtx={charId:null,phase:null}; // reset after each character
     });
@@ -21523,6 +21627,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1033</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1121</div>
 </body>
 </html>
