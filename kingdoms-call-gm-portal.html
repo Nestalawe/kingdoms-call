@@ -482,12 +482,19 @@ function battleLineSort(rows){ return [...rows].sort((x,y)=>(y.fly-x.fly)||(y.ba
 // Rows come from ladderRow() (inside runTurn, beside armStr) so the ladder and the real total are
 // computed from the SAME figures. Module-level so every battle site can share it.
 function ladderFm(v){ let t=(+v).toFixed(3); while(t.endsWith('0')&&!/\.\d$/.test(t)) t=t.slice(0,-1); return '×'+t; } // ×1.4, ×2.0, ×1.44, ×1.375 — exact to 3 dp so the ladder can be checked by hand
+// 2026-09-24 (Toby) — FIVE stages, in the order the battle applies them: Units (every per-unit modifier)
+// → Command (Tactical / Archery / Naval / illusory per unit) → Whole force (fanaticism, discoveries,
+// morale, the defender's position…) → Pre-battle damage (arrows, battle magic, primal strikes, flak —
+// taken off the FINISHED figure, never multiplied) → Battle lines (rear-line weighting) = strength.
+// Rows must have been through finishSide (runTurn). A stage that changes nothing is left out, except
+// Whole force, which always prints so the reader sees it was checked.
 function ladderLines(role, name, rows, width, flank, forceMods, final, opt){
   opt=opt||{};
   const nUnits=rows.length, pl=(n,w)=>`${n} ${w}${n!==1?'s':''}`, r0=v=>Math.round(v);
-  let base=0, unitSum=0; const agg=new Map(), cagg=new Map();
+  let base=0, unitSum=0, cmdSum=0, preSum=0, postSum=0; const agg=new Map(), cagg=new Map();
   rows.forEach(r=>{ const a=r.a||{};
     base+=(UNIT_BASE_STR[a.type]||4)*(UNIT_Q_MULT[a.quality||'Average']||2); unitSum+=(r._u!=null?r._u:r.base);
+    cmdSum+=(r._cmdS!=null?r._cmdS:r.base); preSum+=(r._fPre!=null?r._fPre:r.base); postSum+=(r._fPost!=null?r._fPost:r.base);
     (r._tr||[]).forEach(e=>{ const g=agg.get(e.label)||{label:e.label,n:0,d:0,delta:e.delta!=null}; g.n++; if(e.delta!=null) g.d+=e.delta; agg.set(e.label,g); });
     (r._cmd||[]).forEach(c=>{ const g=cagg.get(c.label)||{label:c.label,key:c.key,n:0}; g.n++; cagg.set(c.label,g); });
   });
@@ -502,14 +509,16 @@ function ladderLines(role, name, rows, width, flank, forceMods, final, opt){
     if(!tg) cmd.push(`${opt.tact.label} — no land or air units to command (fleets gain nothing from Tactical)`);
     else if(left>0) cmd.push(`fleets gain nothing from Tactical (${pl(left,'unit')})`);
   }
-  const ground=rows.filter(r=>!r.fly).length;
-  if(ground>width){ const m=flank?flankLineMults():BATTLE_LINE_MULTS; cmd.push(`${pl(ground-width,'unit')} behind the ${width}-unit front at ${m.slice(1).map(x=>'×'+x).join(' / ')}`); }
   const fm=(forceMods||[]).filter(x=>x&&Math.abs(x.m-1)>1e-9);
+  const hit=rows.filter(r=>(r._dmg||0)>1e-9);
+  const ground=rows.filter(r=>!r.fly).length;
   const L=[`  ${role} (${name}): ${pl(nUnits,'unit')} — strength **${r0(final)}**`];
   L.push(`    · Units: base ${r0(base)} → ${r0(unitSum)}${unitMods.length?` (${unitMods.join('; ')})`:''}`);
-  if(cmd.length||r0(lineTot)!==r0(unitSum)) L.push(`    · Command & battle lines: ${r0(unitSum)} → ${r0(lineTot)}${cmd.length?` (${cmd.join('; ')})`:''}`);
-  L.push(fm.length?`    · Whole force: ${r0(lineTot)} ${fm.map(x=>`× ${x.label} ${ladderFm(x.m)}`).join(' ')} = **${r0(final)}**`
-                  :`    · Whole force: no force-wide modifiers — **${r0(final)}**`);
+  if(cmd.length||r0(cmdSum)!==r0(unitSum)) L.push(`    · Command: ${r0(unitSum)} → ${r0(cmdSum)}${cmd.length?` (${cmd.join('; ')})`:''}`);
+  L.push(fm.length?`    · Whole force: ${r0(cmdSum)} ${fm.map(x=>`× ${x.label} ${ladderFm(x.m)}`).join(' ')} = ${r0(preSum)}`
+                  :`    · Whole force: no force-wide modifiers — ${r0(preSum)}`);
+  if(hit.length&&r0(preSum-postSum)>0) L.push(`    · Pre-battle volleys & spells: ${r0(preSum)} − ${r0(preSum-postSum)} = ${r0(postSum)} (${pl(hit.length,'unit')} hit; taken off the finished figures)`);
+  if(ground>width){ const m=flank?flankLineMults():BATTLE_LINE_MULTS; L.push(`    · Battle lines: ${r0(postSum)} → **${r0(lineTot)}** (${pl(ground-width,'unit')} behind the ${width}-unit front at ${m.slice(1).map(x=>'×'+x).join(' / ')})`); }
   return L;
 }
 function battleLineTotal(rows,width,flank){
@@ -536,6 +545,9 @@ function battleLineNarrative(who,rows,width,flank,terrain){
 // rulebook and DEV_LOG said "no strength bonus" while both battle paths quietly applied +10%/level —
 // the NPC path even carried a comment claiming the bonus had been removed. One constant now.
 const ARCHERY_MISSILE_PCT=0.05;
+// DRUID MASTERY (2026-09-24, Toby): +20% per Druid level over the minimum to lead a Creature/Monster,
+// Druid counted to 9, gain capped at +100%. Applied in armStr via druidMasteryGain.
+const DRUID_MASTERY_PER_LVL=0.20, DRUID_MASTERY_CAP=1.0, DRUID_MASTERY_MAX_LVL=9;
 // UNDEAD — undying fanaticism (2026-09-23b, Toby): a host with skeletal units in it, led by the Undead
 // KING in person ×1.5, by any other Undead commander ×1.3 (was ×1.3 / ×1.2). Whole force, no roll.
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
@@ -3152,6 +3164,8 @@ function effTemper(c){ if(!c) return 'Brave'; const it=activeItems(c).find(x=>x&
 // player is shown can never drift from what the engine actually uses. `chars` is the character list
 // to search for an aura bearer (runTurn passes G.characters, the report passes
 // gameState.characters).
+// Skills whose TRAINED levels 6-9 also count for effect (not just items past 5). 2026-09-24: Druid.
+const FULL_RANGE_SKILLS=new Set(['druid']);
 function skillBonusBreakdown(c, stat, chars){
   const out={base:(c&&c.skills||{})[stat]||0, items:0, aura:0, curse:0, sources:[]};
   if(!c) return out;
@@ -3176,8 +3190,11 @@ function skillBonusBreakdown(c, stat, chars){
   // at all to a Melee 5 one.
   // EVERY OTHER SKILL: the total still stops at 5, so a +2 Tome cannot make a Tactical 5 hero
   // out-general a trained Tactical 9 in the battle maths.
-  const _trained=Math.max(0,Math.min(SKILL_BENEFIT_CAP,out.base));
-  const _ceiling=ITEM_UNCAPPED_SKILLS.has(stat)?SKILL_MAX:SKILL_BENEFIT_CAP;
+  // DRUID (2026-09-24, Toby): the whole skill counts — trained levels 6-9 add, and items/aura stack on
+  // top, to the ceiling of 9. (Druid mastery, primal strikes, the parley roll and the Curse's choice of
+  // skill all read this figure.)
+  const _trained=Math.max(0,Math.min(FULL_RANGE_SKILLS.has(stat)?SKILL_MAX:SKILL_BENEFIT_CAP,out.base));
+  const _ceiling=(ITEM_UNCAPPED_SKILLS.has(stat)||FULL_RANGE_SKILLS.has(stat))?SKILL_MAX:SKILL_BENEFIT_CAP;
   out.total=Math.max(0,Math.min(_ceiling,_trained+out.items+out.aura+out.curse));
   out.bonus=out.total-_trained; // what the extras are actually WORTH
   return out;
@@ -9669,6 +9686,13 @@ const MISSILE_PCT_BASE=0.06, MISSILE_PCT_PER_LVL=0.02, MISSILE_CAP_FRACTION=0.30
 // zero before the real fighting began. This floor guarantees every unit still enters the melee with
 // at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away.
 const PREBATTLE_STR_FLOOR=0.25;
+// Subtract a unit's pre-battle damage from a strength figure, never below PREBATTLE_STR_FLOOR of it.
+// Two steps, as before: this battle's damage, then any all-turn reduction.
+function applyPrebattleDamage(army, str){
+  if(army._tempStrReduction){ const f=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(f,str-army._tempStrReduction); } // battle-only; cleared at battle end
+  if(army._turnStrReduction){ const f2=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(f2,str-army._turnStrReduction); } // persists all turn
+  return str;
+}
 function applyMissileHit(target, archSkill, firer, opts){
   opts=opts||{};
   // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
@@ -9749,7 +9773,22 @@ function seaPenalty(armyType, terrain){
   return SEA_LAND_PENALTY;
 }
 
-  function armStr(army, heroChar, playerAlignment, terrain, ctx){
+  // DRUID MASTERY gain for one unit under one commander → {gain (0‥1), lvl, min}. runTurn scope
+  // (needs effStat / dragonTamed). Mirrors the player portal's "Armies leading" panel.
+  function druidMasteryGain(heroChar, army, playerAlignment){
+    const none={gain:0,lvl:0,min:0};
+    if(!heroChar||!army||army._isSkeletal) return none;
+    if(!(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))) return none;
+    let lvl=heroChar._druidNegated?0:(effStat(heroChar,'druid')||0);
+    if(heroChar._curseHalveStat==='druid') lvl=Math.floor(lvl/2);
+    lvl=Math.max(0,Math.min(DRUID_MASTERY_MAX_LVL,lvl));
+    const waived=(CREATURE_ARMIES.has(army.type)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic'))
+               ||!!dragonTamed(heroChar,army);
+    const min=waived?0:getDruidLevel(army.type);
+    const gain=Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL*Math.max(0,lvl-min));
+    return {gain:Math.round(gain*100)/100, lvl, min};
+  }
+  function armStr(army, heroChar, playerAlignment, terrain, ctx, opts){
     const ARMY_STR=UNIT_BASE_STR; // alias → master (was a stale 6th copy of the strength table)
     const Q_MULT=UNIT_Q_MULT; // alias → master
     // Strength-ladder trace (2026-09-23b): when the caller passes ctx.trace, every per-unit modifier
@@ -9841,11 +9880,20 @@ function seaPenalty(armyType, terrain){
     // owner).
     { const _dpi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
       if(_dpi!=null){ const _dm=discUnitMult(_dpi, army, terrain, ctx, heroChar); if(_dm!==1){ str=Math.round(str*_dm); if(_tr) _tr.push({label:`realm unit discoveries ${ladderFm(_dm)}`}); } } }
-    // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
-    const _preTemp=str;
-    if(army._tempStrReduction){ const floorStr=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr,str-army._tempStrReduction); } // battle-only; cleared at battle end. Floored so pre-battle softening never zeroes a unit before the melee.
-    if(army._turnStrReduction){ const floorStr2=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr2,str-army._turnStrReduction); } // Telekinetic Storm: persists ALL turn (cleared at turn end only)
-    if(_tr&&str!==_preTemp) _tr.push({label:'pre-battle volleys & spells',delta:str-_preTemp});
+    // EVIL TERROR (2026-09-24): a true strength MODIFIER (×(1−x)), set by consumeTerror at battle
+    // start. It used to be faked as pre-battle damage; now that damage lands after every modifier it
+    // would have shrunk below the advertised −10%/stack, so it is applied here as the multiplier it is.
+    if(army._terrorMult!=null&&army._terrorMult<1){ str=Math.round(str*army._terrorMult); if(_tr) _tr.push({label:`Terror ${ladderFm(army._terrorMult)}`}); }
+    // PRE-BATTLE DAMAGE (arrows, battle magic, primal strikes, flak). 2026-09-24 (Toby): in a battle
+    // the ladder calls armStr with opts.deferDamage and subtracts the damage in ladderRow AFTER every
+    // unit and command modifier — modifiers are fixed when the lines form (after the duel, before
+    // magic and archery), and damage no longer gets multiplied by the target's Tactical, kinship,
+    // terrain, items… Other callers (intel estimates, bot model) keep the old in-line subtraction.
+    if(!(opts&&opts.deferDamage)){
+      const _preTemp=str;
+      str=applyPrebattleDamage(army,str);
+      if(_tr&&str!==_preTemp) _tr.push({label:'pre-battle volleys & spells',delta:str-_preTemp});
+    }
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
     if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); if(_tr) _tr.push({label:`Phantasmal Armies ${ladderFm(1+heroChar._phantasmalBonus)}`}); }
     // Magic-item army bonuses carried by the leading commander.
@@ -9882,8 +9930,16 @@ function seaPenalty(armyType, terrain){
       // lines.
     }
     // (2026-09-23d, Toby: the Druid "creature bond" — +5% per Druid level, to 5, on every Creature /
-    // Monster unit led — is RETIRED. Druid now only removes the shortfall penalty and powers the
-    // beasts' pre-battle strikes and the Druid mastery orders.)
+    // Monster unit led — is RETIRED.)
+    // ── DRUID MASTERY (2026-09-24, Toby) ── A Creature or Monster unit fights +20% for every level of
+    // Druid its commander holds OVER the minimum needed to lead it (the DRUID_ARMY_LEVELS_P table),
+    // counting Druid all the way to 9, capped at +100%. Where the requirement is WAIVED — a Druidic
+    // realm's (or personally Druidic commander's) Creatures, or sd40 Dragon Taming's winged beasts —
+    // the minimum is 0, so every level counts (still capped at +100%). A neutral guard's native
+    // command is NOT a waiver: his minimum stays the table level. Psychic Blast (Druid negated) and
+    // Curse (Druid halved) cut it exactly as they cut the shortfall check.
+    { const _dm=druidMasteryGain(heroChar, army, playerAlignment);
+      if(_dm.gain>0){ str=Math.round(str*(1+_dm.gain)); if(_tr) _tr.push({label:`Druid mastery ×${(1+_dm.gain).toFixed(1)}`}); } }
     // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
     // Ironclad: heavy & fleet +5%.
     if(heroChar){
@@ -9901,11 +9957,25 @@ function seaPenalty(armyType, terrain){
   // unit's FINAL per-unit strength fed to battleLineTotal. The battle sites build their rows with
   // this, so the ladder and the real total are the same numbers. ctx must be a real object (a bare
   // {} would switch on ctx-gated unit abilities).
+  // 2026-09-24 (Toby): BATTLE TIMING — every unit modifier (armStr) and command multiplier is applied
+  // to the UNDAMAGED unit first; only then is this battle's pre-battle damage (arrows, battle magic,
+  // primal strikes, flak) subtracted. `_cmdS` = the figure before damage, `_dmg` = what came off.
   function ladderRow(a, hero, align, terrain, ctx, cmd){
-    const tr=[]; const u=ctx?armStr(a,hero,align,terrain,Object.assign({},ctx,{trace:tr})):armStr(a,hero,align,terrain);
+    const tr=[]; const u=ctx?armStr(a,hero,align,terrain,Object.assign({},ctx,{trace:tr}),{deferDamage:true}):armStr(a,hero,align,terrain,undefined,{deferDamage:true});
     const applied=(cmd||[]).filter(c=>c&&Math.abs(c.m-1)>1e-9);
     let s=u; applied.forEach(c=>{ s*=c.m; });
-    return {a, base:s, s, fly:FLYING_TYPES.has(a.type), _u:u, _tr:tr, _cmd:applied};
+    return {a, base:s, s, fly:FLYING_TYPES.has(a.type), _u:u, _tr:tr, _cmd:applied, _cmdS:s, _dmg:0};
+  }
+  // 2026-09-24 (Toby): the WHOLE-FORCE multipliers (fanaticism, discoveries, morale, the defender's
+  // position, home ground, orders, sanctuary, consecration) also land before any damage. Each unit's
+  // undamaged figure (_cmdS) is multiplied by the side's force product F, THEN this battle's pre-battle
+  // damage comes off (floored at 25% of that figure), THEN the battle lines weight the units. Returns
+  // the side's final strength; the rows keep every stage for the ladder.
+  function finishSide(rows, width, flank, forceMods){
+    const F=(forceMods||[]).reduce((p,x)=>p*((x&&isFinite(x.m))?x.m:1),1);
+    rows.forEach(r=>{ const pre=r._cmdS*F, post=applyPrebattleDamage(r.a,pre);
+      r._F=F; r._fPre=pre; r._fPost=post; r._dmg=pre-post; r.base=post; r.s=post; });
+    return battleLineTotal(rows,width,flank);
   }
   function provName(id){return G.world.provinces[id]?.name||'unknown';}
   function provOf(c){return G.world.provinces[c.location];}
@@ -10079,7 +10149,7 @@ const BATTLE_ARMY_SPELLS={
     const stacks=Math.min(TERROR_MAX_STACKS,prov._terrorStacks);
     const _tp=prov._terrorPct||TERROR_PCT_PER_STACK;
     const frac=Math.min(_tp*stacks, _tp*TERROR_MAX_STACKS);
-    (defenders||[]).forEach(d=>{d._tempStrReduction=(d._tempStrReduction||0)+Math.ceil(unitBaseStrength(d)*frac);});
+    (defenders||[]).forEach(d=>{ d._terrorMult=Math.max(0,1-frac); }); // 2026-09-24: a modifier (armStr), not pre-battle damage
     if(narrative) narrative.push(`💀 Terror lingers in ${prov.name} — defenders fight at −${dispFloor(frac*100)}% strength (${stacks} terror stack${stacks!==1?'s':''} from earlier Evil victories nearby).`);
     delete prov._terrorStacks; delete prov._terrorTurn; delete prov._terrorisedBy; delete prov._terrorPct;
     return true;
@@ -10748,8 +10818,7 @@ const BATTLE_ARMY_SPELLS={
       return ladderRow(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base); // flying first, then strongest
 
-    const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc);
-    { const _bl=battleLineNarrative(cName,armiesWithStr,lineWidth,atkFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
+    const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc); // undamaged, before whole-force (2026-09-24)
     // (2026-09-23b: the old comment here said the Archery strength bonus had never been applied — it
     // was, via archMissileBonus above. Archery is now +5%/level on missile units by design, and the
     // Battle-stats ladder names it on the units it reached.) Show Druid shortfall warnings
@@ -10782,8 +10851,7 @@ const BATTLE_ARMY_SPELLS={
     // (2026-09-23d: the defender's standalone Naval line is retired likewise.)
     // Tactical on every land unit of a land battle — the same scope the attacker and both PvP sides
     // use.
-    const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc);
-    { const _bl=battleLineNarrative(defHero?defHero.name:'The defenders',defsWithStr,defLineWidth,defFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
+    const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc); // undamaged, before whole-force (2026-09-24)
     // (Illusory Terrain is applied per-unit above, folded into each attacker's strength.)
     // L7/L9 MASTERY ORDER battle modifiers vs an NPC garrison (c is always the attacker here;
     // Feigned Retreat is purely defensive and correctly has no place on an attack).
@@ -10826,8 +10894,15 @@ const BATTLE_ARMY_SPELLS={
     if(_consecNPC) narrative.push(`✨ The ground of ${prov.name} is consecrated — ${cName}'s ${align.toLowerCase()} host falters on hallowed earth (−15% strength).`);
     // Post-multiplier base strengths — every battle-level multiplier (fanaticism, discoveries,
     // morale, home/defensive bonus, illusory, consecrate) folded in, BEFORE the dice.
-    const atkBaseStr=atkStr*fanMult*finalAtkMod*(_consecNPC?0.85:1);
-    const defBaseStr=defStr;
+    void atkStr; void defStr; void rawAtkStr; void rawDefStr;
+    // 2026-09-24 (Toby): whole-force multipliers per unit BEFORE pre-battle damage (finishSide). These
+    // lists are the single source of each side's force product — the ladder prints them as they are.
+    const _nAtkFM=[{label:'morale',m:_npcAtkMorale},{label:'orders',m:atkOrdN},{label:'home ground',m:atkHomeBonus},{label:'fanaticism',m:fanMult},{label:'discoveries',m:finalAtkMod},{label:'consecrated ground',m:(_consecNPC?0.85:1)}];
+    const _nDefFM=[{label:"defender's position",m:defBonus},{label:'home',m:homeBonus},{label:'morale',m:_npcDefMorale},{label:'orders',m:defOrdN}];
+    const atkBaseStr=finishSide(armiesWithStr,lineWidth,atkFlankDisc,_nAtkFM);
+    const defBaseStr=finishSide(defsWithStr,defLineWidth,defFlankDisc,_nDefFM);
+    { const _bl=battleLineNarrative(cName,armiesWithStr,lineWidth,atkFlankDisc,prov.terrain); if(_bl) narrative.push(_bl);
+      const _bd=battleLineNarrative(defHero?defHero.name:'The defenders',defsWithStr,defLineWidth,defFlankDisc,prov.terrain); if(_bd) narrative.push(_bd); }
     // Roll with variance — each side rolls 0 to 70% of the stronger side's POST-multiplier
     // strength. Dice basis unified with the PvP path: both scale the random swing off the FULL
     // effective strength each force brings to the field (all multipliers applied), so luck is
@@ -10849,8 +10924,6 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-23b: strength LADDER per side (see ladderLines) replaces the one-line "(incl. …)"
     // summary. The Whole-force lists MUST mirror atkBaseStr / defBaseStr above.
     const _defLabelStat=defHero?defHero.name:`the defenders of ${prov.name}`;
-    const _nAtkFM=[{label:'morale',m:_npcAtkMorale},{label:'orders',m:atkOrdN},{label:'home ground',m:atkHomeBonus},{label:'fanaticism',m:fanMult},{label:'discoveries',m:finalAtkMod},{label:'consecrated ground',m:(_consecNPC?0.85:1)}];
-    const _nDefFM=[{label:"defender's position",m:defBonus},{label:'home',m:homeBonus},{label:'morale',m:_npcDefMorale},{label:'orders',m:defOrdN}];
     const _nAtkTm=tacMulted(effectiveTactBonus,c), _nDefTm=tacMulted(defTactBonus,defHero);
     narrative.push(`📊 **Battle stats:**`);
     narrative.push(...ladderLines('Attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {tact:(isLandBattle&&_nAtkTm>1)?{mult:_nAtkTm,label:`Tactical ${ladderFm(_nAtkTm)}`}:null}));
@@ -11123,7 +11196,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
-    [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
+    [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
     clearPhantomCopies(c, !won, realCharOf(c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
@@ -13341,10 +13414,8 @@ const BATTLE_ARMY_SPELLS={
     // `s` is the final per-unit strength — renamed into `base` once, so the totals AND the
     // narrative sort on the same figure.
     const atkRows=atkSorted.map(x=>({...x,base:x.s})), defRows=defSorted.map(x=>({...x,base:x.s}));
-    const atkRaw=battleLineTotal(atkRows,pvpFront,atkFlankPvp);
+    const atkRaw=battleLineTotal(atkRows,pvpFront,atkFlankPvp); // undamaged, before whole-force (2026-09-24)
     const defRaw=battleLineTotal(defRows,pvpFront,defFlankPvp);
-    { const _a=battleLineNarrative(atkName,atkRows,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
-      const _d=battleLineNarrative(defName,defRows,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
 
     // (2026-09-23d: the standalone Archery / Naval notes are retired — the Battle-stats ladder names
     // "Archery N ×m on K units" and "Naval N ×m on K units" exactly where they apply.)
@@ -13387,8 +13458,15 @@ const BATTLE_ARMY_SPELLS={
     // ×defTactBonus here. The attacker only gets it once (no ×atkTactBonus below), so this
     // over-strengthened every PvP land defender with Tactical skill (×1.44 at Tac 2 up to ×4.0 at
     // Tac 5). defRaw already carries it; drop the duplicate so both sides are symmetric.
-    const atkBaseStr=(atkRaw*atkFanMult*atkDiscBonus*atkMorale)*_consecPenalty*atkSanct*atkOrd*atkHomeBonusP;
-    const defBaseStr=(defRaw*defFanMult*defBonus*defMorale*defDiscBonus)*defSanct*defOrd;
+    void atkRaw; void defRaw;
+    // 2026-09-24 (Toby): whole-force multipliers per unit BEFORE pre-battle damage (finishSide). These
+    // lists are the single source of each side's force product — the ladder prints them as they are.
+    const _pAtkFM=[{label:'fanaticism',m:atkFanMult},{label:'discoveries',m:atkDiscBonus},{label:'duel morale',m:atkMorale},{label:'consecrated ground',m:_consecPenalty},{label:'sanctuary wards',m:atkSanct},{label:'orders',m:atkOrd},{label:'home ground',m:atkHomeBonusP}];
+    const _pDefFM=[{label:'fanaticism',m:defFanMult},{label:"defender's position",m:defBonus},{label:'duel morale',m:defMorale},{label:'discoveries',m:defDiscBonus},{label:'sanctuary wards',m:defSanct},{label:'orders',m:defOrd}];
+    const atkBaseStr=finishSide(atkRows,pvpFront,atkFlankPvp,_pAtkFM);
+    const defBaseStr=finishSide(defRows,pvpFront,defFlankPvp,_pDefFM);
+    { const _a=battleLineNarrative(atkName,atkRows,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
+      const _d=battleLineNarrative(defName,defRows,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
     // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
     // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
     // Item 9: fortune of battle — one swing, applied as a pair of luck multipliers (see
@@ -13405,8 +13483,6 @@ const BATTLE_ARMY_SPELLS={
     // terrain, the Druid creature bond, arrows) and listed Tactical as army-wide though flyers and
     // fleets never get it. The Whole-force list below MUST mirror atkBaseStr / defBaseStr above —
     // the harness asserts lineTotal × Π(m) === baseStr for both sides.
-    const _pAtkFM=[{label:'fanaticism',m:atkFanMult},{label:'discoveries',m:atkDiscBonus},{label:'duel morale',m:atkMorale},{label:'consecrated ground',m:_consecPenalty},{label:'sanctuary wards',m:atkSanct},{label:'orders',m:atkOrd},{label:'home ground',m:atkHomeBonusP}];
-    const _pDefFM=[{label:'fanaticism',m:defFanMult},{label:"defender's position",m:defBonus},{label:'duel morale',m:defMorale},{label:'discoveries',m:defDiscBonus},{label:'sanctuary wards',m:defSanct},{label:'orders',m:defOrd}];
     narrative.push(`📊 **Battle stats:**`);
     narrative.push(...ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {tact:(pvpIsLand&&atkTactBonus>1)?{mult:tacMulted(atkTactBonus,atk),label:`Tactical ${atkTact} ${ladderFm(tacMulted(atkTactBonus,atk))}`}:null}));
     narrative.push(...ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {tact:(pvpIsLand&&defTactBonus>1)?{mult:tacMulted(defTactBonus,def),label:`Tactical ${defTact} ${ladderFm(tacMulted(defTactBonus,def))}`}:null}));
@@ -13500,7 +13576,7 @@ const BATTLE_ARMY_SPELLS={
     const _atkFanDet=Math.max(1, atkSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (atkDruidCreature||atkEvilMonster)?1.25:1, atkSkelHero?UNDEAD_SKEL_HERO_FAN:1);
     const _defFanDet=Math.max(1, defSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (defDruidCreature||defEvilMonster)?1.25:1, defSkelHero?UNDEAD_SKEL_HERO_FAN:1);
     const _survStr=(isAtk)=>{
-      const clean=f=>(f||[]).filter(a=>a&&!a._died&&!a._disbanded).map(a=>{ const c={...a}; delete c._tempStrReduction; delete c._archeryRed; delete c._tacUp; delete c._drumUp; return c; });
+      const clean=f=>(f||[]).filter(a=>a&&!a._died&&!a._disbanded).map(a=>{ const c={...a}; delete c._tempStrReduction; delete c._terrorMult; delete c._archeryRed; delete c._tacUp; delete c._drumUp; return c; });
       const mine=clean(isAtk?atk.armies:def.armies), foe=clean(isAtk?def.armies:atk.armies);
       if(!mine.length) return 0;
       const rows=mine.map(a=>_pvpRow(a,isAtk,mine,foe));
@@ -13708,7 +13784,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
-    [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
+    [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
     clearPhantomCopies(atk, !won, realCharOf(atk)); clearPhantomCopies(def, won, realCharOf(def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
     // ORC — Run Them Down: a warg-heavy victor takes up the chase without being told to.
     (function(){
@@ -20339,15 +20415,15 @@ const BATTLE_ARMY_SPELLS={
   // the quarry leads an army (a column is easy to follow), divided by the distance between them,
   // and automatic if the quarry belongs to the pursuer's own realm.
   // the old AK Spy-table (50/100/150/200/250%) is retired. The catch roll is now a Spy CONTEST: 50%
-  // base, +5% per Spy level of the pursuer, −5% per Spy level of the quarry, then doubled if the
-  // quarry leads an army (a column leaves a plain trail). The roll is only ever made once the two
+  // base, +5% per Spy level of the pursuer, −5% per Spy level of the quarry. (2026-09-24, Toby: the
+  // old doubling when the quarry leads an army is gone — leading troops no longer makes a character
+  // twice as easy to corner.) The roll is only ever made once the two
   // stand in the same province (advancePursuit), so the old divide-by-distance was dead code.
   // Clamped 5–100. A friendly quarry is always caught (a rendezvous, not a hunt).
   function pursuitCatchChance(c,quarry){
     if(quarry.player!=null&&quarry.player===c.player) return 100;
     const spy=effStat(c,'spy'), qSpy=effStat(quarry,'spy');
-    let pct=50+5*spy-5*qSpy;
-    if((quarry.armies||[]).length>0) pct*=2;
+    const pct=50+5*spy-5*qSpy; // 2026-09-24: no ×2 for a quarry leading an army
     return Math.max(5,Math.min(100,dispFloor(pct)));
   }
 
@@ -20417,7 +20493,7 @@ const BATTLE_ARMY_SPELLS={
     if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ endPursuit(c); return; }
     const chance=pursuitCatchChance(c,quarry);
     const roll=d100();
-    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name} (Spy ${effStat(quarry,'spy')}${(quarry.armies||[]).length>0?', leading an army — doubled':''}): ${fmtRoll(chance,roll)}`,
+    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name} (Spy ${effStat(quarry,'spy')}): ${fmtRoll(chance,roll)}`,
       {actor:c.player,targets:[c.player]});
     if(roll>chance){
       log('move',`${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -21759,7 +21835,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     delete c._necroAutoUsed;
     // Units fully recover between turns — clear any lingering battle-scoped strength loss
     // (e.g. a Telekinetic Storm cast in an action phase that saw no ensuing battle).
-    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
+    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._terrorMult!=null) delete a._terrorMult; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
@@ -21771,7 +21847,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // Clear any battle-scoped strength reductions still sitting on this province's neutral
     // defenders
     // (e.g. a Telekinetic Storm cast with no ensuing battle) so units fully recover between turns.
-    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
+    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._terrorMult!=null) delete a._terrorMult; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
     // Hidden features persist until they fade (10%/turn).
     (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.20){ delete f._hidden; delete f._hiddenBy; } });
     if(p._phantomArmies) delete p._phantomArmies;
@@ -21785,6 +21861,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(p._oratoryBonus) delete p._oratoryBonus;
     if(p._tempStrReduction) delete p._tempStrReduction;
     if(p._turnStrReduction) delete p._turnStrReduction;
+    (p.garrisonArmies||[]).forEach(a=>{ if(a&&a._terrorMult!=null) delete a._terrorMult; }); // 2026-09-24: Terror is a battle-scoped modifier
   });
 
   // 7c2. sd35 Order of the Golden Shield: the king's earned-HP gain from a win is doubled, nothing
@@ -22620,6 +22697,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-2153</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-2234</div>
 </body>
 </html>

@@ -1634,7 +1634,7 @@ const SKILL_INFO={
   sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — via the Steal order (a hero\'s pack, their strongbox, or a garrison paymaster), by pickpocketing during encounters, and when lifting a lair\'s hoard (10% of the original hoard per level, capped at 5).',
-  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful Creatures and Monsters.',
+  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength, and <strong>each level you hold above a Creature or Monster unit\'s requirement adds +20%</strong> (Druid counted to 9, up to +100%; where your realm waives the requirement every level counts). From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful Creatures and Monsters.',
   explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
   white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine realms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
@@ -2618,12 +2618,17 @@ function renderReportView(report){
               // figure and the panel total (matching the engine's max(0.1, 1−0.2×shortfall)),
               // instead of only tagging the penalty beside a full-strength number.
               if(shortfall>0){ druidShort++; bs=Math.max(1,Math.round(bs*Math.max(0.1,1-shortfall*0.20))); }
+              // DRUID MASTERY (2026-09-24, mirrors GM druidMasteryGain): +20% per Druid level over the
+              // unit's minimum (0 where the requirement is waived), Druid counted to 9, capped +100%.
+              const mastery=(!a.skeletal&&(creature||monster))?Math.min(100,20*Math.max(0,Math.min(9,druLevel)-req)):0;
+              if(mastery>0) bs=Math.round(bs*(1+mastery/100));
               totalStr+=bs; totalCost+=(a.cost!=null?a.cost:2);
+              const mast=mastery>0?` <span style="color:#2d7a2d;font-size:.66rem">+${mastery}% Druid mastery</span>`:'';
               const pen=shortfall>0?` <span style="color:var(--crimson);font-size:.68rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
               const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#2d7a2d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
               const feudTag=feudLed?` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
               const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
-              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(reportColour(kingdom.color)||'var(--ink)')+'">'+armyLabel(a,{noMove:true})+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate!=null?` · move ${a.moveRate}${a.moveKind==='sea'?' (sea)':a.moveKind==='air'?' (air)':''}`:''}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
+              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(reportColour(kingdom.color)||'var(--ink)')+'">'+armyLabel(a,{noMove:true})+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate!=null?` · move ${a.moveRate}${a.moveKind==='sea'?' (sea)':a.moveKind==='air'?' (air)':''}`:''}</span>${tag}${raceBoost}${feudTag}${mast}${pen}</div>`;
             }).join('');
             const effSpd2=(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...arr.map(a=>a.speed||3)));
             // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
@@ -4339,6 +4344,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   }
   // Any projection note that reads the finished form is refreshed once the fields are settled.
   if(typeof refreshExploreNotes==='function') refreshExploreNotes();
+  setTimeout(refreshAllOncePerTurn,0); // 2026-09-24: once-per-turn orders — after every card is restored
   // rebuild the shared Resurrect order cards from the reopened draft, orders and all.
   { const _savedRes={};
     Object.entries(savedOrders||{}).forEach(([k,v])=>{ const m=String(k).match(/^resurrect_(\d+)_via_\d+_ph\d+$/); if(!m||!Array.isArray(v)) return;
@@ -4687,6 +4693,41 @@ function onSpellChange(charId, ph, selectedSpell){
 }
 
 
+// ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
+// L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set) and of Call to Arms. Once a
+// character has one of them in a phase, every LATER phase's action dropdown stops offering it. Each
+// select remembers its full option list (data-all-opts) so an option comes back the moment the earlier
+// phase is changed; a later phase already holding the order is cleared (with a note) rather than
+// left to be refused at resolution.
+const ONCE_PER_TURN_ACTIONS=new Set([...Object.keys(L79_ORDERS),'Call to Arms']);
+function refreshOncePerTurnOptions(charId){
+  const taken=new Set();
+  for(let ph=0;ph<5;ph++){
+    const sel=document.getElementById(`po-action-${charId}-${ph}`);
+    if(!sel) continue;
+    if(!sel.dataset.allOpts) sel.dataset.allOpts=JSON.stringify([...sel.options].map(o=>o.value).filter(Boolean));
+    const all=JSON.parse(sel.dataset.allOpts);
+    const want=all.filter(a=>!taken.has(a));
+    const have=[...sel.options].map(o=>o.value).filter(Boolean);
+    let cur=sel.value, cleared=false;
+    if(cur&&taken.has(cur)){ cleared=cur; cur=''; }
+    if(want.join('|')!==have.join('|')){
+      const blank=(sel.options[0]&&!sel.options[0].value)?sel.options[0].textContent:'\u2014 Choose \u2014';
+      sel.innerHTML=`<option value="">${blank}</option>`+want.map(a=>`<option value="${a}">${a}</option>`).join('');
+      sel.value=cur;
+    }
+    if(cleared){
+      const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
+      const ch=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
+      if(wrap){ try{ wrap.innerHTML=(ch?buildTargetField(ch,ph,{action:''}):'')+`<div style="font-size:.72rem;color:#8a2a2a;margin-top:3px">${cleared} can be ordered only once a turn and is already set in an earlier phase \u2014 choose another action here.</div>`; }catch(_){} }
+    }
+    if(ONCE_PER_TURN_ACTIONS.has(sel.value)) taken.add(sel.value);
+  }
+}
+function refreshAllOncePerTurn(){
+  const ids=new Set([...document.querySelectorAll('select[id^="po-action-"]')].map(el=>el.id.replace(/^po-action-/,'').replace(/-\d+$/,'')));
+  ids.forEach(id=>{ try{ refreshOncePerTurnOptions(id); }catch(_){} });
+}
 function onActionChange(charId, ph, charIdx){
   const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
   const wrap=document.getElementById(`po-target-wrap-${charId}-${ph}`);
@@ -4695,6 +4736,7 @@ function onActionChange(charId, ph, charIdx){
     ||(currentReport?.characters||[])[charIdx]||{};
   const saved={action};
   wrap.innerHTML=buildTargetField(char, ph, saved);
+  refreshOncePerTurnOptions(charId); // 2026-09-24: once-per-turn orders leave later phases' dropdowns
   setTimeout(refreshExploreNotes,0); // earlier/later Explore projections depend on every order
 
   // Sync the hired-hero future-order card. syncHiredHeroCard injects it when this is a Hire Hero
@@ -4759,6 +4801,7 @@ function _fillSyntheticOrderCard(fakeId, savedPhases, savedEP){
     const wrap=document.getElementById(`po-target-wrap-${fakeId}-${p}`);
     if(wrap){ try{ wrap.innerHTML=buildTargetField(fake,p,{action:o.action,target:o.target||'',extra:o.extra||''}); }catch(_){} }
   }
+  try{ refreshOncePerTurnOptions(fakeId); }catch(_){} // 2026-09-24
   if(!savedEP) return;
   const allTac=(savedEP.tactics||[]).map(String);
   const tac=allTac.filter(t=>!t.toUpperCase().startsWith('CS:'));
@@ -5923,12 +5966,12 @@ function skillRowHTML(c, style){
     if(srcs.length){
       const bits=srcs.map(s=>{ const st=_bonusKindP(s.kind);
         return `<span style="background:${st.bg};color:${st.c};border-radius:2px;padding:0 4px;white-space:nowrap">${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` ${BONUS_SCOPE_MARK_P[s.scope]||''}`:''}</span>`; });
-      if(rawTotal>0&&bonus<rawTotal) bits.push(`<span style="color:#999">(capped at ${ITEM_UNCAPPED_SKILLS_P.has(k)?9:5})</span>`);
+      if(rawTotal>0&&bonus<rawTotal) bits.push(`<span style="color:#999">(capped at ${(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5})</span>`);
       detail.push(`<span style="white-space:normal"><strong style="color:#555">${label}</strong> ${bits.join(' ')}</span>`);
     }
     // melee and archery let item/aura bonuses stack above trained 5 to the ceiling of 9; every
     // other skill still stops at 5. Mirrors ITEM_UNCAPPED_SKILLS in the GM engine.
-    const _ceil=ITEM_UNCAPPED_SKILLS_P.has(k)?9:5;
+    const _ceil=(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5;
     const parts=srcs.map(s=>`${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` (${BONUS_SCOPE_TEXT_P[s.scope]||''})`:''}`);
     if(rawTotal>0&&bonus<rawTotal) parts.push('capped at '+_ceil);
     const tip=parts.length?` title="${(label+' '+base+' — '+parts.join(', ')).replace(/"/g,'&quot;')}"`:'';
@@ -7201,8 +7244,9 @@ function buildTargetField(c, ph, saved){
         const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
         const loc4=predictedLocation(c.id,ph);
         const recipOpts=chars.map(x=>{
-          const _same=(predictedLocation(x.id,ph)?.id)===(loc4?.id);
-          return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_same?'here now':'elsewhere — arrives end of turn'}${preOrderTagP(x)})</option>`;
+          const _xl=predictedLocation(x.id,ph), _xn=(_xl&&_xl.name)||'unknown province'; // 2026-09-24: name the province
+          const _same=(_xl?.id)===(loc4?.id);
+          return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_same?`here in ${_xn} — at once`:`in ${_xn} — arrives end of turn`}${preOrderTagP(x)})</option>`;
         }).join('');
         return`<input type="hidden" id="po-target-${c.id}-${ph}" value="auto">
           ${chars.length?`<select id="po-extra-${c.id}-${ph}">${recipOpts}</select>`:`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`}
@@ -7247,8 +7291,11 @@ function buildTargetField(c, ph, saved){
       if(chars.length===0) return`${_giWrap}
         <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`;
       const recipOpts=chars.map(x=>{
-        const _same=(predictedLocation(x.id,ph)?.id)===(loc4?.id);
-        const _where=_same?'here now':'elsewhere — arrives end of turn';
+        // 2026-09-24 (Toby): name the province each recipient is in at this phase (projected from
+        // earlier-phase moves) instead of a bare "elsewhere".
+        const _xl=predictedLocation(x.id,ph), _xn=(_xl&&_xl.name)||'unknown province';
+        const _same=(_xl?.id)===(loc4?.id);
+        const _where=_same?`here in ${_xn} — at once`:`in ${_xn} — arrives end of turn`;
         return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_where}${preOrderTagP(x)})</option>`;
       }).join('');
       return`${_giWrap}
@@ -8693,6 +8740,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.23-2153</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.23-2234</div>
 </body>
 </html>
