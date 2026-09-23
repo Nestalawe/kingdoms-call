@@ -4124,9 +4124,9 @@ const BOT_DIFFICULTY={
 // Effective weights for this game's difficulty. Bot decision functions read these instead of
 // BOT_TUNING directly, so one setting re-scales the whole roster. Difficulty-neutral weights pass
 // straight through.
-function botTuning(G){
+function botTuning(G,pi){
   const d=BOT_DIFFICULTY[(G&&G.botDifficulty)||'normal']||BOT_DIFFICULTY.normal;
-  return {
+  const T={
     kingAttackMargin: BOT_TUNING.kingAttackMargin*d.attackMarginMult,
     heroAttackMargin: BOT_TUNING.heroAttackMargin*d.attackMarginMult,
     assaultMargin:    BOT_TUNING.assaultMargin*d.assaultMarginMult,
@@ -4138,6 +4138,20 @@ function botTuning(G){
     chestShare:       BOT_TUNING.chestShare,
     coalitionTriggerFrac: BOT_TUNING.coalitionTriggerFrac,
   };
+  // Sept 2026 (bot strategy review §2–3): per-realm overlays from the alignment and race the realm was
+  // dealt. Each reads a rulebook number, nothing hidden.
+  const pl=(pi!=null&&G&&G.players)?G.players[pi]:null; if(!pl) return T;
+  switch(pl.alignment){
+    case 'Divine': if((consecratedIds(pl)||[]).length) T.kingAttackMargin*=0.9; break;      // the grace returns a fallen king
+    case 'Good':   T.assaultMargin*=0.9; break;                                              // Banner of Fellowship +15% unify
+    case 'Evil':   T.taxScoreWeight*=1.5; T.rivalBias+=3; break;                             // Plunder: half the tax on capture; Terror chains
+    case 'Pagan':  T.rivalBias+=3; break;                                                    // Blood Harvest: gold per unit slain
+  }
+  switch(pl.race){
+    case 'Dwarven': T.kingAttackMargin+=0.1; T.heroAttackMargin+=0.1; break;                 // Bulwark: dwarves win by being attacked
+    case 'Orcish':  T.kingAttackMargin-=0.05; T.heroAttackMargin-=0.05; T.upkeepCapFrac=Math.min(1,T.upkeepCapFrac+0.05); break; // War-spoils halve wages on a won attack
+  }
+  return T;
 }
 const BOT_HEX_DIRS=['NW','NE','W','E','SW','SE'];              // MUST match the engine's HEX_DIRS order
 const BOT_OFF_EVEN=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]]; // and its even/odd hex offsets
@@ -4286,7 +4300,36 @@ function botEffForce(G,c,armies){
 // bots summed raw base strength and so under-read a drilled host by 40–100% — they won 96% of the
 // battles they dared and declined the rest. Fortune (log-ratio CDF) and fanaticism stay random and
 // are left out.
-function botBattleForce(G,c,armies,terrain){
+// Sept 2026 (bot strategy review §3): the per-unit race/terrain arithmetic the engine applies in armStr,
+// mirrored for the estimate — kinship (+20% king's race, +20% leader's race), the old grudges (−20%),
+// unit terrain modifiers and the sea penalty, Elven Woodland Mastery (×1.5 in forest/jungle) and Dwarven
+// Bulwark (×1.5 defending). All public: races, terrain and the rulebook's numbers.
+function botRaceTerrainMult(G,c,a,terrain,defending,ownerPi){
+  let m=1; const uRace=a.race||null;
+  const oPi=(ownerPi!=null)?ownerPi:((c&&c.player!=null)?c.player:null);
+  const oRace=(oPi!=null)?(((G.players||[])[oPi]||{}).race||null):null;
+  const lRace=(c&&c.race)||null;
+  if(uRace){ if(oRace&&uRace===oRace) m*=1.2; if(lRace&&uRace===lRace) m*=1.2;
+    const RIV={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}; if(lRace&&RIV[uRace]===lRace) m*=0.8; }
+  // terrainMod / seaPenalty are runTurn-LOCAL (the scope trap): runTurn hands them in through hooks.terrainMult
+  if(terrain){ const tf=botTurnCache(G).terrainMult; if(typeof tf==='function'){ try{ m*=tf(a.type,terrain); }catch(e){} } }
+  if(uRace==='Elven'&&oRace==='Elven'&&(terrain==='forest'||terrain==='jungle')) m*=1.5;
+  if(uRace==='Dwarven'&&oRace==='Dwarven'&&defending) m*=1.5;
+  return m;
+}
+// Whole-force multipliers the rulebook promises without a roll: Druidic ×1.25 with any Creature, Evil ×1.25
+// with any Monster, Undead skeletal fanaticism ×1.5 under the king / ×1.3 under a hero, Good +10% defending
+// its own land. Zeal itself is a roll and is left out, as before.
+function botFervourMult(G,c,armies,defending){
+  if(!c||c.player==null) return 1; const align=(((G.players||[])[c.player]||{}).alignment)||'Neutral'; let m=1;
+  if(align==='Druidic'&&armies.some(a=>a&&BOT_CREATURE_ARMIES.has(a.type))) m=Math.max(m,1.25);
+  if(align==='Evil'&&armies.some(a=>a&&BOT_MONSTER_ARMIES.has(a.type))) m=Math.max(m,1.25);
+  if(align==='Undead'&&armies.some(a=>a&&a._isSkeletal)) m=Math.max(m,c.isKing?1.5:1.3);
+  if(align==='Good'&&defending) m*=1.10;
+  return m;
+}
+function botBattleForce(G,c,armies,terrain,opts){
+  opts=opts||{}; const defending=!!opts.defending;
   armies=armies||(c?c.armies:null)||[]; if(!armies.length) return 0;
   const align=(c&&c.player!=null?((G.players||[])[c.player]||{}).alignment:null)||'Neutral';
   const tamed=!!(c&&c.player!=null&&botHasDisc(G,c.player,'sd40'));
@@ -4297,8 +4340,9 @@ function botBattleForce(G,c,armies,terrain){
   const rows=armies.filter(a=>a).map(a=>{ let m=1; if(c){ try{ m=druIdPenaltyMult(c,a,align,tamed&&TAMED_FLYER_TYPES_D.has(a.type)); }catch(e){ m=1; } }
     const fly=BOT_AERIAL_TYPES.has(a.type), sea=BOT_SEA_ALL.has(a.type);
     // Tactical / Naval folded in before battleLineTotal sorts — same reason as the NPC defender.
+    m*=botRaceTerrainMult(G,c,a,terrain,defending,opts.ownerPi);
     return {base:unitBaseStrength(a)*m*(sea?nav:tac), fly, sea}; }); // flyers take Tactical (2026-09-23c)
-  return battleLineTotal(rows,width,flank);
+  return battleLineTotal(rows,width,flank)*botFervourMult(G,c,armies,defending);
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
 // (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
@@ -4312,10 +4356,10 @@ function botTargetDefence(G,pi,N){
   const seen=botVisibleCharsIn(G,pi,N);
   const guard=seen.find(x=>x.player===null&&(x.armies||[]).length);
   let s=0;
-  if(N.owner==null){ s=guard?botBattleForce(G,guard,guard.armies,N.terrain):botBattleForce(G,null,N.neutralDefenders||[],N.terrain); }
+  if(N.owner==null){ s=guard?botBattleForce(G,guard,guard.armies,N.terrain,{defending:true}):botBattleForce(G,null,N.neutralDefenders||[],N.terrain,{defending:true}); }
   else {
-    seen.forEach(x=>{ if(x.player===N.owner) s+=botBattleForce(G,x,x.armies,N.terrain); });
-    s+=botBattleForce(G,null,N.garrisonArmies||[],N.terrain);
+    seen.forEach(x=>{ if(x.player===N.owner) s+=botBattleForce(G,x,x.armies,N.terrain,{defending:true}); });
+    s+=botBattleForce(G,null,N.garrisonArmies||[],N.terrain,{defending:true,ownerPi:N.owner});
   }
   return s*BOT_DEF_BONUS;
 }
@@ -4336,7 +4380,8 @@ function botMarginFor(G,pi,c,T){
   const base=c&&c.isKing?T.kingAttackMargin:T.heroAttackMargin;
   const floor=c&&c.isKing?1.15:1.0;
   const mult=Math.max(0.6,1-0.08*botStallTurns(G,pi));
-  return Math.max(Math.min(base,floor),base*mult);
+  const stake=Math.min(0.1,0.02*Math.max(0,((c&&c.armies)||[]).length-5));   // Sept 2026 (R5): the bigger the host, the more a loss costs
+  return Math.max(Math.min(base,floor),base*mult)+stake;
 }
 function botNoteLand(G,pi){
   const p=(G.players||[])[pi]; if(!p) return;
@@ -4433,7 +4478,7 @@ function botDefenceNeed(G, prov, pi){
 // threatened valuable neighbour — defence outranks a gang-up. Assigned character ids are added to
 // `assigned` so the per-character pass skips them.
 function botPlanAssaults(G, pi, chars, assigned){
-  const T=botTuning(G);
+  const T=botTuning(G,pi);
   const ASSAULT_MARGIN=T.assaultMargin;              // combined edge needed (buffers the unify roll)
   const isPinnedOrNeeded=(c,P)=>{
     if(!(P.owner===pi && botIsValuable(G,P,pi))) { /* not on valuable ground */ }
@@ -4548,7 +4593,7 @@ function botLairDir(G, P, c, pi){
   // Search to find one; bots were reading every hoard in their territory the moment the world was
   // generated.
   for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea'||N.owner!==pi) continue;
-    if(botKnownFeatures(G,pi,N).some(f=>f&&!f.cleared&&!f.ritualSite&&botCanBeatGuardian(c,f.monster))) return i;
+    if(botKnownFeatures(G,pi,N).some(f=>f&&!f.cleared&&!f.ritualSite&&botCanBeatGuardian(c,f.monster,G,pi,f))) return i;
   }
   return -1;
 }
@@ -4592,7 +4637,13 @@ function botEmpireDiameter(G,pi){
 // March
 // (reach), then personal combat; the units already under command add a little so the current holder of
 // the host is not displaced by a marginally better tactician every turn.
-function botGeneralship(c){ const s=c.skills||{}; const n=(c.armies||[]).length; return (s.tactical||0)*4+(s.march||0)*2+(s.melee||0)+(s.archery||0)+Math.min(10,n)+(n>=3?8:0); }   // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
+function botGeneralship(c){ const s=c.skills||{}; const a=c.armies||[]; const n=a.length;
+  // Sept 2026 (review §3): a lord of the column's own blood (+20% kinship, no grudge) and a Necromancy king
+  // over skeletons (×1.5 fanaticism vs ×1.3) are better generals than the raw skills say.
+  const kin=n?a.filter(x=>x&&x.race===c.race).length/n:0; const RIV={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+  const grudge=n?a.filter(x=>x&&RIV[x.race]===c.race).length/n:0;
+  const skel=n?a.filter(x=>x&&x._isSkeletal).length/n:0;
+  return (s.tactical||0)*4+(s.march||0)*2+(s.melee||0)+(s.archery||0)+Math.min(10,n)+(n>=3?8:0)+Math.round(kin*4-grudge*6)+((c.isKing&&(s.necromancy||0)>=1&&skel>=0.5)?10:0); }   // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
 // Per-turn scratch state (roles + treasury ledger), keyed by the live game-state object so it never
 // leaks into the persisted game_state and never survives into the next turn.
 const _botTurnCache=new WeakMap();
@@ -4602,13 +4653,40 @@ function botTurnCache(G){ let o=_botTurnCache.get(G); if(!o||o.turn!==G.turn){ o
 // than the main host can cross in a turn, a second host is raised, and so on.
 function botRoles(G,pi){
   const cache=botTurnCache(G); if(cache.roles[pi]) return cache.roles[pi];
-  const chars=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
+  botUpdateIntel(G,pi);                                // Sept 2026: refresh the memory of rival generals and heroes first
+  const all=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
+  // Sept 2026 (Toby: bot defence): standing DEFENDERS (c._botRole, set below) sit outside the
+  // general ranking, so a defender who has raised three units is not pulled off his post as a new
+  // field leader.
+  const sticky=all.filter(c=>c._botRole==='defender'&&!c.isKing);
+  let chars=all.filter(c=>!sticky.includes(c)); if(!chars.length) chars=all;
   const ranked=[...chars].sort((a,b)=>botGeneralship(b)-botGeneralship(a));
   const primary=ranked[0]||null;
   const reach=Math.max(1, primary?(botLandReach(primary)||1):3);
   const holding=chars.filter(c=>(c.armies||[]).length>=3).length;   // a split-off second host keeps its own commander
   const want=Math.max(1, holding, Math.min(ranked.length, 1+Math.floor(botEmpireDiameter(G,pi)/reach)));
-  const r={leaders:ranked.slice(0,want).map(c=>c.id), primaryId:primary?primary.id:null, reach, want};
+  const leaders=ranked.slice(0,want).map(c=>c.id);
+  // ADMIRAL (Sept 2026, Toby): once there is sea worth taking, the best remaining non-king general (sticky via
+  // _botRole) is a leader whose front is the water — see botSeaStrike / botFieldRecruitTokens.
+  { const wantAdm=botSeaWorthTaking(G,pi)&&ranked.length>want;
+    let adm=all.find(c=>c._botRole==='admiral'&&c.alive&&!c.isKing);
+    if(!wantAdm){ if(adm){ delete adm._botRole; } adm=null; }
+    else if(!adm||leaders.includes(adm.id)){ adm=ranked.filter(c=>!c.isKing&&!leaders.includes(c.id)&&c._botRole!=='defender').sort((a,b)=>((b.skills||{}).naval||0)*3+botGeneralship(b)-((a.skills||{}).naval||0)*3-botGeneralship(a))[0]||null; }
+    all.forEach(c=>{ if(c._botRole==='admiral'&&c!==adm) delete c._botRole; });   // one admiral only
+    if(adm){ adm._botRole='admiral'; if(!leaders.includes(adm.id)) leaders.push(adm.id); } }
+  // DEFENDERS — one per four land provinces (max 3) once another crown has been met (or from turn
+  // 4). Existing defenders keep the role; new ones are the best non-leader fighters, preferring anyone
+  // already holding a column and steering mages toward companion duty instead.
+  const leaderSet=new Set(leaders);
+  const wantDef=(botHasMetPlayers(G,pi)||(G.turn||0)>=4)?Math.min(3,Math.floor(botLandCount(G,pi)/4)):0;
+  let defenders=sticky.filter(c=>!leaderSet.has(c.id));
+  const defScore=c=>{ const s=c.skills||{}; return (c.armies||[]).length*5+(s.tactical||0)*3+(s.melee||0)+(s.archery||0)-botMagicScore(c)*2-((s.sage||0)+(s.spy||0)+(s.thief||0)+(s.explorer||0))*2; };
+  defenders.sort((a,b)=>defScore(b)-defScore(a)); defenders=defenders.slice(0,wantDef);
+  const pool=all.filter(c=>!c.isKing&&!leaderSet.has(c.id)&&!defenders.includes(c)).sort((a,b)=>defScore(b)-defScore(a));
+  while(defenders.length<wantDef&&pool.length) defenders.push(pool.shift());
+  const defIds=defenders.map(c=>c.id);
+  all.forEach(c=>{ if(defIds.includes(c.id)) c._botRole='defender'; else if(c._botRole==='defender'){ delete c._botRole; delete c._botPost; } });
+  const r={leaders, defenders:defIds, primaryId:primary?primary.id:null, reach, want};
   cache.roles[pi]=r; return r;
 }
 function botIsLeader(G,pi,id){ return botRoles(G,pi).leaders.includes(id); }
@@ -4616,19 +4694,25 @@ function botIsLeader(G,pi,id){ return botRoles(G,pi).leaders.includes(id); }
 // so a recruit written in phase 0 by a marching host is not double-spent by an idle holder later.
 function botLedger(G,pi){
   const cache=botTurnCache(G); if(cache.ledger[pi]) return cache.ledger[pi];
-  const T=botTuning(G), player=G.players[pi]||{};
+  const T=botTuning(G,pi), player=G.players[pi]||{};
   const income=botTaxIncome(G,pi);
   // WAR FOOTING: at war (or facing a big enemy host) the bot spends its treasury down and lifts its
   // sustainable army ceiling toward 100% of income; in peacetime it keeps the tuned cap + a small
   // chest.
   const warFooting=botAtWar(G,pi)||botMaxEnemyStack(G,pi)>5;
-  const effCapFrac=warFooting?Math.min(1.0,T.upkeepCapFrac+0.10):T.upkeepCapFrac;
-  const reserve=warFooting?Math.min(2,T.goldReserve):T.goldReserve;
+  const effCapFrac=warFooting?1.0:T.upkeepCapFrac;                                   // Sept 2026 (review II A1): at war the whole income is wages
+  const reserve=warFooting?Math.min(8,Math.max(2,Math.floor(botUpkeep(G,pi)*0.15))):T.goldReserve;   // Sept 2026 (R9): at war, one quarter-turn of wages stays in the chest so a lost battle does not disband the army
   const budget=(player.gold||0)-reserve;
   // "As much as they can afford": wages are paid from the treasury, not just income, so a chest can
   // carry a deficit. The cap is the income share PLUS a third of the free treasury — a host the
   // realm can pay for four turns while the conquests it makes pay it back.
-  const L={income, warFooting, upkeepCap:Math.floor(income*effCapFrac+Math.max(0,budget)*T.chestShare), upkeep:botUpkeep(G,pi), budget, recruitedByProv:{}};
+  const L={income, warFooting, upkeepCap:Math.floor(income*effCapFrac+Math.max(0,budget)*(botLandCount(G,pi)<15?0.6:T.chestShare)), upkeep:botUpkeep(G,pi), budget, recruitedByProv:{}};
+  // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer than three
+  // units each), 30% of the wage ceiling is held back from the field hosts' muster so the posts get
+  // troops too — otherwise the leaders, who muster first, spent every coin every year.
+  const _defs=botRoles(G,pi).defenders.map(id=>(G.characters||[]).find(c=>c&&c.id===id)).filter(Boolean);
+  const _defUnits=_defs.reduce((n,c)=>n+(c.armies||[]).length,0);
+  L.defReserve=(_defs.length&&_defUnits<3*_defs.length)?Math.floor(L.upkeepCap*0.2):0;
   cache.ledger[pi]=L; return L;
 }
 function botCanAfford(L,cost){ return L.budget>=cost && (L.upkeep+cost)<=L.upkeepCap; }
@@ -4646,9 +4730,12 @@ function botUnderAttack(G,pi){
 }
 function botGarrisonTarget(G,prov,pi){
   if(!prov||prov.owner!==pi||prov.terrain==='sea') return 0;
+  // Sept 2026 (Toby): garrisons only in Prosperous/Rich land (tax 4+; the capital always), never
+  // more than 2 per province. Defence proper is the DEFENDER heroes (botRoles / botDefenderOrders).
+  const home=prov.id===botHomeId(G,pi);
+  if((prov.tax||0)<4&&!home) return 0;
   if(!botUnderAttack(G,pi)) return 1;
-  if(prov.id===botHomeId(G,pi)) return 3;
-  return botIsValuable(G,prov,pi)?2:1;
+  return (home||botIsValuable(G,prov,pi))?2:1;
 }
 function botGarrisonType(prov){ return (prov.armyTypes||[]).find(x=>/garrison/i.test(x))||null; }
 function botGarrisonOrder(G,pi,prov,L){
@@ -4666,22 +4753,33 @@ function botGarrisonOrder(G,pi,prov,L){
 function botFieldRecruitTokens(G,pi,c,prov,L){
   if(!prov||!prov.armyTypes||prov.owner!==pi) return [];
   const done=L.recruitedByProv[prov.id]=L.recruitedByProv[prov.id]||{};
-  const perTypeLimit=(prov.tax>=10?2:1);
+  const perTypeLimit=(prov.tax>=10||L.budget>=20)?2:1;   // Sept 2026 (review II A1): a fat chest buys two of a kind — throughput, not the ceiling, was leaving gold idle
   const tokens=[];
   const fleetType=botCoastalFleetType(prov);
   // Sept 2026: a fleet pins a mixed host to the coast (it cannot march overland while leading
   // ships), so hulls are bought only for a real naval reason — an at-war enemy coast across the
   // water — or once the realm has no land frontier left to expand into.
-  const _navalNeed=fleetType && (botNavalEnemyCoast(G,prov,pi) || (!botIsEdge(G,pi,prov) && botFrontierTarget(G,pi,prov)==null));
-  if(_navalNeed && !done[fleetType] && botFleetHullCount(G,pi)<3){
-    const cost=ARMY_COST_MASTER[fleetType]||3;
-    if(botCanAfford(L,cost)){ tokens.push(`${fleetType}|1`); done[fleetType]=1; botSpend(L,cost); }
-  }
   const cmdr=(G.characters||[]).find(l=>l&&l.alive&&l.player===pi&&l.id!==c.id&&l.location===c.location&&botIsLeader(G,pi,l.id))||c;   // who will lead these recruits
+  const adm=(cmdr._botRole==='admiral');
+  const _navalNeed=fleetType && (adm || botNavalEnemyCoast(G,prov,pi) || (!botIsEdge(G,pi,prov) && botFrontierTarget(G,pi,prov)==null));
+  // Sept 2026 (Toby): the ADMIRAL raises hulls at his port until every liftable land unit he leads has a berth
+  // (plus one spare), up to a cap that grows with the realm; other hosts buy a single hull for the old reasons.
+  const hullCap=adm?Math.min(8,2+Math.floor(botLandCount(G,pi)/4)):3;
+  if(_navalNeed && !done[fleetType] && botFleetHullCount(G,pi)<hullCap){
+    const cost=ARMY_COST_MASTER[fleetType]||3; let q=0;
+    const myHulls=(cmdr.armies||[]).filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length, myLand=(cmdr.armies||[]).filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)).length;
+    const wantHulls=adm?Math.max(1,Math.min(hullCap-botFleetHullCount(G,pi),myLand+1-myHulls)):1;
+    while(q<wantHulls && botCanAfford(L,cost)){ q++; botSpend(L,cost); }
+    if(q>0){ tokens.push(`${fleetType}|${q}`); done[fleetType]=1; }
+  }
+  const hold=(c._botRole==='defender')?0:(L.defReserve||0);                      // the defenders' share (see botLedger)
+  const canAff=cost=>botCanAfford(L,cost)&&(L.upkeep+cost)<=L.upkeepCap-hold;
+  // the admiral fills his berths with the most effective LIFTABLE units the port raises, never more than the hulls carry
+  let berths=adm?((cmdr.armies||[]).filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length+tokens.reduce((s,tk)=>s+(BOT_CARRIER_TYPES.has(tk.split('|')[0])?+tk.split('|')[1]:0),0)-(cmdr.armies||[]).filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)).length):99;
   for(const t of botRecruitableTypes(prov,G,cmdr)){
-    if(done[t]) continue; if(!botCanAfford(L,1)) break;
+    if(done[t]) continue; if(!canAff(1)) break; if(adm&&(!botLiftable(t)||berths<=0)) continue;
     const cost=ARMY_COST_MASTER[t]||2; let q=0;
-    while(q<perTypeLimit && botCanAfford(L,cost)){ q++; botSpend(L,cost); }
+    while(q<perTypeLimit && canAff(cost) && (!adm||berths>0)){ q++; botSpend(L,cost); if(adm) berths--; }
     if(q>0){ tokens.push(`${t}|${q}`); done[t]=1; }
   }
   return tokens;
@@ -4691,7 +4789,7 @@ function botRecruitOrder(tokens, destId){
   const n=tokens.reduce((s,tk)=>s+parseInt(tk.split('|')[1]||1),0);
   return {action:'recruit',target:tokens.join(',')+(destId!=null?`,to:${destId}`:''),extra:'',desc:'Recruit '+n+' unit'+(n>1?'s':'')};
 }
-function botHeroCap(G,pi){ const land=(G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea').length; return 3+land; }   // more heroes = more actions (was 2+land/2)
+function botHeroCap(G,pi){ const land=(G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea').length; const pl=((G.players||[])[pi]||{}); return 3+land+(pl.alignment==='Neutral'?1:0)+((pl.gold||0)>30?2:0); }   // §94: a fat chest hires two more   // Neutral: wages capped at 3g, so the widest court   // more heroes = more actions (was 2+land/2)
 function botHireOrder(G,pi,c,L){
   L.hired=L.hired||new Set();                                   // one claimant per wanderer per turn
   // botSeesChar — a hero standing beside our own character is normally plainly visible, but one who
@@ -4708,6 +4806,233 @@ function botHireOrder(G,pi,c,L){
   if(wage==null||L.budget<wage) return null;
   botSpend(L,wage); L.hired.add(hh.id);
   return {action:'hire',target:String(hh.id),extra:'',desc:'Hire '+hh.name};
+}
+// ══ BOT HERO ROLES (Sept 2026, Toby: "put heroes to use") ════
+// Before this every unarmed bot hero fell through seek-wanderer → companion → (at war) hunter/raider →
+// march-to-muster → idle practice, and the idle practice converged on the strongest skill in the room
+// (melee/tactical). A twelve-hero court sat at the capital drilling Melee while nobody explored, spied,
+// stole or researched. Two new kinds of role fix that:
+//   DEFENDERS — armed non-leaders posted where a Defend watch (the province + its six neighbours) covers
+//     the most owned tax nobody else guards. Chosen in botRoles, sticky via c._botRole, never fed to a
+//     leader. One Defend in the first (or second) phase, then Bless/Oratory/Illusory Terrain, cross-training
+//     with anyone standing there, or Tactical drill.
+//   SPECIALISTS — scholar (Sage → Research), scout (Explorer → Explore unmapped land to find lairs),
+//     spy (Spy → spy on rival provinces), thief (Thief → rob rival heroes and paymasters). Assigned each turn
+//     by aptitude toward whichever role the realm lacks, sticky via c._botRole. A specialist below the
+//     working level trains its skill at the capital (so the mentor rule fires); at the working level it goes
+//     to work. Fighters (Melee/Archery 3+) additionally travel to any beatable discovered lair in reach.
+// Everything a role reads is gated on what the realm can see (botKnows / botSees / botSeesChar), as before.
+const BOT_SPECIALIST_SKILLS={scholar:'sage',scout:'explorer',spy:'spy',thief:'thief',slayer:'melee'};
+const BOT_SPECIALIST_ROLES=new Set(Object.keys(BOT_SPECIALIST_SKILLS));
+const BOT_DEFEND_ORDER={action:'defend',target:'',extra:'',desc:'Hold the post'};
+function botMagicScore(c){ const s=c.skills||{}; return (s.elemental||0)+(s.necromancy||0)+(s.psychic||0)+(s.illusory||0)+(s.white||0); }
+function botLandCount(G,pi){ return (G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea').length; }
+// The six-hex Defend zone about a province (the engine's inDefendZone is runTurn-local).
+function botZoneOf(G,X){ const z=[X]; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N) z.push(N); } return z; }
+// SPECIALIST ASSIGNMENT — cached per turn. `excluded` = ids already claimed (companions).
+function botSpecialistRoles(G,pi,excluded){
+  const cache=botTurnCache(G); cache.spec=cache.spec||{}; if(cache.spec[pi]) return cache.spec[pi];
+  const roles=botRoles(G,pi); const p=(G.players||[])[pi]||{};
+  const heroes=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c.isKing&&!c._isHeir&&!roles.leaders.includes(c.id)&&!roles.defenders.includes(c.id)&&!(c.armies||[]).length&&!(excluded&&excluded.has(c.id)));
+  const land=botLandCount(G,pi), met=botHasMetPlayers(G,pi), war=botAtWar(G,pi), turn=G.turn||0;
+  const unmapped=(G.world.provinces||[]).filter(x=>x&&x.owner===pi&&x.terrain!=='sea'&&((x.exploredBy||{})[pi]||0)<100).length;
+  const lairs=(G.world.provinces||[]).reduce((n,x)=>n+((x&&x.terrain!=='sea'&&botKnows(G,pi,x.id))?(x.features||[]).filter(f=>f&&!f.cleared&&!f.ritualSite&&f.monster&&featDiscovered(f,pi)).length:0),0);
+  const want={
+    slayer: lairs>0?(lairs>=6?2:1):0,                              // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
+    scout:  unmapped>0?Math.min(3,1+Math.floor(unmapped/6)):0,
+    scholar:(land>=8?2:1)+(p.alignment==='Neutral'?1:0),      // Neutral scholars find twice as much
+    spy:    (met||turn>=3)?(war?2:1):0,
+    thief:  (met||turn>=4)?1:0,
+  };
+  // keep one hero free to muster / carry troops once there is a realm to feed
+  const slots=Math.max(0, heroes.length-(land>=3?1:0));
+  const order=['scout','scholar','slayer','spy','thief','scholar','spy','slayer','scout','scholar','scout'];
+  const apt=(c,role)=>{ const s=c.skills||{}; const k=BOT_SPECIALIST_SKILLS[role];
+    if(role==='slayer') return (s.melee||0)*4+(s.archery||0)*3+(c.maxHp||20)*0.3+(c._botRole===role?3:0)-botMagicScore(c);
+    return (s[k]||0)*4 + (c._botRole===role?3:0) - ((s.melee||0)+(s.archery||0)+(s.tactical||0))*0.5 - botMagicScore(c)*0.5; };
+  const byId={}, filled={}; const taken=new Set(); let n=0;
+  for(const role of order){
+    if(n>=slots) break;
+    if((filled[role]||0)>=(want[role]||0)) continue;
+    let best=null; heroes.forEach(c=>{ if(taken.has(c.id)) return; const a=apt(c,role); if(!best||a>best.a) best={c,a}; });
+    if(!best) break;
+    taken.add(best.c.id); byId[best.c.id]=role; filled[role]=(filled[role]||0)+1; n++;
+  }
+  heroes.forEach(c=>{ if(byId[c.id]) c._botRole=byId[c.id]; else if(BOT_SPECIALIST_ROLES.has(c._botRole)) delete c._botRole; });
+  const r={byId,want,filled}; cache.spec[pi]=r; return r;
+}
+function botSpecialistOf(G,pi,c){ const s=botSpecialistRoles(G,pi); return s.byId[c.id]||null; }
+// TRAINING RENDEZVOUS — walk to the capital (through any land; unarmed) and practise `skill`.
+function botTrainOrders(G,pi,c,pre,skill,why){
+  const P=G.world.provinces[c.location]; const home=botHomeId(G,pi); const H=home!=null?G.world.provinces[home]:null;
+  const mv=[];
+  if(H&&H.owner===pi&&P&&c.location!==home){ const path=(botPathDirs(G,pi,P,home,Math.max(0,4-pre.length),true)||[]); path.forEach(d=>mv.push(botMoveOrder(d,'Rendezvous at '+H.name))); }
+  const pr={action:'practice',target:skill,extra:'',desc:'Practice '+(SKILL_LABELS[skill]||skill)+(why?' ('+why+')':'')};
+  const out=[...pre,...mv]; while(out.length<5) out.push({...pr}); return out.slice(0,5);
+}
+// SCHOLAR — Research at Sage 2+ (Neutral: 1+; every Sage level is 5%, 10% for Neutral), else train Sage.
+function botScholarOrders(G,pi,c,pre){
+  const sg=((c.skills||{}).sage||0); const neutral=(((G.players||[])[pi]||{}).alignment==='Neutral');
+  const working=neutral?sg>=1:sg>=2;
+  if(!working) return botTrainOrders(G,pi,c,pre,'sage','scholar');
+  const research={action:'research',target:'',extra:'',desc:'Research'};
+  const pr={action:'practice',target:'sage',extra:'',desc:'Practice Sage (scholar)'};
+  // a scholar still short of Sage 5 splits the year: three Research, two practices
+  const out=[...pre]; let k=0; while(out.length<5){ out.push((sg>=5||k<3)?{...research}:{...pr}); k++; }
+  return out;
+}
+// SCOUT — the nearest known land province (ours, or unowned) still short of fully mapped; walk there
+// and Explore for the rest of the year. Wild (Creature/Monster) ground is where lairs lie: +bonus.
+function botScoutTarget(G,pi,c,maxD){
+  const from=G.world.provinces[c.location]; if(!from) return null; let best=null;
+  (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea') return;
+    if(X.owner!==pi){ if(!botKnows(G,pi,X.id)) return; const bo=botBelievedOwner(G,pi,X); if(bo!=null) return; }
+    const mapped=((X.exploredBy||{})[pi]||0); if(mapped>=100) return;
+    const d=(X.id===from.id)?0:botPathLen(G,pi,from,X.id,true); if(d==null||d>maxD) return;
+    const wild=(X.race&&String(X.race).startsWith('Primal:'))?15:0;
+    const sc=(100-mapped)/4 + wild + (X.owner===pi?6:0) - d*8;
+    if(!best||sc>best.sc) best={X,d,sc}; });
+  return best;
+}
+function botScoutOrders(G,pi,c,pre){
+  const P=G.world.provinces[c.location]; const t=botScoutTarget(G,pi,c,4); if(!t) return null;
+  const path=t.d>0?(botPathDirs(G,pi,P,t.X.id,4,true)||[]):[]; if(t.d>0&&path.length!==t.d) return null;
+  if(pre.length+path.length>=5) return null;
+  const out=[...pre,...path.map(d=>botMoveOrder(d,'Scout '+t.X.name))];
+  while(out.length<5) out.push({action:'explore',target:'',extra:'',desc:'Explore '+t.X.name});
+  return out;
+}
+// SPY — a rival's province the realm has seen, within reach; prefer capitals, wealth, war enemies and
+// ground not spied lately. Memo of spied provinces lives on the player record (p._botSpyMemo).
+function botSpyTarget(G,pi,c,maxD){
+  const from=G.world.provinces[c.location]; if(!from) return null; const memo=(((G.players||[])[pi]||{})._botSpyMemo)||{}; let best=null;
+  (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||!botKnows(G,pi,X.id)) return;
+    const bo=botBelievedOwner(G,pi,X); if(bo==null||bo===pi||botRelationRaw(G,pi,bo)==='allied') return;
+    const d=(X.id===from.id)?0:botPathLenAny(G,from,X.id,maxD); if(d==null) return;
+    const b=botBelief(G,pi,X)||{}; const home=(((G.players||[])[bo]||{}).homeProvinceId===X.id);
+    const staleness=Math.min(4,(G.turn||0)-(memo[X.id]||-99));
+    let gen=0; { const I=botEnemyIntel(G,pi); Object.values(I.generals).forEach(r=>{ if(botRelationRaw(G,pi,r.player)!=='enemy'||(G.turn||0)-r.turn>3) return; if(r.provId===X.id) gen+=5; else for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N&&N.id===r.provId){ gen+=2; break; } } }); }
+    const sc=(b.tax||0)+(home?4:0)+(botRelationRaw(G,pi,bo)==='enemy'?6:0)+staleness*2-d*2+gen;   // Sept 2026: scout where the enemy's hosts were last seen
+    if(!best||sc>best.sc) best={X,d,sc}; });
+  return best;
+}
+function botSpyOrders(G,pi,c,pre){
+  const P=G.world.provinces[c.location]; const t=botSpyTarget(G,pi,c,4); if(!t) return null;
+  const path=t.d>0?(botPathAny(G,P,t.X.id,4)||[]):[]; if(t.d>0&&path.length!==t.d) return null;
+  if(pre.length+path.length>=5) return null;
+  const p=(G.players||[])[pi]; if(p){ p._botSpyMemo=p._botSpyMemo||{}; p._botSpyMemo[t.X.id]=G.turn; }
+  const out=[...pre,...path.map(d=>botMoveOrder(d,'Slip into '+t.X.name))];
+  const spy={action:'spy',target:'',extra:'',desc:'Spy on '+t.X.name};
+  // two attempts, then lie in wait (a Defend with no column is an ambush watch)
+  let k=0; while(out.length<5){ out.push(k<2?{...spy}:{action:'defend',target:'',extra:'',desc:'Lie in wait'}); k++; }
+  return out;
+}
+// THIEF — a visible rival hero (at-war, or a crown the spectrum makes a future foe) or a rival garrison
+// paymaster, within reach. Heroes leading troops halve the chance, so they score lower.
+function botStealTarget(G,pi,c,maxD){
+  const from=G.world.provinces[c.location]; if(!from) return null; let best=null;
+  const hostile=j=>j!=null&&j!==pi&&botRelationRaw(G,pi,j)!=='allied'&&(botRelationRaw(G,pi,j)==='enemy'||!botAlignFriendly(G,pi,j));
+  (G.characters||[]).forEach(e=>{ if(!(e&&e.alive&&e.player!=null&&hostile(e.player)&&botSeesChar(G,pi,e))) return;
+    if(e._invisTurn===G.turn) return;
+    const d=(e.location===from.id)?0:botPathLenAny(G,from,e.location,maxD); if(d==null) return;
+    const sc=(e.isKing?6:3)+((e.items||[]).length*2)-((e.armies||[]).length?5:0)-d*2;
+    if(!best||sc>best.sc) best={kind:'char',e,provId:e.location,d,sc}; });
+  (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||!botSees(G,pi,X.id)) return;
+    if(!hostile(X.owner)||!(X.garrisonArmies||[]).length) return;
+    const d=(X.id===from.id)?0:botPathLenAny(G,from,X.id,maxD); if(d==null) return;
+    const sc=Math.min(4,(X.garrisonArmies||[]).length)-d*2;
+    if(!best||sc>best.sc) best={kind:'garrison',provId:X.id,d,sc,X}; });
+  return best;
+}
+function botThiefOrders(G,pi,c,pre){
+  const P=G.world.provinces[c.location]; const t=botStealTarget(G,pi,c,4); if(!t) return null;
+  const path=t.d>0?(botPathAny(G,P,t.provId,4)||[]):[]; if(t.d>0&&path.length!==t.d) return null;
+  if(pre.length+path.length>=5) return null;
+  const X=G.world.provinces[t.provId];
+  const steal=t.kind==='char'?{action:'steal',target:String(t.e.id),extra:'',desc:'Rob '+t.e.name}:{action:'steal',target:'garrison',extra:'',desc:'Rob the paymaster of '+(X?X.name:'')};
+  const out=[...pre,...path.map(d=>botMoveOrder(d,'Creep toward '+(X?X.name:'')))];
+  let k=0; while(out.length<5){ out.push(k<1?{...steal}:{action:'defend',target:'',extra:'',desc:'Lie in wait'}); k++; }
+  return out;
+}
+// LAIR TRAVEL — a beatable, discovered, uncleared lair in ground that is ours, unowned or an ally's,
+// within reach of an unarmed fighter (Melee/Archery 3+ — botCanBeatGuardian's own floor).
+function botLairTarget(G,pi,c,maxD){
+  const from=G.world.provinces[c.location]; if(!from) return null; let best=null;
+  const POWER_RANK={'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4};
+  (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||!botKnows(G,pi,X.id)) return;
+    const bo=botBelievedOwner(G,pi,X); if(bo!=null&&bo!==pi&&botRelationRaw(G,pi,bo)!=='allied') return;
+    const li=botBeatableLairIn(G,c,X); if(li<0) return;
+    const d=(X.id===from.id)?0:botPathLen(G,pi,from,X.id,true); if(d==null||d>maxD) return;
+    const f=X.features[li]; const sc=(POWER_RANK[(f.monster&&f.monster.power)||'']||0)*2-d*2;
+    if(!best||sc>best.sc) best={X,li,d,sc}; });
+  return best;
+}
+function botLairOrders(G,pi,c,pre){
+  const P=G.world.provinces[c.location]; const t=botLairTarget(G,pi,c,4); if(!t) return null;
+  const path=t.d>0?(botPathDirs(G,pi,P,t.X.id,4,true)||[]):[]; if(t.d>0&&path.length!==t.d) return null;
+  if(pre.length+path.length>=5) return null;
+  const mv=[...path.map(d=>botMoveOrder(d,'Seek the lair in '+t.X.name)),{action:'search',target:String(t.li),extra:'',desc:'Search Lair'}];
+  return botFillOrders(G,pi,c,pre,mv);
+}
+function botSpecialistOrders(G,pi,c,pre,role,L){
+  switch(role){
+    case 'slayer':  { const lp=botLairPlan(G,pi,c,pre,L); if(lp) return lp; const s=c.skills||{}; return botTrainOrders(G,pi,c,pre,((s.archery||0)>(s.melee||0))?'archery':'melee','slayer'); }
+    case 'scholar': return botScholarOrders(G,pi,c,pre);
+    case 'scout':   return botScoutOrders(G,pi,c,pre)||botTrainOrders(G,pi,c,pre,'explorer','scout');
+    case 'spy':     { const lvl=((c.skills||{}).spy||0); if(lvl<2) return botTrainOrders(G,pi,c,pre,'spy','spy');
+      // Sept 2026 (review R12): Spy mastery — Assassinate a co-located at-war hero (Spy 9), Sabotage the richest seen at-war province (Spy 7)
+      if(lvl>=9){ const P=G.world.provinces[c.location]; const mark=botVisibleCharsIn(G,pi,P||{}).filter(e=>e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy').sort((a,b)=>(b.isKing?1:0)-(a.isKing?1:0))[0];
+        if(mark){ const out=[...pre,{action:'assassinate',target:String(mark.id),extra:'',desc:'Assassinate '+mark.name}]; while(out.length<5) out.push({action:'defend',target:'',extra:'',desc:'Lie in wait'}); return out; } }
+      if(lvl>=7&&botAtWar(G,pi)){ let best=null; (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||!botKnows(G,pi,X.id)) return; const bo=botBelievedOwner(G,pi,X); if(bo==null||bo===pi||botRelationRaw(G,pi,bo)!=='enemy') return; const b=botBelief(G,pi,X)||{}; const v=(b.tax||0)+((((G.players||[])[bo]||{}).homeProvinceId===X.id)?3:0); if(!best||v>best.v) best={X,v}; });
+        if(best){ const out=[...pre,{action:'sabotage',target:String(best.X.id),extra:'',desc:'Sabotage '+best.X.name}]; while(out.length<5) out.push({action:'defend',target:'',extra:'',desc:'Lie in wait'}); return out; } }
+      return botSpyOrders(G,pi,c,pre)||botTrainOrders(G,pi,c,pre,'spy','spy'); }
+    case 'thief':   { const lvl=((c.skills||{}).thief||0); if(lvl<2) return botTrainOrders(G,pi,c,pre,'thief','thief'); return botThiefOrders(G,pi,c,pre)||botTrainOrders(G,pi,c,pre,'thief','thief'); }
+  }
+  return null;
+}
+// DEFENDER POST — the owned land province whose Defend zone covers the most owned tax not already
+// covered (`covered`: provinces a field host stands on plus earlier defenders' zones). Sticky: the
+// current post is kept while it scores at least 80% of the best. Returns {X,d,sc} or null.
+function botDefenderPost(G,pi,c,covered){
+  const P=G.world.provinces[c.location]; if(!P) return null;
+  const home=botHomeId(G,pi); const armed=(c.armies||[]).length>0;
+  const owned=(G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea');
+  const val=q=>(q.tax||0)+(q.id===home?6:0)+(botIsEdge(G,pi,q)?2:0);
+  const cover=X=>{ let sc=0; botZoneOf(G,X).forEach(q=>{ if(q.owner===pi&&q.terrain!=='sea'&&!covered.has(q.id)) sc+=val(q); }); return sc; };
+  const raise=X=>((X.armyTypes||[]).some(t=>!/garrison/i.test(t)&&!BOT_NAVAL_TYPES.has(t))?(armed?1:4):0);   // an unarmed defender needs somewhere to raise a column
+  const plainDef=armed?botBattleForce(G,c,null,'plain',{defending:true}):0;
+  const ground=X=>(armed&&plainDef>0)?(botBattleForce(G,c,null,X.terrain,{defending:true})/plainDef-1)*8:0;   // Sept 2026: hold ground where our troops fight best
+  let best=null;
+  owned.forEach(X=>{ const d=(X.id===P.id)?0:botPathLen(G,pi,P,X.id,!armed); if(d==null) return;
+    const sc=cover(X)+raise(X)+ground(X)-d*1.5; if(!best||sc>best.sc) best={X,d,sc}; });
+  if(best&&c._botPost!=null&&c._botPost!==best.X.id){ const cur=owned.find(x=>x.id===c._botPost);
+    if(cur){ const d=(cur.id===P.id)?0:botPathLen(G,pi,P,cur.id,!armed); const sc=cover(cur)+raise(cur)+ground(cur)-(d==null?99:d*1.5); if(d!=null&&sc>=best.sc*0.8) best={X:cur,d,sc}; } }
+  return best;
+}
+// DEFENDER ORDERS — hire, walk to the post (if not there), ONE Defend, recruit to self at an owned post,
+// then the useful tail: Bless / Illusory Terrain / Resurrect (and Oratory while a hostile host is within
+// two hexes), cross-training with anyone standing here, else Tactical drill / the best skill to raise.
+function botDefenderOrders(G,pi,c,pre,post,L){
+  const P=G.world.provinces[c.location]; if(!P) return null;
+  const armed=(c.armies||[]).length>0;
+  const out=[...pre]; let here=P;
+  if(post&&post.d>0){
+    const reach=Math.min(3, armed?(botLandReach(c)||1):5);
+    const path=(botPathDirs(G,pi,P,post.X.id,Math.min(reach,Math.max(0,4-out.length)),!armed)||[]);
+    for(const d of path){ const N=botNeighbourProv(G,here,d); if(!N) break; out.push(botMoveOrder(d,'Take post at '+post.X.name)); here=N; }
+  }
+  if(out.length<5) out.push({...BOT_DEFEND_ORDER});
+  if(here.id===P.id&&P.owner===pi&&L&&out.length<5){ const toks=botFieldRecruitTokens(G,pi,c,P,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])); const ro=botRecruitOrder(toks,null); if(ro) out.push(ro); }
+  if(out.length<5&&here.id===P.id){
+    const threat=botNearbyThreat(G,pi,c);
+    const casts=botCastPlan(G,pi,c,P,{max:2,fighting:(threat&&armed)?c:null}).filter(o=>['Bless Province','Illusory Terrain','Resurrect','Oratory','Curse','Psychic Blast','Telekinetic Storm'].includes(o.target));
+    casts.forEach(o=>{ if(out.length<5) out.push(o); });
+  }
+  const land=(c.armies||[]).filter(a=>a&&!BOT_SEA_ALL.has(a.type)&&!a._isSkeletal).length;
+  const sk=botCrossTrainSkill(G,c,pi)||(land>=3?'tactical':null)||botPracticeSkill(c)||'tactical';
+  const pr=(sk==='sage'&&((c.skills||{}).sage||0)>=2)?{action:'research',target:'',extra:'',desc:'Research'}:{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)};
+  while(out.length<5) out.push({...pr});
+  return out.slice(0,5);
 }
 // DRILL: a commander leading 3+ land/air units practises Tactical in every spare phase (levels the
 // skill AND promotes unit quality); a fleet commander drills Naval. Else the phase is a Hold.
@@ -4794,7 +5119,7 @@ function botFrontierTarget(G,pi,P){
   if(botIsEdge(G,pi,P)) return null;
   // counted on BELIEVED ownership — staging through an ally's land can look two hops past our own
   // border, and unmapped ground is not counted as open country.
-  const openCount=prov=>{ let n=0; for(let j=0;j<6;j++){ const K=botNeighbourProv(G,prov,j); if(!K||K.terrain==='sea')continue; const ko=botBelievedOwner(G,pi,K); if(ko===undefined) continue; if(ko==null||(ko!==pi&&botRelationRaw(G,pi,ko)==='enemy')) n++; } return n; };
+  const openCount=prov=>{ let n=0; for(let j=0;j<6;j++){ const K=botNeighbourProv(G,prov,j); if(!K||K.terrain==='sea')continue; const ko=botBelievedOwner(G,pi,K); if(ko===undefined) continue; if(ko==null||(ko!==pi&&botRelationRaw(G,pi,ko)==='enemy')){ const b=botBelief(G,pi,K); n+=1+Math.min(3,((b&&b.tax)||0)/3); } } return n; };   // Sept 2026 (R8): weighted by the wealth band the border shows
   const seen=new Set([P.id]); let q=[P], depth=0, best=null;
   while(q.length && depth<8){ const next=[]; depth++;
     q.forEach(cur=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||seen.has(N.id)||!botPassable(G,pi,N)) continue; seen.add(N.id);
@@ -4842,14 +5167,19 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
     const ec=botEnemyChars(G,N,pi);
     if(N.owner==null){ targetStr=botTargetDefence(G,pi,N)+ec.force*BOT_DEF_BONUS; }
     else { if(botRelationRaw(G,pi,N.owner)!=='enemy') continue; targetStr=botTargetDefence(G,pi,N); enemyTarget=true; }
-    const effMargin=ec.hasKing?margin*0.9:margin;
+    const rem=enemyTarget?botRememberedHostAt(G,pi,N.id):{units:0,strength:0}; targetStr+=rem.strength*BOT_DEF_BONUS;   // Sept 2026: a host seen here lately may still be here
+    let effMargin=ec.hasKing?margin*0.9:margin; effMargin=botHostMargin(effMargin,ec.units+rem.units);                  // 1.5–2× against a general
     if(targetStr>0 && strIn(N.terrain) < targetStr*effMargin) continue;
+    const terrainEdge=plainStr>0?(strIn(N.terrain)/(plainStr*k)-1)*15:0;                                                // fight where OUR troops stand tallest
     // a winnable enemy HOST is the prize — the bigger the stack we can smash, the better.
     // 2026-09-12: an ally's enemy is the enemy to press — a shared front ends the war sooner.
-    let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3
-              + ((enemyTarget&&botMutualFoe(G,pi,N.owner))?T.rivalBias:0);
+    // Sept 2026 (Toby: avoid stronger armies): a province standing beside an enemy host we could not beat is a trap
+    let trap=0; if(enemyTarget){ for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(!K||K.terrain==='sea'||K.id===P.id) continue; const kc=botEnemyChars(G,K,pi); const kr=botRememberedHostAt(G,pi,K.id); const f=kc.force+kr.strength; if(f>0&&strIn(N.terrain)<f*1.2){ trap=-25; break; } } }
+    let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3 + terrainEdge + (ec.units>0?T.rivalBias:0) + trap
+              + ((enemyTarget&&botMutualFoe(G,pi,N.owner))?T.rivalBias:0)
+              + ((enemyTarget&&botAllyNear(G,pi,N))?T.rivalBias/2:0);      // Sept 2026 (R7): press the front an ally is already on
     if(N.terrain==='sea'){
-      score-=40;                                            // sea is only worth claiming when land is exhausted
+      score-=(c._botRole==='admiral')?0:40;                 // sea is the ADMIRAL's front; others claim it only when land is exhausted
       if(botIsLoadedFleet(c.armies)) for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.terrain!=='sea'&&K.owner!=null&&K.owner!==pi&&botRelationRaw(G,pi,K.owner)==='enemy'){ score+=40+T.rivalBias*2; break; } }
     }
     if(!best||score>best.score) best={dirIdx:i,score,N,targetStr};
@@ -4863,9 +5193,10 @@ function botChainHops(G,pi,c,startProv,myStr,T,hopsLeft,visited,fights){
   const moves=[]; let cur=startProv, str=myStr, fought=fights||0;
   while(hopsLeft>0 && cur){
     const scan=botScanTargets(G,pi,c,cur,str/(fought?1.2:1),T,visited);
+    if(scan.best&&str===0&&scan.best.targetStr>0) scan.best=null;                          // exhausted host: no third fight
     if(scan.best){
       moves.push(botMoveOrder(scan.best.dirIdx, scan.best.targetStr>0?'Attack':'Advance')); visited.add(scan.best.N.id); cur=scan.best.N; hopsLeft--;
-      if(scan.best.targetStr>0){ str*=0.85; fought++; if(fought>=2) break; }
+      if(scan.best.targetStr>0){ str*=0.85; fought++; if(fought>=2) str=0; }   // Sept 2026 (Toby): two fights a year, then only unguarded ground — but every hop is used
       continue;
     }
     const ft=botFrontierTarget(G,pi,cur); if(ft==null) break;
@@ -4895,10 +5226,13 @@ function botDistantStrike(G,pi,c,P,myStr,T,maxHops){
         if(X.owner!=null && botRelationRaw(G,pi,X.owner)!=='enemy') continue;
         const ec=botEnemyChars(G,X,pi); let tStr, enemyTarget=false;
         if(X.owner==null) tStr=botTargetDefence(G,pi,X)+ec.force*BOT_DEF_BONUS; else { tStr=botTargetDefence(G,pi,X); enemyTarget=true; }
-        const effMargin=ec.hasKing?margin*0.9:margin;
+        const rem=enemyTarget?botRememberedHostAt(G,pi,X.id):{units:0,strength:0}; tStr+=rem.strength*BOT_DEF_BONUS;
+        let effMargin=ec.hasKing?margin*0.9:margin; effMargin=botHostMargin(effMargin,ec.units+rem.units);
         if(tStr>0 && strIn(X.terrain)<tStr*effMargin) continue;
-        const v=(X.tax||0)*T.taxScoreWeight - tStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3 - depth*4
-                + ((enemyTarget&&botMutualFoe(G,pi,X.owner))?T.rivalBias:0);
+        const terrainEdge=plainStr>0?(strIn(X.terrain)/(plainStr*k)-1)*15:0;
+        const v=(X.tax||0)*T.taxScoreWeight - tStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3 - depth*4 + terrainEdge + (ec.units>0?T.rivalBias:0)
+                + ((enemyTarget&&botMutualFoe(G,pi,X.owner))?T.rivalBias:0)
+                + ((enemyTarget&&botAllyNear(G,pi,X))?T.rivalBias/2:0);
         if(sc==null||v>sc) sc=v; }
       if(sc!=null && (!best||sc>best.sc)) best={id:N.id,sc}; } });
     q=next; }
@@ -4998,6 +5332,239 @@ function botInfiltrateOrders(G,pi,c,pre,school,range){
   return botFillOrders(G,pi,c,[...pre,...mv,...casts],[]);
 }
 
+// ══ SIGNATURE ACTIONS (Sept 2026, bot strategy review R2) ════
+// Until now no bot ever used its alignment's signature order. Each helper returns a pre-order (or null)
+// for the character standing in `P`, spending through the turn ledger where gold is involved. One
+// signature pre-order per character per turn; the engine's own once-per-turn rules still apply.
+function botConsecrateOK(G,pi,c,X){
+  const pl=(G.players||[])[pi]; if(!pl||pl.alignment!=='Divine'||!c.isKing||!X||X.owner!==pi||X.terrain==='sea') return false;
+  const home=botHomeId(G,pi); if(X.id===home) return false;
+  const H=home!=null?G.world.provinces[home]:null; if(H){ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,H,i); if(N&&N.id===X.id) return false; } }
+  const list=consecratedIds(pl)||[]; if(list.includes(X.id)) return false;
+  for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N&&list.includes(N.id)) return false; }
+  return list.length<((c.skills||{}).white||0);
+}
+// The richest consecratable owned province within `maxD` hops of the king (through own land). {X,d} or null.
+function botConsecrateTarget(G,pi,c,maxD){
+  const P=G.world.provinces[c.location]; if(!P) return null; let best=null;
+  (G.world.provinces||[]).forEach(X=>{ if(!botConsecrateOK(G,pi,c,X)) return; const d=(X.id===P.id)?0:botPathLen(G,pi,P,X.id,false); if(d==null||d>maxD) return;
+    const sc=(X.tax||0)*2-d*3; if(!best||sc>best.sc) best={X,d,sc}; });
+  return best;
+}
+function botSignaturePre(G,pi,c,P,L){
+  const pl=(G.players||[])[pi]; if(!pl||!P) return null; const sk=c.skills||{};
+  L.sig=L.sig||{};                                                    // per-realm once-per-turn flags
+  switch(pl.alignment){
+    case 'Divine':                                                      // CONSECRATE the ground the king stands on
+      if(botConsecrateOK(G,pi,c,P)) return {action:'consecrate',target:'',extra:'',desc:'Consecrate '+P.name};
+      return null;
+    case 'Good': {                                                      // CALL TO ARMS: a free Green garrison, king only, once a turn
+      if(!c.isKing||L.sig.cta) return null;
+      let best=null; (G.world.provinces||[]).forEach(X=>{ if(!X||X.owner!==pi||X.terrain==='sea') return; if((X.race||'').startsWith('Primal')) return;   // the engine falls back to GARRISON_BY_RACE_CTA
+        if((X.tax||0)<4&&X.id!==botHomeId(G,pi)) return;                      // Toby's garrison rule: Prosperous+ land (and the capital) only
+        const g=(X.garrisonArmies||[]).length; if(g>=2) return;
+        const sc=(X.tax||0)+(botIsEdge(G,pi,X)?4:0)+(X.id===botHomeId(G,pi)?2:0)-g*3; if(!best||sc>best.sc) best={X,sc}; });
+      if(!best) return null; L.sig.cta=1; return {action:'call_to_arms',target:String(best.X.id),extra:'',desc:'Call to Arms in '+best.X.name}; }
+    case 'Druidic': {                                                   // AWAKEN THE WILD: a creature for cost+2g, no recruit slot
+      if(L.sig.awaken||P.owner!==pi) return null;
+      if(!(P.terrain==='forest'||P.terrain==='jungle'||(P.race||'').startsWith('Primal'))) return null;
+      const dru=sk.druid||0; if(dru<1) return null;
+      const TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+      const cands=Object.keys(TIERS).filter(t=>TIERS[t]<=dru&&((ARMY_SPEED_MASTER[t]||3)>=2||c._botRole==='defender')).sort((a,b)=>(UNIT_BASE_STR[b]||0)-(UNIT_BASE_STR[a]||0));
+      for(const t of cands){ const cost=(ARMY_COST_MASTER[t]||3)+2; if(botCanAfford(L,cost)){ botSpend(L,cost); L.sig.awaken=1; return {action:'awaken_wild',target:t,extra:'',desc:'Awaken the Wild — '+t}; } }
+      return null; }
+    case 'Undead': {                                                    // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
+      if((sk.necromancy||0)<1||!botSees(G,pi,P.id)||!(P.battleGraves||[]).length) return null;
+      if(L.budget<2) return null; L.budget-=2; L.upkeep+=1;
+      return {action:'harvest_field',target:'',extra:'',desc:'Harvest the Field in '+P.name}; }
+    case 'Neutral': {                                                   // BROKER: hire a seen wanderer from afar, else buy a Spy report (2g)
+      if(!c.isKing||L.sig.broker) return null;
+      L.hired=L.hired||new Set();
+      const heroes=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length;
+      if(heroes<botHeroCap(G,pi)){
+        let best=null; (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id))) return;
+          if(h.location===c.location) return;                          // a plain Hire does that
+          const X=G.world.provinces[h.location]; if(!X||!(X.owner===pi||(X.visitedBy||[]).includes(pi))) return;   // the engine's own Broker visibility
+          const w=heroHireWage(pl.alignment,h.alignment,false); if(w==null||L.budget<w) return;
+          const v=Object.values(h.skills||{}).reduce((a,b)=>a+(b||0),0)-w; if(!best||v>best.v) best={h,w,v}; });
+        if(best){ botSpend(L,best.w); L.hired.add(best.h.id); L.sig.broker=1; return {action:'broker',target:'hire:'+best.h.id,extra:'',desc:'Broker — hire '+best.h.name}; }
+      }
+      if(L.budget>=2){ const t=botSpyTarget(G,pi,c,99); if(t&&botKnows(G,pi,t.X.id)){ L.budget-=2; L.sig.broker=1; pl._botSpyMemo=pl._botSpyMemo||{}; pl._botSpyMemo[t.X.id]=G.turn;
+        return {action:'broker',target:'spy:'+t.X.id,extra:'',desc:'Broker — buy word from '+t.X.name}; } }
+      return null; }
+  }
+  return null;
+}
+// PERFORM RITE (Pagan): only for an armed host standing at a ritual site with a fight ahead. The Wild
+// Hunt binds two wage-free Veterans of the province's wild kind for the price of one; a host of 6+ that
+// cannot hunt makes a Blood Offering — its two weakest for two tiers on its two strongest.
+function botRitePre(G,pi,c,P,L,fightAhead){
+  const pl=(G.players||[])[pi]; if(!pl||pl.alignment!=='Pagan'||!P||!fightAhead) return null;
+  if(P._riteTurn===G.turn) return null;
+  const site=(P.features||[]).find(f=>f&&f.ritualSite&&(featDiscovered(f,pi)||P.owner===pi)); if(!site) return null;
+  const army=(c.armies||[]).filter(a=>a&&!a._temporary&&a._wildHuntUntilTurn==null&&!a._isSkeletal);
+  const wild=(P.armyTypes||[]).find(t=>PRIMAL_ARMY_DEFS_P[t]);
+  if(wild){ const cost=wildHuntPrice(wild); if(L.budget>=cost){ L.budget-=cost; return {action:'rite',target:'wild hunt',extra:'',desc:'Perform Rite — the Wild Hunt'}; } }
+  if(army.length>=6){
+    const idx=(c.armies||[]).map((a,i)=>({a,i})).filter(x=>x.a&&army.includes(x.a)).map(x=>({i:x.i,v:unitBaseStrength(x.a)})).sort((x,y)=>x.v-y.v);
+    const S=idx.slice(0,2).map(x=>x.i), E=idx.slice(-2).map(x=>x.i); if(S.some(i=>E.includes(i))) return null;
+    return {action:'rite',target:'blood offering',extra:`S:${S.join(',')}|E:${E.join(',')}`,desc:'Perform Rite — a Blood Offering'};
+  }
+  return null;
+}
+// RESEARCH CHOICE (R1): a bot keeps the discovery whose category / wording fits its situation — war-craft
+// while at war, statecraft and wealth while expanding, espionage once other crowns are met. Public fields only.
+function botResearchPick(G,pi,options){
+  const war=botAtWar(G,pi), met=botHasMetPlayers(G,pi);
+  const score=id=>{ const d=DISC_BY_ID[id]; if(!d) return -99; const txt=((d.category||'')+' '+(d.name||'')+' '+(d.desc||'')).toLowerCase(); let v=0;
+    if(/war|battle|arm|siege|strength|fight|host|troop|unit|command/.test(txt)) v+=war?4:2;
+    if(/tax|gold|trade|wealth|state|treasur|income|harvest/.test(txt)) v+=war?1:3;
+    if(/spy|cipher|scout|explor|map|thief|steal/.test(txt)) v+=met?2:0;
+    if(/sage|research|lore|scholar/.test(txt)) v+=1;
+    return v; };
+  return [...options].sort((a,b)=>score(b)-score(a))[0];
+}
+// ══ ITEMS (Sept 2026, review R3) ════
+// Bots picked up hoards and never touched them. Three habits a human has: don the best kit (the engine's
+// normaliseEquipment dons whatever came first), send combat kit from the court's scholars and scouts to
+// the general who fights, and crack the Philosopher's Stone once the realm has an army worth promoting.
+// One item pre-order per character per turn. Reads only the bot's own items.
+const BOT_FIGHT_STATS=new Set(['melee','archery','tactical','armour','mithrilArmour','maxHp','combatUse','druid']);
+function botItemPre(G,pi,c,roles){
+  const items=(c.items||[]).filter(Boolean); if(!items.length) return null;
+  // 1. Philosopher's Stone — every unit of the realm one tier up, once per game
+  const stone=items.find(it=>it.effect&&it.effect.stat==='massPromote'&&!it._spent);
+  if(stone){ let units=0; (G.characters||[]).forEach(x=>{ if(x&&x.alive&&x.player===pi) units+=(x.armies||[]).length; }); (G.world.provinces||[]).forEach(p=>{ if(p&&p.owner===pi) units+=(p.garrisonArmies||[]).length; });
+    if(units>=8) return {action:'use_item',target:String(stone.id!=null?stone.id:stone.name),extra:'',desc:'Use '+stone.name}; }
+  // 2. Wear the best of what we carry, slot by slot
+  const slotted=items.filter(it=>itemSlot(it)&&itemUsableBy(it,c));
+  if(slotted.length){ const bySlot={}; slotted.forEach(it=>{ (bySlot[itemSlot(it)]=bySlot[itemSlot(it)]||[]).push(it); });
+    const want=[]; Object.keys(bySlot).forEach(sl=>{ bySlot[sl].sort((a,b)=>itemPowerScore(b)-itemPowerScore(a)).slice(0,ITEM_SLOT_CAP[sl]||1).forEach(it=>want.push(it)); });
+    const wornNow=slotted.filter(it=>it.equipped===true);
+    const differs=want.length!==wornNow.length||want.some(it=>!wornNow.includes(it));
+    if(differs) return {action:'equip_items',target:want.map(it=>String(it.id!=null?it.id:it.name)).join(','),extra:'',desc:'Don the best kit'}; }
+  // 3. A non-fighter sends fighting kit to the primary general
+  const fighter=c.isKing||roles.leaders.includes(c.id)||roles.defenders.includes(c.id)||(c.armies||[]).length>0;
+  if(fighter) return null;
+  const gen=(G.characters||[]).find(x=>x&&x.alive&&x.id===roles.primaryId&&x.player===pi); if(!gen||gen.id===c.id) return null;
+  const giveIdx=[]; const sentPerSlot={};
+  items.map((it,i)=>({it,i})).sort((a,b)=>itemPowerScore(b.it)-itemPowerScore(a.it)).forEach(({it,i})=>{ const e=it.effect||{}; if(!BOT_FIGHT_STATS.has(e.stat)||!itemUsableBy(it,gen)||it._spent) return; const sl=itemSlot(it); if(!sl) return;
+    const theirs=(gen.items||[]).filter(x=>x&&itemSlot(x)===sl&&itemUsableBy(x,gen)).sort((a,b)=>itemPowerScore(a)-itemPowerScore(b));
+    const cap=ITEM_SLOT_CAP[sl]||1; const mine=itemPowerScore(it); const room=Math.max(0,cap-theirs.length)+((theirs[0]&&itemPowerScore(theirs[0])<mine)?1:0);
+    if((sentPerSlot[sl]||0)<room){ giveIdx.push(i); sentPerSlot[sl]=(sentPerSlot[sl]||0)+1; } });
+  giveIdx.sort((a,b)=>a-b);
+  if(!giveIdx.length) return null;
+  return {action:'give_item',target:giveIdx.slice(0,2).join(','),extra:String(gen.id),desc:'Send fighting kit to '+gen.name};
+}
+// ALLIED FRONT (review R7): a target within two hexes of an allied realm's field host is worth more — two
+// crowns pressing one border beat two crowns pressing two. Only hosts the bot can see.
+function botAllyNear(G,pi,X){
+  if(!X) return false;
+  return (G.characters||[]).some(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&(e.armies||[]).length>=3&&botRelationRaw(G,pi,e.player)==='allied'&&botSeesChar(G,pi,e))) return false;
+    if(e.location===X.id) return true; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N&&N.id===e.location) return true; } return false; });
+}
+// ══ ENEMY INTEL (Sept 2026, Toby: track enemy generals and heroes) ════
+// What the realm SAW this turn of rival characters, remembered on the player record for six turns:
+// p._botIntel.generals[charId] = {turn, provId, units, strength, name, player, isKing} for anyone leading
+// troops, p._botIntel.heroes for the unarmed. Only characters botSeesChar can see are recorded, so the
+// memory is exactly what a human's past reports hold. A remembered host that is no longer visible still
+// counts against a target for three turns (it may still be there), and remembered heroes are hunted.
+function botUpdateIntel(G,pi){
+  const p=(G.players||[])[pi]; if(!p) return null; const I=p._botIntel=p._botIntel||{generals:{},heroes:{}}; const turn=G.turn||0;
+  (G.characters||[]).forEach(e=>{ if(!(e&&e.player!=null&&e.player!==pi)) return;
+    if(!e.alive){ delete I.generals[e.id]; delete I.heroes[e.id]; return; }
+    if(!botSeesChar(G,pi,e)) return;
+    const rec={turn,provId:e.location,units:(e.armies||[]).length,name:e.name,player:e.player,isKing:!!e.isKing,strength:botBattleForce(G,e,null,'plain')};
+    if(rec.units){ I.generals[e.id]=rec; delete I.heroes[e.id]; } else { I.heroes[e.id]=rec; delete I.generals[e.id]; } });
+  [I.generals,I.heroes].forEach(M=>Object.keys(M).forEach(k=>{ if(turn-M[k].turn>6) delete M[k]; }));
+  // review II A10: allied realms exchange reports — what an ally saw this turn is copied in (never overwriting fresher news)
+  (G.players||[]).forEach((a,j)=>{ if(j===pi||!a||!a._botIntel||botRelationRaw(G,pi,j)!=='allied') return;
+    [['generals',I.generals,a._botIntel.generals],['heroes',I.heroes,a._botIntel.heroes]].forEach(([_,mine,theirs])=>{ Object.keys(theirs||{}).forEach(k=>{ const r=theirs[k]; if(!r||r.player===pi||botRelationRaw(G,pi,r.player)!=='enemy') return; if(!mine[k]||mine[k].turn<r.turn) mine[k]={...r}; }); }); });
+  return I;
+}
+function botEnemyIntel(G,pi){ const p=(G.players||[])[pi]; return (p&&p._botIntel)||{generals:{},heroes:{}}; }
+// Remembered at-war hosts last seen in province `provId` within three turns and not visible now: {units,strength}.
+function botRememberedHostAt(G,pi,provId){
+  const I=botEnemyIntel(G,pi); let units=0,strength=0; const turn=G.turn||0;
+  Object.keys(I.generals).forEach(k=>{ const r=I.generals[k]; if(r.provId!==provId||turn-r.turn>3||botRelationRaw(G,pi,r.player)!=='enemy') return;
+    const e=(G.characters||[]).find(x=>x&&x.id===+k); if(!e||!e.alive) return; if(botSeesChar(G,pi,e)) return;   // visible hosts are counted by the scorer itself
+    units+=r.units; strength+=r.strength; });
+  return {units,strength};
+}
+// The margin demanded against an enemy HOST (Toby): 1.5× a five-unit column, rising 0.05 per unit to 2×.
+function botHostMargin(base,hostUnits){ if(!(hostUnits>0)) return base; return Math.max(base, Math.min(2.0, 1.5+0.05*Math.max(0,hostUnits-5))); }
+// ══ LAIRS BY RUMOUR (Sept 2026, Toby: Hunting Rumours first, clear at 80%+, weakest first) ════
+// A rumour is bought (1–4g by grade) by the hero who would fight, and the engine records the odds band it
+// told him (f._rumourOdds[pi] — the same five bands the player reads). Only a band of "almost certain"
+// (80%+) sends him in. A rumour by another hero, or older than three turns, or bought before the hero
+// gained a level, is stale. Lairs are taken weakest grade first.
+const BOT_LAIR_GRADE={'':0,'Weak':0,'Moderate':1,'Powerful':2,'Legendary':3};
+function botRumourFor(G,pi,c,f){ const r=f&&f._rumourOdds&&f._rumourOdds[pi]; if(!r||r.charId!==c.id) return null; if((G.turn||0)-r.turn>3) return null;
+  if(r.rating!=null&&r.rating!==botLairRating(c)) return null; return r; }
+function botLairRating(c){ const sk=c.skills||{}; return (c.maxHp||20)+(sk.melee||0)*6+(sk.tactical||0)*3+(sk.archery||0)*2+((sk.elemental||0)+(sk.necromancy||0)+(sk.psychic||0))*4+(c.items||[]).length; }
+// Candidate lairs for this hero: {X,li,f,grade,d,rumour}. `maxD` hops through own/allied/unowned ground.
+function botLairCandidates(G,pi,c,maxD){
+  const from=G.world.provinces[c.location]; if(!from) return []; const out=[];
+  (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||!botKnows(G,pi,X.id)) return;
+    const bo=botBelievedOwner(G,pi,X); if(bo!=null&&bo!==pi&&botRelationRaw(G,pi,bo)!=='allied') return;
+    (X.features||[]).forEach((f,li)=>{ if(!f||f.cleared||f.ritualSite||!featDiscovered(f,pi)) return;
+      const d=(X.id===from.id)?0:botPathLen(G,pi,from,X.id,true); if(d==null||d>maxD) return;
+      const grade=(f.monster&&f.monster.power)||f.tier||''; out.push({X,li,f,grade:BOT_LAIR_GRADE[grade]||0,price:RUMOUR_COST_BY_POWER[grade]||1,d,rumour:f.monster?botRumourFor(G,pi,c,f):{band:101}}); }); });
+  return out.sort((a,b)=>a.grade-b.grade||a.d-b.d);
+}
+// The slayer's (or any fighter's) year: search a lair his rumour rates 80%+; else buy the rumour on the
+// weakest lair he has not assessed; else null (train). Fighters only: Melee or Archery 3+.
+function botLairPlan(G,pi,c,pre,L){
+  const sk=c.skills||{}; if((sk.melee||0)<3&&(sk.archery||0)<3) return null;
+  const P=G.world.provinces[c.location]; const cands=botLairCandidates(G,pi,c,4); if(!cands.length) return null;
+  const go=cands.find(k=>k.rumour&&k.rumour.band>=101);
+  if(go){ const path=go.d>0?(botPathDirs(G,pi,P,go.X.id,4,true)||[]):[]; if(go.d===0||path.length===go.d){ if(pre.length+path.length<5){
+      const mv=[...path.map(d=>botMoveOrder(d,'Seek the lair in '+go.X.name)),{action:'search',target:String(go.li),extra:'',desc:'Search Lair'}];
+      return botFillOrders(G,pi,c,pre,mv); } } }
+  const ask=cands.find(k=>!k.rumour&&L&&L.budget>=k.price+1&&!(k.f._rumourOdds&&k.f._rumourOdds[pi]&&k.f._rumourOdds[pi].charId===c.id&&k.f._rumourOdds[pi].band<101&&(G.turn||0)-k.f._rumourOdds[pi].turn<=3&&k.f._rumourOdds[pi].rating===botLairRating(c)));
+  if(ask){ const path=ask.d>0?(botPathDirs(G,pi,P,ask.X.id,4,true)||[]):[]; if(ask.d===0||path.length===ask.d){ if(pre.length+path.length<5){
+      L.budget-=ask.price;
+      const mv=[...path.map(d=>botMoveOrder(d,'Hear the talk of '+ask.X.name)),{action:'hunt_rumours',target:String(ask.li),extra:'',desc:'Hunt Rumours — '+ask.f.name}];
+      return botFillOrders(G,pi,c,pre,mv); } } }
+  return null;
+}
+// ══ NAVAL DOCTRINE (Sept 2026, Toby) ════
+// An ADMIRAL is a leader whose job is the sea: he raises carrier fleets at a coastal port, fills the hulls
+// with the most effective liftable land units the port can raise, claims unowned sea provinces, and lands on
+// enemy coasts — the scorer's −40 on sea targets does not apply to him. A realm wants one admiral once it
+// holds two coastal provinces that can build ships and there is sea worth taking (unowned sea in reach, or
+// an at-war coast across the water). Fleets are still bought for ordinary hosts only for the old reasons.
+function botCoastalPorts(G,pi){ return (G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea'&&botCoastalFleetType(p)); }
+function botSeaWorthTaking(G,pi){
+  const ports=botCoastalPorts(G,pi); if(ports.length<2) return false;
+  return ports.some(p=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,p,i); if(!N||N.terrain!=='sea') continue; if(N.owner==null||N.owner!==pi) return true; } return botNavalEnemyCoast(G,p,pi); });
+}
+function botLiftable(t){ return !(BOT_SEA_ALL.has(t)||BOT_AERIAL_TYPES.has(t)||BOT_CREATURE_ARMIES.has(t)||BOT_MONSTER_ARMIES.has(t)||BOT_CAVALRY_TYPES.has(t)); }
+// BFS over sea hexes from `P` (a coast or a sea hex): the best landing — an enemy or unowned land province
+// beside the water that this column can beat — or an unowned sea hex to claim. Returns {moves,N} or null.
+function botSeaStrike(G,pi,c,P,myStr,T,maxHops){
+  if(maxHops<=0||botSeaCap(c.armies)==='land') return null;
+  const margin=botMarginFor(G,pi,c,T); const plainStr=botBattleForce(G,c,null,'plain'); const k=plainStr>0?myStr/plainStr:1; const strIn=t=>botBattleForce(G,c,null,t)*k;
+  const prev={}; prev[P.id]=null; const dirOf={}; let q=[P], depth=0, best=null;
+  const consider=(N,d,viaSea)=>{ if(!N||N.id===P.id) return;
+    let sc=null, fight=false;
+    if(N.terrain==='sea'){ if(N.owner==null&&botKnows(G,pi,N.id)) sc=(N.tax||1)*T.taxScoreWeight-d*2; }
+    else { const bo=N.owner; if(bo===pi||(bo!=null&&botRelationRaw(G,pi,bo)!=='enemy')) return; if(!botKnows(G,pi,N.id)) return;
+      const ec=botEnemyChars(G,N,pi); let tStr=botTargetDefence(G,pi,N)+(bo==null?ec.force*BOT_DEF_BONUS:0);
+      const rem=bo!=null?botRememberedHostAt(G,pi,N.id):{units:0,strength:0}; tStr+=rem.strength*BOT_DEF_BONUS;
+      const eff=botHostMargin(ec.hasKing?margin*0.9:margin,ec.units+rem.units); if(tStr>0&&strIn(N.terrain)<tStr*eff*1.1) return;   // an amphibious assault asks a little more
+      fight=tStr>0; sc=(N.tax||0)*T.taxScoreWeight*1.5-tStr+(bo!=null?T.rivalBias*2:0)+ec.value+ec.units*3-d*3; }
+    if(sc!=null&&(!best||sc>best.sc)) best={N,sc,d,fight}; };
+  while(q.length&&depth<maxHops){ const next=[]; depth++;
+    q.forEach(cur=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||prev[N.id]!==undefined) continue;
+      if(N.terrain==='sea'){ prev[N.id]=cur.id; dirOf[N.id]=i; next.push(N); consider(N,depth,true); }
+      else { prev[N.id]=cur.id; dirOf[N.id]=i; consider(N,depth,false); } } });
+    q=next; }
+  if(!best) return null;
+  const dirs=[]; let id=best.N.id; while(prev[id]!==null&&prev[id]!==undefined){ dirs.unshift(dirOf[id]); id=prev[id]; }
+  const moves=dirs.map((d,i)=>botMoveOrder(d,(i===dirs.length-1)?(best.fight?'Assault from the sea':(best.N.terrain==='sea'?'Claim the sea':'Land')):'Sail'));
+  return {moves,N:best.N};
+}
 // ══ BOT CONCESSION ════
 // A bot realm with no province anywhere in the world has nothing to rule, nothing to tax and
 // nothing to rebuild from: it concedes. The engine's existing concession machinery then does
@@ -5024,11 +5591,12 @@ function runBotConcessions(G, botIdxSet, logFn){
 // human orders are merged into G.turnOrders and before the default-to-Defend pass.
 function runBotMovement(G, botIdxSet, hooks){
   hooks=hooks||{};
-  const T=botTuning(G);
   if(!botIdxSet||!botIdxSet.size||!G.world) return;
   G.turnOrders=G.turnOrders||{};
+  if(typeof hooks.terrainMult==='function') botTurnCache(G).terrainMult=hooks.terrainMult;   // the engine's unit×terrain figure, for botBattleForce
   botIdxSet.forEach(pi=>{
     if(botConceded(G,pi)) return;                     // a conceded realm only ever Defends
+    const T=botTuning(G,pi);                          // per-realm overlays (alignment / race)
     botNoteLand(G,pi);                                // expansion-pressure bookkeeping (once per turn)
     const L=botLedger(G,pi), roles=botRoles(G,pi);
     const all=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
@@ -5047,11 +5615,14 @@ function runBotMovement(G, botIdxSet, hooks){
     // (×3) minus distance, within 6 hops through any land. ──
     const magicScore=x=>{ const s=x.skills||{}; return (s.elemental||0)+(s.necromancy||0)+(s.psychic||0)+(s.illusory||0)+(s.white||0); };
     const escortOf={};                                 // companion id → the general it escorts
-    { const spare=all.filter(x=>!roles.leaders.includes(x.id)&&!(x.armies||[]).length&&!x.isKing);
+    const defCovered=new Set();                        // provinces a field host or a posted defender already guards
+    leaders.forEach(l=>{ if((l.armies||[]).length>=3) defCovered.add(l.location); });
+    { const spare=all.filter(x=>!roles.leaders.includes(x.id)&&!(x.armies||[]).length&&!x.isKing&&!roles.defenders.includes(x.id));
       leaders.filter(l=>(l.armies||[]).length>0).sort((a,b)=>(b.armies||[]).length-(a.armies||[]).length).forEach(l=>{
         let best=null; spare.forEach(h=>{ if(escortOf[h.id]!=null) return; const d=h.location===l.location?0:botPathLenAny(G,G.world.provinces[h.location],l.location,6); if(d==null) return;
           const sc=magicScore(h)*3-d; if(!best||sc>best.sc) best={h,sc}; });
         if(best) escortOf[best.h.id]=l; }); }
+    const spec=botSpecialistRoles(G,pi,new Set(Object.keys(escortOf).map(Number)));   // scholar / scout / spy / thief
     // Feeders and unarmed characters are planned after the leaders so a leader's muster claims the
     // province's recruit slots first.
     const ordered=[...leaders, ...all.filter(c=>!roles.leaders.includes(c.id))];
@@ -5062,6 +5633,12 @@ function runBotMovement(G, botIdxSet, hooks){
       const armed=(c.armies||[]).length>0;
       const pre=[];
       const hire=botHireOrder(G,pi,c,L); if(hire) pre.push(hire);
+      // Sept 2026 (review R10): a king under 75% health with no host on the doorstep rests the year out.
+      if(c.isKing && !homeThreat && !botUnderAttack(G,pi)){ const _khp=(c.hp!=null?c.hp:(c.maxHp||20)), _kmhp=c.maxHp||20;
+        if(_khp<_kmhp*0.75){ const o=[...pre]; while(o.length<5) o.push({action:'rest',target:'',extra:'',desc:'Rest & heal (the crown)'}); G.turnOrders[c.id]=o; assigned.add(c.id); return; } }
+      // Sept 2026 (review R2): the alignment's signature order, where it applies here and now.
+      { const sig=botSignaturePre(G,pi,c,P,L); if(sig) pre.push(sig); }
+      { const ip=botItemPre(G,pi,c,roles); if(ip&&pre.length<2) pre.push(ip); }         // Sept 2026 (review R3): kit
       // ── INFILTRATOR: a Necromancy / Elemental caster who is not running a
       // field army goes behind the enemy line and conjures a host in undefended ground, taking the
       // province outright. Unarmed he ranges the full 5 hops; carrying skeletons he raised himself he
@@ -5075,6 +5652,13 @@ function runBotMovement(G, botIdxSet, hooks){
           if(_inf){ G.turnOrders[c.id]=_inf; assigned.add(c.id); return; }
         }
       }
+      // ── DEFENDER: hold a post whose watch covers the most unguarded owned land (Sept 2026, Toby). ──
+      if(!isLeader && !c.isKing && roles.defenders.includes(c.id)){
+        const post=botDefenderPost(G,pi,c,defCovered);
+        if(post) c._botPost=post.X.id;
+        const dO=botDefenderOrders(G,pi,c,pre,post,L);
+        if(dO){ const at=(post&&post.d===0)?post.X:P; botZoneOf(G,at).forEach(q=>defCovered.add(q.id)); G.turnOrders[c.id]=dO; assigned.add(c.id); return; }
+      }
       // ── FEEDER standing with a leader: hand the whole column over, then drill/hold. ──
       if(!isLeader && armed){
         const ld=leaderAt(c.location);
@@ -5085,8 +5669,10 @@ function runBotMovement(G, botIdxSet, hooks){
       // character standing here, who holds and drills it this year and marches it as a second host
       // next year (botRoles makes any holder of ≥3 units a leader). Two fronts, one battle per phase
       // each — the single mega-stack was conquering one province a turn with 16 units in reserve. ──
-      if(isLeader && armed && (c.armies||[]).length>=10){
-        const rcpt=all.filter(o=>o.id!==c.id&&o.location===c.location&&!(o.armies||[]).length&&!assigned.has(o.id)&&!heroClaimed.has(o.id)&&(G.turnOrders[o.id]||[]).every(x=>x==null)).sort((a,b)=>magicScore(a)-magicScore(b))[0];   // a mage stays the general's companion; a fighter takes the column
+      if(isLeader && armed && (c.armies||[]).length>=(roles.defenders.length?8:10)){
+        // Sept 2026: an unarmed DEFENDER standing here takes the column first (it is his post's
+        // garrison); otherwise a mage stays the general's companion and a fighter takes it.
+        const rcpt=all.filter(o=>o.id!==c.id&&o.location===c.location&&!(o.armies||[]).length&&!assigned.has(o.id)&&!heroClaimed.has(o.id)&&(G.turnOrders[o.id]||[]).every(x=>x==null)).sort((a,b)=>((roles.defenders.includes(a.id)?-100:0)+magicScore(a))-((roles.defenders.includes(b.id)?-100:0)+magicScore(b)))[0];
         if(rcpt){
           const ranked=(c.armies||[]).filter(a=>a&&!a._isSkeletal&&!BOT_SEA_ALL.has(a.type)).map(a=>({a,v:unitBaseStrength(a)})).sort((x,y)=>x.v-y.v);
           const give=ranked.slice(0,Math.floor((c.armies||[]).length/2)).map(x=>x.a);
@@ -5111,6 +5697,7 @@ function runBotMovement(G, botIdxSet, hooks){
       // home to
       // raise a host; a feeder with nothing to do here walks to a free muster province. ──
       if(!armed){
+        const hp=(c.hp!=null?c.hp:(c.maxHp||20)), mhp=c.maxHp||20;
         // ── SEEK A WANDERER first — a new hero outranks a
         // turn of escort duty; the recruit becomes the next companion. ──
         let bestH=null;
@@ -5140,7 +5727,7 @@ function runBotMovement(G, botIdxSet, hooks){
             // Casts: offence on enemies standing here, buffs for the general (only while he is
             // still here — the engine resolves a friendly cast before its co-located target's own
             // move), defence, economy.
-            const casts=botCastPlan(G,pi,c,P,{max:2,fighting:genAttacks?gen:null}).filter((o,i)=>o.extra!==String(gen.id)||(pre.length+i)<firstMovePh);
+            const casts=botCastPlan(G,pi,c,P,{max:2,fighting:genAttacks?gen:null}).filter(o=>!(genAttacks&&o.target==='Flood')).filter((o,i)=>o.extra!==String(gen.id)||(pre.length+i)<firstMovePh);   // Sept 2026: a Flood would strand OUR assault too
             // Follow the general's path one phase behind, only into ground that is ours / allied,
             // land he simply walks into, or his first assault when the battle model gives him a 2×
             // edge.
@@ -5164,7 +5751,6 @@ function runBotMovement(G, botIdxSet, hooks){
         // HUNTER (run down a beatable enemy hero), SPY (rifle an enemy capital's archives). Only when at
         // war, only for non-leaders, and only when the target is within reach.
         if(!isLeader && botAtWar(G,pi)){
-          const hp=(c.hp!=null?c.hp:(c.maxHp||20)), mhp=c.maxHp||20;
           if(hp>=mhp*0.7){
             // HUNTER: a beatable enemy hero within 4 hops — Encounter runs the chase over the phases.
             // Hunter tactics (Sept 2026): the quarry must be beatable on the ENGINE's own duel
@@ -5173,7 +5759,8 @@ function runBotMovement(G, botIdxSet, hooks){
             // >=65% wins and <=20% risk of being felled. The rating pre-filter keeps the sim cheap.
             // Hunters also set out only at >=85% health.
             const hunt=(hp>=mhp*0.85)?botHuntTarget(G,pi,c,4,hooks.duelSim):null;
-            if(hunt){ G.turnOrders[c.id]=botFillOrders(G,pi,c,[...pre,{action:'encounter',target:String(hunt.e.id),extra:'',desc:'Hunt '+hunt.e.name}],[]); assigned.add(c.id); return; }
+            if(hunt&&hunt.mem){ const path=(botPathAny(G,P,hunt.loc,4)||[]).slice(0,Math.max(0,4-pre.length)); if(path.length){ const o=[...pre,...path.map(d=>botMoveOrder(d,'Stalk '+hunt.e.name))]; while(o.length<5) o.push({action:'defend',target:'',extra:'',desc:'Lie in wait for '+hunt.e.name}); G.turnOrders[c.id]=o; assigned.add(c.id); return; } }
+            else if(hunt){ G.turnOrders[c.id]=botFillOrders(G,pi,c,[...pre,{action:'encounter',target:String(hunt.e.id),extra:'',desc:'Hunt '+hunt.e.name}],[]); assigned.add(c.id); return; }
             // RAIDER: walk into enemy land and cast; Invisibility first if the school allows.
             if(botOffensiveMagic(c)>=1){
               const raid=botRaidTarget(G,pi,P,5);
@@ -5197,6 +5784,15 @@ function runBotMovement(G, botIdxSet, hooks){
             }
           }
         }
+        // ── review II A4: a fighter standing where an at-war unarmed rival stands runs him down first (duel sim ≥ 50%, felled ≤ 10%). ──
+        if(!isLeader && !c.isKing && P.owner===pi && botAtWar(G,pi) && hp>=mhp*0.85 && ((c.skills||{}).melee>=3||(c.skills||{}).archery>=3) && typeof hooks.duelSim==='function'){
+          const sneak=botVisibleCharsIn(G,pi,P).filter(e=>e&&e.alive&&e.player!=null&&e.player!==pi&&!e.isKing&&!(e.armies||[]).length&&botRelationRaw(G,pi,e.player)==='enemy'&&e._invisTurn!==G.turn)[0];
+          if(sneak){ const f=hooks.duelSim(c,sneak,24); if(f&&f.win>=0.5&&f.felled<=0.10){ G.turnOrders[c.id]=botFillOrders(G,pi,c,[...pre,{action:'encounter',target:String(sneak.id),extra:'',desc:'Run down '+sneak.name}],[]); assigned.add(c.id); return; } } }
+        // ── LAIR RAIDER: a fighter walks to a beatable discovered lair within 4 hops (hoard + Monster-Bane merit). ──
+        if(!isLeader && !c.isKing && (hp>=mhp*0.7)){ const lo=botLairPlan(G,pi,c,pre,L); if(lo){ G.turnOrders[c.id]=lo; assigned.add(c.id); return; } }
+        // ── SPECIALISTS: scholar / scout / spy / thief (Sept 2026, Toby). Wounded heroes fall through to Rest. ──
+        if(!isLeader && !c.isKing && (hp>=mhp*0.6)){ const role=spec.byId[c.id];
+          if(role){ const so=botSpecialistOrders(G,pi,c,pre,role,L); if(so){ G.turnOrders[c.id]=so; assigned.add(c.id); return; } } }
         if(isLeader && homeId!=null && c.location!==homeId){ const path=botPathDirs(G,pi,P,homeId,maxHops,true); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,path.map(d=>botMoveOrder(d,'Return to raise a host'))); return; } }
         if(!isLeader && P.owner===pi && (leaderAt(c.location) || !(P.armyTypes||[]).length)){
           // Find the nearest owned land province with recruitable units and no other friendly
@@ -5209,8 +5805,8 @@ function runBotMovement(G, botIdxSet, hooks){
         if(pre.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]); }
         return; // else: idle — economy / actions passes give it work
       }
-      // ── FEEDER with a column: march it to the nearest field army. ──
-      if(!isLeader){
+      // ── FEEDER with a column: march it to the nearest field army (defenders were handled above). ──
+      if(!isLeader && !roles.defenders.includes(c.id)){
         let bestL=null; leaders.forEach(l=>{ const d=botPathLen(G,pi,P,l.location,false); if(d!=null&&(!bestL||d<bestL.d)) bestL={l,d}; });
         if(bestL && maxHops>0){ const path=botPathDirs(G,pi,P,bestL.l.location,maxHops,false); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,path.map(d=>botMoveOrder(d,'Bring troops to '+bestL.l.name))); return; } }
         // no leader reachable — behave as a small host of its own (falls through)
@@ -5265,8 +5861,9 @@ function runBotMovement(G, botIdxSet, hooks){
         // when the host has 3+ units and a phase to spare — a Veteran elemental or +1 quality tier
         // decides battles.
         if(best.targetStr>0 && (c.armies||[]).length>=3 && pre.length<=2){
+          const rite=botRitePre(G,pi,c,P,L,true); if(rite) pre.push(rite);          // Pagan: the Wild Hunt / a Blood Offering before the clash
           const buff=botCastPlan(G,pi,c,P,{max:1,fighting:c}).find(o=>['Oratory','Elemental Summon','Phantasmal Armies'].includes(o.target));
-          if(buff) pre.push(buff);
+          if(buff&&pre.length<=2) pre.push(buff);
         }
         const moves=[botMoveOrder(best.dirIdx, best.targetStr>0?'Attack':'Advance')]; visited.add(best.N.id);
         let str=myStr, fights=0; if(best.targetStr>0){ str*=0.85; fights=1; }
@@ -5282,6 +5879,12 @@ function runBotMovement(G, botIdxSet, hooks){
         if(ds.moves.some(m=>{ const d=BOT_HEX_DIRS.indexOf(m.target.slice(4)); const N=botNeighbourProv(G,P,d); return N&&N.terrain!=='sea'; }) && P.terrain!=='sea' && shedFleet() && pre.length>=5){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]); return; }
         G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,ds.moves); return;
       }
+      // Sept 2026 (Toby: naval): a sea-capable host with no land target sails — claim the sea, land on an enemy coast.
+      { const ss=(c._botRole==='admiral'||botSeaCap(c.armies)!=='land')?botSeaStrike(G,pi,c,P,myStr,T,maxHops):null;
+        if(ss&&ss.moves.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,ss.moves); return; } }
+      // A Divine king with holy ground still to claim walks to the richest consecratable province (review §2).
+      if(c.isKing && maxHops>=1){ const ct=botConsecrateTarget(G,pi,c,maxHops-1);
+        if(ct&&ct.d>0){ const path=botPathDirs(G,pi,P,ct.X.id,maxHops-1,false)||[]; if(path.length===ct.d){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[...path.map(d=>botMoveOrder(d,'Carry the light to '+ct.X.name)),{action:'consecrate',target:'',extra:'',desc:'Consecrate '+ct.X.name}]); return; } } }
       // A beatable lair in our own adjacent land — go clear it (hoard + strength).
       const ld=botLairDir(G,P,c,pi);
       if(ld>=0){ const LP=botNeighbourProv(G,P,ld); const li=botBeatableLairIn(G,c,LP);
@@ -5322,13 +5925,26 @@ function botRecruitableTypes(prov, G, cmdr){
   // buying Cave Trolls at −60% was throwing gold away.
   const effOf=t=>{ const base=UNIT_BASE_STR[t]||4; if(!G||!cmdr) return base;
     const align=(cmdr.player!=null?((G.players||[])[cmdr.player]||{}).alignment:null)||'Neutral'; const tamed=cmdr.player!=null&&botHasDisc(G,cmdr.player,'sd40');
-    let m=1; try{ m=druIdPenaltyMult(cmdr,{type:t,race:prov.race||'Human'},align,tamed&&TAMED_FLYER_TYPES_D.has(t)); }catch(e){ m=1; } return base*m; };
+    let m=1; try{ m=druIdPenaltyMult(cmdr,{type:t,race:prov.race||'Human'},align,tamed&&TAMED_FLYER_TYPES_D.has(t)); }catch(e){ m=1; }
+    // Sept 2026: kinship / grudge for THIS commander, and the unconditional fervour a Druidic (Creature) or
+    // Evil (Monster) realm gets from the unit — an Orc lord buying human levies at −20% was paying full price.
+    m*=botRaceTerrainMult(G,cmdr,{type:t,race:prov.race||'Human'},null,false,cmdr.player);
+    if(align==='Druidic'&&BOT_CREATURE_ARMIES.has(t)) m*=1.25; if(align==='Evil'&&BOT_MONSTER_ARMIES.has(t)) m*=1.25;
+    return base*m; };
+  // Sept 2026 (Toby): a general raises troops of his own blood and the king's (+20% kinship each) and never
+  // troops of the grudge race (Elf↔Dwarf, Human↔Orc: −20% under him) while any other muster is possible — a
+  // grudge-race province yields nothing to that commander; the feeder pipeline brings him kin instead.
+  if(G&&cmdr){ const RIV={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}; const pr=prov.race||'Human';
+    if(cmdr.race&&RIV[pr]===cmdr.race&&!String(pr).startsWith('Primal')){
+      const pi2=cmdr.player; const near=(G.world.provinces||[]).some(x=>x&&x.owner===pi2&&x.id!==prov.id&&x.terrain!=='sea'&&(x.armyTypes||[]).some(t=>t&&!/garrison/i.test(t)&&!BOT_NAVAL_TYPES.has(t))&&RIV[x.race||'Human']!==cmdr.race&&(botPathLen(G,pi2,prov,x.id,false)||99)<=2);
+      if(near) return []; } }                                             // "when possible": only while kin can be raised within two hops
   const all=(prov.armyTypes||[])
     .filter(t=>t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t))   // land field units only (v1)
-    .sort((a,b)=>effOf(b)-effOf(a));                                   // strongest FOR THIS COMMANDER first
+    .sort((a,b)=>effOf(b)-effOf(a));                                   // strongest FOR THIS COMMANDER first (kinship already in effOf)
   // Sept 2026 (bot strategy): a speed-1 unit (Mountain Guns, Stone Giants…) pins the whole host to
   // one hop a turn, which costs far more conquest than its strength buys. Skip them when anything
   // else exists.
+  if(cmdr&&cmdr._botRole==='defender') return all;   // a posted defender never marches: Mountain Guns are welcome
   const mobile=all.filter(t=>(ARMY_SPEED_MASTER[t]||3)>=2);
   return mobile.length?mobile:all;
 }
@@ -5403,6 +6019,27 @@ function runBotEconomy(G, botIdxSet){
         G.turnOrders[c.id]=orders;
       }
     });
+    // Sept 2026 (§94, idle gold): recruit OPPORTUNITIES were the binding constraint, not the ceiling.
+    // (a) A marching leader recruits in the first owned recruit province his plan stands in with a filler
+    //     phase to spare (the filler after his last move is usually Practice/Defend).
+    // (b) With 20g+ in the chest, a specialist still TRAINING in an owned recruit province spends one phase
+    //     mustering troops to carry to the nearest host next year (an armed hero is a feeder).
+    const filler=o=>!o||['practice','defend','research','explore'].includes(o.action);
+    (G.characters||[]).forEach(c=>{ if(!(c&&c.alive&&c.player===pi&&!c._isHeir)) return;
+      const o=G.turnOrders[c.id]; if(!o||!o.some(x=>x&&x.action==='move')) return;
+      if(!roles.leaders.includes(c.id)) return;
+      let cur=G.world.provinces[c.location]; if(!cur) return;
+      for(let p=0;p<5;p++){ const x=o[p];
+        if(x&&x.action==='move'){ let N=null; if(String(x.target).startsWith('dir:')){ const d=BOT_HEX_DIRS.indexOf(String(x.target).slice(4)); N=botNeighbourProv(G,cur,d); } else N=G.world.provinces[+x.target]; if(!N) return; cur=N; continue; }
+        if(filler(x)&&cur.owner===pi&&(cur.armyTypes||[]).length&&L.budget>=2&&L.upkeep<L.upkeepCap){
+          const toks=botFieldRecruitTokens(G,pi,c,cur,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])||c._botRole==='admiral'); const ro=botRecruitOrder(toks,null); if(ro){ o[p]=ro; } return; } } });
+    if(L.budget>=20){ (G.characters||[]).forEach(c=>{ if(!(c&&c.alive&&c.player===pi&&!c.isKing&&!c._isHeir&&!(c.armies||[]).length)) return; if(L.budget<2||L.upkeep>=L.upkeepCap) return;
+      const o=G.turnOrders[c.id]; if(!o||!o.length||o.some(x=>x&&x.action==='move')) return;
+      const training=o.some(x=>x&&x.action==='practice'); if(!training) return;
+      if(['scholar','spy'].includes(c._botRole)) return;                  // the court's scholars and spies keep at their books
+      const prov=G.world.provinces[c.location]; if(!prov||prov.owner!==pi||!(prov.armyTypes||[]).length) return;
+      const p=o.findIndex(x=>x&&x.action==='practice'); if(p<0) return;
+      const toks=botFieldRecruitTokens(G,pi,c,prov,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])); const ro=botRecruitOrder(toks,null); if(ro){ ro.desc+=' (for the host)'; o[p]=ro; } }); }
   });
 }
 
@@ -5540,23 +6177,27 @@ function botPathLenAny(G,from,toId,maxD){ const p=botPathAny(G,from,toId,maxD); 
 function botHuntTarget(G,pi,c,maxD,duelSim){
   if(!((c.skills||{}).melee>=3||(c.skills||{}).archery>=3)) return null;
   const mine=botDuelRating(c); const from=G.world.provinces[c.location]; if(!from) return null;
-  const cands=[];
+  const cands=[]; const I=botEnemyIntel(G,pi);
   (G.characters||[]).forEach(e=>{ if(!(e&&e.alive&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy')) return;
     // a quarry must be one this realm can SEE right now — the same rule that builds a human's
     // Encounter Character dropdown (enemyCharVisibleTo). Bots were hunting heroes across the map by
     // reading their true position out of the game state.
-    if(!botSeesChar(G,pi,e)) return;
+    // Sept 2026 (Toby: track down enemy heroes): a hero seen unarmed within the last two turns is stalked to the
+    // province he was last seen in even when out of sight now — the hunter walks there and lies in wait.
+    const seen=botSeesChar(G,pi,e); const mem=(!seen&&I.heroes[e.id]&&(G.turn||0)-I.heroes[e.id].turn<=2)?I.heroes[e.id]:null;
+    if(!seen&&!mem) return; if(mem&&((e.armies||[]).length||mem.provId===from.id)) return;
     if(e.isKing&&!c.isKing) return; if(e._invisTurn===G.turn) return;
     if(mine < botDuelRating(e)*1.2) return;                       // cheap pre-filter
-    const d=botPathLenAny(G,from,e.location,maxD); if(d==null) return;
-    cands.push({e,d,sc:(e.isKing?40:10)+Object.values(e.skills||{}).reduce((a,b)=>a+(b||0),0)-d*2}); });
+    const loc=seen?e.location:mem.provId;
+    const d=botPathLenAny(G,from,loc,maxD); if(d==null) return;
+    cands.push({e,d,loc,mem:!!mem,sc:(e.isKing?40:10)+Object.values(e.skills||{}).reduce((a,b)=>a+(b||0),0)-d*2-(mem?4:0)}); });
   cands.sort((a,b)=>b.sc-a.sc);
   // Forecast the top few on the engine's duel model and take the best bet: a kill is the prize, a
   // quarry that flees costs nothing, being felled is what we refuse (<=20%). Without a forecaster
   // (module-level callers) fall back to a stiff rating margin.
   let best=null;
   for(const cand of cands.slice(0,5)){
-    if(typeof duelSim==='function'){ const f=duelSim(c,cand.e,24); if(!f||f.felled>0.20||f.win<0.40) continue; cand.forecast=f;
+    if(typeof duelSim==='function'){ const f=duelSim(c,cand.e,24); if(!f||f.felled>0.10||f.win<0.40) continue;   // Sept 2026 (review II A3): a tenth, not a fifth cand.forecast=f;
       cand.bet=f.win*10-f.felled*20+(cand.e.isKing?4:0)-cand.d; }
     else { if(mine < botDuelRating(cand.e)*1.5) continue; cand.bet=cand.sc; }
     if(!best||cand.bet>best.bet) best=cand;
@@ -5577,12 +6218,19 @@ function botCrossTrainSkill(G, c, pi){
   const group=[c,...partners];
   const SKILLS=['melee','tactical','march','archery','naval','white','psychic','illusory','elemental','necromancy','spy','thief','sage','druid','explorer'];
   let bestSkill=null,bestLvl=0;
+  // Sept 2026 (Toby): the realm's thin craft skills (Sage first, then Spy / Thief / Explorer) outrank a
+  // strong fighting mentor while fewer than two characters hold them at 2+, so a court cross-trains
+  // Sage rather than converging on Melee every year. Deterministic from realm state, so every member
+  // of the cluster still picks the same focus.
+  const NEED_SKILLS={sage:3,spy:2,thief:2,explorer:2};
+  const need={}; Object.keys(NEED_SKILLS).forEach(k=>{ const n=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&((x.skills||{})[k]||0)>=2).length; need[k]=n<2?NEED_SKILLS[k]:0; });
   for(const sk of SKILLS){
     let mx=0,mn=99;
     group.forEach(x=>{ const l=(x.skills||{})[sk]||0; if(l>mx)mx=l; if(l<mn)mn=l; });
     // A worthwhile focus: someone can teach it (mx≥1) and someone below can still learn (mn<mx,
     // mn<5).
-    if(mx>=1 && mn<mx && mn<5 && mx>bestLvl){ bestLvl=mx; bestSkill=sk; }
+    const score=mx+(need[sk]||0);
+    if(mx>=1 && mn<mx && mn<5 && score>bestLvl){ bestLvl=score; bestSkill=sk; }
   }
   return bestSkill;
 }
@@ -5635,8 +6283,12 @@ function botTitleFocusSkill(c, titles){
 // demands a clear 1.5× edge. This encodes "know the difficulty of lairs" and ties to item 1: as a
 // hero cross- trains up, ever-tougher guardians come within reach. botBeatableLair returns the
 // richest beatable, uncleared, non-ritual lair standing in the hero's own province.
-function botCanBeatGuardian(c, m){
-  if(!m) return true;                                  // no guardian → trivially clearable
+function botCanBeatGuardian(c, m, G, pi, f){
+  if(!m) return true;
+  // Sept 2026 (Toby): a lair is entered on a bought rumour rating the hero "almost certain" (80%+), never on
+  // the old skill heuristic alone. Callers passing the feature get the rumour test; the heuristic below stays
+  // only as the pre-filter for whom to send to buy a rumour.
+  if(G&&f){ const r=botRumourFor(G,pi,c,f); return !!(r&&r.band>=101); }                                  // no guardian → trivially clearable
   const sk=c.skills||{};
   // don't send heroes into lairs until they're real fighters: require melee 3 OR archery 3 before
   // attempting ANY guardian. (Softer combat-skill≥1 was letting fresh heroes die.)
@@ -5659,7 +6311,7 @@ function botBeatableLairIn(G, c, prov){
   prov.features.forEach((f,idx)=>{
     if(!f||f.cleared||f.ritualSite) return;
     if(pi!=null && !featDiscovered(f,pi)) return;      // not on this realm's map
-    if(!botCanBeatGuardian(c, f.monster)) return;      // too dangerous for this hero right now
+    if(!botCanBeatGuardian(c, f.monster, G, pi, f)) return;      // no rumour rating this hero 80%+ yet
     const POWER_RANK={'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4};
     const rating=POWER_RANK[(f.monster&&f.monster.power)||'']||0;   // the guardian's power band IS public once discovered
     if(rating>bestRating){ bestRating=rating; bestIdx=idx; }
@@ -9205,6 +9857,10 @@ async function runTurn(opts){
   // declaration takes effect BEFORE phase 1, so their armies may cross the frontier this very turn.
   // Every other alignment's declaration still resolves at end of turn (step 6d), in force from next
   // turn. Bots declare here too (collectBotDiplomacy), so an Evil/Undead bot gets the same jump.
+  // Sept 2026 (review R1): bots send a research pick instead of leaving the choice to chance.
+  (G.players||[]).forEach((pl,pi)=>{ if(!_botPlayerIdx.has(pi)||!pl||!Array.isArray(pl.pendingDiscoveryChoices)) return;
+    pl.pendingDiscoveryChoices.forEach(pc=>{ if(!pc||pc.turn>=G.turn||!Array.isArray(pc.options)) return; discoveryChoicePicks[pi]=discoveryChoicePicks[pi]||{};
+      if(discoveryChoicePicks[pi][pc.key]==null) discoveryChoicePicks[pi][pc.key]=botResearchPick(G,pi,pc.options); }); });
   // ── RESEARCH CHOICE: settle last turn's pairs before anything else happens this turn ──
   (G.players||[]).forEach((pl,pi)=>{
     if(!pl||!Array.isArray(pl.pendingDiscoveryChoices)||!pl.pendingDiscoveryChoices.length) return;
@@ -15709,6 +16365,9 @@ const BATTLE_ARMY_SPELLS={
           }
           // 3) the odds
           { const odds=simulateLairOdds(c,f);
+            // Sept 2026: the band the hero was told is kept on the feature (per realm, per hero, with the hero's
+            // fighting rating at the time) so a bot can act on exactly what a player reads — nothing more.
+            if(odds){ f._rumourOdds=f._rumourOdds||{}; f._rumourOdds[c.player]={turn:G.turn,charId:c.id,band:rumourOddsBand(odds.pct).max,rating:botLairRating(c)}; }
             if(odds){ const band=rumourOddsBand(odds.pct); lines.push(`  ✓ Your chances: as you stand today, ${band.text(m.name)}.`); }
             else lines.push(`  ✓ Your chances: nobody could say how ${c.name} would fare.`); }
           lines.forEach(t=>log('explore',t,{actor:c.player,targets:[c.player],provinceId:prov.id}));
@@ -20681,7 +21340,7 @@ const BATTLE_ARMY_SPELLS={
   // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans
   // a turn.
   runBotConcessions(G, _botPlayerIdx, log);
-  runBotMovement(G, _botPlayerIdx, {duelSim:_botDuelSim});
+  runBotMovement(G, _botPlayerIdx, {duelSim:_botDuelSim, terrainMult:(t,tr)=>terrainMod(t,tr)*seaPenalty(t,tr)});
   // Phase 3b — economy: holders (characters not moving) in owned provinces spend the treasury on
   // sustainable reinforcements (and opportunistic hires). Must run AFTER movement so movers are
   // skipped.
@@ -22697,6 +23356,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-2234</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.24-0815</div>
 </body>
 </html>
