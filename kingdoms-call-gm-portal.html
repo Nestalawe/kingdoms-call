@@ -392,6 +392,45 @@ function battleLineMult(groundRank,width,flank){ return (flank?flankLineMults():
 //: the ordering must reflect that final figure, so battleLineTotal and battleLineNarrative sort
 // internally rather than trusting the caller. Non-mutating: callers keep their array.
 function battleLineSort(rows){ return [...rows].sort((x,y)=>(y.fly-x.fly)||(y.base-x.base)); }
+// ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
+// "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
+// creature bond, arrows…) were folded in silently, and Tactical was listed as if it lifted the whole
+// army when flyers and fleets never get it — so players could not reconcile the numbers. The ladder
+// prints three exact stages per side: Units (sum of every unit's armStr, with each per-unit modifier
+// named via armStr's ctx.trace) → Command & battle lines (Tactical / Archery / Naval / illusory per
+// unit, then the terrain-width lines) → Whole force (fanaticism, discoveries, morale, defender…).
+// Rows come from ladderRow() (inside runTurn, beside armStr) so the ladder and the real total are
+// computed from the SAME figures. Module-level so every battle site can share it.
+function ladderFm(v){ let t=(+v).toFixed(3); while(t.endsWith('0')&&!/\.\d$/.test(t)) t=t.slice(0,-1); return '×'+t; } // ×1.4, ×2.0, ×1.44, ×1.375 — exact to 3 dp so the ladder can be checked by hand
+function ladderLines(role, name, rows, width, flank, forceMods, final, opt){
+  opt=opt||{};
+  const nUnits=rows.length, pl=(n,w)=>`${n} ${w}${n!==1?'s':''}`, r0=v=>Math.round(v);
+  let base=0, unitSum=0; const agg=new Map(), cagg=new Map();
+  rows.forEach(r=>{ const a=r.a||{};
+    base+=(UNIT_BASE_STR[a.type]||4)*(UNIT_Q_MULT[a.quality||'Average']||2); unitSum+=(r._u!=null?r._u:r.base);
+    (r._tr||[]).forEach(e=>{ const g=agg.get(e.label)||{label:e.label,n:0,d:0,delta:e.delta!=null}; g.n++; if(e.delta!=null) g.d+=e.delta; agg.set(e.label,g); });
+    (r._cmd||[]).forEach(c=>{ const g=cagg.get(c.label)||{label:c.label,key:c.key,n:0}; g.n++; cagg.set(c.label,g); });
+  });
+  const unitMods=[...agg.values()].filter(g=>!g.delta||Math.round(g.d)!==0)
+    .map(g=>g.delta?`${g.label} ${g.d>=0?'+':'−'}${Math.abs(Math.round(g.d))}`:`${g.label} (${pl(g.n,'unit')})`);
+  const lineTot=battleLineTotal(rows,width,flank);
+  const cmd=[...cagg.values()].map(g=>`${g.label} on ${pl(g.n,g.key==='tac'?'ground unit':'unit')}`);
+  // Tactical never lifts flyers or fleets — say so whenever it leaves units out.
+  if(opt.tact&&opt.tact.mult>1){
+    const tg=[...cagg.values()].find(g=>g.key==='tac'); const left=nUnits-(tg?tg.n:0);
+    if(!tg) cmd.push(`${opt.tact.label} — no ground units to command (flyers and fleets gain nothing from Tactical)`);
+    else if(left>0) cmd.push(`flyers and fleets gain nothing from Tactical (${pl(left,'unit')})`);
+  }
+  const ground=rows.filter(r=>!r.fly).length;
+  if(ground>width){ const m=flank?flankLineMults():BATTLE_LINE_MULTS; cmd.push(`${pl(ground-width,'unit')} behind the ${width}-unit front at ${m.slice(1).map(x=>'×'+x).join(' / ')}`); }
+  const fm=(forceMods||[]).filter(x=>x&&Math.abs(x.m-1)>1e-9);
+  const L=[`  ${role} (${name}): ${pl(nUnits,'unit')} — strength **${r0(final)}**`];
+  L.push(`    · Units: base ${r0(base)} → ${r0(unitSum)}${unitMods.length?` (${unitMods.join('; ')})`:''}`);
+  if(cmd.length||r0(lineTot)!==r0(unitSum)) L.push(`    · Command & battle lines: ${r0(unitSum)} → ${r0(lineTot)}${cmd.length?` (${cmd.join('; ')})`:''}`);
+  L.push(fm.length?`    · Whole force: ${r0(lineTot)} ${fm.map(x=>`× ${x.label} ${ladderFm(x.m)}`).join(' ')} = **${r0(final)}**`
+                  :`    · Whole force: no force-wide modifiers — **${r0(final)}**`);
+  return L;
+}
 function battleLineTotal(rows,width,flank){
   let g=0,total=0;
   battleLineSort(rows).forEach(r=>{ let m=1; if(!r.fly){ m=battleLineMult(g,width,flank); g++; } total+=r.base*m; });
@@ -411,6 +450,16 @@ function battleLineNarrative(who,rows,width,flank,terrain){
   return `📊 ${terrain} terrain — ${parts.join('; ')}.${flank?' (Flanking Tactics)':''}`;
 }
 // (Declared here at TRUE module level — the block at PREBATTLE_STR_FLOOR sits inside runTurn and the bot model cannot see it.)
+// ARCHERY IN ARMY BATTLES (2026-09-23b, Toby): the commander's Archery lifts every missile unit he
+// leads by +5% per level (Archery 5 = +25%; items count, as with every effStat). Until today the
+// rulebook and DEV_LOG said "no strength bonus" while both battle paths quietly applied +10%/level —
+// the NPC path even carried a comment claiming the bonus had been removed. One constant now.
+const ARCHERY_MISSILE_PCT=0.05;
+// UNDEAD — undying fanaticism (2026-09-23b, Toby): a host with skeletal units in it, led by the Undead
+// KING in person ×1.5, by any other Undead commander ×1.3 (was ×1.3 / ×1.2). Whole force, no roll.
+// Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
+const UNDEAD_SKEL_KING_FAN=1.5, UNDEAD_SKEL_HERO_FAN=1.3;
+function aAn(w){ return /^[aeiou]/i.test(String(w||''))?'an':'a'; } // "an annihilating battle"
 const MISSILE_ARMIES_MASTER=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers',
   'Ironwood Crossbows','Mountain Guns','Goblin Horde']);
 
@@ -9595,6 +9644,9 @@ function seaPenalty(armyType, terrain){
   function armStr(army, heroChar, playerAlignment, terrain, ctx){
     const ARMY_STR=UNIT_BASE_STR; // alias → master (was a stale 6th copy of the strength table)
     const Q_MULT=UNIT_Q_MULT; // alias → master
+    // Strength-ladder trace (2026-09-23b): when the caller passes ctx.trace, every per-unit modifier
+    // that fires is named there. Recording only — never changes the figure.
+    const _tr=(ctx&&Array.isArray(ctx.trace))?ctx.trace:null;
     // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier
     // higher.
     const Q_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
@@ -9603,12 +9655,18 @@ function seaPenalty(armyType, terrain){
     if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){ effQuality=Q_UP[effQuality]||effQuality; } // DRUID L8: creatures & monsters fight one tier higher
     if(heroChar&&army._isSkeletal&&perkTier(heroChar,'necromancy')>=1){ effQuality=Q_UP[effQuality]||effQuality; } // NECROMANCY L6 (The Necromantic Arts): skeletal armies you lead fight one experience tier higher
     if(army._tacUp||army._drumUp){ effQuality=Q_UP[effQuality]||effQuality; } // TACTICAL L6 / War Drum: fight one tier higher (rolled ONCE per battle at battle start)
+    if(_tr&&effQuality!==(army.quality||'Average')){ const _w=[];
+      if(heroChar&&heroChar._oratoryBoost) _w.push('Oratory');
+      if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))) _w.push('Druid mastery');
+      if(heroChar&&army._isSkeletal&&perkTier(heroChar,'necromancy')>=1) _w.push('Necromantic mastery');
+      if(army._tacUp) _w.push('Tactical mastery'); if(army._drumUp) _w.push('War Drum');
+      _tr.push({label:`fights as ${effQuality}${_w.length?` (${_w.join(' + ')})`:''}`}); }
     const baseStr=(ARMY_STR[army.type]||4)*(Q_MULT[effQuality]||2);
     // Apply Druid penalty
     let str=baseStr;
     if(heroChar){
       const penalty=druIdPenaltyMult(heroChar,army,playerAlignment,dragonTamed(heroChar,army));
-      if(penalty<1) str=Math.floor(str*penalty);
+      if(penalty<1){ str=Math.floor(str*penalty); if(_tr) _tr.push({label:`Druid shortfall ${ladderFm(penalty)}`}); }
     }
     // ── RACE CONTEXT (computed once for all race modifiers) ── _unitRace: the army's kin.
     // _ownerRace: the race of the OWNING PLAYER'S KING (their chosen race), from ctx.ownerRace when
@@ -9624,12 +9682,13 @@ function seaPenalty(armyType, terrain){
     if(_unitRace){
       if(_ownerRace&&_unitRace===_ownerRace) str=Math.round(str*1.2);       // king's-race affinity
       if(_leaderRace&&_unitRace===_leaderRace) str=Math.round(str*1.2);     // leader's-race affinity
+      if(_tr){ const _k=((_ownerRace&&_unitRace===_ownerRace)?1:0)+((_leaderRace&&_unitRace===_leaderRace)?1:0); if(_k) _tr.push({label:`kinship ${_k===2?'×1.44':'×1.2'}`}); }
     }
     // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
     // led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
     if(_unitRace&&_leaderRace){
       const _RIVAL_RACE={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
-      if(_RIVAL_RACE[_unitRace]===_leaderRace) str=Math.round(str*0.8);
+      if(_RIVAL_RACE[_unitRace]===_leaderRace){ str=Math.round(str*0.8); if(_tr) _tr.push({label:'racial animosity ×0.8'}); }
     }
     // Apply terrain modifier
     if(terrain){
@@ -9657,28 +9716,32 @@ function seaPenalty(armyType, terrain){
       // realm — a duplicate copy that lived here caused a ×2.25 double-dip for Druidic-aligned
       // commanders and has been removed.)
       str=Math.floor(str*terrainMultFinal);
+      if(_tr&&Math.abs(terrainMultFinal-1)>1e-9) _tr.push({label:`${terrain} terrain ${ladderFm(terrainMultFinal)}`});
     }
     // ── ELVEN WOODLAND MASTERY ── Elven armies of an Elven realm fight +50% in forest and jungle —
     // their home ground. (Raised from +20% this session.)
-    if(_unitRace==='Elven'&&_ownerRace==='Elven'&&(terrain==='forest'||terrain==='jungle')) str=Math.round(str*1.5);
+    if(_unitRace==='Elven'&&_ownerRace==='Elven'&&(terrain==='forest'||terrain==='jungle')){ str=Math.round(str*1.5); if(_tr) _tr.push({label:'Elven Woodland Mastery ×1.5'}); }
     // ── DWARVEN BULWARK ── Dwarven armies of a Dwarven realm defend at ×1.5 in any battle
     // (per-unit; applies only on the defending side).
-    if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false) str=Math.round(str*1.5);
+    if(_unitRace==='Dwarven'&&_ownerRace==='Dwarven'&&ctx&&ctx.isAttacker===false){ str=Math.round(str*1.5); if(_tr) _tr.push({label:'Dwarven Bulwark ×1.5'}); }
     // GRAND DESIGN — Pagan (Standing Stones). 2026-09-14: keyed on the DEFENDING REALM, not on a
     // hero being present, so an unled garrison holding forest, jungle or mountain gets the same
     // +25% the description promises — exactly as Dwarven Bulwark already does on the line above.
     { const _pagPi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
-      if(_pagPi!=null&&gdActive(_pagPi,'Pagan')&&ctx&&ctx.isAttacker===false&&(terrain==='forest'||terrain==='jungle'||terrain==='mountain')) str=Math.round(str*1.25); }
+      if(_pagPi!=null&&gdActive(_pagPi,'Pagan')&&ctx&&ctx.isAttacker===false&&(terrain==='forest'||terrain==='jungle'||terrain==='mountain')){ str=Math.round(str*1.25); if(_tr) _tr.push({label:'Standing Stones ×1.25'}); } }
     // race / alignment `unitStr` discoveries (per unit; owner = leader's realm, or the garrison's
     // owner).
     { const _dpi=(heroChar&&heroChar.player!=null)?heroChar.player:((ctx&&ctx.ownerPi!=null)?ctx.ownerPi:null);
-      if(_dpi!=null){ const _dm=discUnitMult(_dpi, army, terrain, ctx, heroChar); if(_dm!==1) str=Math.round(str*_dm); } }
+      if(_dpi!=null){ const _dm=discUnitMult(_dpi, army, terrain, ctx, heroChar); if(_dm!==1){ str=Math.round(str*_dm); if(_tr) _tr.push({label:`realm unit discoveries ${ladderFm(_dm)}`}); } } }
     // Apply temporary strength reductions (Telekinetic Storm, Fireball, Earthquake)
+    const _preTemp=str;
     if(army._tempStrReduction){ const floorStr=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr,str-army._tempStrReduction); } // battle-only; cleared at battle end. Floored so pre-battle softening never zeroes a unit before the melee.
     if(army._turnStrReduction){ const floorStr2=Math.max(1,Math.floor(str*PREBATTLE_STR_FLOOR)); str=Math.max(floorStr2,str-army._turnStrReduction); } // Telekinetic Storm: persists ALL turn (cleared at turn end only)
+    if(_tr&&str!==_preTemp) _tr.push({label:'pre-battle volleys & spells',delta:str-_preTemp});
     // Phantasmal Armies (Illusory): the commander's directly-led armies gain +10% per caster level.
-    if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); }
+    if(heroChar&&heroChar._phantasmalBonus){ str=Math.round(str*(1+heroChar._phantasmalBonus)); if(_tr) _tr.push({label:`Phantasmal Armies ${ladderFm(1+heroChar._phantasmalBonus)}`}); }
     // Magic-item army bonuses carried by the leading commander.
+    const _preItems=str;
     if(heroChar&&heroChar.items&&heroChar.items.length){
       const has=(st)=>activeItems(heroChar).some(it=>it.effect&&it.effect.stat===st);
       const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']);
@@ -9697,12 +9760,13 @@ function seaPenalty(armyType, terrain){
       if(hasItemBase(heroChar,'Chalice of Dawn')&&playerAlignment==='Divine') str=Math.round(str*1.15); // Chalice of Dawn: a Divine realm's armies +15%
       if(has('undeadBonus')&&army._isSkeletal) str+=4;              // Black Sceptre
     }
+    if(_tr&&str!==_preItems) _tr.push({label:"commander's magic items",delta:str-_preItems});
     // ── UNIT ABILITIES (force composition) ──
     const abilityM=unitAbilityMult(army, ctx, terrain);
-    if(abilityM!==1) str=Math.round(str*abilityM);
+    if(abilityM!==1){ str=Math.round(str*abilityM); if(_tr) _tr.push({label:`${army.type} ability ${ladderFm(abilityM)}`}); }
     // DRUIDIC — Home of the Wild: Creature armies of a Druidic realm fight ×1.5 in forest and
     // jungle (the long-advertised bonus, previously described but never implemented).
-    if((playerAlignment==='Druidic'||(heroChar&&heroChar.alignment==='Druidic'))&&(terrain==='forest'||terrain==='jungle')&&CREATURE_ARMIES.has(army.type)) str=Math.round(str*1.5);
+    if((playerAlignment==='Druidic'||(heroChar&&heroChar.alignment==='Druidic'))&&(terrain==='forest'||terrain==='jungle')&&CREATURE_ARMIES.has(army.type)){ str=Math.round(str*1.5); if(_tr) _tr.push({label:'Home of the Wild ×1.5'}); }
     // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
     // +5%.
     if(heroChar){
@@ -9717,19 +9781,30 @@ function seaPenalty(armyType, terrain){
     if(heroChar&&!heroChar._druidNegated&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type)||PRIMAL_ARMY_DEFS_P[army.type])){
       let _druLvl=Math.min(5,effStat(heroChar,'druid'));
       if(heroChar._curseHalveStat==='druid') _druLvl=Math.floor(_druLvl/2);
-      if(_druLvl>0) str=Math.round(str*(1+0.05*_druLvl));
+      if(_druLvl>0){ str=Math.round(str*(1+0.05*_druLvl)); if(_tr) _tr.push({label:`Druid ${_druLvl} creature bond ${ladderFm(1+0.05*_druLvl)}`}); }
     }
     // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
     // Ironclad: heavy & fleet +5%.
     if(heroChar){
       const _prim=CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type);
-      if(_prim && (charMinor(heroChar,'naturalist')||charMinor(heroChar,'beastmaster'))) str=Math.round(str*1.05);
-      if(charMinor(heroChar,'cavalier') && MINOR_CAV.has(army.type)) str=Math.round(str*1.05);
-      if(charMinor(heroChar,'ironclad') && MINOR_HEAVY.has(army.type)) str=Math.round(str*1.05);
+      if(_prim && (charMinor(heroChar,'naturalist')||charMinor(heroChar,'beastmaster'))){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Naturalist/Beastmaster title ×1.05'}); }
+      if(charMinor(heroChar,'cavalier') && MINOR_CAV.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Cavalier title ×1.05'}); }
+      if(charMinor(heroChar,'ironclad') && MINOR_HEAVY.has(army.type)){ str=Math.round(str*1.05); if(_tr) _tr.push({label:'Ironclad title ×1.05'}); }
     }
     // Evil Terror: province was terrorised last turn — defending armies -10%
     // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)
     return str;
+  }
+  // One battle row for the strength ladder: `_u` = the unit's armStr (every per-unit modifier, named
+  // in `_tr`), `_cmd` = the command-stage multipliers that actually applied to it, `base` = the
+  // unit's FINAL per-unit strength fed to battleLineTotal. The battle sites build their rows with
+  // this, so the ladder and the real total are the same numbers. ctx must be a real object (a bare
+  // {} would switch on ctx-gated unit abilities).
+  function ladderRow(a, hero, align, terrain, ctx, cmd){
+    const tr=[]; const u=ctx?armStr(a,hero,align,terrain,Object.assign({},ctx,{trace:tr})):armStr(a,hero,align,terrain);
+    const applied=(cmd||[]).filter(c=>c&&Math.abs(c.m-1)>1e-9);
+    let s=u; applied.forEach(c=>{ s*=c.m; });
+    return {a, base:s, s, fly:FLYING_TYPES.has(a.type), _u:u, _tr:tr, _cmd:applied};
   }
   function provName(id){return G.world.provinces[id]?.name||'unknown';}
   function provOf(c){return G.world.provinces[c.location];}
@@ -9754,7 +9829,7 @@ function seaPenalty(armyType, terrain){
   // Narrative vocabulary helpers
   const ATK_VERBS=['advances on','charges into','storms','attacks','assaults','drives into'];
   const DEF_VERBS=['holds the line in','stands firm in','defends','fortifies','guards'];
-  const WIN_VERBS=['routs','breaks','scatters','overwhelms','destroys'];
+  const WIN_VERBS=['rout','break','scatter','overwhelm','destroy']; // plural — every use reads "<name>'s forces <verb>" (2026-09-23b)
   const LOSE_VERBS=['is repulsed by','retreats before','cannot break','is driven back by'];
   const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
 
@@ -10109,7 +10184,7 @@ const BATTLE_ARMY_SPELLS={
     { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // commander's magic items in play
     { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
-    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain):0),0)); // 2026-09-18
+    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:provIsCoastal(G,prov)}):0),0)); // 2026-09-18 · 2026-09-23b: same ctx as the battle rows
       narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, leading`)); } // realm named, as in PvP
     if(neutralGuardHero){
       narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`, {guard:true}));
@@ -10181,7 +10256,7 @@ const BATTLE_ARMY_SPELLS={
     // Calculate strengths with some narrative
     const MISSILE_ARMIES=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
     const archSkillAtk=atkCmdrSlain?0:effStat(c,'archery');
-    const archMissileBonus=1+(archSkillAtk*0.10); // sd07 Fire Arrows is now a `unitStr` missile effect (armStr)
+    const archMissileBonus=1+(archSkillAtk*ARCHERY_MISSILE_PCT); // 2026-09-23b (Toby): Archery lifts missile units +5%/level · sd07 Fire Arrows is a `unitStr` missile effect (armStr)
     let navalSkillAtk=atkCmdrSlain?0:effStat(c,'naval');
     if(c._curseHalveStat==='naval') navalSkillAtk=Math.floor(navalSkillAtk/2); // Curse (battle magic) can wither Naval command
     const navalFleetBonus=1+(navalSkillAtk*0.2);
@@ -10502,24 +10577,22 @@ const BATTLE_ARMY_SPELLS={
     const _illCasterN = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
     const _atkIllActive = (_illCasterN!=null && c.player!==_illCasterN);
     if(_atkIllActive) narrative.push(`  🌫 The ever-shifting illusory ground of ${prov.name} throws ${cName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`);
+    // 2026-09-23b: rows built by ladderRow so the Battle-stats ladder names every modifier and
+    // reconciles with rawAtkStr exactly. Same multipliers as before, same order-independent product.
     const armiesWithStr=armies.map(a=>{
-      let base=armStr(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal});
-      if(MISSILE_ARMIES.has(a.type)) base*=archMissileBonus;
-      if(SEA_TYPES.has(a.type)){base*=navalFleetBonus;} // Naval lifts fleets on land AND sea
-      else if(!FLYING_TYPES.has(a.type)){base*=tacMulted(effectiveTactBonus,c);}
-      if(_atkIllActive) base*=illusoryTerrainMult(a.type);
-      return{a,base,fly:FLYING_TYPES.has(a.type)};
+      const cmd=[];
+      if(MISSILE_ARMIES.has(a.type)) cmd.push({key:'arch',label:`Archery ${archSkillAtk} ${ladderFm(archMissileBonus)}`,m:archMissileBonus});
+      if(SEA_TYPES.has(a.type)) cmd.push({key:'nav',label:`Naval ${navalSkillAtk} ${ladderFm(navalFleetBonus)}`,m:navalFleetBonus}); // Naval lifts fleets on land AND sea
+      else if(!FLYING_TYPES.has(a.type)) cmd.push({key:'tac',label:`Tactical ${ladderFm(tacMulted(effectiveTactBonus,c))}`,m:tacMulted(effectiveTactBonus,c)});
+      if(_atkIllActive) cmd.push({key:'ill',label:`illusory terrain ${ladderFm(illusoryTerrainMult(a.type))}`,m:illusoryTerrainMult(a.type)});
+      return ladderRow(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base); // flying first, then strongest
 
     const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc);
     { const _bl=battleLineNarrative(cName,armiesWithStr,lineWidth,atkFlankDisc,prov.terrain); if(_bl) narrative.push(_bl); }
-    // ROOT
-    // CAUSE: this line ANNOUNCED a +10%/level strength bonus that the engine has never applied. Unit
-    // strength comes from `armStr`, which does not read archery at all, and `rawAtkStr` is computed
-    // above this line from exactly that. It is a leftover from the mechanic 103.4 corrected in the
-    // rulebook — the prose was fixed and this narrative string was missed. Archery's whole
-    // battlefield effect is the pre-battle volley, which the Archery Phase block narrates with its
-    // own total. Show Druid shortfall warnings
+    // (2026-09-23b: the old comment here said the Archery strength bonus had never been applied — it
+    // was, via archMissileBonus above. Archery is now +5%/level on missile units by design, and the
+    // Battle-stats ladder names it on the units it reached.) Show Druid shortfall warnings
     const druIdLvl=effStat(c,'druid');
     armies.forEach(a=>{
       const req=getDruidLevel(a.type);
@@ -10537,7 +10610,7 @@ const BATTLE_ARMY_SPELLS={
     // (defHero — a leaderless garrison passes null), their Archery lifts the garrison's bow and
     // crossbow units by +10% per level, exactly as it does for an attacker.
     const archSkillDef=defHero?effStat(defHero,'archery'):0;
-    const defArchMissileBonus=1+(archSkillDef*0.10); // sd07 Fire Arrows now via armStr
+    const defArchMissileBonus=1+(archSkillDef*ARCHERY_MISSILE_PCT); // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr
     // the defending commander's Naval lifts the fleets / sea-beasts they lead — land or sea —
     // exactly as the attacker's does.
     let navalSkillDef=defHero?effStat(defHero,'naval'):0; if(defHero&&defHero._curseHalveStat==='naval') navalSkillDef=Math.floor(navalSkillDef/2);
@@ -10547,12 +10620,12 @@ const BATTLE_ARMY_SPELLS={
     // defending commander's realm — previously hard-coded ×0.5 whatever discoveries they held.
     const defFlankDisc=(prov.owner!=null&&hasDisc(prov.owner,'sd09'))||(!!defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd09'));
     const defsWithStr=(prov.neutralDefenders||[]).map(a=>{
-      let base=armStr(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null),coastal:_provCoastal});
-      if(MISSILE_ARMIES.has(a.type)) base*=defArchMissileBonus;
-      if(SEA_TYPES.has(a.type)) base*=defNavalFleetBonus; // defender's Naval, land or sea
+      const cmd=[];
+      if(MISSILE_ARMIES.has(a.type)) cmd.push({key:'arch',label:`Archery ${archSkillDef} ${ladderFm(defArchMissileBonus)}`,m:defArchMissileBonus});
+      if(SEA_TYPES.has(a.type)) cmd.push({key:'nav',label:`Naval ${navalSkillDef} ${ladderFm(defNavalFleetBonus)}`,m:defNavalFleetBonus}); // defender's Naval, land or sea
       const landUnit=!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type);
-      if(landUnit&&prov.terrain!=='sea') base*=tacMulted(defTactBonus,defHero);
-      return{a,base,fly:FLYING_TYPES.has(a.type)};
+      if(landUnit&&prov.terrain!=='sea') cmd.push({key:'tac',label:`Tactical ${ladderFm(tacMulted(defTactBonus,defHero))}`,m:tacMulted(defTactBonus,defHero)});
+      return ladderRow(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null),coastal:_provCoastal},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
     // the defender's half of the same phantom bonus, removed for the same reason.
     if(navalSkillDef>0&&(prov.neutralDefenders||[]).some(a=>SEA_TYPES.has(a.type))) narrative.push(`${defHero.name}'s Naval ${navalSkillDef} grants the defenders +${(navalSkillDef*20)}% strength to fleet units${isLandBattle?' (Naval command holds on land as at sea)':''}.`);
@@ -10577,7 +10650,7 @@ const BATTLE_ARMY_SPELLS={
     // Fanaticism check
     const align=G.players[c.player]?.alignment||'Neutral';
     const FANATIC_CHANCE={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
-    const fanatic=Math.random()<((FANATIC_CHANCE[align]||0.1)+discSum(c.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,armies))); // fanatic discoveries
+    const fanatic=Math.random()<((FANATIC_CHANCE[align]??0.1)+discSum(c.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,armies))); // fanatic discoveries
     // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
     // heroes serving the Undead realm do not inspire the same undying zeal.
     const skeletalFanatic=align==='Undead'&&c.isKing&&armies.some(a=>a._isSkeletal);
@@ -10589,12 +10662,12 @@ const BATTLE_ARMY_SPELLS={
     const druidicCreatureFanatic=align==='Druidic'&&armies.some(a=>CREATURE_ARMIES.has(a.type));
     // Evil: Monster armies get +25% fanaticism on top of base
     const evilMonsterFanatic=align==='Evil'&&armies.some(a=>MONSTER_ARMIES.has(a.type));
-    const fanMult=(fanatic||skeletalFanatic)?1.3:(druidicCreatureFanatic||evilMonsterFanatic)?1.25:skelHeroFanatic?1.2:1;
+    const fanMult=Math.max(1, fanatic?1.3:1, skeletalFanatic?UNDEAD_SKEL_KING_FAN:1, (druidicCreatureFanatic||evilMonsterFanatic)?1.25:1, skelHeroFanatic?UNDEAD_SKEL_HERO_FAN:1); // strongest counts (2026-09-23b)
     if(druidicCreatureFanatic&&!fanatic) narrative.push(`${cName}'s creature armies fight with primal ferocity under their Druidic master! (+25% strength)`);
     if(evilMonsterFanatic&&!fanatic) narrative.push(`${cName}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`);
-    if(fanatic) narrative.push(`Seized by religious fervour, ${cName}'s troops fight with fanatical zeal! (+30% strength)`)
-    if(skeletalFanatic&&!fanatic) narrative.push(`${cName}'s skeletal legions fight with undying fanaticism under their Undead master! (+30% strength)`)
-    if(skelHeroFanatic&&fanMult===1.2) narrative.push(`${cName}'s skeletal legions know no fear (+20% strength — undying fanaticism).`)
+    if(fanatic&&!skeletalFanatic&&!skelHeroFanatic) narrative.push(`Seized by religious fervour, ${cName}'s troops fight with fanatical zeal! (+30% strength)`)
+    if(skeletalFanatic) narrative.push(`${cName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${Math.round((UNDEAD_SKEL_KING_FAN-1)*100)}% strength)`)
+    if(skelHeroFanatic) narrative.push(`${cName}'s skeletal legions know no fear (+${Math.round((UNDEAD_SKEL_HERO_FAN-1)*100)}% strength — undying fanaticism).`)
     const discArmyBonus=1+discoveryArmyBonus(c.player);
     if(discArmyBonus>1) narrative.push(`Realm discoveries grant +${((discArmyBonus-1)*100).toFixed(0)}% army strength.`);;
 
@@ -10625,25 +10698,16 @@ const BATTLE_ARMY_SPELLS={
     // not applied again) plus the dice, so the numbers reconcile: effective + roll = final. The
     // "(incl. …)" note lists the multipliers already applied, for context — it is not a formula to
     // re-multiply. (Per-factor lines above give the full breakdown.)
-    const _atkInc=[];
-    if(effectiveTactBonus>1) _atkInc.push(`tactical ×${tactBonus.toFixed(1)}`);
-    if(fanMult>1) _atkInc.push(`fanaticism ×${fanMult.toFixed(2)}`);
-    if(finalAtkMod>1) _atkInc.push(`discoveries ×${finalAtkMod.toFixed(2)}`);
-    if(_atkIllActive) _atkInc.push('illusory terrain (worst-terrain, min −15%)');
-    if(_npcAtkMorale!==1) _atkInc.push(`morale ×${_npcAtkMorale.toFixed(2)}`);
-    if(_consecNPC) _atkInc.push('consecrated ×0.85');
-    if(atkOrdN!==1) _atkInc.push(`orders ×${atkOrdN.toFixed(2)}`);
-    if(atkHomeBonus>1) _atkInc.push(`home ground ×${atkHomeBonus.toFixed(1)}`);
-    const _defInc=[];
-    if(defHero&&defTactBonus>1) _defInc.push(`tactical ×${defTactBonus.toFixed(1)}`);
-    if(defBonus>1) _defInc.push(`defender ×${defBonus.toFixed(2)}`);
-    if(homeBonus>1) _defInc.push(`home ×${homeBonus.toFixed(1)}`);
-    if(_npcDefMorale!==1) _defInc.push(`morale ×${_npcDefMorale.toFixed(2)}`);
-    if(defOrdN!==1) _defInc.push(`orders ×${defOrdN.toFixed(2)}`);
-    // strengths shown untouched; fortune described as its effect on the edge (see
-    // fortuneNarrative).
+    // 2026-09-23b: strength LADDER per side (see ladderLines) replaces the one-line "(incl. …)"
+    // summary. The Whole-force lists MUST mirror atkBaseStr / defBaseStr above.
     const _defLabelStat=defHero?defHero.name:`the defenders of ${prov.name}`;
-    narrative.push(`📊 **Battle stats:** ${cName} strength **${n0(atkBaseStr)}**${_atkInc.length?` (incl. ${_atkInc.join(', ')})`:''} vs ${_defLabelStat} strength **${n0(defBaseStr)}**${_defInc.length?` (incl. ${_defInc.join(', ')})`:''}. ${fortuneNarrative(cName,_defLabelStat,atkBaseStr,defBaseStr,_fort)}`);
+    const _nAtkFM=[{label:'morale',m:_npcAtkMorale},{label:'orders',m:atkOrdN},{label:'home ground',m:atkHomeBonus},{label:'fanaticism',m:fanMult},{label:'discoveries',m:finalAtkMod},{label:'consecrated ground',m:(_consecNPC?0.85:1)}];
+    const _nDefFM=[{label:"defender's position",m:defBonus},{label:'home',m:homeBonus},{label:'morale',m:_npcDefMorale},{label:'orders',m:defOrdN}];
+    const _nAtkTm=tacMulted(effectiveTactBonus,c), _nDefTm=tacMulted(defTactBonus,defHero);
+    narrative.push(`📊 **Battle stats:**`);
+    narrative.push(...ladderLines('Attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {tact:(isLandBattle&&_nAtkTm>1)?{mult:_nAtkTm,label:`Tactical ${ladderFm(_nAtkTm)}`}:null}));
+    narrative.push(...ladderLines('Defender', _defLabelStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {tact:(prov.terrain!=='sea'&&_nDefTm>1)?{mult:_nDefTm,label:`Tactical ${ladderFm(_nDefTm)}`}:null}));
+    narrative.push(`  ${fortuneNarrative(cName,_defLabelStat,atkBaseStr,defBaseStr,_fort)}`);
 
     // Combat result narrative
     const margin=finalAtk-finalDef;
@@ -10728,7 +10792,13 @@ const BATTLE_ARMY_SPELLS={
 
     if(won){
       const guardName=defHero?defHero.name+' and their forces':('the defenders of '+prov.name);
-      narrative.push(`After a ${severity} engagement (margin ${(margRatio*100).toFixed(0)}% of total strength), ${cName}'s forces ${pick(WIN_VERBS)} ${guardName}!`);
+      // 2026-09-23b ROOT CAUSE of the empty defender section: pre-battle effects can remove the LAST
+      // defender before the clash (Breach and Swamp sinks a lone defending hull; Control Undead turns
+      // the last undead defender). The fight then ran against 0 strength, reported an "annihilating
+      // engagement" and printed a defender casualty header with nothing under it.
+      const _noDefLeft=defenders.length===0;
+      if(_noDefLeft) narrative.push(`${cName}'s forces sweep into ${prov.name} — nothing is left to stand against them.`);
+      else narrative.push(`After ${aAn(severity)} ${severity} engagement (margin ${(margRatio*100).toFixed(0)}% of total strength), ${cName}'s forces ${pick(WIN_VERBS)} ${guardName}!`);
       narrative.push(`⚔ **${cName}'s forces** (attacker):`);
       if(_npcWargs) narrative.push(`🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${cName}'s losses are halved.`);
       let winSurv=0, winEvents=0;
@@ -10759,6 +10829,7 @@ const BATTLE_ARMY_SPELLS={
       // the province and contest it again next phase.
       const _defOwnerNm=defHero?defHero.name.replace(' (wandering)',''):('The defenders of '+prov.name);
       narrative.push(`🛡 **${_defOwnerNm}'s forces** (defender):`);
+      if(_noDefLeft) narrative.push(`— None left to fight: every defending unit was lost before the lines closed.`);
       if(_npcRideAtk>0) narrative.push(`🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${dispFloor(_npcRideAtk*100)}% losses).`);
       defenders.forEach(a=>{
         if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtk){
@@ -10792,8 +10863,8 @@ const BATTLE_ARMY_SPELLS={
       const defName2=defHero?defHero.name:((prov.owner!=null&&!neutralGuardHero)?('the garrison of '+prov.name):('the defenders of '+prov.name));
       // combatVsNPC also fights a PLAYER's unled garrison — that garrison holds its walls; it is
       // not a neutral band, so the 'neutral defenders never retreat' tag is wrong there.
-      const _holdTag=(prov.owner!=null&&!neutralGuardHero)?'the garrison holds its walls!':'neutral defenders never retreat!';
-      narrative.push(`${cName}'s forces are repelled! After a ${severity} engagement (margin ${(margRatio*100).toFixed(0)}%), ${defName2} hold their ground — ${_holdTag}`);
+      const _holdTag=(prov.owner!=null&&!neutralGuardHero)?(prov.terrain==='sea'?'the garrison holds these waters!':'the garrison holds its walls!'):'neutral defenders never retreat!'; // no walls at sea (2026-09-23b)
+      narrative.push(`${cName}'s forces are repelled! After ${aAn(severity)} ${severity} engagement (margin ${(margRatio*100).toFixed(0)}%), ${defName2} hold their ground — ${_holdTag}`);
       narrative.push(`🛡 **${defName2.replace(' (wandering)','')}'s forces** (defender):`);
       // Log fate of each defender (some may have died in the fighting even in a win)
       defenders.forEach(a=>{
@@ -10832,8 +10903,9 @@ const BATTLE_ARMY_SPELLS={
         } else if(!a._isSkeletal){
           const roll2=Math.random();
           if(roll2<loseDemoteChance*tacMultNPC){
+            const _q0=a.quality;
             if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
-            else {a._notable=true;narrative.push(`— ${unitRef(cName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
+            else {a._notable=true;narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`);}
           } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G)){
             if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];a._notable=true;narrative.push(`— Despite defeat, ${unitRef(cName,{...a,quality:_q0})} improved to ${a.quality}!`);}
           }
@@ -12792,10 +12864,14 @@ const BATTLE_ARMY_SPELLS={
     { const _ia=magicItemsLine(atk), _id=magicItemsLine(def); if(_ia)narrative.push(_ia); if(_id)narrative.push(_id); } // item 5
     { const _kA=kinNarrative(atkArmies,atk,(G.players[atk.player]?.race||null),`${atk.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defArmies,def,(G.players[def.player]?.race||null),`${def.name}'s host`); if(_kD) narrative.push(_kD); }
-    // each side's army strength on the ground (terrain applied, before tactics, fanaticism and the
-    // dice — the Battle stats block below carries the full figure).
-    { const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain):0),0));
-      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain):0),0));
+    // each side's army strength on the ground: every per-unit modifier (terrain, kinship, Dwarven
+    // Bulwark, unit abilities, Druid bond…) — before Tactical, battle lines, force-wide multipliers
+    // and the dice. 2026-09-23b: now built with the SAME ctx the battle uses (it had none, so a
+    // defending Dwarven host showed 32 here and fought from 48); it equals the ladder's "Units" stage
+    // before any pre-battle volleys or spells land.
+    { const _dcC=provIsCoastal(G,prov);
+      const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain,{force:atkArmies,enemyForce:defArmies,isAttacker:true,amphibious:!!atk._amphibiousAssault,coastal:_dcC}):0),0));
+      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain,{force:defArmies,enemyForce:atkArmies,isAttacker:false,coastal:_dcC}):0),0));
       narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''} — army strength ${_aS}, with`));
       narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''} — army strength ${_dS}, with`)); }
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now
@@ -12870,8 +12946,8 @@ const BATTLE_ARMY_SPELLS={
     // ORC — Terror From Above: wyverns overhead take the heart out of the other side.
     const _wyvAtk=atkArmies.some(a=>a&&a.type==='Wyvern Riders');
     const _wyvDef=defArmies.some(a=>a&&a.type==='Wyvern Riders');
-    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]||0.1)+discSum(atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))-(_wyvDef?0.15:0)); // fanatic discoveries
-    let _defFanPct=Math.max(0,(defFanChance[defAlign]||0.1)+discSum(def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies))-(_wyvAtk?0.15:0));
+    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]??0.1)+discSum(atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))-(_wyvDef?0.15:0)); // fanatic discoveries
+    let _defFanPct=Math.max(0,(defFanChance[defAlign]??0.1)+discSum(def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies))-(_wyvAtk?0.15:0));
     // DIVINE — Consecrate: defenders on consecrated ground are TWICE as likely to be seized by
     // fanatical zeal (they fight before the altars of their gods).
     const _consecratedHere=def.player!=null&&isConsecrated(G.players[def.player],prov.id)&&prov.owner===def.player;
@@ -12890,19 +12966,22 @@ const BATTLE_ARMY_SPELLS={
     const defDruidCreature=defAlign==='Druidic'&&defArmies.some(a=>CREATURE_ARMIES.has(a.type));
     const atkEvilMonster=atkAlign==='Evil'&&atkArmies.some(a=>MONSTER_ARMIES.has(a.type));
     const defEvilMonster=defAlign==='Evil'&&defArmies.some(a=>MONSTER_ARMIES.has(a.type));
-    const atkFanMult=(atkFanatic||atkSkelFanatic)?1.3:(atkDruidCreature||atkEvilMonster)?1.25:atkSkelHero?1.2:1;
-    const defFanMult=(defFanatic||defSkelFanatic)?1.3:(defDruidCreature||defEvilMonster)?1.25:defSkelHero?1.2:1;
-    if(atkSkelFanatic&&!atkFanatic) narrative.push(`${atkName}'s skeletal legions fight with undying fanaticism! (+30% strength)`);
-    if(defSkelFanatic&&!defFanatic) narrative.push(`${defName}'s skeletal legions fight with undying fanaticism! (+30% strength)`);
+    // Strongest fervour counts (max) — the old precedence chain let a ×1.3 zeal roll mask the
+    // skeletal bonus once that bonus rose above it.
+    const atkFanMult=Math.max(1, atkFanatic?1.3:1, atkSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (atkDruidCreature||atkEvilMonster)?1.25:1, atkSkelHero?UNDEAD_SKEL_HERO_FAN:1);
+    const defFanMult=Math.max(1, defFanatic?1.3:1, defSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (defDruidCreature||defEvilMonster)?1.25:1, defSkelHero?UNDEAD_SKEL_HERO_FAN:1);
+    const _pct=m=>Math.round((m-1)*100);
+    if(atkSkelFanatic) narrative.push(`${atkName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${_pct(UNDEAD_SKEL_KING_FAN)}% strength)`);
+    if(defSkelFanatic) narrative.push(`${defName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${_pct(UNDEAD_SKEL_KING_FAN)}% strength)`);
     if(atkDruidCreature&&!atkFanatic) narrative.push(`${atkName}'s creature armies fight with primal ferocity! (+25% strength)`);
     if(defDruidCreature&&!defFanatic) narrative.push(`${defName}'s creature armies fight with primal ferocity! (+25% strength)`);
     if(atkEvilMonster&&!atkFanatic) narrative.push(`${atkName}'s monsters are driven to savage fury! (+25% strength)`);
     if(defEvilMonster&&!defFanatic) narrative.push(`${defName}'s monsters are driven to savage fury! (+25% strength)`);
-    if(atkSkelHero&&atkFanMult===1.2) narrative.push(`${atkName}'s skeletal legions know no fear (+20% strength — undying fanaticism).`);
-    if(defSkelHero&&defFanMult===1.2) narrative.push(`${defName}'s skeletal legions know no fear (+20% strength — undying fanaticism).`);
-    if(atkFanatic) narrative.push(`${atkName}'s forces fight with fanatical zeal! (+30% attacking strength)`);
-    if(defFanatic&&_consecratedHere) narrative.push(`✨ On the consecrated ground of ${prov.name}, ${defName}'s defenders fight before the altars of their gods with fanatical zeal! (+30% defending strength)`);
-    else if(defFanatic) narrative.push(`${defName}'s forces fight with fanatical zeal! (+30% defending strength)`);
+    if(atkSkelHero) narrative.push(`${atkName}'s skeletal legions know no fear (+${_pct(UNDEAD_SKEL_HERO_FAN)}% strength — undying fanaticism).`);
+    if(defSkelHero) narrative.push(`${defName}'s skeletal legions know no fear (+${_pct(UNDEAD_SKEL_HERO_FAN)}% strength — undying fanaticism).`);
+    if(atkFanatic&&!atkSkelFanatic&&!atkSkelHero) narrative.push(`${atkName}'s forces fight with fanatical zeal! (+30% attacking strength)`);
+    if(defFanatic&&!defSkelFanatic&&!defSkelHero&&_consecratedHere) narrative.push(`✨ On the consecrated ground of ${prov.name}, ${defName}'s defenders fight before the altars of their gods with fanatical zeal! (+30% defending strength)`);
+    else if(defFanatic&&!defSkelFanatic&&!defSkelHero) narrative.push(`${defName}'s forces fight with fanatical zeal! (+30% defending strength)`);
 
     // Terrain sets the front-line width — how many units fight in the front row (the rest form a
     // reduced-effect reserve). This is the ONE source of truth for the front width, used by BOTH
@@ -12913,8 +12992,8 @@ const BATTLE_ARMY_SPELLS={
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
-    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*0.10); // sd07 Fire Arrows now via armStr (unitStr missile)
-    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*0.10);
+    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*ARCHERY_MISSILE_PCT); // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr (unitStr missile)
+    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*ARCHERY_MISSILE_PCT);
     let atkNav=atkCmdrSlain?0:effStat(atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
     let defNav=defCmdrSlain?0:effStat(def,'naval'); if(def._curseHalveStat==='naval') defNav=Math.floor(defNav/2); const defNavBonus=1+(defNav*0.2);
     const atkAlign2=G.players[atk.player]?.alignment||'Neutral';
@@ -12923,24 +13002,25 @@ const BATTLE_ARMY_SPELLS={
     const pvpTerrain=prov.terrain;
     const pvpIsLand=pvpTerrain!=='sea';
     const _pvpCoastal=provIsCoastal(G,prov); // Sea Giants' Tidal Might
-    function pvpArmStr(a,hero,align,tactBonus){
-      const _isAtkSide=(hero===atk);
-      let base=armStr(a,hero,align,pvpTerrain,{
-        force:_isAtkSide?atkArmies:defArmies,
-        enemyForce:_isAtkSide?defArmies:atkArmies,
-        isAttacker:_isAtkSide,
-        amphibious:_isAtkSide&&!!atk._amphibiousAssault,
-        coastal:_pvpCoastal,
-      }); // terrain+sea penalty baked in
-      if(MISSILE_A.has(a.type)) base*=(hero===atk?atkArchBonus:defArchBonus);
-      // Naval bonus on land AND sea; Tactical only if land battle
-      const isFly=FLYING_TYPES.has(a.type); const isSea=SEA_TYPES.has(a.type);
-      if(isSea){
-        base*=(hero===atk?atkNavBonus:defNavBonus);
-      } else if(!isFly){
-        base*=(pvpIsLand?tacMulted(tactBonus,hero):1);
-      }
-      return base;
+    // 2026-09-23b: pvpArmStr split into ctx + command-stage builders so the battle rows, the strength
+    // ladder and the stay-or-retreat check all use ONE definition. Per unit: armStr (terrain, kin,
+    // Bulwark…) × Archery (missile units) × Naval (fleets) or Tactical (ground units only — flyers
+    // never) × Illusory Terrain.
+    function _pvpCtx(isAtk, force, enemy){
+      return {force, enemyForce:enemy, isAttacker:isAtk, amphibious:isAtk&&!!atk._amphibiousAssault, coastal:_pvpCoastal};
+    }
+    function _pvpCmd(a, isAtk){
+      const hero=isAtk?atk:def, cmd=[];
+      const arch=isAtk?atkArch:defArch, archB=isAtk?atkArchBonus:defArchBonus;
+      if(MISSILE_A.has(a.type)) cmd.push({key:'arch', label:`Archery ${arch} ${ladderFm(archB)}`, m:archB});
+      const isFly=FLYING_TYPES.has(a.type), isSea=SEA_TYPES.has(a.type);
+      if(isSea){ const nv=isAtk?atkNav:defNav, nb=isAtk?atkNavBonus:defNavBonus; cmd.push({key:'nav', label:`Naval ${nv} ${ladderFm(nb)}`, m:nb}); }
+      else if(!isFly&&pvpIsLand){ const tm=tacMulted(isAtk?atkTactBonus:defTactBonus,hero); cmd.push({key:'tac', label:`Tactical ${isAtk?atkTact:defTact} ${ladderFm(tm)}`, m:tm}); }
+      if(isAtk?_atkIllActiveP:_defIllActiveP) cmd.push({key:'ill', label:`illusory terrain ${ladderFm(illusoryTerrainMult(a.type))}`, m:illusoryTerrainMult(a.type)});
+      return cmd;
+    }
+    function _pvpRow(a, isAtk, force, enemy){
+      return ladderRow(a, isAtk?atk:def, isAtk?atkAlign2:defAlign2, pvpTerrain, _pvpCtx(isAtk,force,enemy), _pvpCmd(a,isAtk));
     }
 
     // ════
@@ -13112,8 +13192,8 @@ const BATTLE_ARMY_SPELLS={
     // PvP battle lines: sort by strength desc (flying first), strongest in front row. 2026-09-11:
     // each side's OWN Flanking Tactics.
     const atkFlankPvp=hasDisc(atk.player,'sd09'), defFlankPvp=hasDisc(def.player,'sd09');
-    const atkSorted=[...atkArmies].map(a=>({a,s:pvpArmStr(a,atk,atkAlign2,atkTactBonus)*(_atkIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
-    const defSorted=[...defArmies].map(a=>({a,s:pvpArmStr(a,def,defAlign2,defTactBonus)*(_defIllActiveP?illusoryTerrainMult(a.type):1),fly:FLYING_TYPES.has(a.type)})).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
+    const atkSorted=[...atkArmies].map(a=>_pvpRow(a,true,atkArmies,defArmies)).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
+    const defSorted=[...defArmies].map(a=>_pvpRow(a,false,defArmies,atkArmies)).sort((x,y)=>(y.fly-x.fly)||y.s-x.s);
     // Ground units fill four terrain-width lines (×1 / ×0.5 / ×0.25 / ×0.125); flyers always front.
     // `s` is the final per-unit strength — renamed into `base` once, so the totals AND the
     // narrative sort on the same figure.
@@ -13125,9 +13205,9 @@ const BATTLE_ARMY_SPELLS={
 
     // Archery/Naval notes
     if(atkArch>0&&atkArmies.some(a=>MISSILE_A.has(a.type)))
-      narrative.push(`${atkName}'s Archery ${atkArch}: +${(atkArch*10)}% to missile units.`);
+      narrative.push(`${atkName}'s Archery ${atkArch}: +${Math.round(atkArch*ARCHERY_MISSILE_PCT*100)}% to missile units.`);
     if(defArch>0&&defArmies.some(a=>MISSILE_A.has(a.type)))
-      narrative.push(`${defName}'s Archery ${defArch}: +${(defArch*10)}% to missile units.`);
+      narrative.push(`${defName}'s Archery ${defArch}: +${Math.round(defArch*ARCHERY_MISSILE_PCT*100)}% to missile units.`);
     if(atkNav>0&&atkArmies.some(a=>SEA_TYPES.has(a.type)))
       narrative.push(`${atkName}'s Naval ${atkNav}: +${(atkNav*20)}% to fleet units.`);
     if(defNav>0&&defArmies.some(a=>SEA_TYPES.has(a.type)))
@@ -13186,34 +13266,16 @@ const BATTLE_ARMY_SPELLS={
     // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
     [atk,def].forEach(x=>{ if(!x)return; const rx=G.characters[x.id]; if(rx) delete rx._phantasmalBonus; delete x._phantasmalBonus; });
 
-    // ── STAT BLOCK ── report EFFECTIVE strength (all multipliers already folded in — tactical is
-    // baked into the raw sum per-unit, not applied again) plus the dice, so effective + dice =
-    // final reconciles exactly. "(incl. …)" lists the applied multipliers for context, not a
-    // formula.
-    const _pAtkInc=[];
-    if(atkTact>0&&!isPvPSea) _pAtkInc.push(`tactical ×${atkTactBonus.toFixed(1)}`);
-    if(atkFanMult>1) _pAtkInc.push(`fanaticism ×${atkFanMult.toFixed(2)}`);
-    if(atkDiscBonus>1) _pAtkInc.push(`discoveries ×${atkDiscBonus.toFixed(2)}`);
-    if(atkMorale<1) _pAtkInc.push(`duel morale ×${atkMorale.toFixed(2)}`);
-    if(_atkIllActiveP) _pAtkInc.push('illusory terrain (worst-terrain, min −15%)');
-    if(_consecPenalty<1) _pAtkInc.push('consecrated ×0.85');
-    if(atkSanct<1) _pAtkInc.push('sanctuary ×0.75');
-    if(atkOrd!==1) _pAtkInc.push(`orders ×${atkOrd.toFixed(2)}`);
-    if(atkHomeBonusP>1) _pAtkInc.push(`home ground ×${atkHomeBonusP.toFixed(1)}`);
-    const _pDefInc=[];
-    if(defTact>0&&!isPvPSea) _pDefInc.push(`tactical ×${defTactBonus.toFixed(1)}`);
-    if(defFanMult>1) _pDefInc.push(`fanaticism ×${defFanMult.toFixed(2)}`);
-    if(defBonus>1) _pDefInc.push(`defender ×${defBonus.toFixed(2)}`);
-    if(defDiscBonus>1) _pDefInc.push(`discoveries ×${defDiscBonus.toFixed(2)}`);
-    if(defMorale<1) _pDefInc.push(`duel morale ×${defMorale.toFixed(2)}`);
-    if(_defIllActiveP) _pDefInc.push('illusory terrain (worst-terrain, min −15%)');
-    if(defSanct<1) _pDefInc.push('sanctuary ×0.75');
-    if(defOrd!==1) _pDefInc.push(`orders ×${defOrd.toFixed(2)}`);
+    // ── STAT BLOCK ── 2026-09-23b: a three-stage strength LADDER per side (see ladderLines) replaces
+    // the old "(incl. …)" list, which omitted every per-unit modifier (Dwarven Bulwark, kinship,
+    // terrain, the Druid creature bond, arrows) and listed Tactical as army-wide though flyers and
+    // fleets never get it. The Whole-force list below MUST mirror atkBaseStr / defBaseStr above —
+    // the harness asserts lineTotal × Π(m) === baseStr for both sides.
+    const _pAtkFM=[{label:'fanaticism',m:atkFanMult},{label:'discoveries',m:atkDiscBonus},{label:'duel morale',m:atkMorale},{label:'consecrated ground',m:_consecPenalty},{label:'sanctuary wards',m:atkSanct},{label:'orders',m:atkOrd},{label:'home ground',m:atkHomeBonusP}];
+    const _pDefFM=[{label:'fanaticism',m:defFanMult},{label:"defender's position",m:defBonus},{label:'duel morale',m:defMorale},{label:'discoveries',m:defDiscBonus},{label:'sanctuary wards',m:defSanct},{label:'orders',m:defOrd}];
     narrative.push(`📊 **Battle stats:**`);
-    // strengths shown untouched; fortune described as its effect on the edge (see
-    // fortuneNarrative).
-    narrative.push(`  Attacker (${atkName}): ${atkArmies.length} units, strength **${n0(atkBaseStr)}**${_pAtkInc.length?` (incl. ${_pAtkInc.join(', ')})`:''}`);
-    narrative.push(`  Defender (${defName}): ${defArmies.length} units, strength **${n0(defBaseStr)}**${_pDefInc.length?` (incl. ${_pDefInc.join(', ')})`:''}`);
+    narrative.push(...ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {tact:(pvpIsLand&&atkTactBonus>1)?{mult:tacMulted(atkTactBonus,atk),label:`Tactical ${atkTact} ${ladderFm(tacMulted(atkTactBonus,atk))}`}:null}));
+    narrative.push(...ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {tact:(pvpIsLand&&defTactBonus>1)?{mult:tacMulted(defTactBonus,def),label:`Tactical ${defTact} ${ladderFm(tacMulted(defTactBonus,def))}`}:null}));
     narrative.push(`  ${fortuneNarrative(atkName,defName,atkBaseStr,defBaseStr,_fortP)}`);
 
     const won=atkStr>=defStr;
@@ -13293,17 +13355,46 @@ const BATTLE_ARMY_SPELLS={
     // is, capped at 75%. "Stay" leaves the province contested (_battleUnresolved), and the
     // stalled-battle resolver grinds the carry-on each following phase until it breaks one way or
     // the other.
-    const _survStr=(force,ch)=>(force||[]).reduce((t,a)=>t+armStr(a, ch, (G.players[ch.player]?.alignment), pvpTerrain), 0);
-    const _wantsToStay=(loserForce,loserCh,winnerForce,winnerCh)=>{
+    // 2026-09-23b ROOT CAUSE FIX: _survStr summed BARE armStr (no ctx, no Tactical, no defender
+    // bonus, no discoveries), so two Elven eagle units (≈39) "outweighed" an Elite Dwarven Guard (32
+    // bare) that actually fights at ≈120 (Bulwark ×1.5, Tactical ×2.0, defender ×1.25) — and the
+    // beaten eagles were told they were "still the stronger host" and kept in a hopeless carry-on.
+    // Survivors are now valued exactly as the battle values a unit (ladder rows: ctx, Archery /
+    // Naval / Tactical, battle lines) × every force-wide multiplier that would carry into a rematch.
+    // Left out: this battle's arrows/spells (_tempStrReduction — cleared at battle end), the random
+    // Tactical-L6 / War-Drum tier-ups and the random fanaticism roll (all re-rolled next round).
+    const _atkFanDet=Math.max(1, atkSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (atkDruidCreature||atkEvilMonster)?1.25:1, atkSkelHero?UNDEAD_SKEL_HERO_FAN:1);
+    const _defFanDet=Math.max(1, defSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (defDruidCreature||defEvilMonster)?1.25:1, defSkelHero?UNDEAD_SKEL_HERO_FAN:1);
+    const _survStr=(isAtk)=>{
+      const clean=f=>(f||[]).filter(a=>a&&!a._died&&!a._disbanded).map(a=>{ const c={...a}; delete c._tempStrReduction; delete c._archeryRed; delete c._tacUp; delete c._drumUp; return c; });
+      const mine=clean(isAtk?atk.armies:def.armies), foe=clean(isAtk?def.armies:atk.armies);
+      if(!mine.length) return 0;
+      const rows=mine.map(a=>_pvpRow(a,isAtk,mine,foe));
+      const tot=battleLineTotal(rows,pvpFront,isAtk?atkFlankPvp:defFlankPvp);
+      return isAtk ? tot*_atkFanDet*atkDiscBonus*atkMorale*_consecPenalty*atkSanct*atkOrd*atkHomeBonusP
+                   : tot*_defFanDet*defBonus*defMorale*defDiscBonus*defSanct*defOrd;
+    };
+    let _stayLo=0, _stayWi=0;
+    const _wantsToStay=(loserForce,loserCh)=>{
       if(!loserForce||loserForce.length===0) return false;
-      const lo=_survStr(loserForce,loserCh), wi=_survStr(winnerForce,winnerCh);
+      const loIsAtk=(loserCh===atk);
+      const lo=_survStr(loIsAtk), wi=_survStr(!loIsAtk); _stayLo=lo; _stayWi=wi;
       if(lo<=wi) return false;                       // not actually the stronger host — retreat
       const stayChance=Math.max(0,Math.min(0.75, lo/Math.max(1,wi)-1));
       return Math.random()<stayChance;
     };
+    let _heldField=false; // the beaten side stays on the field (stay / trapped / Deathless / Shield Fort)
+    // 2026-09-23b: a casualty section with no line at all (the victor's lone unit came through
+    // untouched) printed a bare header. Any unit that got no line of its own is reported as surviving
+    // — same wording as combatVsNPC. (Each unit writes at most one line in these loops.)
+    const survLine=(force,n0)=>{ const f=(force||[]).filter(Boolean), got=narrative.length-n0;
+      if(got<f.length) narrative.push(`— ${got>0?'All other':'All'} forces survive the engagement.`);
+      else if(!f.length&&got===0) narrative.push(`— No units were left on the field to count.`); };
     if(won){
-      narrative.push(`After a ${severity} battle, ${atkName}'s forces ${pick(WIN_VERBS)} ${defName}'s army and seize ${prov.name}!`);
+      const _winVerb=pick(WIN_VERBS), _headIdx=narrative.length;
+      narrative.push(`After ${aAn(severity)} ${severity} battle, ${atkName}'s forces ${_winVerb} ${defName}'s army and seize ${prov.name}!`);
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Winning attacker
+      const _cas0=narrative.length;
       atkArmies.forEach(a=>{
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
@@ -13312,21 +13403,24 @@ const BATTLE_ARMY_SPELLS={
           if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— ${unitRef(atkName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);}
         }
       });
+      survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       const _rideAtkEff=_sfDef?0:_rideAtk;
       if(_rideAtk>0&&_sfDef) narrative.push(`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideAtk>0) narrative.push(`🐎 ${atkName}'s Free Lances ride down the broken companies (+${dispFloor(_rideAtk*100)}% losses to ${defName}).`);
       // Losing defender
+      const _cas1=narrative.length;
       defArmies.forEach(a=>{
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
         else if(!a._isSkeletal){
           const roll2=Math.random();
-          if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${unitRef(defName,a)} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${unitRef(defName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(defName,a)} improved to ${a.quality}!`);}}
+          if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${unitRef(defName,a)} fall back behind the shield wall in good order.`); } else { const _q0=a.quality; if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${unitRef(defName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(defName,{...a,quality:_q0})} improved to ${a.quality}!`);}}
         }
       });
+      survLine(defArmies,_cas1);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
       bloodHarvest(atk, defArmies.filter(a=>a._died).length, narrative);
@@ -13353,20 +13447,20 @@ const BATTLE_ARMY_SPELLS={
           // UNDEAD — Deathless March: the dead do not panic. A trapped all-skeletal force takes no
           // flight casualties; it simply stands among the living's fear, contesting the ground.
           narrative.push(`💀 Deathless March — ${defName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`);
-          prov._battleUnresolved=true;
+          prov._battleUnresolved=true; _heldField=true;
         } else if(_sfDef&&def.armies.length>0){
           narrative.push(`🛡 Shield Fort — with no road out, ${defName}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${prov.name} remains contested.`);
-          prov._battleUnresolved=true;
+          prov._battleUnresolved=true; _heldField=true;
         } else {
           narrative.push(`${defName} has nowhere to retreat — their forces take additional casualties!`);
           _noEscapeRoll(def.armies, def.name, narrative);
           def.armies=def.armies.filter(a=>!a._died&&!a._disbanded);
-          if(def.armies.length>0) prov._battleUnresolved=true; // trapped survivors fight again next phase
+          if(def.armies.length>0) prov._battleUnresolved=true; _heldField=true; // trapped survivors fight again next phase
         }
       } else if(_wantsToStay(def.armies, def, atk.armies, atk)){
         // still the stronger host — the defender refuses to yield and fights on.
-        narrative.push(`${defName}'s forces are pushed back but not broken — still the stronger host, they hold their ground in ${prov.name} and re-form to fight on rather than retreat.`);
-        prov._battleUnresolved=true;
+        narrative.push(`${defName}'s forces are pushed back but not broken — still the stronger host (${n0(_stayLo)} vs ${n0(_stayWi)} on the same footing, before fortune), they hold their ground in ${prov.name} and re-form to fight on rather than retreat.`);
+        prov._battleUnresolved=true; _heldField=true;
       } else if(def.alive===false || def.killedThisTurn){
         // the commander is already dead (e.g. slain in the pre-battle duel) — a corpse does not
         // retreat, and a force wiped to the last has nothing left to fall back with. Any leaderless
@@ -13387,30 +13481,36 @@ const BATTLE_ARMY_SPELLS={
         if(!defRetreatTo.characters.includes(def.id)) defRetreatTo.characters.push(def.id);
         def.location=defRetreatTo.id; // a forced retreat does NOT consume the character's move points.
       }
+      if(_heldField) narrative[_headIdx]=`After ${aAn(severity)} ${severity} battle, ${atkName}'s forces ${_winVerb} ${defName}'s army — but ${defName}'s survivors do not yield ${prov.name}.`;
     } else {
-      narrative.push(`${atkName}'s assault is repelled! After a ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`);
+      const _headIdx=narrative.length;
+      narrative.push(`${atkName}'s assault is repelled! After ${aAn(severity)} ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`);
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Losing attacker
       const _rideDefEff=_sfAtk?0:_rideDef;
       if(_rideDef>0&&_sfAtk) narrative.push(`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef*100)}% losses to ${atkName}).`);
+      const _cas2=narrative.length;
       atkArmies.forEach(a=>{
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff){a._died=true;narrative.push(`— ${unitRef(atkName,a)} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
         else if(!a._isSkeletal){
           const roll2=Math.random();
-          if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${unitRef(atkName,a)} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${unitRef(atkName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(atkName,a)} improved to ${a.quality}!`);}}
+          if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${unitRef(atkName,a)} fall back behind the shield wall in good order.`); } else { const _q0=a.quality; if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${unitRef(atkName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G)){if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(atkName,{...a,quality:_q0})} improved to ${a.quality}!`);}}
         }
       });
+      survLine(atkArmies,_cas2);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       // Winning defender — small death chance, good XP chance
+      const _cas3=narrative.length;
       defArmies.forEach(a=>{
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathPvP*defSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal && roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${unitRef(defName,a)} are hardened by victory to ${a.quality}!`);}}
+        else if(!a._isSkeletal && roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— ${unitRef(defName,{...a,quality:_q0})} are hardened by victory to ${a.quality}!`);}}
       });
+      survLine(defArmies,_cas3);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
       bloodHarvest(def, atkArmies.filter(a=>a._died).length, narrative);
@@ -13435,20 +13535,20 @@ const BATTLE_ARMY_SPELLS={
       if(atkFriendlyAdj.length===0){
         if(_dmAtk){
           narrative.push(`💀 Deathless March — ${atkName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`);
-          prov._battleUnresolved=true;
+          prov._battleUnresolved=true; _heldField=true;
         } else if(_sfAtk&&atk.armies.length>0){
           narrative.push(`🛡 Shield Fort — with no road out, ${atkName}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${prov.name} remains contested.`);
-          prov._battleUnresolved=true;
+          prov._battleUnresolved=true; _heldField=true;
         } else {
-          narrative.push(`${atkName} has nowhere to retreat — their forces take additional casualties, cut down against the walls with no escape!`);
+          narrative.push(`${atkName} has nowhere to retreat — their forces take additional casualties, ${prov.terrain==='sea'?'hemmed in on open water':'cut down against the walls'} with no escape!`);
           _noEscapeRoll(atk.armies, atk.name, narrative);
           atk.armies=atk.armies.filter(a=>!a._died&&!a._disbanded);
-          if(atk.armies.length>0) prov._battleUnresolved=true; // trapped survivors fight again next phase
+          if(atk.armies.length>0) prov._battleUnresolved=true; _heldField=true; // trapped survivors fight again next phase
         }
       } else if(_wantsToStay(atk.armies, atk, def.armies, def)){
         // still the stronger host — the attacker refuses to break off and fights on.
-        narrative.push(`${atkName}'s assault is thrown back but their host is still the stronger — they hold the field in ${prov.name} and re-form to press the attack again rather than retreat.`);
-        prov._battleUnresolved=true;
+        narrative.push(`${atkName}'s assault is thrown back but their host is still the stronger (${n0(_stayLo)} vs ${n0(_stayWi)} on the same footing, before fortune) — they hold the field in ${prov.name} and re-form to press the attack again rather than retreat.`);
+        prov._battleUnresolved=true; _heldField=true;
       } else if(atk.alive===false || atk.killedThisTurn){
         // commander already slain — a corpse does not retreat; a force wiped to the last has
         // nothing to fall back with. Leaderless survivors are dispersed after the battle.
@@ -13468,6 +13568,7 @@ const BATTLE_ARMY_SPELLS={
         if(!retreatTo.characters.includes(atk.id)) retreatTo.characters.push(atk.id);
         atk.location=retreatTo.id; // a forced retreat does NOT consume the character's move points.
       }
+      if(_heldField) narrative[_headIdx]=`${atkName}'s assault is repelled! After ${aAn(severity)} ${severity} engagement, ${defName} throws the attackers back — but they are not yet driven from ${prov.name}.`;
     }
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
@@ -15082,8 +15183,8 @@ const BATTLE_ARMY_SPELLS={
                 // decision instead of overriding it, exactly as the PvP branch does.
                 const _stoodGround=(c.location===toProv.id);
                 log('combat',_stoodGround
-                  ?`The garrison of ${toProv.name} throws ${c.name} back, but there is no road out — leaderless troops can hold walls, and the struggle goes on.`
-                  :`The garrison of ${toProv.name} repels ${c.name}'s attack — leaderless troops can hold walls!`,
+                  ?`The garrison of ${toProv.name} throws ${c.name} back, but there is no ${toProv.terrain==='sea'?'open water to escape by':'road out'} — leaderless troops can hold ${toProv.terrain==='sea'?'their waters':'walls'}, and the struggle goes on.`
+                  :`The garrison of ${toProv.name} repels ${c.name}'s attack — leaderless troops can hold ${toProv.terrain==='sea'?'their waters':'walls'}!`,
                   {actor:c.player,targets:[c.player,toProv.owner].filter(x=>x!==null),provinceId:toProv.id,public:true});
                 if(_stoodGround) toProv._battleUnresolved=true;
                 // rule: never zero remaining move points on a move-in/battle — the move already
@@ -18423,8 +18524,9 @@ const BATTLE_ARMY_SPELLS={
       }
       // Only some of those who stay are worn down a tier; the rest hold at their current quality.
       if(Math.random()<GUARD_DEMOTE_CHANCE){
+        const _q0=a.quality;
         if(demoteOrDisband(a)){ emit(disbandLine(gname,a)); return; }
-        emit(`— ${unitRef(gname,a)} lost heart in defeat, reduced to ${a.quality} — they rally around ${gname}.`);
+        emit(`— ${unitRef(gname,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality} — they rally around ${gname}.`);
         kept.push(a);
         return;
       }
@@ -19065,7 +19167,7 @@ const BATTLE_ARMY_SPELLS={
         log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(_garrisonUnfought&&(prov.garrisonArmies||[]).length>0){
         // a third party's column was beaten, but the owner's garrison never fought — the walls still stand
-        log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but its garrison still mans the walls — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+        log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but its garrison still ${prov.terrain==='sea'?'holds these waters':'mans the walls'} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
       } else {
         claim();
         // 2026-09-21: the commander can have fallen in this battle's pre-battle duel while his
@@ -22158,6 +22260,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-1616</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-1802</div>
 </body>
 </html>
