@@ -17,6 +17,19 @@ body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--i
    rules are OUTSIDE any media query so the bars are styled and always-visible on every platform —
    otherwise overlay-scrollbar systems (macOS, some mobile) hide them until hover, reading as "no
    scroll bars". `overflow:auto` on both axes; a corner box where they meet. */
+/* ANDROID MAP CORRUPTION (2026-09-23, Toby item 5). Icons drew cleanly but the hex background behind
+   them came out scrambled, intermittently, on an Android phone. The map SVG carried a CSS
+   drop-shadow() filter on every text icon (battles, characters, lairs, graves, labels, rich-province
+   glow) — often several hundred per map. Chrome for Android rasterises each filtered element as its
+   own GPU texture; inside the 700px pinch-zoomed, touch-scrolled map panel that exhausts the GPU tile
+   budget and the large background tiles are dropped or reused (garbage), while the small icon
+   textures survive — exactly "icons fine, background scrambled". Phones and touch screens now draw
+   the map without those shadows (the CSS filter property overrides the attribute); desktops keep them.
+   Promoting the map to its own composited layer (contain:paint) also keeps the tile work bounded. */
+@media (max-width:820px), (pointer:coarse){
+  #report-map-svg [filter], #map-fullscreen-modal svg [filter]{ filter:none!important; }
+  #report-map-container, #map-fullscreen-modal .kc-map-scroll{ contain:paint; }
+}
 /* Item 8 (2026-09-07): these always-visible bars were meant for DESKTOP only. Left global, Android
    Chrome (which honours ::-webkit-scrollbar) drew classic 13px bars inside the phone map panel and the
    forced overflow fought the touch-scrolling map — phones now keep their native overlay scrolling. */
@@ -183,6 +196,7 @@ section{display:none;}.section-active{display:block;}
      auto). Make the column overflow-visible and swap the ancestors to overflow-x:clip, which clips
      horizontally WITHOUT creating a scroll container, so the bar now sticks to the page viewport. */
   #rp-report-col{overflow:visible!important;}
+  #orders-column{overflow:visible!important;} /* 2026-09-23: so the orders header + treasury ledger stick on phones too */
   #sec-report,#rp-layout{overflow:visible!important;overflow-x:clip!important;}
   /* Show only the column matching the active view */
   #rp-layout.mv-map    #rp-report-col,
@@ -551,12 +565,15 @@ section{display:none;}.section-active{display:block;}
       <!-- RIGHT: Orders column (independently scrollable) -->
       <div id="orders-column" style="width:22%;min-width:260px;overflow-y:auto;height:calc(100vh - 120px);background:var(--parchment);display:flex;flex-direction:column">
         <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
-          <h2 style="position:sticky;top:0;background:var(--parchment);z-index:2;margin:0;padding:8px 0;display:flex;align-items:center;gap:8px">⚜ Orders — Turn <span id="orders-turn-num"></span>
+          <div id="orders-sticky-top" style="position:sticky;top:0;background:var(--parchment);z-index:4;border-bottom:1px solid var(--parchment-dark)">
+          <h2 style="background:var(--parchment);margin:0;padding:8px 0;display:flex;align-items:center;gap:8px">⚜ Orders — Turn <span id="orders-turn-num"></span>
             <span style="margin-left:auto;display:flex;gap:4px">
               <button class="secall-btn" onclick="collapseAllSections('#orders-column',true)" title="Minimise every hero">&#9656; all</button>
               <button class="secall-btn" onclick="collapseAllSections('#orders-column',false)" title="Expand every hero">&#9662; all</button>
             </span>
           </h2>
+          <div id="orders-ledger" style="display:none"></div>
+          </div>
           <div id="report-status-pill" style="padding:2px 0 6px"></div>
           <div id="turn-deadline-line" style="display:none;font-size:.78rem;margin:0 0 8px;padding:6px 10px;border-radius:3px;background:#f3e9d2;border:1px solid #c9bd9e;color:#4a3a1a"></div>
           <div id="orders-form" style="flex:1"></div>
@@ -611,8 +628,30 @@ const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amule
 // recipients must therefore filter them out: a corpse cannot be handed an item, take command of
 // armies, be mustered fresh recruits, or be the target of a spell. Resurrect is the one exception,
 // and it works off knownDeadHeroes / the graveyard, never off this list.
-function orderTargetCharsP(report){
-  return ((report&&report.characters)||[]).filter(x=>x&&x.alive!==false);
+// 2026-09-23 (Toby item 3): heroes on a PRE-ORDER card (hired_/resurrect_/charm_ placeholders) are
+// in report.characters too. They may be named as a recipient (Send Item, Transfer Army, Muster to,
+// Oratory…) only for a phase AFTER the one in which they join — before that they are not yet yours
+// — and an ENEMY hero seized by Charm (who goes home at turn's end) never receives items or troops
+// (opts.allowCharmEnemy lets a friendly spell reach them). The engine resolves these ids to the
+// real hero and refuses the order if the hire / raise / charm did not land.
+function isPreOrderIdP(id){ return typeof id==='string'&&/^(?:hired|resurrect|charm)_\d+_via_/.test(id); }
+function orderTargetCharsP(report, ph, opts){
+  return ((report&&report.characters)||[]).filter(x=>{
+    if(!x||x.alive===false) return false;
+    if(isPreOrderIdP(x.id)){
+      if(ph==null) return false;
+      if(ph<=(x.hiredInPhase??-1)) return false;
+      if(x._charmEnemy&&!(opts&&opts.allowCharmEnemy)) return false;
+    }
+    return true;
+  });
+}
+// the suffix a pre-order hero carries in a recipient list, so the player knows it depends on the
+// hire / raise / charm landing.
+function preOrderTagP(x){
+  if(!x||!isPreOrderIdP(x.id)) return '';
+  const k=String(x.id).split('_')[0];
+  return k==='hired'?' — if the hire lands':k==='resurrect'?' — if raised':' — if charmed';
 }
 // ── REALM NAMES IN TARGET LISTS ────
 // Every realm's name and colour ship on report.allKingdoms, so a rival's character is now labelled
@@ -2538,7 +2577,7 @@ function renderReportView(report){
               const raceBoost=(kingRaceMatch||leadRaceMatch)?` <span style="color:#2d7a2d;font-size:.66rem">+${kingRaceMatch&&leadRaceMatch?44:20}% kin</span>`:'';
               const feudTag=feudLed?` <span style="color:var(--crimson);font-size:.66rem">−20% feud</span>`:'';
               const tag=(creature||monster)?` <span style="color:#2d7a2d;font-size:.62rem">[${creature?'Creature':'Monster'}]</span>`:'';
-              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(reportColour(kingdom.color)||'var(--ink)')+'">'+armyLabel(a)+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
+              return `<div style="font-size:.75rem">${unitAbilityTip(a.type, unitEmoji(a.type)+' <span style="color:'+(reportColour(kingdom.color)||'var(--ink)')+'">'+armyLabel(a,{noMove:true})+'</span>')} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate!=null?` · move ${a.moveRate}${a.moveKind==='sea'?' (sea)':a.moveKind==='air'?' (air)':''}`:''}</span>${tag}${raceBoost}${feudTag}${pen}</div>`;
             }).join('');
             const effSpd2=(c.effectiveSpeed!=null?c.effectiveSpeed:Math.min(...arr.map(a=>a.speed||3)));
             // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
@@ -3370,15 +3409,15 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
         } else if(selSpell==='Oratory'){
           // Oratory: self, or own characters predicted to be in the same province this phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=orderTargetCharsP(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+          const allies=orderTargetCharsP(report,ph,{allowCharmEnemy:true}).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}${preOrderTagP(x)}</option>`).join('');
         } else if(selSpell==='Phantasmal Armies'){
           // Phantasmal Armies: self, or any friendly hero in the SAME province this phase. The buff
           // no longer requires armies at cast time — it sits on the target and is spent by their
           // next battle, so it still helps if they pick up or recruit armies in a later phase.
           const selfOpt=`<option value="${c.id}" ${extra==c.id?'selected':''}>${c.name} (self)</option>`;
-          const allies=orderTargetCharsP(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
-          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}</option>`).join('');
+          const allies=orderTargetCharsP(report,ph,{allowCharmEnemy:true}).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===casterLoc);
+          charOpts=selfOpt+allies.map(x=>`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} — ${x.locationName||'?'}${preOrderTagP(x)}</option>`).join('');
         } else if(selSpell==='Clairvoyance'){
           // Clairvoyance: any character you have seen AT ANY POINT in the game — drawn from the
           // persistent sighting record (everSeenChars), plus anyone visible right now.
@@ -3510,7 +3549,7 @@ function orderChanceNote(c, action, ph){
       const o=oc.practice||{}; const by=o.byLevel||[25,20,15,10,5];
       const sel=document.getElementById(`po-target-${c.id}-${ph}`)?.value||'';
       const lvl=sel?Math.min(4,((c.skills||{})[sel]||0)):null;
-      const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0);
+      const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0)+((o.bySkill&&sel)?(o.bySkill[sel]||0):0); // + skill-scoped practice discoveries
       const scale=`Chance falls as mastery grows: ${by.map((v,i)=>`${v}% at ${i}`).join(', ')}.`;
       const extra=`Practising alongside someone of equal level adds half again; anyone of HIGHER level teaches you, and the lesson cannot fail. A run of failures makes the next attempt likelier.`;
       return chanceLine(base==null?`${scale} ${extra}`:`Improvement: ${pct(base)} at ${SKILL_LABELS[sel]||sel} ${lvl}. ${extra}`);
@@ -3554,7 +3593,7 @@ function combatSpellLimit(level){ return level>=2?2:1; }
 
 // Spell hints shown below the order form
 const SPELL_HINTS={
-  'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies. A slain hero (yours or an enemy) joins your command. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
+  'Resurrect':'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies, and joins your command. Only a hero who never served ANOTHER realm can be raised \u2014 your own fallen, or a wanderer who was never in a rival\u2019s pay; a hero who ever served another crown (even one later released or who deserted) will not answer. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Action: no target \u2014 cleanses the province you stand in of ALL its battlefield dead. Every grave there is laid to rest and can never be raised by a necromancer. Combat: enemy \u22128%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
@@ -3629,7 +3668,12 @@ function armyLabel(a, opts={}){
   const _humanoidRace=!!(a.race&&HUMANOID_RACES_UI.has(a.race));
   const lead=_humanoidRace?(primalWord?`${race} (${primalWord})`:race):(primalWord||race);
   const str=unitBaseStrengthP(a);
-  const detail=[lead,a.type,a.quality,`Strength ${str}`].filter(Boolean).join(', ');
+  // 2026-09-23 (Toby item 7): the unit's own movement rate after its strength — computed by the GM
+  // report with every bonus the engine applies (March / Naval incl. items, Road & race `move`
+  // discoveries, the Swift / Sea-Wolf titles). Shown only where the report supplies it (your led
+  // units and garrisons); a column still moves at its slowest unit.
+  const _mv=(a.moveRate!=null&&!opts.noMove)?`Move ${a.moveRate}${a.moveKind==='sea'?' (sea)':a.moveKind==='air'?' (air)':''}`:null;
+  const detail=[lead,a.type,a.quality,`Strength ${str}`,_mv].filter(Boolean).join(', ');
   // beasts bound by the Rite of the Wild Hunt are flagged wherever an army line is rendered — they
   // draw no wages and leave when the binding fails.
   const wild=(a.wildHunt||a._wildHuntUntilTurn!=null)?` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil!=null?a.wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:'?')}, no wages]</span>`:'';
@@ -3824,12 +3868,101 @@ async function persistHeroOrder(){
   gp.orders=payload;
 }
 
+// ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
+// A running account at the top of the orders column (sticky, like the report's jump-bar): what the
+// treasury holds, what the orders entered so far will spend and on what, and an estimate of the
+// treasury once this turn has resolved — after the season's tax comes in and every wage is paid,
+// including the wages of the units recruited and heroes hired by these orders. Read straight from
+// the live form (every order row, pre-order cards included) and refreshed on any change.
+// Prices: native recruits from the province's own list, mercenaries from their sighting, hero
+// wages from the alignment table, the rest from report.orderPrices (the GM engine's own figures).
+// It is an ESTIMATE: an order that fails (unaffordable, target gone, province not taken) costs
+// nothing, and Hunting Rumours pays per lair actually heard of.
+function computeOrderLedgerP(){
+  const rep=currentReport||{}; const k=rep.kingdom||{}; const P=rep.orderPrices||{};
+  const wageOf=t=>(P.unitWage&&P.unitWage[t]!=null)?P.unitWage[t]:((P.unitCost||{})[t]||2);
+  const mk=()=>({g:0,n:0,wage:0});
+  const cats={armies:mk(),mercs:mk(),heroes:mk(),intel:mk(),other:mk()};
+  const notes=new Set();
+  const heroesAvail=Object.values(rep.provinceOrderData||{}).flatMap(pd=>pd.availableHeroes||[]);
+  const hired=new Set(), mercsTaken=new Set();
+  const hireHero=(hid)=>{ hid=String(hid); if(!/^\d+$/.test(hid)||hired.has(hid)) return; const h=heroesAvail.find(x=>String(x.id)===hid); if(!h) return;
+    const w=heroHireWagePP(k.alignment||'Neutral',h.alignment); if(w==null) return; hired.add(hid); cats.heroes.g+=w; cats.heroes.n++; cats.heroes.wage+=w; };
+  ((rep.characters)||[]).filter(c=>c&&c.alive!==false).forEach(c=>{
+    for(let ph=0;ph<5;ph++){
+      const act=document.getElementById(`po-action-${c.id}-${ph}`)?.value||''; if(!act) continue;
+      const tgt=String(getOrderTarget(c.id,ph)||'');
+      if(act==='Recruit Armies'){
+        const loc=predictedLocation(c.id,ph); const pd=loc?(rep.provinceOrderData||{})[loc.id]:null;
+        tgt.split(',').map(x=>x.trim()).filter(Boolean).forEach(tok=>{
+          if(tok.startsWith('to:')) return;
+          if(tok.startsWith('merc:')){ if(mercsTaken.has(tok)) return; const m=(rep.mercIntel||[]).find(x=>'merc:'+x.id===tok); if(!m) return; mercsTaken.add(tok); cats.mercs.g+=(m.cost||0); cats.mercs.n++; cats.mercs.wage+=wageOf(m.type); return; }
+          const [type,q]=tok.split('|'); const n=Math.max(1,parseInt(q)||1);
+          const at=(pd&&pd.armyTypes||[]).find(a=>a.type===type);
+          const cost=(at&&at.cost!=null)?at.cost:((P.unitCost||{})[type]||2);
+          cats.armies.g+=cost*n; cats.armies.n+=n; cats.armies.wage+=wageOf(type)*n;
+        });
+      } else if(act==='Hire Hero'){ hireHero(tgt); }
+      else if(act==='Broker'){
+        if(tgt.startsWith('hire:')) hireHero(tgt.slice(5));
+        else if(tgt.startsWith('spy:')){ cats.intel.g+=(P.brokerSpy!=null?P.brokerSpy:2); cats.intel.n++; }
+      } else if(act==='Awaken the Wild'&&tgt){
+        cats.armies.g+=((P.unitCost||{})[tgt]||4)+(P.awakenExtra!=null?P.awakenExtra:2); cats.armies.n++; cats.armies.wage+=wageOf(tgt);
+      } else if(act==='Harvest the Field'){
+        cats.armies.g+=(P.harvest!=null?P.harvest:2); cats.armies.n++; cats.armies.wage+=1; // a skeletal unit's wage is a flat 1g
+      } else if(act==='Perform Rite'&&/^wild/i.test(tgt)){
+        const loc=predictedLocation(c.id,ph); const pd=loc?(rep.provinceOrderData||{})[loc.id]:null;
+        if(pd&&pd.wildHuntCost!=null){ cats.other.g+=pd.wildHuntCost; cats.other.n++; } // bound beasts draw no wage
+      } else if(act==='Hunting Rumours'){ notes.add('Hunting Rumours pays for each lair it hears of — not counted above'); }
+    }
+  });
+  const spend=Object.values(cats).reduce((s,x)=>s+x.g,0);
+  const newWages=Object.values(cats).reduce((s,x)=>s+x.wage,0);
+  const gold=k.gold||0, tax=k.taxIncome||0;
+  const armyW=(k.nextArmyWages!=null?k.nextArmyWages:(k.armyWages||0)), heroW=(k.nextHeroWages!=null?k.nextHeroWages:(k.heroWages||0));
+  return {gold,spend,left:gold-spend,tax,armyW,heroW,newWages,cats,notes:[...notes],projected:gold-spend+tax-armyW-heroW-newWages};
+}
+function renderOrderLedgerP(){
+  const el=document.getElementById('orders-ledger'); if(!el) return;
+  if(!currentReport||!currentReport.kingdom||!document.querySelector('#orders-form select[id^="po-action-"]')){ el.style.display='none'; return; }
+  const L=computeOrderLedgerP();
+  const LBL={armies:'⚔ Armies',mercs:'🗡 Mercenaries',heroes:'🧙 Heroes',intel:'🕵 Intelligence',other:'✦ Rites'};
+  const parts=Object.entries(L.cats).filter(([,x])=>x.g>0).map(([key,x])=>`<span style="white-space:nowrap">${LBL[key]} <strong>${x.g}g</strong>${x.n>1?` <span style="color:var(--stone)">(${x.n})</span>`:''}</span>`);
+  const neg=L.left<0, pneg=L.projected<0;
+  el.style.display='block';
+  el.innerHTML=`<div style="font-size:.78rem;line-height:1.45;padding:3px 2px 6px">
+    <div style="display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline">
+      <span>💰 Treasury <strong>${L.gold}g</strong></span>
+      <span>Spent in orders <strong style="color:${L.spend>0?'#8a1c1c':'inherit'}">${L.spend}g</strong></span>
+      <span>Left <strong style="color:${neg?'#c00':'var(--forest)'}">${L.left}g</strong></span>
+    </div>
+    ${parts.length?`<div style="display:flex;flex-wrap:wrap;gap:2px 10px;font-size:.72rem;margin-top:1px">${parts.join('')}</div>`:''}
+    ${neg?`<div style="font-size:.7rem;color:#c00;margin-top:2px">⚠ These orders cost more than the treasury holds — tax only arrives at the end of the turn, so whatever is paid for last will fail for want of gold.</div>`:''}
+    <div style="font-size:.72rem;color:#4a3a1a;margin-top:2px" title="Estimate: treasury − orders + this turn's tax − army wages − hero wages − the wages of units and heroes these orders add. Failed orders cost nothing; disbanding or releasing lowers wages.">📅 End of turn ≈ <strong style="color:${pneg?'#c00':'inherit'}">${L.projected}g</strong> <span style="color:var(--stone)">(+${L.tax} tax − ${L.armyW} army wages − ${L.heroW} hero wages${L.newWages?` − ${L.newWages} new wages`:''})</span></div>
+    ${L.notes.length?`<div style="font-size:.66rem;color:var(--stone)">${L.notes.join(' · ')}</div>`:''}
+  </div>`;
+}
+let _ledgerT=null;
+function scheduleOrderLedgerP(){ clearTimeout(_ledgerT); _ledgerT=setTimeout(()=>{ try{ renderOrderLedgerP(); }catch(e){ console.warn('ledger',e); } },120); }
+document.addEventListener('change',ev=>{ if(ev.target&&ev.target.closest&&ev.target.closest('#orders-column')) scheduleOrderLedgerP(); },true);
+document.addEventListener('input',ev=>{ if(ev.target&&ev.target.closest&&ev.target.closest('#orders-column')) scheduleOrderLedgerP(); },true);
+
 function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // `report` is a LOCAL of openReport, not a global — referencing it here threw a ReferenceError
   // that aborted the whole form build (and, because renderPlayerMap is called on the next line of
   // openReport, silently blanked the map too). Use the module-level currentReport, as every other
   // helper in this file does. Do not reintroduce a bare `report` reference in this function.
   const report=currentReport||{};
+  // ── PRE-ORDER PLACEHOLDERS NEVER RENDER AS HEROES (2026-09-23, Toby item 4) ── A hire / Broker /
+  // resurrect / charm card registers a placeholder (hired_… / resurrect_… / charm_…) in
+  // currentReport.characters so the order fields can look it up. Those placeholders outlived the
+  // card: after Submit, the read-only view (and then Revise Orders, or any other rebuild of this
+  // form without a page reload) was handed a character list still holding them, so the hero was
+  // drawn TWICE — once as an ordinary hero block (with the placeholder's DOM ids) and once as the
+  // re-injected pre-order card. Strip them here; the card sync below re-registers the ones still
+  // wanted.
+  chars=(chars||[]).filter(c=>!(c&&isPreOrderIdP(c.id)));
+  if(currentReport && Array.isArray(currentReport.characters)) currentReport.characters=currentReport.characters.filter(c=>!(c&&isPreOrderIdP(c.id)));
   // ── HERO ORDER ────
   // Precedence: an arrangement saved with THIS turn's draft/submission → the arrangement the engine
   // persisted on the realm (report.heroOrder) → the default, which puts the King (or a newly-crowned
@@ -3862,6 +3995,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     { const _w=document.getElementById('orders-submit-wrap');
       if(_w){ _w.innerHTML=`<button class="btn btn-crimson btn-full" id="submit-btn" disabled style="flex:1;padding:12px;font-size:.85rem;opacity:.7;cursor:default">Orders Submitted ✓</button>`;
         _w.style.display='flex'; } }
+    { const _lg=document.getElementById('orders-ledger'); if(_lg) _lg.style.display='none'; } // no live orders → no running account
     // Show existing orders read-only so the player can see what they sent
     const savedOrders=typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders||{};
     const savedO=savedOrders.orders||savedOrders||{};
@@ -3893,8 +4027,10 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         return rows.map(([k,ords])=>{
           const kind=String(k).split('_')[0];
           const heroId=String(k).split('_')[1];
-          const nm=((currentReport||{}).visibleChars||[]).find(x=>String(x.id)===heroId)?.name
-                 ||(((currentReport||{}).graveyard||[]).find(x=>String(x.id)===heroId)||{}).name||'Hero';
+          const _rp=currentReport||{};
+          const nm=(_rp.visibleChars||[]).find(x=>String(x.id)===heroId)?.name
+                 ||Object.values(_rp.provinceOrderData||{}).flatMap(pd=>pd.availableHeroes||[]).find(x=>String(x.id)===heroId)?.name // a Broker hire stands elsewhere
+                 ||((_rp.knownDeadHeroes||_rp.graveyard||[]).find(x=>String(x.id)===heroId)||{}).name||'Hero';
           const from=parseInt(String(k).match(/_ph(\d+)$/)?.[1]||'0');
           return`<div style="margin-bottom:12px;border:1px dashed var(--stone);border-radius:3px;overflow:hidden">
             <div style="font-family:Cinzel,serif;font-size:.85rem;padding:6px 10px;background:var(--parchment-dark)">\u2694 ${nm} <span style="font-size:.68rem;color:var(--stone)">(${LABEL[kind]||kind})</span></div>
@@ -4155,6 +4291,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   // and rebuild the HIRED-HERO and CHARM pre-order cards the same way. Without this the orders
   // written for a hero you are about to hire survive only until the form is next re-rendered.
   try{ syncAllPreOrderCards(savedOrders, savedEncounterPlans); }catch(e){ console.warn('pre-order card rebuild failed',e); }
+  setTimeout(scheduleOrderLedgerP,300); // treasury ledger (item 6) once the form and its pre-order cards are in place
 
   // Populate the per-character pre-battle magic (Cast from School) control.
   chars.filter(c=>c.alive!==false).forEach(c=>renderPreSchool(c.id));
@@ -4789,6 +4926,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${dead.name}
       <span style="color:#5a3a7a;font-size:.7rem;margin-left:6px">(if raised \u2014 can act from ${SEASONS_R[firstActable]||'next turn'})</span>
+      <span style="margin-left:auto;font-size:.7rem;color:#555">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
     </div>
     <div style="padding:5px 10px 6px;background:#f5eeff;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
       <div class="resurrect-casters" style="color:#5a3a7a;font-weight:600"></div>
@@ -4938,6 +5076,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${wanderer.name}
       <span style="color:#2a7a8a;font-size:.7rem;margin-left:6px">(if charmed \u2014 can act from ${SEASONS_C[firstActable]||'next turn'})</span>
+      <span style="margin-left:auto;font-size:.7rem;color:#555">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
     </div>
     <div style="padding:5px 10px 6px;background:#eaf6f8;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
       <div style="color:#2a7a8a">These orders only take effect if the Charm succeeds. If the cast fails,
@@ -5084,6 +5223,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
       ⚔ ${heroData.name}
       <span style="color:#c8922a;font-size:.7rem;margin-left:6px">(newly hired — can act from ${SEASONS_H[firstActable]||'next turn'})</span>
+      <span style="margin-left:auto;font-size:.7rem;color:#555">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
     </div>
     <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px">
       <span><strong>Race:</strong> ${heroData.race}</span>
@@ -5597,8 +5737,9 @@ async function doSubmitOrders(){
   // Collect royal-succession skill allocations for any newly-crowned heir.
   const kingSkills={};
   chars.forEach(c=>{ if(c._isHeir) kingSkills[c.id]={skills:c.skills||{},pending:c._pendingSkillAllocation||0,name:c.name||'',temper:c.temper||'',base:c._heirBase||c.skills||{}}; });
+  const _subPayload=JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,discoveryChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:expectedTurn});
   const {error}=await sb.from('game_players').update({
-    orders:JSON.stringify({orders,encounterPlans,kingSkills,diplomacy:diploChoices,discoveryChoices,callReckoning:reckoningCall,concede:concedeGame,messages:collectMessages(),heroOrder:currentHeroOrderP(),forTurn:expectedTurn}),
+    orders:_subPayload,
     orders_submitted:true,
     last_submitted_at:new Date().toISOString()
   }).eq('id',currentGamePlayer.id);
@@ -5606,6 +5747,10 @@ async function doSubmitOrders(){
     document.getElementById('orders-msg').innerHTML=`<div class="msg-error">Error: ${error.message}</div>`;
     restoreSubmitWrap('Submit');return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
+  // 2026-09-23: keep the in-memory copy equal to what was SUBMITTED. Only a draft save updated it,
+  // so Revise Orders (without a reload) re-filled the form from the last DRAFT — any change made
+  // after that draft was silently lost from the revised form.
+  if(currentGamePlayer) currentGamePlayer.orders=_subPayload;
   document.getElementById('orders-msg').innerHTML='';
   document.getElementById('orders-submit-wrap').innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
@@ -5984,9 +6129,12 @@ function exploreGainFor(c, terr){
   const disc=(report.discoveries||[]);
   const hasSD=(id)=>disc.some(d=>d.id===id);
   const explorerSkill=Math.min(5,effSkillP(c,'explorer'));
-  const scoutBonus=hasSD('sd10')?1.20:1;
-  const compass=hasSD('sd24')?1.40:1;
-  let discMult=1; disc.forEach(d=>{ const m=/map(?:s)? (\d+)% more/i.exec(d.desc||''); if(m&&(!/mountain/i.test(d.desc)||terr==='mountain')) discMult*=1+parseInt(m[1])/100; });
+  // 2026-09-21: the GM ships the realm's per-terrain explore multiplier (every `explore` discovery,
+  // terrain-scoped ones included). Old reports without it fall back to the old desc parse.
+  const scoutBonus=1, compass=1;
+  let discMult=1;
+  if(report.exploreDiscMult&&report.exploreDiscMult[terr]!=null) discMult=report.exploreDiscMult[terr];
+  else disc.forEach(d=>{ const m=/map(?:s)? (\d+)% more/i.exec(d.desc||''); if(m&&(!/mountain/i.test(d.desc)||terr==='mountain')) discMult*=1+parseInt(m[1])/100; });
   const hasLore=(c.titlesHeld||[]).some(t=>/Loremaster/i.test(t.name||''));
   const hasTrail=(c.minorHeld||[]).some(t=>/Trailblazer/i.test(t.name||''));
   const loreMult=(hasLore?1.05:1)*(hasTrail?1.05:1);
@@ -6877,12 +7025,12 @@ function buildTargetField(c, ph, saved){
       // ── Recruit destination ── self (default), a friendly character standing in this province
       // this phase, or (in a controlled province) straight into the garrison.
       const _destSaved=((target||'').split(',').map(t=>t.trim()).find(t=>t.startsWith('to:'))||'to:self');
-      const _destAllies=orderTargetCharsP(report).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===(loc&&loc.id));
+      const _destAllies=orderTargetCharsP(report,ph).filter(x=>x.id!==c.id&&((predictedLocation(x.id,ph)?.id)??x.locationId)===(loc&&loc.id));
       const _destRow=(allowGarrison)=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:.75rem">
           <span style="color:var(--stone)">Muster to:</span>
           <select class="po-recruit-dest" onchange="updateRecruitTarget('${c.id}',${ph})" style="flex:1;font-size:.75rem;padding:1px 3px">
             <option value="to:self" ${_destSaved==='to:self'?'selected':''}>${c.name} (this character)</option>
-            ${_destAllies.map(x=>`<option value="to:${x.id}" ${_destSaved==='to:'+x.id?'selected':''}>${x.name} (also here this phase)</option>`).join('')}
+            ${_destAllies.map(x=>`<option value="to:${x.id}" ${_destSaved==='to:'+x.id?'selected':''}>${x.name} (also here this phase${preOrderTagP(x)})</option>`).join('')}
             ${allowGarrison?`<option value="to:garrison" ${_destSaved==='to:garrison'?'selected':''}>Province garrison (defends ${loc?loc.name:'the province'})</option>`:''}
           </select>
         </div>`;
@@ -6990,11 +7138,11 @@ function buildTargetField(c, ph, saved){
         const _otherPh=SEASONS.findIndex((_,p)=>p!==ph&&(document.getElementById(`po-action-${c.id}-${p}`)?.value||'')==='Send Item');
         if(_otherPh>=0) return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
           <div style="font-size:.74rem;color:#8a2a2a">A charmed hero gives up only ONE item a turn — Send Item is already ordered in ${SEASONS[_otherPh]}. Choose another action here.</div>`;
-        const chars=orderTargetCharsP(report).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
+        const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
         const loc4=predictedLocation(c.id,ph);
         const recipOpts=chars.map(x=>{
           const _same=(predictedLocation(x.id,ph)?.id)===(loc4?.id);
-          return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_same?'here now':'elsewhere — arrives end of turn'})</option>`;
+          return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_same?'here now':'elsewhere — arrives end of turn'}${preOrderTagP(x)})</option>`;
         }).join('');
         return`<input type="hidden" id="po-target-${c.id}-${ph}" value="auto">
           ${chars.length?`<select id="po-extra-${c.id}-${ph}">${recipOpts}</select>`:`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`}
@@ -7035,13 +7183,13 @@ function buildTargetField(c, ph, saved){
       // the SAME province gets the item at once (usable later this turn); one ELSEWHERE receives it
       // at the END of the turn — a courier carries it — ready to use from next turn.
       const loc4=predictedLocation(c.id,ph);
-      const chars=orderTargetCharsP(report).filter(x=> x.id!==c.id && x.player===c.player );
+      const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player );
       if(chars.length===0) return`${_giWrap}
         <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`;
       const recipOpts=chars.map(x=>{
         const _same=(predictedLocation(x.id,ph)?.id)===(loc4?.id);
         const _where=_same?'here now':'elsewhere — arrives end of turn';
-        return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_where})</option>`;
+        return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_where}${preOrderTagP(x)})</option>`;
       }).join('');
       return`${_giWrap}
         <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
@@ -7068,14 +7216,14 @@ function buildTargetField(c, ph, saved){
       // (orderTargetCharsP drops anyone who fell — report.characters still carries a hero killed
       // this turn so the Chronicle can print their last section; neutral and enemy characters are
       // never in report.characters at all.)
-      const othersHere=orderTargetCharsP(report).filter(x=>{
+      const othersHere=orderTargetCharsP(report,ph).filter(x=>{
         if(x.id===c.id) return false;
         const xl=predictedLocation(x.id,ph);
         return xl&&cLocId!=null&&xl.id===cLocId;
       });
       const recipParts=[];
       if(canGarrison) recipParts.push(`<option value="-1" ${extra==='-1'||!extra?'selected':''}>${ownsHere?`Garrison in ${cLoc.name||'province'}`:`Garrison in ${cLoc.name||'province'} \u2691 (only if you control it when this resolves)`}</option>`);
-      othersHere.forEach(x=>recipParts.push(`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}</option>`));
+      othersHere.forEach(x=>recipParts.push(`<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name}${preOrderTagP(x)}</option>`));
       if(recipParts.length===0) recipParts.push(`<option value="" disabled selected>No valid recipient here — place another of your characters here first</option>`);
       const recipOpts=recipParts.join('');
       const allChk=savedTgts.includes('all')?'checked':'';
@@ -8485,6 +8633,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.21-1611</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.23-1616</div>
 </body>
 </html>

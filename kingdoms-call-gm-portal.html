@@ -383,7 +383,9 @@ const BATTLE_LINE_MULTS_FLANK=[1,0.75,0.5,0.25];
 const BATTLE_LINE_NAMES=['front line','second line','third line','fourth line'];
 function battleFrontWidth(terrain){ return BATTLE_FRONT_WIDTH[terrain]??6; }
 function battleLineOf(groundRank,width){ return Math.min(BATTLE_LINE_MULTS.length-1, Math.floor(groundRank/Math.max(1,width))); }
-function battleLineMult(groundRank,width,flank){ return (flank?BATTLE_LINE_MULTS_FLANK:BATTLE_LINE_MULTS)[battleLineOf(groundRank,width)]; }
+// sd09's rear-line multipliers live on its data row (`lines`), falling back to the table above.
+function flankLineMults(){ const l=(typeof DISC_BY_ID!=='undefined'&&DISC_BY_ID.sd09&&DISC_BY_ID.sd09.effect&&DISC_BY_ID.sd09.effect.lines); return (Array.isArray(l)&&l.length===4)?l:BATTLE_LINE_MULTS_FLANK; }
+function battleLineMult(groundRank,width,flank){ return (flank?flankLineMults():BATTLE_LINE_MULTS)[battleLineOf(groundRank,width)]; }
 // rows: [{base, fly,...}] where `base` is the unit's FINAL per-unit strength — every modifier
 // already folded in (terrain, quality, Druid, Archery, Naval, Tactical, Illusory Terrain, items…).
 // 2026-09-11
@@ -400,7 +402,7 @@ function battleLineTotal(rows,width,flank){
 // (×0.125): H."
 function battleLineNarrative(who,rows,width,flank,terrain){
   const ground=battleLineSort(rows).filter(r=>!r.fly); if(ground.length<=width) return null;
-  const mults=flank?BATTLE_LINE_MULTS_FLANK:BATTLE_LINE_MULTS; const name=r=>(r.a&&(r.a.unitName||r.a.type))||r.name||'unit';
+  const mults=flank?flankLineMults():BATTLE_LINE_MULTS; const name=r=>(r.a&&(r.a.unitName||r.a.type))||r.name||'unit';
   // "The defenders" is already plural — don't glue an apostrophe-s onto it.
   const poss=/s$/i.test(who)?`${who}'`:`${who}'s`;
   const parts=[`${poss} front line holds ${width}: ${ground.slice(0,width).map(name).join(', ')}`];
@@ -424,6 +426,20 @@ const ARMY_SPEED_R=ARMY_SPEED_MASTER; // alias → master table at top of script
 // caller (setMovePool, pickup_army, leave/disband) uses the SAME table — the previous `+navalLevel`
 // was duplicated across four sites and drifted.
 const NB_SLOW=[0,0,1,1,2,3], NB_FAST=[0,1,1,2,2,2];
+// Report helper (2026-09-23, item 7): the movement rate of an UNLED (garrison) unit — base speed,
+// plus the realm's Road / race `move` discoveries for a speed-1/2 land unit, as computeMovePoolMax
+// adds them. No commander, so no March / Naval / title bonus.
+const GARRISON_SEA_TYPES_R=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+const GARRISON_AIR_TYPES_R=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+const GARRISON_FLY_TYPES_R=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+function garrisonMoveRate(a, pl){
+  if(!a) return {};
+  const base=ARMY_SPEED_MASTER[a.type]||3;
+  const sea=GARRISON_SEA_TYPES_R.has(a.type);
+  let road=0;
+  if(!sea&&!GARRISON_FLY_TYPES_R.has(a.type)&&base<=2&&pl&&typeof discEffectsOf==='function') discEffectsOf(pl,'move').forEach(e=>{ if(discUnitMatch(e,a)) road+=(e.extra||0); });
+  return {moveRate:base+road, moveKind:sea?'sea':(GARRISON_AIR_TYPES_R.has(a.type)?'air':'land')};
+}
 function navalSpeedBonus(baseSpeed,navalLevel){
   const lvl=Math.max(0,Math.min(5,navalLevel||0));
   return (baseSpeed<=2?NB_SLOW[lvl]:NB_FAST[lvl]);
@@ -2694,7 +2710,7 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
   // …and no one hides in another realm's land indefinitely. The floor is 25%, not 5%: a Spy-5 hero
   // squatting in a province you hold is now found roughly every fourth turn instead of every
   // twentieth, so a hunt can always eventually be brought to him. Shimmer still halves it.
-  let chance=Math.max(25, Math.min(95, explored - 20*enemySpy + 10*friendlySpy));
+  let chance=Math.max(25, Math.min(95, explored - 20*enemySpy + 10*friendlySpy + discSumOf(gs.players&&gs.players[viewerPi],'spotLurker','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.home||homeFounderOf(gs,prov.id)===viewerPi)&&(!e.coastal||discProvCoastal(gs,prov))))); // + spotLurker discoveries (sd60 Watch Houses)
   if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
 }
@@ -3069,7 +3085,7 @@ function computeMaxHp(ch, players){
   if(!ch) return HPGAIN_START;
   // realm-wide `maxHp` discoveries (ro08 Thick Hides) add a flat amount on top.
   const _plHp=(ch.player!=null)?((players||_MAXHP_PLAYERS||[])[ch.player]):null;
-  const _discHp=_plHp?discSumOf(_plHp,'maxHp','hp'):0;
+  const _discHp=_plHp?discMaxHpFor(_plHp,ch):0;
   return hpEarnedBase(ch,players)+itemMaxHpBonus(ch)+_discHp;
 }
 // The gain curve. Returns {chance, lo, hi} for the NEXT win given the current earned base.
@@ -3121,6 +3137,9 @@ function retireDiscoveries(gs){
     const before=pl.discoveries.length;
     pl.discoveries=pl.discoveries.filter(d=>!RETIRED_DISCOVERY_IDS.has(typeof d==='string'?d:(d&&d.id)));
     n+=before-pl.discoveries.length;
+    // 2026-09-21 rebalance: the stored name / field / text of a held discovery is refreshed from the
+    // master table, so a realm that found it under the old numbers reads what it does NOW.
+    pl.discoveries.forEach(d=>{ const m=d&&typeof d==='object'&&DISC_BY_ID[d.id]; if(m){ d.name=m.name; d.category=m.category; d.desc=m.desc; } });
   });
   if(gs) gs._retiredDiscoveries=(gs._retiredDiscoveries||0)+n;
   return n;
@@ -3139,7 +3158,7 @@ function migrateMaxHpV2(gs){
     if(ch.hpEarned==null){
       const old=ch.maxHp||HPGAIN_START;
       const _pl=(ch.player!=null)?(_MAXHP_PLAYERS[ch.player]):null;
-      const bonuses=itemMaxHpBonus(ch)+(_pl?discSumOf(_pl,'maxHp','hp'):0);
+      const bonuses=itemMaxHpBonus(ch)+(_pl?discMaxHpFor(_pl,ch):0);
       const base=Math.min(HPGAIN_MIGRATE_CLAMP, old-bonuses);
       ch.hpEarned=Math.max(0, Math.round(base-hpStartOf(ch,gs.players)));
       const d=syncMaxHp(ch,gs.players);
@@ -5309,10 +5328,10 @@ function botCastPlan(G, pi, c, prov, opts){
     const threatened=near.filter(N=>N.owner===pi&&N.terrain!=='sea'&&N._illusoryTurn!==G.turn&&botDefenceNeed(G,N,pi)>0).sort((a,b)=>(b.tax||0)-(a.tax||0))[0];
     if(threatened) push('illusory','Illusory Terrain',threatened.id,'Cast Illusory Terrain on '+threatened.name);
   }
-  // ── RESURRECT a known fallen hero lying here (any realm's — a raised hero serves the raiser) ──
+  // ── RESURRECT a known fallen hero lying here (never one who served another realm — a raised hero serves the raiser) ──
   if(lvl('white')>=1){
     const known=new Set(((G.players[pi]||{}).knownDeadHeroIds)||[]);
-    const grave=(G.heroGraveyard||[]).find(g=>g&&g.location===prov.id&&known.has(g.id)&&!g._monarch);
+    const grave=(G.heroGraveyard||[]).find(g=>g&&g.location===prov.id&&known.has(g.id)&&!g._monarch&&!g.isKing&&!graveServedOther(g,pi));
     if(grave) push('white','Resurrect',grave.id,'Resurrect '+grave.name);
   }
   // ── ECONOMY ──
@@ -6714,8 +6733,39 @@ function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
 // runTurn.
 // Pure function of the game state plus an optional rng/emit, so the harness can fuzz it directly.
 // Returns the list of {id, skill, from, to, teacher} gains applied this call.
+// ── SERVICE HISTORY (2026-09-23, Toby item 2) ── Every realm a hero has ever served, kept on the
+// character (c._servedRealms) and copied onto their grave. Resurrect refuses a body that ever
+// served ANOTHER realm, so a rival's fallen hero — or one they released or who deserted them —
+// cannot be raised into your service. Old saves carry no history: the grave's own `player` and a
+// release stamp (_releasedBy) still count.
+// ── PRE-ORDER HERO IDS AS RECIPIENTS (2026-09-23, Toby item 3) ── A hero on a hire / resurrect /
+// charm pre-order card has the synthetic id '<kind>_<heroId>_via_<caster>_ph<N>' in the player
+// portal, and may now be named as a recipient (Send Item, Transfer Army, Muster to, a friendly
+// spell). isPreOrderRef tells the synthetic form apart; orderCharRef resolves either form to the
+// real character record (by id, never by array index) — or null. Every caller still checks the
+// hero is the orderer's own, so a hire that failed (or a rival's) is refused, never honoured.
+function isPreOrderRef(raw){ return /^(?:hired|resurrect|charm)_\d+_via_/.test(String(raw==null?'':raw).trim()); }
+function orderCharRef(G, raw){
+  const t=String(raw==null?'':raw).trim();
+  const m=t.match(/^(?:hired|resurrect|charm)_(\d+)_via_/);
+  const id=m?parseInt(m[1]):parseInt(t);
+  if(!Number.isInteger(id)) return null;
+  return ((G&&G.characters)||[]).find(ch=>ch&&ch.id===id)||null;
+}
+function noteServedRealm(c, pi){
+  if(!c||pi==null) return;
+  if(!Array.isArray(c._servedRealms)) c._servedRealms=[];
+  if(!c._servedRealms.includes(pi)) c._servedRealms.push(pi);
+}
+function graveServedOther(g, pi){
+  if(!g) return false;
+  if(g.player!=null&&g.player!==pi) return true;
+  if(g._releasedBy!=null&&g._releasedBy!==pi) return true;
+  return Array.isArray(g.served)&&g.served.some(x=>x!=null&&x!==pi);
+}
 const NEUTRAL_PROG_FROM_TURN=5;   // first END OF TURN at which neutral heroes roll
-const NEUTRAL_PROG_PCT=50;        // chance per neutral hero per turn of gaining one point
+const NEUTRAL_PROG_PCT=25;        // chance per neutral hero per turn of gaining one point (2026-09-23: was 50)
+const NEUTRAL_PROG_CAP=5;         // a neutral hero's own growth never lifts a skill past this (higher skills they already hold are kept)
 function progressNeutralHeroes(gs, emit, rng){
   rng=rng||Math.random;
   const turn=(gs&&gs.turn)||0;
@@ -6731,12 +6781,13 @@ function progressNeutralHeroes(gs, emit, rng){
   neutrals.forEach(c=>{
     if(rng()*100>=NEUTRAL_PROG_PCT) return;
     c.skills=c.skills||{};
-    const own=ALL_SKILLS.filter(k=>(c.skills[k]||0)>0&&(c.skills[k]||0)<SKILL_MAX);
+    const _cap=Math.min(SKILL_MAX,NEUTRAL_PROG_CAP);
+    const own=ALL_SKILLS.filter(k=>(c.skills[k]||0)>0&&(c.skills[k]||0)<_cap);
     const peers=neutrals.filter(o=>o!==c&&o.location===c.location);
     let skill=null, teacher=null;
     if(peers.length){
       const t=pick(peers);
-      const cand=topSkillsOf(snap.get(t.id)||{}).filter(k=>(c.skills[k]||0)<SKILL_MAX);
+      const cand=topSkillsOf(snap.get(t.id)||{}).filter(k=>(c.skills[k]||0)<_cap);
       if(cand.length){ skill=pick(cand); teacher=t; }
     }
     if(!skill && own.length) skill=pick(own);
@@ -6948,9 +6999,9 @@ function castChanceFor(c, school, player, opts){
   if(lvl<=0&&!opts.itemCast) return {level:0,chance:0,reason:'no skill'};
   if(opts.itemCast) return {level:lvl,chance:95,reason:'item'};
   if(opts.necroAuto) return {level:lvl,chance:100,reason:'necroAuto'};
-  const arcane=(player&&(player.discoveries||[]).some(d=>d&&d.id==='sd27'))?5:0;
+  const arcane=0; // sd27 Arcane Codex is now an ordinary `cast` effect (kept as a field for old callers)
   const l8=(typeof magicL8CastBonus==='function')?magicL8CastBonus(c):0;
-  const disc=discSumOf(player,'cast','pct',e=>!e.school||e.school===school);
+  const disc=discSumOf(player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='action'));
   return {level:lvl,chance:Math.min(95,SPELL_CAST_BASE+lvl*10+arcane+l8+disc),arcane,l8,disc};
 }
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
@@ -7324,7 +7375,10 @@ function buildTurnReport(gameState, playerIndex){
     armyTypes:p.armyTypes,
     // Unled (garrisoned) armies the player keeps in this province — recruited directly to the
     // garrison, or left behind here by one of their characters.
-    garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||'',race:a.race||null,skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})),
+    garrisonArmies:(p.garrisonArmies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||'',race:a.race||null,skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null),
+      // 2026-09-23 (item 7): an unled unit's own pace — base speed plus the realm's Road / `move`
+      // discoveries for a speed-1/2 land unit (no commander, so no March, Naval or title bonus).
+      ...garrisonMoveRate(a, gameState.players[playerIndex])})),
     grandDesign:(p.grandDesign?{name:p.grandDesign.name,ownerName:(gameState.players[p.grandDesign.owner]||{}).name||null,active:gdActiveFor(gameState,p.grandDesign.owner)}:null), // Wonder of the age
     explored:(p.exploredBy&&p.exploredBy[playerIndex])||0,
     characters:(p.characters||[]).map(cid=>{
@@ -7370,7 +7424,7 @@ function buildTurnReport(gameState, playerIndex){
       // the order form showed a Road-Network Dwarven Guard column at 2 while it actually marched at
       // 3.
       let _road=0;
-      if(base<=2&&_repPl){ if((_repPl.discoveries||[]).some(d=>d&&d.id==='sd13')) _road+=1; discEffectsOf(_repPl,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
+      if(base<=2&&_repPl){ discEffectsOf(_repPl,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); } // sd13 Road Network is now a `move` effect
       return base+(base<=2?MB_SLOW[Math.min(marchLvl,5)]:MB_FAST[Math.min(marchLvl,5)])+_road;
     }
     const SEA_UNIT_TYPES=['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'];
@@ -7417,6 +7471,23 @@ function buildTurnReport(gameState, playerIndex){
         if(_fs.length) _effAirSpd=Math.min(..._fs);
       }
     }
+    // ── PER-UNIT MOVEMENT RATE (2026-09-23, Toby item 7) ── each led unit's OWN rate, exactly as
+    // computeMovePoolMax prices it: base speed + the March table (speed-1/2 units gain more) + Road
+    // / race `move` discoveries (speed 1–2 land units) for land units; base + the Naval table for
+    // sea units; flyers are untouched by March. Items that raise March / Naval count (repSpd reads
+    // the effective skill). The Swift / Sea-Wolf minor titles add +1 to land / sea pace. The
+    // COLUMN still moves at its slowest unit (and a lifted column at its flyers' pace) — that figure
+    // is the header's "Land: N/turn".
+    { const _mh=(gameState._minorHolders||{});
+      const _swift=!!(_mh.swift&&_mh.swift.charId===c.id), _seawolf=!!(_mh.seawolf&&_mh.seawolf.charId===c.id);
+      armies.forEach(a=>{ const _sea=SEA_UNIT_TYPES.includes(a.type);
+        a.moveRate=repSpd(a)+(_sea?(_seawolf?1:0):(_swift?1:0));
+        a.moveKind=_sea?'sea':(AERIAL_UNIT_TYPES.has(a.type)?'air':'land'); });
+      // the column pace quoted in the orders header must match computeMovePoolMax, which adds the
+      // Swift / Sea-Wolf +1 to the land / sea pool (whenever that pool exists). The report left
+      // both out, so a Swift holder was shown one province slower than he actually marched.
+      if(_swift&&effSpd>0) effSpd+=1;
+      if(_seawolf&&effSeaSpd>0) effSeaSpd+=1; }
     return{
       id:c.id,name:c.name,isKing:c.isKing,race:c.race,alignment:c.alignment,temper:c.temper,temperEff:effTemper(c), // Item 7
       hp:c.hp,maxHp:c.maxHp,skills:c.skills||{},aptitude:c.aptitude||{},armies,
@@ -7456,13 +7527,13 @@ function buildTurnReport(gameState, playerIndex){
         out.spy={ auto:(items.some(it=>it.effect&&it.effect.stat==='oracle')||raw('spy')>=6),
                   autoWhy:items.some(it=>it.effect&&it.effect.stat==='oracle')?'Crystal Orb':(raw('spy')>=6?'Master Spy':''),
                   level:eff('spy'),
-                  chance:dispFloor((0.2+eff('spy')*0.2+(has('sd21')?0.15:0)+discSumOf(pl,'spy','pct'))*100) };
+                  chance:dispFloor((0.2+eff('spy')*0.2+discSumOf(pl,'spy','pct',e=>!e.terrains&&!e.coastal))*100) }; // unscoped spy discoveries only (terrain/coastal ones depend on the target)
         // RESEARCH — Sage level x 5%, doubled for Neutral realms, + Loreseeker.
         { const per=5;
           out.research={ level:eff('sage'), rawLevel:raw('sage'),
             chance:eff('sage')*per+((pl.alignment==='Neutral')?eff('sage')*5:0)
                    +((( _minT&&_minT.loreseeker)||((gameState._minorHolders||{}).loreseeker)||{}).charId===c.id?per:0)
-                   +discSumOf(pl,'research','pct') }; }
+                   +discSumOf(pl,'research','pct',e=>!e.field) }; }
         // ASSASSINATE (Spy 9) — 25% + 6% per RAW Spy level, cap 80, less 25 against a king.
         out.assassinate={ level:raw('spy'), chance:Math.min(80,25+raw('spy')*6), kingPenalty:25 };
         // STEAL / GRAND HEIST — the thief's own odds before the target's circumstances.
@@ -7470,7 +7541,8 @@ function buildTurnReport(gameState, playerIndex){
         out.grandHeist={ level:raw('thief'), chance:Math.min(95,60+5*Math.max(0,raw('thief')-5)), escape:Math.min(95,raw('thief')*20) };
         // PRACTICE — the solo chance at each level; a peer adds half as much again, a mentor makes
         // it certain.
-        out.practice={ byLevel:[25,20,15,10,5], astro:has('sd26')?5:0, discovery:discSumOf(pl,'practice','pct')*100 };
+        out.practice={ byLevel:[25,20,15,10,5], astro:0, discovery:discSumOf(pl,'practice','pct',e=>!e.skills)*100,
+          bySkill:(()=>{ const m={}; discEffectsOf(pl,'practice').forEach(e=>{ (e.skills||[]).forEach(k=>{ m[k]=(m[k]||0)+(e.pct||0)*100; }); }); return m; })() }; // sd26 is now a `practice` effect; skill-scoped practice discoveries itemised per skill
         // BLOCKADE (Naval 7) — the blockade forms half the time.
         out.blockade={ chance:50 };
         return out; })(),
@@ -7660,6 +7732,7 @@ function buildTurnReport(gameState, playerIndex){
         if(g.player!==playerIndex){ raisable=false; whyNot='a fallen crown answers only to its own realm'; }
         else if((gameState.players[playerIndex]||{})._resurrectableMonarchId!==g.id){ raisable=false; whyNot='passed beyond recall — only your most recently fallen monarch may be restored'; }
       } else if(g.isKing){ raisable=false; whyNot='kings cannot be resurrected'; }
+      else if(graveServedOther(g,playerIndex)){ raisable=false; whyNot='once served another realm — only heroes who never served a rival crown may be raised'; }
       return {id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,race:g.race||null,
       skills:g.skills||{},alignment:g.alignment||'Neutral',temper:g.temper||'Brave',locationId:locId,
       locationName:gameState.world.provinces[locId]?.name||'unknown',
@@ -7680,7 +7753,7 @@ function buildTurnReport(gameState, playerIndex){
       race:merc.race||null,
       // Hire price, so the Recruit Armies order form can list mercenaries beside native units.
       // Neutral realms get 1g off (min 1g) — mirrored from the recruit handler.
-      cost:Math.max(1,(ARMY_COST_MASTER[merc.type]||2)-(player&&player.alignment==='Neutral'?2:0)+(player?discSumOf(player,'merc','delta'):0)), // + an08 Hired Blades
+      cost:Math.max(1,(ARMY_COST_MASTER[merc.type]||2)-(player&&player.alignment==='Neutral'?2:0)+(player?discSumOf(player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true)):0)), // + merc discoveries
       location:p2?.name||'unknown',locationId:merc.location,isSea:merc.isSea,
     });
   });
@@ -7922,7 +7995,7 @@ function buildTurnReport(gameState, playerIndex){
   // too. All of those are persistent, so they belong in the forecast; the deliberate omissions are
   // still only the SAME-TURN transients (Bless, Consecrate, Earthquake no-tax, Sabotage). Keep this
   // loop and the end-of-turn collector in step.
-  const _creedTax=discEffectsOf(player,'tax');
+  const _taxAccR=new Map(); // per-effect gold paid so far (capped `tax` discoveries)
   const _nextTurn=(gameState.turn||0); // reports are built AFTER the turn counter advances, so gameState.turn is already the turn whose end-of-turn collection this forecasts
   const provTaxIncome=(player.provinces||[]).reduce((s,pid)=>{
     const pv=gameState.world.provinces[pid]; if(!pv) return s;
@@ -7935,10 +8008,9 @@ function buildTurnReport(gameState, playerIndex){
     const _t0=t;
     if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0)); // lingering earthquake damage
     _eqReduction+=(_t0-t);                                        // gold lost to earthquakes (positive)
-    if(hasDiscR('sd11')&&pv.tax>=3){ t+=1; _sdAgri+=1; }          // Advanced Agriculture
-    if(hasDiscR('sd15')&&pv.terrain==='mountain'){ t+=2; _sdMining+=2; }            // Mining Techniques
-    if(hasDiscR('sd18')&&(pv.terrain==='plain'||pv.terrain==='desert')){ t+=1; _sdAqueduct+=1; } // Aqueducts
-    _creedTax.forEach(e=>{ if(e.minTax!=null&&(pv.tax||0)<e.minTax) return; if(e.terrains&&!e.terrains.includes(pv.terrain)) return; t+=(e.bonus||0); _sdCreed+=(e.bonus||0); }); // heritage / creed tax discoveries
+    // every province-tax discovery (Advanced Agriculture, Mining, Aqueducts … heritage & creed) now
+    // runs through discTaxAdd, capped exactly as the collector caps it.
+    { const _dt=discTaxAdd(player,pv,gameState,playerIndex,_taxAccR); t+=_dt; _sdCreed+=_dt; }
     if(gdActiveFor(gameState,playerIndex,'Good')&&(pv.garrisonArmies||[]).length>0){ t+=2; _sdGrand+=2; } // GRAND DESIGN — Good: +2 tax per garrisoned province (only while the Wonder's province is held)
     return s+t;
   },0);
@@ -7947,8 +8019,8 @@ function buildTurnReport(gameState, playerIndex){
   const taxBonus=_pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+_itemStat('taxBonus'); // Ring of Wealth
   const ledgers=_pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
   const perProvBonus=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
-  const interestBonus=(hasDiscR('sd12')?Math.min(3,Math.floor((player.gold||0)*0.05)):0)+discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
-  _sdRecords=hasDiscR('sd14')?Math.floor(provTaxIncome*10/100):0; // sd14 Taxation Records — keep in step with the collector
+  const interestBonus=discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
+  _sdRecords=hasDiscR('sd14')?taxRecordsGold(provTaxIncome):0; // sd14 Taxation Records — keep in step with the collector
   const neutralTradeBonus=neutralTradeGold(player,provTaxIncome);
   // title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings /
   // computeMinorTitles are module-level and already used above, so the report builder can read the
@@ -8053,7 +8125,8 @@ function buildTurnReport(gameState, playerIndex){
 
   const _druidHalfWageR=new Set();
   playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0||gdActiveFor(gameState,playerIndex,'Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 + GRAND DESIGN Druidic (report mirror)
-  let armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return s; /* Wild Hunt beasts serve the old gods, not a paymaster */ if(a._isSkeletal) return s+1; /* skeletons are a flat 1g everywhere */ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); return s+w; },0);
+  const _upkAccR=new Map(); let _discUpkeepR=0; // `upkeep` discoveries (mirrors the collector)
+  let armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return s; /* Wild Hunt beasts serve the old gods, not a paymaster */ if(a._isSkeletal) return s+1; /* skeletons are a flat 1g everywhere */ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); { const _w0=w; w=discUpkeepWage(player,a,w,_upkAccR); _discUpkeepR+=_w0-w; } return s+w; },0);
   // 2026-09-09. The forecast skipped three PERSISTENT discounts the collector applies — the
   // Host-Leader minor title (−1g per unit he leads, floor 0 on the total), Granaries sd17 (−1g per
   // hero) and every heritage/creed `heroWage` discovery (−Ng per hero), all with the collector's
@@ -8061,11 +8134,9 @@ function buildTurnReport(gameState, playerIndex){
   // half-wage (depends on a battle not yet fought). Keep in step with ~17220.
   let hostLeaderG=0;
   if(_hostLeaderChar){ const led=(_hostLeaderChar.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null).length; hostLeaderG=Math.min(armyWages,led); armyWages=Math.max(0,armyWages-led); }
-  const _inspiringR=hasDiscR('sd38'); // Inspiring Leadership (report mirror)
-  const _granR=hasDiscR('sd17')?1:0;
-  const _dHWR=discSumOf(player,'heroWage','amount');
+  const _hwAccR=new Map(); // heroWage / heroWageCap discoveries (Granaries, Inspiring Leadership, creeds) — mirrors the collector
   let heroWageDisc=0;
-  let heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ const raw=(h.pay||0); let w=Math.max(1,raw-_granR-_dHWR); if(_inspiringR) w=Math.floor(w*0.5); heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
+  let heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ const raw=(h.pay||0); const w=discHeroWage(player,h,raw,_hwAccR); heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
   // 2026-09-10 item 3: when this report follows a resolved turn, "Your Realm" shows the wages the
   // collector ACTUALLY charged (stamped in p._lastWages) — identical to the Realm Events line by
   // construction. The roster-based figures computed above become a "next turn" note only when they
@@ -8081,6 +8152,7 @@ function buildTurnReport(gameState, playerIndex){
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
     kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
+    exploreDiscMult:Object.fromEntries(['plain','desert','forest','mountain','jungle','sea'].map(t=>[t,discExploreMult(player,t)])), // player portal explore preview
     discoveries:(player.discoveries||[]).map(d=>{ const m=DISC_BY_ID[d.id]; return {id:d.id,name:(m&&m.name)||d.name,category:(m&&m.category)||d.category,desc:(m&&m.desc)||d.desc,turnDiscovered:d.turnDiscovered}; }), // master text wins over the copy stored at discovery time
     // the Research order's category dropdown — every category this realm is eligible for, with how
     // many of its discoveries are already known (the portal greys out exhausted ones). Names and
@@ -8091,7 +8163,7 @@ function buildTurnReport(gameState, playerIndex){
       SAGE_DISCOVERIES_P.filter(d=>discEligible(d,player)&&!RESEARCH_HIDDEN_CATS.has(d.category)).forEach(d=>{ const e=m[d.category]||(m[d.category]={name:d.category,total:0,known:0}); e.total++; if(known.has(d.id)) e.known++; }); // hidden fields never listed
       return Object.values(m); })(),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting Any dead hero
-    // visible to this player can be resurrected — own or enemy
+    // visible to this player can be resurrected — except (2026-09-23) a body that ever served another realm (graveServedOther)
     deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const restId=g._monarch?monarchRestProvId(gameState,g.player):null;const locId=(restId!=null)?restId:g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
     characters:charReports,ownedProvinces,intel,
     // the hero arrangement, so the player portal keeps it on a fresh turn even before any draft
@@ -8180,6 +8252,12 @@ function buildTurnReport(gameState, playerIndex){
     // carry is missing (e.g. the title-race percentages, added in v2026.09.20-0153), so a stale
     // uploaded GM portal is visible at a glance instead of looking like a player-portal bug.
     engineStamp:(typeof runningBuildStamp==='function'?runningBuildStamp():null),
+    // 2026-09-23 (Toby item 6): prices the orders-column spending tracker needs and the player portal
+    // has no table for — each unit type's per-turn WAGE (its recruit price after this realm's
+    // `upkeep` discoveries; skeletal units are a flat 1g), the Awaken the Wild surcharge and the
+    // Harvest the Field price, as the engine charges them.
+    orderPrices:(()=>{ const unitWage={}; Object.keys(ARMY_COST_MASTER).forEach(t=>{ unitWage[t]=discUpkeepWage(player,{type:t},ARMY_COST_MASTER[t]||2,new Map()); });
+      return {unitWage, unitCost:{...ARMY_COST_MASTER}, awakenExtra:2+discSumOf(player,'awakenCost','delta'), harvest:Math.max(0,2+discSumOf(player,'harvestCost','delta')), brokerSpy:2}; })(),
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. ${player.name} stands ready.`}],
   };
 }
@@ -8219,9 +8297,89 @@ function discEligible(d, pl){
   if(d.alignment && (!pl || pl.alignment!==d.alignment)) return false;
   return true;
 }
+// 2026-09-21 rebalance: a discovery may carry a SECOND, smaller effect (`effect2`) — used by the
+// Espionage and exploration discoveries whose single lever was too weak on its own. Both are read
+// through the same generic hooks, so every effect below applies to either slot.
 function discEffectsOf(pl, kind){
   if(!pl) return [];
-  return (pl.discoveries||[]).map(d=>d&&DISC_BY_ID[d.id]).filter(d=>d&&d.effect&&d.effect.kind===kind).map(d=>d.effect);
+  const out=[];
+  (pl.discoveries||[]).forEach(d=>{ const t=d&&DISC_BY_ID[d.id]; if(!t) return; [t.effect,t.effect2].forEach(e=>{ if(e&&e.kind===kind) out.push(e); }); });
+  return out;
+}
+// Tunable magnitude of a discovery still wired by id (its row in SAGE_DISCOVERIES_P holds the number).
+function discParam(id, field, dflt){ const d=DISC_BY_ID[id]; const v=d&&d.effect?d.effect[field]:undefined; return (v==null)?dflt:v; }
+// sd14 Taxation Records: +pct% of province income (integer maths, rounded down), capped.
+function taxRecordsGold(income){ const pc=Math.round(discParam('sd14','pct',0.05)*100); return Math.min(discParam('sd14','max',99), Math.floor((income||0)*pc/100)); }
+// CEILINGS (Toby 2026-09-21): however many discoveries a realm stacks, the unit-strength multiplier
+// they give any one unit never exceeds ×1.30, and the own-ground fortification bonus (defOwn) never
+// exceeds +30%.
+const DISC_STR_CAP=1.30;
+const DISC_DEFOWN_CAP=0.30;
+// Does a `tax` effect pay on this province? Filters: minTax / maxTax (the province's own tax),
+// terrains, race (the province's folk), ownRace / foreign (folk of / not of the king's race),
+// coastal, garrisoned, home (the realm's founding capital).
+function discTaxMatch(e, pv, gs, pi, pl){
+  const t=pv.tax||0;
+  if(e.minTax!=null&&t<e.minTax) return false;
+  if(e.maxTax!=null&&t>e.maxTax) return false;
+  if(e.terrains&&!e.terrains.includes(pv.terrain)) return false;
+  if(e.race&&pv.race!==e.race) return false;
+  if(e.ownRace&&!(pl&&pv.race&&pv.race===pl.race)) return false;
+  if(e.foreign&&!(pl&&pv.race&&pv.race!==pl.race)) return false;
+  if(e.coastal&&!discProvCoastal(gs,pv)) return false;
+  if(e.garrisoned&&!((pv.garrisonArmies||[]).length>0)) return false;
+  if(e.home&&homeFounderOf(gs,pv.id)!==pi) return false;
+  return true;
+}
+// Module-level coastal test for the discovery helpers (provIsCoastal itself lives inside runTurn's
+// scope, so the report builder cannot call it). Same rule: a land province with a sea neighbour.
+function discProvCoastal(gs, pv){
+  if(!gs||!gs.world||!pv||pv.terrain==='sea') return false;
+  return getNeighborsP(pv,gs.world.cols,gs.world.rows,gs.world.provinces).some(n=>n&&n.terrain==='sea');
+}
+// Per-province `tax` discovery gold. `acc` (a Map, one per realm per collection) tracks what each
+// capped effect (`max`) has already paid this turn, so a capped discovery never pays more than its
+// ceiling however large the realm grows. Shared by the collector and the report forecast.
+function discTaxAdd(pl, pv, gs, pi, acc){
+  let add=0;
+  discEffectsOf(pl,'tax').forEach(e=>{ if(!discTaxMatch(e,pv,gs,pi,pl)) return; let b=e.bonus||0;
+    if(e.max!=null){ const u=acc.get(e)||0; b=Math.max(0,Math.min(b,e.max-u)); acc.set(e,u+b); }
+    add+=b; });
+  return add;
+}
+// `upkeep` discoveries: the wage of one army after every matching cut (minimum 1g per unit; a
+// capped effect saves at most `max` gold in all). `w` is the wage already computed for the unit.
+function discUpkeepWage(pl, a, w, acc){
+  if(!pl||!a||a._isSkeletal) return w;
+  let out=w;
+  discEffectsOf(pl,'upkeep').forEach(e=>{ if(!discUnitMatch(e,a)) return; let cut=Math.min(-(e.delta||0), out-1); if(cut<=0) return;
+    if(e.max!=null){ const u=acc.get(e)||0; cut=Math.min(cut,e.max-u); if(cut<=0) return; acc.set(e,u+cut); }
+    out-=cut; });
+  return out;
+}
+// Hero wage after discoveries: `heroWage` cuts (optionally only for heroes of given alignments,
+// optionally capped in all) then the `heroWageCap` ceiling. Minimum 1g.
+function discHeroWage(pl, h, raw, acc){
+  let w=raw;
+  discEffectsOf(pl,'heroWage').forEach(e=>{ if(e.heroAlign&&!e.heroAlign.includes(h.alignment)) return; let cut=Math.min(e.amount||0, w-1); if(cut<=0) return;
+    if(e.max!=null){ const u=acc.get(e)||0; cut=Math.min(cut,e.max-u); if(cut<=0) return; acc.set(e,u+cut); }
+    w-=cut; });
+  discEffectsOf(pl,'heroWageCap').forEach(e=>{ if(e.cap==null||w<=e.cap) return; let cut=w-Math.max(1,e.cap); if(e.max!=null){ const k='cap:'+e.cap; const u=acc.get(e)||0; cut=Math.min(cut,e.max-u); if(cut<=0) return; acc.set(e,u+cut); } w-=cut; });
+  return Math.max(1,w);
+}
+// `maxHp` discoveries for one character (filters: king, heroOnly, skill — at least one trained level).
+function discMaxHpFor(pl, ch){
+  if(!pl||!ch) return 0;
+  return discSumOf(pl,'maxHp','hp',e=>(!e.king||!!ch.isKing)&&(!e.heroOnly||!ch.isKing)&&(!e.skill||(((ch.skills||{})[e.skill]||0)>=1)));
+}
+// Chance (0..1) that a newly raised unit of this type starts one tier higher (`recruitQ`).
+function discRecruitQChance(pl, armyType){
+  return Math.min(1,discSumOf(pl,'recruitQ','pct',e=>discUnitMatch(e,armyType,true)));
+}
+// Per-terrain explore multiplier from `explore` discoveries (shipped in the report so the player
+// portal's preview no longer parses description text).
+function discExploreMult(pl, terrain){
+  let m=1; discEffectsOf(pl,'explore').forEach(e=>{ if(!e.terrains||e.terrains.includes(terrain)) m*=(e.mult||1); }); return m;
 }
 function discSumOf(pl, kind, field, pred){
   let s=0; discEffectsOf(pl,kind).forEach(e=>{ if(!pred||pred(e)) s+=(e[field]||0); }); return s;
@@ -8231,9 +8389,12 @@ const DISC_CLS_SETS={
   infantry:new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']),
   missile:new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']),
   fleet:new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']),
+  flyer:new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']),
+  garrison:new Set(['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison']),
 };
 function discUnitIs(cls, army, typeOnly){
   const t=typeOnly?army:(army&&army.type);
+  if(cls==='primal') return CREATURE_ARMIES.has(t)||MONSTER_ARMIES.has(t);
   if(cls==='creature') return CREATURE_ARMIES.has(t);
   if(cls==='monster') return MONSTER_ARMIES.has(t);
   if(cls==='skeletal') return !typeOnly&&!!(army&&army._isSkeletal);
@@ -8248,6 +8409,7 @@ function discUnitMatch(e, army, typeOnly){
   if(e.types && !e.types.includes(t)) return false;
   if(e.cls && !discUnitIs(e.cls, army, typeOnly)) return false;
   if(e.race){ const r=typeOnly?(ARMY_RACE_OF_TYPE[t]||null):(army&&army.race||null); if(r!==e.race) return false; }
+  if(Array.isArray(e.quality)){ const q=typeOnly?'Average':((army&&army.quality)||'Average'); if(!e.quality.includes(q)) return false; }
   return true;
 }
 // Realm-level recruit cost of one unit: sd16 Shipbuilding (fleets half, rounded up) then the race /
@@ -8256,7 +8418,7 @@ function discUnitMatch(e, army, typeOnly){
 // builders so the player portal's recruit preview shows the realm's real price.
 const _FLEET_TYPES_DISC=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
 function realmRecruitCost(pl, armyType, baseCost){
-  let c=Math.ceil((baseCost||2)*(_FLEET_TYPES_DISC.has(armyType)&&(pl&&(pl.discoveries||[]).some(d=>d&&d.id==='sd16'))?0.5:1));
+  let c=(baseCost||2); // sd16 Shipbuilding is now an ordinary `recruitCost` factor effect (cls fleet)
   discEffectsOf(pl,'recruitCost').forEach(e=>{ if(!discUnitMatch(e, armyType, true)) return; if(e.delta) c+=e.delta; if(e.factor) c=Math.ceil(c*e.factor); });
   return Math.max(1,c);
 }
@@ -8389,6 +8551,7 @@ async function runTurn(opts){
   // pending pre-orders for a resurrect/charm target could likewise be re-applied turns later.
   G._resurrectedThisTurn=[];
   G._pendingResurrectOrders=[];
+  (G.characters||[]).forEach(ch=>{ if(ch&&ch.alive&&ch.player!=null) noteServedRealm(ch,ch.player); }); // service history (Resurrect)
   G._pendingCharmOrders=[];
   G._pendingHireOrders=[];   // 2026-09-21: hire pre-orders are held, not written straight to the real hero
   G._pendingSynthPlans=[];   // 2026-09-21: encounter plans from hire/resurrect/charm pre-order cards
@@ -8726,7 +8889,12 @@ async function runTurn(opts){
                                               // report files it into WHICHEVER of the viewer's own
                                               // characters it names (e.g. a duel shows in BOTH
                                               // combatants' sections, each for its own owner).
-      phase: (meta.phase??_logCtx.phase??(_afterPhases?99:null)), // which phase (0–4, or 99 = End of Turn)
+      // 2026-09-23 (Toby item 10): a line logged DURING a phase but outside any character's order
+      // (the lone-defender ambush, Defend ride-outs, end-of-phase sweeps) had no phase at all, and
+      // the player's Chronicle files an unphased line under SPRING. Perrin the Halved, ambushed and
+      // killed at the end of LATE SUMMER, therefore read as struck down in Spring and then marching
+      // on through both summers. _currentPhase is the phase being resolved, so it is the fallback.
+      phase: (meta.phase??_logCtx.phase??_currentPhase??(_afterPhases?99:null)), // which phase (0–4, or 99 = End of Turn)
       pinNotice: meta.pinNotice??false,       // hoist to the top of the char's phase report
       env: meta.env??false,                   // environmental province event (earthquake,
                                               // flood, plague, blessing, part-sea …) → Province Reports
@@ -8790,7 +8958,7 @@ async function runTurn(opts){
     log(type, privText, {...meta, public:false, targets:(meta.targets&&meta.targets.length)?meta.targets:[actor].filter(x=>x!=null)});
     turnLog.push({type, text:pubText, actor:null, targets:[], provinceId:meta.provinceId??null, public:true,
       spy:false, system:false, armyEstimate:null, charId:null, charIds:null,
-      phase:(meta.phase??_logCtx.phase??(_afterPhases?99:null)), pinNotice:false, env:false,
+      phase:(meta.phase??_logCtx.phase??_currentPhase??(_afterPhases?99:null)), pinNotice:false, env:false,
       notFor:[actor].concat(meta.alsoNotFor||[]).filter(x=>x!=null)});
   }
   function realmTag(pi){ return (pi!=null&&G.players[pi])?` (${G.players[pi].name})`:''; }
@@ -8976,7 +9144,7 @@ async function runTurn(opts){
       log('combat',`⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,{actor:cc.player,targets:[cc.player],provinceId:prov.id,public:true});
     } else {
       if(mode==='enslave' && !humanoid) log('combat',`⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,{actor:cc.player,targets:[cc.player],provinceId:prov.id});
-      const loot=Math.floor((prov.tax||0)*(0.5+discSum(cc.player,'plunder','pct'))); // + ae09 Sack and Burn
+      const loot=Math.floor((prov.tax||0)*(0.5+discSum(cc.player,'plunder','pct',e=>!e.terrains||e.terrains.includes(prov.terrain)))); // + plunder discoveries
       if(loot>0){ pl.gold=(pl.gold||0)+loot; log('combat',`⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${loot}g seized immediately!`,{actor:cc.player,targets:[cc.player],provinceId:prov.id}); }
     }
   }
@@ -9154,7 +9322,7 @@ async function runTurn(opts){
     // a Human character of a Human realm learns 50% faster — every skill, and every chance-based
     // path (practice, experience, moves…) flows through here, so all are covered.
     const _humanLearn=((real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1)
-      *(1+discSum(real.player,'skillGain','pct')); // rh05 Schools of the Sword — every character of the realm learns faster
+      *(1+discSum(real.player,'skillGain','pct',e=>!e.skills||e.skills.includes(skill))); // skillGain discoveries (all skills, or a listed few)
     // diminishing returns — every time this skill has ALREADY risen this turn, the next chance to
     // raise it through experience is ×0.8 (cumulative). Reset each turn with _sgLog.
     const _gainsThisTurn=(real._sgLog.turnGains&&real._sgLog.turnGains[skill])||0;
@@ -9614,8 +9782,13 @@ function seaPenalty(armyType, terrain){
     const color=(playerIdx!=null && G.players[playerIdx])?(G.players[playerIdx].color||null):null;
     const guard=!!(opts&&opts.guard); // a local chieftain's force — the player portal tints it chieftain-brown
     const arr=(armies||[]).map(a=>({type:a.type, quality:a.quality, unitName:a.unitName||'', race:a.race||null, phantom:!!a._phantom, skeletal:!!a._isSkeletal,wildHunt:(a._wildHuntUntilTurn!=null),wildHuntUntil:(a._wildHuntUntilTurn!=null?a._wildHuntUntilTurn:null)})); // Wild Hunt tag rides into battle rows too
+    // 2026-09-23 (Toby item 10): a host whose commander fell earlier in the battle series fights
+    // on under a captain (_leaderlessHost) — its header must not present the dead man as leading it.
+    let _nm=(name||'').replace(' (wandering)','');
+    { const _dead=(G.characters||[]).find(ch=>ch&&ch.alive===false&&ch._leaderlessHost&&ch.name&&_nm.startsWith(ch.name.replace(' (wandering)','')));
+      if(_dead&&!/leaderless/i.test(_nm)){ const _dn=_dead.name.replace(' (wandering)',''); _nm=`${_dn}'s leaderless host`+_nm.slice(_dn.length); } }
     return '⚑FORCE⚑'+JSON.stringify({
-      name:(name||'').replace(' (wandering)',''),
+      name:_nm,
       color, neutral:(playerIdx==null), guard,
       role:role||'', verb:verbText||'', armies:arr,
     });
@@ -9659,6 +9832,10 @@ const BATTLE_ARMY_SPELLS={
                             // visibleDeadHeroes among them) silently read undefined and no fallen
                             // king was ever marked as one. The Hierophant's new reading needs it.
       killedOnTurn:G.turn, location:hero.location,
+      // every realm this hero ever served (see noteServedRealm) — Resurrect refuses a body that
+      // served another realm.
+      served:(()=>{ if(hero.player!=null) noteServedRealm(hero,hero.player); return Array.isArray(hero._servedRealms)?hero._servedRealms.slice():[]; })(),
+      _releasedBy:(hero._releasedBy!=null?hero._releasedBy:null),
     });
   }
 
@@ -9974,8 +10151,8 @@ const BATTLE_ARMY_SPELLS={
 
     // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
     // bonus
-    let defBonus=hasDisc(c.player,'sd03')?1.10:1.25;
-    { const _sg=discSum(c.player,'siege','delta'); if(_sg>0){ defBonus=Math.max(1,defBonus-_sg); narrative.push(`  🏰 ${cName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`); } } // rd09 / ro10
+    let defBonus=1.25; // sd03 Siege Engines is now an ordinary `siege` effect (below)
+    { const _sg=discSum(c.player,'siege','delta',e=>!e.withTypes||(c.armies||[]).some(a=>a&&e.withTypes.includes(a.type))); if(_sg>0){ defBonus=Math.max(1,defBonus-_sg); narrative.push(`  🏰 ${cName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`); } } // rd09 / ro10
     // GOOD — Righteous Defence: a Good realm's own soil is defended with quiet, unshakable
     // conviction (+10% to the defence of any province the Good player OWNS).
     if(prov.owner!=null&&prov.owner!==c.player&&G.players[prov.owner]?.alignment==='Good'){
@@ -9997,14 +10174,14 @@ const BATTLE_ARMY_SPELLS={
     const atkHome=_founderN!=null&&c.player===_founderN&&prov.owner!==_founderN;
     if(isHome) narrative.push(`The defenders fight on home soil, gaining an additional ×1.2 bonus.`);
     if(atkHome) narrative.push(`🏠 ${cName} fights to win back ${prov.name}, the realm's own capital — home ground lends the assault ×1.5 strength.`);
-    { const _dOwn=(prov.owner!=null&&prov.owner!==c.player)?discSum(prov.owner,'defOwn','pct'):0; if(_dOwn>0){ defBonus*=1+_dOwn; narrative.push(`  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${dispFloor(_dOwn*100)}% defence).`); } } // defOwn discoveries
+    { const _dOwn=(prov.owner!=null&&prov.owner!==c.player)?Math.min(DISC_DEFOWN_CAP,discSum(prov.owner,'defOwn','pct',e=>!e.home||homeFounderOf(G,prov.id)===prov.owner)):0; if(_dOwn>0){ defBonus*=1+_dOwn; narrative.push(`  🛡 ${G.players[prov.owner]?.name}'s realm holds its own ground the harder (+${dispFloor(_dOwn*100)}% defence).`); } } // defOwn discoveries
     const homeBonus=isHome?1.2:1;
     const atkHomeBonus=atkHome?1.5:1;
 
     // Calculate strengths with some narrative
     const MISSILE_ARMIES=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
     const archSkillAtk=atkCmdrSlain?0:effStat(c,'archery');
-    const archMissileBonus=1+(archSkillAtk*0.10)+(hasDisc(c.player,'sd07')?0.10:0);
+    const archMissileBonus=1+(archSkillAtk*0.10); // sd07 Fire Arrows is now a `unitStr` missile effect (armStr)
     let navalSkillAtk=atkCmdrSlain?0:effStat(c,'naval');
     if(c._curseHalveStat==='naval') navalSkillAtk=Math.floor(navalSkillAtk/2); // Curse (battle magic) can wither Naval command
     const navalFleetBonus=1+(navalSkillAtk*0.2);
@@ -10024,7 +10201,7 @@ const BATTLE_ARMY_SPELLS={
       const school=heroPick.school;
       const spellLvl=effStat(c,school);
       if(spellLvl>=1){
-        const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+(hasDisc(c.player,'sd27')?5:0)+magicL8CastBonus(c)+discSum(c.player,'cast','pct',e=>!e.school||e.school===school)); // cast discoveries · 2026-09-11: base 30
+        const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(c)+discSum(c.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
         const castRoll=d100();
         narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
@@ -10360,7 +10537,7 @@ const BATTLE_ARMY_SPELLS={
     // (defHero — a leaderless garrison passes null), their Archery lifts the garrison's bow and
     // crossbow units by +10% per level, exactly as it does for an attacker.
     const archSkillDef=defHero?effStat(defHero,'archery'):0;
-    const defArchMissileBonus=1+(archSkillDef*0.10)+((defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd07'))?0.10:0); // sd07 Fire Arrows
+    const defArchMissileBonus=1+(archSkillDef*0.10); // sd07 Fire Arrows now via armStr
     // the defending commander's Naval lifts the fleets / sea-beasts they lead — land or sea —
     // exactly as the attacker's does.
     let navalSkillDef=defHero?effStat(defHero,'naval'):0; if(defHero&&defHero._curseHalveStat==='naval') navalSkillDef=Math.floor(navalSkillDef/2);
@@ -10400,7 +10577,7 @@ const BATTLE_ARMY_SPELLS={
     // Fanaticism check
     const align=G.players[c.player]?.alignment||'Neutral';
     const FANATIC_CHANCE={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
-    const fanatic=Math.random()<((FANATIC_CHANCE[align]||0.1)+discSum(c.player,'fanatic','pct')); // fanatic discoveries
+    const fanatic=Math.random()<((FANATIC_CHANCE[align]||0.1)+discSum(c.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,armies))); // fanatic discoveries
     // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
     // heroes serving the Undead realm do not inspire the same undying zeal.
     const skeletalFanatic=align==='Undead'&&c.isKing&&armies.some(a=>a._isSkeletal);
@@ -10514,12 +10691,10 @@ const BATTLE_ARMY_SPELLS={
     const loseDemoteChance=_band.loseDemote;
 
     // Steel Armour discovery: -15% death chance
-    const steelArmour=hasDisc(c.player,'sd05');
-    const steelMultOf=(a)=>(steelArmour?0.75:1)*discDeathMult(c.player,a); // per-unit deathRed discoveries
+    const steelMultOf=(a)=>discDeathMult(c.player,a,'atk'); // per-unit deathRed discoveries (sd05 Steel Armour now one of them)
     const tacMultNPC=perkTier(c,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
     // Military Discipline discovery: +20% XP gain chance
-    const milDisc=hasDisc(c.player,'sd06');
-    const milMult=(milDisc?1.20:1)+discSum(c.player,'promo','pct'); // promo discoveries
+    const milMultOf=(a)=>1+discPromo(c.player,a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
 
     const tiers=['Green','Average','Veteran','Crack','Elite'];
 
@@ -10563,7 +10738,7 @@ const BATTLE_ARMY_SPELLS={
         if(roll<winDeathChance*steelMultOf(a)*(_npcWargs?0.5:1)){
           narrative.push(`— ${unitRef(cName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
           a._died=true; winEvents++;
-        } else if(!a._isSkeletal && roll<winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMult,a.quality)*humanXPMult(a,c.player,G)){
+        } else if(!a._isSkeletal && roll<winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G)){
           if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);winEvents++;}
           else winSurv++;
         } else {
@@ -11074,7 +11249,7 @@ const BATTLE_ARMY_SPELLS={
     chance += (attacker.status.hitBonus||0);                // Elixir of Focus and kin
     chance -= (defender.status.toHitReduce||0);            // Invisibility: flat \u221225 to hit (floored at 40 below)
     chance -= ((defender.arm&&defender.arm.dodge)||0);     // Quicksilver Mail: −10% to be hit
-    if(attacker.player!=null && hasDisc(attacker.player,'sd33')) chance+=10; // sd33 Duelling Code
+    if(attacker.player!=null) chance+=discSum(attacker.player,'duelHit','pct',e=>discDuelVs(e,defender)); // duelHit discoveries (sd33 Duelling Code …)
     chance = chance*(defender.status.dodge||1);           // (no effect currently sets status.dodge — kept as a hook)
     // ── The defender's STANCE lowers the ceiling itself ────
     // Testing found the +14 Cautious guard was doing nothing above about Melee 4: a Melee 6 Berserk
@@ -11384,7 +11559,7 @@ const BATTLE_ARMY_SPELLS={
     // once, in pcTakeHit — never here, or it would double twice.
     const _wkSch=!!(target&&target.kind==='monster'&&target.weak&&target.weak.kind==='school'&&target.weak.key===school);
     const wx=_wkSch?PC_WEAK_MULT:1;
-    const castChance=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+((caster.player!=null&&hasDisc(caster.player,'sd27'))?5:0)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>!e.school||e.school===school):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+    const castChance=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
     // narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader sees the
     // character reach for the spell, then whether the weave holds or collapses.
     const _schoolWeave={white:'sacred',psychic:'psychic',illusory:'illusory',elemental:'elemental',necromancy:'necromantic'}[school]||school;
@@ -11655,8 +11830,15 @@ const BATTLE_ARMY_SPELLS={
     if(roll<hit){
       hero._didMelee=true;
       const dmg=pcMeleeDamage(hero,foe);
+      // 2026-09-23 (Toby item 8): announce the riposte BEFORE the blow is resolved. pcTakeHit
+      // writes any ward / armour / parry line as it computes the damage, so with the announcement
+      // coming after it, "🜏 Dracolich's Bone Plate turns aside 4 of the blow." sat directly under
+      // "Dracolich's shot flies wide." — reading as if the armour had stopped a missed arrow — and
+      // only then did the counterattack appear. Now: announce → armour → damage, the same order as
+      // an ordinary strike ("attacks … ✓" → armour → "strikes … for N").
+      narrative.push(`  ↩ ${hero.name} seizes the opening and counterattacks! (${_src})`);
       const dealt=pcTakeHit(foe,dmg,narrative,hero.name,'counterattack');
-      if(dealt) narrative.push(`  ↩ ${hero.name} seizes the opening and counterattacks for ${dealt} damage! (${_src}, ${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
+      if(dealt) narrative.push(`  ↩ The counterstroke strikes ${foe.name} for ${dealt} damage! (${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
     } else {
       narrative.push(`  ↩ ${hero.name} lunges to counterattack, but ${foe.name} recovers in time. (${_src})`);
     }
@@ -11809,7 +11991,7 @@ const BATTLE_ARMY_SPELLS={
     chance += (actor.status.hitBonus||0);
     chance -= (foe.status.toHitReduce||0);
     chance -= ((foe.arm&&foe.arm.dodge)||0);
-    if(actor.player!=null && hasDisc(actor.player,'sd33')) chance+=10; // sd33 Duelling Code
+    if(actor.player!=null) chance+=discSum(actor.player,'duelHit','pct',e=>discDuelVs(e,foe)); // duelHit discoveries
     chance = chance*(foe.status.dodge||1);
     return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance)));
   }
@@ -12275,7 +12457,7 @@ const BATTLE_ARMY_SPELLS={
         }
         // consume queued free attacks (Psychic Blast) — only land as strikes at melee range
         let free=actor._freeAttacks||0;
-        while(free>0 && foe.hp>0 && state.range==='melee'){ const hit=pcHitChance(actor,foe); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'free strike'); if(dealt)narrative.push(`  ${actor.name} lands a free strike on ${foe.name} for ${dealt} damage! (HP ${Math.max(0,Math.round(foe.hp))})`); } free--; }
+        while(free>0 && foe.hp>0 && state.range==='melee'){ const hit=pcHitChance(actor,foe); if(Math.random()*100<hit){ const dmg=pcMeleeDamage(actor,foe); narrative.push(`  ⚔ ${actor.name} takes a free strike at ${foe.name}!`); const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'free strike'); if(dealt)narrative.push(`  ${actor.name}'s free strike lands for ${dealt} damage! (${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`); } /* 2026-09-23: announced before the armour line, as the counterattack */ free--; }
         actor._freeAttacks=0;
         // Rebirth (Phoenix and kin): a banked resurrection is spent the moment it falls.
         if(foe.hp<=0 && foe._rebirth){ foe._rebirth=false; foe.hp=Math.max(5,Math.round(foe.maxHp*0.4)); narrative.push(`  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`); }
@@ -12667,14 +12849,14 @@ const BATTLE_ARMY_SPELLS={
     let defBonus=1.25*(isHome?1.2:1);
     // sd03 Siege Engines (and the race `siege` discoveries rd09 / ro10) — previously sd03 was
     // honoured only in battles against neutral guards, never in realm-vs-realm battles.
-    { let _sg=discSum(atk.player,'siege','delta')+(hasDisc(atk.player,'sd03')?0.15:0);
+    { let _sg=discSum(atk.player,'siege','delta',e=>!e.withTypes||atkArmies.some(a=>a&&e.withTypes.includes(a.type)));
       if(_sg>0){ defBonus=Math.max(1,defBonus-_sg); narrative.push(`  🏰 ${atkName}'s siegecraft wears down the defenders' fortifications (province bonus −${_sg.toFixed(2)}).`); } }
     // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
     if(prov.owner===def.player&&G.players[def.player]?.alignment==='Good'){
       defBonus*=1.10;
       narrative.push(`✝ Righteous Defence — ${defName}'s host defends ground held justly (+10% defence).`);
     }
-    { const _dOwnP=(prov.owner!=null&&prov.owner===def.player)?discSum(def.player,'defOwn','pct'):0; if(_dOwnP>0){ defBonus*=1+_dOwnP; narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP*100)}% defence).`); } } // defOwn discoveries
+    { const _dOwnP=(prov.owner!=null&&prov.owner===def.player)?Math.min(DISC_DEFOWN_CAP,discSum(def.player,'defOwn','pct',e=>!e.home||homeFounderOf(G,prov.id)===def.player)):0; if(_dOwnP>0){ defBonus*=1+_dOwnP; narrative.push(`  🛡 ${defName}'s realm holds its own ground the harder (+${dispFloor(_dOwnP*100)}% defence).`); } } // defOwn discoveries
     if(isHome && prov.owner===def.player && activeItems(def).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`); }
     if(activeItems(atk).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`); }
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
@@ -12688,8 +12870,8 @@ const BATTLE_ARMY_SPELLS={
     // ORC — Terror From Above: wyverns overhead take the heart out of the other side.
     const _wyvAtk=atkArmies.some(a=>a&&a.type==='Wyvern Riders');
     const _wyvDef=defArmies.some(a=>a&&a.type==='Wyvern Riders');
-    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]||0.1)+discSum(atk.player,'fanatic','pct')-(_wyvDef?0.15:0)); // fanatic discoveries
-    let _defFanPct=Math.max(0,(defFanChance[defAlign]||0.1)+discSum(def.player,'fanatic','pct')-(_wyvAtk?0.15:0));
+    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]||0.1)+discSum(atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))-(_wyvDef?0.15:0)); // fanatic discoveries
+    let _defFanPct=Math.max(0,(defFanChance[defAlign]||0.1)+discSum(def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies))-(_wyvAtk?0.15:0));
     // DIVINE — Consecrate: defenders on consecrated ground are TWICE as likely to be seized by
     // fanatical zeal (they fight before the altars of their gods).
     const _consecratedHere=def.player!=null&&isConsecrated(G.players[def.player],prov.id)&&prov.owner===def.player;
@@ -12731,8 +12913,8 @@ const BATTLE_ARMY_SPELLS={
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
-    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*0.10)+((atk.player!=null&&hasDisc(atk.player,'sd07'))?0.10:0); // sd07 Fire Arrows
-    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*0.10)+((def.player!=null&&hasDisc(def.player,'sd07'))?0.10:0);
+    const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*0.10); // sd07 Fire Arrows now via armStr (unitStr missile)
+    const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*0.10);
     let atkNav=atkCmdrSlain?0:effStat(atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
     let defNav=defCmdrSlain?0:effStat(def,'naval'); if(def._curseHalveStat==='naval') defNav=Math.floor(defNav/2); const defNavBonus=1+(defNav*0.2);
     const atkAlign2=G.players[atk.player]?.alignment||'Neutral';
@@ -12774,7 +12956,7 @@ const BATTLE_ARMY_SPELLS={
       const school=pick.school;
       const spellLvl=effStat(caster,school);
       if(spellLvl<1) return;
-      const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+(hasDisc(caster.player,'sd27')?5:0)+magicL8CastBonus(caster)+discSum(caster.player,'cast','pct',e=>!e.school||e.school===school)); // cast discoveries · 2026-09-11: base 30
+      const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(caster)+discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
       const castRoll=d100();
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
@@ -13066,8 +13248,8 @@ const BATTLE_ARMY_SPELLS={
     const winXPPvP=_bandPvP.winXP;
     const loseXPPvP=_bandPvP.loseXP;
     const loseDemotePvP=_bandPvP.loseDemote;
-    const atkSteelMultOf=(a)=>(hasDisc(atk.player,'sd05')?0.75:1)*discDeathMult(atk.player,a); // per-unit deathRed discoveries
-    const defSteelMultOf=(a)=>(hasDisc(def.player,'sd05')?0.75:1)*discDeathMult(def.player,a);
+    const atkSteelMultOf=(a)=>discDeathMult(atk.player,a,'atk'); // per-unit deathRed discoveries (sd05 now one of them)
+    const defSteelMultOf=(a)=>discDeathMult(def.player,a,'def');
     const atkTacMult=perkTier(atk,'tactical')>=3?0.5:1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
     const defTacMult=perkTier(def,'tactical')>=3?0.5:1;
     // ── UNIT ABILITIES: casualty & retreat ── HUMAN — Ride Them Down: light horse are murder on a
@@ -13101,8 +13283,8 @@ const BATTLE_ARMY_SPELLS={
         if(Math.random()<0.15){a._died=true;narr.push(`— ${name}'s ${a.unitName||a.type} are cut down with no escape!`);}
       });
     };
-    const atkMilMult=(hasDisc(atk.player,'sd06')?1.10:1)+discSum(atk.player,'promo','pct'); // promo discoveries
-    const defMilMult=(hasDisc(def.player,'sd06')?1.10:1)+discSum(def.player,'promo','pct');
+    const atkMilMultOf=(a)=>1+discPromo(atk.player,a); // per-unit promo discoveries
+    const defMilMultOf=(a)=>1+discPromo(def.player,a);
 
     prov._hadBattleThisTurn=true;
     // a beaten force that still has a road home normally retreats — but if it ends the fight
@@ -13126,7 +13308,7 @@ const BATTLE_ARMY_SPELLS={
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathPvP*atkSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(atkName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal && roll<winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){
+        else if(!a._isSkeletal && roll<winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G)){
           if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— ${unitRef(atkName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);}
         }
       });
@@ -13142,7 +13324,7 @@ const BATTLE_ARMY_SPELLS={
         else if(!a._isSkeletal){
           const roll2=Math.random();
           if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${unitRef(defName,a)} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${unitRef(defName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(defName,a)} improved to ${a.quality}!`);}}
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(defName,a)} improved to ${a.quality}!`);}}
         }
       });
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
@@ -13218,7 +13400,7 @@ const BATTLE_ARMY_SPELLS={
         else if(!a._isSkeletal){
           const roll2=Math.random();
           if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${unitRef(atkName,a)} fall back behind the shield wall in good order.`); } else if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${unitRef(atkName,a)} lost heart in defeat, reduced to ${a.quality}.`);}
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMult,a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(atkName,a)} improved to ${a.quality}!`);}}
+          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(atkName,a)} improved to ${a.quality}!`);}}
         }
       });
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
@@ -13227,7 +13409,7 @@ const BATTLE_ARMY_SPELLS={
         const i=tiers.indexOf(a.quality);
         const roll=Math.random();
         if(roll<winDeathPvP*defSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal && roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMult,a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${unitRef(defName,a)} are hardened by victory to ${a.quality}!`);}}
+        else if(!a._isSkeletal && roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){a.quality=tiers[i+1];narrative.push(`— ${unitRef(defName,a)} are hardened by victory to ${a.quality}!`);}}
       });
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -13751,13 +13933,13 @@ const BATTLE_ARMY_SPELLS={
     // the real one lives: every caller that mirrors a death onto a battle copy checks the return
     // value (false = survived). Never fires for a corpse already dead this turn (no double saves).
     if(!opts.noSave && deadChar.player!=null && deadChar.alive!==false && hasDisc(deadChar.player,'sd36')){
-      const _sRoll=d100();
-      if(_sRoll<=20){
+      const _sRoll=d100(); const _bsPct=Math.round(discParam('sd36','pct',0.2)*100);
+      if(_sRoll<=_bsPct){
         deadChar.hp=1; deadChar.alive=true; deadChar.killedThisTurn=false;
-        log('combat',`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(20,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+        log('combat',`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
         return false;
       } else {
-        log('combat',`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(20,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
+        log('combat',`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
       }
     }
     if(killerChar&&killerChar.player!=null&&deadChar.player!=null&&deadChar.player!==killerChar.player){ const _tm=TM(killerChar); _tm.duelKills=(_tm.duelKills||0)+1; } // MINOR TITLE — The Widowmaker
@@ -13913,6 +14095,42 @@ const BATTLE_ARMY_SPELLS={
     'grand design':'grand_design','grand_design':'grand_design',
   };
 
+  // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────
+  // The hirer's pre-written orders are applied only once the hire has landed. Matched on hero + this
+  // realm (an exact match on the hiring character wins if two cards were somehow submitted), so a
+  // rival's pre-orders for the same hero are ignored. Phases are bounded by the ACTUAL hire phase,
+  // not the phase the player planned to hire in. 2026-09-23 (Toby item 4): the Broker hire never
+  // called this — since hire pre-orders became PENDING (09-21) a brokered hero's pre-written orders
+  // were silently dropped, his remaining phases were left empty, and his encounter plan was never
+  // set. Both paths now share this one function.
+  function landHirePreOrders(h, c, ph, player){
+        // Matched on hero + this realm (an exact match on the hiring character wins if two cards
+        // were somehow submitted), so a rival's pre-orders for the same hero are ignored. Phases are
+        // bounded by the ACTUAL hire phase, not the phase the player planned to hire in — if the
+        // hire slipped a phase, the orders for the phases he was not yet sworn are dropped.
+        {
+          const _ph=(G._pendingHireOrders||[]);
+          const _pend=_ph.find(x=>x.heroId===h.id&&x.player===c.player&&x.viaId===String(c.id))
+                    ||_ph.find(x=>x.heroId===h.id&&x.player===c.player);
+          let _applied=0;
+          if(_pend&&Array.isArray(_pend.orders)){
+            const slots=G.turnOrders[h.id]||[null,null,null,null,null];
+            _pend.orders.forEach((o,pi2)=>{
+              if(pi2>ph&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){ slots[pi2]=o; _applied++; }
+            });
+            G.turnOrders[h.id]=slots;
+          }
+          // Step 3 of order ingestion only defaults LIVING OWNED characters to Defend, and this
+          // hero belonged to nobody when it ran, so his post-hire phases were left empty and he
+          // simply did nothing (no watch) for the rest of the turn. Fill them in like everyone else
+          // — the same closing step Resurrect and Charm already do.
+          const fin=G.turnOrders[h.id]||[null,null,null,null,null];
+          for(let pz=0;pz<5;pz++){ if(pz>ph&&!fin[pz]) fin[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
+          G.turnOrders[h.id]=fin;
+          applyPendingSynthPlan(G,h,c.player);
+          if(_applied>0) log('system',`${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player],charId:h.id,phase:ph});
+        }
+  }
   function processOrder(c,o,ph){
     if(!c||!c.alive||!o) return;
     // If this hero was unified into another's battle this phase, their own order is superseded
@@ -14410,7 +14628,7 @@ const BATTLE_ARMY_SPELLS={
             const unifyDist=Math.min(2,provDistance(ally.location,prov.id));
             // GOOD — Banner of Fellowship: allies rally to an honourable cause (+15pp unify).
             const _goodUnify=(G.players[c.player]?.alignment==='Good'?15:0)+discSum(c.player,'unify','pct'); // ag08 Common Cause
-            const unifyChancePct=hasDisc(c.player,'sd04')?100:Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+_goodUnify);
+            const unifyChancePct=Math.min(100,contingentUnifyChance(marchLvl,unifyDist,false)+_goodUnify); // sd04 Signal Fires is now a `unify` effect
             const unifyRoll=d100();
             if(unifyRoll<=unifyChancePct){
               friendlyReinforcements.push(ally);
@@ -14970,13 +15188,13 @@ const BATTLE_ARMY_SPELLS={
         // sd24 The Compass: Explorer treated as 1 level higher
         const explorerSkill=Math.min(5,effStat(c,'explorer'));
         // sd10 Scouts & Rangers: +20% explore bonus
-        const scoutBonus=hasDisc(c.player,'sd10')?1.20:1;
+        const scoutBonus=1; // sd10 Scouts & Rangers / sd24 The Compass are now `explore` effects
         const loreMult=(charMinor(c,'trailblazer')?1.05:1); // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
         // (The old Elven "Pathfinder" double forest/jungle exploration has been REPLACED this session by
         // the Elven escape ability — see recordBattleGraves / flushElvenEscapes. No exploration
         // bonus now.)
         let _discExpl=1; discEff(c.player,'explore').forEach(e=>{ if(!e.terrains||e.terrains.includes(prov.terrain)) _discExpl*=(e.mult||1); }); // explore discoveries
-        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*(hasDisc(c.player,'sd24')?1.40:1)*_discExpl)); // sd24 The Compass: +40% mapped
+        const gain=Math.min(100,Math.floor(basicRate*(explorerSkill+1)*scoutBonus*loreMult*_discExpl));
         if(!prov.exploredBy) prov.exploredBy={};
         const before=prov.exploredBy[c.player]||0;
         prov.exploredBy[c.player]=Math.min(100,before+gain);
@@ -14988,8 +15206,8 @@ const BATTLE_ARMY_SPELLS={
         // upward.
         if(perkTier(c,'explorer')>=3 && !prov._richSurveyed && Math.random()<0.5){ prov._richSurveyed=true; const _b8=prov.tax||0; prov.tax=Math.min(10,_b8+2); if(prov.tax>_b8) log('explore',`\u26f0 ${c.name}'s keen survey of ${prov.name} reveals richer land \u2014 its tax base rises to ${prov.tax}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
         // ANCIENT LORE (sd32) — the same Explore action also maps 10% of each adjacent province.
-        if(hasDisc(c.player,'sd32')){
-          getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+10); nb.explored=nb.exploredBy[c.player]; creditMapped(c, _ab, nb.exploredBy[c.player]); });
+        if(hasDisc(c.player,'sd32')){ const _alPct=discParam('sd32','pct',10);
+          getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).forEach(nb=>{ if(!nb)return; if(!nb.exploredBy)nb.exploredBy={}; const _ab=nb.exploredBy[c.player]||0; nb.exploredBy[c.player]=Math.min(100,_ab+_alPct); nb.explored=nb.exploredBy[c.player]; creditMapped(c, _ab, nb.exploredBy[c.player]); });
         }
         // Feature discovery: proportional thresholds based on how many features exist At 100%
         // explored, all features visible. 1 feature=100%, 2=50%/100%, 4=25%/50%/75%/100% etc.
@@ -15259,7 +15477,7 @@ const BATTLE_ARMY_SPELLS={
           // pay out the cached clear-gold roll so a scouted figure is exactly honoured; if the site
           // was never scouted, encounterClearGold rolls it now from the same tier band (T.gold).
           const gold=encounterClearGold(f);
-          const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct'))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
+          const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.charRace||c.race===e.charRace)))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
           if(goldFinal>0) trySkillGain(c,'thief',SKILLGAIN_STD); // 2026-09-21 (Toby): carrying off a lair's gold trains Thief
@@ -15287,8 +15505,7 @@ const BATTLE_ARMY_SPELLS={
           (f.hoardItems||[]).forEach(it=>drops.push(it)); f.hoardItems=[];
           const baseDrops=drops.slice(); // the hoard's own magic, narrated below; bonus finds announce themselves.
           // sd25 Alchemical Theory: 10% chance of an extra find.
-          { const _dIC=discSum(c.player,'itemChance','pct'); if(_dIC>0&&Math.random()<_dIC){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Your realm's lore yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } } } // itemChance discoveries
-          if(hasDisc(c.player,'sd25')&&Math.random()<0.10){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Alchemical Theory yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
+          { const _dIC=discSum(c.player,'itemChance','pct',e=>!e.terrains||e.terrains.includes(prov.terrain)); if(_dIC>0&&Math.random()<_dIC){ const bonus=rollItem(); if(bonus){ drops.push(bonus); log('explore',`Your realm's lore yields an extra find: the ${bonus.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id}); log('explore',itemLoreLines([bonus]),{actor:c.player,targets:[c.player],provinceId:prov.id}); } } } // itemChance discoveries
           c.items=(c.items||[]);
           drops.forEach(it=>{ c.items.push(it); applyItemMaxHp(c,it); /* item 6 */ noteItemFound(G,c.player,it); }); // tally what this realm has found, by category
           // Narrate the magic actually won here.
@@ -15337,8 +15554,7 @@ const BATTLE_ARMY_SPELLS={
             if(prov.owner===c.player){ _destGarrison=true; _destNote=` (mustered directly into the garrison of ${prov.name})`; }
             else _destNote=' (garrison unavailable — province not controlled; troops join the recruiter)';
           } else {
-            const _rid=parseInt(_destTok.slice(3));
-            const _r=G.characters[_rid];
+            const _r=orderCharRef(G,_destTok.slice(3)); // plain id or pre-order hero
             if(_r&&_r.alive&&_r.player===c.player&&_r.location===c.location){ _destChar=_r; _destNote=` (mustered under ${_r.name}'s banner)`; }
             else _destNote=' (chosen recipient is not here — troops join the recruiter)';
           }
@@ -15361,7 +15577,7 @@ const BATTLE_ARMY_SPELLS={
             _mercTokens.add(tok);
             const baseMercCost=ARMY_COST_P[merc.type]||2;
             // Neutral alignment: mercenaries cost 2g less (min 1g)
-            const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(c.player,'merc','delta')); // + an08 Hired Blades
+            const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(c.player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true))); // + merc discoveries
             if((player.gold||0)<mCost){log('hire',`${c.name}: cannot afford ${merc.unitName||merc.type} mercenaries (${mCost}g).`,{actor:c.player,targets:[c.player]});return;}
             player.gold-=mCost;
             _pushRecruit({type:merc.type,quality:merc.quality,race:merc.race,unitName:merc.unitName});
@@ -15426,7 +15642,7 @@ const BATTLE_ARMY_SPELLS={
           totalCost+=cost;
           for(let q=0;q<actualQty;q++){
             // sd01 Superior Forging: recruited armies start at Veteran
-          const startQuality=(hasDisc(c.player,'sd01')||(gdActive(c.player,'Druidic')&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType))))?'Veteran':'Average'; // + GRAND DESIGN Druidic: creatures/monsters muster as Veterans
+          const startQuality=((gdActive(c.player,'Druidic')&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)))||Math.random()<discRecruitQChance(G.players[c.player],armyType))?'Veteran':'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
           // Whale Cohorts are wild sea creatures — always the Primal race, whoever raises them.
           const recruitRace=(armyType==='Whale Cohort')?'Primal':(prov.race||'Human');
           _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
@@ -15483,32 +15699,8 @@ const BATTLE_ARMY_SPELLS={
         // Default unfilled phases (before hire) to a "not yet hired" placeholder
         for(let p2=0;p2<=ph;p2++) G.turnOrders[h.id][p2]=G.turnOrders[h.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
         // ── 2026-09-21: the hirer's pre-written orders are applied HERE, now the hire has landed.
-        // Matched on hero + this realm (an exact match on the hiring character wins if two cards
-        // were somehow submitted), so a rival's pre-orders for the same hero are ignored. Phases are
-        // bounded by the ACTUAL hire phase, not the phase the player planned to hire in — if the
-        // hire slipped a phase, the orders for the phases he was not yet sworn are dropped.
-        {
-          const _ph=(G._pendingHireOrders||[]);
-          const _pend=_ph.find(x=>x.heroId===h.id&&x.player===c.player&&x.viaId===String(c.id))
-                    ||_ph.find(x=>x.heroId===h.id&&x.player===c.player);
-          let _applied=0;
-          if(_pend&&Array.isArray(_pend.orders)){
-            const slots=G.turnOrders[h.id]||[null,null,null,null,null];
-            _pend.orders.forEach((o,pi2)=>{
-              if(pi2>ph&&o&&o.action&&o.action!=='Defend'&&o.action!=='defend'){ slots[pi2]=o; _applied++; }
-            });
-            G.turnOrders[h.id]=slots;
-          }
-          // Step 3 of order ingestion only defaults LIVING OWNED characters to Defend, and this
-          // hero belonged to nobody when it ran, so his post-hire phases were left empty and he
-          // simply did nothing (no watch) for the rest of the turn. Fill them in like everyone else
-          // — the same closing step Resurrect and Charm already do.
-          const fin=G.turnOrders[h.id]||[null,null,null,null,null];
-          for(let pz=0;pz<5;pz++){ if(pz>ph&&!fin[pz]) fin[pz]={action:'defend',target:'',extra:'',desc:'Defend'}; }
-          G.turnOrders[h.id]=fin;
-          applyPendingSynthPlan(G,h,c.player);
-          if(_applied>0) log('system',`${h.name} takes up the orders ${player.name} laid down for them — ${_applied} phase${_applied!==1?'s':''} of this turn remain to be acted on.`,{actor:c.player,targets:[c.player],charId:h.id,phase:ph});
-        }
+        // (2026-09-23: moved into landHirePreOrders so the Neutral BROKER hire applies them too.)
+        landHirePreOrders(h, c, ph, player);
         setMovePool(h); // give the newly hired hero a movement pool for this turn (item: hired heroes had 0 MP)
         const _aDist=alignDistP(kingdomAlign,h.alignment);
         // Both hire paths now say which it is.
@@ -15523,10 +15715,13 @@ const BATTLE_ARMY_SPELLS={
       case 'spy':{
         const hasCrystalOrb=activeItems(c).some(it=>it.effect?.stat==='oracle');
         // sd21 Forgery Arts: +15% spy success chance
-        const spyBonus=(hasDisc(c.player,'sd21')?0.15:0)+discSum(c.player,'spy','pct'); // spy discoveries
-        // sd19 Cipher Scripts: if target province owner has it, -25% to our spy
         const targetProvForSpy=G.world.provinces[parseInt(target)];
-        const cipherPenalty=((targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player)?((hasDisc(targetProvForSpy.owner,'sd19')?0.25:0)+discSum(targetProvForSpy.owner,'counterSpy','pct')):0); // counterSpy discoveries
+        // spy / counterSpy discoveries — optionally scoped to the TARGET province's terrain, to coastal
+        // ground or (counterSpy) to the defender's capital. sd21 / sd19 are now ordinary effects.
+        const _spyProv=String(target||'').startsWith('char:')?prov:(targetProvForSpy||prov);
+        const _spyScope=(e,ownerPi)=>(!e.terrains||(_spyProv&&e.terrains.includes(_spyProv.terrain)))&&(!e.coastal||(_spyProv&&provIsCoastal(G,_spyProv)))&&(!e.home||(_spyProv&&ownerPi!=null&&homeFounderOf(G,_spyProv.id)===ownerPi));
+        const spyBonus=discSum(c.player,'spy','pct',e=>_spyScope(e,null)); // spy discoveries
+        const cipherPenalty=((targetProvForSpy&&targetProvForSpy.owner!==null&&targetProvForSpy.owner!==c.player)?discSum(targetProvForSpy.owner,'counterSpy','pct',e=>_spyScope(e,targetProvForSpy.owner)):0); // counterSpy discoveries
         // ── Item 10: SPY ON A CHARACTER ── target 'char:<id>' names a non-own character standing
         // in the same province. Success 25% +10%/Spy level (Master Spy / Crystal Orb: automatic)
         // reveals every skill level, every magic item and every army unit they lead. Success or
@@ -15545,7 +15740,7 @@ const BATTLE_ARMY_SPELLS={
           const _mySpy=effStat(c,'spy'), _tgSpy=effStat(_tgt,'spy');
           const _masterSpy=perkTier(c,'spy')>0;
           const _auto=hasCrystalOrb||_masterSpy;
-          const _chance=Math.max(5,Math.min(95,dispFloor((0.25+0.10*_mySpy+spyBonus)*100)));
+          const _chance=Math.max(5,Math.min(95,dispFloor((0.25+0.10*_mySpy+spyBonus+discSum(c.player,'spyChar','pct',e=>_spyScope(e,null)))*100))); // + spyChar discoveries (optionally scoped to where it happens)
           const _roll=d100();
           const _ok=_auto||_roll<=_chance;
           log('system',`📊 Spy on ${_tgt.name} — ${c.name} (Spy ${_mySpy}) in ${prov.name}: ${_auto?`automatic success (${hasCrystalOrb?'Crystal Orb':'Master Spy'})`:fmtRoll(_chance,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -15567,6 +15762,7 @@ const BATTLE_ARMY_SPELLS={
             let _catch=20+10*_tgSpy-10*_mySpy;
             const _tgRealmLand=(_tgt.player!=null&&prov.owner===_tgt.player), _myLand=(prov.owner===c.player);
             if(_tgRealmLand) _catch+=15; if(_myLand) _catch-=15;
+            if(_tgt.player!=null) _catch+=discSum(_tgt.player,'catchSpy','pct',e=>_spyScope(e,_tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
             _catch=Math.max(5,Math.min(95,_catch));
             const _cr=d100();
             log('system',`📊 Detection — ${_tgt.name} (Spy ${_tgSpy}) noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${fmtRoll(_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -15594,8 +15790,9 @@ const BATTLE_ARMY_SPELLS={
         // that would otherwise always fire is turned aside half the time.
         if(success&&!c._spyDisguised&&hasDisc(c.player,'sd23')){
           const _dgRoll=d100();
-          if(_dgRoll<=50) c._spyDisguised=true;
-          log('system',`📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(50,_dgRoll)} — ${c._spyDisguised?'the disguise holds; no alarm is raised.':'the disguise slips; the province\u2019s watch will report the intrusion.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          const _dgPct=Math.round(discParam('sd23','pct',0.5)*100);
+          if(_dgRoll<=_dgPct) c._spyDisguised=true;
+          log('system',`📊 Disguise Techniques — ${c.name} works under a false face in ${prov.name}: ${fmtRoll(_dgPct,_dgRoll)} — ${c._spyDisguised?'the disguise holds; no alarm is raised.':'the disguise slips; the province\u2019s watch will report the intrusion.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         if(success){
           TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster
@@ -15626,7 +15823,7 @@ const BATTLE_ARMY_SPELLS={
         if(_adjConsecId!=null){
           log('system',`${c.name}: ${prov.name} borders ${G.world.provinces[_adjConsecId]?.name||'already-hallowed ground'} — two consecrated provinces may not lie side by side. Carry the light to ground set apart from your other holy lands.`,{actor:c.player,targets:[c.player]});break;}
         // the crown may hold up to its WHITE skill level in consecrated provinces at once.
-        const _cLimit=skillLevel(c,'white')+(skillLevel(c,'white')>0?discSum(c.player,'consecrate','cap'):0); // ad03 Holy Sites (+1; still needs White 1+)
+        const _cLimit=skillLevel(c,'white')+discSum(c.player,'consecrate','cap',e=>skillLevel(c,'white')>=(e.minWhite||1)); // ad03 Holy Sites (+1; still needs White 1+)
         if(_cLimit<=0){
           log('system',`${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,{actor:c.player,targets:[c.player]});break;}
         if(_cList.length>=_cLimit){
@@ -15656,7 +15853,7 @@ const BATTLE_ARMY_SPELLS={
           || GARRISON_BY_RACE_CTA[ctaProv.race]
           || 'Human Garrison';
         ctaProv.garrisonArmies=ctaProv.garrisonArmies||[];
-        const _ctaQ=(discEff(c.player,'ctaQuality').map(e=>e.quality).find(q=>q&&QUALITY_TIERS.includes(q)))||'Green'; // ag05 Muster Rolls
+        const _ctaQ=(discEff(c.player,'ctaQuality').filter(e=>e.pct==null||Math.random()<e.pct).map(e=>e.quality).find(q=>q&&QUALITY_TIERS.includes(q)))||'Green'; // ag05 Muster Rolls (a chance per muster)
         ctaProv.garrisonArmies.push({type:ctaType,quality:_ctaQ,race:ctaProv.race||'Human',unitName:armyUnitName(ctaType)});
         player._calledToArmsTurn=G.turn;
         log('hire',`📯 Call to Arms! The folk of ${ctaProv.name} answer their king — ${_ctaQ==='Green'?'a Green':'an '+_ctaQ} ${ctaType} joins the province garrison, free of wages this muster. (Once per turn.)`,{actor:c.player,targets:[c.player],provinceId:ctaProv.id,public:true});
@@ -15675,6 +15872,7 @@ const BATTLE_ARMY_SPELLS={
           const _visible=bhProv&&(bhProv.owner===c.player||(bhProv.visitedBy||[]).includes(c.player));
           if(!bh||bh.player!==null||!bh.alive||bh._isNeutralGuard||bh._justDefeated||!_visible){
             log('hire',`${c.name}'s brokers find no such hero within reach of the realm's agents.`,{actor:c.player,targets:[c.player]});break;}
+          if(bh._releasedTurn===G.turn){log('hire',`${bh.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;} // same rule as Hire Hero
           const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(c.player,'sd31'));
           if(bWage==null){log('hire',`${bh.name} will not treat with your brokers — the alignment gulf is too wide.`,{actor:c.player,targets:[c.player]});break;}
           if((player.gold||0)<bWage){log('hire',`${c.name} cannot afford ${bh.name} — needs ${bWage}g/turn.`,{actor:c.player,targets:[c.player]});break;}
@@ -15686,6 +15884,7 @@ const BATTLE_ARMY_SPELLS={
           bh.hiredInPhase=ph;
           if(!G.turnOrders[bh.id])G.turnOrders[bh.id]=[null,null,null,null,null];
           for(let p2=0;p2<=ph;p2++) G.turnOrders[bh.id][p2]=G.turnOrders[bh.id][p2]||{action:'defend',target:'',extra:'',desc:'(not yet hired)'};
+          landHirePreOrders(bh, c, ph, player); // 2026-09-23: the brokered hero's pre-written orders + plan
           setMovePool(bh);
           const _bActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards, from where they stand.`;
           const _brokerLine=`🤝 Brokered: ${bh.name} (${bh.race}, ${bh.alignment}) in ${bhProv.name} accepts ${player.name}'s terms by courier — ${bWage}g/turn. ${_bActs}`;
@@ -15728,7 +15927,7 @@ const BATTLE_ARMY_SPELLS={
         // the one muster path that ignored both sd01 and the World-Tree Grove. An awakened beast is
         // a creature/monster raised by a Druidic realm — the most thematic place of all for the
         // Wonder to tell, and it was the only place it did not.
-        const _awQ=(hasDisc(c.player,'sd01')||gdActive(c.player,'Druidic'))?'Veteran':'Average';
+        const _awQ=(gdActive(c.player,'Druidic')||Math.random()<discRecruitQChance(G.players[c.player],wType))?'Veteran':'Average';
         c.armies.push({type:wType,quality:_awQ,race:'Primal',unitName:armyUnitName(wType)});
         trySkillGain(c,'druid',SKILLGAIN_STD);
         log('hire',`🌿 Awaken the Wild — ${c.name} calls and ${prov.name} answers: ${wType} rise from the deep places to march under the Druidic banner! (${wCost}g offering; ${_awQ} quality; they follow ${c.name}.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -15773,7 +15972,7 @@ const BATTLE_ARMY_SPELLS={
         const perLevel=5;
         // The discovery-chance benefit CAPS at level 5 (via effStat); levels 6+ grant the Sage's
         // distinct mastery orders instead of a further per-level climb.
-        const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct'); // + Loreseeker minor title; Item 5 research discoveries
+        const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct',e=>!e.field||(e.field==='own'&&String(target||'').trim().toLowerCase()===String((player.alignment||'')+' Creed').toLowerCase())); // + Loreseeker; research discoveries (az10: own creed field only)
         // the order names a CATEGORY (target); blank/'any' = the whole eligible table. Item 11: the
         // Heroic and Special fields can no longer be named or seen — they are found only as an
         // unlooked-for side result of researching any other field (roll below).
@@ -15888,7 +16087,7 @@ const BATTLE_ARMY_SPELLS={
         // (half the solo chance) and the guaranteed-success mentor rule below apply on top.
         const PRACTICE_BASE_BY_LEVEL=[0.25,0.20,0.15,0.10,0.05]; // level 0→25% … level 4→5%
         const baseByLevel=PRACTICE_BASE_BY_LEVEL[Math.min(current,4)];
-        const astroBonus=(hasDisc(c.player,'sd26')?0.05:0)+discSum(c.player,'practice','pct'); // practice discoveries
+        const astroBonus=discSum(c.player,'practice','pct',e=>!e.skills||e.skills.includes(skill)); // practice discoveries (sd26 Astronomical Tables is one)
         // perseverance. Each FAILED practice this turn multiplies the character's next practice
         // chance by 1.2 (cumulative); a success resets it. The streak is per character, any skill,
         // and starts fresh each turn.
@@ -16081,7 +16280,7 @@ const BATTLE_ARMY_SPELLS={
         const baseHeal=Math.max(1,Math.ceil((c.maxHp||20)*REST_HEAL_PCT)); // 30% of maximum HP (was 2–5)
         let heal=_medArts?Math.max(0,(c.maxHp||20)-c.hp):(isDivineKingdom?Math.ceil(baseHeal*1.5):baseHeal);
         if(charMinor(c,'colossus')) heal+=2; // MINOR TITLE — The Colossus
-        heal+=discSum(c.player,'rest','hp'); // rest discoveries
+        heal+=discSum(c.player,'rest','hp',e=>(!e.owned||prov.owner===c.player)&&(!e.home||(prov.owner===c.player&&homeFounderOf(G,prov.id)===c.player))&&(!e.terrains||e.terrains.includes(prov.terrain))); // rest discoveries
         if(hasItemBase(c,'Iron Heart Talisman')) heal+=Math.round((c.maxHp||20)*0.10); // Iron Heart Talisman: +10% of max HP recovered
         c.hp=Math.min(c.maxHp||20,c.hp+heal);
         log('system',`${c.name} rests and recovers. +${heal} HP (${c.hp}/${c.maxHp}${isDivineKingdom?' — Divine blessing lifts healing by half':''}).`,{actor:c.player,targets:[c.player]});
@@ -16103,9 +16302,9 @@ const BATTLE_ARMY_SPELLS={
         // ignored.
         const _charmedSender=!!(c._charmTempControl||c._charmedTurn===G.turn);
         if(_charmedSender&&c._charmSendUsed===G.turn){ log('system',`${c.name} will part with no more — a charmed mind gives up one possession a season, and no more.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
-        const recipId=parseInt(extra);
-        const recip=G.characters[recipId];
+        const recip=orderCharRef(G,extra); // a plain id, or a pre-order hero's synthetic id
         if(!recip){log('item',`${c.name}: cannot send item — no such recipient.`,{actor:c.player,targets:[c.player]});break;}
+        if(isPreOrderRef(extra)&&(recip.player!==c.player||!recip.alive||recip._charmTempControl)){log('item',`${c.name} keeps the items — ${recip.name} is not in your service${recip.alive?'':' (they have fallen)'}: the hire, raising or charm did not land (or has not happened yet), so nothing is sent.`,{actor:c.player,targets:[c.player],charId:c.id});break;}
         if(recip.player!==c.player||!recip.alive){log('item',`${c.name}: items can only be sent to one of your own living characters.`,{actor:c.player,targets:[c.player]});break;}
         if(recip.id===c.id){log('item',`${c.name}: cannot send items to themselves.`,{actor:c.player,targets:[c.player]});break;}
         const _held=(c.items||[]);
@@ -16153,11 +16352,14 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'leave_army':{
-        const recipId=parseInt(extra);
+        // a pre-order hero's synthetic id is a CHARACTER recipient — parseInt gave NaN, which fell
+        // through to the garrison branch and quietly garrisoned the troops (2026-09-23).
+        const _synRecip=isPreOrderRef(extra);
+        const recipId=_synRecip?(((orderCharRef(G,extra)||{}).id)??-99):parseInt(extra);
         if((c.armies||[]).length===0){log('system',`${c.name}: no armies to transfer.`,{actor:c.player,targets:[c.player]});break;}
         // ── Validate the recipient BEFORE moving any troops ──
-        const recip2=recipId>=0?G.characters[recipId]:null;
-        if(recipId>=0){
+        const recip2=_synRecip?orderCharRef(G,extra):(recipId>=0?G.characters[recipId]:null);
+        if(recipId>=0||_synRecip){
           // Transfer to another character: must be one of THIS player's own living characters,
           // standing in the same province. Never a neutral hero or another player's character.
           if(!recip2||!recip2.alive||recip2.player!==c.player||recip2.location!==c.location){
@@ -16239,6 +16441,7 @@ const BATTLE_ARMY_SPELLS={
         const _relPi=c.player, _relPl=player;
         const _itemNote=(c.items||[]).length?` They take ${(c.items||[]).map(it=>it&&it.name).filter(Boolean).join(', ')} with them.`:'';
         if(_relPl){ _relPl.heroes=(_relPl.heroes||[]).filter(id=>id!==c.id); }
+        noteServedRealm(c,c.player); // the releasing realm stays in their service history
         c.player=null; c._isNeutralGuard=false; delete c._isHeir; delete c.hiredInPhase; delete c._pursuit;
         c._releasedTurn=G.turn; c._releasedBy=_relPi;
         c.pay=Math.max(1,Math.ceil(Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0)/4)); // wandering default; the real hire wage is alignment-based
@@ -16485,9 +16688,17 @@ const BATTLE_ARMY_SPELLS={
         const _carried=!!(c._defend&&c._defend.active&&(c._defend.carried||c._defend.setPhase<ph));
         c._defend={centre:centreProv.id,active:true,setPhase:ph,carried:_carried};
         if(!_preSet) delete c._defendReactedPhase;
-        if(_carried||(_preSet&&c._defendReactedPhase===ph)){
-          // still on watch — or the watch already acted this phase (rode out / held the gate) and
-          // said so; a "makes camp" line after the ride-out would read backwards
+        if(_preSet&&c._defendReactedPhase===ph){
+          // the watch already acted this phase (rode out / held the gate) and said so; a "makes
+          // camp" line after the ride-out would read backwards
+        } else if(_carried){
+          // still on watch. 2026-09-23 (Toby item 10): this used to print NOTHING, so a character
+          // who set a watch in Early Summer and held it through Fall and Early Winter showed only
+          // the phases before it — Sorrek the Kinless's Chronicle stopped at Late Summer. One short
+          // line per phase keeps every season accounted for.
+          log('move',(c.armies||[]).length===0
+            ? `🛡 ${c.name} still lies in wait about ${prov.name}.`
+            : `🛡 ${c.name} keeps the watch in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if((c.armies||[]).length===0){
           log('move',`${c.name} melts into the country around ${prov.name} and lies in wait — with no column at their back they cannot bar a road, but they will try to ambush any enemy who ventures into these lands (their Spy craft decides whether they can spring the trap).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         } else if(centreProv.id===prov.id){
@@ -16605,7 +16816,9 @@ const BATTLE_ARMY_SPELLS={
         if(school==='necromancy') TM(c).darkCasts=(TM(c).darkCasts||0)+1; // TITLE MERIT: Deathpriest
         // Resolve spell effect
         const fn=spellDef.fn;
-        const extraId=parseInt(extra)||0;
+        // a pre-order hero named as the target of a friendly spell resolves to their real id; a
+        // synthetic id used to parse as NaN → 0 and aimed the spell at character 0 (2026-09-23).
+        const extraId=isPreOrderRef(extra)?((orderCharRef(G,extra)||{id:-1}).id):(parseInt(extra)||0);
         const targetProv=extraId>=0&&G.world.provinces[extraId]?G.world.provinces[extraId]:prov;
         const targetChar=G.characters.find(ch=>ch.alive&&ch.id===extraId);
         // THIEF L9 Vanish: a vanished character cannot be reached by ANY hostile spell for the rest
@@ -16661,6 +16874,9 @@ const BATTLE_ARMY_SPELLS={
             if(G.players[c.player]?._resurrectableMonarchId!==grave.id){ log('system',`${c.name}: the spirit of ${grave.name} has passed beyond recall — only your most recently fallen monarch may be restored.`,{actor:c.player,targets:[c.player]});break; }
           } else if(grave.isKing){
             log('system',`${c.name}: ${grave.name} was a king — kings cannot be resurrected.`,{actor:c.player,targets:[c.player]});break;
+          } else if(graveServedOther(grave,c.player)){
+            // 2026-09-23 (Toby): a hero who ever served ANOTHER realm cannot be raised into yours.
+            log('system',`${c.name}: ${grave.name} once swore to another crown — that oath holds even in death, and the spirit will not answer.`,{actor:c.player,targets:[c.player]});break;
           }
           if(G._resurrectedThisTurn.includes(grave.id)){ log('system',`${c.name}: ${grave.name} has already been raised this turn.`,{actor:c.player,targets:[c.player]});break; }
           const deadHero=G.characters.find(ch=>ch.id===grave.id);
@@ -17780,7 +17996,7 @@ const BATTLE_ARMY_SPELLS={
     if(baseSpeed<=0) return 0;
     const bonus=baseSpeed<=2?MARCH_BONUS_SLOW[Math.min(marchLevel,5)]:MARCH_BONUS_FAST[Math.min(marchLevel,5)];
     // sd13 Road Network: +1 move for speed 1-2 land armies
-    const roadBonus=(playerIdx!=null&&hasDisc(playerIdx,'sd13')&&baseSpeed<=2)?1:0;
+    const roadBonus=0; // sd13 Road Network is now a `move` effect, applied per army at the move-pool sites
     return baseSpeed+bonus+roadBonus;
   }
 
@@ -17826,7 +18042,7 @@ const BATTLE_ARMY_SPELLS={
           // sd13 Road Network (+1 for speed 1-2 land armies — previously computed in
           // marchAdjustedSpeed, which nothing called) and Item 5 `move` discoveries (race / cls
           // filtered), same speed band.
-          let _road=0; if(c.player!=null&&base<=2){ if(hasDisc(c.player,'sd13')) _road+=1; discEff(c.player,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
+          let _road=0; if(c.player!=null&&base<=2){ discEff(c.player,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
           return base+(base<=2?MB_SLOW[Math.min(marchLevel,5)]:MB_FAST[Math.min(marchLevel,5)])+_road;
         });
         land=Math.min(...landSpeeds);
@@ -17927,19 +18143,29 @@ const BATTLE_ARMY_SPELLS={
       if(e.terrain && !e.terrain.includes(terrain)) return;
       if(e.side==='atk' && !(ctx&&ctx.isAttacker===true)) return;
       if(e.side==='def' && !(ctx&&ctx.isAttacker===false)) return;
+      if(e.led==='garrison' && heroChar) return; // only a garrison standing without a commander
       m*=1+(e.pct||0);
     });
-    return m;
+    return Math.min(DISC_STR_CAP,m); // ceiling on stacked discovery strength (Toby 2026-09-21)
   }
+  // Per-unit promotion bonus from `promo` discoveries (unit filters).
+  function discPromo(pi, army){ if(pi==null||!army) return 0; let r=0; discEff(pi,'promo').forEach(e=>{ if(discUnitMatch(e,army)) r+=(e.pct||0); }); return r; }
+  // Does a `duelHit` effect apply against this foe? vs: 'monster' | 'character' | 'undead'.
+  function discDuelVs(e, foe){ if(!e.vs) return true; if(!foe) return false;
+    if(e.vs==='monster') return foe.kind==='monster'; if(e.vs==='character') return foe.kind==='character';
+    if(e.vs==='undead') return pcFoeCat(foe)==='undead'; return false; }
+  // Does a `fanatic` effect apply? side ('atk'/'def'), terrain, withCls (force includes that class).
+  function discFanaticApplies(e, side, terrain, force){ if(e.side&&e.side!==side) return false; if(e.terrain&&!e.terrain.includes(terrain)) return false;
+    if(e.withCls&&!(force||[]).some(a=>a&&discUnitIs(e.withCls,a))) return false; return true; }
   // 1 - (summed death-chance reduction) for one army.
-  function discDeathMult(pi, army){ if(pi==null||!army) return 1; let r=0; discEff(pi,'deathRed').forEach(e=>{ if(discUnitMatch(e,army)) r+=(e.pct||0); }); return Math.max(0.25,1-r); }
+  function discDeathMult(pi, army, side){ if(pi==null||!army) return 1; let r=0; discEff(pi,'deathRed').forEach(e=>{ if(e.side&&side&&e.side!==side) return; if(e.side&&!side) return; if(discUnitMatch(e,army)) r+=(e.pct||0); }); return Math.max(0.25,1-r); }
   // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
   // stolen.
   function discAvailableFor(pi, known){ const pl=G.players[pi]; const _blk=discBlockedIds(pl); return SAGE_DISCOVERIES_P.filter(d=>!known.has(d.id)&&!_blk.has(String(d.id))&&discEligible(d,pl)); } // forgotten + awaiting-choice ids excluded (research choice)
   // Get global army bonus from discoveries
   function discoveryArmyBonus(playerIdx){
     let pct=0;
-    if(hasDisc(playerIdx,'sd02')) pct+=0.10; // War Drums
+    // sd02 War Drums is now an ordinary `unitStr` effect (armStr, under the ×1.30 ceiling).
     return pct;
   }
 
@@ -19110,9 +19336,12 @@ const BATTLE_ARMY_SPELLS={
       // applies instead and the ally arrives first — emitting both edges would make a cycle,
       // and Kahn's algorithm would then fall back to plain initiative and honour neither.
       const tgtArrivingHere=(t)=>!!t&&t.action==='move'&&t.toId===it.fromId;
-      if((action==='give_item'||action==='leave_army')&&tgt&&tgt.player===it.player&&tgt.id!==it.id
-         &&!tgtArrivingHere(tgt)){
-        edges.push([it.id,tgt.id]);
+      // 2026-09-23: the RECIPIENT of Send Item / Transfer Army is in `extra` (the target holds item
+      // indices / unit names). Reading `target` here linked the sender to whichever character's id
+      // matched the first item index, and never to the real recipient.
+      const _rcp=(action==='give_item'||action==='leave_army')?(()=>{ const r=orderCharRef(G,order.extra); return r?byId(r.id):null; })():null;
+      if(_rcp&&_rcp.player===it.player&&_rcp.id!==it.id&&!tgtArrivingHere(_rcp)){
+        edges.push([it.id,_rcp.id]);
       }
       if(action==='cast_spell'){
         const spellTargetId=parseInt(order.extra);
@@ -19135,8 +19364,8 @@ const BATTLE_ARMY_SPELLS={
           if(other.id===it.id||other.player!==it.player) return;
           if(other.fromId!==it.dest.id) return;
           if(other.action!=='give_item'&&other.action!=='leave_army') return;
-          const oTgt=parseInt(other.order&&other.order.target);
-          if(oTgt!==it.id) return;
+          const _oR=orderCharRef(G,other.order&&other.order.extra); // recipient is in extra (2026-09-23)
+          if(!_oR||_oR.id!==it.id) return;
           edges.push([it.id,other.id]);
         });
       }
@@ -20095,7 +20324,7 @@ const BATTLE_ARMY_SPELLS={
     (G.characters||[]).forEach(c=>{
       if(c.alive&&c.player!=null&&c.hp!=null&&c._hpAtPhaseStart!=null&&c.hp<c._hpAtPhaseStart&&c.hp<(c.maxHp||20)&&hasDisc(c.player,'sd29')){
         const _dmg=c._hpAtPhaseStart-c.hp;
-        const _heal=Math.min(Math.max(1,Math.round(_dmg*0.40)),(c.maxHp||20)-c.hp);
+        const _heal=Math.min(Math.max(1,Math.round(_dmg*discParam('sd29','pct',0.40))),(c.maxHp||20)-c.hp);
         if(_heal>0){
           c.hp=c.hp+_heal;
           // filed under the CHARACTER for THIS phase. It is the first line of the phase, before any
@@ -20350,6 +20579,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         if((p.provinces||[]).length>0||(G.characters||[]).some(c=>c.player===p.id&&c.alive)||(p.gold||0)>0){
           log('system',`${p.name} has ${p.gold||0}g in the treasury.`,{actor:p.id,targets:[p.id]});
         }
+        const _taxAcc=new Map(); // capped `tax` discoveries: gold paid so far this collection
         let _consecBonus=0; // DIVINE — Consecrate: track the +50% holy-ground uplift so the player can SEE it itemised
         const income=(p.provinces||[]).reduce((s,id)=>{
           const pv=G.world.provinces[id];if(!pv) return s;
@@ -20360,14 +20590,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           if(isConsecrated(p,pv.id)){ const _cb=t; t=Math.round(t*1.5); _consecBonus+=(t-_cb); } // DIVINE — Consecrate: hallowed ground prospers (+50%)
           if(pv._enslavedUntil!=null&&pv._enslavedUntil>=G.turn) t=Math.max(0,t-1); // EVIL — Enslave: resentment (−1 tax while it lasts)
           if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0));
-          // sd11 Advanced Agriculture: +1g from provinces with tax>=3
-          if(hasDisc(pi,'sd11')&&pv.tax>=3) t+=1;
-          // sd15 Mining Techniques: +2g from mountain provinces
-          if(hasDisc(pi,'sd15')&&pv.terrain==='mountain') t+=2;
-          // sd18 Aqueducts: +1g from plain/desert provinces
-          if(hasDisc(pi,'sd18')&&(pv.terrain==='plain'||pv.terrain==='desert')) t+=1;
-          // race / alignment `tax` discoveries (per-province bonus, by minimum tax and/or terrain)
-          discEff(pi,'tax').forEach(e=>{ if(e.minTax!=null&&(pv.tax||0)<e.minTax) return; if(e.terrains&&!e.terrains.includes(pv.terrain)) return; t+=(e.bonus||0); });
+          // every province-tax discovery (sd11 / sd15 / sd18 and the heritage & creed ones), capped
+          // per discovery — see discTaxAdd. Keep in step with buildTurnReport.
+          t+=discTaxAdd(p,pv,G,pi,_taxAcc);
           // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a
           // garrison.
           if(gdActive(pi,'Good')&&(pv.garrisonArmies||[]).length>0) t+=2;
@@ -20379,13 +20604,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // Merchant's Ledger: +1g per province owned (if any of the player's heroes carries one).
         const ledgers=pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
         const perProvBonus=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
-        const interestBonus=(hasDisc(pi,'sd12')?Math.min(3,Math.floor((p.gold||0)*0.05)):0)+discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
+        const interestBonus=discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
         // Neutral trade: +20% of province income, rounded down.
         // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
         // sd14 Taxation Records: +10% of province income, rounded down. Integer maths for the same
         // reason neutralTradeGold uses it — floor(income*0.10) drifts a gold on float-unfriendly
         // totals.
-        const taxRecordsBonus=hasDisc(pi,'sd14')?Math.floor(income*10/100):0;
+        const taxRecordsBonus=hasDisc(pi,'sd14')?taxRecordsGold(income):0;
         const neutralTradeBonus=neutralTradeGold(p,income);
         // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g
         // per 5 provinces.
@@ -20416,6 +20641,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // association.
         const _druidHalfWage=new Set();
         playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0||gdActive(p.id,'Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); }); // + GRAND DESIGN Druidic
+        const _upkAcc=new Map(); let _discUpkeepG=0;
         let _orcSpoilsG=0; // 2026-09-10 item 3: itemised so the report can explain the one-off discount
         let armyWages=allKingdomArmies.reduce((s,a)=>{
           if(a._temporary) return s;
@@ -20426,6 +20652,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           let w=ARMY_COST[a.type]||2;
           if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn){ const _w0=w; w=Math.max(1,Math.round(w*0.5)); _orcSpoilsG+=_w0-w; }
           if(_druidHalfWage.has(a)) w=Math.max(1,Math.floor(w*0.5)); // DRUID L6
+          { const _w0=w; w=discUpkeepWage(p,a,w,_upkAcc); _discUpkeepG+=_w0-w; } // `upkeep` discoveries
           return s+w;
         },0);
         // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he
@@ -20435,12 +20662,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
         // Hero wages
         const heroes=playerChars.filter(c=>!c.isKing);
-        // sd17 Granaries: hero wages reduced by 1g each (minimum 1g)
-        const granariesDisc=hasDisc(p.id,'sd17');
-        const _inspiring=hasDisc(p.id,'sd38'); // Inspiring Leadership: hero wages halved
-        const _dHW=discSum(p.id,'heroWage','amount'); // heroWage discoveries
+        // heroWage / heroWageCap discoveries (sd17 Granaries, sd38 Inspiring Leadership, creeds) —
+        // one shared helper, mirrored in buildTurnReport.
+        const _hwAcc=new Map();
         let _heroWageDisc=0;
-        const heroWages=heroes.reduce((s,h)=>{ const raw=(h.pay||0); let w=Math.max(1,raw-(granariesDisc?1:0)-_dHW); if(_inspiring) w=Math.floor(w*0.5); _heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
+        const heroWages=heroes.reduce((s,h)=>{ const raw=(h.pay||0); const w=discHeroWage(p,h,raw,_hwAcc); _heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
 
         const totalWages=armyWages+heroWages;
         // 2026-09-10 item 3: the figures ACTUALLY charged this turn are stamped on the player.
@@ -20448,11 +20674,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // by construction; the forward forecast only appears as a "next turn" note when the
         // end-of-turn roster (disbands, escaped units returning, skeleton rises, heirs…) changes
         // it.
-        p._lastWages={turn:G.turn,armyWages,heroWages,hostLeaderG:_hostLeaderG,heroWageDisc:_heroWageDisc,orcSpoilsG:_orcSpoilsG};
+        p._lastWages={turn:G.turn,armyWages,heroWages,hostLeaderG:_hostLeaderG,heroWageDisc:_heroWageDisc,orcSpoilsG:_orcSpoilsG,discUpkeepG:_discUpkeepG};
 
         if(totalWages===0){log('system',`${p.name}: no wages to pay.`);return;}
 
-        { const _notes=[_hostLeaderG>0?`−${_hostLeaderG}g the Host-Leader`:'',_orcSpoilsG>0?`−${_orcSpoilsG}g Orcish war-spoils`:'',_heroWageDisc>0?`−${_heroWageDisc}g hero wage discounts`:''].filter(Boolean);
+        { const _notes=[_hostLeaderG>0?`−${_hostLeaderG}g the Host-Leader`:'',_orcSpoilsG>0?`−${_orcSpoilsG}g Orcish war-spoils`:'',_heroWageDisc>0?`−${_heroWageDisc}g hero wage discounts`:'',_discUpkeepG>0?`−${_discUpkeepG}g army upkeep discoveries`:''].filter(Boolean);
           log('system',`${p.name} owes ${totalWages}g wages (armies: ${armyWages}g, heroes: ${heroWages}g)${_notes.length?` — after ${_notes.join(', ')}`:''}.`,{actor:p.id,targets:[p.id]}); }
 
         if((p.gold||0)>=totalWages){
@@ -20517,7 +20743,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
             heroes.sort((a,b)=>(b.pay||0)-(a.pay||0)).forEach(h=>{
               if(deficit<=0)return;
               if(Math.random()>0.4){
-                h.player=null;h.name=h.name.replace(' (wandering)','')+' (wandering)';
+                noteServedRealm(h,h.player); h.player=null;h.name=h.name.replace(' (wandering)','')+' (wandering)';
                 deficit-=(h.pay||0);
                 p.heroes=(p.heroes||[]).filter(id=>id!==h.id);
                 log('hire',`${h.name} abandons ${p.name}'s service, unpaid and disillusioned.`,{actor:p.id,targets:[p.id]});
@@ -20607,6 +20833,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Never more than one point per hero per turn, never past SKILL_MAX. A learner already at the cap
   // in the peer's best skill falls back to the alone rule rather than wasting the roll. Implemented
   // in progressNeutralHeroes (module scope) so the harness can drive it directly.
+  // 2026-09-23 (Toby): 25% a turn (was 50%), and never past level 5 by this route (NEUTRAL_PROG_CAP).
   progressNeutralHeroes(G, (txt,pv)=>log('system',txt,{targets:[],provinceId:pv?pv.id:null,system:true}));
 
   // ── DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's hands
@@ -21132,10 +21359,18 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // Skeletal armies never gain experience/quality tiers — the dead don't learn.
     const eligible=allArmies.filter(a=>!a._isSkeletal&&tiers.indexOf(a.quality)<4);
     if(eligible.length===0) return;
-    // Each eligible army independently has a 50% chance to train up one tier this turn.
-    let _waPromoted=0;
-    eligible.forEach(army=>{ if(Math.random()<0.5){ const idx=tiers.indexOf(army.quality); army.quality=tiers[idx+1]; _waPromoted++; log('system',`War Academy: ${army.unitName?army.unitName+' ('+army.type+')':'a '+army.type} in ${homeProv.name} trains to ${army.quality}!`,{actor:pi,targets:[pi]}); } });
+    // Each eligible army independently has a chance (sd08 row, pct) to train up one tier this turn.
+    let _waPromoted=0; const _waPct=discParam('sd08','pct',0.5);
+    eligible.forEach(army=>{ if(Math.random()<_waPct){ const idx=tiers.indexOf(army.quality); army.quality=tiers[idx+1]; _waPromoted++; log('system',`War Academy: ${army.unitName?army.unitName+' ('+army.type+')':'a '+army.type} in ${homeProv.name} trains to ${army.quality}!`,{actor:pi,targets:[pi]}); } });
     if(_waPromoted===0) log('system',`War Academy: the drills in ${homeProv.name} produced no promotions this turn.`,{actor:pi,targets:[pi]});
+  });
+
+  // 7d-bis. `regen` discoveries (sd65 Physick Gardens): every wounded living character of the realm
+  // recovers a few HP at the end of the turn.
+  G.players.forEach((p,pi)=>{
+    if(!discEff(pi,'regen').length) return;
+    (G.characters||[]).forEach(c=>{ if(!c||!c.alive||c.player!==pi||c.hp==null) return; const mx=c.maxHp||20; if(c.hp>=mx) return;
+      const _rg=discSum(pi,'regen','hp',e=>!e.king||!!c.isKing); if(_rg<=0) return; const h=Math.min(_rg,mx-c.hp); c.hp+=h; log('system',`🌿 ${c.name}'s wounds knit in the physick gardens: +${h} HP (${c.hp}/${mx}).`,{actor:pi,targets:[pi],charId:c.id,phase:99}); });
   });
 
   // 7e. sd22 Informant Network: reveal one random enemy character location
@@ -21923,6 +22158,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.21-1611</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-1616</div>
 </body>
 </html>
