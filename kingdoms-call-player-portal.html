@@ -731,7 +731,6 @@ function itemSlotTag(it,c){
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
 const RUMOUR_COST_BY_POWER_P={Weak:1,Moderate:2,Powerful:3,Legendary:4}; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
-const RUMOUR_BASE_PCT_P=50, RUMOUR_PER_SPY_PCT_P=10;
 function updateRumourTarget(charId, ph){
   const wrap=document.getElementById(`po-rumour-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(!wrap||!hidden) return;
@@ -774,7 +773,7 @@ const L79_ORDERS={
   'Sabotage':{skill:'spy',lvl:7,target:'province',provKind:'enemy',hint:'Spy 7: wreck an enemy province you can see — it yields no tax next turn and loses a garrison unit.'},
   'Forced March':{skill:'march',lvl:7,target:'province',provKind:'move_adjacent',hint:'March 7: march to an adjacent province — if an enemy army or a Defend order awaits, a 50% chance to slip in without a battle this phase (the fight comes next phase if you stay, or at turn end).'},
   'Grand Heist':{skill:'thief',lvl:7,target:'here',hint:'Thief 7 · ONE attempt per thief per turn (spent win or lose). You crack the vaults of THE PROVINCE YOU STAND IN — no hero is targeted. Where: the province must be held by a realm you are AT WAR with, and be their HOME CAPITAL or RICH country (tax 7+). Take: 25% of that realm\'s treasury (doubled at Thief 8, even past what they can cover) AND one magic item — cut from a courier still on the road inside their realm, from a Send Item order made earlier this turn (a heist never touches what a hero carries in their own pack — that is the Steal order). Odds: 60% +5% per Thief level past 5, halved if the vaults are guarded (a garrison stands there, or an enemy commander of that realm is present with troops). Fail and you are seen unless you slip away (Thief × 20%) — then a hero of that realm draws steel on you (lead with Flee in your Encounter Plan if you would rather not fight), or if none is there the guards beat you off.'},
-  'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or primal province, raise a temporary Creature host that fights until turn\u2019s end.'},
+  'Awaken Grove':{skill:'druid',lvl:7,target:'none',hint:'Druid 7: while in an owned forest, jungle or wild (Creature or Monster) province, raise a temporary Creature host that fights until turn\u2019s end.'},
   'Chart the Unknown':{skill:'explorer',lvl:7,target:'here_or_adjacent',hint:'Explorer 7: fully chart the province you stand in OR one bordering it — 100% mapped, every lair in it revealed, and all ITS neighbours glimpsed at 25%.'},
   'Discover Lost Ruin':{skill:'explorer',lvl:9,target:'lair_tier',hint:'Explorer 9: name a class of lair. EVERY lair of that class in your province and in each bordering province is laid bare at once. A rival\'s Hide Lairs glamour still conceals what it covers.'},
   'Blockade':{skill:'naval',lvl:7,target:'province',provKind:'sea_adjacent',hint:'Naval 7: seal a sea province you are in or adjacent to — enemy fleets may not cross it this turn.'},
@@ -788,8 +787,8 @@ const L79_ORDERS={
   'Feigned Retreat':{skill:'tactical',lvl:7,target:'none',hint:'Tactical 7: bait your attacker — if you are attacked this turn, your defence counters at +25% strength.'},
   'Grand Stratagem':{skill:'tactical',lvl:9,target:'none',hint:'Tactical 9: dictate the terms of battle — your next battle this turn is fought at +20% strength.'},
   'Lightning Advance':{skill:'march',lvl:9,target:'none',hint:'March 9: strike before they can set — enemies you attack this turn lose their defensive footing (−20%).'},
-  'Raid the Coast':{skill:'naval',lvl:9,target:'none',hint:'Naval 9: an amphibious assault — when you attack a coastal province this turn, you hit at +25% strength.'},
-  'Wild Calling':{skill:'druid',lvl:9,target:'none',hint:'Druid 9: while standing in a primal province, call its wild host to your banner — several of its beasts defect to you.'},
+  'Raid the Coast':{skill:'naval',lvl:9,target:'none',hint:'Naval 9: an amphibious assault — when you come ashore from the sea this turn and fight for the coast you land on, you hit at +25% strength (the whole landing does, even if another hero takes command of it).'},
+  'Wild Calling':{skill:'druid',lvl:9,target:'none',hint:'Druid 9: while standing in a wild (Creature or Monster) province, call its wild host to your banner — several of its beasts defect to you.'},
   'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your realm\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
 };
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
@@ -1635,7 +1634,7 @@ const SKILL_INFO={
   sage:'Scholarship. Unlocks the Research order (Sage 1+): each level gives a 5% chance per Research to make a permanent Sage Discovery (realm-wide bonuses). Also raises your chance of encounters while exploring. The King starts with Sage 1.',
   spy:'Espionage. Higher Spy reveals more detail on enemy provinces and characters, and lets your Spy orders reach further. Your best defence against being spied on, too.',
   thief:'Larceny. Improves success when stealing gold or magic items — via the Steal order (a hero\'s pack, their strongbox, or a garrison paymaster), by pickpocketing during encounters, and when lifting a lair\'s hoard (10% of the original hoard per level, capped at 5).',
-  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength — and every level adds +5% strength to the primal armies you lead (capped at 5). From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful primal beasts.',
+  druid:'Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army\'s requirement costs it ~20% strength. From Druid 3 a natural beast\'s blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful Creatures and Monsters.',
   explorer:'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
   white:'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine realms start with White 1).',
   psychic:'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
@@ -2015,8 +2014,17 @@ function buildChronicle(log, chars_for_log){
       });
       return out;
     }
-    function renderForceBlock(f){
+    function renderForceBlock(f, compact){
       const col=f.guard?CHIEFTAIN_MARKER_COLOR:(f.neutral?NEUTRAL_COLOR:(reportColour(f.color)||NEUTRAL_COLOR));
+      // 2026-09-23d: the short battle view shows each side on ONE line — who, what they did, and a
+      // count of each unit type — instead of the full roster.
+      if(compact){
+        const cnt={}; (f.armies||[]).forEach(a=>{ const k=a.type||'unit'; cnt[k]=(cnt[k]||0)+1; });
+        const n=(f.armies||[]).length;
+        const verb=String(f.verb||'').replace(/,\s*(with|leading)\s*$/,'').replace(/\s*—\s*\d+ defending units?\s*$/,'');
+        const kinds=Object.keys(cnt).map(k=>`${unitEmoji(k)} ${cnt[k]>1?cnt[k]+'× ':''}${k}`).join(', ');
+        return `<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:3px;font-size:.8rem">⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${verb} — ${n?`${n} unit${n!==1?'s':''}: ${kinds}`:'no armies'}</div>`;
+      }
       const header=`⚔ <span style="color:${col};font-weight:700">${f.name}</span> ${f.verb||''}:`;
       const rows=(f.armies||[]).length
         ? f.armies.map(a=>`<div style="padding-left:16px;font-size:.82rem${a.phantom?';opacity:.75;font-style:italic':''}">${a.phantom?'✨':unitEmoji(a.type)} <span style="color:${col}">${armyLabel(a)}</span></div>`).join('')
@@ -2025,21 +2033,59 @@ function buildChronicle(log, chars_for_log){
     }
 
     // ── HELPER: render a single log entry ──
-    function renderEntry(e){
+    // opt: {compact} — the short battle view (one-line forces, no indentation); {tail} — HTML put at
+    // the right-hand end of the line (the battle fold button).
+    function renderEntry(e, opt){
+      opt=opt||{};
       const raw0=e.text||'';
       if(raw0.startsWith('⚑FORCE⚑')){
-        try{ return renderForceBlock(JSON.parse(raw0.slice(7))); }catch(_){ /* fall through */ }
+        try{ return renderForceBlock(JSON.parse(raw0.slice(7)), !!opt.compact); }catch(_){ /* fall through */ }
       }
-      const rawText=roundReportNumbers(raw0);
+      // 2026-09-23d: an indented line (a duel blow, an arrow volley, a Battle-stats ladder row) is a
+      // sub-line of the one above it — drawn indented and smaller in the full report instead of
+      // flush like a headline. The short view has no sub-lines, so it just trims the indent.
+      const _ind=(raw0.match(/^ +/)||[''])[0].length;
+      const rawText=roundReportNumbers(raw0.replace(/^ +/,''));
       const isStat=rawText.startsWith('📊');
+      const isTally=rawText.startsWith('⚰');
       const isBattleHeader=rawText.startsWith('⚔')||rawText.startsWith('⚠');
       let text=rawText.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
       // tint EVERY character's name in EVERY section — in the controlling player's colour
       // (neutrals dark grey) — not only battle/stat lines.
       text=colorizeNames(text);
-      if(isStat) return`<div class="log-entry stat">${text}</div>`;
-      if(isBattleHeader) return`<div class="log-entry combat" style="border-left-width:4px;background:#fdf0f0;margin-top:6px;font-weight:600">${text}</div>`;
-      return`<div class="log-entry ${e.type||''}">${text}</div>`;
+      const tail=opt.tail?`<span style="flex:1"></span>${opt.tail}`:'';
+      const flex=opt.tail?'display:flex;align-items:flex-start;gap:6px;':'';
+      const inner=opt.tail?`<span style="min-width:0">${text}</span>${tail}`:text;
+      const sub=(_ind>0&&!opt.compact)?`margin-left:${Math.min(4,Math.ceil(_ind/2))*12}px;font-size:.76rem;padding-top:2px;padding-bottom:2px;margin-bottom:1px;`:'';
+      if(isStat) return`<div class="log-entry stat" style="${flex}${sub}">${inner}</div>`;
+      if(isTally) return`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#f6ecdf;font-weight:600">${inner}</div>`;
+      if(isBattleHeader&&!sub) return`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#fdf0f0;margin-top:6px;font-weight:600">${inner}</div>`;
+      return`<div class="log-entry ${e.type||''}" style="${flex}${sub}">${inner}</div>`;
+    }
+    // ── BATTLE FOLDING (2026-09-23d, Toby item 1) ── The engine tags every line of a battle with its
+    // battleId and a tier (k key · d detail · t losses tally · s onlookers' one-line summary). A run
+    // of lines from one battle is drawn as a .battle-fold: the short account by default, the full
+    // report behind the side button. Reports from before this build carry no battleId and render
+    // exactly as they always did.
+    function renderBattleGroup(g){
+      const hasDetail=g.some(e=>e.bTier==='d');
+      if(!hasDetail) return g.filter(e=>e.bTier!=='t').map(e=>renderEntry(e)).join(''); // an onlooker's lone summary line
+      const shortE=g.filter(e=>e.bTier==='k'||e.bTier==='t'), fullE=g.filter(e=>e.bTier!=='t'&&e.bTier!=='s');
+      const btn=(open)=>`<button type="button" class="secall-btn bf-toggle" style="flex-shrink:0;font-weight:400" aria-expanded="${open?'true':'false'}" onclick="toggleBattleFold(this)">${open?'&#9662; short summary':'&#9656; full report'}</button>`;
+      const view=(list,open,compact)=>{
+        let hi=list.findIndex(e=>/^\s*⚔ \*\*Battle for /.test(e.text||'')); if(hi<0) hi=0;
+        return list.map((e,i)=>renderEntry(e,{compact, tail:(i===hi?btn(open):null)})).join('');
+      };
+      return `<div class="battle-fold"><div class="bf-short">${view(shortE,false,true)}</div><div class="bf-full" style="display:none">${view(fullE,true,false)}</div></div>`;
+    }
+    function renderEntryList(list){
+      let out='';
+      for(let i=0;i<list.length;){
+        const e=list[i];
+        if(e&&e.battleId!=null){ let j=i; while(j<list.length&&list[j]&&list[j].battleId===e.battleId) j++; out+=renderBattleGroup(list.slice(i,j)); i=j; continue; }
+        out+=renderEntry(e); i++;
+      }
+      return out;
     }
 
     // ── HELPER: render a phase sub-header ──
@@ -2087,7 +2133,7 @@ function buildChronicle(log, chars_for_log){
         // other line in its original order.
         const ordered=[...entries].sort((a,b)=>((b.pinNotice?1:0)-(a.pinNotice?1:0)));
         html+=phaseHeader(ph,PHASE_COLORS[ph]);
-        ordered.forEach(e=>{html+=renderEntry(e);});
+        html+=renderEntryList(ordered);
       });
 
       if(!hasContent) html+=`<em style="color:#aaa;font-size:.8rem;padding:4px 8px;display:block">No activity this turn.</em>`;
@@ -2130,7 +2176,7 @@ function buildChronicle(log, chars_for_log){
         const entries=systemByPhase[ph]||[];
         if(!entries.length)return;
         html+=phaseHeader(ph,PHASE_COLORS[ph]);
-        entries.forEach(e=>{html+=renderEntry(e);});
+        html+=renderEntryList(entries);
       });
 
       // Unphased events (wages, tax, turn-level) last
@@ -2141,7 +2187,7 @@ function buildChronicle(log, chars_for_log){
           border-bottom:1px dotted var(--parchment-dark);margin:6px 0 4px">
           End of Turn
         </div>`;
-        unphased.forEach(e=>{html+=renderEntry(e);});
+        html+=renderEntryList(unphased);
       }
       html+=`</div></div>`;
     }
@@ -2436,9 +2482,9 @@ function renderReportView(report){
   const ALIGNMENT_SUMMARIES={
     Divine:`Your realm walks in the light of the divine. All heroes recover twice as much HP when they Rest (60% of maximum HP rather than the usual 30%). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your characters — king or hero — fall, divine grace will return them to life after one full turn in death, restored to half health but stripped of armies and items — but ONLY upon consecrated ground: they rise in the nearest consecrated province you still hold, and the miracle spends that province's consecration. If the realm holds no consecrated province when the time comes, the grace is lost (a fallen king is then succeeded by an heir). Consecrate: your king may sanctify owned provinces, up to his White skill level at once (not the home province or its neighbours, and never two side by side — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and it is where your fallen are restored. Guard it: a consecrated province that is captured loses its consecration at once, and each unit of the army that takes it has a 50% chance to gain an experience level. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
     Good:`Your realm is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever they happen to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
-    Druidic:`Your realm is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. A host with any Creature unit in it fights at ×1.25 in every battle (primal ferocity — no roll; it does not stack with zeal, the stronger counts). Awaken the Wild: standing in an owned forest, jungle or primal province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
+    Druidic:`Your realm is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Noble Griffons, Giant Eagles, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort and Eagle Riders — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. A host with any Creature unit in it fights at ×1.25 in every battle (wild ferocity — no roll; it does not stack with zeal, the stronger counts). Awaken the Wild: standing in an owned forest, jungle or wild (Creature or Monster) province, your characters may call a Creature out of the land itself — Giant Eagles or Eagle Riders at Druid 1, Forest Ents or Noble Griffons at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
     Neutral:`Your realm prizes pragmatism above all. Province tax income flows 20% richer than other realms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — they may hire any wandering hero the realm can see without leaving their hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the realm has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
-    Pagan:`Your realm draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Primal country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering sacrifices units to empower an equal number of others (+2 quality tiers each, to Elite). Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
+    Pagan:`Your realm draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Creature and Monster country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering sacrifices units to empower an equal number of others (+2 quality tiers each, to Elite). Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
     Evil:`Your realm rules through fear and domination. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed. Monster armies — Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts and Leviathan Pods — fight with savage fury under your command — a host with any of them in it fights at ×1.25 in every battle (no roll; it does not stack with zeal, the stronger counts). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
     Undead:`Your realm defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — ×1.5 (+50%) when the king leads them in person, ×1.3 (+30%) under any other commander — the whole host is lifted. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
   };
@@ -3012,6 +3058,15 @@ function _setSecCollapsed(sec, collapse){
   const b=sec.querySelector('.sec-toggle, .cc-toggle');
   if(b){ b.innerHTML=collapse?'&#9656;':'&#9662;'; b.setAttribute('aria-expanded', collapse?'false':'true'); }
 }
+// 2026-09-23d (Toby item 1): a battle in the Chronicle shows its SHORT account by default; the side
+// button swaps it for the full report (and back). The two views sit side by side in one .battle-fold.
+function toggleBattleFold(btn){
+  const box=btn&&btn.closest('.battle-fold'); if(!box) return;
+  const full=box.querySelector('.bf-full'), short=box.querySelector('.bf-short'); if(!full||!short) return;
+  const open=full.style.display==='none';
+  full.style.display=open?'block':'none'; short.style.display=open?'none':'block';
+  box.querySelectorAll('.bf-toggle').forEach(b=>b.setAttribute('aria-expanded',open?'true':'false'));
+}
 function toggleSection(btn){
   const sec=btn.closest('.card, .orders-char-block, .char-chronicle'); if(!sec) return;
   _setSecCollapsed(sec, !sec.classList.contains('sec-collapsed'));
@@ -3055,7 +3110,7 @@ const MASTERY_EFFECTS={
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
-  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
+  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole wild (Creature or Monster) province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) heal half their maximum HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
@@ -5442,7 +5497,7 @@ function updateAlignmentDesc(){
     Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
     Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, lift the whole host to ×1.25 in every battle (not stacking with zeal), and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
     Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 2g less. Sage discoveries twice as often.',
-    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in Primal country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> sacrifices units to empower an equal number of others (+2 quality tiers each). <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
+    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in wild Creature and Monster country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> sacrifices units to empower an equal number of others (+2 quality tiers each). <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
     Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) lift the whole host to ×1.25 in every battle (not stacking with zeal). Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are looted for 50% of their tax value — or, per character, <strong>Enslaved</strong> instead: a free Green native garrison unit, but −1 tax there for 3 turns. Choose each character\'s doctrine in their orders.',
     Undead:'💀 <strong>Undead:</strong> King starts with Necromancy +1 and a free Skeletal unit. Skeletal armies: always fanatical (+50% king-led, +30% hero-led), 1g upkeep, no Druid penalty. Graves decay at half rate in your provinces. <strong>Harvest the Field</strong>: raise a grave as a skeleton for 2g, no magic needed. <strong>Deathless March</strong>: all-skeletal forces never take flight casualties. Cannot hire Divine heroes; righteous heroes cost extra.',
   };
@@ -5472,7 +5527,7 @@ const UNIT_ABILITIES={
   'Orc Berserkers':'Outnumbered and Uncaring — +10% strength for every 25% the enemy outnumbers you (max +30%).',
   'Goblin Horde':'Sheer Numbers — +10% strength per other Goblin Horde in the force (max +30%).',
   'Wyvern Riders':'Terror From Above — enemy fanaticism chance reduced by 15%. Against neutral guards, who have no fanaticism, they cut the defenders’ bonus by 10% instead. Acid Spit Volley: a pre-battle strike on one enemy unit (2–5).',
-  'Orcish Longships':'Reaver Crews — the whole force fights at +25% in any battle the phase it lands from these ships.',
+  'Orcish Longships':'Reaver Crews — the whole force fights at +25% in any battle the phase it lands from these ships, even if another hero takes command of the combined host.',
   'Whale Cohort':'Breach and Swamp — 25% chance each to sink one enemy fleet outright before the battle is fought.',
   // ── Creature / Monster / primal army abilities ── Each carries an always-on signature multiplier
   // PLUS a pre-battle strike (fires in the pre-battle magic phase; its chance rises with the
@@ -6671,17 +6726,15 @@ function buildTargetField(c, ph, saved){
     // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── Tick any of the known lairs in the
     // province the character will stand in; target = comma-separated feature idx (the same idx
     // Search Lair uses). Each lair costs gold by grade — Weak 1, Moderate 2, Powerful 3, Legendary
-    // 4 — and for each one paid for, three facts are rolled separately at 50% + 10% × Spy (counted
-    // to 5, capped 95%): the guardian's weakness, its hoard, and this hero's own odds of beating it
-    // (measured by the engine fighting the lair in the background).
+    // 4 — and for each one paid for, three facts are learned (2026-09-23d: no roll): the guardian's
+    // weakness, its hoard, and this hero's own odds of beating it (measured by the engine fighting
+    // the lair in the background).
     case 'Hunting Rumours':{
       const loc=predictedLocation(c.id,ph);
       const pd=(loc?provOrderData[loc.id]:null)||provOrderData[c.locationId]||null;
       const feats=(pd?.features||[]).filter(f=>!f.ritualSite&&f.monster);
       if(!feats.length) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in ${loc?loc.name:'this province'} to ask about — explore, or move to a province with a known lair" disabled>`;
       const chosen=new Set(String(target||'').split(',').map(t=>t.trim()).filter(Boolean));
-      const spy=Math.min(5,effSkillP(c,'spy'));
-      const chance=Math.min(95,RUMOUR_BASE_PCT_P+RUMOUR_PER_SPY_PCT_P*spy);
       const gold=(report.kingdom&&report.kingdom.gold!=null)?report.kingdom.gold:null;
       const rows=feats.map(f=>{ const price=RUMOUR_COST_BY_POWER_P[f.monsterPower]||1;
         const kind=[f.monster,f.monsterCat?f.monsterCat.toLowerCase():''].filter(Boolean).join(', ');
@@ -6689,7 +6742,7 @@ function buildTargetField(c, ph, saved){
       const total=[...chosen].reduce((s,ix)=>{ const f=feats.find(x=>String(x.idx)===String(ix)); return s+(f?(RUMOUR_COST_BY_POWER_P[f.monsterPower]||1):0); },0);
       return `<div id="po-rumour-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
         <div id="po-rumour-total-${c.id}-${ph}" style="font-size:.72rem;color:var(--stone);margin-top:3px">Cost of the ticked lairs: <strong>${total}g</strong>${gold!=null?` (treasury ${gold}g)`:''} — paid per lair, in the order listed, until the purse runs dry.</div>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">For every lair paid for, ${c.name} learns each of three things at <strong>${chance}%</strong> (Spy ${spy}, counted to 5, never above 95%), each rolled separately: the guardian's <strong>weakness</strong> (marked on your Known Lairs for good), its <strong>hoard</strong> (exact gold and the magic that lies there), and <strong>your own odds</strong> of defeating it as you stand today — told as one of five bands, from no chance to almost certain.</div>
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">For every lair paid for, ${c.name} learns all three: the guardian's <strong>weakness</strong> (marked on your Known Lairs for good), its <strong>hoard</strong> (exact gold and the magic that lies there), and <strong>your own odds</strong> of defeating it as you stand today — told as one of five bands, from no chance to almost certain.</div>
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${[...chosen].join(',')}"></div>`;
     }
 
@@ -8640,6 +8693,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.23-1956</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.23-2153</div>
 </body>
 </html>

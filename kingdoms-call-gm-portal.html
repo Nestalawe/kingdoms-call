@@ -342,7 +342,87 @@ function demoteOrDisband(a){
   return true;
 }
 function disbandLine(owner,a){
-  return `— ${owner?owner+"'s ":''}${a.unitName?a.unitName+' ('+a.type+')':a.type} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
+  // 2026-09-23d: a unit NAMED "the …" reads "the Pale Shades (Vervain's Shadow Archers)", never
+  // "Vervain's the Pale Shades" (same rule as unitRef).
+  const _core=(a.unitName&&/^the\s/i.test(a.unitName))?`${a.unitName} (${owner?owner+"'s ":''}${a.type})`
+    :`${owner?owner+"'s ":''}${a.unitName?a.unitName+' ('+a.type+')':a.type}`;
+  return `— ${_core} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
+}
+
+// ── BATTLE SUMMARY vs FULL REPORT (2026-09-23d, Toby item 1) ────
+// Every battle is still written as ONE narrative array. emitBattle tags each line with the battle's
+// id and a tier, and the player portal shows the SHORT account by default with the full report one
+// click away:  'k' key (short AND full) · 'd' detail (full only) · 't' the losses tally (short only)
+// · 's' the onlookers' one-line summary (shown only when the viewer has nothing else of the battle).
+// The rule is a BLACKLIST of known technical lines — anything unrecognised stays in the short view,
+// so a new narrative line can never silently vanish from what the player reads.
+const BATTLE_CAS_HEAD_RE=/^(⚔|🛡) \*\*(.+?)(?:'s|') forces\*\* \((attacker|defender)\):\s*$/;
+function battleLineTiers(texts){
+  const t=[]; let inCas=false, casIdx=-1;
+  (texts||[]).forEach((raw,i)=>{
+    const s=String(raw==null?'':raw);
+    let tier='k';
+    if(s.startsWith('\u2691FORCE\u2691')) tier='k';                        // deployment — shown compact in the short view
+    else if(BATTLE_CAS_HEAD_RE.test(s)){ inCas=true; if(casIdx<0) casIdx=i; tier='d'; }
+    else if(inCas&&s.startsWith('— ')) tier=/masterless hero|None left to fight/.test(s)?'k':'d'; // unit fates → the tally
+    else if(/^\s/.test(s)) tier=/Fortune of battle/.test(s)?'k':'d';       // duel blows, volleys, ladder rows, spell hits
+    else if(s.startsWith('📊')) tier=/completely destroyed/.test(s)?'k':'d'; // stats, ladder heads, outcome band, survivors
+    else if(/^(🤝 Kinship|🏹|⚠|〰)/.test(s)) tier='d';
+    else if(/^The \w+ terrain sets a /.test(s)) tier='d';
+    else if(/^✨ .+ — \*\*[^*]+\*\*: /.test(s)) tier='d';                     // a unit's own pre-battle strike (the hit line follows)
+    else if(/find no room to ride/.test(s)) tier='d';
+    t.push(tier);
+  });
+  return {t, casIdx};
+}
+// One line per side: "Vervain: 1 of 6 units lost (Shadow Archers)". Built from the casualty
+// sections of the narrative, the unit type read off the side's own ⚑FORCE⚑ roster (by unit name,
+// else by the longest type name in the line), so it survives any rewording of a casualty line.
+function battleTallyLine(texts){
+  const T=(texts||[]).map(x=>String(x==null?'':x));
+  const roster={attacker:[],defender:[]};
+  T.forEach(s=>{ if(s.startsWith('\u2691FORCE\u2691')){ try{ const f=JSON.parse(s.slice(7)); if(f&&roster[f.role]) roster[f.role]=roster[f.role].concat((f.armies||[]).filter(a=>a&&!a.phantom)); }catch(_){} } });
+  const sides=[]; let cur=null;
+  // every side's casualty header first, so a unit's fate written AFTER both sections (a trapped
+  // attacker cut down after the defender's list) is still credited to the side it names.
+  const _heads=[]; T.forEach(s=>{ const h=s.match(BATTLE_CAS_HEAD_RE); if(h&&!_heads.some(x=>x.role===h[3])) _heads.push({name:h[2],role:h[3]}); });
+  const sideFor=role=>{ let sd=sides.find(x=>x.role===role); if(!sd){ const h=_heads.find(x=>x.role===role); sd={name:h?h.name:role,role,lost:[],fled:[],dem:0,pro:0}; sides.push(sd); } return sd; };
+  const ownerSide=s=>{ const hit=_heads.filter(h=>s.startsWith(`— ${h.name}'s `)||s.includes(`(${h.name}'s `)).sort((a,b)=>b.name.length-a.name.length)[0]; return hit?sideFor(hit.role):null; };
+  const typeOf=(s,role)=>{
+    const R=roster[role]||[];
+    // the type printed in the line wins ("the Red Hand (Def's Giant Eagles, Crack)"); a bare unit
+    // name ("— the Red Hand are cut down") is looked up on the side's roster.
+    const types=[...new Set(R.map(a=>a.type))].filter(ty=>s.includes(ty)).sort((a,b)=>b.length-a.length);
+    if(types[0]) return types[0];
+    const byName=R.filter(a=>a.unitName&&a.unitName!==a.type&&s.includes(a.unitName)).sort((a,b)=>b.unitName.length-a.unitName.length)[0];
+    return byName?byName.type:null;
+  };
+  const _atkForceName=(()=>{ const f=T.find(s=>s.startsWith('\u2691FORCE\u2691')&&/"role":"attacker"/.test(s)); try{ return f?JSON.parse(f.slice(7)).name:''; }catch(_){ return ''; } })();
+  T.forEach(s=>{
+    // a whale cohort's breach sinks a hull BEFORE the casualty lists — a real loss for the other side.
+    const br=s.match(/^🌊 A (?:(.+?) )?whale cohort breaches beneath the /);
+    if(br){ const loser=(br[1]&&_atkForceName&&!_atkForceName.startsWith(br[1]))?'attacker':'defender'; const sd=sideFor(loser); sd.lost.push(typeOf(s.slice(br[0].length),loser)||'unit'); return; }
+    const h=s.match(BATTLE_CAS_HEAD_RE);
+    if(h){ cur=sideFor(h[3]); return; }
+    if(!cur||!s.startsWith('— ')) return;
+    const sd=ownerSide(s)||cur;
+    if(/promotion to|hardened by victory|improved to/.test(s)) sd.pro++;
+    else if(/lost heart in defeat/.test(s)) sd.dem++;
+    else if(/have had enough|slip away/.test(s)) sd.fled.push(typeOf(s,sd.role)||'unit');
+    else if(/annihilated|destroyed|cut down|slain|sunk|drown|lost at sea|crumble/.test(s)) sd.lost.push(typeOf(s,sd.role)||'unit');
+  });
+  if(!sides.length) return null;
+  const grp=a=>{ const m=new Map(); a.forEach(x=>m.set(x,(m.get(x)||0)+1)); return [...m].map(([k,n])=>n>1?`${n}× ${k}`:k).join(', '); };
+  sides.sort((a,b)=>(a.role==='attacker'?0:1)-(b.role==='attacker'?0:1));
+  const parts=sides.map(sd=>{
+    const tot=(roster[sd.role]||[]).length, n=sd.lost.length;
+    const bits=[n?`${n}${tot?` of ${tot}`:''} unit${(tot||n)!==1?'s':''} lost (${grp(sd.lost)})`:'no units lost'];
+    if(sd.fled.length) bits.push(`${sd.fled.length} disbanded (${grp(sd.fled)})`);
+    if(sd.dem) bits.push(`${sd.dem} demoted`);
+    if(sd.pro) bits.push(`${sd.pro} promoted`);
+    return `**${sd.name}**: ${bits.join(', ')}`;
+  });
+  return `⚰ Losses — ${parts.join(' · ')}.`;
 }
 
 
@@ -3257,10 +3337,9 @@ const PARLEY_ENABLED=false;
 // 'SC' case in pcRunTactic for what else to restore alongside it.
 const SCOUT_ENABLED=false;
 // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── the order that replaces most of what Scout
-// did, bought in the taverns rather than read off the beast. Cost per lair by grade; each fact
-// rolls at RUMOUR_BASE_PCT + RUMOUR_PER_SPY_PCT × Spy (Spy counted to 5, result never above 95).
+// did, bought in the taverns rather than read off the beast. Cost per lair by grade. 2026-09-23d
+// (Toby): every fact paid for is LEARNED — the old 50% + 10%/Spy roll per fact is retired.
 const RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
-const RUMOUR_BASE_PCT=50, RUMOUR_PER_SPY_PCT=10;
 // ── DAMAGE FLOOR ────
 // No stack of REDUCTIONS may now take a landed attack below HALF of what it would have dealt.
 // Outright PREVENTION is untouched: a mirror image, a first-hit cuirass or a
@@ -7293,7 +7372,7 @@ const MINOR_TITLES=[
   {key:'seawolf',    name:'The Sea-Wolf',           perk:'+1 sea movement point',              req:'Highest Naval skill.', metric:c=>skillLevel(c,'naval')},
   {key:'shadow',     name:'The Shadow',             perk:'your spies are never detected',      req:'Highest Spy skill.', metric:c=>skillLevel(c,'spy')},
   {key:'cutpurse',   name:'The Cutpurse',           perk:'+2g personal stipend each turn',     req:'Highest Thief skill.', metric:c=>skillLevel(c,'thief')},
-  {key:'naturalist', name:'The Naturalist',         perk:'primal armies you lead +5%',         req:'Highest Druid skill.', metric:c=>skillLevel(c,'druid')},
+  {key:'naturalist', name:'The Naturalist',         perk:'Creature & Monster armies you lead +5%', req:'Highest Druid skill.', metric:c=>skillLevel(c,'druid')},
   {key:'loreseeker', name:'The Loreseeker',         perk:'+5% Sage discovery chance',          req:'Highest Sage skill.', metric:c=>skillLevel(c,'sage')},
   {key:'trailblazer',name:'The Trailblazer',        perk:'+5% exploration',                    req:'Highest Explorer skill.', metric:c=>skillLevel(c,'explorer')},
   {key:'colossus',   name:'The Colossus',           perk:'+2 HP recovered when resting',       req:'Highest maximum HP.', metric:c=>c.maxHp||20},
@@ -7301,7 +7380,7 @@ const MINOR_TITLES=[
   {key:'champion',   name:'Champion of the People', perk:'+2g personal stipend each turn',     req:'Most merits earned in play.', metric:c=>c.merits||0},
   {key:'hostleader', name:'The Host-Leader',        perk:'army wages −1 per unit (min 1)',     req:'Leads the largest number of army units.', metric:c=>(c.armies||[]).length},
   {key:'cavalier',   name:'The Cavalier',           perk:'cavalry you lead +5%',               req:'Leads the most cavalry units.', metric:c=>(c.armies||[]).filter(a=>MINOR_CAV.has(a.type)).length},
-  {key:'beastmaster',name:'The Beastmaster',        perk:'primal armies you lead +5%',         req:'Leads the most primal (Creature/Monster) units.', metric:c=>(c.armies||[]).filter(a=>CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)).length},
+  {key:'beastmaster',name:'The Beastmaster',        perk:'Creature & Monster armies you lead +5%', req:'Leads the most Creature and Monster units.', metric:c=>(c.armies||[]).filter(a=>CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)).length},
   {key:'ironclad',   name:'The Ironclad',           perk:'heavy & fleet units you lead +5%',   req:'Leads the most heavy and fleet units.', metric:c=>(c.armies||[]).filter(a=>MINOR_HEAVY.has(a.type)).length},
   {key:'relichunter',name:'The Relic-Hunter',       perk:'+1 melee & +1 archery in combat',    req:'Carries the most magic items.', metric:c=>(c.items||[]).length},
   {key:'castellan',  name:'The Castellan',          perk:'+1g per turn for every 5 provinces held', req:'The king holding the most provinces.', metric:(c,st)=>c.isKing?(((st.world&&st.world.provinces)||[]).filter(pv=>pv.owner===c.player).length):0},
@@ -8926,6 +9005,7 @@ async function runTurn(opts){
   // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
   // fights.
   let _combatSkillProv=null;
+  let _battleSeq=0; // 2026-09-23d: numbers each emitted battle so the player portal can fold it (emitBattle)
   // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
   // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.
   let _tier0Open=false, _unitGainQueue=[];
@@ -8962,6 +9042,8 @@ async function runTurn(opts){
       pinNotice: meta.pinNotice??false,       // hoist to the top of the char's phase report
       env: meta.env??false,                   // environmental province event (earthquake,
                                               // flood, plague, blessing, part-sea …) → Province Reports
+      battleId: meta.battleId??null,          // 2026-09-23d: which battle this line belongs to (emitBattle)
+      bTier: meta.bTier??null,                // 'k' key · 'd' detail · 't' tally · 's' onlooker summary
     });
     console.log(`[${type}] ${text}`);
   };
@@ -9640,7 +9722,15 @@ function kinNarrative(force, leader, ownerRace, sideName){
   if(leadOnly) parts.push(`${leadOnly} unit${leadOnly!==1?'s':''} of their commander's race (+20%)`);
   return `🤝 Kinship — ${sideName}: ${parts.join('; ')}.`;
 }
+// "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
+// never "Atk's the Red Hand" (2026-09-23d).
+function ownedUnitName(ownerName, a){
+  if(a&&a.unitName&&/^the\s/i.test(a.unitName)) return `${a.unitName} (${ownerName?ownerName+"'s ":''}${a.type})`;
+  return `${ownerName?ownerName+"'s ":''}${(a&&(a.unitName||a.type))||'unit'}`;
+}
 function unitRef(ownerName, a){
+  // 2026-09-23d: "the Pale Shades (Vervain's Shadow Archers, Average)" — never "Vervain's the Pale Shades".
+  if(a.unitName&&/^the\s/i.test(a.unitName)) return `${a.unitName} (${ownerName?ownerName+"'s ":''}${a.type}, ${a.quality})`;
   const core=a.unitName?`${a.unitName} (${a.type}, ${a.quality})`:`${a.quality} ${a.type}`;
   return ownerName?`${ownerName}'s ${core}`:core;
 }
@@ -9652,7 +9742,10 @@ function provIsCoastal(G, prov){
 }
 function seaPenalty(armyType, terrain){
   if(terrain!=='sea') return 1.0;
-  if(FLYING_TYPES.has(armyType)||SEA_TYPES.has(armyType)) return 1.0;
+  // 2026-09-23e (Toby): EVERY flyer fights normally at sea — the flying beasts (Giant Eagles,
+  // Manticore Pride, Crimson Rocs, Elder Dragons: AERIAL_TYPES) included. They were caught by the
+  // ×0.75 land-unit penalty because only the winged riders (FLYING_TYPES) were exempted.
+  if(AERIAL_TYPES.has(armyType)||SEA_TYPES.has(armyType)) return 1.0;
   return SEA_LAND_PENALTY;
 }
 
@@ -9788,16 +9881,9 @@ function seaPenalty(armyType, terrain){
       // Grand Marshal / Sea Lord combat bonuses removed — those titles are now end-of-turn intel
       // lines.
     }
-    // ── Druid creature-leading ── the commander's bond with the wild is worth +5% per Druid level
-    // to every Creature / Monster / primal unit they lead. CAPS at level 5 (+25%); levels 6+ grant
-    // the Druid's distinct L7/L9 orders, not further strength scaling. A commander whose Druid has
-    // been negated (Psychic Blast) or halved (Curse) loses it in the same measure — effStat already
-    // reflects items, and the negation flags are honoured here explicitly.
-    if(heroChar&&!heroChar._druidNegated&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type)||PRIMAL_ARMY_DEFS_P[army.type])){
-      let _druLvl=Math.min(5,effStat(heroChar,'druid'));
-      if(heroChar._curseHalveStat==='druid') _druLvl=Math.floor(_druLvl/2);
-      if(_druLvl>0){ str=Math.round(str*(1+0.05*_druLvl)); if(_tr) _tr.push({label:`Druid ${_druLvl} creature bond ${ladderFm(1+0.05*_druLvl)}`}); }
-    }
+    // (2026-09-23d, Toby: the Druid "creature bond" — +5% per Druid level, to 5, on every Creature /
+    // Monster unit led — is RETIRED. Druid now only removes the shortfall penalty and powers the
+    // beasts' pre-battle strikes and the Druid mastery orders.)
     // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
     // Ironclad: heavy & fleet +5%.
     if(heroChar){
@@ -10155,15 +10241,74 @@ const BATTLE_ARMY_SPELLS={
   // report filter using the flags set here: detail lines carry battleDetail:true and target the
   // participants; the summary line carries summary:true. (Participants are also in `targets`, so
   // they always get the detail.)
+  // Druid shortfall for one side — ONE line naming every under-led unit (2026-09-23d; was one line a
+  // unit). Same test both paths used: a unit short of its Druid requirement whose penalty actually
+  // bites (skeletal / exempt / tamed units return 1.0 and are left out). Inside runTurn because
+  // dragonTamed is.
+  function druidShortfallLine(sideName, ch, force, align){
+    if(!ch) return null;
+    const lvl=effStat(ch,'druid'); const m=new Map();
+    (force||[]).forEach(a=>{ if(!a||a._phantom) return;
+      const req=getDruidLevel(a.type); if(Math.max(0,req-lvl)<=0) return;
+      const pen=druIdPenaltyMult(ch,a,align,dragonTamed(ch,a)); if(!(pen<1)) return;
+      const k=`${a.type} −${dispFloor((1-pen)*100)}%`; m.set(k,(m.get(k)||0)+1); });
+    if(!m.size) return null;
+    const n=[...m.values()].reduce((s,x)=>s+x,0);
+    return `⚠ Druid shortfall — ${sideName} cannot fully command ${n} unit${n!==1?'s':''}: ${[...m].map(([k,c])=>c>1?`${c}× ${k}`:k).join(', ')}.`;
+  }
+  // Terrain note for one side of a battle: "Free Lances +15%, 2× Forest Ents −40%" (2026-09-23d: both
+  // battle paths share this — the PvP copy printed "Free Lances:+15%" and mixed both sides
+  // together). Inside runTurn because terrainMod / seaPenalty are (despite their column-0 indent).
+  function terrainNoteList(force, terrain){
+    const m=new Map();
+    (force||[]).forEach(a=>{ if(!a||a._phantom) return;
+      const combined=terrainMod(a.type,terrain)*seaPenalty(a.type,terrain);
+      if(combined<0.85||combined>1.05){ const k=`${a.type} ${combined>1?'+':'−'}${dispFloor(Math.abs(combined-1)*100)}%`; m.set(k,(m.get(k)||0)+1); } });
+    return m.size?[...m].map(([k,n])=>n>1?`${n}× ${k}`:k).join(', '):null;
+  }
+  // NAVAL L9 Raid the Coast (2026-09-23e, Toby): the +25% applies only to a battle for the land
+  // province this commander came ashore in, from the sea, THIS turn (_seaLandingAt, set by the
+  // coastal-landing move) — was: any battle this turn in any province that merely bordered the sea,
+  // so a raider who marched overland to a coast still got it. Inside runTurn so G is the live turn.
+  // Pooled landings (2026-09-23f, Toby — as for Reaver Crews): when the raider lands with others
+  // and another hero takes command, the pooled host carries the raid as `_raidCarriedAt` rather than
+  // the raider's own order flag — syncLeaderCopy writes the copy's keys back onto the real commander,
+  // and he must never look as though HE gave the Naval-9 order (the move-time plunder reads it).
+  function raidLandedHere(ch, prov){
+    if(!ch||!prov||prov.terrain==='sea') return false;
+    const k=ch._raidCarriedAt; if(k&&k.turn===G.turn&&k.prov===prov.id) return true;
+    if(ch._raidCoastTurn!==G.turn) return false;
+    const l=ch._seaLandingAt;
+    return !!l && l.turn===G.turn && l.prov===prov.id;
+  }
+  // The pooled-host fields a landing party carries whoever commands it.
+  function landingPartyFlags(party, prov){
+    const o={_amphibiousAssault:(party||[]).some(m=>m&&m._amphibiousAssault)}; // Reaver Crews (2026-09-23e)
+    if(prov&&(party||[]).some(m=>raidLandedHere(m,prov))) o._raidCarriedAt={turn:G.turn, prov:prov.id}; // Raid the Coast (2026-09-23f)
+    return o;
+  }
   function emitBattle(battle, prov, ph, participants, opts){
     opts=opts||{};
     const parts=(participants||[]).filter(x=>x!=null);
     const base={provinceId:(prov&&prov.id), phase:(ph!=null?ph:undefined), public:true,
       actor:(opts.actor!=null?opts.actor:null), charId:(opts.charId!==undefined?opts.charId:null),
       charIds:(opts.charIds||null), targets:parts};
-    (battle&&battle.narrative||[]).forEach(line=>emitNarrLine('combat',line,{...base, battleDetail:true}));
+    // 2026-09-23d (Toby item 1): every line is tagged with this battle's id and its tier, and a
+    // losses tally is added (short view only) where the casualty sections begin — see
+    // battleLineTiers / battleTallyLine. The player portal folds the full report behind a button.
+    const _bid=++_battleSeq;
+    const _lines=(battle&&battle.narrative)||[];
+    const _texts=_lines.map(narrText);
+    const _tiers=battleLineTiers(_texts);
+    let _tally=null; try{ _tally=battleTallyLine(_texts); }catch(_e){ _tally=null; }
+    let _tallyDone=false;
+    _lines.forEach((line,i)=>{
+      if(_tally&&!_tallyDone&&i===_tiers.casIdx){ log('combat',_tally,{...base, battleDetail:true, battleId:_bid, bTier:'t'}); _tallyDone=true; }
+      emitNarrLine('combat',line,{...base, battleDetail:true, battleId:_bid, bTier:_tiers.t[i]||'k'});
+    });
+    if(_tally&&!_tallyDone) log('combat',_tally,{...base, battleDetail:true, battleId:_bid, bTier:'t'});
     const sTxt=opts.summaryText||battle&&battle.summaryText;
-    if(sTxt) log('combat',sTxt,{...base, summary:true});
+    if(sTxt) log('combat',sTxt,{...base, summary:true, battleId:_bid, bTier:'s'});
   }
 
   function combatVsNPC(c, prov, neutralGuardHero){
@@ -10235,8 +10380,11 @@ const BATTLE_ARMY_SPELLS={
     // in land provinces AND to land units
     const isLandBattle=prov.terrain!=='sea';
     const LAND_TYPES_TACT=isLandBattle?armies.filter(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type)):[];
-    if(tactSkill>0&&isLandBattle) narrative.push(`📊 ${cName} commands: Tactical ${tactSkill} (×${tactBonus.toFixed(1)} to ${LAND_TYPES_TACT.length} land unit${LAND_TYPES_TACT.length!==1?'s':''}).`);
-    else if(tactSkill>0) narrative.push(`📊 ${cName}'s Tactical command does not apply in sea terrain.`);
+    // 2026-09-23d: the "📊 X commands: Tactical N (×m to K land units)" line is gone — the Battle-stats
+    // ladder names Tactical on the units it reaches, and this line still counted only ground units
+    // (flyers take Tactical since 2026-09-23c), so the two disagreed.
+    void LAND_TYPES_TACT;
+    if(tactSkill>0&&!isLandBattle) narrative.push(`📊 ${cName}'s Tactical command does not apply in sea terrain.`);
     const effectiveTactBonus=isLandBattle?tactBonus:1;
 
     // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
@@ -10393,6 +10541,10 @@ const BATTLE_ARMY_SPELLS={
     const _manyArrows=hasItemBase(c,'Quiver of Many Arrows'); // one extra shot per missile unit
     applyFlakScreen(armies, defenders, c.name, narrative);
     // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired.
+    // 2026-09-23d: defenders lost OUTSIDE the `_died` flag — hulls sunk here (spliced out of the list)
+    // and units a WINNING garrison loses (`_defDied`, cleared before return) — are counted into
+    // these so the returned defLost is the true figure (it pays merit when the attacker wins).
+    let _npcSunkLost=0, _npcDefWinLost=0;
     (function(){
       const pods=(armies||[]).filter(a=>a&&a.type==='Whale Cohort');
       if(!pods.length) return;
@@ -10406,6 +10558,7 @@ const BATTLE_ARMY_SPELLS={
       });
       if(defenders.some(a=>a._sunk)){
         const lost=defenders.filter(a=>a._sunk);
+        _npcSunkLost+=lost.filter(a=>a&&!a._phantom).length; // 2026-09-23d: spliced out below, so counted here for defLost
         recordBattleGraves(prov, lost);
         for(let i=defenders.length-1;i>=0;i--) if(defenders[i]._sunk) defenders.splice(i,1);
         if(defHero) defHero.armies=(defHero.armies||[]).filter(a=>!a._sunk);
@@ -10567,16 +10720,8 @@ const BATTLE_ARMY_SPELLS={
     });
 
     // ── TERRAIN MODIFIER NOTES ──
-    const terrainNotable=[];
-    armies.forEach(a=>{
-      const tm=terrainMod(a.type,prov.terrain);
-      const sp2=seaPenalty(a.type,prov.terrain);
-      const combined=tm*sp2;
-      if(combined<0.85) terrainNotable.push(`${a.type} −${dispFloor((1-combined)*100)}%`);
-      else if(combined>1.05) terrainNotable.push(`${a.type} +${dispFloor((combined-1)*100)}%`);
-    });
-    if(terrainNotable.length>0) narrative.push(`📊 Terrain (${prov.terrain}): ${terrainNotable.join(', ')}`);
-    if(!isLandBattle&&armies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))){
+    { const _tn=terrainNoteList(armies,prov.terrain); if(_tn) narrative.push(`📊 Terrain (${prov.terrain}): ${cName} — ${_tn}`); } // 2026-09-23d: shared formatter
+    if(!isLandBattle&&armies.some(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))){ // 2026-09-23e: flying beasts are not "land units at sea"
       if(isAirborneAtSea(armies)) narrative.push(`⚠ Airborne over open water: land units carried by flyers fight at ×${SEA_AIRBORNE_LAND_PENALTY}, and the flyers carrying them at ×${SEA_AIRBORNE_FLYER_PENALTY}.`);
       else narrative.push(`⚠ Land units at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
     }
@@ -10609,18 +10754,9 @@ const BATTLE_ARMY_SPELLS={
     // was, via archMissileBonus above. Archery is now +5%/level on missile units by design, and the
     // Battle-stats ladder names it on the units it reached.) Show Druid shortfall warnings
     const druIdLvl=effStat(c,'druid');
-    armies.forEach(a=>{
-      const req=getDruidLevel(a.type);
-      const shortfall=Math.max(0,req-druIdLvl);
-      if(shortfall>0){
-        const penalty=druIdPenaltyMult(c,a,playerAlign,dragonTamed(c,a));
-        // Only warn if a penalty actually applies (skeletal/exempt units return 1.0 = no penalty)
-        if(penalty<1){
-          narrative.push(`⚠ ${cName} lacks Druid skill to lead ${a.unitName||a.type} (needs ${req}, has ${druIdLvl}): −${dispFloor((1-penalty)*100)}% strength penalty.`);
-        }
-      }
-    });
-    if(navalSkillAtk>0&&armies.some(a=>SEA_TYPES.has(a.type))) narrative.push(`${cName}'s Naval ${navalSkillAtk} grants +${(navalSkillAtk*20)}% strength to fleet units${isLandBattle?' (Naval command holds on land as at sea)':' in this sea battle'}.`);
+    { const _dl=druidShortfallLine(cName,c,armies,playerAlign); if(_dl) narrative.push(_dl); } // 2026-09-23d: one line, not one per unit
+    void druIdLvl;
+    // (2026-09-23d: the standalone "Naval N grants +x%" line is retired — the ladder names it.)
     // Defender missile bonus — mirrors the attacker's. If the defending force has a commander
     // (defHero — a leaderless garrison passes null), their Archery lifts the garrison's bow and
     // crossbow units by +10% per level, exactly as it does for an attacker.
@@ -10643,7 +10779,7 @@ const BATTLE_ARMY_SPELLS={
       return ladderRow(a,defHero,null,prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,ownerRace:(prov.owner!=null?(G.players[prov.owner]?.race):null),ownerPi:(prov.owner!=null?prov.owner:null),coastal:_provCoastal},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base);
     // the defender's half of the same phantom bonus, removed for the same reason.
-    if(navalSkillDef>0&&(prov.neutralDefenders||[]).some(a=>SEA_TYPES.has(a.type))) narrative.push(`${defHero.name}'s Naval ${navalSkillDef} grants the defenders +${(navalSkillDef*20)}% strength to fleet units${isLandBattle?' (Naval command holds on land as at sea)':''}.`);
+    // (2026-09-23d: the defender's standalone Naval line is retired likewise.)
     // Tactical on every land unit of a land battle — the same scope the attacker and both PvP sides
     // use.
     const rawDefStr=battleLineTotal(defsWithStr,defLineWidth,defFlankDisc);
@@ -10653,10 +10789,7 @@ const BATTLE_ARMY_SPELLS={
     // Feigned Retreat is purely defensive and correctly has no place on an attack).
     let atkOrdN=1, defOrdN=1;
     if(c._grandStratagemTurn===G.turn){ atkOrdN*=1.20; narrative.push(`  📜 ${cName} unfolds a Grand Stratagem — the assault lands at +20% strength.`); }
-    if(c._raidCoastTurn===G.turn){
-      const _coastalN=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.terrain==='sea');
-      if(_coastalN){ atkOrdN*=1.25; narrative.push(`  ⚓ ${cName} storms ashore in a Raid the Coast — +25% strength.`); }
-    }
+    if(raidLandedHere(c,prov)){ atkOrdN*=1.25; narrative.push(`  ⚓ ${cName} storms ashore in a Raid the Coast — +25% strength.`); } // 2026-09-23e: only a coast attacked from the sea
     const atkStr=rawAtkStr*_npcAtkMorale*atkOrdN*atkHomeBonus;
     const defStr=rawDefStr*defBonus*homeBonus*_npcDefMorale*defOrdN;
     // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
@@ -10678,7 +10811,7 @@ const BATTLE_ARMY_SPELLS={
     // Evil: Monster armies get +25% fanaticism on top of base
     const evilMonsterFanatic=align==='Evil'&&armies.some(a=>MONSTER_ARMIES.has(a.type));
     const fanMult=Math.max(1, fanatic?1.3:1, skeletalFanatic?UNDEAD_SKEL_KING_FAN:1, (druidicCreatureFanatic||evilMonsterFanatic)?1.25:1, skelHeroFanatic?UNDEAD_SKEL_HERO_FAN:1); // strongest counts (2026-09-23b)
-    if(druidicCreatureFanatic&&!fanatic) narrative.push(`${cName}'s creature armies fight with primal ferocity under their Druidic master! (+25% strength)`);
+    if(druidicCreatureFanatic&&!fanatic) narrative.push(`${cName}'s creature armies fight with wild ferocity under their Druidic master! (+25% strength)`);
     if(evilMonsterFanatic&&!fanatic) narrative.push(`${cName}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`);
     if(fanatic&&!skeletalFanatic&&!skelHeroFanatic) narrative.push(`Seized by religious fervour, ${cName}'s troops fight with fanatical zeal! (+30% strength)`)
     if(skeletalFanatic) narrative.push(`${cName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${Math.round((UNDEAD_SKEL_KING_FAN-1)*100)}% strength)`)
@@ -10891,6 +11024,7 @@ const BATTLE_ARMY_SPELLS={
       if(defenders.some(a=>!a._defDied)) narrative.push(`— ${defenders.some(a=>a._defDied)?'All other':'All'} forces survive the engagement.`);
       const defSurv=defenders.filter(a=>!a._defDied);
       const defLost=defenders.filter(a=>a._defDied);
+      _npcDefWinLost=defLost.filter(a=>a&&!a._phantom).length;
       if(defLost.length>0) recordBattleGraves(prov,defLost);
       // Update guard armies if applicable
       if(defHero) defHero.armies=defSurv;
@@ -11005,7 +11139,7 @@ const BATTLE_ARMY_SPELLS={
     // c.armies with a filter rather than mutating these).
     return{won,narrative,summaryText,
       atkLost:(armies||[]).filter(a=>a&&a._died&&!a._phantom).length,
-      defLost:(defenders||[]).filter(a=>a&&a._died).length};
+      defLost:(defenders||[]).filter(a=>a&&a._died&&!a._phantom).length+_npcSunkLost+_npcDefWinLost};
   }
 
   // ====
@@ -11891,7 +12025,7 @@ const BATTLE_ARMY_SPELLS={
       } else {
         const _tc=pcCourageChance(foe, actor), _tr=d100();
         narrative.push(`  ${foe.name} must hold their nerve (${_tc}% to break) [roll ${_tr} ${_tr<=_tc?'✗':'✓'}].`);
-        if(_tr<=_tc){ state.fledBy=foe; narrative.push(`  ${foe.name} is overcome with primal terror and flees!`); }
+        if(_tr<=_tc){ state.fledBy=foe; narrative.push(`  ${foe.name} is overcome with sheer terror and flees!`); }
         else narrative.push(`  ${foe.name} steels their nerve.`);
       }
     }
@@ -12953,7 +13087,7 @@ const BATTLE_ARMY_SPELLS={
     if(isHome && prov.owner===def.player && activeItems(def).some(it=>it.effect&&it.effect.stat==='homeDefBonus')){ defBonus*=1.25; narrative.push(`  🛡 ${defName}'s Banner of the Realm rallies the home defense (+25%).`); }
     if(activeItems(atk).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${atkName}'s siege mastery halves the defenders' fortifications.`); }
     if(isHome) narrative.push(`The defenders fight on home ground, gaining ×1.5 total defensive bonus.`);
-    if(defTact>0) narrative.push(`📊 ${defName} leads the defense: Tactical ${defTact} (×${defTactBonus.toFixed(1)} for land and air units).`);
+    // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
 
     // Fanaticism
     const atkFanChance={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
@@ -12990,8 +13124,8 @@ const BATTLE_ARMY_SPELLS={
     const _pct=m=>Math.round((m-1)*100);
     if(atkSkelFanatic) narrative.push(`${atkName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${_pct(UNDEAD_SKEL_KING_FAN)}% strength)`);
     if(defSkelFanatic) narrative.push(`${defName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${_pct(UNDEAD_SKEL_KING_FAN)}% strength)`);
-    if(atkDruidCreature&&!atkFanatic) narrative.push(`${atkName}'s creature armies fight with primal ferocity! (+25% strength)`);
-    if(defDruidCreature&&!defFanatic) narrative.push(`${defName}'s creature armies fight with primal ferocity! (+25% strength)`);
+    if(atkDruidCreature&&!atkFanatic) narrative.push(`${atkName}'s creature armies fight with wild ferocity! (+25% strength)`);
+    if(defDruidCreature&&!defFanatic) narrative.push(`${defName}'s creature armies fight with wild ferocity! (+25% strength)`);
     if(atkEvilMonster&&!atkFanatic) narrative.push(`${atkName}'s monsters are driven to savage fury! (+25% strength)`);
     if(defEvilMonster&&!defFanatic) narrative.push(`${defName}'s monsters are driven to savage fury! (+25% strength)`);
     if(atkSkelHero) narrative.push(`${atkName}'s skeletal legions know no fear (+${_pct(UNDEAD_SKEL_HERO_FAN)}% strength — undying fanaticism).`);
@@ -13180,20 +13314,12 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // Terrain notes for PvP
-    const pvpTerrainNotes=[];
-    [...atkArmies,...defArmies].forEach(a=>{
-      const tm=terrainMod(a.type,pvpTerrain);
-      const sp3=seaPenalty(a.type,pvpTerrain);
-      const combined=tm*sp3;
-      if(combined<0.85||combined>1.05){
-        pvpTerrainNotes.push(`${a.type}:${combined>1?'+':''}${dispFloor((combined-1)*100)}%`);
-      }
-    });
-    if(pvpTerrainNotes.length>0) narrative.push(`📊 Terrain (${pvpTerrain}): ${pvpTerrainNotes.join(', ')}`);
-    if(!pvpIsLand&&(atkArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))||defArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type)))){
+    { const _ta=terrainNoteList(atkArmies,pvpTerrain), _td=terrainNoteList(defArmies,pvpTerrain); // 2026-09-23d: per side, one format
+      if(_ta||_td) narrative.push(`📊 Terrain (${pvpTerrain}): ${[_ta?`${atkName} — ${_ta}`:null,_td?`${defName} — ${_td}`:null].filter(Boolean).join('; ')}`); }
+    if(!pvpIsLand&&(atkArmies.some(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))||defArmies.some(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type)))){ // 2026-09-23e: flying beasts excluded
       const _airA=isAirborneAtSea(atkArmies), _airD=isAirborneAtSea(defArmies);
       if(_airA||_airD) narrative.push(`⚠ ${_airA&&_airD?'Both hosts are':(_airA?atkName:defName)+"'s host is"} airborne over open water: land units carried by flyers fight at ×${SEA_AIRBORNE_LAND_PENALTY}, and the flyers carrying them at ×${SEA_AIRBORNE_FLYER_PENALTY}.`);
-      if((atkArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))&&!_airA)||(defArmies.some(a=>!FLYING_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))&&!_airD)) narrative.push(`⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
+      if((atkArmies.some(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))&&!_airA)||(defArmies.some(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type))&&!_airD)) narrative.push(`⚠ Land units fighting at sea: ×${SEA_LAND_PENALTY} strength penalty.`);
     }
 
     // Battle lines for PvP — front-line width (pvpFront) is declared above as the single source of
@@ -13220,20 +13346,14 @@ const BATTLE_ARMY_SPELLS={
     { const _a=battleLineNarrative(atkName,atkRows,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
       const _d=battleLineNarrative(defName,defRows,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
 
-    // Archery/Naval notes
-    if(atkArch>0&&atkArmies.some(a=>MISSILE_A.has(a.type)))
-      narrative.push(`${atkName}'s Archery ${atkArch}: +${Math.round(atkArch*ARCHERY_MISSILE_PCT*100)}% to missile units.`);
-    if(defArch>0&&defArmies.some(a=>MISSILE_A.has(a.type)))
-      narrative.push(`${defName}'s Archery ${defArch}: +${Math.round(defArch*ARCHERY_MISSILE_PCT*100)}% to missile units.`);
-    if(atkNav>0&&atkArmies.some(a=>SEA_TYPES.has(a.type)))
-      narrative.push(`${atkName}'s Naval ${atkNav}: +${(atkNav*20)}% to fleet units.`);
-    if(defNav>0&&defArmies.some(a=>SEA_TYPES.has(a.type)))
-      narrative.push(`${defName}'s Naval ${defNav}: +${(defNav*20)}% to fleet units.`);
+    // (2026-09-23d: the standalone Archery / Naval notes are retired — the Battle-stats ladder names
+    // "Archery N ×m on K units" and "Naval N ×m on K units" exactly where they apply.)
 
     // Druid shortfall warnings — only when a penalty actually applies (skeletal/exempt units are
     // free)
-    atkArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(atk,'druid'));if(sf>0){const pen=druIdPenaltyMult(atk,a,atkAlign2,dragonTamed(atk,a));if(pen<1)narrative.push(`⚠ ${atkName} Druid shortfall on ${a.unitName||a.type}: −${dispFloor((1-pen)*100)}%`);}});
-    defArmies.forEach(a=>{const req=getDruidLevel(a.type);const sf=Math.max(0,req-effStat(def,'druid'));if(sf>0){const pen=druIdPenaltyMult(def,a,defAlign2,dragonTamed(def,a));if(pen<1)narrative.push(`⚠ ${defName} Druid shortfall on ${a.unitName||a.type}: −${dispFloor((1-pen)*100)}%`);}});
+    // 2026-09-23d: one line per side (was one per unit).
+    { const _dl=druidShortfallLine(atkName,atk,atkArmies,atkAlign2); if(_dl) narrative.push(_dl);
+      const _dd=druidShortfallLine(defName,def,defArmies,defAlign2); if(_dd) narrative.push(_dd); }
 
     // Discovery bonus
     const atkDiscBonus=1+discoveryArmyBonus(atk.player);
@@ -13256,10 +13376,7 @@ const BATTLE_ARMY_SPELLS={
     if(atk._grandStratagemTurn===G.turn){ atkOrd*=1.20; narrative.push(`  📜 ${atkName} unfolds a Grand Stratagem — the attack lands at +20% strength.`); }
     if(def._grandStratagemTurn===G.turn){ defOrd*=1.20; narrative.push(`  📜 ${defName} unfolds a Grand Stratagem — the defence holds at +20% strength.`); }
     if(def._feignedRetreatTurn===G.turn){ defOrd*=1.25; narrative.push(`  🏳 ${defName}'s Feigned Retreat springs shut — the counter-attack strikes at +25% strength.`); }
-    if(atk._raidCoastTurn===G.turn){
-      const _coastal=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.terrain==='sea');
-      if(_coastal){ atkOrd*=1.25; narrative.push(`  ⚓ ${atkName} storms ashore in a Raid the Coast — the amphibious assault hits at +25% strength.`); }
-    }
+    if(raidLandedHere(atk,prov)){ atkOrd*=1.25; narrative.push(`  ⚓ ${atkName} storms ashore in a Raid the Coast — the amphibious assault hits at +25% strength.`); } // 2026-09-23e: only a coast attacked from the sea
     // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
     // consecrated province).
     const _consecPenalty=(_consecratedHere&&(atkAlign==='Undead'||atkAlign==='Evil'))?0.85:1;
@@ -13358,8 +13475,8 @@ const BATTLE_ARMY_SPELLS={
     // ELF — Skyward Retreat: eagles simply fly out of a trap.
     const _noEscapeRoll=(force,name,narr)=>{
       (force||[]).forEach(a=>{
-        if(a.type==='Eagle Riders'){ narr.push(`— ${name}'s ${a.unitName||a.type} climb away over the encircling lines, untouched.`); return; }
-        if(Math.random()<0.15){a._died=true;narr.push(`— ${name}'s ${a.unitName||a.type} are cut down with no escape!`);}
+        if(a.type==='Eagle Riders'){ narr.push(`— ${ownedUnitName(name,a)} climb away over the encircling lines, untouched.`); return; }
+        if(Math.random()<0.15){a._died=true;narr.push(`— ${ownedUnitName(name,a)} are cut down with no escape!`);}
       });
     };
     const atkMilMultOf=(a)=>1+discPromo(atk.player,a); // per-unit promo discoveries
@@ -14599,6 +14716,10 @@ const BATTLE_ARMY_SPELLS={
           // land)
           if((c.armies||[]).length===0) lightSeaMoves[c.id]=(lightSeaMoves[c.id]||0)+1; // free-passage landing — don't charge a later fleet for it
           seaMovePoints[c.id]=smp-1;
+          // 2026-09-23e (Toby): Raid the Coast strikes only a coast ATTACKED FROM THE SEA — record
+          // which province this column came ashore in, and when. Kept for the whole turn so a
+          // landing battle that carries on into later phases stays a raid.
+          c._seaLandingAt={turn:G.turn, prov:toProv.id};
           // ORC — Reaver Crews: troops put ashore from longships hit the beach at a run and fight
           // at +25% in any battle this phase. (There is no coastal-landing PENALTY in the engine to
           // remove, so the ability is a bonus for landing rather than a waiver — see DEV_LOG.)
@@ -14790,7 +14911,8 @@ const BATTLE_ARMY_SPELLS={
           // the BEST commander present leads the pooled host, not simply the mover.
           const _aPick=pickBattleCommander(c, friendlyReinforcements, combinedArmies, toProv, true);
           const _aLead=_aPick.leader, _aParty=[c,...friendlyReinforcements];
-          const battleAttacker={..._aLead,armies:combinedArmies,_reinforcedBy:_aPick.others.map(a=>a.name)};
+          const battleAttacker={..._aLead,armies:combinedArmies,_reinforcedBy:_aPick.others.map(a=>a.name),
+            ...landingPartyFlags(_aParty,toProv)}; // Reaver Crews (2026-09-23e) and Raid the Coast (2026-09-23f) stay with the landed troops whoever commands
           if(friendlyReinforcements.length>0){
             if(_aPick.changed) log('combat',commandHandoverLine(_aLead,c,toProv.name),{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
             log('combat',`${_aLead.name} leads a combined force of ${combinedArmies.length} units into battle, reinforced by ${_aPick.others.map(a=>a.name).join(', ')}.`,{actor:c.player,targets:[c.player],provinceId:toProv.id});
@@ -14991,7 +15113,7 @@ const BATTLE_ARMY_SPELLS={
             const _atkParty=[c,...pvpReinforcements], _defParty=[defChar,...defReinforcements];
             if(_aP.changed) log('combat',commandHandoverLine(_atkLead,c,toProv.name),{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true});
             if(_dP.changed) _defFormupLines.push(commandHandoverLine(_defLead,defChar,toProv.name));
-            const combinedAtk={..._atkLead,armies:_atkPooled};
+            const combinedAtk={..._atkLead,armies:_atkPooled,...landingPartyFlags(_atkParty,toProv)}; // Reaver Crews (2026-09-23e) and Raid the Coast (2026-09-23f) stay with the landed troops whoever commands
             const combinedDef={..._defLead,armies:_defPooled};
             const _vDefs=[defChar,...defReinforcements].filter(Boolean);
             if(isVeiled(c) || (_vDefs.length>0 && _vDefs.every(d=>isVeiled(d)))){ break; } // ILLUSORY L9 VEIL: a veiled attacker slips in unseen; a wholly-veiled defence cannot be found — no battle, no contest flagged (it triggers when the veil parts, via the re-trigger scan).
@@ -15413,7 +15535,7 @@ const BATTLE_ARMY_SPELLS={
           // and WILD_HUNT_TURNS more. The ONLY way to field Creatures/Monsters without Druid magic.
           const _wildType=(prov.armyTypes||[]).find(t=>PRIMAL_ARMY_DEFS_P[t]);
           if(!_wildType){
-            log('system',`${c.name} calls the Wild Hunt at the ${_riteSite.name}, but nothing wild answers in ${prov.name} — the rite needs a province where primal creatures still roam.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+            log('system',`${c.name} calls the Wild Hunt at the ${_riteSite.name}, but nothing wild answers in ${prov.name} — the rite needs a province where Creatures or Monsters still roam.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
           const _huntCost=wildHuntPrice(_wildType);
           if((player.gold||0)<_huntCost){
             log('system',`${c.name} cannot afford the Wild Hunt offerings (${_huntCost}g).`,{actor:c.player,targets:[c.player]});break;}
@@ -15470,11 +15592,10 @@ const BATTLE_ARMY_SPELLS={
       // lairs they know of there. Target: comma-separated indexes into prov.features (the same idx
       // the Search Lair form uses). Each lair costs gold by grade (RUMOUR_COST_BY_POWER), paid up
       // front and in the order chosen; when the purse runs dry the rest are skipped. For each lair
-      // paid for, THREE facts are rolled separately at 50% + 10% per Spy level (counted to 5, so
-      // never above the 95% ceiling): the guardian's weakness (learned for good, exactly as a Scout
-      // would learn it), the hoard behind it (exact gold and the magic that lies there), and the
-      // hero's own odds — measured by simulateLairOdds and read back as one of five narrative
-      // bands.
+      // paid for, all THREE facts are learned (2026-09-23d, Toby — no roll): the guardian's weakness
+      // (learned for good, exactly as a Scout would learn it), the hoard behind it (exact gold and
+      // the magic that lies there), and the hero's own odds — measured by simulateLairOdds and read
+      // back as one of five narrative bands.
       case 'hunt_rumours':{
         const _cost=RUMOUR_COST_BY_POWER;
         const _idxs=[...new Set(String(target||'').split(',').map(s=>parseInt(String(s).trim())).filter(n=>!isNaN(n)&&n>=0))];
@@ -15485,9 +15606,7 @@ const BATTLE_ARMY_SPELLS={
           return featDiscovered(f,c.player)||(_explHere>=thr);
         });
         if(!_feats.length){ log('explore',`${c.name} asks after the lairs of ${prov.name}, but no one has anything to tell — there is no known lair here to ask about.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
-        const _spy=Math.min(5,effStat(c,'spy'));
-        const _chance=Math.min(95,RUMOUR_BASE_PCT+RUMOUR_PER_SPY_PCT*_spy);
-        log('explore',`🍺 ${c.name} spends the season in the taverns and on the roads of ${prov.name}, hunting rumours of ${_feats.length} lair${_feats.length!==1?'s':''} (Spy ${_spy} — each piece of lore is learned at ${_chance}%).`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('explore',`🍺 ${c.name} spends the season in the taverns and on the roads of ${prov.name}, hunting rumours of ${_feats.length} lair${_feats.length!==1?'s':''}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         for(const {f,i:_fi} of _feats){
           const m=f.monster; const grade=(m&&m.power)||f.tier||'Weak'; const price=_cost[grade]||1;
           if((player.gold||0)<price){ log('explore',`  ${c.name} cannot afford the ${price}g the ${f.name}'s rumours would cost (${player.gold||0}g in the treasury) — the rest of the hunt is abandoned.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
@@ -15495,15 +15614,10 @@ const BATTLE_ARMY_SPELLS={
           const gname=`${m.name}${monsterCatLabel(m)?` (${monsterCatLabel(m).toLowerCase()})`:''}`;
           const lines=[`  💰 ${price}g buys the talk of the ${f.name} — ${gname}, a ${String(grade).toLowerCase()} guardian.`];
           // 1) the weakness
-          { const r=d100(); const ok=r<=_chance;
-            if(ok){
-              if(m.weak){ const fresh=pcLearnWeakness(G,c.player,m.name); lines.push(`  ✓ Its weakness [${fmtRoll(_chance,r)}]: ${m.weak.name} — ${m.weak.desc}.${fresh?' Your realm marks every '+m.name+' with it from now on.':''}`); }
-              else lines.push(`  ✓ Its weakness [${fmtRoll(_chance,r)}]: none that anyone knows of — the ${m.name} has no exploitable flaw.`);
-            } else lines.push(`  ✗ Its weakness [${fmtRoll(_chance,r)}]: the talk is all boasting and nobody agrees — nothing learned.`); }
+          { if(m.weak){ const fresh=pcLearnWeakness(G,c.player,m.name); lines.push(`  ✓ Its weakness: ${m.weak.name} — ${m.weak.desc}.${fresh?' Your realm marks every '+m.name+' with it from now on.':''}`); }
+            else lines.push(`  ✓ Its weakness: none that anyone knows of — the ${m.name} has no exploitable flaw.`); }
           // 2) the hoard
-          { const r=d100(); const ok=r<=_chance;
-            if(ok){
-              ensureLairHoard(f,G);
+          {   ensureLairHoard(f,G);
               const gold=encounterClearGold(f);
               const _hi=(f.hoardItems||[]), _st=(f._stolenItems||[]);
               let itemOut=_hi.length?`, and ${itemNameList(_hi)}`:'';
@@ -15511,19 +15625,16 @@ const BATTLE_ARMY_SPELLS={
               else if(_st.length) itemOut+=` (a thief has already made off with ${_st.join(', ')})`;
               const _wield=_hi.filter(it=>guardianCanUseItem(m,it));
               if(_wield.length) itemOut+=`. Beware: it wields ${_wield.map(x=>x.name).join(', ')} against all comers`;
-              lines.push(`  ✓ Its hoard [${fmtRoll(_chance,r)}]: the ${m.name} sits on exactly ${gold}g${itemOut}.`);
+              lines.push(`  ✓ Its hoard: the ${m.name} sits on exactly ${gold}g${itemOut}.`);
               // Remembered on the realm so the Known Lairs card shows it next turn and after (the
               // odds are deliberately NOT stored — they belong to one hero on one day, and that
               // hero will change).
               noteLairRumour(player, prov.id, _fi, {turn:G.turn, gold, items:_hi.map(x=>x.name), stolen:_st.slice(), wields:_wield.map(x=>x.name)});
-            } else lines.push(`  ✗ Its hoard [${fmtRoll(_chance,r)}]: every teller names a different treasure — nothing learned.`); }
+          }
           // 3) the odds
-          { const r=d100(); const ok=r<=_chance;
-            if(ok){
-              const odds=simulateLairOdds(c,f);
-              if(odds){ const band=rumourOddsBand(odds.pct); lines.push(`  ✓ Your chances [${fmtRoll(_chance,r)}]: as you stand today, ${band.text(m.name)}.`); }
-              else lines.push(`  ✓ Your chances [${fmtRoll(_chance,r)}]: nobody could say how ${c.name} would fare.`);
-            } else lines.push(`  ✗ Your chances [${fmtRoll(_chance,r)}]: the tellers know the beast but not you — nothing learned.`); }
+          { const odds=simulateLairOdds(c,f);
+            if(odds){ const band=rumourOddsBand(odds.pct); lines.push(`  ✓ Your chances: as you stand today, ${band.text(m.name)}.`); }
+            else lines.push(`  ✓ Your chances: nobody could say how ${c.name} would fare.`); }
           lines.forEach(t=>log('explore',t,{actor:c.player,targets:[c.player],provinceId:prov.id}));
         }
         trySkillGain(c,'spy',SKILLGAIN_COMMON); // a season of asking questions is Spy fieldwork, at the common (move/explore) rate
@@ -16055,7 +16166,7 @@ const BATTLE_ARMY_SPELLS={
           log('system',`${c.name} calls to the deep woods, but the wild answers only Druidic crowns.`,{actor:c.player,targets:[c.player]});break;}
         const _wildOK=prov.owner===c.player&&(prov.terrain==='forest'||prov.terrain==='jungle'||(prov.race||'').startsWith('Primal'));
         if(!_wildOK){
-          log('system',`${c.name}: the wild only rises on YOUR land, and only where it still runs deep — an owned forest, jungle, or primal province.`,{actor:c.player,targets:[c.player]});break;}
+          log('system',`${c.name}: the wild only rises on YOUR land, and only where it still runs deep — an owned forest, jungle, or wild (Creature or Monster) province.`,{actor:c.player,targets:[c.player]});break;}
         const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
         const wType=target;
         const needDru=AWAKEN_TIERS[wType];
@@ -16112,21 +16223,32 @@ const BATTLE_ARMY_SPELLS={
         const sageRaw=skillLevel(c,'sage');
         if(sageRaw<1){log('system',`${c.name} pores over the archives, but without any Sage learning (Sage 1+) the pages mean nothing to them.`,{actor:c.player,targets:[c.player]});break;}
         const sageLevel=effStat(c,'sage');
+        // the order names a CATEGORY (target); blank/'any' = the whole eligible table. Item 11: the
+        // Heroic and Special fields can no longer be named or seen — they are found only as an
+        // unlooked-for side result of researching any other field (roll below).
+        const _rcatRaw=(target||'').trim();
+        let _rcat=RESEARCH_HIDDEN_CATS.has(_rcatRaw)?'':_rcatRaw;
+        // 2026-09-23d (Toby): a field with nothing left to find — typically because another Sage of
+        // this realm took its last discovery EARLIER THIS TURN — no longer wastes the order. The
+        // study shifts to a random other field that still holds something for the realm; only when
+        // every field is spent is the order refused. Decided BEFORE the chance is worked out, so a
+        // field-scoped research bonus (az10's own-creed field) follows the field actually studied.
+        { const _knownPre=new Set((player.discoveries||[]).map(d=>d.id));
+          const _avPre=discAvailableFor(c.player,_knownPre).filter(d=>!RESEARCH_HIDDEN_CATS.has(d.category));
+          if(_rcat&&_rcat.toLowerCase()!=='any'&&!_avPre.some(d=>(d.category||'').toLowerCase()===_rcat.toLowerCase())){
+            const _fields=[...new Set(_avPre.map(d=>d.category).filter(Boolean))];
+            if(!_fields.length){ log('system',`${c.name}: every ${_rcat} discovery has already been made, set aside, or is awaiting your choice — and so has every other field your realm can study. There is nothing left to research.`,{actor:c.player,targets:[c.player]}); break; }
+            const _to=_fields[Math.floor(Math.random()*_fields.length)];
+            log('system',`📚 ${c.name} finds the ${_rcat} archives already spent — every ${_rcat} discovery has been made, set aside, or is awaiting your choice — and turns instead to ${_to}.`,{actor:c.player,targets:[c.player]});
+            _rcat=_to;
+          } }
         // Neutral alignment: double sage discovery chance (pragmatic scholars)
         const neutralSageBonus=G.players[c.player]?.alignment==='Neutral'?sageLevel*5:0;
         const perLevel=5;
         // The discovery-chance benefit CAPS at level 5 (via effStat); levels 6+ grant the Sage's
         // distinct mastery orders instead of a further per-level climb.
-        const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct',e=>!e.field||(e.field==='own'&&String(target||'').trim().toLowerCase()===String((player.alignment||'')+' Creed').toLowerCase())); // + Loreseeker; research discoveries (az10: own creed field only)
-        // the order names a CATEGORY (target); blank/'any' = the whole eligible table. Item 11: the
-        // Heroic and Special fields can no longer be named or seen — they are found only as an
-        // unlooked-for side result of researching any other field (roll below).
-        const _rcatRaw=(target||'').trim();
-        const _rcat=RESEARCH_HIDDEN_CATS.has(_rcatRaw)?'':_rcatRaw;
+        const discoveryChance=sageLevel*perLevel+neutralSageBonus+(charMinor(c,'loreseeker')?perLevel:0)+discSum(c.player,'research','pct',e=>!e.field||(e.field==='own'&&String(_rcat||'').trim().toLowerCase()===String((player.alignment||'')+' Creed').toLowerCase())); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied)
         const _catFilter=(d)=>!RESEARCH_HIDDEN_CATS.has(d.category)&&(!_rcat||_rcat.toLowerCase()==='any'||(d.category||'').toLowerCase()===_rcat.toLowerCase());
-        { const _knownPre=new Set((player.discoveries||[]).map(d=>d.id));
-          if(_rcat&&_rcat.toLowerCase()!=='any'&&!discAvailableFor(c.player,_knownPre).some(_catFilter)){
-            log('system',`${c.name}: every ${_rcat} discovery has already been made, set aside, or is awaiting your choice — choose another field of study.`,{actor:c.player,targets:[c.player]});break; } }
         // the HIDDEN-FIELD roll is made FIRST and, when it lands, it is the discovery this research
         // yields — an unlooked-for find INSTEAD of the ordinary one, never as well as it. Half the
         // discovery chance, as before.
@@ -17814,7 +17936,7 @@ const BATTLE_ARMY_SPELLS={
       case 'awaken_grove':{
         if(skillLevel(c,'druid')<7){log('system',`${c.name} lacks the Druid mastery (7) to Awaken a Grove.`,{actor:c.player,targets:[c.player]});break;}
         const okTerrain=(prov.terrain==='forest'||prov.terrain==='jungle')||String(prov.race||'').startsWith('Primal');
-        if(prov.owner!==c.player||!okTerrain){log('system',`${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or primal province.`,{actor:c.player,targets:[c.player]});break;}
+        if(prov.owner!==c.player||!okTerrain){log('system',`${c.name}: Awaken Grove works only while standing in an OWNED forest, jungle or wild (Creature or Monster) province.`,{actor:c.player,targets:[c.player]});break;}
         const grove={type:'Forest Ents',quality:'Veteran',race:'Forest Ent',unitName:'an awakened Grove',_temporary:true,_expiresAfterPhase:-1};
         c.armies=(c.armies||[]);c.armies.push(grove);
         logSplit('explore',`🌳 ${c.name} awakens the grove of ${prov.name} — Forest Ents tear their roots from the earth to march under your banner until the turn's end.`,
@@ -22391,6 +22513,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       phase:e.phase??null,
       pinNotice:!!e.pinNotice, // battle-lock notice — the player portal hoists this to the top of its phase
       env:!!e.env, // routed to Province Reports, kept OUT of Chronicle / Realm Events
+      ...(e.battleId!=null?{battleId:e.battleId, bTier:e.bTier}:{}), // 2026-09-23d: battle folding (player portal)
     }));
     // ── Task 7(a): CLAIRVOYANCE FEED ────
     // If this player watched an enemy character via Clairvoyance, surface everything that character
@@ -22497,6 +22620,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-1956</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.23-2153</div>
 </body>
 </html>
