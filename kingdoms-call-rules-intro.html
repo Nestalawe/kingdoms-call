@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kingdoms Call — Introductory Rules</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --parchment:#f2e8d0; --parchment-dark:#e4d4b0; --parchment-deep:#d8c39a;
+  --ink:#1a1208; --ink-light:#3d2b0f;
+  --crimson:#7a1c1c; --crimson-bright:#9a2c2c;
+  --gold:#c8922a; --gold-light:#e8b84b; --gold-deep:#a07020;
+  --forest:#2d4a1e; --stone:#6b5a42; --bg:#0e0a04;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--bg);
+  background-image:radial-gradient(ellipse at top,#1c140a 0%,#0e0a04 60%);
+  font-family:'Crimson Text',Georgia,serif; color:var(--ink);
+  font-size:18px; line-height:1.62;
+}
+a{color:var(--crimson); text-decoration:none;}
+a:hover{color:var(--crimson-bright); text-decoration:underline;}
+:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+
+/* ── Masthead ─────────────────────────────────────────── */
+.masthead{
+  text-align:center; padding:54px 20px 40px; color:var(--parchment);
+  border-bottom:1px solid var(--gold-deep);
+  background:linear-gradient(180deg,#140d05,#0e0a04);
+}
+.masthead .crest{font-size:2.1rem; letter-spacing:.5em; color:var(--gold); margin-left:.5em;}
+.masthead h1{
+  font-family:'Cinzel',serif; font-weight:800; font-size:clamp(2rem,6vw,3.4rem);
+  color:var(--gold-light); letter-spacing:.08em; margin:.25em 0 .1em; line-height:1.05;
+}
+.masthead .sub{
+  font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--stone); margin-top:.6em;
+}
+.masthead .rule{width:120px; height:1px; background:var(--gold-deep); margin:22px auto 0;}
+.masthead .tagline{
+  font-style:italic; color:var(--parchment-deep); max-width:640px;
+  margin:20px auto 0; font-size:1.05rem;
+}
+
+/* ── Shell: contents rail + page ─────────────────────── */
+.shell{max-width:1180px; margin:0 auto; display:grid; grid-template-columns:260px 1fr; gap:0; align-items:start;}
+nav.toc{
+  position:sticky; top:0; align-self:start; max-height:100vh; overflow-y:auto;
+  padding:34px 22px 60px; font-family:'Cinzel',serif;
+}
+nav.toc .toc-head{font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:var(--gold); margin-bottom:14px; border-bottom:1px solid var(--gold-deep); padding-bottom:8px;}
+nav.toc ol{list-style:none; margin:0; padding:0; counter-reset:toc;}
+nav.toc li{counter-increment:toc; margin:2px 0;}
+nav.toc a{
+  display:block; color:var(--parchment-deep); font-size:.74rem; letter-spacing:.03em;
+  padding:5px 8px 5px 30px; border-radius:2px; position:relative; line-height:1.35;
+}
+nav.toc a::before{content:counter(toc,decimal-leading-zero); position:absolute; left:6px; color:var(--gold-deep); font-size:.62rem;}
+nav.toc a:hover{background:rgba(200,146,42,.12); color:var(--gold-light); text-decoration:none;}
+
+main{
+  background:var(--parchment);
+  background-image:linear-gradient(180deg,#f5ecd6,#efe3c8);
+  padding:40px clamp(20px,4vw,60px) 80px;
+  border-left:1px solid var(--gold-deep); border-right:1px solid var(--gold-deep);
+  min-height:100vh;
+}
+
+/* ── Sections & headings ─────────────────────────────── */
+section{scroll-margin-top:16px; padding:14px 0 8px;}
+section+section{border-top:1px solid var(--parchment-deep); margin-top:26px;}
+.eyebrow{font-family:'Cinzel',serif; font-size:.66rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-deep);}
+h2{
+  font-family:'Cinzel',serif; font-weight:800; font-size:1.5rem; color:var(--crimson);
+  margin:.15em 0 .5em; letter-spacing:.02em; line-height:1.15;
+}
+h3{font-family:'Cinzel',serif; font-weight:600; font-size:1.05rem; color:var(--ink-light); margin:1.3em 0 .4em; letter-spacing:.02em;}
+h4{font-family:'Cinzel',serif; font-size:.82rem; text-transform:uppercase; letter-spacing:.08em; color:var(--stone); margin:1.1em 0 .35em;}
+p{margin:.55em 0;}
+ul,ol{margin:.5em 0 .8em; padding-left:1.3em;}
+li{margin:.28em 0;}
+strong{color:var(--ink);}
+em{color:var(--ink-light);}
+.lead{font-size:1.12rem; color:var(--ink-light);}
+
+/* Drop-cap on the opening section */
+.dropcap::first-letter{
+  font-family:'Cinzel',serif; font-weight:800; float:left; font-size:3.4rem;
+  line-height:.82; padding:6px 10px 0 0; color:var(--crimson);
+}
+
+/* ── Tables ──────────────────────────────────────────── */
+.tbl{width:100%; border-collapse:collapse; margin:1em 0 1.2em; font-size:.9rem;}
+.tbl caption{text-align:left; font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--stone); padding-bottom:6px;}
+.tbl th,.tbl td{border:1px solid var(--parchment-deep); padding:7px 10px; text-align:left; vertical-align:top;}
+.tbl th{background:var(--parchment-dark); font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-light);}
+.tbl tr:nth-child(even) td{background:rgba(216,195,154,.28);}
+.tbl td.num{text-align:right; font-variant-numeric:tabular-nums;}
+.tbl tr.grp td{background:var(--parchment-dark); font-family:'Cinzel',serif; font-size:.7rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-light); padding-top:9px;}
+.wrap{overflow-x:auto;}
+
+/* ── Callouts / panels ───────────────────────────────── */
+.note{border-left:3px solid var(--gold); background:rgba(200,146,42,.10); padding:12px 16px; margin:1.1em 0; border-radius:0 3px 3px 0;}
+.note.warn{border-left-color:var(--crimson); background:rgba(122,28,28,.08);}
+.note .lbl{font-family:'Cinzel',serif; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--crimson); display:block; margin-bottom:3px;}
+.note.warn .lbl{color:var(--crimson);}
+.note.tip .lbl{color:var(--gold-deep);}
+
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; margin:1em 0;}
+.panel{background:#fdf8ee; border:1px solid var(--parchment-deep); border-top:2px solid var(--gold); border-radius:3px; padding:14px 16px;}
+.panel h4{margin-top:0; color:var(--crimson); font-size:.82rem;}
+.panel .sig{font-size:.85rem;}
+.panel .glyph{font-size:1.1rem; margin-right:.3em;}
+
+.pill{display:inline-block; font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; padding:2px 8px; border-radius:10px; border:1px solid var(--gold-deep); color:var(--gold-deep); background:rgba(200,146,42,.08); margin:0 2px 2px 0;}
+.pill.k{border-color:var(--crimson); color:var(--crimson); background:rgba(122,28,28,.06);}
+
+/* ── The Reckoning worked example ────────────────────── */
+.calc{background:#fdf8ee; border:1px solid var(--parchment-deep); border-left:3px solid var(--crimson); border-radius:0 3px 3px 0; padding:14px 18px; margin:1.1em 0;}
+.calc .step{display:flex; gap:12px; align-items:baseline; margin:.45em 0;}
+.calc .n{font-family:'Cinzel',serif; font-weight:800; color:var(--crimson); min-width:1.4em;}
+.calc .sum{font-family:'Cinzel',serif; font-size:1.05rem; color:var(--ink); text-align:center; margin:.8em 0 .2em; letter-spacing:.02em;}
+
+.calc.ex h4{margin:0 0 .35em; color:var(--crimson); font-size:.8rem;}
+.calc.ex ol,.calc.ex ul{margin:.35em 0 .2em;}
+.calc.ex .moral{margin:.5em 0 0; font-style:italic; color:var(--ink-light);}
+.totop{display:block; text-align:right; font-family:'Cinzel',serif; font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; color:var(--stone); margin-top:.4em;}
+
+footer.book{
+  text-align:center; color:var(--stone); font-family:'Cinzel',serif;
+  font-size:.68rem; letter-spacing:.14em; text-transform:uppercase;
+  padding:34px 20px 48px; background:var(--bg); border-top:1px solid var(--gold-deep);
+}
+footer.book .v{color:var(--gold-deep);}
+
+/* ── Mobile ──────────────────────────────────────────── */
+.toc-toggle{display:none;}
+@media(max-width:860px){
+  body{font-size:17px;}
+  .shell{grid-template-columns:1fr;}
+  nav.toc{position:static; max-height:none; padding:0; border-bottom:1px solid var(--gold-deep);}
+  nav.toc .toc-head{display:none;}
+  nav.toc ol{display:none; padding:8px 16px 18px;}
+  nav.toc.open ol{display:block;}
+  .toc-toggle{
+    display:block; width:100%; text-align:left; background:#140d05; color:var(--gold-light);
+    font-family:'Cinzel',serif; font-size:.74rem; letter-spacing:.16em; text-transform:uppercase;
+    border:none; padding:14px 18px; cursor:pointer;
+  }
+  .toc-toggle::after{content:'▾'; float:right; color:var(--gold-deep);}
+  nav.toc.open .toc-toggle::after{content:'▴';}
+  main{border-left:none; border-right:none; padding:28px 18px 64px;}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+@media print{
+  body{background:#fff; color:#000; font-size:12px;}
+  nav.toc,.toc-toggle,.totop,.masthead .tagline{display:none;}
+  main{border:none; background:#fff;}
+}
+
+/* ── Rulebook switcher (Introductory / Comprehensive) ── */
+nav.switch{
+  display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px;
+  padding:12px 16px; background:#140d05; border-bottom:1px solid var(--gold-deep);
+  font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+}
+nav.switch .switch-lbl{color:var(--stone); margin-right:6px;}
+nav.switch a{
+  color:var(--parchment-deep); border:1px solid var(--gold-deep); border-radius:3px;
+  padding:7px 14px; background:rgba(200,146,42,.06);
+}
+nav.switch a:hover{color:var(--gold-light); background:rgba(200,146,42,.16); text-decoration:none;}
+nav.switch a.on{color:var(--bg); background:var(--gold); border-color:var(--gold-light); cursor:default;}
+p.more{font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em; color:var(--stone); margin-top:1em;}
+@media print{nav.switch{display:none;}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="crest">✦ ⚔ ✦</div>
+  <h1>Kingdoms Call</h1>
+  <div class="sub">The Introductory Rules</div>
+  <div class="rule"></div>
+  <p class="tagline">Everything you need to play your first few turns well — and nothing you don't. When you want the full detail behind any rule, the Comprehensive Rulebook is one click away.</p>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 24 September 2026, 13:53 NZT</div>
+</header>
+
+<nav class="switch" aria-label="Choose a rulebook">
+  <span class="switch-lbl">Rulebook</span>
+  <a class="on" aria-current="page">Introductory — start here</a>
+  <a href="kingdoms-call-rules.html">Comprehensive — the full rules</a>
+</nav>
+
+<div class="shell">
+<nav class="toc" id="toc">
+  <button class="toc-toggle" id="tocToggle" aria-expanded="false">Contents</button>
+  <div class="toc-head">The Primer</div>
+  <ol>
+    <li><a href="#overview">What the Game Is</a></li>
+    <li><a href="#turn">How a Turn Works</a></li>
+    <li><a href="#founding">Setting Up Your Realm</a></li>
+    <li><a href="#world">The Map</a></li>
+    <li><a href="#characters">Your King &amp; Heroes</a></li>
+    <li><a href="#skills">Skills in Brief</a></li>
+    <li><a href="#orders">The Orders You'll Use</a></li>
+    <li><a href="#armies">Armies &amp; Gold</a></li>
+    <li><a href="#battle">Battles in Brief</a></li>
+    <li><a href="#lairs">Lairs &amp; Duels</a></li>
+    <li><a href="#magic">Magic in Brief</a></li>
+    <li><a href="#alignments">Races &amp; Alignments</a></li>
+    <li><a href="#victory">Diplomacy &amp; Winning</a></li>
+    <li><a href="#firstturns">Your First Three Turns</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- 1 ───────────────────────────────────────────────── -->
+<section id="overview">
+  <div class="eyebrow">Part One · The Basics</div>
+  <h2>What the Game Is</h2>
+  <p class="dropcap lead">Kingdoms Call is a fantasy strategy game played by email. You rule a realm on a shared, hidden map. Each turn you write orders for your king and heroes; once everyone has sent theirs, the world resolves them all at once and sends you a private <strong>Chronicle</strong> of what your people saw and did.</p>
+  <p>You grow by <strong>exploring</strong> the fog, <strong>conquering</strong> the neutral provinces that fill it, <strong>clearing</strong> the monster lairs hidden in the wild, <strong>recruiting armies</strong> and <strong>training heroes</strong> — while rival realms do the same.</p>
+  <p>There is no turn limit. From <strong>turn 10</strong> onward, a king whose realm dominates the world may <strong>Call the Reckoning</strong>. Two turns later the world is judged on thirteen <strong>Imperial Titles</strong>, and the realm with the greatest legacy is crowned. <a href="#victory">More below.</a></p>
+  <div class="note tip"><span class="lbl">How to read this book</span>Every section here ends with a link to the matching chapter of the <a href="kingdoms-call-rules.html">Comprehensive Rulebook</a>. Play from this one; look things up in that one.</div>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 2 ───────────────────────────────────────────────── -->
+<section id="turn">
+  <h2>How a Turn Works</h2>
+  <p>A turn is a season made of <strong>five phases</strong>. Each of your characters gets <strong>one order per phase</strong> — up to five orders a turn — and carries them out in order, phase 1 through 5. Everyone in the world acts in phase 1 before anyone acts in phase 2, so <em>when</em> you do something matters as much as what you do.</p>
+  <ul>
+    <li><strong>A blank phase is a Defend order.</strong> A character you give nothing to keeps watch where they stand.</li>
+    <li><strong>Within a phase</strong>, non-moving orders (casting, recruiting, practising, searching) resolve first, then Moves and the battles they cause. Faster characters — higher <strong>initiative</strong>, the sum of all their skill levels — act before slower ones.</li>
+    <li><strong>At the end of the turn</strong> tax is collected and wages paid in one step, diplomacy takes effect, and your Chronicle is written.</li>
+    <li><strong>Missed the deadline?</strong> Your characters simply Defend for the turn.</li>
+  </ul>
+  <div class="note warn"><span class="lbl">The one timing rule to remember</span>A province you conquer in phase 3 pays you tax at the end of that <em>same</em> turn. Conquest can pay for itself within the turn.</div>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#turn">How a Turn Works</a> in the Comprehensive Rulebook.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 3 ───────────────────────────────────────────────── -->
+<section id="founding">
+  <h2>Setting Up Your Realm</h2>
+  <p>Before the game begins you make four choices:</p>
+  <ul>
+    <li><strong>Race</strong> — Human, Elven, Dwarven or Orcish. Sets the troops you raise at home and a couple of racial gifts. <a href="#alignments">Summary below.</a></li>
+    <li><strong>Alignment</strong> — Divine, Good, Druidic, Neutral, Pagan, Evil or Undead. Sets your battle zeal, hiring costs and a unique signature action. <a href="#alignments">Summary below.</a></li>
+    <li><strong>Your king's temper</strong> — Berserk, Brave, Cautious or Cowardly: how they fight in personal combat. <strong>Cowardly is the safest choice for a king</strong>, and losing your king hurts.</li>
+    <li><strong>Your king's skills</strong> — <strong>4 points</strong> to spread across the fifteen skills. A point of <strong>Sage</strong> starts realm-wide discoveries early; <strong>Tactical</strong> makes your armies hit harder; a magic school gives you spells from turn one.</li>
+  </ul>
+  <h3>What you start with</h3>
+  <ul>
+    <li>A <strong>home province</strong> — your richest, fully explored, paying <strong>10 gold</strong> a turn and able to recruit every land unit of your race.</li>
+    <li>A treasury of <strong>20 gold</strong>.</li>
+    <li>Your <strong>king</strong> with a small starting army, and <strong>two heroes</strong> with 3 random skill points each.</li>
+  </ul>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#founding">Founding Your Realm</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 4 ───────────────────────────────────────────────── -->
+<section id="world">
+  <div class="eyebrow">Part Two · The World</div>
+  <h2>The Map</h2>
+  <p>The world is a hex grid of provinces, hidden under <strong>fog of war</strong> until your characters visit or scout them. You always see the provinces you own, the ones your characters stand in, and the basics of those next door.</p>
+  <ul>
+    <li><strong>Terrain</strong> — plains, forest, jungle, mountain, desert or sea. Cavalry fights badly in forest and mountains; mountains squeeze the battle line so big armies can't all fight; only fleets (or troops carried by fleets, or flyers) can enter sea.</li>
+    <li><strong>Tax</strong> — every province pays gold each turn you hold it: <strong>poor 2–3</strong>, <strong>prosperous 4–6</strong>, <strong>rich 7–10</strong>. Richer provinces have bigger neutral guards (roughly 1–2, 2–3 and 3–4 defenders).</li>
+    <li><strong>Neutral guards</strong> — most unclaimed provinces are held by a small garrison. To take one you must beat it in battle with an army; a lone hero can only walk into an <em>empty</em> province. Taking a defended province often takes <strong>two phases</strong>.</li>
+    <li><strong>Exploration</strong> — each province has an exploration percentage for you. Exploring reveals its wealth, defenders and hidden <strong>lairs</strong>.</li>
+    <li><strong>Lairs</strong> — monster dens, ruins and treasure sites, on land and at sea. Clearing them is the main source of gold early, of <strong>magic items</strong>, and the <em>only</em> way heroes gain maximum hit points. <a href="#lairs">See Lairs &amp; Duels.</a></li>
+  </ul>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#world">The World &amp; Provinces</a> and <a href="kingdoms-call-rules.html#sight">Sight, Fog &amp; Intelligence</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 5 ───────────────────────────────────────────────── -->
+<section id="characters">
+  <div class="eyebrow">Part Three · Your People</div>
+  <h2>Your King &amp; Heroes</h2>
+  <p>Your characters — the king and your heroes — are the only pieces you give orders to. Everything said of heroes applies to the king too. More heroes means more orders each turn, which is one of the biggest advantages in the game.</p>
+  <ul>
+    <li><strong>Hit points are earned, not trained.</strong> Everyone starts at <strong>15 HP</strong> (18 for Orcs). Maximum HP rises only by <strong>winning fights</strong> — lair guardians and duels. Wounds heal by the <em>Rest</em> order, not on their own.</li>
+    <li><strong>If your king dies</strong>, an heir is crowned next turn in your wealthiest province — but a green one. Your realm ends only if your king dies with no land left. Be careful with the king.</li>
+    <li><strong>Heroes cost wages</strong>: total skill levels ÷ 4, rounded up (a starting hero pays 1 gold a turn). Kings draw no wage.</li>
+    <li><strong>Wandering heroes</strong> roam the map. Send a character to their province and <em>Hire Hero</em> for 2–4 gold a turn — cheaper the closer their alignment is to yours.</li>
+  </ul>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#characters">Kings &amp; Heroes</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 6 ───────────────────────────────────────────────── -->
+<section id="skills">
+  <h2>Skills in Brief</h2>
+  <p>There are fifteen skills, each running from 0 to 9. <strong>Levels 1–5</strong> can be trained with the <em>Practice Skill</em> order or earned by doing the thing; <strong>levels 6–9</strong> come only from experience and unlock special perks. A skill at 0 does nothing at all — one level in a new skill is often worth more than another in one you have.</p>
+  <div class="wrap"><table class="tbl">
+    <tr><th style="width:9rem">Skill</th><th>What it does for you</th></tr>
+    <tr class="grp"><td colspan="2">Martial</td></tr>
+    <tr><td><strong>Melee</strong></td><td>Hit harder and more often in personal combat (+10% to hit per level).</td></tr>
+    <tr><td><strong>Archery</strong></td><td>Shoot better in personal combat; sharpens your army's pre-battle volley (+5% missile strength per level).</td></tr>
+    <tr><td><strong>Tactical</strong></td><td><strong>+20% army strength per level</strong> (×2.0 at level 5) in land battles. The best free multiplier in the game.</td></tr>
+    <tr><td><strong>March</strong></td><td>More land movement for the army you lead, and you act earlier in each phase.</td></tr>
+    <tr><td><strong>Naval</strong></td><td>+20% per level to fleets you lead, and more sea movement.</td></tr>
+    <tr class="grp"><td colspan="2">Special</td></tr>
+    <tr><td><strong>Spy</strong></td><td>Spy orders succeed more (20% + 20% per level); you are harder to spot in enemy land.</td></tr>
+    <tr><td><strong>Thief</strong></td><td>Lets you <em>Steal</em> gold and items (needs Thief 1).</td></tr>
+    <tr><td><strong>Druid</strong></td><td>Lets you lead troops of <strong>other races</strong> (Druid 1) and wild creatures and monsters (Druid 2–5).</td></tr>
+    <tr><td><strong>Sage</strong></td><td>Lets you <em>Research</em> permanent realm-wide discoveries (5% chance per level per order; Neutral realms double).</td></tr>
+    <tr><td><strong>Explorer</strong></td><td>Chart provinces much faster and find their lairs sooner.</td></tr>
+    <tr class="grp"><td colspan="2">Magic — five schools</td></tr>
+    <tr><td><strong>White · Psychic · Illusory · Elemental · Necromancy</strong></td><td>Level 1 in a school gives you all five of its spells. Casting succeeds at 30% + 10% per level. <a href="#magic">See Magic in Brief.</a></td></tr>
+  </table></div>
+  <p><strong>Practising</strong> a skill succeeds 25% of the time at level 0→1, falling to 5% at 4→5; two of your characters practising the same skill in the same province help each other, and a more-skilled mentor present makes the gain <strong>automatic</strong>.</p>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#skills">The Fifteen Skills</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 7 ───────────────────────────────────────────────── -->
+<section id="orders">
+  <div class="eyebrow">Part Four · Giving Orders</div>
+  <h2>The Orders You'll Use</h2>
+  <p>There are many orders; these dozen are the ones your first turns are built from.</p>
+  <div class="wrap"><table class="tbl">
+    <tr><th style="width:11rem">Order</th><th>What it does</th></tr>
+    <tr><td><strong>Move</strong></td><td>Step into <strong>one</strong> adjacent province. Marching an army into a defended province starts a battle; win, and you take it. One Move always = one province; your movement points decide how many Moves you can make across the turn.</td></tr>
+    <tr><td><strong>Defend</strong></td><td>Keep watch for the rest of the turn over your province <em>and every neighbouring province you own</em>. If an enemy army marches into one of them, your general rides there first and fights as the defender. A blank phase is a Defend.</td></tr>
+    <tr><td><strong>Recruit Armies</strong></td><td>Raise units in a province you hold — normally <strong>one of each type per province per turn</strong> (two at your home; two garrison units or two fleets anywhere).</td></tr>
+    <tr><td><strong>Explore</strong></td><td>Chart the province you stand in, revealing its lairs and defenders.</td></tr>
+    <tr><td><strong>Search Lair</strong></td><td>Fight the guardian of a discovered lair in your province for gold, an item and toughness. Check the lair's grade first.</td></tr>
+    <tr><td><strong>Hunting Rumours</strong></td><td>For 1–4 gold per lair, learn a guardian's weakness, its hoard, and <strong>your own odds</strong> of beating it. Cheap insurance before a Search.</td></tr>
+    <tr><td><strong>Practice Skill</strong></td><td>Train a skill toward level 5.</td></tr>
+    <tr><td><strong>Cast Spell</strong></td><td>Work one of your school's spells on a character or province.</td></tr>
+    <tr><td><strong>Research</strong></td><td>(Needs Sage 1.) Roll for a permanent realm-wide discovery.</td></tr>
+    <tr><td><strong>Rest</strong></td><td>Recover hit points (30% of maximum).</td></tr>
+    <tr><td><strong>Leave / Transfer Army</strong> &amp; <strong>Pick Up Army</strong></td><td>Drop units as a province garrison or hand them to another of your characters there; take command of unled garrison units where you stand.</td></tr>
+    <tr><td><strong>Hire Hero</strong></td><td>Take a wandering hero in your province into service.</td></tr>
+    <tr><td><strong>Spy</strong></td><td>Learn what is really in the province you stand in — defenders, owner, lairs, characters.</td></tr>
+  </table></div>
+  <p>Each alignment also has one <strong>signature action</strong> of its own — see <a href="#alignments">Races &amp; Alignments</a>. Orders like <em>Encounter Character</em>, <em>Steal</em>, <em>Send Item</em> and <em>Equip Items</em> exist too; you'll find them in the Comprehensive Rulebook when you need them.</p>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#orders">Every Order Explained</a> (including <a href="kingdoms-call-rules.html#defend">the Defend order in full</a>).</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 8 ───────────────────────────────────────────────── -->
+<section id="armies">
+  <div class="eyebrow">Part Five · War</div>
+  <h2>Armies &amp; Gold</h2>
+  <p>Armies are made of <strong>units</strong>. A character leads a stack of them; units can also be left in a province as its <strong>garrison</strong>. Which units a province can raise depends on its race and terrain — your home province offers every land unit of your race.</p>
+  <h3>Quality is the biggest lever</h3>
+  <p>A unit's real strength is its <strong>base strength × quality</strong>: Green ×1, <strong>Average ×2</strong> (new recruits), Veteran ×3, Crack ×4, Elite ×5. Units are promoted by winning battles and by their commander practising Tactical (or Naval for fleets), and demoted by losing.</p>
+  <h3>The kinds of unit</h3>
+  <ul>
+    <li><strong>Foot</strong> — the battle line; steady on almost any ground.</li>
+    <li><strong>Cavalry</strong> — strong in open country, poor in forest, jungle and mountain.</li>
+    <li><strong>Archers</strong> — fire a volley before the lines close.</li>
+    <li><strong>Flyers</strong> — cross any terrain and even sea without ships.</li>
+    <li><strong>Garrison</strong> — 1 gold, cheap static defence; always goes straight into the province's garrison.</li>
+    <li><strong>Fleets</strong> — the only units that fight at sea, and the only way to carry armies across it (one unit per ship, two for light foot).</li>
+    <li><strong>Creatures &amp; Monsters</strong> — powerful wild units that need the <strong>Druid</strong> skill to lead.</li>
+  </ul>
+  <div class="note warn"><span class="lbl">The wage rule — read this twice</span>Every unit costs its price to <strong>recruit</strong>, and <strong>the same price again every turn</strong> as its wage — garrisons included. Tax and wages settle in the same end-of-turn step, so <strong>a unit costs double in its first season</strong>. If you can't pay, your greenest units disband on their own, then heroes desert. Keep your wage bill comfortably under your income.</div>
+  <p><strong>Leading other races</strong> needs Druid 1 — recruits take the race of the <em>province</em> they were raised in, so a conquered foreign province gives you foreign troops. Troops of your own race fight <strong>+20%</strong> under your crown and another <strong>+20%</strong> under a leader of their own race.</p>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#armies">Armies, Quality &amp; the Wage Rule</a>, <a href="kingdoms-call-rules.html#movement">Movement &amp; Marching</a> and <a href="kingdoms-call-rules.html#economy">The Economy</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 9 ───────────────────────────────────────────────── -->
+<section id="battle">
+  <h2>Battles in Brief</h2>
+  <p>You never roll dice; the engine fights the battle and your Chronicle shows the working. Each side's total strength is compared, luck deals one swing, and the stronger side usually wins.</p>
+  <ul>
+    <li><strong>How sure is a win?</strong> Twice the enemy's strength wins about <strong>80%</strong> of the time; three times, about 90%; four times, always. A slight edge is nearly a coin-flip.</li>
+    <li><strong>Defenders</strong> fight at <strong>×1.25</strong> on their own ground (×1.5 at a home capital).</li>
+    <li><strong>Tactical</strong> multiplies your whole land army: ×1.2 per level, up to ×2.0.</li>
+    <li><strong>Terrain</strong> sets the width of the front line — 6 units on plains, desert or sea, 4 in forest or jungle, 3 in mountains. Units behind the front fight at half strength or less, so huge stacks are wasted on tight ground.</li>
+    <li><strong>Losing costs</strong> units and quality; the more decisive the defeat, the worse. A beaten force retreats to a friendly province next door — with nowhere to run, it suffers more.</li>
+    <li><strong>Battles can carry on</strong> into the next phase if the loser doesn't break — budget two phases to take a contested province.</li>
+  </ul>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#battle">How a Battle Is Fought</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 10 ──────────────────────────────────────────────── -->
+<section id="lairs">
+  <h2>Lairs &amp; Duels</h2>
+  <p>When two characters fight — in a lair, an ambush or a duel before a battle — it's <strong>personal combat</strong>: rounds of arrows and blows shaped by Melee, Archery, hit points, items, spells and <strong>temper</strong>. A character beaten badly enough can <strong>die</strong>.</p>
+  <h3>Lair grades — send the right hero</h3>
+  <p>Lairs come in four grades, and the guardian's grade tells you who to send. A hero of the right measure wins about 19 fights in 20; a hero one grade short can simply be killed.</p>
+  <div class="wrap"><table class="tbl">
+    <tr><th>Grade</th><th>Hero you need (roughly)</th><th>Reward</th></tr>
+    <tr><td><strong>Weak</strong></td><td>15 HP, about 5 skill points (e.g. Melee 3, Archery 2)</td><td>5–8 gold, a Weak item</td></tr>
+    <tr><td><strong>Moderate</strong></td><td>~30 HP, Melee 6, a few Weak items</td><td>12–18 gold, a Moderate item</td></tr>
+    <tr><td><strong>Powerful</strong></td><td>~45 HP, Melee 7, Moderate items</td><td>20–30 gold, a Powerful item</td></tr>
+    <tr><td><strong>Legendary</strong></td><td>~60 HP, Melee 9, Powerful items</td><td>40–60 gold, a Legendary relic</td></tr>
+  </table></div>
+  <p>Every guardian has a <strong>weakness</strong> — a school of magic, archery, a race or an alignment — that doubles the damage against it. <em>Hunting Rumours</em> tells you what it is, and your own odds, before you commit. No guardian's single blow can take more than a third of your maximum HP.</p>
+  <h3>Temper in one line each</h3>
+  <ul>
+    <li><strong>Berserk</strong> — hits hardest, dies fastest.</li>
+    <li><strong>Brave</strong> — the complete fighter; gets a second wind once per fight.</li>
+    <li><strong>Cautious</strong> — hardest to kill; punishes attackers who miss. Breaks off a lair fight below 40% health.</li>
+    <li><strong>Cowardly</strong> — poor swordsman, best archer and thief; may beg for mercy when felled. The safest king.</li>
+  </ul>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#lairs">Lairs, Monsters &amp; Treasure</a> and <a href="kingdoms-call-rules.html#personal">Personal Combat &amp; Temper</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 11 ──────────────────────────────────────────────── -->
+<section id="magic">
+  <div class="eyebrow">Part Six · Power</div>
+  <h2>Magic in Brief</h2>
+  <p>Five schools, each its own skill. <strong>Level 1 in a school gives you all five of its spells at once.</strong> Every cast is a roll — <strong>30% + 10% per level</strong>, capped at 95% — and you may cast 1 action spell per school per turn at levels 1–2, 2 at level 3, 3 at levels 4–5.</p>
+  <div class="grid">
+    <div class="panel"><h4>✨ White</h4><p>Healing and holiness — Resurrect a fallen hero, Bless a province for extra tax, Holy Symbol against the undead.</p></div>
+    <div class="panel"><h4>🧠 Psychic</h4><p>The mind — Charm a hero, Oratory to lift an army's quality, Clairvoyance, Psychic Blast.</p></div>
+    <div class="panel"><h4>🎭 Illusory</h4><p>Deception — Invisibility, Phantasmal Armies, Mirror Image, false terrain, hidden lairs.</p></div>
+    <div class="panel"><h4>🔥 Elemental</h4><p>Destruction — Lightning, Fireball, Earthquake, Flood, and summoning an elemental.</p></div>
+    <div class="panel"><h4>💀 Necromancy</h4><p>Death — raise Skeletal Armies from battlefield graves, Curse, Plague, Control Undead.</p></div>
+  </div>
+  <p>Spells are used three ways: as an <strong>action</strong> in a phase, in a <strong>personal fight</strong> (set in your encounter plan), or as <strong>battle magic</strong> to swing an army battle. <strong>Magic items</strong> from lairs boost skills, health, armies or your economy; a hero must <em>equip</em> worn items for them to count. <strong>Sage discoveries</strong> (from the Research order) are permanent realm-wide upgrades — the earlier you start, the more they pay.</p>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#magic">The Five Schools</a>, <a href="kingdoms-call-rules.html#spells">The Spellbook</a> and <a href="kingdoms-call-rules.html#items">Magic Items &amp; Discoveries</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 12 ──────────────────────────────────────────────── -->
+<section id="alignments">
+  <div class="eyebrow">Part Seven · Faith &amp; Blood</div>
+  <h2>Races &amp; Alignments</h2>
+  <h3>The four races</h3>
+  <div class="wrap"><table class="tbl">
+    <tr><th>Race</th><th>Home ground</th><th>Gifts</th></tr>
+    <tr><td>🏰 <strong>Human</strong></td><td>Plains</td><td>Learn skills 50% faster; units promote twice as readily. Best cavalry.</td></tr>
+    <tr><td>🌲 <strong>Elven</strong></td><td>Forest</td><td>+50% in forest and jungle; slain units may slip away home. Best archers.</td></tr>
+    <tr><td>⛰️ <strong>Dwarven</strong></td><td>Mountain</td><td>×1.5 when defending; every character wears mithril (−2 to every blow). Heaviest foot.</td></tr>
+    <tr><td>🔥 <strong>Orcish</strong></td><td>Desert</td><td>Half wages for units that win as attackers; characters start at 18 HP. Cheap, numerous troops.</td></tr>
+  </table></div>
+  <p>Troops fight <strong>+20%</strong> under a king of their race and <strong>+20%</strong> more under a leader of their race. Elves and Dwarves, and Humans and Orcs, dislike serving one another (−20% under a rival-race commander).</p>
+  <h3>The seven alignments</h3>
+  <p>Alignment runs from holiest to unholiest — Divine, Good, Druidic, Neutral, Pagan, Evil, Undead. Before each battle your army rolls for <strong>zeal</strong> and fights at ×1.3 if it fires. Heroes of a distant alignment cost more to hire; Divine and Undead will never serve each other.</p>
+  <div class="wrap"><table class="tbl">
+    <tr><th>Alignment</th><th>Zeal</th><th>Headline benefit</th><th>Signature action</th></tr>
+    <tr><td>✨ <strong>Divine</strong></td><td class="num">50%</td><td>Slain characters (king included) return on consecrated ground; Rest heals ×1.5; king starts White +1.</td><td><strong>Consecrate</strong> a province: +50% tax and holy ground.</td></tr>
+    <tr><td>⚔ <strong>Good</strong></td><td class="num">40%</td><td>+10% when defending your own provinces.</td><td><strong>Call to Arms</strong>: a free garrison unit each turn.</td></tr>
+    <tr><td>🌿 <strong>Druidic</strong></td><td class="num">20%</td><td>Lead all Creatures with no Druid skill; a host with a Creature fights ×1.25; king starts Druid +1.</td><td><strong>Awaken the Wild</strong>: call a Creature to your banner.</td></tr>
+    <tr><td>⚖ <strong>Neutral</strong></td><td class="num">10%</td><td>+20% tax; cheapest heroes; Sage research at double chance.</td><td><strong>Broker</strong>: hire a distant hero or buy a spy report.</td></tr>
+    <tr><td>🔥 <strong>Pagan</strong></td><td class="num">15%</td><td>+1 gold per enemy unit destroyed; king starts Explorer +1.</td><td><strong>Perform Rite</strong> at a ritual site: bind wild creatures or raise unit quality.</td></tr>
+    <tr><td>😈 <strong>Evil</strong></td><td class="num">25%</td><td>A host with a Monster fights ×1.25; plunder 50% of a conquered province's tax; Terror after big wins.</td><td><em>Enslave</em> (passive): press conquered folk into a garrison.</td></tr>
+    <tr><td>💀 <strong>Undead</strong></td><td class="num">—</td><td>Skeletal hosts fight ×1.3 (×1.5 under the king); skeletons cost 1 gold; king starts Necromancy +1.</td><td><strong>Harvest the Field</strong>: raise a skeleton from a grave for 2 gold.</td></tr>
+  </table></div>
+  <div class="note"><span class="lbl">Good pairings</span>Dwarven + Good is an immovable wall; Orcish + Evil is aggression that pays for itself; Elven + Druidic rules the deep woods; Human + anything leans on fast learners. Any pairing is legal.</div>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#races">The Four Races</a> and <a href="kingdoms-call-rules.html#alignments">The Seven Alignments</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 13 ──────────────────────────────────────────────── -->
+<section id="victory">
+  <div class="eyebrow">Part Eight · The Endgame</div>
+  <h2>Diplomacy &amp; Winning</h2>
+  <h3>Diplomacy</h3>
+  <p>Realms are <strong>Neutral</strong>, <strong>Allied</strong> or <strong>at War</strong> with each other. Both sides must propose a treaty to move a step toward alliance; <strong>one</strong> declaration of war is enough to break it. Declarations take effect at the end of the turn — except from Evil and Undead realms, whose wars begin at once. Allies can march through each other's land and can jointly reach the dominance needed for the Reckoning, but they do not share the victory.</p>
+  <h3>The Reckoning</h3>
+  <p>From <strong>turn 10</strong>, a living king whose realm (with its direct allies) holds enough of the <strong>world's total tax base</strong> may <strong>Call the Reckoning</strong>. The bar is set by the number of realms — <strong>45% in a four-realm game</strong>, 40% with six or more — and rises for each ally you bring (an ally never makes it cheaper). If nobody has called it by turn 15, the bar falls 5 points a turn to a floor of 25%. Your portal always shows your current bar.</p>
+  <p>The call gives rivals <strong>two full turns</strong> to break the claim by driving you back below the bar. If it holds, the world is judged on <strong>Legacy</strong>: thirteen <strong>Imperial Titles</strong> — the Throne (largest tax base, 20 points) and twelve others worth 10 each, for the best general, admiral, monster-slayer, scholar, mage, spy, explorer and so on — plus 1 point per Legendary relic held. The most Legacy wins. Standings are shown from turn 5.</p>
+  <div class="note tip"><span class="lbl">What that means for you</span>Winning is not just about being biggest. Every skill you push past 5, every discovery, every lair cleared and every battle won is building toward a Title. Keep a hand in several of them.</div>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#diplomacy">Diplomacy &amp; Alliances</a> and <a href="kingdoms-call-rules.html#victory">How to Win: The Reckoning</a>.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+<!-- 14 ──────────────────────────────────────────────── -->
+<section id="firstturns">
+  <div class="eyebrow">Part Nine · Strategy</div>
+  <h2>Your First Three Turns</h2>
+  <p>Two facts shape a good opening: <strong>every unit costs double in its first season</strong>, and <strong>a province taken this turn pays you this turn</strong>. So: recruit as much as your conquests will pay for, and no more.</p>
+  <div class="note warn"><span class="lbl">Don't march out on turn 1 with your starting army</span>It isn't enough to take even a lightly guarded province reliably. Recruit first.</div>
+  <h3>Turn 1</h3>
+  <ul>
+    <li><strong>Recruit at home</strong> — enough to make your first assault a near-sure thing, but not so much the wage bill sinks you.</li>
+    <li><strong>Send a hero to the lair in your home province.</strong> Gold, toughness and maybe an item. Do this every turn there's a lair to clear.</li>
+    <li><strong>Explore</strong> the province you mean to take next, so you can see its defenders.</li>
+    <li><strong>Practise</strong> something with a spare order — Sage, Druid or Tactical.</li>
+    <li><strong>Attack in phase 3 or 4</strong>, so a two-phase fight finishes inside the turn.</li>
+  </ul>
+  <h3>Turn 2</h3>
+  <ul>
+    <li><strong>Take the poor province first</strong> — fewest defenders. Save richer ones for when your stack is bigger.</li>
+    <li><strong>One strong stack</strong> beats two weak ones. Don't split.</li>
+    <li>You now hold two provinces — <strong>recruit in both</strong>, wages still under income.</li>
+  </ul>
+  <h3>Turn 3</h3>
+  <ul>
+    <li><strong>Garrison what you take</strong> — an empty province is retaken by a single enemy hero.</li>
+    <li><strong>Train Tactical</strong> on your main general — once your stacks are five or six units it's the best multiplier you can buy without gold.</li>
+    <li><strong>Pick a direction</strong> — the wild buys time; a neighbour invites war.</li>
+    <li><strong>Watch the wage line</strong> every turn.</li>
+  </ul>
+  <h3>Ten things new players get wrong</h3>
+  <ol>
+    <li>Marching out on turn 1 with the starting army.</li>
+    <li>Spending all their gold on turn 1 — the wage bill lands the same turn.</li>
+    <li>Forgetting garrisons cost wages too.</li>
+    <li>Splitting forces.</li>
+    <li>Attacking mountains with a huge stack — only three units fight in front.</li>
+    <li>Marching cavalry into forest.</li>
+    <li>Expecting to take a province in one phase — budget two.</li>
+    <li>Leaving a conquered province empty.</li>
+    <li>Ignoring lairs — the cheapest gold and the only source of hero HP and items.</li>
+    <li>Sending a hero into a lair a grade above their measure.</li>
+  </ol>
+  <div class="note tip"><span class="lbl">The habit that wins</span>Every turn: clear a lair, take a province you can take <em>safely</em>, keep wages under income, and spend one spare order on a skill.</div>
+  <p class="more">Full detail: <a href="kingdoms-call-rules.html#firstturns">Your First Three Turns</a> in the Comprehensive Rulebook.</p>
+  <a class="totop" href="#overview">↑ top</a>
+</section>
+
+</main>
+</div>
+
+<footer class="book">
+  Kingdoms Call · The Introductory Rules · <a href="kingdoms-call-rules.html" style="color:var(--gold-light)">Comprehensive Rulebook</a><br>
+  <span class="v" id="stamp">Rulebook (Introductory) v2026.09.24-1353</span> · Adventurer Kings ruleset
+</footer>
+
+<script>
+(function(){
+  var toc=document.getElementById('toc'), btn=document.getElementById('tocToggle');
+  if(btn){ btn.addEventListener('click',function(){
+    var open=toc.classList.toggle('open');
+    btn.setAttribute('aria-expanded',open?'true':'false');
+  });}
+  // On mobile, collapse the contents after tapping a link.
+  toc.addEventListener('click',function(e){
+    if(e.target.tagName==='A' && window.matchMedia('(max-width:860px)').matches){
+      toc.classList.remove('open'); if(btn) btn.setAttribute('aria-expanded','false');
+    }
+  });
+})();
+</script>
+</body>
+</html>

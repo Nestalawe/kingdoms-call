@@ -163,6 +163,22 @@ footer.book .v{color:var(--gold-deep);}
   nav.toc,.toc-toggle,.totop,.masthead .tagline{display:none;}
   main{border:none; background:#fff;}
 }
+
+/* ── Rulebook switcher (Introductory / Comprehensive) ── */
+nav.switch{
+  display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px;
+  padding:12px 16px; background:#140d05; border-bottom:1px solid var(--gold-deep);
+  font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+}
+nav.switch .switch-lbl{color:var(--stone); margin-right:6px;}
+nav.switch a{
+  color:var(--parchment-deep); border:1px solid var(--gold-deep); border-radius:3px;
+  padding:7px 14px; background:rgba(200,146,42,.06);
+}
+nav.switch a:hover{color:var(--gold-light); background:rgba(200,146,42,.16); text-decoration:none;}
+nav.switch a.on{color:var(--bg); background:var(--gold); border-color:var(--gold-light); cursor:default;}
+p.more{font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em; color:var(--stone); margin-top:1em;}
+@media print{nav.switch{display:none;}}
 </style>
 </head>
 <body>
@@ -170,11 +186,18 @@ footer.book .v{color:var(--gold-deep);}
 <header class="masthead">
   <div class="crest">✦ ⚔ ✦</div>
   <h1>Kingdoms Call</h1>
-  <div class="sub">The Player's Rulebook</div>
+  <div class="sub">The Comprehensive Rulebook</div>
   <div class="rule"></div>
   <p class="tagline">Rival realms. One vacant throne. Everything you need to give a legendary order — how the world turns, what your people can do, and how a king lays claim to an empire.</p>
-  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 23 September 2026, 19:56 NZT</div>
+  <div class="updated" style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--stone);margin-top:18px">Rules updated 24 September 2026, 13:53 NZT</div>
 </header>
+
+<nav class="switch" aria-label="Choose a rulebook">
+  <span class="switch-lbl">Rulebook</span>
+  <a href="kingdoms-call-rules-intro.html">Introductory — start here</a>
+  <a class="on" aria-current="page">Comprehensive — the full rules</a>
+</nav>
+
 
 <div class="shell">
 <nav class="toc" id="toc">
@@ -1602,8 +1625,8 @@ footer.book .v{color:var(--gold-deep);}
 </div>
 
 <footer class="book">
-  Kingdoms Call · The Player's Rulebook<br>
-  <span class="v" id="stamp">Rulebook v2026.09.24-1348</span> · Adventurer Kings ruleset
+  Kingdoms Call · The Comprehensive Rulebook · <a href="kingdoms-call-rules-intro.html" style="color:var(--gold-light)">Introductory Rules</a><br>
+  <span class="v" id="stamp">Rulebook (Comprehensive) v2026.09.24-1353</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
