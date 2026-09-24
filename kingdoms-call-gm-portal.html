@@ -726,12 +726,12 @@ function abilityMissileUnits(force, terrain){
 // hard; Ironwood Crossbows punch further; Dwarf Ironclads are arrow-immune. A unit at the cap gains
 // nothing from more shots, so the target pool skips it (kept in this scope so missileTargetPool
 // sees it).
-const _MISSILE_CAP_FRAC=0.30; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope)
+const _MISSILE_CAP_FRAC=0.40; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope) — 2026-09-24: 30% → 40% (80% winged)
 function missileCap(target, firer){
   const baseStr=unitBaseStrength(target);
   const isFly=FLYING_TYPES.has(target.type);
   let capFraction=isFly?_MISSILE_CAP_FRAC*2:_MISSILE_CAP_FRAC;
-  if(firer&&firer.type==='Ironwood Crossbows') capFraction=isFly?0.90:0.45;
+  if(firer&&firer.type==='Ironwood Crossbows') capFraction=isFly?0.90:0.55; // Punch Through: +15 points on the ground (was 45 vs 30); winged 90 (was 90 vs 60)
   return Math.max(1, Math.floor(baseStr*capFraction));
 }
 function missileCapReached(target, firer){
@@ -739,18 +739,18 @@ function missileCapReached(target, firer){
   if(target.type==='Dwarf Ironclads') return true; // arrow-immune — never worth a shot
   return (target._archeryRed||0) >= missileCap(target, firer);
 }
+// 2026-09-24 (Toby): targets are RANDOM. Every shot picks at random among the enemy's winged riders
+// still below their arrow cap; only when none is left does it pick at random among ALL the other
+// enemy units below their cap (no "front row" any more). Shadow Archers stay hidden while anything
+// else is visible (Loosed From Cover). `frontWidth` is ignored — kept so old callers still work.
 function missileTargetPool(enemyArmies, frontWidth, firer){
-  const all=enemyArmies||[];
+  const all=(enemyArmies||[]).filter(Boolean);
   const visible=all.filter(a=>a.type!=='Shadow Archers');
   const src=visible.length?visible:all;
-  // archers don't keep shooting at flyers already softened as far as arrows allow — a
-  // fully-softened (or arrow-immune) unit drops out of the target pool, so remaining volleys fall
-  // through to flyers still worth hitting, then to non-flying units, rather than being wasted.
   const live=u=>!missileCapReached(u, firer);
   const fly=src.filter(u=>FLYING_TYPES.has(u.type) && live(u));
   if(fly.length) return fly;
-  const ground=src.filter(u=>live(u));
-  return ground.slice(0,Math.max(1,frontWidth));
+  return src.filter(u=>live(u));
 }
 // ELF — Ambush: enemy archers never get a clear shot at Wardens in their own woods.
 function archeryBlockedBy(defenderForce, terrain){
@@ -2738,7 +2738,10 @@ const MITHRIL_ARMOUR={name:'Mithril Armour',slot:'armour',desc:'Melee and arrow 
 // at any one time. Consecration is stored as a LIST
 // (player.consecratedProvIds); this helper returns it, migrating any legacy single `consecratedProvId`
 // save into the list on first read.
-const CONSEC_CAPTURE_XP_PCT=50; // chance per unit of a column that captures consecrated ground to gain an experience level
+// 2026-09-24 (Toby item 7): only the profane profit from casting down altars — an UNDEAD realm's
+// column always rises a level, an EVIL realm's has a 50% chance per unit, everyone else gains nothing.
+const CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT={Undead:100,Evil:50};
+function consecCaptureXpPct(pl){ return (pl&&CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT[pl.alignment])||0; }
 function consecratedIds(pl){
   if(!pl) return [];
   if(!Array.isArray(pl.consecratedProvIds)){
@@ -3542,9 +3545,13 @@ function grantMithrilToDwarves(gs){
 // ── ORC WAR-SPOILS ── Flag the Orcish units of an Orcish realm that just won a battle as part of
 // an ATTACKING force. The wage pass at end of turn halves that turn's upkeep for any unit stamped
 // with the current turn (stale stamps from earlier turns are simply ignored).
-function markOrcAttackWin(ch, gs){
-  if(!ch||ch.player==null||!gs.players[ch.player]||gs.players[ch.player].race!=='Orcish') return;
-  (ch.armies||[]).forEach(a=>{ if(a&&a.race==='Orcish') a._orcAtkWinTurn=gs.turn; });
+// 2026-09-24 (Toby item 3): when `battle` is passed, a closing line is appended to its narrative
+// naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle.
+function markOrcAttackWin(ch, gs, battle){
+  if(!ch||ch.player==null||!gs.players[ch.player]||gs.players[ch.player].race!=='Orcish') return 0;
+  let n=0; (ch.armies||[]).forEach(a=>{ if(a&&a.race==='Orcish'&&!a._phantom){ a._orcAtkWinTurn=gs.turn; n++; } });
+  if(n>0&&battle&&Array.isArray(battle.narrative)) battle.narrative.push(`🪓 **Orcish war-spoils**: ${n} Orcish unit${n!==1?'s':''} of ${ch.name.replace(' (wandering)','')}'s host plunder${n===1?'s':''} the field — their wages are halved this turn.`);
+  return n;
 }
 
 // ── HUMAN DRILLMASTERS ── Human army units of a Human realm improve their experience level twice
@@ -9086,7 +9093,7 @@ function buildTurnReport(gameState, playerIndex){
     if(provHeroes.length>0){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
         id:h.id, name:h.name, race:h.race, alignment:h.alignment, temper:h.temper,
-        skills:h.skills||{}, topSkill:topSkill(h), pay:h.pay||1,
+        topSkill:topSkill(h), pay:h.pay||1, // 2026-09-24 (Toby item 8): fame only — the full skill list no longer ships, so the order form cannot leak it
         locationId:p.id, locationName:p.name,
       }));
     }
@@ -9102,7 +9109,7 @@ function buildTurnReport(gameState, playerIndex){
     const isOwned=ownedProvIds.has(p.id);
     const isVisited=visitedProvIds.has(p.id);
     const isAdjacent=adjacentProvIds.has(p.id);
-    const isHome=p.tax>=10&&isOwned;
+    const isHome=isOwned&&homeFounderOf(gameState,p.id)===playerIndex; // 2026-09-24 (Toby item 10): the FOUNDER's own capital, still held — a captured rival seat is not 'home'
     provinceOrderData[p.id]={
       name:p.name, terrain:p.terrain, race:p.race, tax:p.tax,
       isOwned, isVisited, isAdjacent, isHome,
@@ -10010,14 +10017,15 @@ async function runTurn(opts){
     if(!byChar||newOwner==null) return;
     const units=(byChar.armies||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom);
     if(!units.length) return;
+    const _pct=consecCaptureXpPct(G.players[newOwner]); // Undead 100 · Evil 50 · others 0
     const rose=[];
     units.forEach(a=>{
       const qi=QUALITY_TIERS.indexOf(a.quality);
       if(a._isSkeletal) return;                                      // skeletons never change quality by any means
       if(qi<0||qi>=QUALITY_TIERS.length-1) return;                  // Elite (or unknown) cannot rise
-      if(Math.random()*100<CONSEC_CAPTURE_XP_PCT){ a.quality=QUALITY_TIERS[qi+1]; rose.push(`${a.unitName||armyUnitName(a.type)} (now ${a.quality})`); }
+      if(_pct>0&&Math.random()*100<_pct){ a.quality=QUALITY_TIERS[qi+1]; rose.push(`${a.unitName||armyUnitName(a.type)} (now ${a.quality})`); }
     });
-    log('combat',`✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length?`Flushed with the deed, ${rose.join(', ')} gain${rose.length===1?'s':''} an experience level.`:'None of the troops is the better for it.'}`,
+    log('combat',`✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length?`Flushed with the deed, ${rose.join(', ')} gain${rose.length===1?'s':''} an experience level.`:(_pct>0?'None of the troops is the better for it.':'The troops take no pride in the sacrilege.')}`,
       {actor:newOwner,targets:[newOwner],provinceId:prov.id,charId:byChar.id,phase:_ph});
   }
   function setProvinceOwner(prov, newOwner, byChar, ph){
@@ -10026,7 +10034,7 @@ async function runTurn(opts){
     prov.owner=newOwner;
     // HOLY GROUND FALLS. A consecrated province that changes hands loses its consecration at once
     // (not at the end-of-turn sweep, which remains as the safety net), and every real unit of the
-    // conquering column has a CONSEC_CAPTURE_XP_PCT chance to gain an experience level.
+    // conquering column has a consecCaptureXpPct() chance (Undead 100 · Evil 50 · else 0) to gain an experience level.
     if(prev!=null&&prev!==newOwner) breakConsecrationOnCapture(prov, prev, newOwner, byChar, (ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase)));
     if(prev==null||prev===newOwner||newOwner==null) return;
     const _ph=(ph!=null?ph:(_logCtx.phase!=null?_logCtx.phase:_currentPhase));
@@ -10537,12 +10545,18 @@ function bestCurseSkill(hero){
   return (tac>=dru)?'tactical':'druid';
 }
 function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='druid'?'Druid mastery':'Tactical command'; }
-// Pre-battle missile "softening": one volley shaves a small % of the TARGET's own base strength,
-// scaling gently with the shooter's Archery skill (Archery 0 = 6% … Archery 5 = 16% per volley).
-// Archers are ESPECIALLY deadly to flyers: against a flying target they do DOUBLE the % damage, and
-// may soften a flyer up to 60% of its strength (vs 30% for ground units). The targeting logic in
-// each missile phase sends every archer at the enemy's flyers first when any are present.
-const MISSILE_PCT_BASE=0.06, MISSILE_PCT_PER_LVL=0.02, MISSILE_CAP_FRACTION=0.30;
+// Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
+// SHOOTER, not the target: 20% of the firing unit's base strength (unit strength × quality — so a
+// veteran company hits harder than a green one), +10% per level of the commander's Archery,
+// × the firing unit's own ability (Massed Volley, Woodland Volley, Bombardment), rounded, minimum 1.
+// Winged riders take double and are shot first. What a TARGET can lose is capped: 30% of its own
+// base strength (60% for a winged rider; Ironwood Crossbows' Punch Through lifts both — see
+// missileCap). The 25% pre-battle floor below still applies on top.
+const MISSILE_SHOT_PCT=0.20, MISSILE_ARCH_PER_LVL=0.10, MISSILE_CAP_FRACTION=0.40;
+function missileShotDamage(firer, archSkill, dmgMult){
+  const fs=firer?unitBaseStrength(firer):10;
+  return Math.max(1, Math.round(fs*MISSILE_SHOT_PCT*(1+MISSILE_ARCH_PER_LVL*Math.max(0,archSkill||0))*(dmgMult||1)));
+}
 // PRE-BATTLE SOFTENING FLOOR. Archery is capped per-unit at MISSILE_CAP_FRACTION, but pre-battle
 // MAGIC and primal army strikes pour into _tempStrReduction with no cap of their own, so a unit hit
 // by several effects (e.g. Spiritwrack + Fireball + Choking Spores + arrows) could be softened to
@@ -10560,14 +10574,9 @@ function applyMissileHit(target, archSkill, firer, opts){
   opts=opts||{};
   // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
   if(target&&target.type==='Dwarf Ironclads') return {dmg:0,isFly:false,capped:false,immune:true};
-  const baseStr=unitBaseStrength(target);
   const isFly=FLYING_TYPES.has(target.type);
-  // FIREPOWER — how hard THIS unit shoots. Benchmarked against an Average-quality Str 5 unit (=10)
-  // and clamped to [0.5, 2.0] so neither goblins nor Elite siege guns break the phase.
-  const firepower=firer?Math.max(0.5,Math.min(2.0,unitBaseStrength(firer)/10)):1.0;
-  const pct=MISSILE_PCT_BASE+MISSILE_PCT_PER_LVL*archSkill;
-  let dmg=Math.max(1, Math.round(baseStr*pct*firepower*(opts.dmgMult||1)));
-  if(isFly) dmg=dmg*2; // archers are especially good against flyers — double damage
+  let dmg=missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
+  if(isFly) dmg=dmg*2; // archers are especially good against winged riders — double damage
   // DWARF — Punch Through: heavy bolts grind a target past the point bows can manage.
   const cap=missileCap(target, firer);
   const already=target._archeryRed||0;
@@ -11278,12 +11287,16 @@ const BATTLE_ARMY_SPELLS={
     { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
     { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:provIsCoastal(G,prov)}):0),0)); // 2026-09-18 · 2026-09-23b: same ctx as the battle rows
-      narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, leading`)); } // realm named, as in PvP
-    if(neutralGuardHero){
-      narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} with ${defenders.length} defending unit${defenders.length!==1?'s':''}`, {guard:true}));
-    } else {
-      narrative.push(forceMarker(_npcOwnerName?`${_npcOwnerName}'s garrison at ${prov.name}`:`The defenders of ${prov.name}`, (prov.owner!=null?prov.owner:null), 'defender', defenders, `${DEF_VERBS[1]} the ground — ${defenders.length} defending unit${defenders.length!==1?'s':''}`));
-    }
+      narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, with`)); // realm named, as in PvP
+      // 2026-09-24 (Toby item 2): the defending side's header carries its own post-modifier strength
+      // in the SAME format as the attacker's (and as PvP) — terrain, kinship, abilities and the
+      // chieftain's own bonuses all counted, before Tactical / battle lines / dice.
+      const _dS=Math.round((defenders||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.alignment:null),prov.terrain,{force:defenders,enemyForce:armies,isAttacker:false,coastal:provIsCoastal(G,prov)}):0),0));
+      if(neutralGuardHero){
+        narrative.push(forceMarker(neutralGuardHero.name, null, 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} — army strength ${_dS}, with`, {guard:true}));
+      } else {
+        narrative.push(forceMarker(_npcOwnerName?`${_npcOwnerName}'s garrison at ${prov.name}`:`The defenders of ${prov.name}`, (prov.owner!=null?prov.owner:null), 'defender', defenders, `${DEF_VERBS[1]} ${prov.name} — army strength ${_dS}, with`));
+      } }
 
     // ── Duel before battle ── Only when the province has a commander to answer for it; leaderless
     // garrisons have nobody to ride out. The guardian's stance comes from their Temper. 2026-09-13:
@@ -11509,7 +11522,7 @@ const BATTLE_ARMY_SPELLS={
         for(let v=0;v<volleys;v++){
           // Archers loose at the enemy's flyers first if any are present (double damage vs flyers);
           // otherwise they target a random front-row defender.
-          const pool=missileTargetPool(defenders, Math.min(defenders.length,Math.max(1,atkCount)), atk); // skip fully-softened targets
+          const pool=missileTargetPool(defenders, 0, atk); // winged riders first, else any random target not yet at its cap
           if(!pool.length) break;
           const target=pool[Math.floor(Math.random()*pool.length)];
           const dmgMult=missileDamageMult(atk, armies, prov.terrain, target);
@@ -11595,29 +11608,32 @@ const BATTLE_ARMY_SPELLS={
       }
 
 
-      // DEFENDER ARCHERY: defending missile units fire at the attackers
-      if(_cLA){ (defenders||[]).forEach(d=>{ if(d) d._laNoTerrain=true; }); narrative.push(`⚡ ${c.name}'s Lightning Advance catches the defenders completely unready — they fight with no terrain advantage, no pre-battle magic and no answering volley.`); }
-      applyFlakScreen(_cLA?[]:defenders, armies, (defHero&&defHero.name)||'The defenders', narrative);
-      const missileDef=_cLA?[]:abilityMissileUnits(defenders, prov.terrain);
-      if(missileDef.length>0&&armies.length>0){
-        const defArchSkill=effStat(defHero,'archery');
-        narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} missile unit${missileDef.length!==1?'s':''}`);
-        let totalDefArrow=0;
-        missileDef.forEach(def=>{
-          // Loose at attacking flyers first if any are present (double damage vs flyers), else
-          // front row.
-          const pool=missileTargetPool(armies, Math.min(armies.length,Math.max(1,defCount)), def); // skip fully-softened targets
-          if(!pool.length) return;
-          const target=pool[Math.floor(Math.random()*pool.length)];
-          const dmgMult=missileDamageMult(def, defenders, prov.terrain, target);
-          const hit=applyMissileHit(target, defArchSkill, def, {dmgMult});
-          totalDefArrow+=hit.dmg;
-          if(hit.immune) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but the shot glances off the armoured hull.`);
-          else if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${def.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
-          else narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but they are already as softened as arrows can manage.`);
-        });
-        narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION*100)}%).`);
-      }
+    }
+
+    // DEFENDER ARCHERY — 2026-09-24 (Toby): moved OUT of the if(defHero) block, so a garrison with no
+    // commander still shoots back (at Archery 0). The Lightning Advance line and the defenders' Flak
+    // Screen came out with it — both had also been skipped for a leaderless garrison.
+    // DEFENDER ARCHERY: defending missile units fire at the attackers
+    if(_cLA){ (defenders||[]).forEach(d=>{ if(d) d._laNoTerrain=true; }); narrative.push(`⚡ ${c.name}'s Lightning Advance catches the defenders completely unready — they fight with no terrain advantage, no pre-battle magic and no answering volley.`); }
+    applyFlakScreen(_cLA?[]:defenders, armies, (defHero&&defHero.name)||'The defenders', narrative);
+    const missileDef=_cLA?[]:abilityMissileUnits(defenders, prov.terrain);
+    if(missileDef.length>0&&armies.length>0){
+      const defArchSkill=defHero?effStat(defHero,'archery'):0; // a leaderless garrison shoots at Archery 0
+      narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} missile unit${missileDef.length!==1?'s':''}`);
+      let totalDefArrow=0;
+      missileDef.forEach(def=>{
+        // winged riders first (a random one each shot), else any random attacker not yet at its cap
+        const pool=missileTargetPool(armies, 0, def);
+        if(!pool.length) return;
+        const target=pool[Math.floor(Math.random()*pool.length)];
+        const dmgMult=missileDamageMult(def, defenders, prov.terrain, target);
+        const hit=applyMissileHit(target, defArchSkill, def, {dmgMult});
+        totalDefArrow+=hit.dmg;
+        if(hit.immune) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but the shot glances off the armoured hull.`);
+        else if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${def.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
+        else narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but they are already as softened as arrows can manage.`);
+      });
+      narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION*100)}%).`);
     }
 
     // DEFENDER ARMY SPELLS: primal/special defending units cast their innate battle spells. MOVED
@@ -14208,7 +14224,7 @@ const BATTLE_ARMY_SPELLS={
       narr.push(`🏹 ${heroChar.name}'s archery: ${myMissile.length} unit${myMissile.length!==1?'s':''}${hasQ?' (double volleys)':''}${_manyQ?' (+1 shot)':''}`);
       myMissile.forEach(a=>{
         for(let v=0;v<volleys;v++){
-          const pool=missileTargetPool(enemyArmies, myCount);
+          const pool=missileTargetPool(enemyArmies, 0, a); // winged riders first, else any random target; firer passed for Punch Through's cap
           if(!pool.length) break;
           const t=pool[Math.floor(Math.random()*pool.length)];
           const dmgMult=missileDamageMult(a, myForce, pvpTerrain, t);
@@ -15896,9 +15912,9 @@ const BATTLE_ARMY_SPELLS={
           if(battleAttacker.location!==_aLead.location||battleAttacker.location!==c.location){
             _aParty.forEach(m=>{ if(m.location!==battleAttacker.location) relocateChar(m, battleAttacker.location); });
           }
+          if(battle.won) markOrcAttackWin(c, G, battle); // orc war-spoils — this attacking force won (line appended to the report)
           emitBattle(battle, toProv, ph, [c.player], {actor:c.player}); // item 5
           if(battle.won){
-            markOrcAttackWin(c, G); // orc war-spoils — this attacking force won
             if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
             // ── Fate of the guard's SURVIVORS ── combatVsNPC has already applied the casualty
             // rolls — identical to a beaten player, plus the extra no-escape roll, since neutrals
@@ -16078,6 +16094,7 @@ const BATTLE_ARMY_SPELLS={
             // defending hero's own phase block empty. Each extra same-side commander also gets a
             // pointer line.
             const _battleChars=[c.id,...pvpReinforcements.map(r=>r.id),defChar.id,...defReinforcements.map(d=>d.id)];
+            if(battle&&battle.won) markOrcAttackWin(c, G, battle); // orc war-spoils — this attacking force won (line appended to the report)
             emitBattle(battle, toProv, ph, targets, {actor:c.player, charIds:_battleChars}); // item 5
             // 2026-09-21: these pointers are written AFTER the battle, so a same-side hero who fell in
             // its pre-battle duel must be told in the past tense, not as if he still marches.
@@ -16148,7 +16165,6 @@ const BATTLE_ARMY_SPELLS={
               if(_absorb.length>0) toProv.garrisonArmies=(toProv.garrisonArmies||[]).concat(_absorb);
             }
             if(battle.won){
-              markOrcAttackWin(c, G); // orc war-spoils — this attacking force won
               // Winning the battle is not the same as taking the ground. A dug-in or trapped
               // defence
               // (a trapped Dwarven Shield Fort / nowhere to retreat) leaves enemy armies still standing here,
@@ -16244,9 +16260,9 @@ const BATTLE_ARMY_SPELLS={
               // nobody is debited for the garrison's dead.
               if(toProv.owner!=null&&toProv.owner!==c.player) creditBattle(c,null,garBattle,toProv);
               toProv._hadBattleThisTurn=true;
+              if(garBattle.won) markOrcAttackWin(c, G, garBattle); // orc war-spoils — this attacking force won (line appended to the report)
               emitBattle(garBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!==null), {actor:c.player}); // item 5
               if(garBattle.won){
-                markOrcAttackWin(c, G); // orc war-spoils — this attacking force won
                 movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
                 if(garSurvivors.length>0){
                   // a beaten garrison RETREATS if it has somewhere to go — an adjacent land
@@ -19573,7 +19589,9 @@ const BATTLE_ARMY_SPELLS={
   function getRecruitLimit(armyType, prov, playerIndex){
     if(armyType.toLowerCase().includes('garrison')) return 2;
     if(HUMANOID_FLEET_TYPES.has(armyType)) return 2; // a shipyard lays down two hulls a season
-    return (prov.tax>=10&&prov.owner===playerIndex)?2:1;
+    // 2026-09-24 (Toby item 10): two a season only in the realm's ORIGINAL home province, and only
+    // while its founder still holds it — a captured rival capital (or any other tax-10 seat) is 1.
+    return (prov.owner===playerIndex&&homeFounderOf(G,prov.id)===playerIndex)?2:1;
   }
   function canRecruit(armyType, provId, prov, playerIndex){
     return (recruitedThisTurn[`${provId}:${armyType}`]||0) < getRecruitLimit(armyType,prov,playerIndex);
@@ -22409,7 +22427,16 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // but the Neutral→Allied step cannot be taken.
         const noAlliances=G.players.length<=3;
         let next=cur, blockedAlliance=false;
-        if(da==='enemy'||db==='enemy'){ next='enemy'; }
+        // 2026-09-24 (Toby item 6): breaking an ALLIANCE drops the pair back to Neutral, not to
+        // war — unless the crown that breaks it is Evil or Undead, who go straight to war.
+        let _brokenPact=false;
+        if(da==='enemy'||db==='enemy'){
+          if(cur==='allied'){
+            const _dark=pi=>['Evil','Undead'].includes(G.players[pi]?.alignment);
+            next=((da==='enemy'&&_dark(a))||(db==='enemy'&&_dark(b)))?'enemy':'neutral';
+            _brokenPact=(next==='neutral');
+          } else next='enemy';
+        }
         else if(da==='treat'&&db==='treat'){
           const wouldBe = cur==='enemy'?'neutral' : cur==='neutral'?'allied' : 'allied';
           if(wouldBe==='allied' && noAlliances){ blockedAlliance=true; next=cur; }
@@ -22445,6 +22472,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         let mA,mB;
         if(next==='enemy'){ mA=mB=`⚔ War now stands between ${na} and ${nb}. Their armies may cross the frontier and give battle.`; }
         else if(next==='allied'){ mA=`🤝 ${na} and ${nb} are now ALLIED — your armies may pass freely through one another's lands and will never come to blows.`; mB=`🤝 ${nb} and ${na} are now ALLIED — your armies may pass freely through one another's lands and will never come to blows.`; }
+        else if(_brokenPact){ const _breaker=(da==='enemy'&&db==='enemy')?`${na} and ${nb}`:(da==='enemy'?na:nb); mA=mB=`💔 ${_breaker} ${(da==='enemy'&&db==='enemy')?'have':'has'} broken the alliance between ${na} and ${nb} — the two realms are NEUTRAL once more. Neither may march an army across the other's border; a further declaration of war would open hostilities.`; }
         else { mA=mB=`🕊 ${na} and ${nb} have made peace and are now NEUTRAL — neither may march an army across the other's border.`; }
         log('system',mA,{actor:null,targets:[a],system:true});
         log('system',mB,{actor:null,targets:[b],system:true});
@@ -22967,6 +22995,12 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // name a character with their realm, or — for an unsworn hero — the province they guard. `lvl`
     // (optional) prints as "Level N", never the old "L2" shorthand.
     const who=(ch,lvl)=>{ const lv=(lvl!=null)?` (Level ${lvl})`:''; return ch.player!=null?`${ch.name}${lv} of ${pnm(ch.player)}`:`${ch.name}${lv}, an independent hero guarding ${prn(ch.location)}`; };
+    // 2026-09-24 (Toby item 5): a title tells its holder nothing about a realm the crown has not
+    // yet MET (player._encountered — the same list that gates Treat / Declare War). Unmet realms
+    // are neither named nor measured; one closing line per title says how many stay in the dark.
+    const met=(pi,i)=>i===pi||(((G.players[pi]||{})._encountered)||[]).includes(i);
+    const unmetLine=(pi,label)=>{ const n=(G.players||[]).filter((pl,i)=>pl&&i!==pi&&!pl.conceded&&!pl.eliminated&&!met(pi,i)).length;
+      if(n>0) log('system',`[${label}] ${n===1?'One realm':`${n} realms`} your crown has not yet met — nothing may be gleaned of ${n===1?'it':'them'} until you do.`,{actor:pi,targets:[pi]}); };
     const isNaval=t=>SEA_TYPES.has(t);
     const kindStr=(ch,naval)=>(ch.armies||[]).filter(a=>naval?isNaval(a.type):!isNaval(a.type)).reduce((s,a)=>s+unitBaseStrength(a),0);
     // Strongest land/sea force for a rival → the COMMANDING character, so we can name them AND give
@@ -22976,13 +23010,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // Reckoning (STD.worldTax = every province, land AND sea), so these %s correlate across
     // reports. 2026-09-09: every comparative title report now opens with the holder's OWN figure,
     // so the rivals' numbers can be read against something.
-    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; const own=dispFloor(100*(STD.taxByPlayer[pi]||0)/world); log('system',`[The Throne] Your realm: ${own}% of the world tax base.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); } }
+    { const pi=holder('throne'); if(pi!=null){ const world=STD.worldTax||1; const own=dispFloor(100*(STD.taxByPlayer[pi]||0)/world); log('system',`[The Throne] Your realm: ${own}% of the world tax base.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; const pct=Math.round(100*(STD.taxByPlayer[i]||0)/world); log('system',`[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,{actor:pi,targets:[pi]}); }); unmetLine(pi,'The Throne'); } }
     // THE VAULTKEEPER — each rival's treasury (own line).
-    { const pi=holder('vault'); if(pi!=null){ log('system',`[The Vaultkeeper] Your realm: ${G.players[pi]?.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi)return; log('system',`[The Vaultkeeper] ${pnm(i)}: ${pl.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); }); } }
+    { const pi=holder('vault'); if(pi!=null){ log('system',`[The Vaultkeeper] Your realm: ${G.players[pi]?.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; log('system',`[The Vaultkeeper] ${pnm(i)}: ${pl.gold||0}g in treasury.`,{actor:pi,targets:[pi]}); }); unmetLine(pi,'The Vaultkeeper'); } }
     // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
-    { const pi=holder('marshal'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,false); log('system',`[The Grand Marshal] Your realm: ${oc?`strongest land army led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,false)})`:'no land army in the field'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,false); if(c){ any=true; log('system',`[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,false)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('marshal'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,false); log('system',`[The Grand Marshal] Your realm: ${oc?`strongest land army led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,false)})`:'no land army in the field'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; const c=strongestChar(i,false); if(c){ any=true; log('system',`[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,false)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Grand Marshal] No rival fields a land army this turn.`,{actor:pi,targets:[pi]}); unmetLine(pi,'The Grand Marshal'); } }
     // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
-    { const pi=holder('sea'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,true); log('system',`[The Sea Lord] Your realm: ${oc?`strongest fleet led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,true)})`:'no fleet at sea'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi)return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,true)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); } }
+    { const pi=holder('sea'); if(pi!=null){ let any=false; { const oc=strongestChar(pi,true); log('system',`[The Sea Lord] Your realm: ${oc?`strongest fleet led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc,true)})`:'no fleet at sea'}.`,{actor:pi,targets:[pi]}); } G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; const c=strongestChar(i,true); if(c){ any=true; log('system',`[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c,true)}).`,{actor:pi,targets:[pi]}); } }); if(!any) log('system',`[The Sea Lord] No rival fields a fleet this turn.`,{actor:pi,targets:[pi]}); unmetLine(pi,'The Sea Lord'); } }
     // THE MONSTER-BANE — 2026-09-17: was the single runner-up for the title. Now the foremost
     // monster-slayer of EVERY rival realm, each on their own line with province and tally, so the
     // holder can see the whole field coming rather than only the nearest challenger. An unsworn
@@ -22993,16 +23027,16 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const own=bestOf(pi);
         log('system',`[The Monster-Bane] Your champion: ${own?`${own.c.name} in ${prn(own.c.location)} with ${own.m} monster-blood to their name`:'no hero of yours has drawn monster-blood'}.`,{actor:pi,targets:[pi]});
         let any=false;
-        G.players.forEach((pl,i)=>{ if(i===pi)return; const r=bestOf(i); if(r){ any=true;
+        G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; const r=bestOf(i); if(r){ any=true;
           log('system',`[The Monster-Bane] ${pnm(i)}: ${r.c.name} in ${prn(r.c.location)} — ${r.m} monster-blood.`,{actor:pi,targets:[pi]}); } });
         if(!any) log('system',`[The Monster-Bane] No rival realm has a hero who has drawn monster-blood worth noting.`,{actor:pi,targets:[pi]});
-      } }
+      unmetLine(pi,'The Monster-Bane'); } }
     // THE LOREMASTER — 2026-09-17: was this turn's discoveries only, which in most turns is nothing
     // at all. Now the FULL holding of every rival realm, so the holder can see the whole shape of
     // what others know. The free copy still comes from what was discovered THIS turn: the title
     // reads a rival's library, it does not empty it.
     { const pi=holder('lore'); if(pi!=null){ const tt=G.turn-1; const fresh=[]; let anyHeld=false;
-        G.players.forEach((pl,i)=>{ if(i===pi)return; const ds=(pl&&pl.discoveries)||[];
+        G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; const ds=(pl&&pl.discoveries)||[];
           if(ds.length){ anyHeld=true;
             log('system',`[The Loremaster] ${pnm(i)} holds ${ds.length} discover${ds.length===1?'y':'ies'}: ${ds.map(d=>d.name).join(', ')}.`,{actor:pi,targets:[pi]}); }
           else log('system',`[The Loremaster] ${pnm(i)} holds no discoveries at all.`,{actor:pi,targets:[pi]});
@@ -23013,17 +23047,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           if(learn.length){ const pk=learn[Math.floor(Math.random()*learn.length)].d;
             (lp.discoveries=lp.discoveries||[]).push({id:pk.id,name:pk.name,category:pk.category,desc:pk.desc,turnDiscovered:G.turn});
             log('system',`[The Loremaster] Your scholars copy ${pk.name} from a rival's fresh notes — you now hold this discovery.`,{actor:pi,targets:[pi]}); } }
-      } }
+      unmetLine(pi,'The Loremaster'); } }
     // THE ARCHMAGE — 2026-09-17: the foremost mage of each school OUTSIDE the holder's own realm.
     // Naming the holder's own archmage back to them was the one line in the whole title system that
     // told a player something they already knew; this is a rivals' board.
     { const pi=holder('arch'); if(pi!=null){ const tot=c=>Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0);
         [['white','White'],['psychic','Psychic'],['illusory','Illusory'],['elemental','Elemental'],['necromancy','Necromancy']].forEach(([sk,lab])=>{
           let best=null,bl=-1,bt=-1;
-          (G.characters||[]).filter(c=>c.alive&&c.player!==pi).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } });
+          (G.characters||[]).filter(c=>c.alive&&c.player!==pi&&(c.player==null||met(pi,c.player))).forEach(c=>{ const l=(c.skills&&c.skills[sk])||0; if(l>bl||(l===bl&&tot(c)>bt)){ bl=l;bt=tot(c);best=c; } });
           if(best&&bl>0) log('system',`[The Archmage] ${lab}: ${who(best,bl)}${best.player!=null?` in ${prn(best.location)}`:''}.`,{actor:pi,targets:[pi]});
           else log('system',`[The Archmage] ${lab}: no mage of note outside your own realm.`,{actor:pi,targets:[pi]});
-        }); } }
+        }); unmetLine(pi,'The Archmage'); } }
     // THE HIEROPHANT — 2026-09-17: was the largest skeletal army, which is the Deathpriest's ground
     // and read as a necromancer's perk on a title of the White faith. Now the priest reads the
     // dead: every fallen hero this realm can SEE gives up the skills they carried in life.
@@ -23093,10 +23127,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const own=atlas(pi);
         log('system',`[The Cartographer] Your atlas: ${own.full} province${own.full===1?'':'s'} fully charted, ${own.pct}% of the world mapped.`,{actor:pi,targets:[pi]});
         let any=false;
-        G.players.forEach((pl,i)=>{ if(i===pi)return; any=true; const a=atlas(i);
+        G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; any=true; const a=atlas(i);
           log('system',`[The Cartographer] ${pnm(i)}: ${a.full} province${a.full===1?'':'s'} fully charted, ${a.pct}% of the world mapped.`,{actor:pi,targets:[pi]}); });
         if(!any) log('system',`[The Cartographer] No rival realm remains to survey.`,{actor:pi,targets:[pi]});
-      } }
+      unmetLine(pi,'The Cartographer'); } }
     // THE BEASTLORD — the rival menagerie. For each realm: how many Monster-category units they
     // field, and the province holding their largest monster host. Garrisoned beasts are counted in
     // the TOTAL (a realm can muster straight into a garrison) but the named host is always a
@@ -23116,9 +23150,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           log('system',`[The Beastlord] ${label}: ${r.total} monster unit${r.total===1?'':'s'} under arms${r.best?`, the largest host — ${r.bn} — with ${r.best.name} in ${prn(r.best.location)}`:' (all of them garrisoned)'}.`,{actor:pi,targets:[pi]}); };
         line(pi,'Your realm');
         let any=false;
-        G.players.forEach((pl,i)=>{ if(i===pi)return; any=true; line(i,pnm(i)); });
+        G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; any=true; line(i,pnm(i)); });
         if(!any) log('system',`[The Beastlord] No rival realm remains to reckon.`,{actor:pi,targets:[pi]});
-      } }
+      unmetLine(pi,'The Beastlord'); } }
     // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: griffons, eagles,
     // ents, giants, rocs and whale cohorts. Deliberately symmetrical with the Beastlord's board so
     // a player holding both reads one format twice rather than two.
@@ -23137,9 +23171,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           log('system',`[The Wildwarden] ${label}: ${r.total} creature unit${r.total===1?'':'s'} in the field${r.best?`, the greatest host — ${r.bn} — with ${r.best.name} in ${prn(r.best.location)}`:' (all of them garrisoned)'}.`,{actor:pi,targets:[pi]}); };
         line(pi,'Your realm');
         let any=false;
-        G.players.forEach((pl,i)=>{ if(i===pi)return; any=true; line(i,pnm(i)); });
+        G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; any=true; line(i,pnm(i)); });
         if(!any) log('system',`[The Wildwarden] No rival realm remains to reckon.`,{actor:pi,targets:[pi]});
-      } }
+      unmetLine(pi,'The Wildwarden'); } }
   })();
   // ── TITLE CHANGES ── compare this turn's holders to last turn's snapshot so each player's report
   // can announce titles their characters/realm newly won this turn (with how + effect).
@@ -23565,6 +23599,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.24-1241</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.24-1348</div>
 </body>
 </html>

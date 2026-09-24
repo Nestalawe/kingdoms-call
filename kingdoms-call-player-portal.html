@@ -820,15 +820,15 @@ function actionsFor(c){
   return ACTIONS.filter(a=>{
     if(ALIGN_ACTIONS[a]&&ALIGN_ACTIONS[a]!==align) return false;
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
-    if(L79_ORDERS[a]&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
+    if(L79_ORDERS[a]&&!(c&&(c._hiddenSkills||c._unknownSkills))&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     // Research (Sage 1+) and Steal (Thief 1+) are gated on the character's BASE skill, matching the
     // engine (`case 'research'` / `case 'steal'` both read the raw level). A CHARMED hero is the
     // one exception: the charmer cannot see their levels, so the placeholder card carries
     // `skills:{}` and every raw lookup returns 0 — which silently stripped both orders from a hero
     // who may well have the training. Offer them and let the engine enforce the real requirement at
     // resolution.
-    if(a==='Research'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
-    if(a==='Steal'&&!(c&&c._hiddenSkills)&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only — light fingers take training
+    if(a==='Research'&&!(c&&(c._hiddenSkills||c._unknownSkills))&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
+    if(a==='Steal'&&!(c&&(c._hiddenSkills||c._unknownSkills))&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // a king cannot release himself
     // 2026-09-12 hid Send Item from a charmed hero. 2026-09-18 SUPERSEDES that: ONE Send Item may
     // be ordered per turn, and the item is chosen by the engine (this season's loot first, else the
@@ -1627,7 +1627,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Missile combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your missile units loose before the lines close (6% + 2% per level of the target unit\'s strength, doubled against flyers) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 2–5 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.',
+  archery:'Missile combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your missile units loose before the lines close (each shot does 20% of the shooting unit\'s own strength, +10% per Archery level, doubled against winged riders; no unit can lose more than 40% of its strength to arrows, 80% for a winged rider) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 2–5 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land and air units — flyers included; fleets use Naval instead; land battles only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in every battle, on land or at sea (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
@@ -2937,7 +2937,8 @@ function renderReportView(report){
     lairsHtml+=Object.keys(featuresByProvince).sort((a,b)=>a.localeCompare(b)).map(prov=>{
       const feats=featuresByProvince[prov];
       const cards=feats.map(featureCard).join('');
-      return`<div style="font-family:'Cinzel',serif;font-size:.7rem;color:var(--gold);margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal">(${feats.length} lair${feats.length!==1?'s':''})</span></div>${cards}`;
+      // 2026-09-24 (Toby item 4): province headings bold and in a darker ink than the gold they wore.
+      return`<div style="font-family:'Cinzel',serif;font-size:.76rem;color:#3a2a10;font-weight:700;margin:8px 0 2px;letter-spacing:.03em">📍 ${prov} <span style="color:var(--stone);font-weight:normal;font-size:.68rem">(${feats.length} lair${feats.length!==1?'s':''})</span></div>${cards}`;
     }).join('');
   }
 
@@ -3018,7 +3019,7 @@ function _renderDiplomacyInto(el, report, withControls){
   const btn=(idx,val,label,bg)=>`<button onclick="setDiploChoice(${idx},'${val}')" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
   const pendingLabel=(k)=>{
     const p=diploChoices[k.index];
-    if(p==='enemy') return 'Declare War';
+    if(p==='enemy') return k.relation==='allied'?'Break Alliance':'Declare War';
     if(p==='treat') return k.relation==='enemy'?'Propose Peace':'Propose Alliance';
     return '';
   };
@@ -3034,8 +3035,10 @@ function _renderDiplomacyInto(el, report, withControls){
       controls=(alliancesAllowed?btn(k.index,'treat','Propose Alliance','#2d6a2d')+' ':'')+btn(k.index,'enemy','Declare War','#8a1c1c');
     } else if(k.relation==='enemy'){
       controls=btn(k.index,'treat','Propose Peace','#2d6a2d');
-    } else { // allied
-      controls=btn(k.index,'enemy','Declare War','#8a1c1c');
+    } else { // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
+      // for an Evil or Undead crown, which goes straight to war.
+      const _darkSelf=['Evil','Undead'].includes((report.kingdom||{}).alignment);
+      controls=btn(k.index,'enemy',_darkSelf?'Break Alliance — War':'Break Alliance','#8a1c1c');
     }
     return `<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -3048,7 +3051,7 @@ function _renderDiplomacyInto(el, report, withControls){
   }).join('')
    + (withControls?`<div style="font-size:.72rem;color:#999;margin-top:6px">${alliancesAllowed
        ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
-       : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. Submit your orders to lodge these declarations.</div>`:'');
+       : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`:'');
 }
 function setDiploChoice(idx, val){
   if(val==null||val==='null') delete diploChoices[idx]; else diploChoices[idx]=val;
@@ -3975,7 +3978,13 @@ function computeOrderLedgerP(){
       } else if(act==='Perform Rite'&&/^wild/i.test(tgt)){
         const loc=predictedLocation(c.id,ph); const pd=loc?(rep.provinceOrderData||{})[loc.id]:null;
         if(pd&&pd.wildHuntCost!=null){ cats.other.g+=pd.wildHuntCost; cats.other.n++; } // bound beasts draw no wage
-      } else if(act==='Hunting Rumours'){ notes.add('Hunting Rumours pays for each lair it hears of — not counted above'); }
+      } else if(act==='Hunting Rumours'){
+        // 2026-09-24 (Toby item 1): count the ticked lairs at their grade price (Weak 1 … Legendary
+        // 4), the same figures the engine charges — read from the province the hero will stand in.
+        const loc=predictedLocation(c.id,ph); const pd=(loc?(rep.provinceOrderData||{})[loc.id]:null)||(rep.provinceOrderData||{})[c.locationId]||null;
+        const feats=(pd&&pd.features||[]).filter(f=>!f.ritualSite&&f.monster);
+        tgt.split(',').map(x=>x.trim()).filter(Boolean).forEach(ix=>{ const f=feats.find(x=>String(x.idx)===ix); if(!f) return; cats.intel.g+=(RUMOUR_COST_BY_POWER_P[f.monsterPower]||1); cats.intel.n++; });
+      }
     }
   });
   const spend=Object.values(cats).reduce((s,x)=>s+x.g,0);
@@ -4251,7 +4260,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>{
-              const noThief=t.code==='ST'&&((c.skills?.thief||0)<1);
+              const noThief=t.code==='ST'&&((c.skills?.thief||0)<1)&&!(c._hiddenSkills||c._unknownSkills); // skills unseen → offer it; the engine judges
               return `<button onclick="addEncounterTactic('${c.id}','${t.code}')" ${noThief?'disabled':''}
               style="font-size:.7rem;padding:3px 8px;border:1px solid ${noThief?'#ddd':'var(--stone)'};background:${noThief?'#f0f0f0':'var(--parchment-dark)'};color:${noThief?'#bbb':'inherit'};cursor:${noThief?'not-allowed':'pointer'};border-radius:2px"
               title="${noThief?'Requires Thief skill (level 1+)':t.label}">+ ${t.code}</button>`;}).join('')}
@@ -5278,7 +5287,11 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   const fakeChar={
     id:hiredCharId, name:heroData.name, isKing:false,
     race:heroData.race, alignment:heroData.alignment, temper:heroData.temper,
-    skills:heroData.skills||{}, armies:[], items:[], pay:heroData.pay,
+    // 2026-09-24 (Toby item 8): a wandering hero's skills are NOT known at hire — only their fame
+    // (best skill). The placeholder carries no levels, and _unknownSkills tells every order field
+    // to offer the full choice (all base spells, every skill, no percentages), so a player cannot
+    // read the hero's training off the dropdowns before they have joined.
+    skills:{}, _unknownSkills:true, armies:[], items:[], pay:heroData.pay,
     // A hero hired via Hire Hero stands in the SAME province as the hiring character (the hire
     // requires it), so the newly-hired hero acts from there. Without a real locationId every
     // province-dependent order option (Recruit Armies, Search Lair, …) came up empty.
@@ -6288,6 +6301,7 @@ function exploreProjectionNote(c, ph){
   const wm=loc?((report.worldMeta&&report.worldMeta.provinces)||[]).find(x=>x.id===loc.id):null;
   const terr=(pd&&pd.terrain)||(wm&&wm.terrain)||null;
   if(!loc) return `🧭 Explores the province ${c.name} stands in.`;
+  if(c._unknownSkills) return `🧭 Explores ${loc.name}. The gain depends on an Explorer level not known until ${c.name} has joined.`; // 2026-09-24 item 8
   if(!terr) return `🧭 Explores ${loc.name||'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
   const gain=exploreGainFor(c,terr);
   // Everything already mapped, or that WILL be mapped before this order resolves:
@@ -6677,7 +6691,7 @@ function buildTargetField(c, ph, saved){
       const opts=foes.map(x=>`<option value="char:${x.id}"${realmOptStyleP(x.player,report)} ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' 👑 (king)':''}${x.isWandering?' (wandering)':(x.player!=null?` ⚔ (${realmNameP(x.player,report)})`:'')} — ~${charPct}% to learn their skills, items and army</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})"><option value="" ${!target?'selected':''}>Spy on the province (${here?here.name:'here'})</option>${opts}</select>
         ${String(target||'').startsWith('char:')
-          ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
+          ?(c._unknownSkills?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 25% +10% per Spy level — ${c.name}'s level is not known until they have joined.</div>`:`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`)
           :orderChanceNote(c,'Spy',ph)}`;}
     case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
@@ -6855,7 +6869,7 @@ function buildTargetField(c, ph, saved){
         ? `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
         : `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
       return inputBox+
-        `<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured loses its consecration at once (each unit of the conquering army has a 50% chance to gain an experience level) and frees a slot.</div>`;}
+        `<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;}
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms':{
       if(report.kingdom?.alignment!=='Good')
@@ -6898,7 +6912,7 @@ function buildTargetField(c, ph, saved){
       const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
       const dru=effSkillP(c,'druid');
       const wOpts=Object.entries(AWAKEN_TIERS).map(([t,need])=>
-        `<option value="${t}" ${target===t?'selected':''} ${dru<need?'disabled':''}>${t} — Druid ${need}+${dru<need?` (you: ${dru})`:''}</option>`).join('');
+        `<option value="${t}" ${target===t?'selected':''} ${(dru<need&&!c._unknownSkills)?'disabled':''}>${t} — Druid ${need}+${(dru<need&&!c._unknownSkills)?` (you: ${dru})`:''}</option>`).join('');
       const loc=predictedLocation(c.id,ph);
       return`<select id="po-target-${c.id}-${ph}">${wOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Creature out of the land itself (recruit cost +2g offering; joins ${c.name}). Works only while standing in an OWNED forest, jungle, or primal province${loc?` — you will be in ${loc.name}`:''}.</div>`;}
@@ -6962,7 +6976,7 @@ function buildTargetField(c, ph, saved){
       // whatever the school; L7/L9 mastery spells (SPELL_REQ_LEVEL) are not. Combat-only spells
       // (Lightning Bolt, Fireball, Spiritwrack, Mirror Image, Hand of Death) are never phase orders.
       // Holy Symbol has an action form (cleanses the caster's province of its graves). A spell the hero has not learned simply fails.
-      if(c._hiddenSkills){
+      if(c._hiddenSkills||c._unknownSkills){
         const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
           'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Earthquake','Flood','Elemental Summon','Control Undead','Skeletal Armies','Curse','Plague']);
         const _hsList=Object.entries(SPELLS_BY_SCHOOL).flatMap(([school,list])=>list.filter(sp=>_hsPhase.has(sp)&&!SPELL_REQ_LEVEL[sp]).map(sp=>[sp,school]));
@@ -6971,7 +6985,7 @@ function buildTargetField(c, ph, saved){
         // is no longer in the list.
         const _hsSel=(target&&_hsList.some(([sp])=>sp===target))?target:((_hsList[0]&&_hsList[0][0])||'');
         return`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange('${c.id}',${ph},this.value)">${_hsList.map(([sp,school])=>`<option value="${sp}" ${sp===_hsSel?'selected':''}>${sp} (${SKILL_LABELS[school]})</option>`).join('')}</select>
-          <div style="font-size:.7rem;color:var(--stone)">You cannot see this hero's skills — a spell from a school they have not learned simply fails.</div>${spellSecondaryHtml(report,c,ph,_hsSel,(_hsSel===target?extra:''),target)}`;
+          <div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s training is unknown until they have joined — every base spell is offered; one from a school they have not learned simply fails.`:`You cannot see this hero's skills — a spell from a school they have not learned simply fails.`}</div>${spellSecondaryHtml(report,c,ph,_hsSel,(_hsSel===target?extra:''),target)}`;
       }
       // Only show spells that are usable as phase orders
       const PHASE_SPELLS=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol',
@@ -7072,8 +7086,8 @@ function buildTargetField(c, ph, saved){
       // whatever THIS character practised in an earlier phase this turn (the latest one), so a
       // training week takes one click per phase.
       const defaultSk=target||practiceCompanionSkill(c,ph)||practiceOwnEarlierSkill(c,ph)||'';
-      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${c._hiddenSkills?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`).join('');
-      if(c._hiddenSkills) return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">A charmed hero's skill levels are hidden from you.</div>`; // item 7
+      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${(c._hiddenSkills||c._unknownSkills)?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`).join('');
+      if(c._hiddenSkills||c._unknownSkills) return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s skill levels are not known until they have joined.`:`A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
@@ -7092,7 +7106,7 @@ function buildTargetField(c, ph, saved){
       if(_rsel&&cats.some(k=>k.name===_rsel&&k.known>=k.total)) _rsel='';
       const catOpts=`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
-        <div style="font-size:.72rem;color:var(--forest)">📜 Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).</div>
+        <div style="font-size:.72rem;color:var(--forest)">📜 ${c._unknownSkills?`Rolls for a Sage discovery: 5% per Sage level${neutral?' (doubled for Neutral scholars)':''} — ${c.name}'s level is not known until they have joined; without Sage training the search fails.`:`Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).`}</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. A successful roll turns up <strong>two</strong> discoveries in the field; in next turn's orders you keep one and the other is forgotten for good. Research trains Sage only when it makes a discovery — use Practice Skill to train it reliably. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>`+orderChanceNote(c,'Research',ph);}
 
     // ── RECRUIT ARMIES ──
@@ -8560,7 +8574,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>!f.cleared);
           const kfLairs=kf.filter(f=>!f.ritualSite), kfRituals=kf.filter(f=>f.ritualSite);
-          if(kfLairs.length) h+=`<br>${kfLairs.map(_lairStar).join(' &nbsp; ')}`;
+          if(kfLairs.length) h+=`<br>${kfLairs.map(_lairStar).join('<br>')}`; // 2026-09-24 (Toby item 9): one lair per line
           h+=_lairsClearedNote(pd);
           if(kfRituals.length) h+=`<br>\u{1F319} ${kfRituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kfRituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
@@ -8578,7 +8592,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
-          if(kf2Lairs.length) h+=`<br>${kf2Lairs.map(_lairStar).join(' &nbsp; ')}`;
+          if(kf2Lairs.length) h+=`<br>${kf2Lairs.map(_lairStar).join('<br>')}`; // 2026-09-24 (Toby item 9): one lair per line
           h+=_lairsClearedNote(pd);
           if(kf2Rituals.length) h+=`<br>\u{1F319} ${kf2Rituals.map(f=>f.name).join(', ')} <span style="opacity:.7;font-style:italic">(ritual site${kf2Rituals.length!==1?'s':''})</span>`; // item 4
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
@@ -8740,6 +8754,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.24-1241</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.24-1348</div>
 </body>
 </html>
