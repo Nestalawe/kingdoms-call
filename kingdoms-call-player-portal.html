@@ -792,6 +792,23 @@ const L79_ORDERS={
   'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your realm\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
 };
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
+// ── A CHARACTER WHOSE SHEET THE PLAYER CANNOT READ ──────────────────────────────────────────────
+// Two pre-order cards carry one: a hero being HIRED this turn (`_unknownSkills` — the GM ships only
+// their fame, never their levels) and a hero being CHARMED (`_hiddenSkills` — you have borrowed a
+// mind, not read a life; their pack is not yours to rummage). For every order field the two mean the
+// same thing: the placeholder's `skills:{}` and `items:[]` are NOT facts about the character, they are
+// an ABSENCE of information. So nothing may be printed that is computed from them — no level, no
+// level-derived percentage, no greyed-out tier, no "you have no Thief skill", and no claim that a pack
+// is empty. Offer the full choice and let the engine judge at resolution.
+// 2026-09-24 (Toby): these two flags had drifted badly apart — each was patched at a different site on
+// a different day, so gates closed for a hired hero stood wide open for a charmed one (the Steal and
+// Spy percentages, the Research and Explore notes, the Awaken tiers, and the whole L7/L9 set). ONE
+// predicate now serves every site. Add future gates through it; never test either flag directly.
+const skillsUnseenP=(c)=>!!(c&&(c._hiddenSkills||c._unknownSkills));
+// …and the two reasons, phrased for the player. `hidden` never becomes visible; `unknown` does, next turn.
+const unseenSuffixP=(c)=>(c&&c._unknownSkills)
+  ? `${(c&&c.name)||'this hero'}’s level is not known until they have joined`
+  : `${(c&&c.name)||'this hero'}’s level is hidden from you`;
 // dropdown display order — most-used orders near the top, and any alignment-signature order
 // (Broker, Consecrate, Call to Arms, Perform Rite, Awaken the Wild, Harvest the Field) pinned to
 // the VERY TOP (each is only shown to its own realm, so this simply puts a realm's special order
@@ -820,20 +837,36 @@ function actionsFor(c){
   return ACTIONS.filter(a=>{
     if(ALIGN_ACTIONS[a]&&ALIGN_ACTIONS[a]!==align) return false;
     if(KING_ONLY_ACTIONS.has(a)&&!(c&&c.isKing)) return false;
-    if(L79_ORDERS[a]&&!(c&&(c._hiddenSkills||c._unknownSkills))&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
+    // 2026-09-24 (Toby): a character whose sheet you cannot read gets NO mastery orders at all.
+    // Item 8 had offered the whole L7/L9 set to such a card — since the levels are unseen, filtering
+    // by level would have leaked them. But offering all twenty is its own leak in reverse: a player
+    // could fish for hidden mastery by ordering Assassinate / Grand Heist / Wild Calling and reading
+    // the result. Mastery is the mark of a hero who has served under you; it is not on the table for a
+    // hero still being hired, nor for a mind you have merely charmed. A charmed WANDERER who joins
+    // for good is an ordinary hero from next turn and the level gate below applies as usual.
+    if(L79_ORDERS[a]&&skillsUnseenP(c)) return false;
+    if(L79_ORDERS[a]&&!skillsUnseenP(c)&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     // Research (Sage 1+) and Steal (Thief 1+) are gated on the character's BASE skill, matching the
     // engine (`case 'research'` / `case 'steal'` both read the raw level). A CHARMED hero is the
     // one exception: the charmer cannot see their levels, so the placeholder card carries
     // `skills:{}` and every raw lookup returns 0 — which silently stripped both orders from a hero
     // who may well have the training. Offer them and let the engine enforce the real requirement at
     // resolution.
-    if(a==='Research'&&!(c&&(c._hiddenSkills||c._unknownSkills))&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
-    if(a==='Steal'&&!(c&&(c._hiddenSkills||c._unknownSkills))&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only — light fingers take training
+    if(a==='Research'&&!skillsUnseenP(c)&&rawSkillLvl(c,'sage')<1) return false; // Research: Sage 1+ only (discovery roll)
+    if(a==='Steal'&&!skillsUnseenP(c)&&rawSkillLvl(c,'thief')<1) return false;   // Steal: Thief 1+ only — light fingers take training
     if(a==='Release Hero'&&c&&c.isKing) return false; // a king cannot release himself
-    // 2026-09-12 hid Send Item from a charmed hero. 2026-09-18 SUPERSEDES that: ONE Send Item may
-    // be ordered per turn, and the item is chosen by the engine (this season's loot first, else the
-    // weakest thing carried) — the charmer never sees the pack. Release Hero stays off the form.
-    if(c&&c._hiddenSkills&&(a==='Give Item'||a==='Release Hero')) return false;
+    // ── A CHARMED HERO AND ITEMS: NONE OF IT ──────────────────────────────────────────────────────
+    // 2026-09-12 hid Send Item from a charmed hero; 2026-09-18 replaced that with ONE engine-chosen
+    // Send Item per turn; 2026-09-24 (Toby) SUPERSEDES both and settles the rule the other way, for
+    // every direction items could travel: a charmed hero may not be GIVEN items, may not USE an item,
+    // and may not SEND one to anybody. An enchanter borrows a mind for a season — they do not gain a
+    // quartermaster. Nothing about the hero's own gear changes: they keep it, they fight with it, and
+    // whatever passive magic they carry still works.
+    // Enforced in the ENGINE too (give_item as sender AND as recipient, use_item — see isCharmedNow
+    // in the GM portal), because a stale or hand-crafted submission would otherwise walk straight
+    // past this form-level gate. Equip Items is deliberately left: it addresses the hero's OWN gear,
+    // and the form can only ever show it as "not yours to see", so there is nothing to order.
+    if(c&&c._hiddenSkills&&(a==='Send Item'||a==='Give Item'||a==='Use Item'||a==='Release Hero')) return false;
     // an ENEMY hero whose command you have seized for the turn is held by an enchantment, not an
     // oath — they will not disband companies that are not theirs, perform your realm's alignment
     // rites, or spend their own mastery for you. The engine refuses these orders at resolution too
@@ -2534,7 +2567,10 @@ function renderReportView(report){
         const row=(txt,col)=>`<div style="font-size:.62rem;color:${col};margin-top:1px;line-height:1.3">${txt}</div>`;
         const incl=row(`Base province tax: ${rawBase}g`,'var(--stone)')
           +bonuses.map(b=>row(`+${b[0]}g ${b[1]}`,'#2d7a2d')).join('')
-          +(bonuses.length?'':row('no bonuses','var(--stone)'));
+          +(bonuses.length?'':row('no bonuses','var(--stone)'))
+          // 2026-09-24: every tax-gold source is capped at 5% of the base province tax; say so when
+          // the cap actually bit on the item gold (the discovery lines are capped one by one).
+          +(K('taxBonusCutG')>0?row(`−${K('taxBonusCutG')}g of item tax gold above the ${K('taxBonusCapG')}g cap (5% of base tax)`,'#8a6d1f'):'');
         const eqLine=eq>0?row(`−${eq}g lost to earthquake damage`,'#c00'):'';
         const ensLine=ens>0?row(`−${ens}g enslaved provinces seethe`,'#c00'):'';
         // The box projects NEXT turn's collection from the realm as it stands now; what was
@@ -4260,7 +4296,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             ${ENCOUNTER_TACTICS.filter(t=>t.code!=='CS'&&!t.retired).map(t=>{
-              const noThief=t.code==='ST'&&((c.skills?.thief||0)<1)&&!(c._hiddenSkills||c._unknownSkills); // skills unseen → offer it; the engine judges
+              const noThief=t.code==='ST'&&((c.skills?.thief||0)<1)&&!skillsUnseenP(c); // skills unseen → offer it; the engine judges
               return `<button onclick="addEncounterTactic('${c.id}','${t.code}')" ${noThief?'disabled':''}
               style="font-size:.7rem;padding:3px 8px;border:1px solid ${noThief?'#ddd':'var(--stone)'};background:${noThief?'#f0f0f0':'var(--parchment-dark)'};color:${noThief?'#bbb':'inherit'};cursor:${noThief?'not-allowed':'pointer'};border-radius:2px"
               title="${noThief?'Requires Thief skill (level 1+)':t.label}">+ ${t.code}</button>`;}).join('')}
@@ -4404,11 +4440,16 @@ function openPreSchoolPicker(charId){
       if(prevTarget&&MAGIC_SCHOOLS_CS.has(prevTarget)) practisingCS.add(prevTarget);
     }
   }
+  // 2026-09-24 (Toby): a hero being hired this turn (skills:{}, _unknownSkills) matched no school,
+  // so this alert declared they "know no battle-magic school" — a claim the player has no business
+  // being told — and barred them from setting pre-battle magic at all. Offer all four with no level
+  // shown; the engine finds nothing to cast if they never learned the school.
+  const _csUnknown=skillsUnseenP(char);
   const options=BATTLE_SCHOOLS.map(([key,label])=>{
     const lvl=skills[key]||0;
     const practising=practisingCS.has(key)&&lvl===0;
-    const known=lvl>=1||practisingCS.has(key);
-    return {key,label,lvl,practising,known};
+    const known=_csUnknown||lvl>=1||practisingCS.has(key);
+    return {key,label,lvl:_csUnknown?null:lvl,practising:_csUnknown?false:practising,known};
   }).filter(o=>o.known);
   if(options.length===0){
     alert('This character knows no battle-magic school (White, Elemental, Psychic or Necromancy).\n\nTip: Practise one of these schools earlier in your orders to unlock it.');return;
@@ -4420,11 +4461,11 @@ function openPreSchoolPicker(charId){
   const spicker=document.createElement('div');
   spicker.id=`ep-school-picker-${charId}`;
   spicker.style.cssText='background:#fff8e8;border:1px solid #c8922a;border-radius:3px;padding:8px 10px;margin:4px 0;flex-basis:100%';
-  spicker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:</div>
+  spicker.innerHTML=`<div style="font-family:Cinzel,serif;font-size:.7rem;color:#7a5a10;margin-bottom:6px">Choose a school — a random battle spell from it is cast in the pre-battle magic phase:${_csUnknown?`<div style="font-weight:normal;font-family:serif;color:var(--stone);font-size:.68rem;margin-top:3px">All four are offered — ${(char&&char.name)||'this hero'}’s training is not known to you, and a school they never learned yields no spell.</div>`:''}</div>
     <div style="display:flex;flex-wrap:wrap;gap:5px">
       ${options.map(o=>`<button onclick="confirmEPSchool('${charId}','${o.key}')"
           style="font-size:.75rem;padding:4px 9px;border:1px solid ${o.practising?'#c8922a':'var(--stone)'};background:${o.practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
-          ${o.label} <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>
+          ${o.label}${o.lvl==null&&!o.practising?'':` <span style="color:var(--stone);font-size:.63rem">(${o.practising?'practising':'Lv '+o.lvl})</span>`}
         </button>`).join('')}
       <button onclick="document.getElementById('ep-school-picker-${charId}').remove()"
         style="font-size:.75rem;padding:4px 9px;border:1px solid var(--stone);background:#f0e8d8;cursor:pointer;border-radius:2px;color:var(--stone)">Cancel</button>
@@ -4484,7 +4525,23 @@ function addEncounterTactic(charId, code){
       if(school) epSchoolCount[school]=(epSchoolCount[school]||0)+1;
     });
 
-    const availSpells=Object.entries(ENCOUNTER_VALID)
+    // 2026-09-24 (Toby): a hero being hired this turn has skills:{} and _unknownSkills, so this
+    // filter left NOTHING available and the alert below claimed "no magic skills" — and the option
+    // labels print "(School N)", which would have read out their levels had any shipped. Offer every
+    // encounter-valid spell, unlabelled by level, at the level-1 combat limit (one per school); the
+    // engine refuses a school they never learned at resolution, as it does for a charmed hero.
+    const _epUnknown=skillsUnseenP(char);
+    const availSpells=_epUnknown
+      ? Object.entries(ENCOUNTER_VALID).flatMap(([school,spells])=>spells.map(s=>{
+          const limit=combatSpellLimit(1); // levels unseen → the base allowance of one per school
+          const used=epSchoolCount[school]||0;
+          const isDuplicate=epSpellsUsed.has(s);
+          const atSchoolLimit=used>=limit;
+          const blocked=isDuplicate||atSchoolLimit;
+          const reason=isDuplicate?'already in plan':atSchoolLimit?`school limit ${used}/${limit}`:'';
+          return{school,spell:s,level:null,practising:false,blocked,reason,used,limit};
+        }))
+      : Object.entries(ENCOUNTER_VALID)
       .filter(([school])=>effMagicLvl(char,school)>=1 || practisingSchoolsEP.has(school))
       .flatMap(([school,spells])=>spells.map(s=>{
         const lvl=effMagicLvl(char,school);
@@ -4506,6 +4563,11 @@ function addEncounterTactic(charId, code){
     if(availSpells.length===0){
       alert('This character has no magic skills and cannot cast spells in encounters.\n\nTip: if you set a Practice Skill order for a magic school earlier in your orders, those spells will become available here.');return;
     }
+    // Levels unseen (hired this turn / charmed): every school is listed without a level, so the
+    // picker's heading says why rather than implying the hero knows them all.
+    const _epUnknownNote=_epUnknown
+      ?`<div style="font-size:.68rem;color:var(--stone);margin-top:6px">Every school is offered — ${(char&&char.name)||'this hero'}’s training is not known to you, and a spell from a school they never learned simply fails when the encounter comes.</div>`
+      :'';
 
     // Show a mini-picker inline
     const wrap=document.getElementById(`ep-list-${charId}`);
@@ -4534,7 +4596,7 @@ function addEncounterTactic(charId, code){
           const limitNote=` ${used}/${limit}`;
           const labelExtra=practising
             ? `<span style="color:#7a5510;font-size:.63rem">(${SKILL_LABELS[school]||school} — practising${limitNote})</span>`
-            : `<span style="color:${blocked?'#bbb':'var(--stone)'};font-size:.63rem">(${SKILL_LABELS[school]||school} ${level}${limitNote})</span>`;
+            : `<span style="color:${blocked?'#bbb':'var(--stone)'};font-size:.63rem">(${SKILL_LABELS[school]||school}${level==null?'':' '+level}${limitNote})</span>`;
           const blockedNote=blocked?`<span style="color:#c44;font-size:.6rem"> ✗ ${reason}</span>`:'';
           return blocked
             ?`<button disabled style="font-size:.75rem;padding:4px 9px;border:1px solid #ddd;background:#f5f5f5;color:#bbb;border-radius:2px;cursor:not-allowed">
@@ -4550,7 +4612,7 @@ function addEncounterTactic(charId, code){
           Cancel
         </button>
       </div>
-      ${practisingSchoolsEP.size>0?`<div style="font-size:.68rem;color:#7a5510;margin-top:6px">⚠ Spells marked "practising, may unlock" are only available if your practice order succeeds this turn.</div>`:''}`;
+      ${practisingSchoolsEP.size>0?`<div style="font-size:.68rem;color:#7a5510;margin-top:6px">⚠ Spells marked "practising, may unlock" are only available if your practice order succeeds this turn.</div>`:''}${_epUnknownNote}`;
     wrap.after(picker);
     return;
   }
@@ -4559,7 +4621,12 @@ function addEncounterTactic(charId, code){
   if(code==='ST'){
     const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId));
     const thiefLvl=effSkillP(char,'thief');
-    if(thiefLvl<1){
+    // 2026-09-24 (Toby): a hired hero's placeholder carries skills:{}, so this gate always fired and
+    // the alert announced "no Thief skill" for a hero whose training is not known yet — and it took
+    // the tactic off the table for a thief who may well have it. The +ST button is already offered
+    // for such a card (see the noThief guard in the order form); let it through and let the engine
+    // judge at resolution, exactly as the phase-order Steal does.
+    if(thiefLvl<1&&!skillsUnseenP(char)){
       alert('This character has no Thief skill and cannot attempt to steal.\n\nThe Steal tactic requires at least Thief level 1. Practise the Thief skill first.');
       return;
     }
@@ -5191,8 +5258,8 @@ function injectCharmOrders(charId, ph, heroId, containerId){
       <div style="color:#2a7a8a">These orders only take effect if the Charm succeeds. If the cast fails,
       or another realm charms ${wanderer.name} first, they are simply ignored.</div>
       <div style="color:var(--stone);margin-top:2px">${isEnemy
-        ? 'Their command is seized for the rest of this turn; at the season\u2019s end they return to their own lord (who still pays their wages). They will not attack their own lord\u2019s heroes, and will give up only one item this turn \u2014 of the engine\u2019s choosing.'
-        : 'Joins your service at no hiring cost (you still pay their upkeep).'}</div>
+        ? 'Their command is seized for the rest of this turn; at the season\u2019s end they return to their own lord (who still pays their wages). They will not attack their own lord\u2019s heroes, and they handle no items at all while enchanted \u2014 you cannot give them anything, have them use anything, or have them hand anything over. They keep their own gear and fight with it.'
+        : 'Joins your service at no hiring cost (you still pay their upkeep). For the rest of this turn the enchantment still holds them, so they handle no items — nothing given to them, nothing used, nothing handed over. From next turn they are an ordinary hero of your realm and all of it is open to them.'}</div>
     </div>
     <div class="orders-char-body"></div>`;
   casterBlock.after(card);
@@ -6061,27 +6128,56 @@ function heroHireWagePP(kingdomAlign, heroAlign){
 function predictedItems(charId, upToPhaseExclusive){
   const report=currentReport;
   if(!report) return [];
-  const cid=typeof charId==='string'?parseInt(charId):charId;
+  // ── 2026-09-24 (Toby): keyed by String(id) throughout ──────────────────────────────────────────
+  // This used to open with
+  //     const cid=typeof charId==='string'?parseInt(charId):charId;
+  // and read the recipient with `parseInt(...)` as well. Both are NaN for a PRE-ORDER card's
+  // synthetic id ('hired_77_via_1_ph0', 'charm_88_via_1_ph0', 'resurrect_…'), so an item SENT to a
+  // hero being hired, raised or charmed this turn never entered their predicted pack, and the
+  // lookup for the card itself never found their own row either.
+  // The GM resolves the send correctly — `orderCharRef` maps the synthetic id to the real hero and
+  // same-province delivery is immediate — so the item genuinely WAS in that hero's hands from the
+  // phase after the hand-over. Only the order form could not see it, which left the player unable
+  // to order the hero to equip or use the very thing they had just been handed, and made the
+  // "what they carry is not yours to see" notice (§150) permanent even for gear the player had
+  // supplied themselves.
+  // The Map is local to this function, so re-keying it is contained; `predictedLocation` still needs
+  // the character's REAL id (it compares with ===), hence the byKey lookup rather than passing the
+  // select's string value straight through — that was how the old code got away with parseInt for
+  // ordinary numeric recipients.
+  const cid=String(charId);
   const items=new Map();
-  (report.characters||[]).forEach(x=>items.set(x.id,[...(x.items||[])]));
+  const byKey=new Map();
+  (report.characters||[]).forEach(x=>{ items.set(String(x.id),[...(x.items||[])]); byKey.set(String(x.id),x); });
   for(let p=0;p<upToPhaseExclusive;p++){
     (report.characters||[]).forEach(x=>{
       const action=document.getElementById(`po-action-${x.id}-${p}`)?.value||'';
       if(action!=='Send Item'&&action!=='Give Item') return;
       // a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
       // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
-      const recip=parseInt(document.getElementById(`po-extra-${x.id}-${p}`)?.value);
-      const arr=items.get(x.id)||[];
-      if(!items.has(recip)) return;
+      const recipKey=String(document.getElementById(`po-extra-${x.id}-${p}`)?.value||'').trim();
+      const arr=items.get(String(x.id))||[];
+      if(!recipKey||!items.has(recipKey)) return;
+      const recipCh=byKey.get(recipKey); if(!recipCh) return;
       const rawT=(document.getElementById(`po-target-${x.id}-${p}`)?.value||'').trim();
       let idxs;
       if(rawT.toLowerCase()==='all') idxs=arr.map((_,i)=>i);
-      else idxs=rawT.split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<arr.length);
+      // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees
+      // which, so nothing can be projected into the recipient's pack. 'auto' resolves to no index
+      // below, which is the right outcome; noted so it is not later "fixed".
+      // Token grammar MIRRORS the engine's give_item exactly: a plain in-range integer is positional,
+      // anything else is matched by item id or name (a pre-order card ticks names, because its index
+      // space is not the engine's — see the Send Item branch). These two must change together.
+      else idxs=rawT.split(',').map(s=>s.trim()).filter(Boolean).map(t=>{
+        const n=parseInt(t);
+        if(Number.isInteger(n)&&String(n)===t&&n>=0&&n<arr.length) return n;
+        return arr.findIndex(it=>it&&(String(it.id)===t||it.name===t));
+      }).filter(n=>Number.isInteger(n)&&n>=0&&n<arr.length);
       const uniq=[...new Set(idxs)].sort((a,b)=>b-a);
       // only DELIVER into the recipient's list this turn if they are co-located this phase; a
       // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
-      const _same=(predictedLocation(x.id,p)?.id)===(predictedLocation(recip,p)?.id);
-      uniq.forEach(i=>{ const [it]=arr.splice(i,1); if(_same) (items.get(recip)||[]).push(it); });
+      const _same=(predictedLocation(x.id,p)?.id)===(predictedLocation(recipCh.id,p)?.id);
+      uniq.forEach(i=>{ const [it]=arr.splice(i,1); if(_same) (items.get(recipKey)||[]).push(it); });
     });
   }
   return items.get(cid)||[];
@@ -6092,9 +6188,11 @@ function predictedItems(charId, upToPhaseExclusive){
 // (add), Leave/Transfer and Disband (remove). This is what the Leave/Transfer and Disband forms show,
 // so an army handed off or disbanded in an earlier phase no longer appears, and one recruited or
 // picked up earlier does. (predictedLocation already accounts for earlier moves / conquests, so the
-// recipient and garrison-eligibility lists reflect where the character will actually be.) Known
-// limitation: armies TRANSFERRED to this character by ANOTHER character earlier this turn are not
-// yet projected in — the GM still resolves the transfer correctly, it just isn't previewed here.
+// recipient and garrison-eligibility lists reflect where the character will actually be.) Armies
+// TRANSFERRED to this character by ANOTHER of yours earlier this turn — a Leave/Transfer handed over, or
+// a Recruit mustered "to:<this id>" — ARE projected in, through chains of any length (2026-09-24; the
+// comment that used to stand here still called that a known limitation long after it was implemented,
+// and a _depth<2 cap meant it was true again past two hops. Both fixed — see projectedLedArmies).
 // The units a Recruit order actually produces, in the ORDER the engine creates them: mercenary
 // bands first (hired from the province's roaming bands, keeping their own name and quality), then
 // native recruits at Average. Blood Offering, Leave/Transfer and Disband all address units by INDEX
@@ -6131,7 +6229,14 @@ function _projRecruitUnits(tokens){
 // pick-ups are only replayed for strictly earlier phases. This keeps the `g:i` indices the form
 // emits aligned with the engine's live garrison. Rival/neutral changes to the garrison can't be
 // foreseen.
-function projectedGarrison(provId, phase, includeSamePhase, excludeCharId){
+function projectedGarrison(provId, phase, includeSamePhase, excludeCharId, _memo){
+  // _memo: the shared projection cache threaded down from the top-level call (see
+  // projectedLedArmies). projectedGarrison and projectedLedArmies call EACH OTHER — a Pick Up reads
+  // the garrison, and the garrison is built from other characters' Leave orders — so they share one
+  // cache or the pair blows up combinatorially on a five-phase turn.
+  const memo=(_memo instanceof Map)?_memo:new Map();
+  const _gk=`g|${provId}|${phase}|${includeSamePhase?1:0}|${String(excludeCharId)}`;
+  if(memo.has(_gk)) return memo.get(_gk).map(a=>({...a}));
   const report=currentReport||{};
   const pd=(report.provinceOrderData||{})[provId];
   let garr=((pd&&pd.garrisonArmies)||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName,race:a.race}));
@@ -6147,7 +6252,7 @@ function projectedGarrison(provId, phase, includeSamePhase, excludeCharId){
       if(act==='Leave/Transfer Army'){
         const extra=document.getElementById(`po-extra-${o.id}-${ph}`)?.value;
         if(extra!==''&&extra!=null&&String(extra)!=='-1') return; // handed to a character, not the garrison
-        const led=projectedLedArmies(o.id,ph);
+        const led=projectedLedArmies(o.id,ph,memo);
         if(tgt.split(',').map(t=>t.trim()).includes('all')) led.forEach(a=>garr.push(a));
         else { const pool=led.slice(); tgt.split(',').map(t=>t.trim()).filter(Boolean).forEach(val=>{ const i=pool.findIndex(a=>a.type===val||a.unitName===val); if(i>=0) garr.push(pool.splice(i,1)[0]); }); }
       } else if(act==='Recruit Armies'){
@@ -6166,13 +6271,35 @@ function projectedGarrison(provId, phase, includeSamePhase, excludeCharId){
       idxs.forEach(i=>garr.splice(i,1));
     });
   }
+  memo.set(_gk, garr.map(a=>({...a})));
   return garr;
 }
-function projectedLedArmies(charId, upToPhaseExclusive, _depth){
+// ── 2026-09-24 (Toby): TRANSFER CHAINS ──────────────────────────────────────────────────────────
+// This used to take a `_depth` counter and refuse to recurse past `_depth<2`, added to stop "mutual
+// transfers recursing forever". That worry was unfounded: a transfer always recurses with a STRICTLY
+// SMALLER phase bound (`projectedLedArmies(o.id, prevPh, …)` where prevPh < upToPhaseExclusive), so the
+// recursion bottoms out at phase 0 on its own and no cycle is possible. What the guard actually did was
+// silently truncate legitimate chains — hand a company king → Bryn in Spring and Bryn → Cara in Early
+// Summer and it projected; add Cara → Dain in Late Summer and the company VANISHED from every later
+// form, so Dain could not be ordered to do anything with troops he would really be leading.
+// The cap was NOT needed for performance either, which is worth recording because it looks as though it
+// should be: only the ONE character whose `po-extra` names this one recurses (the rest return at the
+// `String(oExtra)!==String(charId)` check), so a transfer chain is linear, not exponential. Measured in
+// the worst shape available — every character leaving troops to the garrison and picking up from it in
+// alternate phases, which is the N-way fan-out through projectedGarrison — all 5N projections cost
+// 4ms at 4 characters and 7ms at 10, indistinguishable with the memo below removed.
+// The memoisation on (character, phase bound), shared with projectedGarrison, is therefore kept as cheap
+// insurance against repeated subtree work rather than as a fix for a measured problem. The cache lives
+// for ONE top-level call, so it can never serve a stale answer after the player changes an order.
+// Callers mutate what they get back (splice/push), so every hit returns fresh copies.
+function projectedLedArmies(charId, upToPhaseExclusive, _memo){
   const report=currentReport||{};
   const char=(report.characters||[]).find(x=>x.id===charId);
   if(!char) return [];
-  _depth=_depth||0;
+  const memo=(_memo instanceof Map)?_memo:new Map();
+  const _ck=`c|${String(charId)}|${upToPhaseExclusive}`;
+  if(memo.has(_ck)) return memo.get(_ck).map(a=>({...a}));
+  memo.set(_ck,[]); // sentinel: belt-and-braces against a cycle the phase bound should already prevent
   let armies=(char.armies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName,race:a.race,_isSkeletal:a._isSkeletal}));
   const provOrderData=report.provinceOrderData||{};
   for(let prevPh=0;prevPh<upToPhaseExclusive;prevPh++){
@@ -6181,7 +6308,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
     // armies gained FROM OTHER characters of yours earlier this turn — a Recruit mustered "to:<this
     // id>" or a Leave/Transfer handed to this character — now project in too (depth-limited so
     // mutual transfers cannot recurse forever).
-    if(_depth<2)(report.characters||[]).forEach(o=>{
+    (report.characters||[]).forEach(o=>{
       if(o.id===charId) return;
       const oAct=document.getElementById(`po-action-${o.id}-${prevPh}`)?.value||'';
       const oTgt=document.getElementById(`po-target-${o.id}-${prevPh}`)?.value||'';
@@ -6193,7 +6320,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
       } else if(oAct==='Leave/Transfer Army'){
         const oExtra=document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value||'';
         if(String(oExtra)!==String(charId)) return;
-        const oArm=projectedLedArmies(o.id, prevPh, _depth+1);
+        const oArm=projectedLedArmies(o.id, prevPh, memo);
         if(oTgt.split(',').includes('all')) oArm.forEach(a=>armies.push(a));
         else oTgt.split(',').filter(Boolean).forEach(val=>{ val=val.trim(); const a=oArm.find(x=>(x.unitName||x.type)===val); if(a) armies.push(a); });
       }
@@ -6216,7 +6343,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
       }
     } else if(prevAction==='Pick Up Army'){
       const ploc=predictedLocation(charId,prevPh);
-      const pgarr=ploc?projectedGarrison(ploc.id,prevPh,true,charId):[]; // garrison as it stands at THAT phase
+      const pgarr=ploc?projectedGarrison(ploc.id,prevPh,true,charId,memo):[]; // garrison as it stands at THAT phase
       if(prevTarget==='all'){ pgarr.forEach(a=>armies.push({type:a.type,quality:a.quality,unitName:a.unitName})); }
       else prevTarget.split(',').filter(Boolean).forEach(sel=>{
         sel=sel.trim();
@@ -6234,6 +6361,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _depth){
       });
     }
   }
+  memo.set(_ck, armies.map(a=>({...a})));
   return armies;
 }
 
@@ -6301,7 +6429,9 @@ function exploreProjectionNote(c, ph){
   const wm=loc?((report.worldMeta&&report.worldMeta.provinces)||[]).find(x=>x.id===loc.id):null;
   const terr=(pd&&pd.terrain)||(wm&&wm.terrain)||null;
   if(!loc) return `🧭 Explores the province ${c.name} stands in.`;
-  if(c._unknownSkills) return `🧭 Explores ${loc.name}. The gain depends on an Explorer level not known until ${c.name} has joined.`; // 2026-09-24 item 8
+  // 2026-09-24 (Toby): was _unknownSkills only, so a CHARMED hero fell through to the real note below
+  // and its figure — computed from Explorer 0 — told the charmer exactly what the hero has not got.
+  if(skillsUnseenP(c)) return `🧭 Explores ${loc.name}. The gain depends on an Explorer level ${c._unknownSkills?`not known until ${c.name} has joined`:`hidden from you`}.`;
   if(!terr) return `🧭 Explores ${loc.name||'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
   const gain=exploreGainFor(c,terr);
   // Everything already mapped, or that WILL be mapped before this order resolves:
@@ -6688,10 +6818,16 @@ function buildTargetField(c, ph, saved){
       const foes=(report.visibleChars||[]).filter(x=>x.id!==c.id&&x.locationId===hereId&&(x.player===null||x.player!==c.player));
       const spyLvl=effSkillP(c,'spy');
       const charPct=Math.max(5,Math.min(95,25+10*spyLvl));
-      const opts=foes.map(x=>`<option value="char:${x.id}"${realmOptStyleP(x.player,report)} ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' 👑 (king)':''}${x.isWandering?' (wandering)':(x.player!=null?` ⚔ (${realmNameP(x.player,report)})`:'')} — ~${charPct}% to learn their skills, items and army</option>`).join('');
+      // 2026-09-24 (Toby): item 8 covered the Spy NOTE but not these option labels, which quote
+      // 25% +10% per Spy level — so a hired hero's card read "~25%" and gave away that he has no Spy
+      // training. Drop the figure until he has joined; the note below carries the formula.
+      const _spHide=skillsUnseenP(c);
+      const opts=foes.map(x=>`<option value="char:${x.id}"${realmOptStyleP(x.player,report)} ${target===`char:${x.id}`?'selected':''}>Spy on ${x.name}${x.isKing?' 👑 (king)':''}${x.isWandering?' (wandering)':(x.player!=null?` ⚔ (${realmNameP(x.player,report)})`:'')}${_spHide?' — learns their skills, items and army':` — ~${charPct}% to learn their skills, items and army`}</option>`).join('');
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})"><option value="" ${!target?'selected':''}>Spy on the province (${here?here.name:'here'})</option>${opts}</select>
-        ${String(target||'').startsWith('char:')
-          ?(c._unknownSkills?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 25% +10% per Spy level — ${c.name}'s level is not known until they have joined.</div>`:`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`)
+        ${_spHide
+          ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 25% +10% per Spy level — ${unseenSuffixP(c)}.</div>`
+          :String(target||'').startsWith('char:')
+          ?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
           :orderChanceNote(c,'Spy',ph)}`;}
     case 'Rest':
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="(acts in current province)" disabled>`;
@@ -6751,14 +6887,21 @@ function buildTargetField(c, ph, saved){
       const garrN=(pdS&&pdS.owner!=null&&pdS.owner!==c.player)?((pdS.garrisonArmies||[]).length):0;
       if(visibleEnemyChars.length===0&&garrN===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc?loc.name:'this province'}${_elsewhere>0?` (${_elsewhere} rival${_elsewhere!==1?'s':''} in sight elsewhere — a thief must stand in the same province; move there first)`:' — you need a rival character or an enemy garrison'}" disabled>`;
       const base=50+10*Math.min(thiefLvl,5);
+      // 2026-09-24 (Toby): the per-target "~N% chance" is 50% +10% per Thief level, so a hired
+      // hero's placeholder card (skills:{} → thiefLvl 0) quoted a flat ~50% and told the player the
+      // hero has no Thief training. Print the formula instead until they have joined. Same treatment
+      // as the Spy / Research / Explore notes.
+      const _stHide=skillsUnseenP(c);
+      const _stPct=(halved)=>_stHide?'':` — ~${halved?Math.floor(base/2):base}% chance`;
       // the target's pack is NEVER described — the thief takes a random magic item if one can be
       // lifted (weighted toward the lesser ones), or gold if there is none.
       const opts=visibleEnemyChars.map(x=>{
-        return`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''} ⚔ (${realmNameP(x.player,report)})${x.armies>0?' — leads troops (halved)':''} — ~${x.armies>0?Math.floor(base/2):base}% chance</option>`;
+        return`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${target==x.id?'selected':''}>${x.name}${x.isKing?' 👑':''} ⚔ (${realmNameP(x.player,report)})${x.armies>0?' — leads troops (halved)':''}${_stPct(x.armies>0)}</option>`;
       }).join('');
-      const garrOpt=garrN>0?`<option value="garrison" ${target==='garrison'?'selected':''}>The garrison paymaster of ${pdS.name||'this province'} (${garrN} unit${garrN!==1?'s':''}) — ~${Math.floor(base/2)}%</option>`:'';
+      const garrOpt=garrN>0?`<option value="garrison" ${target==='garrison'?'selected':''}>The garrison paymaster of ${pdS.name||'this province'} (${garrN} unit${garrN!==1?'s':''})${_stPct(true)}</option>`:'';
+      const _stNote=_stHide?`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 50% +10% per Thief level (halved if the mark leads troops or the paymaster is guarded) — ${unseenSuffixP(c)}, and without Thief training the attempt fails.</div>`:'';
       return`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}${garrOpt}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc?loc.name:'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere>0?` (${_elsewhere} other rival${_elsewhere!==1?'s':''} in sight elsewhere.)`:''} You cannot tell what a rival carries: a successful theft lifts one of their magic items at random (the lesser trinkets come to hand far more readily than a legendary relic), or 5% of their realm's treasury if they carry no magic. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${orderChanceNote(c,'Steal',ph)}`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc?loc.name:'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere>0?` (${_elsewhere} other rival${_elsewhere!==1?'s':''} in sight elsewhere.)`:''} You cannot tell what a rival carries: a successful theft lifts one of their magic items at random (the lesser trinkets come to hand far more readily than a legendary relic), or 5% of their realm's treasury if they carry no magic. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${_stNote}${orderChanceNote(c,'Steal',ph)}`;
     }
 
     // ── SEARCH LAIR ──
@@ -6809,7 +6952,11 @@ function buildTargetField(c, ph, saved){
       // phase; target = comma-separated chosen item names. Unlisted slot items are unequipped; a
       // slot left on '— none —' is auto-filled by the engine with the first item held for it.
       const held=predictedItems(c.id,ph).filter(it=>it&&itemSlotP(it)&&itemUsableByP(it,c)); // bound items you can't use aren't offered
-      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)" disabled>`;
+      // 2026-09-24 (Toby): a card whose sheet you cannot read carries `items:[]` — an ABSENCE of
+      // information, not an empty pack. The old placeholder read it as fact and announced "Nothing to
+      // wear or wield", which tells the player something definite about a pack they have no right to
+      // see (and is very likely false — a wandering hero of any standing is carrying something).
+      if(held.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`What ${c.name} carries is not yours to see — they wear and wield their own gear as they see fit`:'Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)'}" disabled>`;
       const chosen=(target||'').split(',').map(t=>t.trim()).filter(Boolean);
       const rows=ITEM_SLOT_ORDER_P.map(sl=>{
         const opts=held.filter(it=>itemSlotP(it)===sl); if(opts.length===0) return '';
@@ -6826,7 +6973,9 @@ function buildTargetField(c, ph, saved){
       const ACTIVE_ITEM_STATS=new Set(['massPromote','castSpell']);
       // Items received via Give Item in an earlier phase are usable here too.
       const active=predictedItems(c.id,ph).filter(it=>it&&it.effect&&ACTIVE_ITEM_STATS.has(it.effect.stat)&&!it._spent);
-      if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No usable (active) items — most items are passive" disabled>`;
+      // Same reasoning as Equip Items above: "No usable items" is a claim about a pack the player
+      // cannot see. A charmed hero will use their own tricks or not; you do not get to inventory them.
+      if(active.length===0) return `<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`Whatever ${c.name} carries is hidden from you — you cannot order the use of an item you cannot see`:'No usable (active) items — most items are passive'}" disabled>`;
       const opts=active.map(it=>`<option value="${it.id}" ${target==it.id?'selected':''}>${isLegendaryItemP(it)?'✨ Legendary — ':(ITEM_TIER_NAME_P[it.tier||1]+' — ')}${it.name} — ${it.desc}</option>`).join('');
       // a spell item needs the spell's own target (province / character) — same field as Cast
       // Spell.
@@ -6911,8 +7060,11 @@ function buildTargetField(c, ph, saved){
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="The wild answers only Druidic crowns" disabled>`;
       const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
       const dru=effSkillP(c,'druid');
+      // 2026-09-24 (Toby): was _unknownSkills only — a charmed hero had every tier above Druid 0 greyed
+      // out and stamped "(you: 0)", which is the whole Druid level read straight off the dropdown.
+      const _awUnseen=skillsUnseenP(c);
       const wOpts=Object.entries(AWAKEN_TIERS).map(([t,need])=>
-        `<option value="${t}" ${target===t?'selected':''} ${(dru<need&&!c._unknownSkills)?'disabled':''}>${t} — Druid ${need}+${(dru<need&&!c._unknownSkills)?` (you: ${dru})`:''}</option>`).join('');
+        `<option value="${t}" ${target===t?'selected':''} ${(dru<need&&!_awUnseen)?'disabled':''}>${t} — Druid ${need}+${(dru<need&&!_awUnseen)?` (you: ${dru})`:''}</option>`).join('');
       const loc=predictedLocation(c.id,ph);
       return`<select id="po-target-${c.id}-${ph}">${wOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Creature out of the land itself (recruit cost +2g offering; joins ${c.name}). Works only while standing in an OWNED forest, jungle, or primal province${loc?` — you will be in ${loc.name}`:''}.</div>`;}
@@ -6976,7 +7128,7 @@ function buildTargetField(c, ph, saved){
       // whatever the school; L7/L9 mastery spells (SPELL_REQ_LEVEL) are not. Combat-only spells
       // (Lightning Bolt, Fireball, Spiritwrack, Mirror Image, Hand of Death) are never phase orders.
       // Holy Symbol has an action form (cleanses the caster's province of its graves). A spell the hero has not learned simply fails.
-      if(c._hiddenSkills||c._unknownSkills){
+      if(skillsUnseenP(c)){
         const _hsPhase=new Set(['Resurrect','Part Sea','Bless Province','Holy Symbol','Charm','Oratory','Clairvoyance','Psychic Blast','Telekinetic Storm',
           'Illusory Terrain','Phantasmal Armies','Hide Lairs','Invisibility','Earthquake','Flood','Elemental Summon','Control Undead','Skeletal Armies','Curse','Plague']);
         const _hsList=Object.entries(SPELLS_BY_SCHOOL).flatMap(([school,list])=>list.filter(sp=>_hsPhase.has(sp)&&!SPELL_REQ_LEVEL[sp]).map(sp=>[sp,school]));
@@ -7086,8 +7238,8 @@ function buildTargetField(c, ph, saved){
       // whatever THIS character practised in an earlier phase this turn (the latest one), so a
       // training week takes one click per phase.
       const defaultSk=target||practiceCompanionSkill(c,ph)||practiceOwnEarlierSkill(c,ph)||'';
-      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${(c._hiddenSkills||c._unknownSkills)?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`).join('');
-      if(c._hiddenSkills||c._unknownSkills) return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s skill levels are not known until they have joined.`:`A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
+      const skillOpts=ALL_SKILLS.map(sk=>`<option value="${sk}" ${defaultSk===sk?'selected':''}>${SKILL_LABELS[sk]}${skillsUnseenP(c)?'':` (Lv ${(c.skills||{})[sk]||0})`}</option>`).join('');
+      if(skillsUnseenP(c)) return`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills?`${c.name}'s skill levels are not known until they have joined.`:`A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
       return`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap('${c.id}',${ph})">${skillOpts}</select>${orderChanceNote(c,'Practice Skill',ph)}`;}
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
@@ -7106,7 +7258,7 @@ function buildTargetField(c, ph, saved){
       if(_rsel&&cats.some(k=>k.name===_rsel&&k.known>=k.total)) _rsel='';
       const catOpts=`<option value="" ${!_rsel?'selected':''}>Any field of study</option>`+cats.map(k=>{ const done=k.known>=k.total; return `<option value="${k.name}" ${done?'disabled':''} ${_rsel===k.name?'selected':''}>${k.name} (${k.known}/${k.total} found${done?' — all discoveries in this field have been found':''})</option>`; }).join('');
       return`<select id="po-target-${c.id}-${ph}">${catOpts}</select>
-        <div style="font-size:.72rem;color:var(--forest)">📜 ${c._unknownSkills?`Rolls for a Sage discovery: 5% per Sage level${neutral?' (doubled for Neutral scholars)':''} — ${c.name}'s level is not known until they have joined; without Sage training the search fails.`:`Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).`}</div>
+        <div style="font-size:.72rem;color:var(--forest)">📜 ${skillsUnseenP(c)?`Rolls for a Sage discovery: 5% per Sage level${neutral?' (doubled for Neutral scholars)':''} — ${unseenSuffixP(c)}; without Sage training the search fails.`:`Rolls for a Sage discovery: about <strong>${chance}%</strong> (Sage ${sg}${neutral?', Neutral scholars':''}).`}</div>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Discoveries are permanent realm-wide upgrades. A successful roll turns up <strong>two</strong> discoveries in the field; in next turn's orders you keep one and the other is forgotten for good. Research trains Sage only when it makes a discovery — use Practice Skill to train it reliably. A scholar sometimes turns up a find from a field you never chose; when that happens it is the discovery you make this season <em>instead</em> of an ordinary one, not as well as it.</div>`+orderChanceNote(c,'Research',ph);}
 
     // ── RECRUIT ARMIES ──
@@ -7247,25 +7399,11 @@ function buildTargetField(c, ph, saved){
 
     // ── GIVE ITEM ──
     case 'Send Item': case 'Give Item':{
-      // a CHARMED hero (placeholder card, skills and items hidden) sends ONE item per turn and the
-      // engine picks it — whatever they stole earlier this turn, else the weakest thing they carry.
-      // No item list is shown; only the recipient is chosen. A second Send Item in another phase is
-      // refused here (and by the engine).
-      if(c._hiddenSkills){
-        const _otherPh=SEASONS.findIndex((_,p)=>p!==ph&&(document.getElementById(`po-action-${c.id}-${p}`)?.value||'')==='Send Item');
-        if(_otherPh>=0) return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
-          <div style="font-size:.74rem;color:#8a2a2a">A charmed hero gives up only ONE item a turn — Send Item is already ordered in ${SEASONS[_otherPh]}. Choose another action here.</div>`;
-        const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
-        const loc4=predictedLocation(c.id,ph);
-        const recipOpts=chars.map(x=>{
-          const _xl=predictedLocation(x.id,ph), _xn=(_xl&&_xl.name)||'unknown province'; // 2026-09-24: name the province
-          const _same=(_xl?.id)===(loc4?.id);
-          return `<option value="${x.id}" ${extra==x.id?'selected':''}>${x.name} (${_same?`here in ${_xn} — at once`:`in ${_xn} — arrives end of turn`}${preOrderTagP(x)})</option>`;
-        }).join('');
-        return`<input type="hidden" id="po-target-${c.id}-${ph}" value="auto">
-          ${chars.length?`<select id="po-extra-${c.id}-${ph}">${recipOpts}</select>`:`<input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`}
-          <div style="font-size:.7rem;color:var(--stone)">You cannot see what this hero carries. They will hand over one item of the engine's choosing — anything they stole this turn first, otherwise their weakest — or nothing if their pack is empty.</div>`;
-      }
+      // 2026-09-24 (Toby): the CHARMED-hero branch that used to live here — one engine-chosen item a
+      // turn, recipient only, no list — is gone with the rule it served. A charmed hero sends nothing
+      // at all now, so `actionsFor` no longer offers them Send Item and this case is unreachable for
+      // them; the engine refuses it outright as well. Nothing else fell out of that branch: its
+      // "already ordered in <season>" once-a-turn guard existed only for that one allowance.
       // Predicted item list: starts from the report, then applies every earlier phase's Give Item
       // orders — so an item HANDED TO this character in an earlier phase can be given onward here,
       // and an item already given away no longer appears. Indices match GM resolution order. hand
@@ -7274,34 +7412,50 @@ function buildTargetField(c, ph, saved){
       // po-target field (reusing the shared checkbox helpers).
       const items=predictedItems(c.id,ph);
       const startNames=new Set((c.items||[]).map(it=>it&&it.name));
-      if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No items to give (none held, or all given away earlier this turn)" disabled>`;
+      // 2026-09-24 (Toby): a HIRED hero reaches this branch (only _hiddenSkills takes the auto-pick
+      // path above) with predictedItems → [], and the old text announced "none held" — a claim about a
+      // pack the player has not seen. A charmed hero never gets here.
+      if(items.length===0) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c)?`What ${c.name} carries is not known to you until they have joined — you can only send on something you handed them yourself this turn`:'No items to give (none held, or all given away earlier this turn)'}" disabled>`;
+      // ── 2026-09-24 (Toby): ADDRESS BY NAME WHEN POSITION CANNOT BE TRUSTED ──────────────────────
+      // The tick values are normally indices into the engine's own item list, which is only safe while
+      // this form's list and the engine's `c.items` are the same list in the same order. For a hero
+      // being HIRED they are not: `predictedItems` can only show what the player handed them this turn,
+      // while at resolution that sits at the end of a real pack the player has never seen — so index 0
+      // here is a different item there. Those cards tick item NAMES instead (the engine's give_item now
+      // resolves an id-or-name token), and lose the "All items" box, which would otherwise sweep up the
+      // hidden pack the player cannot see and never chose.
+      const _giByName=skillsUnseenP(c);
       const _giSaved=(target||'').split(',').filter(Boolean);
-      const _giAll=_giSaved.includes('all');
+      const _giAll=!_giByName&&_giSaved.includes('all');
       const _giBoxes=items.map((it,i)=>{
         // A granted Mithril suit is forged to its wearer and cannot be sent on. The row still has
-        // to be RENDERED — the tick values are indices into the engine's own item list — so it is
+        // to be RENDERED — when the tick values are indices into the engine's own item list — so it is
         // shown greyed and disabled rather than dropped, which would slide every later index by
         // one.
         const _bound=!!(it&&it.effect&&it.effect.stat==='mithrilArmour');
-        const chk=(!_bound&&(_giAll||_giSaved.includes(String(i))))?'checked':'';
+        const _val=_giByName?String(it.name||''):String(i);
+        const chk=(!_bound&&(_giAll||_giSaved.includes(_val)))?'checked':'';
         return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound?'not-allowed':'pointer'};${_bound?'opacity:.55':''}">
-          <input type="checkbox" value="${i}" ${chk} ${_bound?'disabled':''} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
+          <input type="checkbox" value="${_val.replace(/"/g,'&quot;')}" ${chk} ${_bound?'disabled':''} onchange="updateLeaveTarget('${c.id}',${ph})" style="width:auto;margin:0">
           🔮 ${it.name}${itemTierTagP(it)}${_bound?' <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>':(startNames.has(it.name)?'':' (received earlier this turn)')}
         </label>`;
       }).join('');
       const _giWrap=`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
-        <label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
+        ${_giByName?`<div style="font-size:.68rem;color:var(--stone);padding:2px 4px;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">Only what you handed ${c.name} this turn is listed — the rest of their pack is not yours to see, or to send on.</div>`:`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;border-bottom:1px solid var(--parchment-dark);margin-bottom:2px">
           <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${_giAll?'checked':''} onchange="leaveToggleAll('${c.id}',${ph},this.checked)" style="width:auto;margin:0">
           <strong>All items (${items.length})</strong>
-        </label>
+        </label>`}
         ${_giBoxes}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${(target||'').replace(/"/g,'&quot;')}">
       </div>`;
       // Send Item can now reach ANY of your living characters, wherever they stand. A recipient in
       // the SAME province gets the item at once (usable later this turn); one ELSEWHERE receives it
       // at the END of the turn — a courier carries it — ready to use from next turn.
       const loc4=predictedLocation(c.id,ph);
-      const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player );
+      // 2026-09-24 (Toby): a CHARMED hero is not a valid recipient — you may not hand items to a mind
+      // you have merely borrowed. (`_hiddenSkills` is the charm placeholder; the engine refuses the
+      // real hero as a recipient too, so a stale draft naming one cannot slip an item across.)
+      const chars=orderTargetCharsP(report,ph).filter(x=> x.id!==c.id && x.player===c.player && !x._hiddenSkills );
       if(chars.length===0) return`${_giWrap}
         <input id="po-extra-${c.id}-${ph}" type="text" value="" placeholder="No other characters to send to" disabled>`;
       const recipOpts=chars.map(x=>{
@@ -8754,6 +8908,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.24-1348</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.24-1615</div>
 </body>
 </html>

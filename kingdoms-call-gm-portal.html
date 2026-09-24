@@ -7769,6 +7769,16 @@ function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
 // real character record (by id, never by array index) — or null. Every caller still checks the
 // hero is the orderer's own, so a hire that failed (or a rival's) is refused, never honoured.
 function isPreOrderRef(raw){ return /^(?:hired|resurrect|charm)_\d+_via_/.test(String(raw==null?'':raw).trim()); }
+// ── A HERO UNDER A CHARM THIS TURN ───────────────────────────────────────────────────────────────
+// Either kind: an ENEMY whose command was seized for the season (`_charmTempControl`, reverts at the
+// Early Winter turn-end), or a WANDERER swayed into permanent service this very turn (`_charmedTurn`,
+// which stops mattering once the turn rolls over and they are an ordinary hero of the realm).
+// 2026-09-24 (Toby): an enchanter borrows a mind, not a quartermaster. Such a hero handles NO items —
+// they may not be given one, may not use one, and may not send one to anybody. Their own gear is
+// untouched: they keep it, fight with it, and its passive magic still works. This predicate is the
+// single gate; the player portal hides the three orders, and these engine checks catch a stale or
+// hand-crafted submission that walks past the form.
+function isCharmedNow(G,c){ return !!(c&&(c._charmTempControl||c._charmedTurn===(G&&G.turn))); }
 function orderCharRef(G, raw){
   const t=String(raw==null?'':raw).trim();
   const m=t.match(/^(?:hired|resurrect|charm)_(\d+)_via_/);
@@ -9020,6 +9030,9 @@ function buildTurnReport(gameState, playerIndex){
   // still only the SAME-TURN transients (Bless, Consecrate, Earthquake no-tax, Sabotage). Keep this
   // loop and the end-of-turn collector in step.
   const _taxAccR=new Map(); // per-effect gold paid so far (capped `tax` discoveries)
+  // the 5%-of-base ceiling every tax-gold source shares. Base = the bare province tax of the land
+  // held now, before any bonus or penalty — computed up front so the loop below can cap as it goes.
+  const _baseTaxR=realmBaseTax(gameState,playerIndex), _taxCapR=taxBonusCap(_baseTaxR);
   const _nextTurn=(gameState.turn||0); // reports are built AFTER the turn counter advances, so gameState.turn is already the turn whose end-of-turn collection this forecasts
   const provTaxIncome=(player.provinces||[]).reduce((s,pid)=>{
     const pv=gameState.world.provinces[pid]; if(!pv) return s;
@@ -9034,17 +9047,20 @@ function buildTurnReport(gameState, playerIndex){
     _eqReduction+=(_t0-t);                                        // gold lost to earthquakes (positive)
     // every province-tax discovery (Advanced Agriculture, Mining, Aqueducts … heritage & creed) now
     // runs through discTaxAdd, capped exactly as the collector caps it.
-    { const _dt=discTaxAdd(player,pv,gameState,playerIndex,_taxAccR); t+=_dt; _sdCreed+=_dt; }
+    { const _dt=discTaxAdd(player,pv,gameState,playerIndex,_taxAccR,_taxCapR); t+=_dt; _sdCreed+=_dt; }
     if(gdActiveFor(gameState,playerIndex,'Good')&&(pv.garrisonArmies||[]).length>0){ t+=2; _sdGrand+=2; } // GRAND DESIGN — Good: +2 tax per garrisoned province (only while the Wonder's province is held)
     return s+t;
   },0);
   const _pChars=(gameState.characters||[]).filter(c=>c.player===playerIndex&&c.alive);
   const _itemStat=(st)=>_pChars.reduce((s,c)=>s+(activeItems(c).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
-  const taxBonus=_pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+_itemStat('taxBonus'); // Ring of Wealth
+  // item tax gold (Ring of Wealth & co, Merchant's Ledger) — together capped at 5% of base tax
+  const _taxBonusRaw=_pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+_itemStat('taxBonus');
   const ledgers=_pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
-  const perProvBonus=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
+  const _perProvRaw=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
+  const _itemTaxR=capItemTaxGold(_taxBonusRaw,_perProvRaw,_taxCapR);
+  const taxBonus=_itemTaxR.taxBonus, perProvBonus=_itemTaxR.perProvBonus;
   const interestBonus=discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
-  _sdRecords=hasDiscR('sd14')?taxRecordsGold(provTaxIncome):0; // sd14 Taxation Records — keep in step with the collector
+  _sdRecords=hasDiscR('sd14')?taxRecordsGold(provTaxIncome,_taxCapR):0; // sd14 Taxation Records — keep in step with the collector
   const neutralTradeBonus=neutralTradeGold(player,provTaxIncome);
   // title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings /
   // computeMinorTitles are module-level and already used above, so the report builder can read the
@@ -9175,7 +9191,7 @@ function buildTurnReport(gameState, playerIndex){
     } }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
-    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
+    kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,taxBonusCapG:_taxCapR,taxBonusCutG:_itemTaxR.cut,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
     exploreDiscMult:Object.fromEntries(['plain','desert','forest','mountain','jungle','sea'].map(t=>[t,discExploreMult(player,t)])), // player portal explore preview
     discoveries:(player.discoveries||[]).map(d=>{ const m=DISC_BY_ID[d.id]; return {id:d.id,name:(m&&m.name)||d.name,category:(m&&m.category)||d.category,desc:(m&&m.desc)||d.desc,turnDiscovered:d.turnDiscovered}; }), // master text wins over the copy stored at discovery time
     // the Research order's category dropdown — every category this realm is eligible for, with how
@@ -9333,7 +9349,26 @@ function discEffectsOf(pl, kind){
 // Tunable magnitude of a discovery still wired by id (its row in SAGE_DISCOVERIES_P holds the number).
 function discParam(id, field, dflt){ const d=DISC_BY_ID[id]; const v=d&&d.effect?d.effect[field]:undefined; return (v==null)?dflt:v; }
 // sd14 Taxation Records: +pct% of province income (integer maths, rounded down), capped.
-function taxRecordsGold(income){ const pc=Math.round(discParam('sd14','pct',0.05)*100); return Math.min(discParam('sd14','max',99), Math.floor((income||0)*pc/100)); }
+function taxRecordsGold(income, capG){ const pc=Math.round(discParam('sd14','pct',0.05)*100); const raw=Math.floor((income||0)*pc/100);
+  return Math.min(capG!=null?capG:discParam('sd14','max',99), raw); }
+// ── TAX-BONUS CEILING (Toby 2026-09-24) ─────────────────────────────────────────────────────
+// No single source of extra TAX INCOME may pay more than 5% of the realm's BASE tax income — the
+// bare sum of its provinces' tax, before consecration, Bless, enslavement, earthquakes, discoveries
+// or anything else. It binds each province-tax discovery, Taxation Records, and the magic items
+// that pay tax gold (their combined total). Always at least 1g, so a small realm still gains.
+const TAX_BONUS_CAP_PCT=0.05;
+function realmBaseTax(gs, pi){
+  const provs=(gs&&gs.world&&gs.world.provinces)||[];
+  return provs.reduce((s,pv)=>s+((pv&&pv.owner===pi)?(pv.tax||0):0),0);
+}
+function taxBonusCap(baseTax){ return Math.max(1, Math.floor((baseTax||0)*TAX_BONUS_CAP_PCT)); }
+// Magic items that pay tax gold (`taxBonus` flat, `taxPerProv` per province) share ONE ceiling:
+// the flat bonuses are paid first, the per-province gold fills whatever is left.
+function capItemTaxGold(taxBonus, perProvBonus, capG){
+  const flat=Math.min(taxBonus||0, capG);
+  const perProv=Math.min(perProvBonus||0, Math.max(0, capG-flat));
+  return {taxBonus:flat, perProvBonus:perProv, cut:((taxBonus||0)+(perProvBonus||0))-(flat+perProv)};
+}
 // CEILINGS (Toby 2026-09-21): however many discoveries a realm stacks, the unit-strength multiplier
 // they give any one unit never exceeds ×1.30, and the own-ground fortification bonus (defOwn) never
 // exceeds +30%.
@@ -9364,10 +9399,13 @@ function discProvCoastal(gs, pv){
 // Per-province `tax` discovery gold. `acc` (a Map, one per realm per collection) tracks what each
 // capped effect (`max`) has already paid this turn, so a capped discovery never pays more than its
 // ceiling however large the realm grows. Shared by the collector and the report forecast.
-function discTaxAdd(pl, pv, gs, pi, acc){
+function discTaxAdd(pl, pv, gs, pi, acc, capG){
   let add=0;
   discEffectsOf(pl,'tax').forEach(e=>{ if(!discTaxMatch(e,pv,gs,pi,pl)) return; let b=e.bonus||0;
-    if(e.max!=null){ const u=acc.get(e)||0; b=Math.max(0,Math.min(b,e.max-u)); acc.set(e,u+b); }
+    // every province-tax discovery is capped: at `capG` (5% of the realm's base tax income) and, if
+    // its row still carries a fixed `max`, at that too. `acc` tracks what each effect has paid.
+    const lim=(capG!=null)?Math.min(capG, e.max!=null?e.max:capG):e.max;
+    if(lim!=null){ const u=acc.get(e)||0; b=Math.max(0,Math.min(b,lim-u)); acc.set(e,u+b); }
     add+=b; });
   return add;
 }
@@ -17429,6 +17467,11 @@ const BATTLE_ARMY_SPELLS={
       }
       case 'use_item':{
         // Trigger an ACTIVE magic item (one that must be invoked, not a passive bonus).
+        // 2026-09-24 (Toby): not while charmed. An enchanted mind fights with what it carries — its
+        // passive magic works as ever — but will not be made to spend a treasure on a stranger's
+        // errand. Refused here as well as hidden on the form, since `target` is matched by NAME and a
+        // crafted order would otherwise let a charmer probe the pack by reading the result.
+        if(isCharmedNow(G,c)){ log('system',`${c.name} will not spend what they carry at another's bidding — a mind held by enchantment keeps its treasures to itself.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
         const it=(c.items||[]).find(x=>String(x.id)===String(target)||x.name===target);
         if(!it){log('system',`${c.name}: no such item to use.`,{actor:c.player,targets:[c.player]});break;}
         if(it._spent){log('system',`The ${it.name} has already been used.`,{actor:c.player,targets:[c.player]});break;}
@@ -17520,33 +17563,43 @@ const BATTLE_ARMY_SPELLS={
         // • SAME province → delivered at once, usable later this turn (as before);
         // • DIFFERENT province → the items leave the sender NOW but travel by courier and ARRIVE with
         // the recipient at the END of the turn (queued on G._itemDeliveries), ready to use next turn.
-        // the recipient is notified in THEIR own Chronicle section, this phase. 2026-09-12 refused
-        // Send Item outright for a CHARMED hero (enemy seized for the turn, or a wanderer swayed
-        // this turn). 2026-09-18 SUPERSEDES that refusal: A charmed hero will send ONE item, once
-        // per turn, and the charmer never chooses which — the hero hands over whatever they stole
-        // earlier this turn first (the loot was never theirs to keep), otherwise the WEAKEST thing
-        // they carry (lowest itemPowerScore, ties to the lower tier). Any item list in `target` is
-        // ignored.
-        const _charmedSender=!!(c._charmTempControl||c._charmedTurn===G.turn);
-        if(_charmedSender&&c._charmSendUsed===G.turn){ log('system',`${c.name} will part with no more — a charmed mind gives up one possession a season, and no more.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
+        // the recipient is notified in THEIR own Chronicle section, this phase.
+        // ── CHARMED HEROES SEND NOTHING, AND RECEIVE NOTHING ──────────────────────────────────────
+        // 2026-09-12 refused Send Item outright for a charmed hero; 2026-09-18 relaxed it to ONE
+        // engine-chosen item a turn; 2026-09-24 (Toby) settles it the other way for good, in both
+        // directions. An enchanter borrows a mind for a season and gains no quartermaster: a charmed
+        // hero will not hand their possessions to anyone, and will not be handed anything either. Both
+        // checks live here rather than only on the order form, so a stale draft or a hand-crafted
+        // submission cannot walk past them. The hero's own gear is untouched throughout.
+        if(isCharmedNow(G,c)){ log('item',`${c.name} will part with nothing — a mind held by enchantment guards its own possessions, whatever it is bidden.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
         const recip=orderCharRef(G,extra); // a plain id, or a pre-order hero's synthetic id
         if(!recip){log('item',`${c.name}: cannot send item — no such recipient.`,{actor:c.player,targets:[c.player]});break;}
+        if(isCharmedNow(G,recip)){log('item',`${c.name} keeps the items — ${recip.name} is held by a Charm, and an enchanted mind is trusted with nothing. Send them on once the hero serves you of their own will.`,{actor:c.player,targets:[c.player],charId:c.id});break;}
         if(isPreOrderRef(extra)&&(recip.player!==c.player||!recip.alive||recip._charmTempControl)){log('item',`${c.name} keeps the items — ${recip.name} is not in your service${recip.alive?'':' (they have fallen)'}: the hire, raising or charm did not land (or has not happened yet), so nothing is sent.`,{actor:c.player,targets:[c.player],charId:c.id});break;}
         if(recip.player!==c.player||!recip.alive){log('item',`${c.name}: items can only be sent to one of your own living characters.`,{actor:c.player,targets:[c.player]});break;}
         if(recip.id===c.id){log('item',`${c.name}: cannot send items to themselves.`,{actor:c.player,targets:[c.player]});break;}
         const _held=(c.items||[]);
         let idxs;
-        if(_charmedSender){
-          c._charmSendUsed=G.turn; // the one order is spent whether or not anything is found to send
-          const pool=_held.map((it,i)=>({it,i})).filter(x=>x.it&&!isMithril(x.it));
-          if(!pool.length){ log('item',`${c.name} turns out their pack for ${recip.name} — and has nothing to give.`,{actor:c.player,targets:[c.player],charId:c.id}); break; }
-          const stolen=pool.filter(x=>x.it._stolenTurn===G.turn);
-          const pick=(stolen.length?stolen:pool).slice().sort((a,b)=>(itemPowerScore(a.it)-itemPowerScore(b.it))||((a.it.tier||1)-(b.it.tier||1)))[0];
-          idxs=[pick.i];
-          log('system',`${c.name}, charmed, hands over ${stolen.length?'what they stole this season':'the least of what they carry'} without being asked which.`,{actor:c.player,targets:[c.player],charId:c.id});
+        if(String(target||'').trim().toLowerCase()==='all'){ idxs=_held.map((_,i)=>i); }
+        else{
+          // ── 2026-09-24 (Toby): a token may be a positional INDEX (as always) or an item ID / NAME ──
+          // Send Item was index-only, and an index is only meaningful when the order form's list and
+          // the engine's `c.items` are the same list in the same order. They are NOT for a PRE-ORDER
+          // card: a hero being HIRED has a real pack the player has never seen, so the form's index 0
+          // (the sword you sent them an hour ago) is some other item entirely at resolution — you
+          // would send the wrong thing, chosen by an accident of ordering. Equip Items and Use Item
+          // already addressed items by id-or-name for exactly this reason; Send Item now does too, so
+          // the player form can name what it means whenever position cannot be trusted.
+          // Backward compatible: a token that is a plain integer in range is still positional, so
+          // every existing (and in-flight) order behaves identically. `String(n)===t` is what keeps a
+          // name that merely STARTS with digits ("3 Rings of Dawn") out of the positional branch.
+          const _toks=String(target||'').split(',').map(s=>s.trim()).filter(Boolean);
+          idxs=_toks.map(t=>{
+            const n=parseInt(t);
+            if(Number.isInteger(n)&&String(n)===t&&n>=0&&n<_held.length) return n;
+            return _held.findIndex(it=>it&&(String(it.id)===t||it.name===t));
+          }).filter(n=>Number.isInteger(n)&&n>=0&&n<_held.length);
         }
-        else if(String(target||'').trim().toLowerCase()==='all'){ idxs=_held.map((_,i)=>i); }
-        else{ idxs=String(target||'').split(',').map(s=>parseInt(s.trim())).filter(n=>Number.isInteger(n)&&n>=0&&n<_held.length); }
         let uniq=[...new Set(idxs)].sort((a,b)=>b-a);
         // A granted Mithril suit is forged to its wearer and cannot be sent on.
         if(uniq.some(i=>isMithril(_held[i]))){
@@ -21960,6 +22013,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           log('system',`${p.name} has ${p.gold||0}g in the treasury.`,{actor:p.id,targets:[p.id]});
         }
         const _taxAcc=new Map(); // capped `tax` discoveries: gold paid so far this collection
+        const _baseTax=realmBaseTax(G,pi), _taxCap=taxBonusCap(_baseTax); // 5%-of-base ceiling (Toby 2026-09-24)
         let _consecBonus=0; // DIVINE — Consecrate: track the +50% holy-ground uplift so the player can SEE it itemised
         const income=(p.provinces||[]).reduce((s,id)=>{
           const pv=G.world.provinces[id];if(!pv) return s;
@@ -21972,7 +22026,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           if(pv._earthquakeTax) t=Math.max(0,t-(pv._earthquakeTax||0));
           // every province-tax discovery (sd11 / sd15 / sd18 and the heritage & creed ones), capped
           // per discovery — see discTaxAdd. Keep in step with buildTurnReport.
-          t+=discTaxAdd(p,pv,G,pi,_taxAcc);
+          t+=discTaxAdd(p,pv,G,pi,_taxAcc,_taxCap);
           // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a
           // garrison.
           if(gdActive(pi,'Good')&&(pv.garrisonArmies||[]).length>0) t+=2;
@@ -21980,17 +22034,20 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         },0);
         const pChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
         const itemStat=(st)=>pChars.reduce((s,c)=>s+(activeItems(c).reduce((a,it)=>a+(it.effect&&it.effect.stat===st?it.effect.bonus:0),0)),0);
-        const taxBonus=pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+itemStat('taxBonus'); // Ring of Wealth
-        // Merchant's Ledger: +1g per province owned (if any of the player's heroes carries one).
+        // Ring of Wealth & co (flat) and Merchant's Ledger (+1g per province owned, if any hero
+        // carries one) pay tax gold — together they are capped at 5% of the realm's base tax income.
+        const _taxBonusRaw=pChars.reduce((s,c)=>s+(c.taxBonus||0),0)+itemStat('taxBonus');
         const ledgers=pChars.some(c=>activeItems(c).some(it=>it.effect&&it.effect.stat==='taxPerProv'));
-        const perProvBonus=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
+        const _perProvRaw=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
+        const _itemTax=capItemTaxGold(_taxBonusRaw,_perProvRaw,_taxCap);
+        const taxBonus=_itemTax.taxBonus, perProvBonus=_itemTax.perProvBonus;
         const interestBonus=discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
         // Neutral trade: +20% of province income, rounded down.
         // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
         // sd14 Taxation Records: +10% of province income, rounded down. Integer maths for the same
         // reason neutralTradeGold uses it — floor(income*0.10) drifts a gold on float-unfriendly
         // totals.
-        const taxRecordsBonus=hasDisc(pi,'sd14')?taxRecordsGold(income):0;
+        const taxRecordsBonus=hasDisc(pi,'sd14')?taxRecordsGold(income,_taxCap):0;
         const neutralTradeBonus=neutralTradeGold(p,income);
         // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g
         // per 5 provinces.
@@ -23599,6 +23656,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.24-1348</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.24-1615</div>
 </body>
 </html>
