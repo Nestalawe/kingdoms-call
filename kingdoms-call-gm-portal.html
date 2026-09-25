@@ -167,6 +167,7 @@ section{display:none;}.section-active{display:block;}
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-gold" onclick="showNewGame()">+ New Game</button>
+        <button class="btn btn-ghost" onclick="openTransferGames(null)" title="Hand every game you run to another GM account">⇄ Transfer All Games</button>
         <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
         <button class="btn btn-ghost" onclick="changePassword()">🔑 Change Password</button>
         <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
@@ -265,6 +266,7 @@ section{display:none;}.section-active{display:block;}
       <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
       <h2 id="detail-game-name">Game</h2>
       <span id="detail-status-pill"></span>
+      <button class="btn btn-ghost" style="font-size:.68rem" onclick="openTransferGames(currentGame?.id)">⇄ Transfer Game</button>
       <button class="btn btn-ghost" style="color:#c00;border-color:#c00;font-size:.68rem" onclick="deleteGame(currentGame?.id)">🗑 Delete Game</button>
     </div>
     <div id="detail-msg"></div>
@@ -1044,6 +1046,7 @@ async function loadGames(){
   el.innerHTML='<div class="msg-info">Loading…</div>';
   const {data,error}=await sb.from('games').select('*, game_players(*)').eq('gm_user_id',currentUser.id).order('created_at',{ascending:false});
   if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  _myGames=(data||[]).map(g=>({id:g.id,name:g.name,status:g.status})); // for Transfer All Games
   if(!data||data.length===0){
     el.innerHTML='<div class="msg-info">No games yet. Click "+ New Game" to create your first game.</div>';return;
   }
@@ -1779,6 +1782,113 @@ async function loadTurnLog(gameId, turn){
   }
 
   el.innerHTML=html||'<div style="color:#999;font-size:.85rem">No entries.</div>';
+}
+
+// ── TRANSFER GAMES TO ANOTHER GM (2026-09-25, Toby) ────
+// A game's ownership is one column, games.gm_user_id; players, orders and turn logs hang off the
+// game id and never mention the GM, so a transfer is a single UPDATE. Two things stop the browser
+// doing it directly: the anon client cannot turn an email into a user id (auth.users is not
+// readable), and the games UPDATE policy lets a row be written only by its CURRENT owner — who is
+// exactly the one giving it away. So the work is done by ONE SECURITY DEFINER function,
+// kc_transfer_games, which the GM pastes into the SQL Editor once (the portal prints it, with a
+// copy button, the first time it finds the function missing). The function moves only games the
+// caller owns and only to an existing account, so the anon key gains nothing else.
+let _myGames=[]; // {id,name,status} of the signed-in GM's games, refreshed by loadGames
+const KC_TRANSFER_SQL=`-- Kingdoms Call: one-time setup for "Transfer Game" in the GM portal.
+-- Run once in Supabase -> SQL Editor. Safe to re-run (create or replace).
+create or replace function public.kc_transfer_games(p_game_ids text[], p_new_gm_email text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_new uuid;
+  v_n   integer;
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  select id into v_new from auth.users
+   where lower(email) = lower(trim(p_new_gm_email)) limit 1;
+  if v_new is null then
+    raise exception 'No account is registered with the email %', trim(p_new_gm_email);
+  end if;
+  if v_new = auth.uid() then
+    raise exception 'That is the account you are signed in as';
+  end if;
+  update public.games
+     set gm_user_id = v_new
+   where id::text = any(p_game_ids)
+     and gm_user_id = auth.uid();   -- only games the caller owns can move
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
+revoke all on function public.kc_transfer_games(text[], text) from public;
+grant execute on function public.kc_transfer_games(text[], text) to authenticated;`;
+
+// gameId: a single game to hand over, or null for every game the GM runs.
+function openTransferGames(gameId){
+  if(document.getElementById('xfer-overlay')) return;
+  const one=gameId?(_myGames.find(g=>g.id===gameId)||(currentGame&&currentGame.id===gameId?{id:gameId,name:currentGame.name}:null)):null;
+  const targets=one?[one]:_myGames.slice();
+  if(!targets.length){ alert('There are no games to transfer.'); return; }
+  const ov=document.createElement('div');
+  ov.id='xfer-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:99999';
+  const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  ov.innerHTML=`
+    <div style="background:#f5ecd8;color:#1a1208;border:2px solid #c8922a;border-radius:6px;padding:20px;max-width:520px;width:92%;max-height:86vh;overflow:auto">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:10px;color:#7a1c1c">⇄ Transfer ${one?'this game':'all games'} to another GM</div>
+      <div style="font-size:.86rem;margin-bottom:8px">${one
+        ? `<strong>${esc(one.name)}</strong> will be handed to the GM account below. Players, orders, reports and the chronicle are untouched — only who runs it changes.`
+        : `<strong>${targets.length} game${targets.length!==1?'s':''}</strong> will be handed to the GM account below. Players, orders, reports and chronicles are untouched — only who runs them changes.`}</div>
+      ${one?'':`<div style="font-size:.8rem;color:#6b5a42;margin-bottom:8px;max-height:110px;overflow:auto;border:1px solid #d8cbb0;border-radius:3px;padding:6px 8px;background:#fdf8ee">${targets.map(g=>'• '+esc(g.name)).join('<br>')}</div>`}
+      <label style="font-size:.75rem;display:block;margin-bottom:2px">Email of the receiving GM account</label>
+      <input type="email" id="xfer-email" placeholder="gm@example.com" style="width:100%;padding:7px;margin-bottom:6px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitTransferGames()">
+      <div style="font-size:.76rem;color:#6b5a42;margin-bottom:10px">The account must already exist (it signs up through the GM portal like any other). If any of these games run in an automatic turn mode, the receiving GM must keep a signed-in portal tab open from now on — the watcher only runs games of the GM whose tab it is.</div>
+      <div id="xfer-msg" style="font-size:.8rem;margin-bottom:10px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeTransferGames()">Cancel</button>
+        <button class="btn btn-crimson" id="xfer-go" onclick="submitTransferGames()">Transfer ${targets.length} game${targets.length!==1?'s':''}</button>
+      </div>
+    </div>`;
+  ov._targets=targets;
+  document.body.appendChild(ov);
+  document.getElementById('xfer-email').focus();
+}
+function closeTransferGames(){ const o=document.getElementById('xfer-overlay'); if(o) o.remove(); }
+async function submitTransferGames(){
+  const ov=document.getElementById('xfer-overlay'); if(!ov) return;
+  const msg=document.getElementById('xfer-msg'), go=document.getElementById('xfer-go');
+  const email=(document.getElementById('xfer-email').value||'').trim();
+  const targets=ov._targets||[];
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ msg.innerHTML='<span style="color:#c00">Enter the receiving GM\'s email address.</span>'; return; }
+  if(currentUser&&currentUser.email&&email.toLowerCase()===currentUser.email.toLowerCase()){ msg.innerHTML='<span style="color:#c00">That is the account you are signed in as.</span>'; return; }
+  const n=targets.length;
+  if(!confirm(`Hand ${n===1?`"${targets[0].name}"`:n+' games'} to ${email}?\n\nThis account will no longer see ${n===1?'it':'them'}. The receiving GM can transfer ${n===1?'it':'them'} back the same way.`)) return;
+  go.disabled=true; msg.innerHTML='<span style="color:#555">Transferring…</span>';
+  const {data,error}=await sb.rpc('kc_transfer_games',{p_game_ids:targets.map(g=>String(g.id)), p_new_gm_email:email});
+  go.disabled=false;
+  if(error){
+    // PostgREST answers PGRST202 (schema cache) / 42883 (Postgres) when the function is not there:
+    // first use on this database. Print the one-time setup rather than a bare error.
+    const missing=error.code==='PGRST202'||error.code==='42883'||/could not find the function|does not exist/i.test(error.message||'');
+    if(missing){
+      msg.innerHTML=`<div class="msg-error" style="margin:0 0 6px">One-time setup needed: the database does not yet have the <code>kc_transfer_games</code> function that does the hand-over.</div>
+        <div style="font-size:.8rem;margin-bottom:4px">Copy the SQL below, paste it into <strong>Supabase → SQL Editor → New query</strong>, press <strong>Run</strong>, then press Transfer again. It only ever needs doing once.</div>
+        <textarea id="xfer-sql" readonly style="width:100%;height:150px;font-family:monospace;font-size:.7rem;margin-bottom:6px;box-sizing:border-box">${KC_TRANSFER_SQL.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
+        <button class="btn btn-gold" style="font-size:.68rem;padding:4px 10px" onclick="(async()=>{try{await navigator.clipboard.writeText(KC_TRANSFER_SQL);this.textContent='✓ Copied';}catch(e){document.getElementById('xfer-sql').select();document.execCommand('copy');this.textContent='✓ Copied';}}).call(this)">📋 Copy SQL</button>`;
+      return;
+    }
+    msg.innerHTML=`<span style="color:#c00">${String(error.message||'Transfer failed.').replace(/</g,'&lt;')}</span>`;
+    return;
+  }
+  const moved=(typeof data==='number')?data:parseInt(data)||0;
+  if(moved<n) msg.innerHTML=`<span style="color:#a60">Moved ${moved} of ${n} — the rest are not owned by this account any more (already transferred?).</span>`;
+  else msg.innerHTML=`<span style="color:#2d7a2d">✓ ${moved} game${moved!==1?'s':''} now belong${moved===1?'s':''} to ${email.replace(/</g,'&lt;')}.</span>`;
+  setTimeout(()=>{ closeTransferGames(); currentGame=null; show('sec-games'); loadGames(); },1400);
 }
 
 // ── DELETE GAME ────
@@ -23867,6 +23977,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1729</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1743</div>
 </body>
 </html>
