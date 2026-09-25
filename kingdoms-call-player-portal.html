@@ -45,7 +45,31 @@ if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/su
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#1a1208;--ink-light:#3d2b0f;--crimson:#7a1c1c;--gold:#c8922a;--gold-light:#e8b84b;--forest:#2d4a1e;--stone:#6b5a42;--bg:#0e0a04;}
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0f0a02;--ink-light:#2a1b04;--crimson:#6d1414;--gold:#c8922a;--gold-light:#e8b84b;--forest:#233d16;--stone:#4a3a22;--stone-dim:#c0ab88;--bg:#0e0a04;}
+/* ── CONTRAST PASS (2026-09-26, Toby item 6) ────────────────────────────────────────────────
+   Every ink on parchment is darker: --ink and --ink-light are near-black browns now, --crimson
+   and --forest are deepened so headings and buttons read at a glance, and --stone — the muted
+   tone used for labels, captions, hints and hairline borders all over both portals — drops from
+   #6b5a42 to #4a3a22 (about 8.5:1 on parchment, up from 4.6:1).
+   --stone is ALSO used for muted text on the handful of DARK panels (the masthead strapline, the
+   invite pickers, the turn-mode box). Darkening it there would make things worse, not better, so
+   those surfaces redefine the variable for their own subtree back to a light --stone-dim. Custom
+   properties inherit, so redefining --stone on an ancestor is enough — no call site changes.
+   The [style*="…"] selectors match the inline background colours those dark panels already carry. */
+.masthead .sub,.masthead,#spinner,#rp-map-col,[style*="#0e0a04"],[style*="#20160c"],[style*="#12100b"],[style*="#0d0b07"],[style*="#1a0c0c"]{--stone:var(--stone-dim);}
+.card [style*="background:#20160c"],.card [style*="background:#12100b"]{--stone:var(--stone-dim);}
+/* Ghost buttons sit on both surfaces: light-on-dark outside a card, dark-on-parchment inside one. */
+.btn-ghost{color:#c3ad88;border-color:#8d795a;}
+.card .btn-ghost,.game-card .btn-ghost,.player-slot .btn-ghost{color:#4a3a22;border-color:#6b5a42;}
+.card .btn-ghost:hover,.game-card .btn-ghost:hover,.player-slot .btn-ghost:hover{color:#6d1414;border-color:#6d1414;}
+/* Body copy a shade heavier: at these sizes on parchment it is the weight, not just the hue,
+   that carries the contrast. */
+body{-webkit-font-smoothing:antialiased;}
+.card,.game-card,.player-slot,.report-prov,.log-entry{color:var(--ink);--stone:#4a3a22;}
+/* A parchment card re-asserts the dark muted tone for its own subtree, so a card shown inside a
+   dark panel (the desktop layout moves the report into the left map column) never inherits the
+   light one. A dark panel nested inside a card still wins for itself — the nearest declaring
+   ancestor decides, not source order. */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;}
 #page{max-width:820px;margin:0 auto;padding:20px;}
@@ -172,7 +196,7 @@ section{display:none;}.section-active{display:block;}
 .log-entry.combat{border-left-color:var(--crimson);}
 .log-entry.explore{border-left-color:var(--forest);}
 .log-entry.hire{border-left-color:var(--gold);}
-.log-entry.system{border-left-color:#888;font-style:italic;color:#666;}
+.log-entry.system{border-left-color:#888;font-style:italic;color:#463f32;}
 .intel-plain .log-entry,.intel-plain .log-entry.system{font-style:normal;color:var(--ink);}
 .intel-plain .ti-line{padding-left:10px;margin-top:1px;}
 .log-entry.stat{border-left-color:#4a90d9;background:#f0f6ff;font-family:'Courier New',monospace;font-size:.75rem;color:#2c4a6e;line-height:1.4;}
@@ -401,7 +425,7 @@ section{display:none;}.section-active{display:block;}
         <div>
           <label>Your Realm's Name</label>
           <input type="text" id="join-kingdom-name" placeholder="e.g. the Realm of Woe">
-          <div style="font-size:.68rem;color:#777;margin-top:2px">Shown in reports as "…of &lt;this&gt;". Include "the" if you want it, e.g. "the Iron Throne".</div>
+          <div style="font-size:.68rem;color:#4f4739;margin-top:2px">Shown in reports as "…of &lt;this&gt;". Include "the" if you want it, e.g. "the Iron Throne".</div>
         </div>
       </div>
 
@@ -411,7 +435,7 @@ section{display:none;}.section-active{display:block;}
           <select id="join-race" onchange="updateRaceDesc()">
             <option>Human</option><option>Elven</option><option>Dwarven</option><option>Orcish</option>
           </select>
-          <div id="join-race-desc" style="font-size:.72rem;color:#555;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
+          <div id="join-race-desc" style="font-size:.72rem;color:#3c362c;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
         </div>
         <div>
           <label>Alignment</label>
@@ -419,14 +443,14 @@ section{display:none;}.section-active{display:block;}
             <option value="Divine">Divine</option><option value="Good">Good</option><option value="Druidic">Druidic</option>
             <option value="Neutral" selected>Neutral</option><option value="Pagan">Pagan</option><option value="Evil">Evil</option><option value="Undead">Undead</option>
           </select>
-          <div id="join-alignment-desc" style="font-size:.72rem;color:#555;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
+          <div id="join-alignment-desc" style="font-size:.72rem;color:#3c362c;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
         </div>
         <div>
           <label>Temper</label>
           <select id="join-temper" onchange="updateTemperDesc()">
             <option>Berserk</option><option selected>Brave</option><option>Cautious</option><option>Cowardly</option>
           </select>
-          <div id="join-temper-desc" style="font-size:.72rem;color:#555;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
+          <div id="join-temper-desc" style="font-size:.72rem;color:#3c362c;margin-top:4px;padding:4px 6px;background:#f5f0e8;border-radius:2px;line-height:1.4"></div>
         </div>
       </div>
 
@@ -503,7 +527,7 @@ section{display:none;}.section-active{display:block;}
           <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="gravesFresh"></span> Army graves — known this turn (certainly there)</span>
           <span style="display:flex;align-items:center;gap:5px"><span data-mapsym="gravesStale"></span> Army graves — older knowledge (may be gone)</span>
           <span style="display:flex;align-items:center;gap:5px"><strong style="color:#ddd">%</strong> = explored</span>
-          <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#999">Race (bottom-right):</span>
+          <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="color:#5f5544">Race (bottom-right):</span>
             <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#c9a961;color:#1a1208;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">H</span> Human
             <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#6fbf73;color:#0c2a0e;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">E</span> Elven
             <span style="display:inline-block;width:14px;height:14px;line-height:14px;border-radius:50%;background:#9fa8b8;color:#151a22;font-size:.6rem;font-weight:700;text-align:center;font-family:Cinzel,serif">D</span> Dwarven
@@ -552,7 +576,7 @@ section{display:none;}.section-active{display:block;}
               <button class="secall-btn" onclick="collapseAllChronicle(false)" title="Expand every character &amp; event">&#9662; all</button>
             </span>
           </h2>
-          <div id="report-log"><em style="color:#999;font-size:.85rem">No events yet.</em></div>
+          <div id="report-log"><em style="color:#5f5544;font-size:.85rem">No events yet.</em></div>
         </div>
 
         <div class="card" id="realm-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
@@ -567,22 +591,22 @@ section{display:none;}.section-active{display:block;}
 
         <div class="card" id="other-forces-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>⚔ Other Armies &amp; Heroes</h2>
-          <div id="report-other-forces"><em style="color:#999;font-size:.85rem">No mercenary bands, loose heroes or known graveyards yet.</em></div>
+          <div id="report-other-forces"><em style="color:#5f5544;font-size:.85rem">No mercenary bands, loose heroes or known graveyards yet.</em></div>
         </div>
 
         <div class="card" id="lairs-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🐉 Known Lairs</h2>
-          <div id="report-lairs"><em style="color:#999;font-size:.85rem">No lairs discovered yet.</em></div>
+          <div id="report-lairs"><em style="color:#5f5544;font-size:.85rem">No lairs discovered yet.</em></div>
         </div>
 
         <div class="card" id="diplomacy-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🤝 Diplomacy</h2>
-          <div id="report-diplomacy"><em style="color:#999;font-size:.85rem">No realms encountered yet.</em></div>
+          <div id="report-diplomacy"><em style="color:#5f5544;font-size:.85rem">No realms encountered yet.</em></div>
         </div>
 
         <div class="card" id="titles-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>🏆 Titles &amp; Victory</h2>
-          <div id="report-titles"><em style="color:#999;font-size:.85rem">The Imperial Titles are contested in secret until Turn 5.</em></div>
+          <div id="report-titles"><em style="color:#5f5544;font-size:.85rem">The Imperial Titles are contested in secret until Turn 5.</em></div>
         </div>
 
         <div class="card" id="mastery-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none;display:none">
@@ -592,7 +616,7 @@ section{display:none;}.section-active{display:block;}
 
         <div class="card" id="discoveries-card" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
           <h2>💡 Sage Discoveries</h2>
-          <div id="report-discoveries"><em style="color:#999;font-size:.85rem">No discoveries yet.</em></div>
+          <div id="report-discoveries"><em style="color:#5f5544;font-size:.85rem">No discoveries yet.</em></div>
         </div>
 
       </div><!-- end middle report column -->
@@ -762,7 +786,7 @@ function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const
 function itemSlotTag(it,c){
   // name the slot AND how many of that slot the character still has free.
   const sl=itemSlotP(it);
-  if(!sl) return ` <span style="color:#777;font-size:.72rem">[carried — needs no slot]</span>`;
+  if(!sl) return ` <span style="color:#4f4739;font-size:.72rem">[carried — needs no slot]</span>`;
   const cap=ITEM_SLOT_CAP_P[sl]||1;
   const used=c?((c.items||[]).filter(o=>o&&itemSlotP(o)===sl&&o.equipped!==false&&itemUsableByP(o,c)).length):(it.equipped===false?0:1);
   const free=Math.max(0,cap-used);
@@ -970,10 +994,10 @@ function setDiscoveryChoice(key,id){ discoveryChoices[key]=id; renderDiscoveryCh
 function renderConcede(){
   const w=document.getElementById('concede-wrap'); if(!w) return;
   const k=currentReport?.kingdom||{};
-  if(k.conceded){ w.innerHTML=`<div style="background:#eee;border:1px solid #999;border-radius:3px;padding:6px 8px;color:#555">\u{1F3F3} <strong>Your realm has conceded.</strong> Your heroes hold their ground and take no further orders.</div>`; return; }
+  if(k.conceded){ w.innerHTML=`<div style="background:#eee;border:1px solid #999;border-radius:3px;padding:6px 8px;color:#3c362c">\u{1F3F3} <strong>Your realm has conceded.</strong> Your heroes hold their ground and take no further orders.</div>`; return; }
   w.innerHTML=concedeGame
     ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px">\u{1F3F3} <strong>You will CONCEDE the game with these orders.</strong> This cannot be undone once the turn runs. <button type="button" onclick="setConcede(false)" style="margin-left:6px;font-size:.7rem;padding:2px 8px;cursor:pointer">Cancel</button></div>`
-    : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#666;border-radius:2px;cursor:pointer" title="Withdraw your realm from the game">\u{1F3F3} Concede the game\u2026</button>`;
+    : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#463f32;border-radius:2px;cursor:pointer" title="Withdraw your realm from the game">\u{1F3F3} Concede the game\u2026</button>`;
 }
 function setConcede(v){
   if(v && !confirm('Concede the game?\n\nYour realm withdraws for good: from the turn this is submitted your heroes will only Defend, and you can never rejoin. If every other realm has conceded, or all those left are one alliance, the game ends at once and the results are shown.\n\nSubmit your orders to confirm.')) return;
@@ -1354,7 +1378,7 @@ async function submitChangePassword(){
   const msg=document.getElementById('cp-msg');
   if(!p1||p1.length<6){ msg.innerHTML='<span style="color:#c00">Password must be at least 6 characters.</span>'; return; }
   if(p1!==p2){ msg.innerHTML='<span style="color:#c00">Passwords do not match.</span>'; return; }
-  msg.innerHTML='<span style="color:#555">Updating…</span>';
+  msg.innerHTML='<span style="color:#3c362c">Updating…</span>';
   try{
     const {error}=await sb.auth.updateUser({password:p1});
     if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
@@ -1474,7 +1498,7 @@ async function loadMyGames(){
   const {data:mySlots,error}=await sb.from('game_players').select('*').eq('user_id',currentUser.id);
   if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
   if(!mySlots||mySlots.length===0){
-    el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">You are not enrolled in any games yet. Join an open game below.</div>';
+    el.innerHTML='<div style="color:#5f5544;font-size:.85rem;font-style:italic">You are not enrolled in any games yet. Join an open game below.</div>';
     return;
   }
   // Step 2: fetch each game separately (avoids RLS join issue). Disk-IO (2026-09-25): light columns
@@ -1589,7 +1613,7 @@ async function loadOpenGames(){
   const {data:games,error}=await sb.from('games').select('*').eq('status','setup');
   if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
   if(!games||games.length===0){
-    el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
+    el.innerHTML='<div style="color:#5f5544;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
     return;
   }
   // Fetch player counts for these games
@@ -1652,7 +1676,7 @@ async function loadOpenGames(){
   });
 
   if(openGames.length===0){
-    el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
+    el.innerHTML='<div style="color:#5f5544;font-size:.85rem;font-style:italic">No open games at the moment. Ask your GM to create one.</div>';
     return;
   }
   el.innerHTML=openGames.map(g=>{
@@ -1952,7 +1976,7 @@ function buildChronicle(log, chars_for_log){
       const go=t.gameOver;
       return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
         <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 ${go.byConcession?'The game is decided':'The Reckoning is complete'} — ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field as every rival concedes':'is judged supreme'}!</div>
-        <div style="font-size:.76rem;color:#555;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>
+        <div style="font-size:.76rem;color:#3c362c;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>
       </div>`;
     }
     if(t.reckoning){
@@ -1966,7 +1990,7 @@ function buildChronicle(log, chars_for_log){
   })();
 
   if(!log.length){
-    document.getElementById('report-log').innerHTML=_reckoningBanner+'<em style="color:#999;font-size:.85rem">No events yet.</em>'+(viewedTurn==null?intelSectionShell(''):'');
+    document.getElementById('report-log').innerHTML=_reckoningBanner+'<em style="color:#5f5544;font-size:.85rem">No events yet.</em>'+(viewedTurn==null?intelSectionShell(''):'');
   } else {
     // ── SORT ENTRIES INTO STRUCTURE ────
     // charEntries: charId → { name, isKing, phases: [ [], [], [], [], [] ] }
@@ -2347,7 +2371,7 @@ function buildChronicle(log, chars_for_log){
       html=html0+intelSectionShell(html);
     }
 
-      document.getElementById('report-log').innerHTML=_reckoningBanner+(html||'<em style="color:#999;font-size:.85rem">No events yet.</em>');
+      document.getElementById('report-log').innerHTML=_reckoningBanner+(html||'<em style="color:#5f5544;font-size:.85rem">No events yet.</em>');
   } // end else (log.length > 0)
 } // end buildChronicle
 
@@ -2644,8 +2668,8 @@ function renderReportView(report){
         const noteLine=`<div style="font-size:.6rem;color:var(--stone);margin-top:2px;line-height:1.3">projected for next turn — this turn's actual take is under Kingdom Events</div>`;
         return incl+eqLine+ensLine+noteLine;
       })()}</div>
-      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}${(kingdom.orcSpoilsG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.orcSpoilsG}g Orcish war-spoils</div>`:''}${(kingdom.nextArmyWages!=null&&kingdom.nextArmyWages!==kingdom.armyWages)?`<div style="font-size:.62rem;color:#666;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextArmyWages}g</div>`:''}</div>
-      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}${(kingdom.nextHeroWages!=null&&kingdom.nextHeroWages!==kingdom.heroWages)?`<div style="font-size:.62rem;color:#666;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextHeroWages}g</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Army Wages</div><div class="stat-value" style="color:${armyWages>0?'#c00':'inherit'}">${armyWages}g/turn</div>${(kingdom.hostLeaderG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.hostLeaderG}g the Host-Leader</div>`:''}${(kingdom.orcSpoilsG||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.orcSpoilsG}g Orcish war-spoils</div>`:''}${(kingdom.nextArmyWages!=null&&kingdom.nextArmyWages!==kingdom.armyWages)?`<div style="font-size:.62rem;color:#463f32;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextArmyWages}g</div>`:''}</div>
+      <div class="stat-box"><div class="stat-label">Hero Wages</div><div class="stat-value" style="color:${heroWages>0?'#c00':'inherit'}">${heroWages}g/turn</div>${(kingdom.heroWageDisc||0)>0?`<div style="font-size:.62rem;color:#2d7a2d;margin-top:2px;line-height:1.3">after −${kingdom.heroWageDisc}g wage discounts</div>`:''}${(kingdom.nextHeroWages!=null&&kingdom.nextHeroWages!==kingdom.heroWages)?`<div style="font-size:.62rem;color:#463f32;margin-top:2px;line-height:1.3">next turn: ${kingdom.nextHeroWages}g</div>`:''}</div>
       <div class="stat-box"><div class="stat-label">Net Income</div><div class="stat-value" style="color:${netIncome>=0?'#2d7a2d':'#c00'}">${netIncome>=0?'+':''}${netIncome}g/turn</div></div>
       <div class="stat-box"><div class="stat-label">Provinces</div><div class="stat-value">${(report.ownedProvinces||[]).length}</div></div>
     </div>
@@ -2673,8 +2697,8 @@ function renderReportView(report){
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
             if(!maj.length && !min.length) return '';
-            const majH=maj.map(tt=>`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#7a5510">🏆 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
-            const minH=min.map(tt=>`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#555">${tt.perk||''}</span></div>`).join('');
+            const majH=maj.map(tt=>`<div style="font-size:.72rem;margin-top:3px"><span style="background:#fdf3d8;border:1px solid var(--gold);border-radius:2px;padding:0 4px;font-family:'Cinzel',serif;color:#7a5510">🏆 ${tt.name}</span> <span style="color:#3c362c">${tt.perk||''}</span></div>`).join('');
+            const minH=min.map(tt=>`<div style="font-size:.72rem;margin-top:2px"><span style="background:#eef3e6;border:1px solid #b8c9a8;border-radius:2px;padding:0 4px;color:#3a5a2a">🎖 ${tt.name}</span> <span style="color:#3c362c">${tt.perk||''}</span></div>`).join('');
             return `<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Titles &amp; perks</div>${majH}${minH}</div>`;
           })()}
           ${(()=>{
@@ -2682,7 +2706,7 @@ function renderReportView(report){
             // strength, move rate, upkeep, and which units need Druid skill to command.
             const arr=c.armies||[];
             const head=`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
-            if(arr.length===0) return head+`<div style="font-size:.75rem;color:#999">No armies led — moves 5 provinces/turn on its own.</div></div>`;
+            if(arr.length===0) return head+`<div style="font-size:.75rem;color:#5f5544">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel=effSkillP(c,'druid');
             const isDruidic=((kingdom.alignment)==='Druidic');
             const hasDragonTamingUI=(report.discoveries||[]).some(d=>d&&d.id==='sd40');
@@ -2798,10 +2822,10 @@ function renderReportView(report){
             :''}
           <br>Recruitable: ${(p.armyTypes||[]).map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)).join(' · ')||'none'}
           ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
-          ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#555">${armyLabel(d)}</span>`)).join('')}`:''}
+          ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#3c362c">${armyLabel(d)}</span>`)).join('')}`:''}
         </div>
       </div>`).join('')
-    :'<div style="color:#999;font-size:.85rem">No provinces owned yet.</div>';
+    :'<div style="color:#5f5544;font-size:.85rem">No provinces owned yet.</div>';
 
   // Intel — province info + hero sightings
   const intel=report.intel||[];
@@ -2823,7 +2847,7 @@ function renderReportView(report){
       <span style="font-size:.78rem">${h.topSkill?`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill}</span>`:'No notable skills'}</span><br>
       ${h.inVisibleProv
         ?'<span style="font-size:.72rem;color:#5a3a7a">💀 A hero with the Resurrect spell can raise them from this province.</span>'
-        :'<span style="font-size:.72rem;color:#888">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
+        :'<span style="font-size:.72rem;color:#564d3d">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
     </div>`).join('');
   }
 
@@ -2845,12 +2869,12 @@ function renderReportView(report){
       // a PARTIAL reading (the Deathpriest's Grave-sight) names only the crack and elite dead — say
       // "at least", because lesser ranks may lie beside them unseen.
       const det=(g.detail&&g.detail.length)
-        ? `<span style="color:#5a3a7a">The dead:</span> ${g.detailPartial?'at least ':''}${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${g.detailPartial?' <span style="color:#888">— Grave-sight names only the crack and elite; lesser dead may lie here unseen.</span>':''}${(g.detailTurn&&g.detailTurn!==g.turn)?` <span style="color:#999">(read turn ${g.detailTurn})</span>`:''}`
-        : '<span style="color:#777">Graves lie here — how many, and what they hold, is unknown.</span>';
+        ? `<span style="color:#5a3a7a">The dead:</span> ${g.detailPartial?'at least ':''}${g.detail.map(d=>`${d.n}× ${d.k}`).join(', ')}${g.detailPartial?' <span style="color:#564d3d">— Grave-sight names only the crack and elite; lesser dead may lie here unseen.</span>':''}${(g.detailTurn&&g.detailTurn!==g.turn)?` <span style="color:#5f5544">(read turn ${g.detailTurn})</span>`:''}`
+        : '<span style="color:#4f4739">Graves lie here — how many, and what they hold, is unknown.</span>';
       return `<div class="intel-entry" style="border-left-color:#4a4a4a;background:#f6f6f4">
-        <strong>${g.name}</strong> <span style="color:#888;font-size:.78rem">(seen on turn ${g.turn!=null?g.turn:'?'})</span><br>
+        <strong>${g.name}</strong> <span style="color:#564d3d;font-size:.78rem">(seen on turn ${g.turn!=null?g.turn:'?'})</span><br>
         <span style="font-size:.78rem">${det}</span><br>
-        <span style="font-size:.72rem;color:#888">Older knowledge — these graves may since have been raised or rotted away.</span>
+        <span style="font-size:.72rem;color:#564d3d">Older knowledge — these graves may since have been raised or rotted away.</span>
       </div>`;
     }).join('');
   }
@@ -2876,7 +2900,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#4f4739">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -2889,7 +2913,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#8a6a2a">
           🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#4f4739">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -2902,7 +2926,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom}${(s.race||s.alignment)?` (${[s.race,s.alignment].filter(Boolean).join(', ')})`:''} — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#777">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#4f4739">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -2954,7 +2978,7 @@ function renderReportView(report){
               : '';
             return `<div style="padding:1px 0;font-size:.78rem">${who}${force}${sk}</div>`;
           }).join('')
-        : `<div style="padding:1px 0;font-size:.76rem;color:#777">No other characters present at turn's end.</div>`;
+        : `<div style="padding:1px 0;font-size:.76rem;color:#4f4739">No other characters present at turn's end.</div>`;
       intelHtml+=`<div class="intel-entry" style="border-left-color:#2d7a2d;background:#f2faf2">
         <strong style="font-family:'Cinzel',serif;font-size:.76rem">${pc.provName}</strong>
         ${roster}
@@ -2975,7 +2999,7 @@ function renderReportView(report){
       }).join('');
       intelHtml+=`<div class="intel-entry" style="border-left-color:#2d6a7a;background:#f2f8fa">
         <strong style="font-family:'Cinzel',serif;font-size:.76rem">${sa.provName}</strong>
-        <div style="font-size:.68rem;color:#777;margin-bottom:2px">Watched by your agent from ${SEASONS_SA[sa.sincePhase]||'later that turn'} onward:</div>
+        <div style="font-size:.68rem;color:#4f4739;margin-bottom:2px">Watched by your agent from ${SEASONS_SA[sa.sincePhase]||'later that turn'} onward:</div>
         ${rows}
       </div>`;
     });
@@ -3018,7 +3042,7 @@ function renderReportView(report){
       }
       return`<div class="intel-entry" style="border-left-color:${f.cleared?'#888':f.isOwned?'#2d7a2d':'#c8922a'}">
         ${f.cleared?'✓':'⭐'} <strong${f.cleared?'':` style="color:${pColor}"`}>${f.name}</strong>${powerBadge}
-        ${f.cleared?'<span style="color:#888">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}${_rumourLine(f)}`}
+        ${f.cleared?'<span style="color:#564d3d">(cleared — no guardian)</span>':`<br><span style="font-size:.78rem;color:${pColor}">Guardian: ${f.monster}${f.monsterCat?` <span style="opacity:.8">(${f.monsterCat.toLowerCase()})</span>`:''}</span>${(!f.cleared&&_knownWeak[f.monster])?`<br><span style="font-size:.76rem;color:#7a1c7a">\u{1F4A5} Weakness known \u2014 <strong>${_knownWeak[f.monster].name}</strong>: ${_knownWeak[f.monster].desc}.</span>`:''}${_rumourLine(f)}`}
       </div>`;
     };
     // what Hunting Rumours learned of the hoard, remembered on the realm and shipped as `f.rumour`
@@ -3045,20 +3069,20 @@ function renderReportView(report){
 
   { const _ri=document.getElementById('report-intel');
     if(_ri){ const _sec=document.getElementById('intel-reports-section'); const _other=_sec?_sec.querySelectorAll('.log-entry').length:0;
-      _ri.innerHTML=intelHtml||(_other?'':'<em style="color:#999;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>'); } }
+      _ri.innerHTML=intelHtml||(_other?'':'<em style="color:#5f5544;font-size:.85rem">No intelligence gathered yet. Visit or spy provinces to learn more.</em>'); } }
   const _ofEl=document.getElementById('report-other-forces');
   if(_ofEl) _ofEl.innerHTML=otherForcesHtml||
-    '<em style="color:#999;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em>';
+    '<em style="color:#5f5544;font-size:.85rem">No mercenary bands or loose heroes sighted yet.</em>';
   const _lrEl=document.getElementById('report-lairs');
   if(_lrEl) _lrEl.innerHTML=lairsHtml||
-    '<em style="color:#999;font-size:.85rem">No lairs discovered yet. Explore or scout provinces to find them.</em>';
+    '<em style="color:#5f5544;font-size:.85rem">No lairs discovered yet. Explore or scout provinces to find them.</em>';
 
   // ── Sage Discoveries ──
   const discoveries=report.discoveries||[];
   const discEl=document.getElementById('report-discoveries');
   if(discEl){
     if(discoveries.length===0){
-      discEl.innerHTML='<em style="color:#999;font-size:.85rem">No discoveries yet. Give Research orders to your scholars (Sage 1+).</em>';
+      discEl.innerHTML='<em style="color:#5f5544;font-size:.85rem">No discoveries yet. Give Research orders to your scholars (Sage 1+).</em>';
     } else {
       // Group by category
       const catMap={};
@@ -3070,7 +3094,7 @@ function renderReportView(report){
             ${cat}
           </div>
           ${discs.map(d=>`<div class="intel-entry" style="border-left-color:${catColors[cat]||'#555'}">
-            <strong>${d.name}</strong> <span style="color:#999;font-size:.72rem">(Turn ${d.turnDiscovered})</span><br>
+            <strong>${d.name}</strong> <span style="color:#5f5544;font-size:.72rem">(Turn ${d.turnDiscovered})</span><br>
             <span style="font-size:.8rem">${d.desc}</span>
           </div>`).join('')}
         </div>`).join('');
@@ -3109,7 +3133,7 @@ function _renderDiplomacyInto(el, report, withControls){
   const known=(report&&report.diplomacy&&report.diplomacy.known)||[];
   const alliancesAllowed=!report||!report.diplomacy||report.diplomacy.alliancesAllowed!==false;
   if(!known.length){
-    el.innerHTML='<em style="color:#999;font-size:.85rem">You have not yet encountered another realm. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
+    el.innerHTML='<em style="color:#5f5544;font-size:.85rem">You have not yet encountered another realm. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
     return;
   }
   const relBadge=(r)=> r==='allied'
@@ -3128,7 +3152,7 @@ function _renderDiplomacyInto(el, report, withControls){
     const pending=diploChoices[k.index];
     let controls;
     if(!withControls){
-      controls=pending?`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#999">(change it at the top of your Orders)</span></div>`:'';
+      controls=pending?`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#5f5544">(change it at the top of your Orders)</span></div>`:'';
     } else if(pending){
       controls=`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;`
         +`<button onclick="setDiploChoice(${k.index},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
@@ -3144,13 +3168,13 @@ function _renderDiplomacyInto(el, report, withControls){
     return `<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <strong style="color:${reportColour(k.color)||'#333'}">${k.name}</strong>
-        <span style="font-size:.72rem;color:#888">${k.alignment||''}</span>
+        <span style="font-size:.72rem;color:#564d3d">${k.alignment||''}</span>
         ${relBadge(k.relation)}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
   }).join('')
-   + (withControls?`<div style="font-size:.72rem;color:#999;margin-top:6px">${alliancesAllowed
+   + (withControls?`<div style="font-size:.72rem;color:#5f5544;margin-top:6px">${alliancesAllowed
        ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
        : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`:'');
 }
@@ -3256,7 +3280,7 @@ function renderMastery(report){
   const _rjM=document.getElementById('rj-mastery'); // the jump-bar button follows the card
   if(rows.length===0){ card.style.display='none'; el.innerHTML=''; if(_rjM) _rjM.style.display='none'; return; }
   card.style.display=''; if(_rjM) _rjM.style.display='';
-  el.innerHTML=`<div style="font-size:.72rem;color:#888;margin-bottom:6px">A standing reference to the mastery each of your characters has earned — consult it whenever you plan their orders.</div>`+rows.join('');
+  el.innerHTML=`<div style="font-size:.72rem;color:#564d3d;margin-bottom:6px">A standing reference to the mastery each of your characters has earned — consult it whenever you plan their orders.</div>`+rows.join('');
 }
 
 // ── TITLES & VICTORY (Reckoning) ────
@@ -3283,14 +3307,14 @@ function renderTitles(report){
   if(t.gameOver){
     const go=t.gameOver;
     const board=(go.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
-      `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#777">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
+      `<tr style="${s.index===go.winner?'font-weight:700;background:#fdf3d8':''}"><td style="padding:3px 8px">${i+1}</td><td style="padding:3px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:3px 8px;text-align:right">${s.score}</td><td style="padding:3px 8px;font-size:.75rem;color:#4f4739">${(s.titleNames||[]).join(', ')}${s.relics?`${s.titleNames&&s.titleNames.length?' · ':''}${s.relics} relic${s.relics!==1?'s':''}`:''}</td></tr>`).join('');
     el.innerHTML=`<div style="background:#fdf3d8;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-bottom:8px">
       <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson)">🏆 ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field — every rival has conceded':'is judged supreme at the Reckoning'}!</div></div>
-      <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#888;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Realm</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#564d3d;font-size:.72rem;text-align:left"><th style="padding:3px 8px">#</th><th style="padding:3px 8px">Realm</th><th style="padding:3px 8px;text-align:right">Legacy</th><th style="padding:3px 8px">Titles held</th></tr></thead><tbody>${board}</tbody></table>`;
     return;
   }
   if(!t.public){
-    el.innerHTML=`<em style="color:#999;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5}. Standings appear then.</em>`;
+    el.innerHTML=`<em style="color:#5f5544;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${t.publicFromTurn||5}. Standings appear then.</em>`;
     return;
   }
   const nPlayers=(t.standings||[]).length||2;
@@ -3314,7 +3338,7 @@ function renderTitles(report){
       <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">${header}</div>
       ${gains.map(g=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
         <strong>${g.scope==='minor'?'🎖':'🏆'} ${g.name}</strong> — ${g.charName?`${g.charName} of `:''}<span style="color:var(--forest)">${g.kingdomName||'your realm'}</span>.
-        <br><span style="color:#666">${verb}: ${g.req||''}</span>
+        <br><span style="color:#463f32">${verb}: ${g.req||''}</span>
         <br><span style="color:#2d6a2d">Effect: ${g.perk||''}</span></div>`).join('')}</div>`;
   }
 
@@ -3326,7 +3350,7 @@ function renderTitles(report){
       <div style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:4px">⚔ Title${losses.length!==1?'s':''} lost this turn</div>
       ${losses.map(l=>`<div style="font-size:.78rem;color:#444;margin-bottom:5px;line-height:1.45">
         <strong>${l.scope==='minor'?'🎖':'🏆'} ${l.name}</strong> — ${l.vacant
-          ? 'now stands <span style="color:#999">vacant</span>.'
+          ? 'now stands <span style="color:#5f5544">vacant</span>.'
           : `claimed by ${l.newCharName?`${l.newCharName} of `:''}<span style="color:var(--crimson)">${l.newHolderName||'a rival'}</span>.`}</div>`).join('')}</div>`;
   }
 
@@ -3372,21 +3396,21 @@ function renderTitles(report){
     const h=holders[k]||{};
     // Your realm's place in the race for this title (percentages only — see titleRaceFor).
     const r=h.race||null;
-    const raceLine=r?titleRaceLine(r):`<span style="color:#999">Standing percentages are missing from this turn report — it was resolved by ${(report&&report.engineStamp)?`<strong>GM Portal v${report.engineStamp}</strong>, which predates them`:'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
+    const raceLine=r?titleRaceLine(r):`<span style="color:#5f5544">Standing percentages are missing from this turn report — it was resolved by ${(report&&report.engineStamp)?`<strong>GM Portal v${report.engineStamp}</strong>, which predates them`:'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
     const raceHtml=raceLine?`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
     const who = h.holderName
       ? (h.kingdomLevel
           ? `${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
           : `${h.charName||'—'} <span style="color:${h.mine?'var(--forest)':'#777'};font-weight:${h.mine?'700':'400'}">(${h.holderName})</span>`)
-      : '<span style="color:#999">— vacant —</span>';
+      : '<span style="color:#5f5544">— vacant —</span>';
     return `<div style="border-bottom:1px solid var(--parchment-dark);padding:5px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <strong style="font-size:.82rem">🏆 ${name}</strong>
-        <span style="color:#999;font-size:.72rem;white-space:nowrap">${prize} pts</span>
+        <span style="color:#5f5544;font-size:.72rem;white-space:nowrap">${prize} pts</span>
       </div>
       <div style="font-size:.78rem;margin:1px 0">Held by: ${who}</div>
       ${raceHtml}
-      <div style="font-size:.7rem;color:#777;line-height:1.4">Earn: ${h.req||''}<br><span style="color:#2d6a2d">While held: ${h.perk||''}</span></div>
+      <div style="font-size:.7rem;color:#4f4739;line-height:1.4">Earn: ${h.req||''}<br><span style="color:#2d6a2d">While held: ${h.perk||''}</span></div>
     </div>`;
   }).join('');
 
@@ -3395,7 +3419,7 @@ function renderTitles(report){
   const _solo=Math.ceil(floorNumP((t.soloThreshold!=null?t.soloThreshold:(t.threshold||0))*100*1e6)/1e6);
   const _step=Math.round((t.allyStep||0)*100);
   const _nAllies=Math.max(0,(t.blocSize||1)-1);
-  const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#555;line-height:1.5">
+  const reckoningInfo=`<div style="background:#f5f0e8;border:1px solid var(--parchment-dark);border-radius:3px;padding:8px 10px;margin-top:12px;font-size:.74rem;color:#3c362c;line-height:1.5">
     <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--crimson);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;font-weight:700">Calling the Reckoning</div>
     There is no turn limit — the game ends only when one realm is left standing, or when a dominant realm <strong>Calls the Reckoning</strong> and forces a final scoring. To call it:
     <ul style="margin:4px 0 4px 16px;padding:0">
@@ -3415,13 +3439,13 @@ function renderTitles(report){
     callCtrl = reckoningCall
       ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
       : `<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
-        <div style="font-size:.72rem;color:#777;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
+        <div style="font-size:.72rem;color:#4f4739;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
   } else if(!t.reckoning && t.callBlockedReason==='tooEarly'){
-    callCtrl = `<div style="font-size:.72rem;color:#999;margin-top:10px">The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
+    callCtrl = `<div style="font-size:.72rem;color:#5f5544;margin-top:10px">The throne cannot be claimed before <strong>Turn ${t.reckoningMinTurn||10}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
   } else if(!t.reckoning){
     callCtrl = (t.callBlockedReason==='callerShort')
-      ? `<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world — enough to Call the Reckoning — but your own realm holds just ${ownPct}% of it, and a claimant must personally hold ${minPct}%. The claim must be lodged by the greatest realm in your alliance.</div>`
-      : `<div style="font-size:.72rem;color:#999;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
+      ? `<div style="font-size:.72rem;color:#5f5544;margin-top:10px">Your bloc commands ${pct}% of the world — enough to Call the Reckoning — but your own realm holds just ${ownPct}% of it, and a claimant must personally hold ${minPct}%. The claim must be lodged by the greatest realm in your alliance.</div>`
+      : `<div style="font-size:.72rem;color:#5f5544;margin-top:10px">Your bloc commands ${pct}% of the world; ${thr}% is needed to Call the Reckoning.</div>`;
   }
 
   // ── Always show the realm's share of the world's total tax base (land AND sea) and the Reckoning
@@ -3430,12 +3454,12 @@ function renderTitles(report){
   const throneMine=!!(t.holders&&t.holders.throne&&t.holders.throne.mine);
   const _gap=thr-pct;
   const shareLine=`<div style="background:#f0f4ea;border:1px solid #cdd8bf;border-radius:3px;padding:7px 10px;margin-bottom:10px;font-size:.78rem;color:#3a4a2a;line-height:1.5">
-    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#777">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:(t.callBlockedReason==='callerShort'?` <span style="color:#8a6a1a">Your bloc meets the threshold, but your own realm holds ${ownPct}% and a claimant must personally hold ${minPct}% — your strongest ally must lodge the claim.</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>')}
+    ${throneMine?'👑 <strong>You hold The Throne</strong> — the largest tax base in the world. ':''}Your bloc commands <strong>${pct}%</strong> of the world's tax base; the Reckoning can be called at <strong>${thr}%</strong>.${_gap>0?` <span style="color:#4f4739">(${_gap} more percentage point${_gap!==1?'s':''} to go.)</span>`:(t.callBlockedReason==='callerShort'?` <span style="color:#8a6a1a">Your bloc meets the threshold, but your own realm holds ${ownPct}% and a claimant must personally hold ${minPct}% — your strongest ally must lodge the claim.</span>`:' <span style="color:#2d6a2d">You meet the threshold.</span>')}
   </div>`;
   el.innerHTML = gainsHtml + lossesHtml + banner + shareLine
-    + `<div style="font-size:.75rem;color:#888;margin-bottom:3px">Standings (Legacy)</div>
+    + `<div style="font-size:.75rem;color:#564d3d;margin-bottom:3px">Standings (Legacy)</div>
        <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:12px"><tbody>${board}</tbody></table>
-       <div style="font-size:.75rem;color:#888;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won <span style="color:#aaa">(yours first, then the ones you stand closest to winning)</span></div>
+       <div style="font-size:.75rem;color:#564d3d;margin-bottom:2px">The Imperial Titles — who holds them &amp; how they are won <span style="color:#aaa">(yours first, then the ones you stand closest to winning)</span></div>
        ${majorHtml}`
     + callCtrl + reckoningInfo + renderMinorTitles(t);
 }
@@ -3446,12 +3470,12 @@ function renderMinorTitles(t){
   const mineHtml = mine.length
     ? mine.map(x=>`<div style="border-bottom:1px dotted var(--parchment-dark);padding:4px 0;font-size:.76rem">
         <span class="pill" style="background:#eef3e6;color:#3a5a2a;margin:0">🎖 ${x.name}</span>
-        <span style="color:#555"> — ${x.holderName||''}</span>
-        <div style="font-size:.68rem;color:#777;line-height:1.4">Earn: ${x.req||''}<br><span style="color:#2d6a2d">Perk: ${x.perk||''}</span></div>
+        <span style="color:#3c362c"> — ${x.holderName||''}</span>
+        <div style="font-size:.68rem;color:#4f4739;line-height:1.4">Earn: ${x.req||''}<br><span style="color:#2d6a2d">Perk: ${x.perk||''}</span></div>
       </div>`).join('')
-    : `<div style="font-size:.78rem;color:#999;margin-top:4px">Your characters hold no minor titles yet. Each is awarded to the single best character in the world by its measure — win one and it appears here.</div>`;
+    : `<div style="font-size:.78rem;color:#5f5544;margin-top:4px">Your characters hold no minor titles yet. Each is awarded to the single best character in the world by its measure — win one and it appears here.</div>`;
   return `<div style="margin-top:14px;border-top:1px dashed var(--parchment-dark);padding-top:8px">
-    <div style="font-size:.8rem;color:#888;margin-bottom:4px">🎖 Your minor titles <span style="font-size:.72rem">(honorary — each grants a perk but never counts toward victory)</span></div>
+    <div style="font-size:.8rem;color:#564d3d;margin-bottom:4px">🎖 Your minor titles <span style="font-size:.72rem">(honorary — each grants a perk but never counts toward victory)</span></div>
     ${mineHtml}
   </div>`;
 }
@@ -3465,7 +3489,7 @@ function renderReckoningOrders(){
   const pct=floorNumP((t.myShare||0)*100), thr=Math.ceil(floorNumP((t.threshold||0)*100*1e6)/1e6); // a 41.6% share shows 41, never "42% (need 42%)"
   // the caller's OWN share and the personal floor (half the bar).
   const ownPct=floorNumP((t.myOwnShare!=null?t.myOwnShare:(t.myShare||0))*100), minPct=Math.ceil(floorNumP((t.callerMin||0)*100*1e6)/1e6);
-  if(t.gameOver){ w.innerHTML=`<div style="color:#777">The game is over — there is nothing left to call.</div>`; return; }
+  if(t.gameOver){ w.innerHTML=`<div style="color:#4f4739">The game is over — there is nothing left to call.</div>`; return; }
   if(t.reckoning){
     w.innerHTML=`<div style="background:#f7e9d0;border:1px solid var(--gold);border-radius:3px;padding:6px 8px">👑 <strong>The Reckoning has already been called${t.reckoning.byName?` by ${t.reckoning.byName}`:''}.</strong> The world is judged at the end of Turn ${t.reckoning.resolveAtTurn} unless the claim is broken.</div>`;
     return;
@@ -3474,7 +3498,7 @@ function renderReckoningOrders(){
     w.innerHTML = reckoningCall
       ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px;font-size:.78rem">👑 <strong>You will Call the Reckoning with these orders.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button type="button" onclick="setReckoningCall(false)" style="margin-left:6px;font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`
       : `<div><button type="button" onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:6px 12px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
-          <div style="color:#777;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
+          <div style="color:#4f4739;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
     return;
   }
   // Not available — say why, and where the button will appear.
@@ -3484,9 +3508,9 @@ function renderReckoningOrders(){
   else if(t.kingAlive===false) why=`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
   else if(t.callBlockedReason==='callerShort') why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base — enough to call it — but the claim belongs to whoever lodges it, and your own realm holds only <strong>${ownPct}%</strong>. A claimant must personally hold <strong>${minPct}%</strong> (half the ${thr}% bar), so the greatest realm in your alliance must be the one to call it.`;
   else if(pct<thr){ const _na=Math.max(0,(t.blocSize||1)-1), _so=Math.ceil(floorNumP((t.soloThreshold!=null?t.soloThreshold:(t.threshold||0))*100*1e6)/1e6);
-    why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#777">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.${_na>0?` <span style="color:#8a6a1a">Standing alone the bar would be ${_so}% — each of your ${_na} all${_na===1?'y':'ies'} raises it by ${Math.round((t.allyStep||0)*100)} points.</span>`:''}`; }
+    why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base; <strong>${thr}%</strong> is needed <span style="color:#4f4739">(${thr-pct} more percentage point${thr-pct!==1?'s':''} to go)</span>.${_na>0?` <span style="color:#8a6a1a">Standing alone the bar would be ${_so}% — each of your ${_na} all${_na===1?'y':'ies'} raises it by ${Math.round((t.allyStep||0)*100)} points.</span>`:''}`; }
   else why=`Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%).`;
-  w.innerHTML=`<div style="color:#555;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
+  w.innerHTML=`<div style="color:#3c362c;line-height:1.5">${why} The <strong>👑 Call the Reckoning</strong> button will appear here when you qualify.</div>`;
 }
 
 // the spell-target (secondary) field builder, extracted from the Cast Spell form so the Use Item
@@ -3932,11 +3956,11 @@ function heirSelectorHTML(chars){
     <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold);margin-bottom:4px">👑 Royal Succession — Name, Temper &amp; Skills</div>
     <div style="font-size:.76rem;color:#444;margin-bottom:8px">A new monarch has risen. Name them, choose their Temper, and spend their <strong>${remaining}</strong> remaining skill point${remaining!==1?'s':''} before submitting orders. New skills take effect this turn — buy a magic school and you can cast from it right away.</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-      <label style="font-size:.74rem;color:#555">Name
+      <label style="font-size:.74rem;color:#3c362c">Name
         <input id="heir-name" value="${(heir.name||'').replace(/"/g,'&quot;')}" maxlength="40" oninput="setHeirName(${heir.id},this.value)"
           style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px;width:200px">
       </label>
-      <label style="font-size:.74rem;color:#555">Temper
+      <label style="font-size:.74rem;color:#3c362c">Temper
         <select id="heir-temper" onchange="setHeirTemper(${heir.id},this.value)"
           style="margin-left:4px;font-size:.76rem;padding:3px 6px;border:1px solid var(--stone);border-radius:2px">
           ${HEIR_TEMPERS_LIST.map(t=>`<option value="${t}"${heir.temper===t?' selected':''}>${t}</option>`).join('')}
@@ -4349,7 +4373,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
         <!-- Encounter Plan -->
         <div style="margin-top:10px;padding:8px;background:#fdf5e0;border:1px solid #c8922a;border-radius:2px">
           <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#7a5a10;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">
-            ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#999">— used when searching lairs or in random encounters</span>
+            ⚔ Encounter Plan <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.75rem;color:#5f5544">— used when searching lairs or in random encounters</span>
           </div>
           <div style="font-size:.78rem;color:var(--stone);margin-bottom:6px">
             Drag a tactic (or use ▲ ▼) to reorder. The plan is executed in order until the encounter ends. If you run out of tactics, Melee is used.
@@ -4371,7 +4395,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           <!-- Pre-battle magic (army battles) — separate from the round-by-round encounter tactics -->
           <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
             <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
-              ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— one random spell cast in army battles (not encounters)</span>
+              ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#5f5544">— one random spell cast in army battles (not encounters)</span>
             </div>
             <input type="hidden" id="ep-preschool-${c.id}" value="${epPreSchool||''}">
             <div id="ep-preschool-display-${c.id}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
@@ -4380,12 +4404,12 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           <!-- Duel stance (army battles) — sits beside pre-battle magic, as both are battle-only -->
           <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
             <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
-              🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— single combat at the start of an army battle (not encounters)</span>
+              🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#5f5544">— single combat at the start of an army battle (not encounters)</span>
             </div>
             <select id="ep-duel-${c.id}" style="font-size:.8rem;width:100%">
               ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'accept')===d.code?' selected':''}>${d.label}</option>`).join('')}
             </select>
-            <div style="font-size:.68rem;color:#777;margin-top:2px">
+            <div style="font-size:.68rem;color:#4f4739;margin-top:2px">
               A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
             </div>
           </div>
@@ -4393,7 +4417,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           <!-- EVIL — conquest doctrine: Terror (loot + fear) or Enslave (chained garrisons) -->
           <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
             <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a1010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
-              ⛓ Conquest doctrine <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— how ${c.name} treats the conquered</span>
+              ⛓ Conquest doctrine <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#5f5544">— how ${c.name} treats the conquered</span>
             </div>
             <select id="ep-evilmode-${c.id}" style="font-size:.8rem;width:100%">
               <option value="terror" ${(savedEP.evilMode||'terror')==='terror'?'selected':''}>Terror — plunder 50% of the province's tax; decisive wins spread Terror (−10% to the next defenders)</option>
@@ -4406,7 +4430,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             <input type="text" id="ep-notes-${c.id}" value="${savedEP.notes||''}"
               placeholder="e.g. For glory and the fallen — none shall pass!"
               style="font-size:.8rem;margin-top:2px">
-            <div style="font-size:.68rem;color:#777;margin-top:2px">Shouted at any enemy — monster or rival — as combat begins.</div>
+            <div style="font-size:.68rem;color:#4f4739;margin-top:2px">Shouted at any enemy — monster or rival — as combat begins.</div>
           </div>
         </div>
 
@@ -5167,7 +5191,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${dead.name}
       <span style="color:#5a3a7a;font-size:.7rem;margin-left:6px">(if raised \u2014 can act from ${SEASONS_R[firstActable]||'next turn'})</span>
-      <span style="margin-left:auto;font-size:.7rem;color:#555">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
+      <span style="margin-left:auto;font-size:.7rem;color:#3c362c">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
     </div>
     <div style="padding:5px 10px 6px;background:#f5eeff;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
       <div class="resurrect-casters" style="color:#5a3a7a;font-weight:600"></div>
@@ -5317,7 +5341,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
       \u2728 ${wanderer.name}
       <span style="color:#2a7a8a;font-size:.7rem;margin-left:6px">(if charmed \u2014 can act from ${SEASONS_C[firstActable]||'next turn'})</span>
-      <span style="margin-left:auto;font-size:.7rem;color:#555">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
+      <span style="margin-left:auto;font-size:.7rem;color:#3c362c">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
     </div>
     <div style="padding:5px 10px 6px;background:#eaf6f8;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;line-height:1.6">
       <div style="color:#2a7a8a">These orders only take effect if the Charm succeeds. If the cast fails,
@@ -5468,7 +5492,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
       <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise this hero's orders" onclick="toggleSection(this)">&#9662;</button>
       ⚔ ${heroData.name}
       <span style="color:#c8922a;font-size:.7rem;margin-left:6px">(newly hired — can act from ${SEASONS_H[firstActable]||'next turn'})</span>
-      <span style="margin-left:auto;font-size:.7rem;color:#555">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
+      <span style="margin-left:auto;font-size:.7rem;color:#3c362c">📍 ${provLinkHtml(fakeChar.locationId,fakeChar.locationName||'?')} · Land: 5/turn · Sea: 5/turn</span>
     </div>
     <div style="padding:5px 10px 6px;background:#fdf5e0;border-bottom:1px solid var(--parchment-dark);font-size:.76rem;display:flex;flex-wrap:wrap;gap:8px">
       <span><strong>Race:</strong> ${heroData.race}</span>
@@ -5520,7 +5544,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     <input type="hidden" id="ep-tactics-${hiredCharId}" value="ME">
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
-        🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— single combat at the start of an army battle</span>
+        🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#5f5544">— single combat at the start of an army battle</span>
       </div>
       <select id="ep-duel-${hiredCharId}" style="font-size:.8rem;width:100%">
         ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
@@ -5528,7 +5552,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     </div>
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#7a5a10;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
-        ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#999">— one random spell cast in army battles (not encounters)</span>
+        ✨ Pre-battle magic <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#5f5544">— one random spell cast in army battles (not encounters)</span>
       </div>
       <input type="hidden" id="ep-preschool-${hiredCharId}" value="">
       <div id="ep-preschool-display-${hiredCharId}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"></div>
@@ -6111,8 +6135,8 @@ function skillRowHTML(c, style){
     if(srcs.length){
       const bits=srcs.map(s=>{ const st=_bonusKindP(s.kind);
         return `<span style="background:${st.bg};color:${st.c};border-radius:2px;padding:0 4px;white-space:nowrap">${s.delta>0?'+':''}${s.delta} ${s.label}${s.scope!=='always'?` ${BONUS_SCOPE_MARK_P[s.scope]||''}`:''}</span>`; });
-      if(rawTotal>0&&bonus<rawTotal) bits.push(`<span style="color:#999">(capped at ${(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5})</span>`);
-      detail.push(`<span style="white-space:normal"><strong style="color:#555">${label}</strong> ${bits.join(' ')}</span>`);
+      if(rawTotal>0&&bonus<rawTotal) bits.push(`<span style="color:#5f5544">(capped at ${(ITEM_UNCAPPED_SKILLS_P.has(k)||k==='druid')?9:5})</span>`);
+      detail.push(`<span style="white-space:normal"><strong style="color:#3c362c">${label}</strong> ${bits.join(' ')}</span>`);
     }
     // melee and archery let item/aura bonuses stack above trained 5 to the ceiling of 9; every
     // other skill still stops at 5. Mirrors ITEM_UNCAPPED_SKILLS in the GM engine.
@@ -6128,10 +6152,10 @@ function skillRowHTML(c, style){
   let out=rows.join('');
   if(detail.length){
     const legend=[...legendKinds].map(kd=>{ const st=_bonusKindP(kd); return `<span style="color:${st.c}">● ${st.label}</span>`; }).join(' ');
-    out+=`<span style="flex-basis:100%;width:100%;margin-top:3px;font-size:.68rem;color:#666;line-height:1.8;display:block">`
-      +`<span style="color:#999;text-transform:uppercase;letter-spacing:.04em">Skill bonuses</span> ${legend}`
+    out+=`<span style="flex-basis:100%;width:100%;margin-top:3px;font-size:.68rem;color:#463f32;line-height:1.8;display:block">`
+      +`<span style="color:#5f5544;text-transform:uppercase;letter-spacing:.04em">Skill bonuses</span> ${legend}`
       +`<span style="display:block;margin-top:2px">${detail.join(' &nbsp; ')}</span>`
-      +`<span style="display:block;color:#999;margin-top:1px">⚔ personal combat &middot; ⚑ army battles &middot; ➤ movement &middot; ✎ that order&rsquo;s roll — these never change the skill itself</span>`
+      +`<span style="display:block;color:#5f5544;margin-top:1px">⚔ personal combat &middot; ⚑ army battles &middot; ➤ movement &middot; ✎ that order&rsquo;s roll — these never change the skill itself</span>`
       +`</span>`;
   }
   return out;
@@ -7031,7 +7055,7 @@ function buildTargetField(c, ph, saved){
       }).join('');
       const init=chosen.length?chosen:held.filter(o=>o.equipped!==false).map(o=>o.name);
       return `<div id="po-equip-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
-        <div style="font-size:.68rem;color:#777;margin-top:3px">Only equipped items in these slots give their bonus; everything else you carry is always active. Equipped items can still be sent to other characters.</div>
+        <div style="font-size:.68rem;color:#4f4739;margin-top:3px">Only equipped items in these slots give their bonus; everything else you carry is always active. Equipped items can still be sent to other characters.</div>
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',').replace(/"/g,'&quot;')}"></div>`;
     }
     case 'Use Item':{
@@ -7132,7 +7156,7 @@ function buildTargetField(c, ph, saved){
         `<option value="${t}" ${target===t?'selected':''} ${(dru<need&&!_awUnseen)?'disabled':''}>${t} — Druid ${need}+${(dru<need&&!_awUnseen)?` (you: ${dru})`:''}</option>`).join('');
       const loc=predictedLocation(c.id,ph);
       return`<select id="po-target-${c.id}-${ph}">${wOpts}</select>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Creature out of the land itself (recruit cost +2g offering; joins ${c.name}). Works only while standing in an OWNED forest, jungle, or primal province${loc?` — you will be in ${loc.name}`:''}.</div>`;}
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Creature out of the land itself (recruit cost +2g offering; joins ${c.name}). Works only while standing in an OWNED forest, jungle, or primal province${loc?` — you will be in ${loc.name}`:''}. The land answers only <strong>once per province per turn</strong> — if anyone has already awakened the wild there this turn, the call goes unanswered.</div>`;}
     // ── UNDEAD: HARVEST THE FIELD ──
     case 'Harvest the Field':{
       if(report.kingdom?.alignment!=='Undead')
@@ -8973,6 +8997,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.25-1853</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.26-1046</div>
 </body>
 </html>

@@ -47,7 +47,31 @@ if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/su
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#1a1208;--ink-light:#3d2b0f;--crimson:#7a1c1c;--gold:#c8922a;--gold-light:#e8b84b;--forest:#2d4a1e;--stone:#6b5a42;--bg:#0e0a04;}
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0f0a02;--ink-light:#2a1b04;--crimson:#6d1414;--gold:#c8922a;--gold-light:#e8b84b;--forest:#233d16;--stone:#4a3a22;--stone-dim:#c0ab88;--bg:#0e0a04;}
+/* ── CONTRAST PASS (2026-09-26, Toby item 6) ────────────────────────────────────────────────
+   Every ink on parchment is darker: --ink and --ink-light are near-black browns now, --crimson
+   and --forest are deepened so headings and buttons read at a glance, and --stone — the muted
+   tone used for labels, captions, hints and hairline borders all over both portals — drops from
+   #6b5a42 to #4a3a22 (about 8.5:1 on parchment, up from 4.6:1).
+   --stone is ALSO used for muted text on the handful of DARK panels (the masthead strapline, the
+   invite pickers, the turn-mode box). Darkening it there would make things worse, not better, so
+   those surfaces redefine the variable for their own subtree back to a light --stone-dim. Custom
+   properties inherit, so redefining --stone on an ancestor is enough — no call site changes.
+   The [style*="…"] selectors match the inline background colours those dark panels already carry. */
+.masthead .sub,.masthead,#spinner,[style*="#20160c"],[style*="#12100b"],[style*="#0d0b07"],[style*="#1a0c0c"]{--stone:var(--stone-dim);}
+.card [style*="background:#20160c"],.card [style*="background:#12100b"]{--stone:var(--stone-dim);}
+/* Ghost buttons sit on both surfaces: light-on-dark outside a card, dark-on-parchment inside one. */
+.btn-ghost{color:#c3ad88;border-color:#8d795a;}
+.card .btn-ghost,.game-card .btn-ghost,.player-slot .btn-ghost{color:#4a3a22;border-color:#6b5a42;}
+.card .btn-ghost:hover,.game-card .btn-ghost:hover,.player-slot .btn-ghost:hover{color:#6d1414;border-color:#6d1414;}
+/* Body copy a shade heavier: at these sizes on parchment it is the weight, not just the hue,
+   that carries the contrast. */
+body{-webkit-font-smoothing:antialiased;}
+.card,.game-card,.player-slot,.report-prov,.log-entry{color:var(--ink);--stone:#4a3a22;}
+/* A parchment card re-asserts the dark muted tone for its own subtree, so a card shown inside a
+   dark panel (the desktop layout moves the report into the left map column) never inherits the
+   light one. A dark panel nested inside a card still wins for itself — the nearest declaring
+   ancestor decides, not source order. */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;}
 #page{max-width:860px;margin:0 auto;padding:20px;}
@@ -119,7 +143,7 @@ section{display:none;}.section-active{display:block;}
 .log-entry.combat{border-left-color:var(--crimson);}
 .log-entry.explore{border-left-color:var(--forest);}
 .log-entry.hire{border-left-color:var(--gold);}
-.log-entry.system{border-left-color:#888;font-style:italic;color:#666;}
+.log-entry.system{border-left-color:#888;font-style:italic;color:#463f32;}
 </style>
 </head>
 <body>
@@ -339,7 +363,7 @@ section{display:none;}.section-active{display:block;}
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
 const KC_DATA_MIN='2026.09.25-1320';
-const KC_BUILD_STAMP='2026.09.25-1853'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.26-1046'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -1052,7 +1076,7 @@ async function submitChangePassword(){
   const msg=document.getElementById('cp-msg');
   if(!p1||p1.length<6){ msg.innerHTML='<span style="color:#c00">Password must be at least 6 characters.</span>'; return; }
   if(p1!==p2){ msg.innerHTML='<span style="color:#c00">Passwords do not match.</span>'; return; }
-  msg.innerHTML='<span style="color:#555">Updating…</span>';
+  msg.innerHTML='<span style="color:#3c362c">Updating…</span>';
   try{
     const {error}=await sb.auth.updateUser({password:p1});
     if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
@@ -1472,12 +1496,18 @@ async function openGame(gameId){
     const bot=isBotRow(p);
     const statusPill=bot?'<span class="pill pill-green">🤖 Bot</span>'
       :(p.user_id?'<span class="pill pill-green">Joined</span>':'<span class="pill pill-amber">Waiting</span>');
+    // Remove-player control (2026-09-26, Toby item 4). Available at EVERY stage: in setup the slot
+    // simply reopens; in a live game the realm concedes and plays no further part.
+    const _con=(game.status!=='setup')&&realmConcededIn(game,p.player_index);
+    const _rmLabel=(game.status==='setup')?'Remove player':'Remove player (realm concedes)';
     return `
     <div class="player-slot">
       <div class="slot-name">${bot?'🤖 ':''}${p.display_name||'(slot open)'}</div>
       <div class="slot-status">${statusPill}</div>
+      ${_con?'<span class="pill pill-red">🏳 Conceded</span>':''}
       ${(p.orders_submitted&&!bot)?'<span class="pill pill-blue">Orders in</span>':''}
       ${!p.user_id&&!bot&&p.invite_code?`<div class="slot-code">Invite: ${p.invite_code}</div>`:''}
+      <button class="btn btn-ghost" style="color:#8a1010;border-color:#8a1010;font-size:.62rem;padding:4px 9px" title="${_rmLabel}" onclick="removePlayer('${p.id}')">✖ Remove</button>
     </div>`;}).join('');
 
   // Reserved bot slots (setup only — the actual bot rows are created when Turn 0 runs)
@@ -1696,7 +1726,7 @@ function mapCentreColFor(gs, playerIndex){
 async function loadTurnLog(gameId, turn){
   const {data}=await sb.from('turn_logs').select('*').eq('game_id',gameId).eq('turn',turn).eq('player_index',-1);
   const el=document.getElementById('detail-log');
-  if(!data||data.length===0){el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
+  if(!data||data.length===0){el.innerHTML='<div style="color:#5f5544;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
 
   const allEntries=data.flatMap(d=>d.entries||[]);
   // 2026-09-25: game_state arrives from Supabase as a JSON STRING; reading .characters off it gave
@@ -1725,7 +1755,7 @@ async function loadTurnLog(gameId, turn){
     const rawText=raw0.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
     const isStat=rawText.startsWith('📊');
     const isBattle=rawText.startsWith('⚔')||rawText.startsWith('⚠');
-    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#555;padding:2px 6px;background:#f5f0e8">${rawText}</div>`;
+    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#3c362c;padding:2px 6px;background:#f5f0e8">${rawText}</div>`;
     if(isBattle) return`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px;font-weight:600">${rawText}</div>`;
     return`<div class="log-entry ${e.type||''}" style="padding:2px 6px">${rawText}</div>`;
   }
@@ -1812,7 +1842,7 @@ async function loadTurnLog(gameId, turn){
     html+=`</div></div>`;
   }
 
-  el.innerHTML=html||'<div style="color:#999;font-size:.85rem">No entries.</div>';
+  el.innerHTML=html||'<div style="color:#5f5544;font-size:.85rem">No entries.</div>';
 }
 
 // ── DELETE GAME ────
@@ -4481,6 +4511,58 @@ function realmExemptIn(game,idx){
 }
 function ordersWaitingOn(rows,game){
   return (rows||[]).filter(p=>p.user_id&&!isBotRow(p)&&!realmExemptIn(game,p.player_index)&&!p.orders_submitted);
+}
+// Has this realm already conceded (voluntarily or by GM removal)? Read from the parsed state — the
+// light `meta` column only carries the combined exempt list, which also covers extinguished realms.
+function realmConcededIn(game,idx){
+  const gs=parseGameState(game);
+  const pl=(gs&&gs.players||[])[idx];
+  return !!(pl&&pl.conceded);
+}
+// ── GM: REMOVE A PLAYER FROM A GAME (2026-09-26, Toby item 4) ────
+// Available at every stage. In SETUP the row is simply deleted and the slot reopens (join assigns
+// the lowest free player_index, so the gap is filled by the next player to sign up). In a LIVE game
+// the realm CONCEDES first — the engine's existing concession machinery then holds every one of its
+// characters on Defend for the rest of the game, stops it making declarations or claims, excludes
+// it from the victory count and never waits on its orders — and only then is the seat deleted, so
+// the removed player can no longer reach the game at all. The realm's provinces, armies and
+// characters stay on the map exactly as they were; they simply never advance again.
+async function removePlayer(gamePlayerId){
+  if(!currentGame) return;
+  const row=(currentGamePlayers||[]).find(p=>String(p.id)===String(gamePlayerId));
+  if(!row){ return; }
+  const msg=document.getElementById('detail-msg');
+  const who=row.display_name||`Realm ${row.player_index+1}`;
+  const live=currentGame.status!=='setup';
+  const warn=live
+    ? `Remove ${who} from "${currentGame.name}"?\n\nTheir realm CONCEDES the game immediately: every one of its characters will do nothing but Defend from now on, it can make no declarations and cannot win, and it is never waited on for orders. Its lands and armies stay on the map.\n\nThe player loses access to this game. This cannot be undone.`
+    : `Remove ${who} from "${currentGame.name}"?\n\nThe game has not started, so their slot simply reopens for another player. This cannot be undone.`;
+  if(!confirm(warn)) return;
+  msg.innerHTML='<div class="msg-info">Removing player…</div>';
+  try{
+    if(live){
+      const gs=parseGameState(currentGame);
+      const pl=(gs&&gs.players||[])[row.player_index];
+      if(pl&&!pl.conceded){
+        pl.conceded=true;
+        pl.concededTurn=currentGame.turn;
+        pl._gmRemoved=true;
+        gs._gmRemovedRealms=Array.isArray(gs._gmRemovedRealms)?gs._gmRemovedRealms:[];
+        if(!gs._gmRemovedRealms.includes(row.player_index)) gs._gmRemovedRealms.push(row.player_index);
+        const {error:sErr}=await sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',currentGame.id);
+        if(sErr){ msg.innerHTML=`<div class="msg-error">Could not record the concession: ${sErr.message}</div>`; return; }
+        currentGame.game_state=JSON.stringify(gs); Object.assign(currentGame,metaPatch(gs));
+      }
+    }
+    const {error}=await sb.from('game_players').delete().eq('id',row.id);
+    if(error){ msg.innerHTML=`<div class="msg-error">${error.message}</div>`; return; }
+    msg.innerHTML=`<div class="msg-success">${who} has been removed${live?' — their realm has conceded and will only defend from here on.':' and their slot is open again.'}</div>`;
+    await openGame(currentGame.id);
+    const _m2=document.getElementById('detail-msg'); // openGame clears the panel — say it again
+    if(_m2) _m2.innerHTML=`<div class="msg-success">${who} has been removed${live?' — their realm has conceded and will only defend from here on.':' and their slot is open again.'}</div>`;
+  }catch(e){
+    msg.innerHTML=`<div class="msg-error">${e.message||'Could not remove the player.'}</div>`;
+  }
 }
 // {ready, reason} for the auto-turn watcher. Requires an active game with at least one realm.
 function autoTurnReady(game,rows,tm){
@@ -8529,6 +8611,11 @@ function _skillItem(c,stat){
 // Skill LEVEL (base proficiency, 0–9) for perk unlocks; perkTier = levels past 5 (0–4).
 function skillLevel(c,stat){ return Math.max(0,Math.min(9,((c&&c.skills)||{})[stat]||0)); }
 function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
+// 2026-09-26 (Toby item 3): the personal-combat ceiling. SKILL_MAX is the highest any skill can
+// reach, however it is reached — training, items, the Crown aura, minor titles, discoveries. Every
+// figure that feeds a duel's hit chance or damage roll passes through here, so no stack of bonuses
+// can print (or fight at) "Melee 11".
+function pcSkillCap(v){ return Math.max(0, Math.min(SKILL_MAX, Math.round(v||0))); }
 
 // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ── see the end-of-turn call in
 // runTurn.
@@ -11010,6 +11097,18 @@ async function runTurn(opts){
     staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true,public:w.startsWith('\u{1F3F3}')}));
   }
 
+  // ── GM-REMOVED REALMS (2026-09-26, Toby item 4) ── The GM can take a player out of a game at any
+  // stage; the realm concedes there and then (in game_state) and its seat at the table is deleted.
+  // The world is told here, on the first turn resolved after the removal, in the same words a
+  // voluntary concession uses — removeGmRemovalQueue holds the indices waiting to be announced.
+  if(Array.isArray(G._gmRemovedRealms)&&G._gmRemovedRealms.length){
+    G._gmRemovedRealms.forEach(idx=>{
+      const _pl=(G.players||[])[idx]; if(!_pl) return;
+      log('system',`\u{1F3F3} ${_pl.name} has withdrawn from the game and CONCEDES. Its heroes lay down their ambitions and will only defend what they hold from now on.`,{actor:-1,targets:[],system:true,public:true});
+    });
+    delete G._gmRemovedRealms;
+  }
+
   // ── DELIVER PLAYER-TO-PLAYER MESSAGES ────
   // Each sender's dispatches are filed into every addressee's report as 'message' entries (targets
   // = the recipient, so only they see it). 'all' fans out to every other living human player. The
@@ -13089,13 +13188,19 @@ const BATTLE_ARMY_SPELLS={
       // end it before round 1).
       hp:((ch.hp!=null?ch.hp:maxHp)<=0&&_escapesTheEnd(ch)?Math.max(1,Math.round(maxHp/2)):(ch.hp!=null?ch.hp:maxHp))+rageHp, maxHp:maxHp+rageHp,
       // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
-      melee:effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training
-      archery:effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0), // sd37 Veteran Training
+      // 2026-09-26 (Toby item 3) — THE CEILING OF 9 IS THE CEILING. effSkillOf already clamps
+      // training + items + aura to SKILL_MAX, but the minor titles (Duelist, Widowmaker, Relic
+      // Hunter) and sd37 Veteran Training were added AFTERWARDS and so rode straight past it: a
+      // Melee 4 hero with +5 of items and two of those bonuses fought at "Melee 11 (4 +7 bonus)".
+      // Every one of those figures now goes through pcSkillCap, so nothing a character carries or
+      // holds can put Melee or Archery above 9 in a duel — for the hit chance OR for the damage.
+      melee:pcSkillCap(effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)), // sd37 Veteran Training
+      archery:pcSkillCap(effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)), // sd37 Veteran Training
       // Damage scales on the raw 1–9 level (levels 6–9 exist above the effStat cap of 5) — but an
       // item, aura or title that raises the skill now counts too, so a "+2 Melee" blade is felt in
       // the DAMAGE as well as the hit chance. Whichever is higher wins; nothing is lost either way.
-      meleeRaw:Math.max(skillLevel(ch,'melee'), effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)),
-      archeryRaw:Math.max(skillLevel(ch,'archery'), effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0)),
+      meleeRaw:pcSkillCap(Math.max(skillLevel(ch,'melee'), effStat(ch,'melee')+(charMinor(ch,'duelist')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0))),
+      archeryRaw:pcSkillCap(Math.max(skillLevel(ch,'archery'), effStat(ch,'archery')+(charMinor(ch,'marksman')?1:0)+(charMinor(ch,'widowmaker')?1:0)+(charMinor(ch,'relichunter')?1:0)+((ch.player!=null&&hasDisc(ch.player,'sd37'))?1:0))),
       // the character's OWN trained level, so the narrative can say why "Archery 6" exceeds what
       // the sheet shows (items, titles, discoveries, aura, mastery perks).
       meleeBase:skillLevel(ch,'melee'), archeryBase:skillLevel(ch,'archery'),
@@ -15930,6 +16035,47 @@ const BATTLE_ARMY_SPELLS={
     deadChar.armies=[];
   }
 
+  // ── A SPARED COWARD LEAVES HIS HOST BEHIND (2026-09-26, Toby item 7) ────
+  // A commander who throws down his sword and begs for his life does not then march his army home
+  // in good order. Everything he was leading STAYS on the ground he fled from, in this order of
+  // preference:
+  //   1. another commander of his own realm still standing there takes up the colours (the host
+  //      keeps fighting, under a leader who did not run);
+  //   2. failing that, if the realm holds the province, they take their place in its garrison;
+  //   3. failing that — leaderless on ground the realm does not hold — exactly the fate a fallen
+  //      commander's host meets: fall back to adjacent friendly land, else scatter as mercenaries.
+  // Summoned/bound creatures are the caster's own magic and leave with him (they expire on their
+  // own schedule; handing them to a garrison would strand them there for ever — the same trap
+  // disperseDeadCharArmies guards against).
+  // Returns how many units were left behind.
+  function abandonHostOnFlight(c){
+    if(!c) return 0;
+    const prov=G.world.provinces[c.location];
+    const all=(c.armies||[]).filter(Boolean);
+    if(!prov || all.length===0) return 0;
+    const bound=all.filter(a=>a._temporary), left=all.filter(a=>!a._temporary);
+    c.armies=bound;
+    if(left.length===0) return 0;
+    const _n=`${left.length} unit${left.length!==1?'s':''}`;
+    const _who=c.name.replace(' (wandering)','');
+    const heir=(G.characters||[])
+      .filter(o=>o&&o.alive&&o.id!==c.id&&o.player!=null&&o.player===c.player&&o.location===prov.id&&o._mercyFledTurn!==G.turn)
+      .sort((a,b)=>(effStat(b,'tactical')||0)-(effStat(a,'tactical')||0))[0];
+    if(heir){
+      heir.armies=(heir.armies||[]).concat(left);
+      log('system',`🏳 ${_who} begged for his life and is gone, but his host does not follow him: ${_n} hold their ground in ${prov.name} and fall in under ${heir.name}.`,{actor:c.player,targets:[c.player],charId:heir.id,provinceId:prov.id});
+      return left.length;
+    }
+    if(prov.owner===c.player){
+      prov.garrisonArmies=(prov.garrisonArmies||[]).concat(left);
+      log('system',`🏳 ${_who} abandons his command in ${prov.name} — with no officer left to lead them, ${_n} of his host take their place in the province garrison.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+      return left.length;
+    }
+    log('system',`🏳 ${_who} slips away from ${prov.name} with his life, leaving ${_n} leaderless on ground the realm does not hold.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+    disperseDeadCharArmies({id:c.id,name:_who,player:c.player,location:c.location,armies:left,_attackedFrom:c._attackedFrom});
+    return left.length;
+  }
+
   function handleHeroDeath(deadChar, killerChar, opts){
     if(!deadChar) return;
     // DOPPELGANGER GUARD. Battles are fought on shallow COPIES ({...char}); if any caller hands a
@@ -17964,6 +18110,13 @@ const BATTLE_ARMY_SPELLS={
         const _wildOK=prov.owner===c.player&&(prov.terrain==='forest'||prov.terrain==='jungle'||(prov.race||'').startsWith('Primal'));
         if(!_wildOK){
           log('system',`${c.name}: the wild only rises on YOUR land, and only where it still runs deep — an owned forest, jungle, or wild (Creature or Monster) province.`,{actor:c.player,targets:[c.player]});break;}
+        // 2026-09-26 (Toby item 1) — ONE AWAKENING PER PROVINCE PER TURN. The land answers once a
+        // season: a column could otherwise stand in a single wild province and call up a creature in
+        // every phase (and a second caller in the same province could do it again beside them).
+        // Stamped on the PROVINCE, like the Pagan rite and the Evil conquest doctrine, so the limit
+        // holds across phases, across characters and across realms.
+        if(prov._awakenTurn===G.turn){
+          log('system',`${c.name} calls again to the deep places of ${prov.name}, but the wild has already answered here this season — it will not stir a second time until the year turns.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
         const wType=target;
         const needDru=AWAKEN_TIERS[wType];
@@ -17976,6 +18129,7 @@ const BATTLE_ARMY_SPELLS={
         if((player.gold||0)<wCost){
           log('system',`${c.name}: awakening ${wType} takes a ${wCost}g offering — the treasury holds only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
         player.gold-=wCost;
+        prov._awakenTurn=G.turn; // the land has answered here this turn (see the guard above)
         c.armies=c.armies||[];
         // the one muster path that ignored both sd01 and the World-Tree Grove. An awakened beast is
         // a creature/monster raised by a Druidic realm — the most thematic place of all for the
@@ -23247,10 +23401,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // the wealthiest province still held if home has fallen). Done after all phases so it reads the
   // final ownership map. Characters with no land left (dynasty landless) simply stay where they
   // fled.
+  // 2026-09-26 (Toby item 7) — HE RUNS; THE HOST DOES NOT. A man who throws down his sword and begs
+  // for his life does not then lead his army home in good order. Whatever he was leading STAYS on
+  // the ground he fled from: it falls in behind another commander of his realm still standing
+  // there, or takes its place in the province garrison if the realm holds the ground, or — on
+  // foreign soil with nobody left to lead it — meets exactly the fate a fallen commander's
+  // leaderless host meets (falls back to adjacent friendly land, else scatters as mercenaries).
   (G.characters||[]).forEach(c=>{
     if(c._mercyFledTurn!==G.turn || !c.alive) return;
     const dest=monarchRestProvId(G, c.player);
     if(dest!=null && dest!==c.location){
+      abandonHostOnFlight(c); // the host stays on the field he ran from — see the note above
       c.location=dest;
       log('system',`🏳 ${c.name}, spared on the field, makes their way back to ${G.world.provinces[dest]?.name||'safety'}.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:dest});
     }
@@ -24247,21 +24408,42 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     });
 
     // the map's crossed-swords icon marks provinces where this player WITNESSED a real battle this
-    // turn — an actual battle occurred (_hadBattleThisTurn) AND the player has a visible combat
-    // entry there (participated or line-of-sight). Intelligence sightings never trigger it.
+    // turn — an actual battle occurred (_hadBattleThisTurn) AND the player has a visible line OF
+    // THAT BATTLE (participated, or saw it from a character standing in the province).
+    //
+    // 2026-09-26 (Toby item 5) — ROOT CAUSE of "I can see a battle icon in a province I have never
+    // set foot in". This counted EVERY entry of type 'combat' that reached the player's filtered
+    // log, and 'combat' is the engine's catch-all type for far more than battle narrative: a
+    // defender falling back carries the id of the province he RETREATED INTO (and is written to the
+    // attacker as well), Plague / Earthquake / Flood / warded-spell lines are logged as 'combat'
+    // with `env:true` on a province the caster merely reached, a hero's death notice carries
+    // wherever the body lies, and so on. Any one of those on a province that separately saw an army
+    // battle lit the crossed swords for a player who never witnessed the fighting — most visibly
+    // one province away from their own hero.
+    //
+    // Only emitBattle writes actual battle narrative, and it stamps every one of its lines
+    // (including the onlookers' one-line summary) with a `battleId`. That stamp is now the test, so
+    // the marker can only follow a battle report the player genuinely received, and the environment
+    // lines are excluded outright.
     const _visibleBattleProvs=new Set(
-      _filteredLog.filter(e=>e.type==='combat'&&e.provinceId!=null&&!/^\[Intel/i.test(e.text||''))
+      _filteredLog.filter(e=>e.type==='combat'&&e.battleId!=null&&e.provinceId!=null&&!e.env&&!/^\[Intel/i.test(e.text||''))
         .map(e=>e.provinceId)
     );
+    // …and ground this player's own characters actually STOOD ON at some phase this turn is
+    // witnessed by definition, whatever the log looks like — so a battle site can never lose its
+    // marker because a path set _hadBattleThisTurn without writing a battle report.
+    const _presentProvsAnyPhase=new Set();
+    presenceByPhase.forEach(m=>{ if(m) m.forEach((who,provId)=>{ if(who&&who.has(pi)) _presentProvsAnyPhase.add(provId); }); });
     (report.worldMeta?.provinces||[]).forEach(pv=>{
       if(!pv) return;
+      const _witnessed=_visibleBattleProvs.has(pv.id)||_presentProvsAnyPhase.has(pv.id);
       const realBattle=!!G.world.provinces[pv.id]?._hadBattleThisTurn;
-      pv.hadBattle = realBattle && _visibleBattleProvs.has(pv.id);
+      pv.hadBattle = realBattle && _witnessed;
       // the ORANGE ongoing-battle marker (battleUnresolved) was set unconditionally in
       // buildTurnReport and never visibility-gated, so a carry-on fight anywhere on the map lit up
       // for every player. Restrict it to a battle this player can actually witness, exactly like
       // the crossed-swords marker above.
-      if(pv.battleUnresolved) pv.battleUnresolved = _visibleBattleProvs.has(pv.id);
+      if(pv.battleUnresolved) pv.battleUnresolved = _witnessed;
     });
 
     // ── Province character intel (Intelligence → Province Reports) ──
@@ -24466,6 +24648,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1853</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1046</div>
 </body>
 </html>
