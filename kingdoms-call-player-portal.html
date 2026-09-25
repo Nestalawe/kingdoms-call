@@ -1477,9 +1477,10 @@ async function loadMyGames(){
     el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">You are not enrolled in any games yet. Join an open game below.</div>';
     return;
   }
-  // Step 2: fetch each game separately (avoids RLS join issue)
+  // Step 2: fetch each game separately (avoids RLS join issue). Disk-IO (2026-09-25): light columns
+  // only — the cards need name / turn / status and the meta summary, never the world.
   const gameIds=mySlots.map(s=>s.game_id);
-  const {data:games,error:gErr}=await sb.from('games').select('*').in('id',gameIds);
+  const {data:games,error:gErr}=await fetchGamesLite(gameIds);
   if(gErr){el.innerHTML=`<div class="msg-error">${gErr.message}</div>`;return;}
   const gamesById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
   // every slot in those games, so each card can show HOW MANY realms have sent their orders. Counts
@@ -1513,6 +1514,23 @@ async function loadMyGames(){
 function parseGameStateP(g){
   try{ return typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){ return {}; }
 }
+// ── games.meta (Disk-IO fix, 2026-09-25) ────
+// The GM portal writes a ~1 KB summary of each game beside its game_state: {v, turnMode,
+// exempt:[player indices], …}. My Games used to pull every game's full world (hundreds of KB per
+// game, on every page load) just to read the turn mode and which realms are exempt from orders;
+// it now reads the summary and only falls back to the world for a row that has none.
+const GAME_LITE_COLS_P='id,name,gm_user_id,status,turn,max_players,created_at,meta';
+function gameMetaP(g){
+  if(!g||g.meta==null) return null;
+  try{ const m=typeof g.meta==='string'?JSON.parse(g.meta):g.meta; return (m&&typeof m==='object'&&m.v)?m:null; }catch(e){ return null; }
+}
+// Light read of games by id; if the meta column does not exist yet (the GM has not run the
+// one-line migration) the query errors on the unknown column and we fall back to the full rows.
+async function fetchGamesLite(ids){
+  let r=await sb.from('games').select(GAME_LITE_COLS_P).in('id',ids);
+  if(r.error&&/meta/i.test(r.error.message||'')) r=await sb.from('games').select('*').in('id',ids);
+  return r;
+}
 function realmExemptFromOrdersP(G,idx){
   const pl=((G&&G.players)||[])[idx];
   if(!pl) return false;
@@ -1521,10 +1539,14 @@ function realmExemptFromOrdersP(G,idx){
   const hasChar=((G&&G.characters)||[]).some(c=>c&&c.alive&&c.player===idx);
   return !hasProv&&!hasChar;
 }
+function realmExemptInP(g,idx){
+  const m=gameMetaP(g);
+  if(m&&Array.isArray(m.exempt)) return m.exempt.includes(idx);
+  return realmExemptFromOrdersP(parseGameStateP(g),idx);
+}
 function ordersInTextP(g,slots){
   if(!g||g.status!=='active') return '';
-  const G=parseGameStateP(g);
-  const need=(slots||[]).filter(p=>p&&p.user_id&&!realmExemptFromOrdersP(G,p.player_index));
+  const need=(slots||[]).filter(p=>p&&p.user_id&&!realmExemptInP(g,p.player_index));
   if(need.length===0) return '';
   const inN=need.filter(p=>p.orders_submitted).length;
   const waiting=need.length-inN;
@@ -1538,7 +1560,7 @@ function ordersInTextP(g,slots){
 // The GM chooses manual / automatic / automatic-with-deadline. Players are shown the deadline (in
 // their own local time), and the COUNT of realms whose orders are in — never which ones.
 function turnModeOfGame(g){
-  let gs={}; try{ gs=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){}
+  let gs=gameMetaP(g); if(!gs){ try{ gs=typeof g.game_state==='string'?JSON.parse(g.game_state):(g.game_state||{}); }catch(e){ gs={}; } }
   const tm=(gs&&gs.turnMode&&typeof gs.turnMode==='object')?gs.turnMode:{};
   return {mode:['manual','auto','deadline'].includes(tm.mode)?tm.mode:'manual',nextDeadlineAt:tm.nextDeadlineAt||null};
 }
@@ -2438,8 +2460,9 @@ async function openReport(gamePlayerId){
   // Fetch game_player row first
   const {data:gp,error}=await sb.from('game_players').select('*').eq('id',gamePlayerId).single();
   if(error){document.getElementById('report-title').textContent='Error: '+error.message;return;}
-  // Fetch game separately to avoid RLS join issue
-  const {data:g,error:gErr}=await sb.from('games').select('*').eq('id',gp.game_id).single();
+  // Fetch game separately to avoid RLS join issue. Disk-IO (2026-09-25): the report screen reads
+  // only name / turn / status off the game row — never its world.
+  const {data:g,error:gErr}=await sb.from('games').select('id,name,gm_user_id,status,turn,max_players').eq('id',gp.game_id).single();
   if(gErr){document.getElementById('report-title').textContent='Error loading game: '+gErr.message;return;}
   gp.games=g; // attach for compatibility
   currentGamePlayer=gp;
@@ -8950,6 +8973,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.25-1703</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.25-1823</div>
 </body>
 </html>
