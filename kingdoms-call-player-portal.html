@@ -4,7 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kingdoms Call — Player Portal</title>
+<script>
+// ── BOOT-FAILURE REPORTER (2026-09-25) ── Every table and the Supabase client are built at the top
+// level of the main script, so any uncaught error there (library not loaded, data file missing or
+// stale, a temporal-dead-zone throw) killed the whole script before init() ever hid the spinner —
+// the portal sat on "Loading…" for ever and said nothing. This runs before anything else: while the
+// spinner is still showing, the first uncaught error (or rejected promise) replaces it with the
+// message and a hint, so a boot failure is always visible and diagnosable without the console.
+(function(){
+  let shown=false;
+  function hint(m){
+    if(/supabase is not defined/i.test(m)) return 'The Supabase library could not be downloaded from cdn.jsdelivr.net or unpkg.com. Check your internet connection, ad-blocker or firewall, then reload.';
+    if(/before initialization|is not defined/i.test(m)) return 'A script error stopped the portal from starting (this build, or a stale cached copy). Hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
+    return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
+  }
+  function show(msg){
+    if(shown) return;
+    const go=()=>{
+      const sp=document.getElementById('spinner');
+      if(!sp||sp.style.display==='none') return;   // init() already ran: not a boot failure
+      shown=true;
+      const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      sp.innerHTML='<div style="max-width:640px;margin:auto;text-align:left;font-family:\'Crimson Text\',serif;letter-spacing:0;color:#f2e8d0;border:1px solid #7a1c1c;border-radius:4px;padding:14px 18px;background:#1a0c0c">'
+        +'<div style="font-family:\'Cinzel\',serif;color:#e8b84b;margin-bottom:6px">⚠ The Player portal could not start</div>'
+        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px">'+esc(msg)+'</div>'
+        +'<div style="font-size:.9rem">'+hint(msg)+'</div>'
+        +'<div style="margin-top:10px"><button onclick="location.reload()" style="padding:6px 14px;background:#7a1c1c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:\'Cinzel\',serif">Reload</button></div></div>';
+    };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
+  }
+  window.addEventListener('error',e=>show(e.message||String(e.error||'Unknown error')));
+  window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// If jsDelivr is unreachable (outage, blocked network), try unpkg before giving up. document.write of
+// a synchronous script during parsing keeps load order: the main script below still runs after it.
+if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 :root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#1a1208;--ink-light:#3d2b0f;--crimson:#7a1c1c;--gold:#c8922a;--gold-light:#e8b84b;--forest:#2d4a1e;--stone:#6b5a42;--bg:#0e0a04;}
@@ -694,7 +732,9 @@ const ITEM_SLOT_OF_P={
   'Ring of the Explorer':'ring',"Death's Finger Ring":'ring',"Siege Master's Ring":'ring','Ring of Wealth':'ring',
   "Mind's Eye Amulet":'amulet','Amulet of Fortitude':'amulet','Iron Heart Talisman':'amulet','Eagle-Eye Pendant':'amulet',"Legionnaire's Mark":'amulet',
 };
-// FOUR item tiers, mirroring the GM engine - 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY. A lair
+// FOUR item tiers, mirroring the GM engine - 1 Weak, 2 Moderate, 3 Powerful, 4 LEGENDARY. Since
+// 2026-09-24 the tier says what an item is FOR as well as how strong it is: Weak = field and office kit
+// that does nothing in a fight; Moderate = the first rung of combat kit; Powerful = the second. A lair
 // holds exactly one item, of its own guardian's tier, so the tier a player is shown is the danger
 // they beat for it. Only a legendary relic scores a point.
 const ITEM_TIER_NAME_P={1:'Weak',2:'Moderate',3:'Powerful',4:'Legendary'};
@@ -8908,6 +8948,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.24-1615</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7">Kingdoms Call — Player Portal v2026.09.25-1320</div>
 </body>
 </html>

@@ -5,7 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kingdoms Call — GM Portal</title>
   <!-- Build: v1783234579 -->
+<script>
+// ── BOOT-FAILURE REPORTER (2026-09-25) ── Every table and the Supabase client are built at the top
+// level of the main script, so any uncaught error there (library not loaded, data file missing or
+// stale, a temporal-dead-zone throw) killed the whole script before init() ever hid the spinner —
+// the portal sat on "Loading…" for ever and said nothing. This runs before anything else: while the
+// spinner is still showing, the first uncaught error (or rejected promise) replaces it with the
+// message and a hint, so a boot failure is always visible and diagnosable without the console.
+(function(){
+  let shown=false;
+  function hint(m){
+    if(/supabase is not defined/i.test(m)) return 'The Supabase library could not be downloaded from cdn.jsdelivr.net or unpkg.com. Check your internet connection, ad-blocker or firewall, then reload.';
+    if(/kingdoms-call-data\.js/i.test(m)) return 'Upload the current <b>kingdoms-call-data.js</b> to the same folder as this page, then reload.';
+    if(/before initialization|is not defined/i.test(m)) return 'A script error stopped the portal from starting (this build, or a stale cached copy). Hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
+    return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
+  }
+  function show(msg){
+    if(shown) return;
+    const go=()=>{
+      const sp=document.getElementById('spinner');
+      if(!sp||sp.style.display==='none') return;   // init() already ran: not a boot failure
+      shown=true;
+      const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      sp.innerHTML='<div style="max-width:640px;margin:auto;text-align:left;font-family:\'Crimson Text\',serif;letter-spacing:0;color:#f2e8d0;border:1px solid #7a1c1c;border-radius:4px;padding:14px 18px;background:#1a0c0c">'
+        +'<div style="font-family:\'Cinzel\',serif;color:#e8b84b;margin-bottom:6px">⚠ The GM portal could not start</div>'
+        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px">'+esc(msg)+'</div>'
+        +'<div style="font-size:.9rem">'+hint(msg)+'</div>'
+        +'<div style="margin-top:10px"><button onclick="location.reload()" style="padding:6px 14px;background:#7a1c1c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:\'Cinzel\',serif">Reload</button></div></div>';
+    };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
+  }
+  window.addEventListener('error',e=>show(e.message||String(e.error||'Unknown error')));
+  window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// If jsDelivr is unreachable (outage, blocked network), try unpkg before giving up. document.write of
+// a synchronous script during parsing keeps load order: the main script below still runs after it.
+if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 :root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#1a1208;--ink-light:#3d2b0f;--crimson:#7a1c1c;--gold:#c8922a;--gold-light:#e8b84b;--forest:#2d4a1e;--stone:#6b5a42;--bg:#0e0a04;}
@@ -259,10 +298,27 @@ section{display:none;}.section-active{display:block;}
 // live in kingdoms-call-data.js, which MUST be served from the same folder and is loaded by the
 // script tag just above this block. Without it every table below is undefined and the portal
 // would hang on the loading spinner, so fail loudly instead.
-if(typeof ALL_MAGIC_ITEMS_P==='undefined'||typeof MONSTERS_P==='undefined'){
-  document.addEventListener('DOMContentLoaded',()=>{document.body.innerHTML='<div style="font-family:serif;padding:40px;max-width:600px;margin:auto"><h2>Kingdoms Call — data file missing</h2><p><b>kingdoms-call-data.js</b> was not found next to this page. Upload it to the same folder as the GM portal and reload.</p></div>';});
-  throw new Error('kingdoms-call-data.js not loaded');
-}
+// 2026-09-25: the guard checked two of the eighteen tables. A STALE data file (an older upload, or
+// a cached copy) that lacked any other table passed the guard and then threw a bare ReferenceError
+// somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
+// now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
+// build was cut against: older → the same loud failure, naming what is wrong.
+const KC_DATA_MIN='2026.09.25-1320';
+(function(){
+  const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
+  const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
+  const stamp=(typeof KC_DATA_STAMP==='string')?KC_DATA_STAMP:null;
+  const allMissing=missing.length===need.length;
+  const stale=!allMissing&&(missing.length>0||!stamp||stamp<KC_DATA_MIN);
+  if(allMissing||stale){
+    const title=allMissing?'data file missing':'data file out of date';
+    const body=allMissing
+      ? '<b>kingdoms-call-data.js</b> was not found next to this page. Upload it to the same folder as the GM portal and reload.'
+      : `The <b>kingdoms-call-data.js</b> beside this page is ${stamp?'v'+stamp:'an old build without a version stamp'}; this portal needs v${KC_DATA_MIN} or newer${missing.length?` (missing: ${missing.join(', ')})`:''}. Upload the current data file, then hard-reload (Ctrl/Cmd+Shift+R) so the browser does not keep the old copy.`;
+    document.addEventListener('DOMContentLoaded',()=>{document.body.innerHTML=`<div style="font-family:serif;padding:40px;max-width:600px;margin:auto"><h2>Kingdoms Call — ${title}</h2><p>${body}</p></div>`;});
+    throw new Error(allMissing?'kingdoms-call-data.js not loaded':`kingdoms-call-data.js out of date (${stamp||'no stamp'} < ${KC_DATA_MIN})`);
+  }
+})();
 
 // ════
 // MASTER UNIT TABLES — single source of truth
@@ -1315,8 +1371,9 @@ async function openGame(gameId){
   const {data:game,error}=await sb.from('games').select('*, game_players(*)').eq('id',gameId).single();
   if(error){document.getElementById('detail-msg').innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
   currentGame=game;
-  // Rewrite any pre-rename unit names before anything reads the state.
-  if(currentGame&&currentGame.game_state) migrateLegacyUnitNames(currentGame.game_state);
+  // 2026-09-25: the legacy unit-name rewrite used to be called here on the raw game_state, which is
+  // a JSON string — a silent no-op. It now runs inside runTurn on the parsed state (where the
+  // rewritten names are actually used and saved).
   currentGamePlayers=game.game_players||[];
 
   document.getElementById('detail-game-name').textContent=game.name;
@@ -1562,7 +1619,10 @@ async function loadTurnLog(gameId, turn){
   if(!data||data.length===0){el.innerHTML='<div style="color:#999;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
 
   const allEntries=data.flatMap(d=>d.entries||[]);
-  const gameState=currentGame?.game_state||{};
+  // 2026-09-25: game_state arrives from Supabase as a JSON STRING; reading .characters off it gave
+  // an empty roster, so every character section was dropped and the GM's Last Turn Chronicle showed
+  // only the Intelligence block ("No entries." when there was none). Parse it like everywhere else.
+  const gameState=parseGameState(currentGame);
   const allChars=(gameState?.characters||[]);
   const allPlayers=(gameState?.players||[]);
 
@@ -2426,9 +2486,13 @@ function rollMagicItem(monsterPower, taken){
   const inTier=((ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P)
     .filter(it=>!taken.has(it.name));
   if(inTier.length) return inTier[Math.floor(Math.random()*inTier.length)];
-  const anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name));
+  let anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name)&&itemFallbackOk(it,t));
+  if(!anyLeft.length) anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name));
   return anyLeft.length ? anyLeft[Math.floor(Math.random()*anyLeft.length)] : null;
 }
+// When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
+// exhaustion); a combat item reaches a Weak lair only when the treasury is otherwise bare.
+function itemFallbackOk(it,t){ return t==null || t!==1 || itemRole(it)==='utility'; }
 // ── LAIR HOARDS ── every lair's gold AND magic items are decided at world generation
 // (or, for a game saved before this build, once at the start of the next turn) and stored on the feature:
 // `treasure` (gold, one figure — what a clearer takes and what a thief chips at) and `hoardItems`
@@ -2619,7 +2683,7 @@ function rollMagicItemFor(gs, playerIndex, monsterPower, taken){
   migrateHoardTally(pl);
   const found=pl._itemsFoundByCat||{};
   const t=lairItemTier(monsterPower);
-  const avail=(c,tt)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&(tt==null||it.tier===tt)&&!taken.has(it.name)&&itemHoardCategory(it)===c);
+  const avail=(c,tt)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&(tt==null?itemFallbackOk(it,t):it.tier===tt)&&!taken.has(it.name)&&itemHoardCategory(it)===c);
   let atTier=true;
   let live=HOARD_CATEGORIES.filter(c=>avail(c,t).length>0);
   if(!live.length){ atTier=false; live=HOARD_CATEGORIES.filter(c=>avail(c,null).length>0); }
@@ -2671,7 +2735,7 @@ function ensureAllLairHoards(gs){
   // 2. Everything else, category-balanced.
   // Items of a given kind still available AT A GIVEN TIER (legendaries are dealt separately above).
   const untakenT=(cat,t)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&it.tier===t&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
-  const untakenAny=cat=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
+  const untakenAny=(cat,t)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&!taken.has(it.name)&&itemHoardCategory(it)===cat&&itemFallbackOk(it,t));
   for(const w of work){
     const rc=countsFor(w.region);
     const t=lairItemTier(w.power); // a lair holds an item of its OWN guardian's tier
@@ -2680,7 +2744,8 @@ function ensureAllLairHoards(gs){
       // that kind rather than leaving the lair empty.
       let atTier=true;
       let cats=HOARD_CATEGORIES.filter(c=>untakenT(c,t).length>0);
-      if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c).length>0); }
+      if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c,t).length>0); }
+      if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c,null).length>0); } // last resort: the "never empty" ruling outranks rule 1 on a bare treasury
       if(!cats.length){ w.slots=0; break; }
       // Lowest count IN THIS REGION first; the world tally breaks ties, so the map stays level too.
       const low=Math.min(...cats.map(c=>rc[c]||0));
@@ -2688,7 +2753,7 @@ function ensureAllLairHoards(gs){
       const lowW=Math.min(...tiedR.map(c=>catCount[c]||0));
       const pool=shuffleP(tiedR.filter(c=>(catCount[c]||0)===lowW));
       const cat=pool[0];
-      const inCat=atTier?untakenT(cat,t):untakenAny(cat);
+      const inCat=atTier?untakenT(cat,t):(untakenAny(cat,t).length?untakenAny(cat,t):untakenAny(cat,null));
       const pick=inCat[Math.floor(Math.random()*inCat.length)];
       give(w.f,pick,w.region); w.slots--;
     }
@@ -2937,12 +3002,51 @@ const LEGENDARY_NAMES_P=new Set(LEGENDARY_ITEMS_P.map(it=>it.name));
 // already in that band. Combat items and legendary relics are NEVER minted: one name each.
 //
 // Item count falls from ~860 to ~600 because a lair now takes one item instead of up to three.
-const ITEM_TIER_TARGET={1:34,2:25,3:10};   // stock per kind, per tier (legendaries are the curated list)
-// a per-kind override. The WEAPON band at tier 3 holds 30, because the ten gated Powerful weapons
-// now sit alongside twenty unrestricted ones and every one of the twenty-five is a hand-written
-// design rather than a minted rename.
-const ITEM_TIER_TARGET_BY_CAT={weapon:{3:25}};
-function itemTierTarget(tier,cat){ const o=ITEM_TIER_TARGET_BY_CAT[cat]; return (o&&o[tier]!=null)?o[tier]:ITEM_TIER_TARGET[tier]; }
+// ══ ITEM ROLE — what an item is FOR, the axis that gates its tier (Toby, 2026-09-24) ══
+// Rule 1: a Weak (easy) lair holds nothing that helps a hero in a fight; it holds the kit of the heroes
+// doing OTHER jobs — leading armies, spying, thieving, exploring, running the purse. Rule 2: Moderate
+// holds the first rung of combat kit. Rule 3: Powerful the second rung. (Rule 4, legendary relics, is
+// the curated list — a separate piece of work.) Strength still orders items WITHIN a band; role decides
+// which bands an item may hold at all. Role is read from the same `effect.stat` the duel engine reads
+// (pcCharCombatant), so an item can never be filed as combat for a power it does not have.
+//   COMBAT  : melee, archery, maxHp, armour wards, pc riders, combat-use consumables, temper, aura, and
+//             the duel schools elemental / white / illusory (measured 2026-09-24: a +1 in any of these is
+//             worth a +1 weapon or a DR-1 armour in a lair fight — claude/claude_school_study_0924.js);
+//             a +2 or better in psychic / necromancy; any utility stat that carries a pc rider.
+//   UTILITY : the field skills (tactical, march, naval, sage, spy, thief, explorer, druid), tax and army
+//             and unit-type bonuses, siege, home defence, fleet, spell charms, oracle/hidden/promote,
+//             and a +1 in psychic or necromancy (measured: worth less than the weakest ward in the game,
+//             and both are realm schools — the spy's and the army-raiser's).
+// A combat item's floor is Moderate; a utility item may sit anywhere. Toby's ruling: a utility item in a
+// weapon/armour/shield slot (Boots of the Wind, Tyrant's Sceptre) stays eligible for Weak — giving up
+// the slot to carry it is the trade.
+const ITEM_COMBAT_STATS=new Set(['melee','archery','maxHp','armour','mithrilArmour','pc','combatUse','temper','aura']);
+const ITEM_DUEL_SCHOOLS=new Set(['elemental','white','illusory']);
+const ITEM_FIELD_SCHOOLS=new Set(['psychic','necromancy']);
+function itemRole(it){
+  const e=(it&&it.effect)||{}; const s=e.stat;
+  if(ITEM_COMBAT_STATS.has(s)||ITEM_DUEL_SCHOOLS.has(s)) return 'combat';
+  if(ITEM_FIELD_SCHOOLS.has(s)) return ((e.bonus||0)>=2)?'combat':'utility';
+  if(e.pc) return 'combat';
+  return 'utility';
+}
+// the lowest ordinary tier an item may hold: combat never below Moderate
+function itemTierFloor(it){ return itemRole(it)==='combat'?2:1; }
+function itemAllowedInTier(it,t){ return isLegendaryItem(it) ? t===4 : (t>=itemTierFloor(it)&&t<=3); }
+// Stock per kind, per tier, per ROLE: [utility, combat]. Weak is sized like the old 306-item tier
+// (a ten-realm map seats ~240 Weak lairs and every name is unique game-wide), all of it utility;
+// Moderate and Powerful carry a utility minority (the +2 field skills, the big ledgers and horns) beside
+// the combat kit. Weapon at Powerful stays 25: every one is a hand-written design.
+const ITEM_TIER_TARGET={
+  1:{trinket:[90,0],ring:[50,0],amulet:[40,0],cloak:[40,0],helm:[40,0],weapon:[12,0],armour:[12,0],shield:[4,0],combat:[0,0]},
+  2:{trinket:[12,12],ring:[8,16],amulet:[5,20],cloak:[5,20],helm:[5,20],weapon:[2,30],armour:[2,36],shield:[0,30],combat:[0,70]}, // combat items are one name each (never minted), so their band is simply every design worth its floor
+  3:{trinket:[4,6],ring:[2,8],amulet:[2,8],cloak:[2,8],helm:[2,8],weapon:[1,25],armour:[0,10],shield:[0,10],combat:[0,12]},
+};
+function itemTierTarget(tier,cat,role){ const o=(ITEM_TIER_TARGET[tier]||{})[cat]||[0,0]; return role==null?(o[0]+o[1]):(role==='utility'?o[0]:o[1]); }
+// A COMBAT item must also be worth its band: Powerful takes nothing under 4.5 (more than a bare +1
+// skill, which scores 3), Moderate nothing under 2 (a DR-1 ring, 1.2, is filler). A band the designs
+// cannot fill is topped up by minting from what did qualify, never by promoting a trinket.
+const ITEM_COMBAT_SCORE_FLOOR={3:4.5,2:2.0};
 
 // --- How strong is this item, really? ------------------------------------------------------ One
 // number per item, on a rough 0-10 scale, so that "simplest" and "strongest" mean something a
@@ -2953,8 +3057,8 @@ function _wardScore(fx){
   const w=fx.ward, a=fx.amt||0, p=fx.pct||0;
   const FLAT={stunImmune:3,dotImmune:3,firstHit:2.5,secondWind:4,buckler:2.5};
   if(FLAT[w]!=null) return FLAT[w]+(p?p/10:0);
-  if(['meleeDR','arrowDR','natureDR','darkDR','thorns','regen'].includes(w)) return a*1.2;
-  if(['dodge','block','arrowBlock','spellBlock','spellPct','cap','lowHp','openGuard','resist','roundWard'].includes(w)) return p/7;
+  if(['meleeDR','arrowDR','natureDR','darkDR','thorns','regen','roundWard'].includes(w)) return a*1.2; // roundWard is an AMOUNT (a ward of N a round) — it scored 0 while listed among the percentages, which dropped the Shield of the Ward-Saints from the treasury
+  if(['dodge','block','arrowBlock','spellBlock','spellPct','cap','lowHp','openGuard','resist'].includes(w)) return p/7;
   return 2;
 }
 function _pcScore(pc){
@@ -3043,12 +3147,12 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     // LEGENDARY is exactly the curated relic list - never a promotion by score.
     const legs=LEGENDARY_NAMES_P;
     bases.forEach(it=>{ if(legs.has(it.name)) it.tier=4; });
-    // Everything that is not a relic - bases AND their alt-named clones - is ranked by score and
-    // the bands are filled EXACTLY: the strongest 8 are Powerful, the next 25 Moderate, the next 34
-    // Weak. A clone carries its base's score. Whatever is left over at the bottom is the weakest
-    // material of its kind and is DROPPED from the treasury outright: a lair now holds one item
-    // instead of three, so the game needs far less stock, and what it keeps should be the better
-    // half.
+    // Everything that is not a relic - bases AND their alt-named clones - is ranked by score, then
+    // SPLIT BY ROLE (itemRole) and each role banded on its own: Powerful takes the strongest of the
+    // role up to its (kind x tier x role) target, Moderate the next, Weak the next - and a COMBAT item
+    // never falls below Moderate (itemTierFloor), so a Weak lair holds nothing that helps in a
+    // fight. A clone carries its base's score. Whatever no band has room for is the weakest material
+    // of its kind and role and is DROPPED from the treasury outright.
     const ordinary=list.filter(it=>!legs.has(it.name));
     if(!ordinary.length) return;
     ordinary.forEach(it=>{ const b=_ITEM_ALT_BASE[it.name]; it._score=(b&&tierScoreOf[b]!=null)?tierScoreOf[b]:itemPowerScore(it); });
@@ -3057,18 +3161,15 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
     // interchangeable filler rather than something written for a particular people.
     const _rank=it=>((_ITEM_ALT_BASE[it.name]||it._variantOf)?2:0)+((it.race||it.alignment)?-1:0);
     ordinary.sort((a,b)=>(b._score-a._score)||(_rank(a)-_rank(b))||a.name.localeCompare(b.name));
-    // Split what EXISTS across the three ordinary bands in proportion first, so every band is
-    // seeded even for a kind with few designs of its own (helms, say). Filling strongest-first
-    // instead would hand the whole list to Powerful and Moderate and leave Weak with nothing to
-    // mint from. The bands are then trimmed or minted to their exact targets below. 2026-09-15:
-    // seed the top band with at least its own target where enough designs exist.
-    const nTop=Math.max(1,Math.min(ordinary.length,Math.max(Math.round(ordinary.length*0.13),itemTierTarget(3,cat))));
-    const nMid=Math.max(1,Math.round(ordinary.length*0.37));
-    ordinary.forEach((it,k)=>{ it.tier = k<nTop?3 : k<nTop+nMid?2 : 1; });
-    // Trim any band that overflows its target, weakest and most interchangeable first.
-    [1,2,3].forEach(t=>{
-      const band=ordinary.filter(it=>it.tier===t);
-      for(let k=itemTierTarget(t,cat);k<band.length;k++) band[k]._drop=true; // band is already strongest-first
+    ['utility','combat'].forEach(role=>{
+      const pool=ordinary.filter(it=>itemRole(it)===role);
+      let k=0;
+      [3,2,1].forEach(t=>{
+        let n=0; const want=itemTierTarget(t,cat,role);
+        const floor=(role==='combat'&&ITEM_COMBAT_SCORE_FLOOR[t])||0;
+        while(k<pool.length&&n<want){ const it=pool[k]; if(!itemAllowedInTier(it,t)||it._score<floor) break; it.tier=t; n++; k++; } // pool is strongest-first, so the first item under the band's floor ends the band
+      });
+      for(;k<pool.length;k++) pool[k]._drop=true;
     });
   });
 
@@ -3096,13 +3197,14 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
       _VARIANT_EPITHETS.forEach(e=>nouns.forEach(nn=>out.push(nn+' '+e)));
       return out;
     };
-    [1,2,3].forEach(t=>{
-      const want=itemTierTarget(t,cat);
-      const inBand=ALL_MAGIC_ITEMS_P.filter(it=>it.tier===t&&itemHoardCategory(it)===cat);
-      // Seeds should be usable by anyone, and never a combat item (one name each, by ruling). If a
-      // band holds nothing but race- or alignment-bound designs, seed from those instead and let
-      // the minted versions carry the same binding - a short band would otherwise leave the stocker
-      // handing that kind's lairs an item of the wrong tier.
+    [1,2,3].forEach(t=>['utility','combat'].forEach(role=>{
+      const want=itemTierTarget(t,cat,role);
+      const inBand=ALL_MAGIC_ITEMS_P.filter(it=>it.tier===t&&itemHoardCategory(it)===cat&&itemRole(it)===role);
+      // Seeds are of the SAME ROLE as the slots they fill (a Weak ring is minted from a Weak ring, never
+      // from a duelling ring), usable by anyone, and never a combat-use item (one name each, by
+      // ruling). If a band holds nothing but race- or alignment-bound designs, seed from those
+      // instead and let the minted versions carry the same binding - a short band would otherwise
+      // leave the stocker handing that kind's lairs an item of the wrong tier.
       const plain=it=>!(it.effect&&it.effect.stat==='combatUse');
       let seeds=inBand.filter(it=>plain(it)&&!it.race&&!it.alignment);
       if(!seeds.length) seeds=inBand.filter(plain);
@@ -3119,7 +3221,7 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
         minted.push({...seed, effect:{...seed.effect}, name:nm, slot:(cat==='trinket'?undefined:cat), tier:t, _variantOf:seed.name});
         made++;
       }
-    });
+    }));
   });
   minted.forEach(it=>{ if(it.slot===undefined) delete it.slot; ALL_MAGIC_ITEMS_P.push(it); });
 
@@ -3138,7 +3240,9 @@ const _VARIANT_EPITHETS=['of the Long March','of Grey Water','of the Ninth Hour'
 function migrateItemTiers(gs){
   if(!gs) return;
   const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
-  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m&&it.tier!==m.tier) it.tier=m.tier; };
+  // An item the treasury no longer carries (dropped from a band in a later re-cut) keeps its own tier,
+  // but never below its ROLE's floor - a healing draught in a pack is Moderate whatever it was rolled as.
+  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m){ if(it.tier!==m.tier) it.tier=m.tier; } else if(!isLegendaryItem(it)&&(it.tier||1)<itemTierFloor(it)) it.tier=itemTierFloor(it); };
   (gs.characters||[]).forEach(c=>(c.items||[]).forEach(fix));
   ((gs.world&&gs.world.provinces)||[]).forEach(p=>(p.features||[]).forEach(f=>{ if(f) (f.hoardItems||[]).forEach(fix); }));
   (gs.players||[]).forEach(pl=>{ if(pl&&Array.isArray(pl.vault)) pl.vault.forEach(fix); });
@@ -9554,6 +9658,7 @@ async function runTurn(opts){
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
     retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
+    migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
     // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
     // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
     // saved, so the saved state still carried them and the next turn loaded last turn's fights,
@@ -23656,6 +23761,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.24-1615</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1320</div>
 </body>
 </html>
