@@ -363,7 +363,7 @@ section{display:none;}.section-active{display:block;}
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
 const KC_DATA_MIN='2026.09.25-1320';
-const KC_BUILD_STAMP='2026.09.26-1046'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.26-1135'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -8609,6 +8609,26 @@ function _skillItem(c,stat){
   return Math.max(0,Math.min(9,base+bonus));   // TITLES count skill levels up to 9 (benefits still cap at 5 via effStat)
 }
 // Skill LEVEL (base proficiency, 0–9) for perk unlocks; perkTier = levels past 5 (0–4).
+// ── WHAT WAS GAINED THIS TURN (2026-09-26, Toby item 3) ────
+// A hero's item list says nothing about WHEN each piece was won, so a relic taken from a lair this
+// turn read exactly like one carried for ten. Rather than stamp every one of the dozen sites that
+// can hand a character an item (lair hoards, a killer's spoils, Send Item, a mercy price, a
+// pre-order card, inheritance…), the whole pack is photographed once at the top of the turn; the
+// report then marks anything in a pack at the END of the turn that was not in that photograph.
+// Keyed by item id where there is one (ids are unique and never reused) and by name otherwise, so
+// items in older saves without an id still resolve.
+// A character created DURING the turn has no photograph; its items are treated as already held, so
+// a newly hired hero's own kit is never mislabelled.
+function itemKeyOf(it){ return (it&&it.id!=null)?('#'+it.id):('@'+((it&&it.name)||'')); }
+function snapshotHeldItems(gs){
+  (gs&&gs.characters||[]).forEach(c=>{ if(c) c._itemsAtTurnStart=(c.items||[]).filter(Boolean).map(itemKeyOf); });
+}
+// True when this character's photograph exists and does NOT contain the item.
+function itemAcquiredThisTurn(c, it){
+  if(!c||!it||!Array.isArray(c._itemsAtTurnStart)) return false;
+  return !c._itemsAtTurnStart.includes(itemKeyOf(it));
+}
+
 function skillLevel(c,stat){ return Math.max(0,Math.min(9,((c&&c.skills)||{})[stat]||0)); }
 function perkTier(c,stat){ return Math.max(0, skillLevel(c,stat)-5); }
 // 2026-09-26 (Toby item 3): the personal-combat ceiling. SKILL_MAX is the highest any skill can
@@ -9460,7 +9480,7 @@ function buildTurnReport(gameState, playerIndex){
         const mh={}; MINOR_TITLES.forEach(t=>{ const h=(_minT&&_minT[t.key])||((gameState._minorHolders||{})[t.key]); if(h) mh[t.key]=h; });
         const all=extraSkillBonuses(c, gameState, mh), out={};
         Object.keys(all).forEach(sk=>{ const only=all[sk].filter(x=>x.scope==='combat'); if(only.length) out[sk]=only; });
-        return out; })(),items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it),lore:itemLore(it)}):it)),pay:c.pay||0,
+        return out; })(),items:(normaliseEquipment(c),(c.items||[]).map(it=>it?({...it,slot:itemSlot(it),lore:itemLore(it),acquiredThisTurn:itemAcquiredThisTurn(c,it)}):it)),pay:c.pay||0,
       locationId:c.location,locationName:prov?.name||'Unknown',merits:c.merits,
       effectiveSpeed:effSpd,effectiveSeaSpeed:effSeaSpd,effectiveAirSpeed:_effAirSpd,
       hiredInPhase:c.hiredInPhase??-1,  // -1 = was hired before this turn
@@ -10419,6 +10439,7 @@ async function runTurn(opts){
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
     retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
     migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
+    snapshotHeldItems(G);      // remember every pack as it stands NOW, so the report can mark what was gained this turn
     // THE MAP'S "THIS TURN" SWORDS. _hadBattleThisTurn (red) and _combatPlayersThisTurn (purple
     // duel swords) are deleted at the very end of runTurn — but only AFTER game_state has been
     // saved, so the saved state still carried them and the next turn loaded last turn's fights,
@@ -24648,6 +24669,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1046</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1135</div>
 </body>
 </html>

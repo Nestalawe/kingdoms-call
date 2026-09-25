@@ -2693,7 +2693,7 @@ function renderReportView(report){
           <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd!==1?'s':''}/turn</span>
           ${!c.isKing?`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
           ${skillRow}
-          ${itemsForDisplayP(c).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}</div>`).join('')}
+          ${itemsForDisplayP(c).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}${itemAcquiredTagP(i)}</div>`).join('')}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
             if(!maj.length && !min.length) return '';
@@ -3895,6 +3895,270 @@ function unitEmoji(type){
 }
 
 
+// ══ MOVE ANALYSIS (2026-09-26, Toby item 1) ═══════════════════════════════════════════════════
+// Before a Move order is submitted, tell the player what KIND of move it is — a land march, a
+// voyage, or a flight — and warn them when they are ordering a column into the sea that their
+// hulls and flyers cannot carry. Every set and every rule below mirrors the GM engine exactly
+// (AERIAL_TYPES / SEA_TYPES / CARRIER_TYPES / FLYING_TYPES, isAirCarriable, getFlyCapability,
+// getSeaCapability and seaLiftShortfall). If any of those change in the engine, change these too —
+// a warning that disagrees with the resolver is worse than no warning at all.
+const PO_SEA_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+const PO_CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+const PO_AERIAL_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+const PO_FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+const PO_CAVALRY_TYPES=new Set(['Free Lances','Gilded Lances','Warg Riders']);
+const PO_CREATURE_TYPES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+const PO_MONSTER_TYPES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+// Light foot take half a hull; everything else takes a whole one (engine: LIGHT_ARMIES).
+const PO_LIGHT_TYPES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
+  'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde',
+  'Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns',
+  '__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
+// The stand-in type for a unit an earlier order will produce whose TYPE cannot be known in advance
+// (a grave raised by Skeletal Armies or Harvest the Field). It belongs to no aerial, sea, creature
+// or monster set, so poAirCarriable treats it as humanoid foot and PO_LIGHT_TYPES prices it at half
+// a hull — the commonest case by far for a raised or harvested unit.
+const PO_PROJECTED_FOOT='__projected foot__';
+// A humanoid flyer lifts ONE foot soldier. Horses, hulls, sea-beasts and walking creatures or
+// monsters are too heavy or unsuitable and can only go aboard ship.
+function poAirCarriable(t){
+  if(PO_AERIAL_TYPES.has(t)||PO_SEA_TYPES.has(t)) return false;
+  if(PO_CREATURE_TYPES.has(t)||PO_MONSTER_TYPES.has(t)) return false;
+  if(PO_CAVALRY_TYPES.has(t)) return false;
+  return true;
+}
+// Can the WHOLE column take to the air? Every foot soldier must be liftable and there must be a
+// humanoid flyer for each one; self-flying units ride for free.
+function poFlyCapability(armies){
+  const A=(armies||[]).filter(Boolean);
+  if(!A.length) return false;
+  let carriers=0, carried=0, selfFly=false;
+  for(const a of A){
+    if(PO_FLYING_TYPES.has(a.type)){ carriers++; selfFly=true; continue; }
+    if(PO_AERIAL_TYPES.has(a.type)){ selfFly=true; continue; }
+    if(poAirCarriable(a.type)){ carried++; continue; }
+    return false; // grounded — nothing can lift it
+  }
+  return selfFly && carriers>=carried;
+}
+// The engine's getSeaCapability, plus the figures the note needs to explain itself.
+// cap: 'all' (nothing to carry), 'sea' (hulls and flyers lift the lot), 'land' (cannot put to sea).
+function poSeaAnalysis(armies, navalRaw){
+  const A=(armies||[]).filter(Boolean);
+  const hulls=A.filter(a=>PO_CARRIER_TYPES.has(a.type)).length;
+  const seaBeasts=A.filter(a=>PO_SEA_TYPES.has(a.type)&&!PO_CARRIER_TYPES.has(a.type)).length;
+  const flyers=A.filter(a=>PO_FLYING_TYPES.has(a.type)).length;
+  const aerial=A.filter(a=>PO_AERIAL_TYPES.has(a.type)).length;
+  const land=A.filter(a=>!PO_AERIAL_TYPES.has(a.type)&&!PO_SEA_TYPES.has(a.type));
+  const navalL8=(navalRaw||0)>=8;                   // NAVAL L8: one hull carries what once needed two
+  const hullCap=hulls*(navalL8?2:1);
+  const out={cap:'all',hulls,seaBeasts,flyers,aerial,landCount:land.length,hullCap,navalL8,
+             lifted:poFlyCapability(A),allAerial:A.length>0&&A.every(a=>PO_AERIAL_TYPES.has(a.type)),
+             allSea:A.length>0&&A.every(a=>PO_SEA_TYPES.has(a.type)),
+             total:A.length,mustSail:0,short:0,shortNames:[]};
+  if(!A.length||!land.length) return out;           // empty, or only flyers and hulls
+  if(out.lifted){ out.cap='sea'; return out; }      // the flyers carry the whole column
+  const capOf=a=>PO_LIGHT_TYPES.has(a.type)?0.5:1;
+  const mustSail=land.filter(a=>!poAirCarriable(a.type));   // horses, siege, beasts — ship or nothing
+  const liftable=land.filter(a=>poAirCarriable(a.type));
+  out.mustSail=mustSail.length;
+  let room=hullCap-mustSail.reduce((s,a)=>s+capOf(a),0);
+  if(room<0){
+    out.cap='land';
+    // How many of the ship-only units have no berth, cheapest-first, so the message can name them.
+    let over=-room, i=0;
+    const order=mustSail.slice().sort((a,b)=>capOf(b)-capOf(a));
+    while(over>0&&i<order.length){ out.shortNames.push(order[i].unitName||order[i].type); over-=capOf(order[i]); i++; }
+    out.short=out.shortNames.length;
+    return out;
+  }
+  let byAir=0; const airQueue=[];
+  liftable.slice().sort((a,b)=>capOf(a)-capOf(b)).forEach(a=>{ const c2=capOf(a); if(room>=c2) room-=c2; else { byAir++; airQueue.push(a); } });
+  if(byAir<=flyers){ out.cap='sea'; return out; }
+  out.cap='land';
+  out.short=byAir-flyers;
+  out.shortNames=airQueue.slice(flyers).map(a=>a.unitName||a.type);
+  return out;
+}
+// The notice shown under a Move order's dropdown: what kind of move this is, and a warning when the
+// column cannot be carried to a sea province. `destProv` is a worldMeta province (may be undefined
+// for an unmapped hex, in which case only the column's own capability is described).
+// ── THE HOST AS IT WILL STAND AT THIS PHASE (2026-09-26) ────
+// The notice below used to read the units the hero leads RIGHT NOW, so a column that recruits three
+// hulls in Spring and sails in Early Summer was told it had no lift. It now reads the host the hero
+// will actually be leading when the move resolves.
+// projectedLedArmies already folds in every order that hands units about — this hero's own Recruit,
+// Pick Up, Leave/Transfer and Disband, AND other characters' Recruit "mustered to" this hero and
+// Leave/Transfer handed to this hero, each resolved at the phase it fires. On top of that, the
+// orders below CREATE units, and are added here:
+//   · Awaken the Wild        — one Creature of the type named in the order
+//   · Perform Rite/Wild Hunt — two Veteran beasts of the province's own wild type
+//   · Elemental Summon       — one elemental (it walks; the engine does not count it as winged)
+//   · Skeletal Armies        — one to three raised graves (by the caster's Necromancy)
+//   · Harvest the Field      — one raised grave
+// A raised grave's TYPE cannot be known in advance, so it is counted as humanoid foot
+// (PO_PROJECTED_FOOT) — the commonest case, and the one the lift maths cares about.
+// A Blood Offering's sacrifices are taken back OUT of the host.
+// Orders whose units can be neither typed nor counted in advance (Awaken Grove, Wild Calling,
+// Control Undead, Raise Wraiths, Death's Dominion) are listed in `uncounted` and named in the note
+// rather than guessed at.
+const PO_UNCOUNTABLE_ACTIONS=new Set(['Awaken Grove','Wild Calling']);
+const PO_UNCOUNTABLE_SPELLS=new Set(['Control Undead','Raise Wraiths',"Death's Dominion",'Phantom Host']);
+function projectedMoveHost(charId, ph){
+  const report=currentReport||{};
+  const ch=(report.characters||[]).find(x=>String(x.id)===String(charId));
+  const out={armies:[],uncounted:[],gained:0,base:0};
+  if(!ch) return out;
+  out.armies=(typeof projectedLedArmies==='function')?projectedLedArmies(charId, ph):((ch.armies||[]).map(a=>({...a})));
+  out.base=(ch.armies||[]).length;
+  const pod=report.provinceOrderData||{};
+  const add=(a)=>{ out.armies.push(a); out.gained++; };
+  for(let p=0;p<ph;p++){
+    const act=(document.getElementById(`po-action-${charId}-${p}`)||{}).value||'';
+    if(!act) continue;
+    const tgt=String((document.getElementById(`po-target-${charId}-${p}`)||{}).value||'').trim();
+    if(act==='Awaken the Wild'){
+      if(tgt) add({type:tgt,quality:'Average',unitName:`${tgt} (awakened this turn)`,_projected:true});
+      continue;
+    }
+    if(act==='Perform Rite'){
+      if(tgt==='Wild Hunt'){
+        const loc=predictedLocation(charId,p);
+        const wt=loc?((pod[loc.id]||{}).wildHuntType):null;
+        if(wt){ add({type:wt,quality:'Veteran',unitName:`${wt} (bound by the Wild Hunt)`,_projected:true});
+                add({type:wt,quality:'Veteran',unitName:`${wt} (bound by the Wild Hunt)`,_projected:true}); }
+        else out.uncounted.push('the Wild Hunt');
+      } else {
+        // Blood Offering — the sacrificed units are gone by the time the column marches.
+        const ex=String((document.getElementById(`po-extra-${charId}-${p}`)||{}).value||'');
+        const m=/S:([0-9,]*)\|E:/.exec(ex);
+        if(m){
+          const atThen=(typeof projectedLedArmies==='function')?projectedLedArmies(charId,p):[];
+          m[1].split(',').filter(Boolean).map(Number).forEach(i=>{
+            const a=atThen[i]; if(!a) return;
+            const j=out.armies.findIndex(x=>(x.unitName||x.type)===(a.unitName||a.type));
+            if(j>=0){ out.armies.splice(j,1); }
+          });
+        }
+      }
+      continue;
+    }
+    if(act==='Harvest the Field'){ add({type:PO_PROJECTED_FOOT,quality:'Average',unitName:'a grave you expect to raise this turn',_projected:true}); continue; }
+    if(act==='Cast Spell'){
+      if(tgt==='Elemental Summon'){ add({type:'Air Elemental',quality:'Veteran',unitName:'the elemental you expect to summon',_projected:true}); continue; }
+      if(tgt==='Skeletal Armies'){
+        const lv=Math.max(0,Math.min(5,Math.round((typeof effSkillP==='function'?effSkillP(ch,'necromancy'):((ch.skills||{}).necromancy||0))||0)));
+        const n=lv>=5?3:lv>=3?2:1;
+        for(let k=0;k<n;k++) add({type:PO_PROJECTED_FOOT,quality:'Average',unitName:'a grave you expect to raise this turn',_projected:true});
+        continue;
+      }
+      if(PO_UNCOUNTABLE_SPELLS.has(tgt)) out.uncounted.push(tgt);
+      continue;
+    }
+    if(PO_UNCOUNTABLE_ACTIONS.has(act)) out.uncounted.push(act);
+  }
+  out.uncounted=[...new Set(out.uncounted)];
+  return out;
+}
+function poMoveModeNote(ch, destProv, host){
+  const H=host||{armies:((ch&&ch.armies)||[]).map(a=>({...a})),uncounted:[],gained:0,base:((ch&&ch.armies)||[]).length};
+  const A=H.armies||[];
+  const an=poSeaAnalysis(A,((ch&&ch.skills)||{}).naval||0);
+  const destSea=!!(destProv&&destProv.terrain==='sea');
+  const destKnown=!!(destProv&&destProv.terrain);
+  // One footnote for every verdict: what the count is based on, and what could not be counted.
+  const _foot=(()=>{
+    const bits=[];
+    const diff=(A.length)-(H.base||0);
+    if(diff!==0||H.gained) bits.push(`counting your earlier orders this turn — ${A.length} unit${A.length!==1?'s':''} under command by then${diff>0?` (${diff} more than now)`:diff<0?` (${-diff} fewer than now)`:''}`);
+    if((H.uncounted||[]).length) bits.push(`<strong>not counted:</strong> ${H.uncounted.join(', ')} — there is no telling in advance what they will bring`);
+    return bits.length?`<div style="opacity:.85;margin-top:2px">${bits.join(' · ')}.</div>`:'';
+  })();
+  const box=(bg,bd,fg,html)=>`<div style="font-size:.72rem;color:${fg};background:${bg};border:1px solid ${bd};border-radius:2px;padding:3px 6px;margin-top:3px">${html}${_foot}</div>`;
+  const good=h=>box('#eaf5e2','#7ea45f','#1f4410',h);
+  const warn=h=>box('#fff3e0','#e0b070','#7a3c00',h);
+  const bad =h=>box('#fdeaea','#c06060','#7a1010',h);
+  const where=destProv?` into <strong>${destProv.name||'that province'}</strong>`:'';
+  if(!A.length) return good(`🚶 <strong>Solo ride</strong> — ${ch.name} leads no troops${where}, and travels by land or takes passage over water freely.`);
+  // A column that can fly crosses anything.
+  if(an.allAerial) return good(`🦅 <strong>Flying move</strong> — every unit is winged, so the column crosses land and sea alike and needs no fleet.`);
+  if(an.lifted)   return good(`🦅 <strong>Flying move</strong> — the ${an.flyers} humanoid flyer${an.flyers!==1?'s':''} lift the whole column${where}; land and sea are both open to it.`);
+  if(an.allSea){
+    return destSea
+      ? good(`⛵ <strong>Naval move</strong> — a fleet of ${an.total} at sea${where}.`)
+      : warn(`⛵ <strong>Naval move</strong> — this column is all ships and sea-beasts. It can only put in at a <strong>coastal</strong> province; an inland hex will turn it back.`);
+  }
+  if(destSea){
+    if(an.cap!=='land'){
+      const carried=an.landCount;
+      return good(`⛵ <strong>Naval move</strong> — ${an.hulls} hull${an.hulls!==1?'s':''}${an.navalL8?' (Naval 8: each carries double)':''}${an.flyers?` and ${an.flyers} flyer${an.flyers!==1?'s':''}`:''} carry ${carried} land unit${carried!==1?'s':''} out to sea.`);
+    }
+    return bad(`⚠ <strong>Not enough lift for a sea crossing.</strong> ${ch.name} leads ${an.landCount} land unit${an.landCount!==1?'s':''} but only ${an.hulls} hull${an.hulls!==1?'s':''}${an.flyers?` and ${an.flyers} humanoid flyer${an.flyers!==1?'s':''}`:' and no flyers'}. About ${an.short} unit${an.short!==1?'s':''} would be left ashore${an.shortNames.length?` (${an.shortNames.slice(0,3).join(', ')}${an.shortNames.length>3?'…':''})`:''}. Recruit or bring more ships, send the surplus elsewhere, or choose a land province.`);
+  }
+  // Land destination (or an unmapped hex).
+  const bits=[];
+  if(an.hulls||an.seaBeasts) bits.push(`${an.hulls+an.seaBeasts} naval unit${(an.hulls+an.seaBeasts)!==1?'s':''} in the column can only follow along a coast`);
+  if(an.aerial&&!an.allAerial) bits.push(`${an.aerial} winged unit${an.aerial!==1?'s':''} march with the rest`);
+  return good(`🛡 <strong>Land march</strong>${where}${destKnown?'':' (destination not yet mapped)'}${bits.length?` — ${bits.join('; ')}.`:'.'}`);
+}
+// Recompute the notice under one Move order (the dropdown's onchange; later phases are rebuilt
+// wholesale by onMoveEdited, which regenerates the note with them).
+function refreshMoveModeNote(charId, ph){
+  const host=document.getElementById(`po-move-mode-${charId}-${ph}`);
+  if(!host) return;
+  const ch=(currentReport&&currentReport.characters||[]).find(c=>String(c.id)===String(charId));
+  if(!ch){ host.innerHTML=''; return; }
+  const tgt=(getOrderTarget(charId,ph)||'').trim();
+  const provs=(currentReport&&currentReport.worldMeta&&currentReport.worldMeta.provinces)||[];
+  let dest=null;
+  if(tgt.startsWith('prov:')){ const id=parseInt(tgt.slice(5)); if(!isNaN(id)) dest=provs.find(p=>p.id===id)||null; }
+  host.innerHTML=poMoveModeNote(ch,dest,projectedMoveHost(charId,ph));
+}
+// Every Move notice on the form, rebuilt. A Recruit, Pick Up, Leave/Transfer, Disband, rite or
+// summoning in ANY phase — this hero's or another of the player's — changes the host a later move
+// sets out with, so the notices are refreshed wholesale whenever an order changes rather than only
+// when the move's own dropdown is touched.
+function refreshAllMoveModeNotes(){
+  const chars=(currentReport&&currentReport.characters)||[];
+  chars.forEach(c=>{ if(!c||c.alive===false) return;
+    for(let p=0;p<=4;p++){ if(document.getElementById(`po-move-mode-${c.id}-${p}`)) refreshMoveModeNote(c.id,p); } });
+}
+// ── The direction a Move order should DEFAULT to (2026-09-26, Toby item 2) ────
+// A fresh Move order opened North West every time, whatever the player had already ordered this
+// turn, so a column marching east had to be re-pointed in every phase. It now opens on the compass
+// direction of the most recent EARLIER move order this turn (the options carry absolute province
+// ids, so the direction is recovered by matching the target against the six neighbours of wherever
+// the character set out from). No earlier move — or that direction is off the map from here — and
+// the list simply opens as it always did.
+function lastMoveDirOf(charId, beforePhase){
+  const report=currentReport;
+  if(!report||!report.worldMeta) return null;
+  const wm=report.worldMeta, cols=wm.cols, rows=wm.rows, provs=wm.provinces||[];
+  const HEX=['NW','NE','W','E','SW','SE'];
+  const EV=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+  const OD=[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+  let found=null;
+  for(let ph=0; ph<beforePhase; ph++){
+    const action=document.getElementById(`po-action-${charId}-${ph}`)?.value;
+    if(action!=='Move') continue;
+    const tgt=(getOrderTarget(charId,ph)||'').trim();
+    if(!tgt) continue;
+    if(tgt.startsWith('dir:')){ const d=tgt.slice(4); if(HEX.indexOf(d)>=0) found=d; continue; }
+    if(!tgt.startsWith('prov:')) continue;
+    const toId=parseInt(tgt.slice(5)); if(isNaN(toId)) continue;
+    const from=predictedLocation(charId,ph); if(!from) continue;
+    const fp=provs.find(p=>p.id===from.id); if(!fp||fp.row==null) continue;
+    if(toId===fp.id) continue;                       // "stay here" is not a direction
+    const offs=(fp.row%2===0)?EV:OD;
+    for(let i=0;i<6;i++){
+      const nr=fp.row+offs[i][0]; if(nr<0||nr>=rows) continue;
+      const nc=((fp.col+offs[i][1])%cols+cols)%cols;
+      if(nr*cols+nc===toId){ found=HEX[i]; break; }
+    }
+  }
+  return found;
+}
+
 const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
 
 // Encounter plan tactics (AK 5.0-5.8) How a commander answers the call to single combat at the
@@ -4343,7 +4607,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${itemsForDisplayP(c).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${itemsForDisplayP(c).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}${itemAcquiredTagP(it)}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -4478,6 +4742,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   }
   // Any projection note that reads the finished form is refreshed once the fields are settled.
   if(typeof refreshExploreNotes==='function') refreshExploreNotes();
+  if(typeof refreshAllMoveModeNotes==='function') refreshAllMoveModeNotes(); // move notices read every other order
   setTimeout(refreshAllOncePerTurn,0); // 2026-09-24: once-per-turn orders — after every card is restored
   // rebuild the shared Resurrect order cards from the reopened draft, orders and all.
   { const _savedRes={};
@@ -4903,6 +5168,7 @@ function onActionChange(charId, ph, charIdx){
   wrap.innerHTML=buildTargetField(char, ph, saved);
   refreshOncePerTurnOptions(charId); // 2026-09-24: once-per-turn orders leave later phases' dropdowns
   setTimeout(refreshExploreNotes,0); // earlier/later Explore projections depend on every order
+  setTimeout(refreshAllMoveModeNotes,0); // …and so does every Move order's land/naval/flying notice
 
   // Sync the hired-hero future-order card. syncHiredHeroCard injects it when this is a Hire Hero
   // order with a hero selected, and tears it down (and unregisters the placeholder) the moment the
@@ -4924,6 +5190,8 @@ function onActionChange(charId, ph, charIdx){
 function onMoveEdited(charId, ph){
   const char=(currentReport?.characters||[]).find(c=>String(c.id)===String(charId)); if(!char) return;
   setTimeout(refreshExploreNotes,0); // a changed path moves where later Explore orders land
+  setTimeout(refreshAllMoveModeNotes,0); // …and changes which province each later move sets out for
+  refreshMoveModeNote(charId, ph);   // land / naval / flying notice for the newly chosen destination
   // The player just addressed THIS move — clear its own flag.
   const ownNote=document.getElementById(`po-move-note-${charId}-${ph}`);
   if(ownNote){ ownNote.style.display='none'; ownNote.innerHTML=''; }
@@ -5767,6 +6035,15 @@ function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 function itemLoreTip(it, inner){
   // the description is printed after every item, so the hover pop-up is retired.
   return inner;
+}
+// ── "Acquired this turn" (2026-09-26, Toby item 3) ────
+// A pack says nothing about when each piece was won, so a relic taken from a lair this turn read
+// exactly like one carried since the founding. The GM report flags every item that was not in the
+// character's pack when the turn began (buildTurnReport → acquiredThisTurn); this prints that flag
+// as its own line under the item, in the Chronicle and in the orders form alike.
+function itemAcquiredTagP(it){
+  if(!it||!it.acquiredThisTurn) return '';
+  return `<div style="display:block;font-size:.7rem;color:#1f4410;background:#eaf5e2;border:1px solid #7ea45f;border-radius:2px;padding:1px 5px;margin:2px 0 4px 20px;width:fit-content">✨ Acquired this turn</div>`;
 }
 function unitAbilityTip(type, inner){
   const ab=unitAbilityText(type);
@@ -6835,6 +7112,9 @@ function buildTargetField(c, ph, saved){
   // lead somewhere; north-south do not wrap — beyond the top and bottom rows lie the impassable icy
   // wastelands. Those off-map directions are omitted from the dropdown, and a note explains why.
   let blockedNorth=false, blockedSouth=false;
+  // With nothing saved for this phase, open on the direction this character last moved in earlier
+  // this turn instead of always North West (2026-09-26, Toby item 2).
+  const _defaultDir=(action==='Move'&&!target)?lastMoveDirOf(c.id, ph):null;
   const dirOpts=Object.entries(DIRECTIONS).map(([v,l])=>{
     let provLabel='', offMap=false;
     if(curProv_){
@@ -6863,7 +7143,7 @@ function buildTargetField(c, ph, saved){
     // too.
     const nidOut=curProv_?(curProv_.row+(curProv_.row%2===0?EVEN_OFF:ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][0])*wCols+(((curProv_.col+(curProv_.row%2===0?EVEN_OFF:ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][1])%wCols+wCols)%wCols):null;
     const valOut=nidOut!=null?`prov:${nidOut}`:`dir:${v}`;
-    const selOut=(target===valOut||target==='dir:'+v)?'selected':'';
+    const selOut=(target===valOut||target==='dir:'+v)?'selected':((!target&&_defaultDir===v)?'selected':'');
     return`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
   }).filter(Boolean).join('');
   // the character's OWN province is offered as a move target too. Orders are written before the
@@ -6885,7 +7165,17 @@ function buildTargetField(c, ph, saved){
       // editing THIS move changes where the character stands for every later phase, so onMoveEdited
       // re-renders the character's later Move orders (their direction labels update relative to the
       // new path) and flags each with an "update me" note to re-check.
+      // ── MOVE ANALYSIS (2026-09-26, Toby item 1) ── the notice under the dropdown says whether this
+      // is a land march, a voyage or a flight, and warns when the column is being sent to sea with
+      // too little lift. Built here for whichever option opens selected, and recomputed by
+      // refreshMoveModeNote whenever the player changes it.
+      const _allOpts=dirOpts+stayOpt;
+      const _initSel=(()=>{ const m=_allOpts.match(/<option value="([^"]+)" selected>/); if(m) return m[1];
+        const f=_allOpts.match(/<option value="([^"]+)"/); return f?f[1]:''; })();
+      const _initDest=(()=>{ if(!_initSel.startsWith('prov:')) return null; const id=parseInt(_initSel.slice(5));
+        return isNaN(id)?null:(wProvs.find(p=>p.id===id)||null); })();
       return`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited('${c.id}',${ph})">${dirOpts}${stayOpt}</select>${edgeNote}
+        <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c,_initDest,projectedMoveHost(c.id,ph))}</div>
         <div id="po-move-note-${c.id}-${ph}" style="display:none;font-size:.72rem;color:#8a4a00;background:#fff3e0;border:1px solid #e0b070;border-radius:2px;padding:3px 6px;margin-top:3px"></div>`;
     }
 
@@ -7705,6 +7995,7 @@ function updateLeaveTarget(charId, ph){
   const checked=[...wrap.querySelectorAll('input[type=checkbox]:not([value=all]):checked')].map(cb=>cb.value);
   const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(hidden) hidden.value=checked.join(',');
+  if(typeof refreshAllMoveModeNotes==='function') setTimeout(refreshAllMoveModeNotes,0); // the host a later move sets out with has changed
 }
 function leaveToggleAll(charId, ph, checked){
   const wrap=document.querySelector(`#po-target-${charId}-${ph}`)?.parentElement;
@@ -7712,6 +8003,7 @@ function leaveToggleAll(charId, ph, checked){
   wrap.querySelectorAll('input[type=checkbox]:not([value=all])').forEach(cb=>{cb.checked=false;});
   const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(hidden) hidden.value=checked?'all':'';
+  if(typeof refreshAllMoveModeNotes==='function') setTimeout(refreshAllMoveModeNotes,0); // the host a later move sets out with has changed
 }
 
 // Helper: update hidden recruit target from checkboxes
@@ -7724,6 +8016,7 @@ function updateRecruitTarget(charId, ph){
   if(destSel&&destSel.value&&destSel.value!=='to:self') checked.push(destSel.value);
   const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(hidden) hidden.value=checked.join(',');
+  if(typeof refreshAllMoveModeNotes==='function') setTimeout(refreshAllMoveModeNotes,0); // recruits change what a later move has to carry
 }
 
 
@@ -8997,6 +9290,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.26-1046</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.26-1135</div>
 </body>
 </html>
