@@ -1118,13 +1118,21 @@ function showNewGame(){
 // by which point the game is 'active' and no longer joinable, so the invite list is self-cleaning.)
 let _invitablePlayers=null;   // cached profiles [{id,name,email}]
 let _inviteSelected=new Set(); // ids ticked in the New Game picker
+// 2026-09-25: how many profile rows the LAST fetch returned BEFORE the GM's own row was dropped.
+// Row-Level Security filters silently — a GM account the profiles policy does not cover gets an
+// empty result and no error — so the picker used to print "No other registered players yet." for
+// a permissions problem exactly as it did for a genuinely empty table. Zero raw rows means the
+// query could not even see the signed-in account's own profile: that is an RLS symptom, and the
+// empty-list message now says so.
+let _invitableRawCount=null;
 
 // Fetch every registered player's profile (name + email if the profiles table has that column).
 // Excludes the signed-in GM. Cached for the session; pass force=true to refetch.
 async function loadInvitablePlayers(force){
   if(_invitablePlayers && !force) return _invitablePlayers;
   const {data,error}=await sb.from('profiles').select('*').order('name',{ascending:true});
-  if(error){ _invitablePlayers=null; throw error; }
+  if(error){ _invitablePlayers=null; _invitableRawCount=null; throw error; }
+  _invitableRawCount=(data||[]).length;
   _invitablePlayers=(data||[])
     .filter(p=>p && p.id!==currentUser.id) // don't offer the GM as a joinable player
     .map(p=>({id:p.id, name:p.name||p.display_name||'(unnamed)', email:p.email||''}));
@@ -1156,7 +1164,11 @@ function renderInviteCheckboxes(listId, searchId, selectedSet, countId){
   const players=_invitablePlayers||[];
   const anyEmail=players.some(p=>p.email);
   const shown=players.filter(p=>!q || p.name.toLowerCase().includes(q) || (p.email&&p.email.toLowerCase().includes(q)));
-  if(players.length===0){ list.innerHTML='<div style="padding:10px;color:var(--stone);font-size:.82rem">No other registered players yet.</div>'; }
+  if(players.length===0){
+    list.innerHTML=(_invitableRawCount===0)
+      ? '<div class="msg-error" style="margin:8px">No profiles came back at all — not even this GM account\'s own. That is almost always a permissions problem, not an empty table: this GM account cannot read the <code>profiles</code> table under its Row-Level Security policy.<br><small>In Supabase → Authentication → Policies (table <code>profiles</code>), add a SELECT policy that covers this account — e.g. <code>for select to authenticated using (true)</code> — then reload.</small></div>'
+      : '<div style="padding:10px;color:var(--stone);font-size:.82rem">No other registered players yet.</div>';
+  }
   else if(shown.length===0){ list.innerHTML='<div style="padding:10px;color:var(--stone);font-size:.82rem">No players match that filter.</div>'; }
   else{
     list.innerHTML=shown.map(p=>{
@@ -23855,6 +23867,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1703</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1729</div>
 </body>
 </html>
