@@ -201,7 +201,13 @@ section{display:none;}.section-active{display:block;}
       </select>
       <div style="font-size:.78rem;color:var(--stone);margin-top:-4px">Each map is the smallest that keeps every king at least 3 empty provinces apart. Smaller games can pick a larger map for more room.</div>
       <label>Maximum Players</label>
-      <select id="new-game-maxplayers" onchange="updateBotHint()"><!-- filled from map size by updateMaxPlayersForMap() --></select>
+      <select id="new-game-maxplayers" onchange="updateBotHint();updateSeaHint()"><!-- filled from map size by updateMaxPlayersForMap() --></select>
+      <label style="margin-top:10px">Sea Provinces <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(share of the world that is water)</span></label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <input type="range" id="new-game-seapct" min="20" max="80" step="5" value="35" oninput="updateSeaHint()" style="flex:1;margin:0;padding:0">
+        <span id="new-game-seapct-label" style="font-family:'Cinzel',serif;min-width:48px;text-align:right">35%</span>
+      </div>
+      <div id="new-game-sea-hint" style="font-size:.78rem;color:var(--stone);margin:4px 0 10px"></div>
       <label style="margin-top:10px">Bot Realms <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(GM-controlled — optional)</span></label>
       <input type="number" id="new-game-botcount" min="0" value="0" onchange="updateBotHint()">
       <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:8px;cursor:pointer">
@@ -1083,7 +1089,7 @@ async function loadGames(){
     return`<div class="game-card" onclick="openGame('${g.id}')">
       <div>
         <div class="gc-name">${g.name}${pill}${_visTag}</div>
-        <div class="gc-meta">${maxP} player slots · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
+        <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
       </div>
       <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
     </div>`;
@@ -1100,6 +1106,7 @@ function showNewGame(){
   _inviteSelected=new Set();
   const _search=document.getElementById('new-game-invite-search'); if(_search) _search.value='';
   { const _tmSel=document.getElementById('new-game-turnmode'); if(_tmSel){ _tmSel.value='manual'; updateTurnModeFields('new-game'); } }
+  { const _sp=document.getElementById('new-game-seapct'); if(_sp){ _sp.value=String(SEA_PCT_DEFAULT); updateSeaHint(); } }
   const _wrap=document.getElementById('new-game-invite-wrap'); if(_wrap) _wrap.style.display='none';
   show('sec-new-game');
 }
@@ -1253,8 +1260,28 @@ function updateMaxPlayersForMap(){
   }
   sel.value=String(Math.min(Math.max(2,prev),max));
   updateBotHint();
+  updateSeaHint();
 }
 
+// Sea share (2026-09-25): 20–80% in steps of 5, default 35% (the old fixed fill averaged ~33%). The
+// hint tells the GM what the share does to the world before they commit.
+function updateSeaHint(){
+  const el=document.getElementById('new-game-seapct'), lab=document.getElementById('new-game-seapct-label'), hint=document.getElementById('new-game-sea-hint');
+  if(!el) return;
+  const v=normSeaPct(el.value); if(String(v)!==el.value) el.value=String(v);
+  if(lab) lab.textContent=v+'%';
+  if(!hint) return;
+  const sizeEl=document.getElementById('new-game-mapsize');
+  const sizemap={p2:{cols:8,rows:5},p3:{cols:8,rows:7},p4:{cols:9,rows:7},p5:{cols:12,rows:7},p6:{cols:15,rows:7},p7:{cols:16,rows:7},p8:{cols:17,rows:8},p9:{cols:16,rows:11},p10:{cols:16,rows:11}};
+  const sz=sizemap[sizeEl?sizeEl.value:'p5']||sizemap.p5, cells=sz.cols*sz.rows, sea=Math.round(cells*v/100), land=cells-sea;
+  const maxEl=document.getElementById('new-game-maxplayers'); const realms=Math.max(2,parseInt(maxEl&&maxEl.value)||2);
+  let flavour;
+  if(v<=25) flavour='A continent — a few lakes and inland seas. Fleets and Naval matter little; wars are fought overland.';
+  else if(v<=40) flavour='Coasts and channels — the classic map. Most realms touch the sea; a navy is useful but not essential.';
+  else if(v<=55) flavour='Archipelagos — land splits into islands. Fleets (or flyers) are needed to reach most rivals; Naval and Part Sea become strong.';
+  else flavour='A drowned world — scattered islands in open ocean. Every campaign is amphibious; expect far less land, tax and lairs per realm.';
+  hint.innerHTML=`${sea} sea · ${land} land of ${cells} provinces — about ${(land/realms).toFixed(1)} land provinces per realm. ${flavour}`;
+}
 // Bot realms (Phase 1): validate the bot count against map capacity and show the GM the resulting
 // human/bot split. Bots consume the same realm capacity as humans.
 function updateBotHint(){
@@ -1306,6 +1333,8 @@ async function createGame(){
   }
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
   const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
+  _cfg.seaPct=normSeaPct(document.getElementById('new-game-seapct')?.value); // 20–80% of the world is water (world gen makes it exact)
+  _cfg.botDifficulty=(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // 2026-09-25: saved with the game — commitTurn0 used to read it off the New Game FORM at Turn 0, which by then showed the default again
   _cfg.turnMode=readTurnModeForm('new-game'); // manual / auto / deadline (deadline clock starts at Turn 0)
   if(isPrivate){ _cfg.visibility='private'; _cfg.invited=invited; }
   const {data:game,error}=await sb.from('games').insert({
@@ -1388,7 +1417,7 @@ async function openGame(gameId){
   const statusLabel=game.status==='setup'?'Setup':game.status==='active'?`Turn ${game.turn}`:'Complete';
   document.getElementById('detail-status-pill').innerHTML=`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>`;
   document.getElementById('detail-player-count').textContent=game.status==='setup'
-    ? `${joined}/${humanCap} human${humanCap!==1?'s':''}${plannedBots?` · ${plannedBots} bot${plannedBots!==1?'s':''}`:''}`
+    ? `${joined}/${humanCap} human${humanCap!==1?'s':''}${plannedBots?` · ${plannedBots} bot${plannedBots!==1?'s':''}`:''} · sea ${seaPctOf(game)}%`
     : `${joined} human${joined!==1?'s':''}${existingBots?` · ${existingBots} bot${existingBots!==1?'s':''}`:''} / ${maxP}`;
 
   // Player slots (bots labelled for the GM; they stay hidden from players elsewhere)
@@ -1590,8 +1619,13 @@ function backfillHomeRosters(gs){
     if(!h||h.terrain==='sea'||!pl.race||h.race!==pl.race) return;
     if(!Array.isArray(h.armyTypes)) h.armyTypes=[];
     fullRaceLandRoster(pl.race).forEach(u=>{ if(!h.armyTypes.includes(u)) h.armyTypes.push(u); });
+    // 2026-09-25 (Toby): a coastal capital always offers its racial fleet — add it to any running
+    // game whose home rolled without one.
+    const fleet=HOME_FLEET_BY_RACE[pl.race];
+    if(fleet&&!h.armyTypes.includes(fleet)&&typeof discProvCoastal==='function'&&discProvCoastal(gs,h)) h.armyTypes.push(fleet);
   });
 }
+const HOME_FLEET_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'};
 
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
@@ -1826,7 +1860,7 @@ async function runTurn0(){
     _mapUse='p'+Math.min(10,totalKingdoms); _szUse=sizemap[_mapUse]||sz;
     console.warn(`Turn 0: ${totalKingdoms} realms on a ${mapSize} map — using the ${_mapUse} map (${_szUse.cols}x${_szUse.rows}) so capitals stay 3+ provinces apart.`);
   }
-  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse};
+  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null};
 
   if(botSetups.length>0){
     renderTurn0Preview();      // GM confirms the generated roster before we commit anything
@@ -1867,7 +1901,7 @@ function renderTurn0Preview(){
 async function commitTurn0(){
   const msg=document.getElementById('detail-msg');
   if(!_pendingTurn0){ msg.innerHTML='<div class="msg-error">No pending setup — press Run Turn 0 again.</div>'; return; }
-  const {humanSetups, botSetups, sz, maxTurns}=_pendingTurn0;
+  const {humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty}=_pendingTurn0;
   msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
 
   try{
@@ -1901,8 +1935,8 @@ async function commitTurn0(){
     })).sort((a,b)=>a.id-b.id);
 
     // 3. Generate the world.
-    const gameState=await generateNewGame(setupPlayers,sz,maxTurns);
-    gameState.botDifficulty=(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // Phase 6 difficulty tier
+    const gameState=await generateNewGame(setupPlayers,sz,maxTurns,{seaPct});
+    gameState.botDifficulty=botDifficulty||(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // Phase 6 difficulty tier — from the saved setup cfg; the form is only a fallback for games created before it was stored
     // Turn-running mode carries over from the setup config; a deadline clock starts now (Turn 0 =
     // the first "run").
     { const _tm=normalizeTurnMode(parseGameState(currentGame).turnMode); _tm.turnRanAt=new Date().toISOString(); _tm.nextDeadlineAt=_tm.mode==='deadline'?computeNextDeadline(_tm,new Date()):null; gameState.turnMode=_tm; }
@@ -3815,6 +3849,9 @@ function normalizeTurnMode(tm){
   return {mode,time,everyDays,nextDeadlineAt:tm.nextDeadlineAt||null,turnRanAt:tm.turnRanAt||null};
 }
 function turnModeOf(game){ return normalizeTurnMode(parseGameState(game).turnMode); }
+// The game's sea share: the setup cfg before Turn 0, the world record after it. Games made before
+// the setting existed carry neither and read as the default.
+function seaPctOf(game){ const gs=parseGameState(game); return normSeaPct(gs.seaPct!=null?gs.seaPct:(gs.world&&gs.world.seaPct)); }
 // First HH:MM (local clock) strictly after `from` + (everyDays-1) days.
 function computeNextDeadline(tm,from){
   tm=normalizeTurnMode(tm);
@@ -6703,9 +6740,20 @@ function runBotActions(G, botIdxSet){
   });
 }
 
-function generateNewGame(setupPlayers, sz, maxTurns){
+// ── SEA SHARE (2026-09-25, Toby) ── the GM picks what share of the world is water, 20–80%.
+// Before this the fill rolled sea at 28% (55% beside water) and the result was whatever came out:
+// measured over 20 worlds per rung it averaged ~33% and ranged 18–50% on the same settings. The
+// share is now EXACT (rounded to a province): the same clustered fill lays out coherent seas, then
+// coasts are grown or shrunk until the count matches. Home cells and their tailored rings are never
+// touched, so every home guarantee (≤2 sea neighbours, a poor and a prosperous land, a sea for a
+// naval king) holds at any share.
+const SEA_PCT_MIN=20, SEA_PCT_MAX=80, SEA_PCT_DEFAULT=35;
+function normSeaPct(v){ v=parseInt(v); if(!Number.isFinite(v)) v=SEA_PCT_DEFAULT; return Math.max(SEA_PCT_MIN,Math.min(SEA_PCT_MAX,v)); }
+function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   const {cols,rows}=sz;
   const provinces=[];
+  const seaPct=normSeaPct(genOpts&&genOpts.seaPct);
+  const seaTarget=seaPct/100;
   const nameSet=new Set();
   // Fresh world → fresh name pools (a GM generating a second game in one session must not inherit
   // the first game's used given-names / descriptors).
@@ -6847,8 +6895,18 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   // decided HERE (sea at the general-fill base rate while under the cap, land otherwise) rather
   // than left to the random fill, so the cap is exact. The open-water guarantee for coastal homes
   // is applied after the sea post-pass below (see "home coastal guarantee").
-  const HOME_MAX_SEA=2;
-  const HOME_RING_SEA_CHANCE=0.28; // == the general fill's non-clustered sea rate
+  // 2026-09-25: the cap rises with the sea share — 3 from 60%, 4 from 70% — or a drowned world could
+  // not be built: every home ring pinned at ≥4 land held the reachable share to ~70% (measured).
+  // The ring still always holds the poor AND the prosperous land the home rules demand, so ≥2 land
+  // neighbours survive at any share.
+  const HOME_MAX_SEA=seaPct>=70?4:seaPct>=60?3:2;
+  // The fill's two rates scale with the chosen share: 0.28 / 0.55 were the old fixed figures, which
+  // are exactly what a 40% target gives here (0.7× and 1.375× the share), so the shape of the seas is
+  // unchanged at the old rates and simply seeds more or less water at other shares.
+  const SEA_BASE_RATE=Math.min(0.9,seaTarget*0.7), SEA_CLUSTER_RATE=Math.min(0.95,seaTarget*1.375);
+  // Ring cells roll at the fill's base rate; from 60% (where the cap opens) at its cluster rate, so a
+  // drowned world's homes are island capitals rather than the one dry patch holding the share back.
+  const HOME_RING_SEA_CHANCE=seaPct>=60?SEA_CLUSTER_RATE:SEA_BASE_RATE;
   homeCells.forEach((home,ki)=>{
     constraint[home.id]={terrain:pickLand(),taxBand:null,isHome:true}; // home is land (race/pool set later)
     const ringAll=neighbourCells(home.r,home.c).filter(n=>!homeIdSet.has(n.id));
@@ -6883,24 +6941,58 @@ function generateNewGame(setupPlayers, sz, maxTurns){
     if(_raceDeck.length===0) _raceDeck=shuffleP(RACES_P);
     return _raceDeck.pop();
   };
+  // ── TERRAIN PRE-PASS: every cell's terrain is decided here, BEFORE the province loop, so the sea
+  // share can be corrected to the exact target while nothing (tax, race, features) yet depends on it.
+  // 1. Tailored cells take their Phase-2 terrain. 2. Free cells: the clustered fill — sea at the base
+  // rate, or the cluster rate when the cell to the left or above is already water, so seas form
+  // coherent lakes and coastlines rather than scattered hexes. 3. Grow or shrink the coasts among
+  // FREE cells only until the sea count equals round(share × cells): too little water → a random
+  // land cell touching sea becomes sea (a fresh lake is seeded only if no coast exists); too much →
+  // a random sea cell touching land becomes land. Coherence survives because every change is made
+  // at an existing shoreline.
+  const terrainGrid=new Array(rows*cols);
   for(let row=0;row<rows;row++){
     for(let col=0;col<cols;col++){
       const id=row*cols+col;
-      let terrain, taxOverride=null;
+      const con=constraint[id];
+      if(con){ terrainGrid[id]=con.terrain; continue; }
+      const leftSea = col>0 && terrainGrid[row*cols+(col-1)]==='sea';
+      const upSea   = row>0 && terrainGrid[(row-1)*cols+col]==='sea';
+      terrainGrid[id]=(Math.random()<((leftSea||upSea)?SEA_CLUSTER_RATE:SEA_BASE_RATE))?'sea':pickLand();
+    }
+  }
+  {
+    const freeIds=[]; for(let id=0;id<rows*cols;id++) if(!constraint[id]) freeIds.push(id);
+    const nbrIds=(id)=>neighbourCells(Math.floor(id/cols),id%cols).map(n=>n.id);
+    const seaCount=()=>terrainGrid.filter(t=>t==='sea').length;
+    const want=Math.round(seaTarget*rows*cols);
+    let guard=0;
+    while(seaCount()<want && guard++<rows*cols*4){
+      let pool=freeIds.filter(id=>terrainGrid[id]!=='sea'&&nbrIds(id).some(n=>terrainGrid[n]==='sea'));
+      if(!pool.length) pool=freeIds.filter(id=>terrainGrid[id]!=='sea'); // no shoreline at all: seed a lake
+      if(!pool.length) break;                                             // every free cell is already water
+      terrainGrid[pool[Math.floor(Math.random()*pool.length)]]='sea';
+    }
+    guard=0;
+    while(seaCount()>want && guard++<rows*cols*4){
+      let pool=freeIds.filter(id=>terrainGrid[id]==='sea'&&nbrIds(id).some(n=>terrainGrid[n]!=='sea'));
+      if(!pool.length) pool=freeIds.filter(id=>terrainGrid[id]==='sea');
+      if(!pool.length) break;                                             // only tailored sea is left (a naval king's harbour)
+      terrainGrid[pool[Math.floor(Math.random()*pool.length)]]=pickLand();
+    }
+    const got=seaCount();
+    if(got!==want) console.warn(`World gen: sea share ${seaPct}% asked for ${want} sea provinces on ${cols}x${rows}; the home neighbourhoods fix ${rows*cols-freeIds.length} cells, so ${got} was the nearest reachable.`);
+  }
+  for(let row=0;row<rows;row++){
+    for(let col=0;col<cols;col++){
+      const id=row*cols+col;
+      let taxOverride=null;
+      const terrain=terrainGrid[id];
       const con=constraint[id];
       if(con){
         // Home / tailored-neighbour cell: terrain (and sometimes tax band) was decided in Phase 2.
-        terrain=con.terrain;
         if(con.taxBand==='poor') taxOverride=rP(2,3);   // Poor = 2-3 (2026-09-21: no province is ever tax 1)
         else if(con.taxBand==='prosperous') taxOverride=rP(4,6); // Prosperous = 3-6; capped at 6 so this band never leaks into the Rich tier (tax>=7)
-      } else {
-        // General fill: aim for ~40% sea overall, clustering next to existing water so seas form
-        // coherent lakes / inland seas / coastlines rather than scattered single hexes.
-        const leftProv = col>0 ? provinces[row*cols+(col-1)] : null;
-        const upProv   = provinces[(row-1)*cols+col];
-        const seaChance = ((leftProv&&leftProv.terrain==='sea')||(upProv&&upProv.terrain==='sea')) ? 0.55 : 0.28;
-        if(Math.random()<seaChance){ terrain='sea'; }
-        else { terrain=pickLand(); }
       }
       const baseTax = taxOverride!=null ? taxOverride : {plain:rP(4,9),desert:rP(2,4),forest:rP(3,7),jungle:rP(2,6),mountain:rP(3,7),sea:rP(0,2)}[terrain];
       // PRIMAL_LAND_CHANCE of LAND provinces are Primal (non-humanoid), split evenly Creature /
@@ -7198,7 +7290,9 @@ function generateNewGame(setupPlayers, sz, maxTurns){
         const nb=provinces[nr*cols+nc];
         return nb&&nb.terrain==='sea';
       });
-      if(homeCoastal&&Math.random()<COASTAL_NAVAL_CHANCE){
+      // 2026-09-25 (Toby): a coastal capital ALWAYS offers its race's fleet, at every sea share (was an
+      // 80% roll). backfillHomeRosters applies the same rule to games already running.
+      if(homeCoastal){
         const hf=({Human:['Galleon Fleet'],Elven:['Elven Galleys'],Dwarven:['Dwarf Ironclads'],Orcish:['Orcish Longships']}[sp.race])||[]; // Corsair Fleet retired
         const pickH=hf[Math.floor(Math.random()*hf.length)];
         if(pickH&&!best.armyTypes.includes(pickH)) best.armyTypes.push(pickH);
@@ -7624,7 +7718,7 @@ function generateNewGame(setupPlayers, sz, maxTurns){
   const turnOrders={};
   allChars.filter(c=>c.player!==null&&c.alive).forEach(c=>{turnOrders[c.id]=[null,null,null,null,null];});
 
-  const _newGameState={world:{provinces,cols,rows},players,characters:allChars,
+  const _newGameState={world:{provinces,cols,rows,seaPct},players,characters:allChars,
     mercenaries:[],
     // ── Diplomacy (KC alliance system) ── relations between players, keyed "minIdx-maxIdx" →
     // 'enemy' | 'allied'. Any pair absent from the map is NEUTRAL (the default). All players begin
@@ -23761,6 +23855,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1320</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.65rem;color:#555;font-family:monospace;opacity:0.7" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.25-1703</div>
 </body>
 </html>
