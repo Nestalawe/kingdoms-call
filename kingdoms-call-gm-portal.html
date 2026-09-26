@@ -47,7 +47,10 @@ if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/su
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0f0a02;--ink-light:#2a1b04;--crimson:#6d1414;--gold:#c8922a;--gold-light:#e8b84b;--forest:#233d16;--stone:#4a3a22;--stone-dim:#c0ab88;--bg:#0e0a04;}
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;}
+/* 2026-09-26b (Toby item 9): second contrast pass — every ink darker again on parchment (--stone
+   #4a3a22 → #33270f, about 12:1), the light muted tone on dark panels lighter (#c0ab88 → #dccba8),
+   and the hard-coded muted greys/greens/browns in inline styles deepened to match. */
 /* ── CONTRAST PASS (2026-09-26, Toby item 6) ────────────────────────────────────────────────
    Every ink on parchment is darker: --ink and --ink-light are near-black browns now, --crimson
    and --forest are deepened so headings and buttons read at a glance, and --stone — the muted
@@ -61,13 +64,13 @@ if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/su
 .masthead .sub,.masthead,#spinner,[style*="#20160c"],[style*="#12100b"],[style*="#0d0b07"],[style*="#1a0c0c"]{--stone:var(--stone-dim);}
 .card [style*="background:#20160c"],.card [style*="background:#12100b"]{--stone:var(--stone-dim);}
 /* Ghost buttons sit on both surfaces: light-on-dark outside a card, dark-on-parchment inside one. */
-.btn-ghost{color:#c3ad88;border-color:#8d795a;}
-.card .btn-ghost,.game-card .btn-ghost,.player-slot .btn-ghost{color:#4a3a22;border-color:#6b5a42;}
+.btn-ghost{color:#e0cfae;border-color:#a8926e;}
+.card .btn-ghost,.game-card .btn-ghost,.player-slot .btn-ghost{color:#33270f;border-color:#4a3a22;}
 .card .btn-ghost:hover,.game-card .btn-ghost:hover,.player-slot .btn-ghost:hover{color:#6d1414;border-color:#6d1414;}
 /* Body copy a shade heavier: at these sizes on parchment it is the weight, not just the hue,
    that carries the contrast. */
 body{-webkit-font-smoothing:antialiased;}
-.card,.game-card,.player-slot,.report-prov,.log-entry{color:var(--ink);--stone:#4a3a22;}
+.card,.game-card,.player-slot,.report-prov,.log-entry{color:var(--ink);--stone:#33270f;}
 /* A parchment card re-asserts the dark muted tone for its own subtree, so a card shown inside a
    dark panel (the desktop layout moves the report into the left map column) never inherits the
    light one. A dark panel nested inside a card still wins for itself — the nearest declaring
@@ -143,7 +146,7 @@ section{display:none;}.section-active{display:block;}
 .log-entry.combat{border-left-color:var(--crimson);}
 .log-entry.explore{border-left-color:var(--forest);}
 .log-entry.hire{border-left-color:var(--gold);}
-.log-entry.system{border-left-color:#888;font-style:italic;color:#463f32;}
+.log-entry.system{border-left-color:#666;font-style:italic;color:#2a2419;}
 </style>
 </head>
 <body>
@@ -242,6 +245,12 @@ section{display:none;}.section-active{display:block;}
       <!-- 2026-09-26 (Toby item 9): ONE bot strength. Easy and Normal are retired — every bot realm plays at the
            former Hard setting. The hidden field keeps every reader of #new-game-botdifficulty working. -->
       <input type="hidden" id="new-game-botdifficulty" value="hard">
+      <!-- 2026-09-26b (Toby item 10): how bot realms treat HUMAN realms. -->
+      <label style="margin-top:10px">Bot Diplomacy <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(games with bots)</span></label>
+      <select id="new-game-botdiplomacy">
+        <option value="normal" selected>Normal — bots follow their alignment; some may ally with human realms</option>
+        <option value="hostile">Aggressive — every bot is at war with every human realm and never allies with one</option>
+      </select>
       <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
 
       <!-- Turn running: manual / automatic when all orders are in / automatic with a fixed clock deadline -->
@@ -360,7 +369,7 @@ section{display:none;}.section-active{display:block;}
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
 const KC_DATA_MIN='2026.09.25-1320';
-const KC_BUILD_STAMP='2026.09.26-1511'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.26-1536'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -1073,11 +1082,11 @@ async function submitChangePassword(){
   const msg=document.getElementById('cp-msg');
   if(!p1||p1.length<6){ msg.innerHTML='<span style="color:#c00">Password must be at least 6 characters.</span>'; return; }
   if(p1!==p2){ msg.innerHTML='<span style="color:#c00">Passwords do not match.</span>'; return; }
-  msg.innerHTML='<span style="color:#3c362c">Updating…</span>';
+  msg.innerHTML='<span style="color:#231e16">Updating…</span>';
   try{
     const {error}=await sb.auth.updateUser({password:p1});
     if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
-    msg.innerHTML='<span style="color:#2d7a2d">✓ Password updated.</span>';
+    msg.innerHTML='<span style="color:#1d5a1d">✓ Password updated.</span>';
     setTimeout(closeChangePassword,1200);
   }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Update failed.'}</span>`; }
 }
@@ -1401,6 +1410,7 @@ async function createGame(){
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
   const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
   _cfg.seaPct=normSeaPct(document.getElementById('new-game-seapct')?.value); // 20–80% of the world is water (world gen makes it exact)
+  _cfg.botDiplomacy=(document.getElementById('new-game-botdiplomacy')?.value==='hostile')?'hostile':'normal'; // 2026-09-26b (Toby item 10)
   _cfg.botDifficulty='hard'; // 2026-09-26 (Toby item 9): one bot strength — the former Hard. Saved with the game so Turn 0 and telemetry read it.
   _cfg.turnMode=readTurnModeForm('new-game'); // manual / auto / deadline (deadline clock starts at Turn 0)
   if(isPrivate){ _cfg.visibility='private'; _cfg.invited=invited; }
@@ -1723,7 +1733,7 @@ function mapCentreColFor(gs, playerIndex){
 async function loadTurnLog(gameId, turn){
   const {data}=await sb.from('turn_logs').select('*').eq('game_id',gameId).eq('turn',turn).eq('player_index',-1);
   const el=document.getElementById('detail-log');
-  if(!data||data.length===0){el.innerHTML='<div style="color:#5f5544;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
+  if(!data||data.length===0){el.innerHTML='<div style="color:#3a3224;font-size:.85rem;font-style:italic">No log entries yet.</div>';return;}
 
   const allEntries=data.flatMap(d=>d.entries||[]);
   // 2026-09-25: game_state arrives from Supabase as a JSON STRING; reading .characters off it gave
@@ -1752,7 +1762,7 @@ async function loadTurnLog(gameId, turn){
     const rawText=raw0.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
     const isStat=rawText.startsWith('📊');
     const isBattle=rawText.startsWith('⚔')||rawText.startsWith('⚠');
-    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#3c362c;padding:2px 6px;background:#f5f0e8">${rawText}</div>`;
+    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#231e16;padding:2px 6px;background:#f5f0e8">${rawText}</div>`;
     if(isBattle) return`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px;font-weight:600">${rawText}</div>`;
     return`<div class="log-entry ${e.type||''}" style="padding:2px 6px">${rawText}</div>`;
   }
@@ -1839,7 +1849,7 @@ async function loadTurnLog(gameId, turn){
     html+=`</div></div>`;
   }
 
-  el.innerHTML=html||'<div style="color:#5f5544;font-size:.85rem">No entries.</div>';
+  el.innerHTML=html||'<div style="color:#3a3224;font-size:.85rem">No entries.</div>';
 }
 
 // ── DELETE GAME ────
@@ -1933,7 +1943,7 @@ async function runTurn0(){
     _mapUse='p'+Math.min(10,totalKingdoms); _szUse=sizemap[_mapUse]||sz;
     console.warn(`Turn 0: ${totalKingdoms} realms on a ${mapSize} map — using the ${_mapUse} map (${_szUse.cols}x${_szUse.rows}) so capitals stay 3+ provinces apart.`);
   }
-  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null};
+  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null, botDiplomacy:(cfg.botDiplomacy==='hostile'?'hostile':'normal')};
 
   if(botSetups.length>0){
     renderTurn0Preview();      // GM confirms the generated roster before we commit anything
@@ -1974,7 +1984,7 @@ function renderTurn0Preview(){
 async function commitTurn0(){
   const msg=document.getElementById('detail-msg');
   if(!_pendingTurn0){ msg.innerHTML='<div class="msg-error">No pending setup — press Run Turn 0 again.</div>'; return; }
-  const {humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty}=_pendingTurn0;
+  const {humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty, botDiplomacy}=_pendingTurn0;
   msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
 
   try{
@@ -2009,6 +2019,7 @@ async function commitTurn0(){
 
     // 3. Generate the world.
     const gameState=await generateNewGame(setupPlayers,sz,maxTurns,{seaPct});
+    gameState.botDiplomacy=(botDiplomacy==='hostile')?'hostile':'normal'; // 2026-09-26b (Toby item 10): 'hostile' = bots always at war with humans, never allied
     gameState.botDifficulty='hard'; // 2026-09-26 (Toby item 9): every bot game plays at the one strength (Easy / Normal retired); the saved cfg value is ignored
     // Turn-running mode carries over from the setup config; a deadline clock starts now (Turn 0 =
     // the first "run").
@@ -3964,7 +3975,7 @@ function gameMetaOf(game){
 function buildGameMeta(gs){
   gs=(gs&&typeof gs==='object')?gs:{};
   const m={v:1, turnMode:normalizeTurnMode(gs.turnMode)};
-  ['mapSize','maxPlayers','botCount','allBot','botDifficulty','visibility','invited'].forEach(k=>{ if(gs[k]!==undefined) m[k]=gs[k]; });
+  ['mapSize','maxPlayers','botCount','allBot','botDifficulty','botDiplomacy','visibility','invited'].forEach(k=>{ if(gs[k]!==undefined) m[k]=gs[k]; });
   const sp=gs.seaPct!=null?gs.seaPct:(gs.world&&gs.world.seaPct!=null?gs.world.seaPct:null);
   if(sp!=null) m.seaPct=sp;
   if(Array.isArray(gs.players)){
@@ -4618,7 +4629,44 @@ function renderTurnModePanel(game){
       ${turnModeFormHtml('detail',tm)}
       ${watcherNote}
       <div id="detail-turnmode-msg" style="font-size:.78rem;margin-top:4px"></div>
+    </div>${botDiplomacyPanelHtml(game)}`;
+}
+// 2026-09-26b (Toby item 10): Bot Diplomacy for a game that has bot realms — Normal (bots follow
+// their alignment; some may ally with humans) or Aggressive (every bot at war with every human realm,
+// never allied). Set at creation; editable here during setup or play. Takes effect from the next
+// turn resolved (an existing bot–human alliance is broken by the bot's declaration of war then).
+function _gameHasBots(gs){
+  if(!gs) return false;
+  if(typeof currentGamePlayers!=='undefined' && Array.isArray(currentGamePlayers) && currentGamePlayers.some(isBotRow)) return true;
+  if(Array.isArray(gs.players) && gs.players.some(p=>p&&(p.isBot||p.bot))) return true;
+  return (gs.botCount||0)>0||!!gs.allBot;
+}
+function botDiplomacyPanelHtml(game){
+  const gs=parseGameState(game); if(!_gameHasBots(gs)) return '';
+  const cur=gs.botDiplomacy==='hostile'?'hostile':'normal';
+  return `<div style="border:1px solid var(--gold);border-radius:4px;padding:10px;background:#20160c;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="color:var(--parchment);font-weight:600">Bot diplomacy</span>
+        <select id="detail-botdiplomacy" style="flex:1;min-width:220px;margin:0">
+          <option value="normal" ${cur==='normal'?'selected':''}>Normal — bots follow their alignment; some may ally with humans</option>
+          <option value="hostile" ${cur==='hostile'?'selected':''}>Aggressive — bots always at war with human realms, never allied</option>
+        </select>
+        <button class="btn btn-gold" style="font-size:.72rem;padding:4px 10px" onclick="saveBotDiplomacy()">💾 Save</button>
+      </div>
+      <div id="detail-botdiplomacy-msg" style="font-size:.78rem;margin-top:4px"></div>
     </div>`;
+}
+async function saveBotDiplomacy(){
+  const msg=document.getElementById('detail-botdiplomacy-msg');
+  if(!currentGame) return;
+  const v=(document.getElementById('detail-botdiplomacy')?.value==='hostile')?'hostile':'normal';
+  const gs=parseGameState(currentGame); gs.botDiplomacy=v;
+  if(msg) msg.innerHTML='<span style="color:var(--stone)">Saving…</span>';
+  const {data,error}=await sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',currentGame.id).eq('turn',currentGame.turn).select('id').maybeSingle();
+  if(error){ if(msg) msg.innerHTML=`<span style="color:#e88">${error.message}</span>`; return; }
+  if(!data){ if(msg) msg.innerHTML='<span style="color:#e88">The turn advanced while you were editing — reload the game and try again.</span>'; return; }
+  currentGame.game_state=JSON.stringify(gs); Object.assign(currentGame,metaPatch(gs));
+  if(msg) msg.innerHTML='<span style="color:#8c8">Saved — applies from the next turn resolved.</span>';
 }
 async function saveTurnMode(){
   const msg=document.getElementById('detail-turnmode-msg');
@@ -11136,6 +11184,13 @@ async function runTurn(opts){
         if(!(G.players||[])[rival]) return;
         if(_conceded(rival)) return;                             // a realm that has quit is not worth a declaration
         if(!_kingAliveIdx.has(rival)&&!_hasLand(rival)) return;   // skip already-defeated realms
+        // 2026-09-26b (Toby item 10): AGGRESSIVE bot diplomacy (chosen at game creation) — every bot
+        // is at war with every HUMAN realm it has met and never offers one a Treat, whatever the
+        // alignment wheel or a Reckoning claim says. Bot-to-bot diplomacy is unchanged.
+        if(G.botDiplomacy==='hostile' && !_botPlayerIdx.has(rival)){
+          if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+          return;
+        }
         if(denyingAClaim){
           if(rival===claimBy){
             // The crown is on the table: break with him, ally or not.
@@ -11643,6 +11698,7 @@ async function runTurn(opts){
   // deferred line of theirs is written out at once, i.e. before the battle narrative is emitted,
   // exactly where the march sits in the sequence of events.
   function flushDeferredSkillLogsFor(charId){
+    if(charId!=null){ const _pc=(G.characters||[]).find(r=>r&&r.id===charId); if(_pc&&_pc._sgPending) resolvePendingSkillGain(_pc); } // 2026-09-26b: a falling hero's phase rise is settled first
     if(charId==null||!_deferredSkillLogs.length) return;
     const mine=_deferredSkillLogs.filter(([,meta])=>meta&&meta.charId===charId);
     if(!mine.length) return;
@@ -11668,6 +11724,14 @@ async function runTurn(opts){
     if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
     if(real._sgLog.phaseNo!==_sgPh){ real._sgLog.phaseNo=_sgPh; real._sgLog.phaseSkills={}; }
     if(real._sgLog.phaseSkills[skill]) return;                       // already raised this skill this phase
+    // 2026-09-26b (Toby item 7): one rise per phase. A pending candidate list left over from an
+    // earlier phase is settled first; then no further roll once this phase has already produced a
+    // rise (e.g. a Practice success), and no second candidate for a skill already in the draw.
+    if(real._sgPending && (real._sgPending.done || real._sgPending.turn!==G.turn)) real._sgPending=null; // stale (earlier turn) — dropped
+    if(real._sgPending && real._sgPending.phase!==_sgPh) resolvePendingSkillGain(real);
+    if(real._sgLog.gainedPhases && real._sgLog.gainedPhases[_sgPh]) return; // this phase has already produced its one rise
+    if(!real._sgPending) real._sgPending={turn:G.turn, phase:_sgPh, list:[], done:false};
+    if(real._sgPending.list.some(e=>e.skill===skill)) return;
     if(_chieftainDuelGain&&_chieftainDuelGain.used) return;          // one advance only per chieftain duel (any skill)
     if(_combatSkillProv!=null){
       const _ps=real._sgLog.provSkills[_combatSkillProv]||(real._sgLog.provSkills[_combatSkillProv]={});
@@ -11694,12 +11758,35 @@ async function runTurn(opts){
     const _diminish=Math.pow(0.8,_gainsThisTurn);
     if(Math.random()<Math.min(1,chance*_humanLearn*_diminish*mult)){
       if(_chieftainDuelGain) _chieftainDuelGain.used=true;            // this duel's single advance is spent
-      real._sgLog.turnGains=real._sgLog.turnGains||{}; real._sgLog.turnGains[skill]=_gainsThisTurn+1;
+      // 2026-09-26b (Toby item 7): ONE skill rise per character per phase. A successful roll no
+      // longer raises the skill on the spot — it becomes a CANDIDATE for this phase. When the phase
+      // ends (or the character falls, or the engine moves on to another phase) one candidate is
+      // drawn at random and applied; the others are dropped silently, with no notice to anyone.
+      (real._sgPending.list).push({skill, prov:_combatSkillProv, phase:_sgPh});
+    }
+    // the acting object may be a SHALLOW battle copy whose keys syncLeaderCopy writes back —
+    // mirror the (possibly replaced) bookkeeping objects so a write-back can never roll them back.
+    if(char!==real){ char._sgLog=real._sgLog; char._sgPending=real._sgPending; }
+  }
+  // Draw ONE of the character's pending skill-rise candidates for the phase at random and apply it.
+  // Rise lines go to the deferred (end-of-phase) log, private to the owner, in that character's
+  // Chronicle section. The losing candidates are discarded without a word.
+  function resolvePendingSkillGain(real){
+    const P=real&&real._sgPending; if(!P) return;
+    real._sgPending=null; if(P.done) return; P.done=true;
+    const list=(P.list||[]).filter(e=>e&&e.skill);
+    if(!list.length) return;
+    const e=list[Math.floor(Math.random()*list.length)];
+    const skill=e.skill; const lvl=(real.skills||{})[skill]||0;
+    if(lvl>=9) return;
+    if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:e.phase, phaseSkills:{}, provSkills:{}, turnGains:{}};
+    (real._sgLog.gainedPhases||(real._sgLog.gainedPhases={}))[e.phase]=true;
+      real._sgLog.turnGains=real._sgLog.turnGains||{}; real._sgLog.turnGains[skill]=((real._sgLog.turnGains[skill])||0)+1;
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
       // record the raise so this skill can't rise again this phase, nor again in this province's
       // ongoing battle series (carry-on battles span phases).
       real._sgLog.phaseSkills[skill]=true;
-      if(_combatSkillProv!=null){ (real._sgLog.provSkills[_combatSkillProv]||(real._sgLog.provSkills[_combatSkillProv]={}))[skill]=true; }
+      if(e.prov!=null){ (real._sgLog.provSkills[e.prov]||(real._sgLog.provSkills[e.prov]={}))[skill]=true; }
       const _payBefore=real.pay||0;
       recalcHeroPay(real); // a more skilled hero commands a higher wage
       const _payAfter=real.pay||0;
@@ -11713,13 +11800,11 @@ async function runTurn(opts){
       // deferred (non-battle) skill-rise carries the character's id and the phase it happened in,
       // so it is reported inside THAT character's Chronicle section at the end of the phase — not
       // adrift in Realm Events. (_logCtx holds the acting character + phase here.)
-      const _skCharId=real.id, _skPhase=(_logCtx.phase!=null?_logCtx.phase:_currentPhase);
-      // a skill rise is the OWNER'S news. Pushed into a battle or duel narrative as a bare string
-      // it went out to every participant, telling an enemy commander both that the man improved and
-      // exactly what level he reached. It now goes in as a private marker that emitNarrLine()
-      // routes to this realm alone, still in its proper place in the fight.
-      if(narr&&narr.push) narr.push({text:line, onlyPlayer:real.player, charId:_skCharId});
-      else _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+      const _skCharId=real.id, _skPhase=e.phase;
+      // a skill rise is the OWNER'S news — the deferred log is private to this realm. (2026-09-26b:
+      // battle-earned rises no longer go into the shared battle narrative; they are settled with the
+      // phase's single draw and reported at the end of the phase in the character's own section.)
+      _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       // crossing a mastery threshold (6/7/8/9) earns a congratulation that spells out the new
       // level's benefits — the passive that deepens, and any new mastery order or spell now
       // available. Fires exactly once per crossing (each gain is a single level).
@@ -11727,23 +11812,15 @@ async function runTurn(opts){
       if(_newLvl>=6){
         const _mu=(MASTERY_UNLOCKS[skill]||{})[_newLvl];
         const _mline=`🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill]||skill} — level ${_newLvl}!${_mu?' '+_mu:''}`;
-        if(narr&&narr.push) narr.push({text:_mline, onlyPlayer:real.player, charId:_skCharId});
-        else _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+        _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       }
       // when the higher skill raises the hero's wage, say so in the player's report.
       if(_payAfter>_payBefore){
         const wline=`💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
-        if(narr&&narr.push) narr.push({text:wline, onlyPlayer:real.player, charId:_skCharId});
-        else _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+        _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       }
-      // when this rise happened in a battle the acting object is a SHALLOW COPY of the commander,
-      // and syncLeaderCopy writes its own keys back afterwards. Every PRIMITIVE the rise moved on
-      // `real` must be mirrored onto the copy or the write-back reverts it. (`skills` and `_sgLog`
-      // are objects — `_sgLog` is REPLACED on the real character above, so it has to be mirrored
-      // too, not merely shared.)
-      if(char!==real){ char.pay=real.pay; char.maxHp=real.maxHp; char.hpEarned=real.hpEarned; char.skills=real.skills; char._sgLog=real._sgLog; }
-    }
   }
+  function resolveAllPendingSkillGains(){ (G.characters||[]).forEach(c=>{ if(c&&c._sgPending) resolvePendingSkillGain(c); }); }
   const HUMANOID_RACES_SG=new Set(['Human','Elven','Dwarven','Orcish']);
 
 // ── TERRAIN STRENGTH MODIFIERS ────
@@ -13721,6 +13798,7 @@ const BATTLE_ARMY_SPELLS={
       castSpells:[], castSchool:{},
       isUndead:monsterCat(m)==='undead'||undeadWords.some(w=>nm.includes(w)), cat:monsterCat(m),
       weak:(m.weak?{...m.weak}:null), // the flaw a player can learn and exploit
+      power:m.power||'Weak', // 2026-09-26: read by the Spiritwrack shrug (Powerful / Legendary guardians)
     };
     pcApplyMonsterPassive(cbt, m);
     // band-wide body cap — see GUARDIAN_BODY_CAP_PCT. Merged AFTER the creature's own passive so
@@ -13785,14 +13863,14 @@ const BATTLE_ARMY_SPELLS={
     return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX-_guardCap, dispFloor(chance))); // hard ceiling, applied AFTER every modifier
   }
   function pcMeleeDamage(attacker, defender){
-    const diff=(attacker.melee||0)-(defender.melee||0);
-    // Sept 2026 redesign: blows scale with the striker's OWN skill (+ceil(Melee/2)) as well as the
-    // skill gap, so high-level fights end in a sane number of rounds now that max HP runs to 100.
+    // Sept 2026 redesign: blows scale with the striker's OWN skill (+ceil(Melee/2)).
+    // 2026-09-26: base roll cut from 2–5 to 1–3 and the skill-gap bonus (+max(0, yourMelee − theirMelee))
+    // removed — out-skilling a foe now shows up only in hit chance, not in damage per blow.
     // For characters the bonus reads the RAW skill level (1–9, `meleeRaw`) — combat hit-chance
     // stays on the 0–5 scale, but mastery past 5 lands heavier blows. Guardians use their melee
     // stat.
     const _dsk=(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0));
-    let dmg=Math.max(1, rng(2,5)+Math.ceil(_dsk/2)+Math.max(0,diff)+temperOf(attacker.temper).meleeDamage);
+    let dmg=Math.max(1, rng(1,3)+Math.ceil(_dsk/2)+temperOf(attacker.temper).meleeDamage);
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // 2026-09-12b: the defender's temper soak MOVED to pcTakeHit. It is a reduction like any other
     // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
@@ -14034,6 +14112,15 @@ const BATTLE_ARMY_SPELLS={
     if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-pcPenaltyFade(cbt.status.hitPenalty));
     if(cbt.status.meleeHalvedRounds>0) cbt.status.meleeHalvedRounds--;
     if(cbt.status.silenceRounds>0) cbt.status.silenceRounds--;
+    // 2026-09-26 (Toby item 3): a Powerful / Legendary guardian bound by Spiritwrack rolls to throw
+    // the binding off at the start of every round after the first in which it held.
+    if(cbt.status._swShrugPct>0){
+      if(cbt.status.silenceRounds>0){
+        const _r=d100(), _pct=cbt.status._swShrugPct;
+        if(_r<=_pct){ cbt.status.silenceRounds=0; cbt.status.meleeHalvedRounds=0; cbt.status._swShrugPct=0;
+          narrative.push(`  ⛓ ${cbt.name} tears free of the Spiritwrack binding! (${fmtRoll(_pct,_r)} to shrug it off)`); }
+      } else cbt.status._swShrugPct=0;
+    }
     // riders hung on this combatant LAST round take hold now — after the fades and decrements
     // above, so each arrives with its full duration intact.
     pcPromotePending(cbt);
@@ -14055,7 +14142,10 @@ const BATTLE_ARMY_SPELLS={
   const SPELL_HOLY_PEN_PER_LVL=8;                                   // Holy Symbol to-hit penalty a level
   const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
   const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (doubled vs undead and fiends)
-  const SPELL_SPIRITWRACK_BASE_ROUNDS=3;                            // +1 per two levels
+  const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=4; // 1 + floor(level/2), max 4 (5 vs a White-weak guardian)
+  // 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
+  // of every round after the first in which it held — this chance a round.
+  const SPIRITWRACK_SHRUG_PCT={Powerful:25,Legendary:40};
   const SPELL_BLAST_BASE_ROUNDS=1;                                  // +1 per two levels
   const SPELL_TKS_BASE_PCT=12, SPELL_TKS_PCT_PER_LVL=3;             // Telekinetic Storm, % of target max HP
   const SPELL_INVIS_BASE_PCT=10, SPELL_INVIS_PCT_PER_LVL=4;         // Invisibility, foe to-hit reduction
@@ -14124,9 +14214,16 @@ const BATTLE_ARMY_SPELLS={
           const _dealt=pcTakeHit(target,_hsD,narrative,caster.name,'Holy Symbol');
           if(_dealt) narrative.push(`  ✝ ${holy?`The unclean flesh of ${target.name} chars at the sight of it`:`The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); }
         break; }
-      case 'Spiritwrack':{ // the binding now lasts with the binder — 2 rounds + 1 per two levels
-        // (3 at White 1, 5 at White 5) instead of a flat 3 however little the caster had studied.
-        const _swR=(SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(lvlEff/2))*wx; target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR); narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} phases it cannot cast or use archery, and its melee is halved.`); break; }
+      case 'Spiritwrack':{ // 2026-09-26 (Toby item 3): silenced for 1 + floor(level/2) rounds, at most 4.
+        // The level is the caster's full White level (items included), so levels 6+ reach the cap of 4.
+        // Against a guardian WEAK to White Magic the cast already takes hold at 95% (above) and the
+        // binding runs one round longer — up to 5 — instead of doubling.
+        let _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS,SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(Math.max(1,lvl)/2));
+        if(_wkSch) _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS+1,_swR+1);
+        target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR);
+        const _shr=(target.kind==='monster')?(SPIRITWRACK_SHRUG_PCT[target.power]||0):0;
+        target.status._swShrugPct=_shr;
+        narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} round${_swR!==1?'s':''} it cannot cast, use its powers or use archery, and its melee is halved.${_shr?` (A ${String(target.power).toLowerCase()} guardian may shrug it off — ${_shr}% each round after the first.)`:''}`); break; }
       case 'Psychic Blast':{ // three rounds of total helplessness was the same at Psychic 1 as at
         // Psychic 5. Now 1 round + 1 per two levels (1 at Psychic 1, 3 at Psychic 5), Dreamstone
         // still +1.
@@ -14228,8 +14325,8 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour?` "${sp.flavour}"`:''}`);
     const eff=String(sp.effect||'');
     let dealt=0;
-    // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — 2–5 + ⌈melee/2⌉
-    // + skill gap) × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy saved creatures
+    // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — 1–3 + ⌈melee/2⌉)
+    // × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy saved creatures
     // still carrying a dmg:[lo,hi] range roll that range instead.
     const _w=(sp.dmgW!=null)?sp.dmgW:((sp.dmg&&(sp.dmg[0]>0||sp.dmg[1]>0))?null:0);
     if(_w!==0){
@@ -18760,6 +18857,9 @@ const BATTLE_ARMY_SPELLS={
           // up in phase 1 is proportionally harder to raise again in the field later on.
           if(!c._sgLog || c._sgLog.turn!==G.turn) c._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
           c._sgLog.turnGains=c._sgLog.turnGains||{}; c._sgLog.turnGains[skill]=(c._sgLog.turnGains[skill]||0)+1;
+          // 2026-09-26b (Toby item 7): a Practice rise IS this phase's one skill rise — it closes the phase
+          // to experience gains and voids any field candidates already drawn up this phase.
+          { const _gp=(_logCtx.phase!=null?_logCtx.phase:_currentPhase); (c._sgLog.gainedPhases||(c._sgLog.gainedPhases={}))[_gp]=true; if(c._sgPending&&c._sgPending.phase===_gp) c._sgPending=null; }
           const _prPayBefore=c.pay||0;
           recalcHeroPay(c);
           const _prPayAfter=c.pay||0;
@@ -22011,10 +22111,18 @@ const BATTLE_ARMY_SPELLS={
     if(!from||toId==null||c.location===toId) return null;
     const sc=seaCap[c.id]||'land';
     const passable=(p)=>!!p&&canEnterTerrain(c,p.terrain,sc)&&(!extraFilter||extraFilter(p));
+    // 2026-09-26 (Toby item 2): a column that leads ANY naval unit (fleet or sea-beast) cannot
+    // march land→land — the move handler refuses it ("cannot march overland while leading naval
+    // units"). The BFS used to ignore that, so a displaced admiral in a coastal province picked the
+    // adjacent coastal LAND province as his first step, was refused, and held all phase. Every
+    // land→land edge is now closed to such a column: from land it must put out to an adjacent sea
+    // province first, and it may land again only from the sea.
+    const _naval=(c.armies||[]).some(a=>a&&SEA_TYPES.has(a.type));
+    const edgeOk=(a,b)=>!_naval||a.terrain==='sea'||b.terrain==='sea';
     const seen=new Set([from.id]);
     // BFS storing the first step taken on each path
     let frontier=getNeighborsP(from,G.world.cols,G.world.rows,G.world.provinces)
-      .filter(passable).map(p=>({p,first:p}));
+      .filter(p=>passable(p)&&edgeOk(from,p)).map(p=>({p,first:p}));
     frontier.forEach(e=>seen.add(e.p.id));
     let depth=0;
     while(frontier.length&&depth<40){
@@ -22022,7 +22130,7 @@ const BATTLE_ARMY_SPELLS={
       const next=[];
       for(const e of frontier){
         for(const nb of getNeighborsP(e.p,G.world.cols,G.world.rows,G.world.provinces)){
-          if(!nb||seen.has(nb.id)||!passable(nb)) continue;
+          if(!nb||seen.has(nb.id)||!passable(nb)||!edgeOk(e.p,nb)) continue;
           seen.add(nb.id);
           next.push({p:nb,first:e.first});
         }
@@ -23309,6 +23417,7 @@ const BATTLE_ARMY_SPELLS={
     // all this phase's actions have resolved — now report any incidental skill-rises they earned
     // (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each reads as
     // a consequence of the action that caused it rather than interrupting it.
+    resolveAllPendingSkillGains(); // 2026-09-26b: settle each character's one skill rise for the phase
     if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
 
     // A Move order in a later phase cancels a standing Defend (AK [3.15]).
@@ -23754,6 +23863,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
 
   // Item 12 safety net: flush any incidental skill-rises that were earned after the last in-phase
   // flush (none expected today, but this guarantees no such line is ever silently dropped).
+  resolveAllPendingSkillGains();
   if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
 
   // ── Fallen-commander backstop ── The per-phase sweep deliberately leaves a leaderless host in
@@ -25059,6 +25169,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1511</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1536</div>
 </body>
 </html>
