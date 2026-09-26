@@ -368,8 +368,8 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.25-1320';
-const KC_BUILD_STAMP='2026.09.26-1536'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_DATA_MIN='2026.09.26-1647';
+const KC_BUILD_STAMP='2026.09.26-1647'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -2599,14 +2599,43 @@ function itemLoreLines(items){ return (items||[]).filter(Boolean).map(d=>`📜 T
 // falls back to any remaining untaken item (any tier); if the whole treasury has been claimed it
 // returns null (the lair then yields gold only). With every tier-1/2 item now existing in three
 // named versions, exhaustion is rare even on the biggest maps.
-function rollMagicItem(monsterPower, taken){
+// ── EFFECT-LEVEL UNIQUENESS (2026-09-26) ──────────────────────────────────────────────────
+// Name uniqueness alone is not enough. Every tier-1 and tier-2 design exists under three names
+// (_tripleLowerTierItems) plus any minted versions, so 288 tier-1 NAMES sit on only 107 distinct
+// tier-1 EFFECTS. Two lairs could hand out "Blade of Fury" and "Sword of Wrath" — different names,
+// the same Melee +2 — and a player reasonably reads that as the game repeating itself. The roll now
+// PREFERS an effect nothing else on the map carries, and only re-uses one when the tier has no
+// unused effect left. `itemEffectKey` is the signature: effect + slot + tier, so a Weak ring and a
+// Moderate ring granting the same stat stay distinct finds.
+function itemEffectKey(it){
+  if(!it) return '?';
+  if(!it.effect) return 'name:'+it.name;
+  return JSON.stringify(it.effect)+'|'+(it.slot||'-')+'|'+(it.tier||1);
+}
+// Rebuilds the set of effects already handed out from gs._awardedItems (names are what saves keep),
+// so an existing game adopts the rule without a migration field of its own.
+function awardedEffectSet(gs){
+  const s=new Set(); if(!gs||!Array.isArray(gs._awardedItems)) return s;
+  const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
+  gs._awardedItems.forEach(n=>{ const it=byName.get(n); if(it) s.add(itemEffectKey(it)); });
+  return s;
+}
+// Narrows a candidate list to items whose effect is still unspent; returns the list untouched when
+// that would leave nothing, so a bare tier still yields an item rather than an empty lair.
+function preferFreshEffects(pool, takenEff){
+  if(!takenEff||!takenEff.size||!pool||!pool.length) return pool;
+  const fresh=pool.filter(it=>!takenEff.has(itemEffectKey(it)));
+  return fresh.length?fresh:pool;
+}
+function rollMagicItem(monsterPower, taken, takenEff){
   taken=taken||new Set();
   const t=lairItemTier(monsterPower); // the guardian's power IS the tier
-  const inTier=((ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P)
-    .filter(it=>!taken.has(it.name));
+  const inTier=preferFreshEffects(((ITEMS_BY_TIER[t]&&ITEMS_BY_TIER[t].length)?ITEMS_BY_TIER[t]:ALL_MAGIC_ITEMS_P)
+    .filter(it=>!taken.has(it.name)), takenEff);
   if(inTier.length) return inTier[Math.floor(Math.random()*inTier.length)];
   let anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name)&&itemFallbackOk(it,t));
   if(!anyLeft.length) anyLeft=ALL_MAGIC_ITEMS_P.filter(it=>!taken.has(it.name));
+  anyLeft=preferFreshEffects(anyLeft, takenEff);
   return anyLeft.length ? anyLeft[Math.floor(Math.random()*anyLeft.length)] : null;
 }
 // When a tier is spent, a WEAK lair may still take any utility item of any tier (rule 1 survives
@@ -2641,8 +2670,9 @@ function ensureLairHoard(f, gs, opts){
   if(f.cleared||!gs||_noItems) return;
   if(!Array.isArray(gs._awardedItems)) gs._awardedItems=[];
   const taken=new Set(gs._awardedItems);
+  const takenEff=awardedEffectSet(gs);
   const T=LAIR_ITEM_ODDS[power]||LAIR_ITEM_ODDS.Weak;
-  const roll=()=>{ const base=rollMagicItem(power,taken); if(!base) return; taken.add(base.name); gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1; f.hoardItems.push({...base,effect:{...base.effect},id}); };
+  const roll=()=>{ const base=rollMagicItem(power,taken,takenEff); if(!base) return; taken.add(base.name); takenEff.add(itemEffectKey(base)); gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1; f.hoardItems.push({...base,effect:{...base.effect},id}); };
   if(Math.random()<T.itemChance) roll();
   if(Math.random()<T.bonusItem) roll();
   if(Math.random()<(T.thirdItem||0)) roll();
@@ -2795,10 +2825,11 @@ function noteItemFound(gs, playerIndex, it){
 // A lair-tier roll for a NAMED player: same tier odds as rollMagicItem, but among the categories
 // this realm has found least of. Falls back to the plain roll when no category has stock in the
 // chosen tier.
-function rollMagicItemFor(gs, playerIndex, monsterPower, taken){
+function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff){
   taken=taken||new Set();
+  if(!takenEff) takenEff=awardedEffectSet(gs);
   const pl=(gs&&gs.players||[])[playerIndex];
-  if(!pl) return rollMagicItem(monsterPower, taken);
+  if(!pl) return rollMagicItem(monsterPower, taken, takenEff);
   migrateHoardTally(pl);
   const found=pl._itemsFoundByCat||{};
   const t=lairItemTier(monsterPower);
@@ -2806,12 +2837,12 @@ function rollMagicItemFor(gs, playerIndex, monsterPower, taken){
   let atTier=true;
   let live=HOARD_CATEGORIES.filter(c=>avail(c,t).length>0);
   if(!live.length){ atTier=false; live=HOARD_CATEGORIES.filter(c=>avail(c,null).length>0); }
-  if(!live.length) return rollMagicItem(monsterPower, taken);
+  if(!live.length) return rollMagicItem(monsterPower, taken, takenEff);
   const low=Math.min(...live.map(c=>found[c]||0));
   const cats=shuffleP(live.filter(c=>(found[c]||0)===low));
   const cat=cats[0];
-  const pool=avail(cat, atTier?t:null);
-  return pool.length?pool[Math.floor(Math.random()*pool.length)]:rollMagicItem(monsterPower, taken);
+  const pool=preferFreshEffects(avail(cat, atTier?t:null), takenEff);
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:rollMagicItem(monsterPower, taken, takenEff);
 }
 function ensureAllLairHoards(gs){
   const provs=(gs&&gs.world&&gs.world.provinces)||[];
@@ -2832,10 +2863,16 @@ function ensureAllLairHoards(gs){
     if(!fresh) return;
     const T=LAIR_ITEM_ODDS[powOf(f)]||LAIR_ITEM_ODDS.Weak;
     let slots=0; if(Math.random()<T.itemChance) slots++; if(Math.random()<T.bonusItem) slots++; if(Math.random()<(T.thirdItem||0)) slots++;
-    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov)});
+    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov),provId:prov.id});
   });
   if(!work.length) return;
   const taken=new Set(gs._awardedItems);
+  // Effects already spent map-wide, plus a per-province tally. The map-wide set is a PREFERENCE (a
+  // huge map can outrun the 394 distinct designs); the province set is a HARD BAR, because two
+  // renamed copies of one item sitting in the same province is the case players actually notice.
+  const takenEff=awardedEffectSet(gs);
+  const provEff={};
+  const provSet=(id)=>provEff[id]||(provEff[id]=new Set());
   const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
   // counts are kept PER REGION (nearest home province), so each realm's own neighbourhood gets an
   // even spread rather than only the world as a whole. `_all` keeps the world-level tally for the
@@ -2843,14 +2880,15 @@ function ensureAllLairHoards(gs){
   const regCount={}, catCount={}; HOARD_CATEGORIES.forEach(c=>catCount[c]=0);
   const countsFor=(r)=>regCount[r]||(regCount[r]=Object.fromEntries(HOARD_CATEGORIES.map(c=>[c,0])));
   gs._awardedItems.forEach(n=>{ const it=byName.get(n); if(it) catCount[itemHoardCategory(it)]=(catCount[itemHoardCategory(it)]||0)+1; });
-  const give=(f,base,reg)=>{ taken.add(base.name); gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1;
+  const give=(f,base,reg,provId)=>{ taken.add(base.name); takenEff.add(itemEffectKey(base)); if(provId!=null) provSet(provId).add(itemEffectKey(base));
+    gs._awardedItems.push(base.name); const id=(gs.nextItemId||0); gs.nextItemId=id+1;
     f.hoardItems.push({...base,effect:{...base.effect},id});
     const cat=itemHoardCategory(base); catCount[cat]=(catCount[cat]||0)+1;
     if(reg!=null) countsFor(reg)[cat]=(countsFor(reg)[cat]||0)+1; };
   // 1. Legendaries — all of them, whatever the map size.
   let legs=shuffleP(ALL_MAGIC_ITEMS_P.filter(it=>isLegendaryItem(it)&&!taken.has(it.name)));
-  for(const w of work){ if(!legs.length) break; if(w.slots>0){ give(w.f,legs.pop(),w.region); w.slots--; } }
-  let guard=0; while(legs.length&&guard++<50){ for(const w of work){ if(!legs.length) break; give(w.f,legs.pop(),w.region); } }
+  for(const w of work){ if(!legs.length) break; if(w.slots>0){ give(w.f,legs.pop(),w.region,w.provId); w.slots--; } }
+  let guard=0; while(legs.length&&guard++<50){ for(const w of work){ if(!legs.length) break; give(w.f,legs.pop(),w.region,w.provId); } }
   // 2. Everything else, category-balanced.
   // Items of a given kind still available AT A GIVEN TIER (legendaries are dealt separately above).
   const untakenT=(cat,t)=>ALL_MAGIC_ITEMS_P.filter(it=>!isLegendaryItem(it)&&it.tier===t&&!taken.has(it.name)&&itemHoardCategory(it)===cat);
@@ -2873,8 +2911,14 @@ function ensureAllLairHoards(gs){
       const pool=shuffleP(tiedR.filter(c=>(catCount[c]||0)===lowW));
       const cat=pool[0];
       const inCat=atTier?untakenT(cat,t):(untakenAny(cat,t).length?untakenAny(cat,t):untakenAny(cat,null));
-      const pick=inCat[Math.floor(Math.random()*inCat.length)];
-      give(w.f,pick,w.region); w.slots--;
+      // Effect filter: prefer a design nothing on the map carries yet, and never repeat one already
+      // in THIS province while any alternative exists.
+      const pe=provSet(w.provId);
+      let cand=preferFreshEffects(inCat, takenEff);
+      const notHere=cand.filter(it=>!pe.has(itemEffectKey(it)));
+      if(notHere.length) cand=notHere;
+      const pick=cand[Math.floor(Math.random()*cand.length)];
+      give(w.f,pick,w.region,w.provId); w.slots--;
     }
   }
 }
@@ -3546,7 +3590,7 @@ function migrateMaxHpV2(gs){
 }
 // guardian HP rescaled. Uncleared lairs in older saves adopt the current table stats for their
 // creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=13; // 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+const GUARDIAN_TABLE_VER=16; // 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -25169,6 +25213,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1536</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1647</div>
 </body>
 </html>
