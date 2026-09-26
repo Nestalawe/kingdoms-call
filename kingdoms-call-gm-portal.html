@@ -368,8 +368,8 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.26-1647';
-const KC_BUILD_STAMP='2026.09.26-1647'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_DATA_MIN='2026.09.26-1713';
+const KC_BUILD_STAMP='2026.09.26-1728'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -2250,10 +2250,18 @@ function alignDistP(a,b){
   if(i<0||j<0) return 0;
   return Math.abs(i-j);
 }
-function heroHireWage(kingdomAlign, heroAlign, waiveBan){
+// A hero's SKILL premium on top of the alignment base. Neutral heroes now grow while they wander
+// (progressNeutralHeroes + battle experience), so a chieftain who has held his province for twenty
+// turns is a far better buy than a fresh wanderer — and used to cost exactly the same, because the
+// hire wage was alignment-only. The premium mirrors the in-service wage formula (ceil(total/4))
+// with the starting hero's one gold taken off, so a freshly generated 3-point wanderer still hires
+// at the old 2–5g and every point earned since shows up in the asking price.
+function heroSkillTotal(ch){ return Object.values((ch&&ch.skills)||{}).reduce((s,v)=>s+(v||0),0); }
+function heroSkillWage(ch){ return Math.max(0, Math.ceil(heroSkillTotal(ch)/4)-1); }
+function heroHireWage(kingdomAlign, heroAlign, waiveBan, hero){
   const d=alignDistP(kingdomAlign, heroAlign);
   if(d>=6&&!waiveBan) return null;               // Divine <-> Undead: will never serve
-  return 2+Math.floor(Math.min(d,6)/2);
+  return 2+Math.floor(Math.min(d,6)/2)+(hero?heroSkillWage(hero):0);
 }
 const TEMPERS_P=['Berserk','Brave','Cautious','Cowardly'];
 function temperOf(t){ return TEMPER_TRAITS[t]||TEMPER_TRAITS.Brave; }
@@ -5741,12 +5749,12 @@ function botHireOrder(G,pi,c,L){
   // botSeesChar — a hero standing beside our own character is normally plainly visible, but one who
   // moved in unspotted, is Invisible or wears a Cloak of Many Faces is not, and the human's Hire
   // list would not offer them either.
-  const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id)&&botSeesChar(G,pi,h)&&heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)!=null); if(!hh) return null;
+  const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id)&&botSeesChar(G,pi,h)&&heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false,h)!=null); if(!hh) return null;
   // Self-play finding: an uncapped court (15 heroes, no army) ate the whole wage budget. Cap heroes
   // to the realm's size so wages stay with the field army.
   const heroes=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length;
   if(heroes>=botHeroCap(G,pi)) return null;
-  const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral', hh.alignment, false);
+  const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral', hh.alignment, false, hh);
   // a hero's wage (1–3g) is paid from the chest and no longer competes with troops for the upkeep
   // cap — bots try to hire at least one wanderer every turn they can reach one.
   if(wage==null||L.budget<wage) return null;
@@ -6524,7 +6532,7 @@ function botSignaturePre(G,pi,c,P,L){
         let best=null; (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id))) return;
           if(h.location===c.location) return;                          // a plain Hire does that
           const X=G.world.provinces[h.location]; if(!X||!(X.owner===pi||(X.visitedBy||[]).includes(pi))) return;   // the engine's own Broker visibility
-          const w=heroHireWage(pl.alignment,h.alignment,false); if(w==null||L.budget<w) return;
+          const w=heroHireWage(pl.alignment,h.alignment,false,h); if(w==null||L.budget<w) return;
           const v=Object.values(h.skills||{}).reduce((a,b)=>a+(b||0),0)-w; if(!best||v>best.v) best={h,w,v}; });
         if(best){ botSpend(L,best.w); L.hired.add(best.h.id); L.sig.broker=1; return {action:'broker',target:'hire:'+best.h.id,extra:'',desc:'Broker — hire '+best.h.name}; }
       }
@@ -7075,7 +7083,7 @@ function runBotMovement(G, botIdxSet, hooks){
         // seen.
         if(_heroesNow<botHeroCap(G,pi)) (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated)) return;
           if(!botSeesChar(G,pi,h)) return;
-          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)==null) return;
+          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false,h)==null) return;
           if(h.location===c.location||heroClaimed.has(h.id)) return;
           // seekers walk through neutral country too (an unarmed character is never engaged by a
           // guard), up to 5 hops — the whole of an unarmed character's reach.
@@ -7303,9 +7311,9 @@ function runBotMovement(G, botIdxSet, hooks){
       // Sept 2026 (Toby: hire as much as possible): a host with nothing to attack walks to a seen wanderer and hires him.
       { const heroesNow=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length; let bestH=null;
         if(heroesNow<botHeroCap(G,pi)) (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated&&botSeesChar(G,pi,h)&&!heroClaimed.has(h.id)&&h.location!==c.location)) return;
-          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)==null) return;
+          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false,h)==null) return;
           const d=botPathLen(G,pi,P,h.location,false); if(d==null||d>maxHops-1) return; if(!bestH||d<bestH.d) bestH={h,d}; });
-        if(bestH){ const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral',bestH.h.alignment,false); const path=botPathDirs(G,pi,P,bestH.h.location,maxHops-1,false)||[]; if(path.length===bestH.d&&wage!=null&&L.budget>=wage){ heroClaimed.add(bestH.h.id); botSpend(L,wage); L.hired=L.hired||new Set(); L.hired.add(bestH.h.id);
+        if(bestH){ const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral',bestH.h.alignment,false,bestH.h); const path=botPathDirs(G,pi,P,bestH.h.location,maxHops-1,false)||[]; if(path.length===bestH.d&&wage!=null&&L.budget>=wage){ heroClaimed.add(bestH.h.id); botSpend(L,wage); L.hired=L.hired||new Set(); L.hired.add(bestH.h.id);
           G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[...path.map(d=>botMoveOrder(d,'Ride to '+bestH.h.name)),{action:'hire',target:String(bestH.h.id),extra:'',desc:'Hire '+bestH.h.name}]); return; } } }
       // Sept 2026 (Toby: naval): a sea-capable host with no land target sails — claim the sea, land on an enemy coast.
       { const ss=(c._botRole==='admiral'||botSeaCap(c.armies)!=='land')?botSeaStrike(G,pi,c,P,myStr,T,maxHops):null;
@@ -8843,7 +8851,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     };
     h.maxHp=h.hp;
     ABILITIES_P.forEach(ab=>{h.aptitude[ab]=rP(1,4);});
-    h.pay=Math.max(1,Math.ceil(Object.values(hSkills).reduce((s,v)=>s+v,0)/4));
+    h.pay=Math.max(1,1+Math.max(0,Math.ceil(Object.values(hSkills).reduce((s,v)=>s+v,0)/4)-1)); // wandering default; the hire desk quotes alignment + skill premium
     allChars.push(h);
     lp.characters.push(hid);
     // Province still keeps neutralDefenders for backward-compat intel display, but armies actually
@@ -9165,6 +9173,34 @@ function graveServedOther(g, pi){
 const NEUTRAL_PROG_FROM_TURN=5;   // first END OF TURN at which neutral heroes roll
 const NEUTRAL_PROG_PCT=25;        // chance per neutral hero per turn of gaining one point (2026-09-23: was 50)
 const NEUTRAL_PROG_CAP=5;         // a neutral hero's own growth never lifts a skill past this (higher skills they already hold are kept)
+const NEUTRAL_PROG_TOP_PCT=75;    // 2026-09-26 (Toby): when the idle roll lands, 75% it deepens their BEST skill, 25% a random other
+// Hex neighbours of a province, as ids. progressNeutralHeroes is module scope and cannot reach
+// runTurn's neighborInDir, so the offsets live here too — same even/odd row convention as the rest
+// of the map code.
+function _neutralAdjIds(gs, p){
+  const w=gs&&gs.world; if(!w||!p) return [];
+  const even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+  const odd =[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+  const out=[];
+  (p.row%2===0?even:odd).forEach(([dr,dc])=>{
+    const nr=p.row+dr; if(nr<0||nr>=w.rows) return;
+    const nc=((p.col+dc)%w.cols+w.cols)%w.cols;
+    out.push(nr*w.cols+nc);
+  });
+  return out;
+}
+// ── NEUTRAL HERO PROGRESSION ──────────────────────────────────────────────────────────────
+// 2026-09-26 (Toby), three changes:
+// • A neutral who already earned a skill this turn THROUGH BATTLE (trySkillGain now runs for
+//   neutrals inside a battle series, stamping `_neutralXpTurn`) does not also take the idle roll.
+//   Fighting replaces sitting still; it never stacks on top of it.
+// • Peer teaching now reaches ADJACENT provinces as well as the hero's own, and takes PRECEDENCE:
+//   a teacher is looked for first, and only a hero with no reachable peer falls back to self-study.
+//   Same-province peers are still preferred over neighbours — a hero standing beside you teaches
+//   you before one a province away.
+// • Self-study is no longer a flat random pick among their skills: 75% it deepens whichever skill
+//   they are already best at (a random one of them if several tie), 25% it goes to a different
+//   skill of theirs chosen at random. Falls back to the other branch when one has nothing legal.
 function progressNeutralHeroes(gs, emit, rng){
   rng=rng||Math.random;
   const turn=(gs&&gs.turn)||0;
@@ -9176,30 +9212,54 @@ function progressNeutralHeroes(gs, emit, rng){
   const snap=new Map(neutrals.map(c=>[c.id,{...(c.skills||{})}]));
   const topSkillsOf=(sk)=>{ let best=0; ALL_SKILLS.forEach(k=>{ best=Math.max(best,sk[k]||0); }); return best>0?ALL_SKILLS.filter(k=>(sk[k]||0)===best):[]; };
   const pick=(arr)=>arr[Math.floor(rng()*arr.length)];
+  // neutrals indexed by the province they stand in, so the adjacency sweep is a lookup not a scan
+  const byProv=new Map();
+  neutrals.forEach(o=>{ const k=o.location; if(!byProv.has(k)) byProv.set(k,[]); byProv.get(k).push(o); });
+  const provs=(gs.world&&gs.world.provinces)||[];
   const gains=[];
   neutrals.forEach(c=>{
+    // battle experience this turn stands in place of the idle roll
+    if(c._neutralXpTurn===turn) return;
     if(rng()*100>=NEUTRAL_PROG_PCT) return;
     c.skills=c.skills||{};
     const _cap=Math.min(SKILL_MAX,NEUTRAL_PROG_CAP);
     const own=ALL_SKILLS.filter(k=>(c.skills[k]||0)>0&&(c.skills[k]||0)<_cap);
-    const peers=neutrals.filter(o=>o!==c&&o.location===c.location);
-    let skill=null, teacher=null;
-    if(peers.length){
-      const t=pick(peers);
+    let skill=null, teacher=null, nearby=false;
+    // 1. TEACHING FIRST — own province, then adjacent ones.
+    const here=(byProv.get(c.location)||[]).filter(o=>o!==c);
+    let ring=[];
+    _neutralAdjIds(gs, provs[c.location]).forEach(nid=>{ (byProv.get(nid)||[]).forEach(o=>{ if(o!==c) ring.push(o); }); });
+    for(const group of [here, ring]){
+      if(skill||!group.length) continue;
+      // only peers who actually have something legal to teach are worth approaching
+      const able=group.filter(t=>topSkillsOf(snap.get(t.id)||{}).some(k=>(c.skills[k]||0)<_cap));
+      if(!able.length) continue;
+      const t=pick(able);
       const cand=topSkillsOf(snap.get(t.id)||{}).filter(k=>(c.skills[k]||0)<_cap);
-      if(cand.length){ skill=pick(cand); teacher=t; }
+      if(cand.length){ skill=pick(cand); teacher=t; nearby=(group===ring); }
     }
-    if(!skill && own.length) skill=pick(own);
+    // 2. SELF-STUDY — 75% their best skill, 25% one of the others.
+    if(!skill && own.length){
+      const best=topSkillsOf(c.skills).filter(k=>(c.skills[k]||0)<_cap);
+      const rest=own.filter(k=>best.indexOf(k)<0);
+      const wantTop=(rng()*100<NEUTRAL_PROG_TOP_PCT);
+      if(wantTop) skill=best.length?pick(best):(rest.length?pick(rest):null);
+      else        skill=rest.length?pick(rest):(best.length?pick(best):null);
+    }
     if(!skill) return;
     const from=c.skills[skill]||0, to=from+1;
     c.skills[skill]=to;
-    gains.push({id:c.id, skill, from, to, teacher:teacher?teacher.id:null});
+    gains.push({id:c.id, skill, from, to, teacher:teacher?teacher.id:null, nearby});
     if(emit){
       const pv=gs.world&&gs.world.provinces?gs.world.provinces[c.location]:null;
       const nm=String(c.name||'').replace(/\s*\(wandering\)/i,'');
       const lbl=(typeof SKILL_LABELS!=='undefined'&&SKILL_LABELS[skill])||skill;
+      const tn=teacher?String(teacher.name||'').replace(/\s*\(wandering\)/i,''):'';
+      const tpv=(teacher&&provs[teacher.location])?provs[teacher.location]:null;
       emit(teacher
-        ? `📜 ${nm}${pv?` in ${pv.name}`:''} learns from ${String(teacher.name||'').replace(/\s*\(wandering\)/i,'')} — ${lbl} rises to ${to}.`
+        ? (nearby
+            ? `📜 ${nm}${pv?` in ${pv.name}`:''} rides out to ${tn}${tpv?` in ${tpv.name}`:''} to learn — ${lbl} rises to ${to}.`
+            : `📜 ${nm}${pv?` in ${pv.name}`:''} learns from ${tn} — ${lbl} rises to ${to}.`)
         : `📜 ${nm}${pv?` in ${pv.name}`:''} hones their craft — ${lbl} rises to ${to}.`, pv);
     }
   });
@@ -10193,7 +10253,7 @@ function buildTurnReport(gameState, playerIndex){
       // sd31 waiver, if the realm holds it, is applied at the real hire). Guards keep their beast
       // label; a defeated guard now wandering (player===null, not a guard) shows a proper race (see
       // runTurn normaliser).
-      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment);
+      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment, false, c);
       const _wHireTxt=c._isNeutralGuard?'':(_wWage!=null?` Available to hire for ${_wWage}g/turn.`:' Will not serve your crown — the alignment gulf is too wide.');
       heroSightings.push({
         type:c._isNeutralGuard?'neutral_guard':'wandering',
@@ -10424,7 +10484,7 @@ function buildTurnReport(gameState, playerIndex){
   const _perProvRaw=ledgers?(gameState.world.provinces||[]).filter(pv=>pv.owner===playerIndex).length:0; // Merchant's Ledger
   const _itemTaxR=capItemTaxGold(_taxBonusRaw,_perProvRaw,_taxCapR);
   const taxBonus=_itemTaxR.taxBonus, perProvBonus=_itemTaxR.perProvBonus;
-  const interestBonus=discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
+  const interestBonus=discEffectsOf(player,'interest').reduce((s2,e)=>s2+Math.min(_taxCapR,Math.floor((player.gold||0)*(e.pct||0))),0); // Merchant Guilds + creed interest discoveries (as collected)
   _sdRecords=hasDiscR('sd14')?taxRecordsGold(provTaxIncome,_taxCapR):0; // sd14 Taxation Records — keep in step with the collector
   const neutralTradeBonus=neutralTradeGold(player,provTaxIncome);
   // title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings /
@@ -10531,7 +10591,7 @@ function buildTurnReport(gameState, playerIndex){
   const _druidHalfWageR=new Set();
   playerCharsForWages.forEach(ch=>{ if(perkTier(ch,'druid')>0||gdActiveFor(gameState,playerIndex,'Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a); }); }); // DRUID L6 + GRAND DESIGN Druidic (report mirror)
   const _upkAccR=new Map(); let _discUpkeepR=0; // `upkeep` discoveries (mirrors the collector)
-  let armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return s; /* Wild Hunt beasts serve the old gods, not a paymaster */ if(a._isSkeletal) return s+1; /* skeletons are a flat 1g everywhere */ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); { const _w0=w; w=discUpkeepWage(player,a,w,_upkAccR); _discUpkeepR+=_w0-w; } return s+w; },0);
+  let armyWages=[...allArmiesForWages,...garrisonArmiesForWages].reduce((s,a)=>{ if(a._temporary||a._wildHuntUntilTurn!=null) return s; /* Wild Hunt beasts serve the old gods, not a paymaster */ if(a._isSkeletal) return s+1; /* skeletons are a flat 1g everywhere */ let w=ARMY_COST_TR[a.type]||2; if(_druidHalfWageR.has(a)) w=Math.max(1,Math.floor(w*0.5)); { const _w0=w; w=discUpkeepWage(player,a,w,_upkAccR,_taxCapR); _discUpkeepR+=_w0-w; } return s+w; },0);
   // 2026-09-09. The forecast skipped three PERSISTENT discounts the collector applies — the
   // Host-Leader minor title (−1g per unit he leads, floor 0 on the total), Granaries sd17 (−1g per
   // hero) and every heritage/creed `heroWage` discovery (−Ng per hero), all with the collector's
@@ -10541,7 +10601,7 @@ function buildTurnReport(gameState, playerIndex){
   if(_hostLeaderChar){ const led=(_hostLeaderChar.armies||[]).filter(a=>!a._temporary&&a._wildHuntUntilTurn==null).length; hostLeaderG=Math.min(armyWages,led); armyWages=Math.max(0,armyWages-led); }
   const _hwAccR=new Map(); // heroWage / heroWageCap discoveries (Granaries, Inspiring Leadership, creeds) — mirrors the collector
   let heroWageDisc=0;
-  let heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ const raw=(h.pay||0); const w=discHeroWage(player,h,raw,_hwAccR); heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
+  let heroWages=playerCharsForWages.filter(c=>!c.isKing).reduce((s,h)=>{ const raw=(h.pay||0); const w=discHeroWage(player,h,raw,_hwAccR,_taxCapR); heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
   // 2026-09-10 item 3: when this report follows a resolved turn, "Your Realm" shows the wages the
   // collector ACTUALLY charged (stamped in p._lastWages) — identical to the Realm Events line by
   // construction. The roster-based figures computed above become a "next turn" note only when they
@@ -10661,7 +10721,7 @@ function buildTurnReport(gameState, playerIndex){
     // has no table for — each unit type's per-turn WAGE (its recruit price after this realm's
     // `upkeep` discoveries; skeletal units are a flat 1g), the Awaken the Wild surcharge and the
     // Harvest the Field price, as the engine charges them.
-    orderPrices:(()=>{ const unitWage={}; Object.keys(ARMY_COST_MASTER).forEach(t=>{ unitWage[t]=discUpkeepWage(player,{type:t},ARMY_COST_MASTER[t]||2,new Map()); });
+    orderPrices:(()=>{ const unitWage={}; Object.keys(ARMY_COST_MASTER).forEach(t=>{ unitWage[t]=discUpkeepWage(player,{type:t},ARMY_COST_MASTER[t]||2,new Map(),_taxCapR); });
       return {unitWage, unitCost:{...ARMY_COST_MASTER}, awakenExtra:2+discSumOf(player,'awakenCost','delta'), harvest:Math.max(0,2+discSumOf(player,'harvestCost','delta')), brokerSpy:2}; })(),
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. ${player.name} stands ready.`}],
   };
@@ -10774,24 +10834,29 @@ function discTaxAdd(pl, pv, gs, pi, acc, capG){
     add+=b; });
   return add;
 }
-// `upkeep` discoveries: the wage of one army after every matching cut (minimum 1g per unit; a
-// capped effect saves at most `max` gold in all). `w` is the wage already computed for the unit.
-function discUpkeepWage(pl, a, w, acc){
+// `upkeep` discoveries: the wage of one army after every matching cut (minimum 1g per unit). The
+// per-turn ceiling on what a single upkeep discovery may save is now the SAME 5%-of-base-income cap
+// the tax discoveries use (2026-09-26, Toby): `capG` replaces whatever fixed `max` the row carried,
+// so Goblin Warrens' old flat 1g becomes 5% of the realm's base tax income and grows with the realm.
+// `acc` tracks what each capped effect has already saved this turn.
+function discUpkeepWage(pl, a, w, acc, capG){
   if(!pl||!a||a._isSkeletal) return w;
   let out=w;
   discEffectsOf(pl,'upkeep').forEach(e=>{ if(!discUnitMatch(e,a)) return; let cut=Math.min(-(e.delta||0), out-1); if(cut<=0) return;
-    if(e.max!=null){ const u=acc.get(e)||0; cut=Math.min(cut,e.max-u); if(cut<=0) return; acc.set(e,u+cut); }
+    const lim=(capG!=null)?capG:e.max;
+    if(lim!=null){ const u=acc.get(e)||0; cut=Math.min(cut,lim-u); if(cut<=0) return; acc.set(e,u+cut); }
     out-=cut; });
   return out;
 }
-// Hero wage after discoveries: `heroWage` cuts (optionally only for heroes of given alignments,
-// optionally capped in all) then the `heroWageCap` ceiling. Minimum 1g.
-function discHeroWage(pl, h, raw, acc){
+// Hero wage after discoveries: `heroWage` cuts (optionally only for heroes of given alignments) then
+// the `heroWageCap` ceiling. Minimum 1g. Both are capped per turn at `capG` (5% of base income).
+function discHeroWage(pl, h, raw, acc, capG){
   let w=raw;
   discEffectsOf(pl,'heroWage').forEach(e=>{ if(e.heroAlign&&!e.heroAlign.includes(h.alignment)) return; let cut=Math.min(e.amount||0, w-1); if(cut<=0) return;
-    if(e.max!=null){ const u=acc.get(e)||0; cut=Math.min(cut,e.max-u); if(cut<=0) return; acc.set(e,u+cut); }
+    const lim=(capG!=null)?capG:e.max;
+    if(lim!=null){ const u=acc.get(e)||0; cut=Math.min(cut,lim-u); if(cut<=0) return; acc.set(e,u+cut); }
     w-=cut; });
-  discEffectsOf(pl,'heroWageCap').forEach(e=>{ if(e.cap==null||w<=e.cap) return; let cut=w-Math.max(1,e.cap); if(e.max!=null){ const k='cap:'+e.cap; const u=acc.get(e)||0; cut=Math.min(cut,e.max-u); if(cut<=0) return; acc.set(e,u+cut); } w-=cut; });
+  discEffectsOf(pl,'heroWageCap').forEach(e=>{ if(e.cap==null||w<=e.cap) return; let cut=w-Math.max(1,e.cap); const lim=(capG!=null)?capG:e.max; if(lim!=null){ const u=acc.get(e)||0; cut=Math.min(cut,lim-u); if(cut<=0) return; acc.set(e,u+cut); } w-=cut; });
   return Math.max(1,w);
 }
 // `maxHp` discoveries for one character (filters: king, heroOnly, skill — at least one trained level).
@@ -11693,6 +11758,32 @@ async function runTurn(opts){
   // player report cannot disagree about what a character's skills actually are. Equipped items only
   //, minus any Curse, plus the Crown of Command aura; capped 0..5.
   function effStat(c,stat){ return effSkillOf(c,stat,G.characters||[]); }
+  // ── WHAT A VIEWER MAY BE TOLD ABOUT SOMEONE ELSE'S HERO (2026-09-26, Toby) ────────────────
+  // Roll lines used to print BOTH sides' skill levels — "Pursuit — Merek (Spy 0) closing on
+  // Astrigg (Spy 0)" handed the pursuer's owner a rival hero's Spy level for free, which is
+  // exactly what Spy missions and Clairvoyance are supposed to buy. `botKnownSkills` is already
+  // the game's single test of whether a realm has earned that knowledge (own hero, a wanderer —
+  // hired on sight of their skills — or a hero spied within the last eight turns), so these two
+  // helpers route every roll line through it. A viewer who has not earned it simply sees a name.
+  function skillsKnownTo(pi, ch){ return pi!=null && botKnownSkills(G, pi, ch)!==null; }
+  // " (Spy 3)" when this viewer may know it, "" when they may not.
+  function statNote(pi, ch, stat, label){
+    if(!ch||!skillsKnownTo(pi,ch)) return '';
+    return ` (${label||SKILL_LABELS[stat]||stat} ${effStat(ch,stat)})`;
+  }
+  // An OPPOSED roll's percentage is itself a disclosure: pursuit is 50 +5×(my Spy) −5×(their Spy),
+  // so a player who knows their own level can read the rival's straight off the number. Hiding the
+  // "(Spy N)" label alone would change nothing. When the viewer has not earned the knowledge the
+  // exact odds are replaced by a band — they still learn how the attempt felt and whether it landed,
+  // but cannot solve for the hidden level. Known rival (own hero, wanderer, spied within 8 turns) →
+  // the full working, unchanged.
+  const _ODDS_BANDS=[[20,'long odds'],[40,'the odds against you'],[60,'even odds'],[80,'the odds in your favour'],[101,'the odds strongly in your favour']];
+  function oddsNote(pi, ch, chance, roll){
+    if(!ch||skillsKnownTo(pi,ch)) return fmtRoll(chance,roll);
+    const c0=Math.max(0,Math.min(100,dispFloor(chance)));
+    const band=(_ODDS_BANDS.find(b=>c0<b[0])||_ODDS_BANDS[_ODDS_BANDS.length-1])[1];
+    return `${band} [${dispFloor(roll)<=c0?'✓':'✗'}]`;
+  }
   // 2026-09-21 (Toby: "Illusory 3 … rises to level 1"): every skill-rise line quoted the character's
   // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
   // + aura). A hero with Illusory 0 and a +3 diadem cast "(Illusory 3)" and then "rose to level 1",
@@ -11724,7 +11815,11 @@ async function runTurn(opts){
   // it stayed 1g forever), but it applied to every hero in the game. Kings draw no wage.
   function recalcHeroPay(c){
     if(!c||c.isKing) return;
-    c.pay=Math.max(1,Math.ceil(Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0)/4));
+    // base = what the crown agreed to pay for this hero's ALLEGIANCE (the alignment part of the
+    // hire bargain, 1g for a founding hero who was never hired), plus the skill premium as it
+    // stands now. Same formula the hire desk quotes, so a wage never jumps when a hero changes
+    // hands and the alignment premium survives every later rise.
+    c.pay=Math.max(1,(c._hireAlignWage!=null?c._hireAlignWage:1)+heroSkillWage(c));
   }
 
   // ── SKILL GAIN THROUGH EXPERIENCE ────
@@ -11755,7 +11850,15 @@ async function runTurn(opts){
   function trySkillGain(char, skill, base, narr, mult){
     if(!char||_pcSimulating) return; mult=(mult>0?mult:1);
     const real=(char.id!=null && ((G.characters||[]).find(r=>r&&r.id===char.id))) || char; // 2026-09-21: match by id, never by array index — an index lookup could check a DIFFERENT character's alive flag
-    if(!real || real.player==null || !real.alive) return; // only living player-led characters improve
+    if(!real || !real.alive) return;
+    // 2026-09-26 (Toby): NEUTRALS MAY LEARN FROM BATTLE. Wandering heroes and chieftains were
+    // excluded from every experience path (`real.player==null` returned here), so their only growth
+    // was the idle 25% roll in progressNeutralHeroes. They now take the same checks a player's hero
+    // does, but ONLY inside a battle series (`_combatSkillProv!=null`, set by combatVsNPC /
+    // combatVsChar) — not from moves, exploration, orders or practice, none of which a neutral
+    // performs. A neutral who gains this way is stamped `_neutralXpTurn` when the rise is APPLIED,
+    // and progressNeutralHeroes skips them that turn: fighting replaces the idle roll, never stacks.
+    if(real.player==null && (real.isKing || _combatSkillProv==null)) return;
     const lvl=(real.skills||{})[skill]||0;
     if(lvl>=9) return; // SKILL CAP raised to 9 — but only EXPERIENCE (this path) may pass level 5.
     // ── RAISE-ONCE GUARDS ────
@@ -11827,6 +11930,7 @@ async function runTurn(opts){
     (real._sgLog.gainedPhases||(real._sgLog.gainedPhases={}))[e.phase]=true;
       real._sgLog.turnGains=real._sgLog.turnGains||{}; real._sgLog.turnGains[skill]=((real._sgLog.turnGains[skill])||0)+1;
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
+      if(real.player==null) real._neutralXpTurn=G.turn; // battle-earned: this turn's idle roll is spent
       // record the raise so this skill can't rise again this phase, nor again in this province's
       // ongoing battle series (carry-on battles span phases).
       real._sgLog.phaseSkills[skill]=true;
@@ -11848,6 +11952,11 @@ async function runTurn(opts){
       // a skill rise is the OWNER'S news — the deferred log is private to this realm. (2026-09-26b:
       // battle-earned rises no longer go into the shared battle narrative; they are settled with the
       // phase's single draw and reported at the end of the phase in the character's own section.)
+      // A NEUTRAL's rise is nobody's private news (actor/targets would both be null, which no realm
+      // reads): it is logged like the idle progression sweep, as a system line with no targets.
+      if(real.player==null){
+        log('system',`📜 ${String(real.name||'').replace(/\s*\(wandering\)/i,'')} learns from the fighting — ${SKILL_LABELS[skill]||skill} rises to ${lvl+1}.`,{targets:[],provinceId:(e.prov!=null?e.prov:real.location),system:true});
+      } else {
       _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       // crossing a mastery threshold (6/7/8/9) earns a congratulation that spells out the new
       // level's benefits — the passive that deepens, and any new mastery order or spell now
@@ -11858,8 +11967,10 @@ async function runTurn(opts){
         const _mline=`🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill]||skill} — level ${_newLvl}!${_mu?' '+_mu:''}`;
         _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       }
-      // when the higher skill raises the hero's wage, say so in the player's report.
-      if(_payAfter>_payBefore){
+      }
+      // when the higher skill raises the hero's wage, say so in the player's report. (A neutral has
+      // no realm to tell, and their wage is set by the hire itself, so this is player-led only.)
+      if(real.player!=null&&_payAfter>_payBefore){
         const wline=`💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
         _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
       }
@@ -13512,7 +13623,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfNPC) narrative.push(`🛡 Shield Fort — ${cName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[c._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&fromProv.id!==prov.id&&friendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(friendlyAdj.find(p2=>p2.id!==prov.id)||friendlyAdj[0]); // must be ADJACENT (and friendly, enterable) — never a stale far-off origin
+        const retreatTo=(fromProv&&fromProv.id!==prov.id&&friendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(bestRetreat(c,friendlyAdj.filter(p2=>p2.id!==prov.id))||friendlyAdj[0]); // must be ADJACENT (and friendly, enterable) — never a stale far-off origin; with a choice, the most valuable ground wins
         narrative.push(`${cName}'s forces retreat to ${retreatTo.name}.`);
         prov.characters=(prov.characters||[]).filter(id=>id!==c.id);
         retreatTo.characters=(retreatTo.characters||[]);
@@ -13533,6 +13644,15 @@ const BATTLE_ARMY_SPELLS={
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGain) trySkillGain(c,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative,won?1:0.5); // Druid: fought beside or against primal armies (loser at half chance)
+    // 2026-09-26 (Toby): the NEUTRAL commander takes the mirror of those rolls — a chieftain who
+    // holds his province learns Tactical (or Naval at sea) exactly as a player's general would, and
+    // Druid on the same winner-full / loser-half terms. `won` is the ATTACKER's result, so the
+    // defender's win is `!won`. trySkillGain screens neutrals to battle context on its own.
+    if(neutralGuardHero&&neutralGuardHero.alive!==false){
+      if(!won&&prov.terrain!=='sea') trySkillGain(neutralGuardHero,'tactical',SKILLGAIN_STD,narrative);
+      if(!won&&prov.terrain==='sea') trySkillGain(neutralGuardHero,'naval',SKILLGAIN_STD,narrative);
+      if(_rollDruidGain) trySkillGain(neutralGuardHero,'druid',SKILLGAIN_STD,narrative,!won?1:0.5);
+    }
     // a one-line result that onlookers (a char present but not fighting) may see instead of the
     // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows
     // more.
@@ -16046,7 +16166,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfDef&&def.armies.length>0) narrative.push(`🛡 Shield Fort — ${defName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const defFromProv=G.world.provinces[def._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const defRetreatTo=(defFromProv&&defFromProv.id!==prov.id&&defFriendlyAdj.some(p2=>p2.id===defFromProv.id))?defFromProv:(defFriendlyAdj.find(p2=>p2.id!==prov.id)||defFriendlyAdj[0]); // adjacent only
+        const defRetreatTo=(defFromProv&&defFromProv.id!==prov.id&&defFriendlyAdj.some(p2=>p2.id===defFromProv.id))?defFromProv:(bestRetreat(def,defFriendlyAdj.filter(p2=>p2.id!==prov.id))||defFriendlyAdj[0]); // adjacent only; with a choice, the most valuable ground wins
         narrative.push(`${defName} retreats to ${defRetreatTo.name}.`);
         const defSurvivors2=def.armies||[];
         if(defSurvivors2.length>0) narrative.push(`📊 ${defName}'s surviving forces: ${describeArmy(defSurvivors2)}.`);
@@ -16133,7 +16253,7 @@ const BATTLE_ARMY_SPELLS={
         if(_sfAtk&&atk.armies.length>0) narrative.push(`🛡 Shield Fort — ${atkName}'s Dwarven Guard withdraw in good order behind locked shields.`);
         const fromProv=G.world.provinces[atk._attackedFrom];
         // never retreat INTO the contested province (stale _attackedFrom guard).
-        const retreatTo=(fromProv&&fromProv.id!==prov.id&&atkFriendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(atkFriendlyAdj.find(p2=>p2.id!==prov.id)||atkFriendlyAdj[0]); // adjacent only
+        const retreatTo=(fromProv&&fromProv.id!==prov.id&&atkFriendlyAdj.some(p2=>p2.id===fromProv.id))?fromProv:(bestRetreat(atk,atkFriendlyAdj.filter(p2=>p2.id!==prov.id))||atkFriendlyAdj[0]); // adjacent only; with a choice, the most valuable ground wins
         narrative.push(`${atkName} retreats to ${retreatTo.name}.`);
         // Summarise surviving attacker armies
         const atkSurvivors=atk.armies||[];
@@ -18433,13 +18553,18 @@ const BATTLE_ARMY_SPELLS={
         // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
         const kingdomAlign=G.players[c.player]?.alignment||'Neutral';
         const _waiveBan=hasDisc(c.player,'sd31');
-        const hireWage=h.player===null?heroHireWage(kingdomAlign,h.alignment,_waiveBan):(h.pay||1);
+        const hireWage=h.player===null?heroHireWage(kingdomAlign,h.alignment,_waiveBan,h):(h.pay||1);
         if(hireWage==null){
           log('hire',`${h.name} (${h.alignment}) recoils from ${c.name}'s offer — ${kingdomAlign==='Divine'?'no creature of the grave will serve a Divine crown':'the faithful will never serve an Undead throne'}. (Alignment gulf too wide: Divine and Undead cannot hire one another.)`,{actor:c.player,targets:[c.player]});
           break;
         }
         if((player.gold||0)<hireWage){log('hire',`${c.name} cannot afford to hire ${h.name} — needs ${hireWage}g/turn, treasury has only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
         h.pay=hireWage;
+        // remember the ALIGNMENT part of the bargain (wage minus the skill premium). recalcHeroPay
+        // rebuilds the wage from skills whenever the hero improves in service, and without this the
+        // alignment premium a Divine crown paid for an Undead sword would vanish on their first
+        // skill rise.
+        h._hireAlignWage=Math.max(1, hireWage-heroSkillWage(h));
         player.gold-=hireWage;h.player=c.player;h.name=h.name.replace(' (wandering)','');
         if(h.race==='Dwarven'&&G.players[c.player]?.race==='Dwarven') grantMithrilTo(h, G); // mithril on hire into a dwarf realm
         player.heroes=(player.heroes||[]);player.heroes.push(h.id);
@@ -18516,7 +18641,7 @@ const BATTLE_ARMY_SPELLS={
             if(_tgt.player!=null) _catch+=discSum(_tgt.player,'catchSpy','pct',e=>_spyScope(e,_tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
             _catch=Math.max(5,Math.min(95,_catch));
             const _cr=d100();
-            log('system',`📊 Detection — ${_tgt.name} (Spy ${_tgSpy}) noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${fmtRoll(_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`📊 Detection — ${_tgt.name}${statNote(c.player,_tgt,'spy')} noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${oddsNote(c.player,_tgt,_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             if(_cr<=_catch){
               if(_tgt.player!=null) log('system',`[Intelligence] ${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''} was caught spying on ${_tgt.name} in ${prov.name}.`,{actor:c.player,targets:[_tgt.player],provinceId:prov.id,charId:_tgt.id});
               thiefCaughtScuffle(c,_tgt,'spying on them');
@@ -18624,7 +18749,7 @@ const BATTLE_ARMY_SPELLS={
           if(!bh||bh.player!==null||!bh.alive||bh._isNeutralGuard||bh._justDefeated||!_visible){
             log('hire',`${c.name}'s brokers find no such hero within reach of the realm's agents.`,{actor:c.player,targets:[c.player]});break;}
           if(bh._releasedTurn===G.turn){log('hire',`${bh.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;} // same rule as Hire Hero
-          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(c.player,'sd31'));
+          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(c.player,'sd31'),bh);
           if(bWage==null){log('hire',`${bh.name} will not treat with your brokers — the alignment gulf is too wide.`,{actor:c.player,targets:[c.player]});break;}
           if((player.gold||0)<bWage){log('hire',`${c.name} cannot afford ${bh.name} — needs ${bWage}g/turn.`,{actor:c.player,targets:[c.player]});break;}
           bh.pay=bWage; player.gold-=bWage;
@@ -19245,7 +19370,7 @@ const BATTLE_ARMY_SPELLS={
         noteServedRealm(c,c.player); // the releasing realm stays in their service history
         c.player=null; c._isNeutralGuard=false; delete c._isHeir; delete c.hiredInPhase; delete c._pursuit;
         c._releasedTurn=G.turn; c._releasedBy=_relPi;
-        c.pay=Math.max(1,Math.ceil(Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0)/4)); // wandering default; the real hire wage is alignment-based
+        delete c._hireAlignWage; c.pay=Math.max(1,1+heroSkillWage(c)); // wandering default; the real asking price is rebuilt at the hire desk (alignment + skill premium)
         if(G.turnOrders[c.id]) for(let p2=ph+1;p2<5;p2++) G.turnOrders[c.id][p2]=null;
         log('hire',`🕊 ${c.name} is released from ${_relPl?_relPl.name:'the realm'}'s service in ${prov.name} and takes up the wanderer's life.${_itemNote} They may be hired again from next turn.`,{actor:_relPi,targets:[_relPi],provinceId:prov.id,charId:c.id,phase:ph});
         break;
@@ -19895,7 +20020,7 @@ const BATTLE_ARMY_SPELLS={
             // realm.
             if(t._releasedTurn===G.turn&&t._releasedBy===c.player){ log('system',`${c.name}'s Charm finds ${t.name} unmoved — a hero only just dismissed will not be drawn back the same season.`,{actor:c.player,targets:[c.player]}); break; }
             // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
-            const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'));
+            const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'),t);
             if(_chWage==null){
               log('system',`${c.name}'s Charm washes over ${t.name} and finds nothing to grip — ${t.alignment} souls cannot be swayed to a ${G.players[c.player]?.alignment} crown.`,{actor:c.player,targets:[c.player]});
               break;
@@ -20562,7 +20687,13 @@ const BATTLE_ARMY_SPELLS={
         const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
         const roll=d100();
         markProvinceCombat(prov,[c.player,victim.player]); // purple swords: knife-work counts as a personal combat
-        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
+        // The roll line is the ASSASSIN'S working: it names their own Spy level and the odds, so it
+        // goes to their realm alone. The victim's realm is told an attempt was made on their hero —
+        // they would certainly notice a knife in the dark — but never the assassin's skill or the
+        // numbers behind it. (Before 2026-09-26 both realms got the full line, handing the victim
+        // the attacker's Spy level for free.)
+        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player],provinceId:prov.id});
+        if(victim.player!=null&&victim.player!==c.player) log('spy',`🗡 An attempt is made on ${victim.name}'s life${victim.isKing?' — the royal guard close ranks':''}.`,{actor:victim.player,charIds:[victim.id].filter(v=>v!=null),targets:[victim.player],provinceId:prov.id});
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
           else { log('combat',`🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true});
@@ -20883,6 +21014,27 @@ const BATTLE_ARMY_SPELLS={
   // PROVINCE IT CAME FROM when that water is unowned and undefended — a beaten landing falls back to
   // its ships (Toby's ruling) — provided the force can still be carried there. Sea provinces a realm
   // owns were already friendly ground.
+  // ── RETREAT DESTINATION VALUE (2026-09-26, Toby item 1) ───────────────────────────────────
+  // A beaten force used to fall back on whatever came first out of retreatOptions — effectively map
+  // order, so a general could abandon a rich province for a worthless one standing right beside it.
+  // Where there is a CHOICE, the most valuable ground now wins. Value is the province's tax base
+  // first (the one number the game already uses for a province's worth), then own ground ahead of
+  // an ally's, then the hero's own capital, then a friendly garrison already standing there, and
+  // finally province id so the result is deterministic rather than map-order chance.
+  function retreatValue(ch, p){
+    if(!p) return -Infinity;
+    const own=(ch&&ch.player!=null&&p.owner===ch.player)?1:0;
+    const pl=(ch&&ch.player!=null)?(G.players||[])[ch.player]:null;
+    const home=(pl&&pl.homeProvinceId===p.id)?1:0;
+    const garrison=((p.garrisonArmies||[]).length>0)?1:0;
+    return ((p.tax||0)*1000)+(own*400)+(home*200)+(garrison*100)+(1-(p.id||0)/1e6);
+  }
+  // Best of a list of candidate retreat provinces (null when the list is empty).
+  function bestRetreat(ch, list){
+    let best=null, bv=-Infinity;
+    (list||[]).forEach(p=>{ const v=retreatValue(ch,p); if(v>bv){ bv=v; best=p; } });
+    return best;
+  }
   function retreatOptions(ch, prov, force){
     if(!ch||!prov) return [];
     force=(force||[]).filter(a=>a&&!a._died&&!a._disbanded);
@@ -21472,7 +21624,7 @@ const BATTLE_ARMY_SPELLS={
             const adj=retreatOptions(attacker, prov, attacker.armies||[]); // 2026-09-23c: the one retreat rule (was own LAND only)
             if(adj.length>0){
               const _fromS=G.world.provinces[attacker._attackedFrom];
-              const dest=(_fromS&&adj.some(p2=>p2.id===_fromS.id))?_fromS:adj[0];
+              const dest=(_fromS&&adj.some(p2=>p2.id===_fromS.id))?_fromS:(bestRetreat(attacker,adj)||adj[0]); // with a choice, the most valuable ground wins
               prov.characters=(prov.characters||[]).filter(id=>id!==attacker.id);
               dest.characters=dest.characters||[]; if(!dest.characters.includes(attacker.id)) dest.characters.push(attacker.id);
               attacker.location=dest.id; attacker.locationName=dest.name;
@@ -22949,7 +23101,7 @@ const BATTLE_ARMY_SPELLS={
     if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ endPursuit(c); return; }
     const chance=pursuitCatchChance(c,quarry);
     const roll=d100();
-    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name} (Spy ${effStat(quarry,'spy')}): ${fmtRoll(chance,roll)}`,
+    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name}${statNote(c.player,quarry,'spy')}: ${oddsNote(c.player,quarry,chance,roll)}`,
       {actor:c.player,targets:[c.player]});
     if(roll>chance){
       log('move',`${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -23019,7 +23171,7 @@ const BATTLE_ARMY_SPELLS={
         const _pct=Math.max(ENC_BREAK_RANKS_MIN,Math.min(ENC_BREAK_RANKS_MAX,
           ENC_BREAK_RANKS_BASE-ENC_BREAK_RANKS_PER_UNIT*_units+ENC_BREAK_RANKS_SPY*_spy-ENC_BREAK_RANKS_TAC*_tac));
         const _roll=d100();
-        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''} (Tactical ${_tac}): ${fmtRoll(_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''}${statNote(c.player,quarry,'tactical')}: ${oddsNote(c.player,quarry,_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(_roll>_pct){
           log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but the sentries of their column are awake — the challenger is turned away from the lines before reaching the commander, and the chase is abandoned.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:prov.id});
           notifyTarget(quarry,`👁 ${c.name}${realmTag(c.player)} came for ${quarry.name} in ${prov.name} — a lone challenger, turned away by the sentries before reaching the tent.`,ph,'system');
@@ -23564,7 +23716,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         const _perProvRaw=ledgers?(G.world.provinces||[]).filter(pv=>pv.owner===p.id).length:0;
         const _itemTax=capItemTaxGold(_taxBonusRaw,_perProvRaw,_taxCap);
         const taxBonus=_itemTax.taxBonus, perProvBonus=_itemTax.perProvBonus;
-        const interestBonus=discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(e.max||3,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
+        const interestBonus=discEff(pi,'interest').reduce((s2,e)=>s2+Math.min(_taxCap,Math.floor((p.gold||0)*(e.pct||0))),0); // interest discoveries
         // Neutral trade: +20% of province income, rounded down.
         // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
         // sd14 Taxation Records: +10% of province income, rounded down. Integer maths for the same
@@ -23585,6 +23737,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       });
       log('system','═ Army wages & hero wages ═');
       G.players.forEach(p=>{
+        const pi=p.id;
+        // the same 5%-of-base-income ceiling the tax collection above uses: `upkeep`, `heroWage` and
+        // `heroWageCap` discoveries are each capped at it per turn (2026-09-26, Toby). Recomputed
+        // here because the collection loop is a separate pass with its own scope.
+        const _taxCap=taxBonusCap(realmBaseTax(G,pi));
         const playerChars=(G.characters||[]).filter(c=>c.player===p.id&&c.alive);
         // Army wages — every carried army costs its recruitment cost per turn
         const allArmies=playerChars.flatMap(c=>c.armies||[]);
@@ -23612,7 +23769,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           let w=ARMY_COST[a.type]||2;
           if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn){ const _w0=w; w=Math.max(1,Math.round(w*0.5)); _orcSpoilsG+=_w0-w; }
           if(_druidHalfWage.has(a)) w=Math.max(1,Math.floor(w*0.5)); // DRUID L6
-          { const _w0=w; w=discUpkeepWage(p,a,w,_upkAcc); _discUpkeepG+=_w0-w; } // `upkeep` discoveries
+          { const _w0=w; w=discUpkeepWage(p,a,w,_upkAcc,_taxCap); _discUpkeepG+=_w0-w; } // `upkeep` discoveries
           return s+w;
         },0);
         // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he
@@ -23626,7 +23783,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // one shared helper, mirrored in buildTurnReport.
         const _hwAcc=new Map();
         let _heroWageDisc=0;
-        const heroWages=heroes.reduce((s,h)=>{ const raw=(h.pay||0); const w=discHeroWage(p,h,raw,_hwAcc); _heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
+        const heroWages=heroes.reduce((s,h)=>{ const raw=(h.pay||0); const w=discHeroWage(p,h,raw,_hwAcc,_taxCap); _heroWageDisc+=Math.max(0,raw-w); return s+w; },0);
 
         const totalWages=armyWages+heroWages;
         // 2026-09-10 item 3: the figures ACTUALLY charged this turn are stamped on the player.
@@ -25213,6 +25370,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1647</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1728</div>
 </body>
 </html>
