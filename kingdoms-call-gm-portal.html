@@ -239,12 +239,9 @@ section{display:none;}.section-active{display:block;}
       <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:8px;cursor:pointer">
         <input type="checkbox" id="new-game-allbot" onchange="updateBotHint()"> All-bot game (no human players — for testing &amp; balancing)
       </label>
-      <label style="margin-top:10px">Bot Difficulty <span style="font-weight:normal;color:var(--stone);font-size:.8rem">(applies to all GM-controlled realms)</span></label>
-      <select id="new-game-botdifficulty">
-        <option value="easy">Easy — cautious, lightly armed (more beatable)</option>
-        <option value="normal" selected>Normal — the tuned default challenge</option>
-        <option value="hard">Hard — bold, well armed (a genuine challenge)</option>
-      </select>
+      <!-- 2026-09-26 (Toby item 9): ONE bot strength. Easy and Normal are retired — every bot realm plays at the
+           former Hard setting. The hidden field keeps every reader of #new-game-botdifficulty working. -->
+      <input type="hidden" id="new-game-botdifficulty" value="hard">
       <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
 
       <!-- Turn running: manual / automatic when all orders are in / automatic with a fixed clock deadline -->
@@ -363,7 +360,7 @@ section{display:none;}.section-active{display:block;}
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
 const KC_DATA_MIN='2026.09.25-1320';
-const KC_BUILD_STAMP='2026.09.26-1135'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.26-1218'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -1404,7 +1401,7 @@ async function createGame(){
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
   const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
   _cfg.seaPct=normSeaPct(document.getElementById('new-game-seapct')?.value); // 20–80% of the world is water (world gen makes it exact)
-  _cfg.botDifficulty=(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // 2026-09-25: saved with the game — commitTurn0 used to read it off the New Game FORM at Turn 0, which by then showed the default again
+  _cfg.botDifficulty='hard'; // 2026-09-26 (Toby item 9): one bot strength — the former Hard. Saved with the game so Turn 0 and telemetry read it.
   _cfg.turnMode=readTurnModeForm('new-game'); // manual / auto / deadline (deadline clock starts at Turn 0)
   if(isPrivate){ _cfg.visibility='private'; _cfg.invited=invited; }
   const {data:game,error}=await sb.from('games').insert({
@@ -2012,7 +2009,7 @@ async function commitTurn0(){
 
     // 3. Generate the world.
     const gameState=await generateNewGame(setupPlayers,sz,maxTurns,{seaPct});
-    gameState.botDifficulty=botDifficulty||(document.getElementById('new-game-botdifficulty')?.value)||'normal'; // Phase 6 difficulty tier — from the saved setup cfg; the form is only a fallback for games created before it was stored
+    gameState.botDifficulty='hard'; // 2026-09-26 (Toby item 9): every bot game plays at the one strength (Easy / Normal retired); the saved cfg value is ignored
     // Turn-running mode carries over from the setup config; a deadline clock starts now (Turn 0 =
     // the first "run").
     { const _tm=normalizeTurnMode(parseGameState(currentGame).turnMode); _tm.turnRanAt=new Date().toISOString(); _tm.nextDeadlineAt=_tm.mode==='deadline'?computeNextDeadline(_tm,new Date()):null; gameState.turnMode=_tm; }
@@ -4141,7 +4138,7 @@ function telRankOrder(gs){
   const rank={}; idx.forEach((pi,i)=>{ rank[pi]=i+1; });
   return {rank, standings:s};
 }
-function telBotDifficultyOf(gs){ return (gs&&gs.botDifficulty)||'normal'; }
+function telBotDifficultyOf(gs){ return (gs&&gs.botDifficulty)||'hard'; } // 2026-09-26: 'hard' is the only strength now; older saves keep whatever word they carry
 // One game_results row per realm, from a FINISHED state (gs.gameOver set). `players` = game_players rows.
 function buildGameResultRows(gs, gameRow, players){
   if(!gs||!gs.players) return [];
@@ -4920,21 +4917,19 @@ const BOT_TUNING={
   chestShare:       0.35,  // share of the free treasury the upkeep cap may lean on (a chest carries a wage deficit until conquests pay it back)
   coalitionTriggerFrac: 0.8, // a front-runner at ≥ this fraction of the Reckoning threshold triggers an anti-leader coalition
 };
-// ── DIFFICULTY TIERS ── a per-game scalar knob (G.botDifficulty ∈ 'easy'|'normal'|'hard') that reshapes
-// the BOT_TUNING weights without touching any decision code (the scalar-ready design of §2 #7).
-// Normal is the tuned v1 strength; Easy makes bots timid and lightly-armed (weaker, more beatable);
-// Hard makes them bolder and bigger-armied (a genuine challenge). Only DECISION weights move — no
-// combat-resolution edits.
+// ── BOT STRENGTH ── 2026-09-26 (Toby item 9): the Easy / Normal / Hard tiers are retired. Every bot realm
+// plays at what was the Hard setting — bolder attack margins, the strongest rival bias, and 97% of income
+// on wages. The table keeps one row so botTuning reads the same shape; a game saved with 'easy' or
+// 'normal' (G.botDifficulty) resolves to it too, and telemetry keeps recording the word it finds.
 const BOT_DIFFICULTY={
-  easy:   { attackMarginMult:1.15, assaultMarginMult:1.15, rivalBias:3,  upkeepCapFrac:0.72 },
-  normal: { attackMarginMult:1.0,  assaultMarginMult:1.0,  rivalBias:8,  upkeepCapFrac:0.90 },
   hard:   { attackMarginMult:0.92, assaultMarginMult:0.9,  rivalBias:12, upkeepCapFrac:0.97 },
 };
-// Effective weights for this game's difficulty. Bot decision functions read these instead of
-// BOT_TUNING directly, so one setting re-scales the whole roster. Difficulty-neutral weights pass
-// straight through.
+BOT_DIFFICULTY.easy=BOT_DIFFICULTY.normal=BOT_DIFFICULTY.hard;
+const BOT_DIFFICULTY_DEFAULT='hard';
+// Effective weights for this game. Bot decision functions read these instead of BOT_TUNING directly.
+// Difficulty-neutral weights pass straight through.
 function botTuning(G,pi){
-  const d=BOT_DIFFICULTY[(G&&G.botDifficulty)||'normal']||BOT_DIFFICULTY.normal;
+  const d=BOT_DIFFICULTY[(G&&G.botDifficulty)||BOT_DIFFICULTY_DEFAULT]||BOT_DIFFICULTY.hard;
   const T={
     kingAttackMargin: BOT_TUNING.kingAttackMargin*d.attackMarginMult,
     heroAttackMargin: BOT_TUNING.heroAttackMargin*d.attackMarginMult,
@@ -5477,19 +5472,37 @@ function botRoles(G,pi){
   const heroCount=all.filter(c=>!c.isKing).length;
   const want=Math.max(1, holding, Math.min(ranked.length, 1+Math.floor(botEmpireDiameter(G,pi)/reach)), (heroCount>=3&&primary&&primary.isKing)?2:1);   // Sept 2026 (Toby): a HERO general beside a king who leads, once the court has three heroes
   const leaders=ranked.slice(0,want).map(c=>c.id);
+  // ── ROLE PRIORITY (2026-09-26, Toby item 2/3): General > Slayer > Sage > Explorer > Admiral > Flying
+  // General > Defender > Spy > Thief. The first three specialists are filled by botSpecialistRoles from
+  // whoever is left; the admiral and the flying general are therefore only wanted once the court has
+  // FOUR non-king heroes (the general's slot may be the king's), and defenders only from the heroes left
+  // after those. The one exception: a realm whose land frontier is spent wants its admiral at any size.
+  const _landSpent=!(G.world.provinces||[]).some(p=>p&&p.owner===pi&&p.terrain!=='sea'&&botIsEdge(G,pi,p));   // no owned land borders unowned or enemy land
   // ADMIRAL (Sept 2026, Toby): once there is sea worth taking, the best remaining non-king general (sticky via
   // _botRole) is a leader whose front is the water — see botSeaStrike / botFieldRecruitTokens.
-  { const wantAdm=botSeaWorthTaking(G,pi)&&ranked.length>want;
+  { const wantAdm=botSeaWorthTaking(G,pi)&&ranked.length>want&&(heroCount>=4||(_landSpent&&heroCount>=2));
     let adm=all.find(c=>c._botRole==='admiral'&&c.alive&&!c.isKing);
     if(!wantAdm){ if(adm){ delete adm._botRole; } adm=null; }
-    else if(!adm||leaders.includes(adm.id)){ adm=ranked.filter(c=>!c.isKing&&!leaders.includes(c.id)&&c._botRole!=='defender').sort((a,b)=>((b.skills||{}).naval||0)*3+botGeneralship(b)-((a.skills||{}).naval||0)*3-botGeneralship(a))[0]||null; }
+    else if(!adm||leaders.includes(adm.id)){ adm=ranked.filter(c=>!c.isKing&&!leaders.includes(c.id)&&c._botRole!=='defender'&&c._botRole!=='skygeneral').sort((a,b)=>((b.skills||{}).naval||0)*3+botGeneralship(b)-((a.skills||{}).naval||0)*3-botGeneralship(a))[0]||null; }
     all.forEach(c=>{ if(c._botRole==='admiral'&&c!==adm) delete c._botRole; });   // one admiral only
     if(adm){ adm._botRole='admiral'; if(!leaders.includes(adm.id)) leaders.push(adm.id); } }
+  // FLYING GENERAL (2026-09-26, Toby item 8): one per realm, sticky, once a province of ours raises a humanoid
+  // flyer, another crown has been met (or from turn 5) and five heroes serve. He recruits flyers and the foot
+  // they carry and makes lightning strikes over sea and behind the front — botAirStrike.
+  { const wantSky=botFlyerPorts(G,pi).length>0&&ranked.length>leaders.length&&heroCount>=5&&(botHasMetPlayers(G,pi)||(G.turn||0)>=5);
+    let sky=all.find(c=>c._botRole==='skygeneral'&&c.alive&&!c.isKing);
+    if(!wantSky){ if(sky){ delete sky._botRole; } sky=null; }
+    else if(!sky||leaders.includes(sky.id)){ sky=ranked.filter(c=>!c.isKing&&!leaders.includes(c.id)&&c._botRole!=='defender'&&c._botRole!=='admiral').sort((a,b)=>((b.skills||{}).druid||0)*2+botGeneralship(b)-((a.skills||{}).druid||0)*2-botGeneralship(a))[0]||null; }
+    all.forEach(c=>{ if(c._botRole==='skygeneral'&&c!==sky) delete c._botRole; });
+    if(sky){ sky._botRole='skygeneral'; if(!leaders.includes(sky.id)) leaders.push(sky.id); } }
   // DEFENDERS — one per four land provinces (max 3) once another crown has been met (or from turn
-  // 4). Existing defenders keep the role; new ones are the best non-leader fighters, preferring anyone
-  // already holding a column and steering mages toward companion duty instead.
+  // 4), and never at the expense of the slayer, the scholar and the scout: only the heroes beyond the
+  // first three free (non-leading) ones may be posted. Existing defenders keep the role; new ones are the
+  // best non-leader fighters, preferring anyone already holding a column and steering mages toward
+  // companion duty instead.
   const leaderSet=new Set(leaders);
-  const wantDef=(botHasMetPlayers(G,pi)||(G.turn||0)>=4)?Math.min(3,Math.floor(botLandCount(G,pi)/4)):0;
+  const freeHeroes=all.filter(c=>!c.isKing&&!leaderSet.has(c.id)).length;
+  const wantDef=(botHasMetPlayers(G,pi)||(G.turn||0)>=4)?Math.max(0,Math.min(3,Math.floor(botLandCount(G,pi)/4),freeHeroes-3)):0;
   let defenders=sticky.filter(c=>!leaderSet.has(c.id));
   const defScore=c=>{ const s=c.skills||{}; return (c.armies||[]).length*5+(s.tactical||0)*3+(s.melee||0)+(s.archery||0)-botMagicScore(c)*2-((s.sage||0)+(s.spy||0)+(s.thief||0)+(s.explorer||0))*2; };
   defenders.sort((a,b)=>defScore(b)-defScore(a)); defenders=defenders.slice(0,wantDef);
@@ -5525,6 +5538,14 @@ function botLedger(G,pi){
   const _defs=botRoles(G,pi).defenders.map(id=>(G.characters||[]).find(c=>c&&c.id===id)).filter(Boolean);
   const _defUnits=_defs.reduce((n,c)=>n+(c.armies||[]).length,0);
   L.defReserve=(_defs.length&&_defUnits<3*_defs.length)?Math.floor(L.upkeepCap*0.2):0;
+  // 2026-09-26 (Toby items 1 / 6 / 8): the same for the NAVY and the AIR — while the admiral has fewer than
+  // three hulls, or the flying general fewer than two flyers, a share of the ceiling is held back from every
+  // other muster (the land general musters first and was spending every coin before the fleet got a hull).
+  { const chars=(G.characters||[]); const adm=chars.find(c=>c&&c.alive&&c.player===pi&&c._botRole==='admiral'); const sky=chars.find(c=>c&&c.alive&&c.player===pi&&c._botRole==='skygeneral');
+    const hulls=adm?(adm.armies||[]).filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length:9; const wings=sky?(sky.armies||[]).filter(a=>a&&BOT_FLYING_TYPES.has(a.type)).length:9;
+    const atPort=adm&&(()=>{ const X=G.world.provinces[adm.location]; return X&&X.owner===pi&&!!botCoastalFleetType(X); })();   // only while he stands where hulls are laid down — a reserve nobody can spend this turn is gold idling
+    const atEyrie=sky&&(()=>{ const X=G.world.provinces[sky.location]; return X&&X.owner===pi&&!!botFlyerType(X); })();
+    L.navReserve=(atPort&&hulls<3)?Math.floor(L.upkeepCap*0.25):0; L.airReserve=(atEyrie&&wings<2)?Math.floor(L.upkeepCap*0.15):0; }
   cache.ledger[pi]=L; return L;
 }
 function botCanAfford(L,cost){ return L.budget>=cost && (L.upkeep+cost)<=L.upkeepCap; }
@@ -5572,12 +5593,13 @@ function botFieldRecruitTokens(G,pi,c,prov,L){
   // ships), so hulls are bought only for a real naval reason — an at-war enemy coast across the
   // water — or once the realm has no land frontier left to expand into.
   const cmdr=(G.characters||[]).find(l=>l&&l.alive&&l.player===pi&&l.id!==c.id&&l.location===c.location&&botIsLeader(G,pi,l.id))||c;   // who will lead these recruits
-  const adm=(cmdr._botRole==='admiral');
+  const adm=(cmdr._botRole==='admiral'); const sky=(cmdr._botRole==='skygeneral');
   const D=L.diag||{}; D.calls=(D.calls||0)+1;
-  const _navalNeed=fleetType && (adm || botNavalEnemyCoast(G,prov,pi) || (!botIsEdge(G,pi,prov) && botFrontierTarget(G,pi,prov)==null));
+  const _navalNeed=fleetType && !sky && (adm || botNavalEnemyCoast(G,prov,pi) || (!botIsEdge(G,pi,prov) && botFrontierTarget(G,pi,prov)==null));   // a hull would ground the flying general's column
   // Sept 2026 (Toby): the ADMIRAL raises hulls at his port until every liftable land unit he leads has a berth
   // (plus one spare), up to a cap that grows with the realm; other hosts buy a single hull for the old reasons.
-  const hullCap=adm?Math.min(8,2+Math.floor(botLandCount(G,pi)/4)):3;
+  // 2026-09-26 (item 1): the cap starts at three hulls and grows a hull per three land provinces (was 2 + land/4).
+  const hullCap=adm?Math.min(10,3+Math.floor(botLandCount(G,pi)/3)):3;
   if(_navalNeed && !done[fleetType] && botFleetHullCount(G,pi)<hullCap){
     const cost=ARMY_COST_MASTER[fleetType]||3; let q=0;
     const myHulls=(cmdr.armies||[]).filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length, myLand=(cmdr.armies||[]).filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)).length;
@@ -5585,12 +5607,26 @@ function botFieldRecruitTokens(G,pi,c,prov,L){
     while(q<wantHulls && botCanAfford(L,cost)){ q++; botSpend(L,cost); }
     if(q>0){ tokens.push(`${fleetType}|${q}`); done[fleetType]=1; }
   }
-  const hold=(c._botRole==='defender')?0:(L.defReserve||0);                      // the defenders' share (see botLedger)
+  const hold=((c._botRole==='defender')?0:(L.defReserve||0))+(adm?0:(L.navReserve||0))+(sky?0:(L.airReserve||0));   // the defenders' / navy's / air's share (see botLedger)
   const canAff=cost=>botCanAfford(L,cost)&&(L.upkeep+cost)<=L.upkeepCap-hold;
   // the admiral fills his berths with the most effective LIFTABLE units the port raises, never more than the hulls carry
   let berths=adm?((cmdr.armies||[]).filter(a=>a&&BOT_CARRIER_TYPES.has(a.type)).length+tokens.reduce((s,tk)=>s+(BOT_CARRIER_TYPES.has(tk.split('|')[0])?+tk.split('|')[1]:0),0)-(cmdr.armies||[]).filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)).length):99;
   const kinds=botRecruitableTypes(prov,G,cmdr);
   if(!kinds.length){ const landKinds=(prov.armyTypes||[]).filter(t=>t&&!/garrison/i.test(t)&&!BOT_NAVAL_TYPES.has(t)); if(landKinds.length) D.noKin=(D.noKin||0)+1; else D.noTypes=(D.noTypes||0)+1; }
+  // 2026-09-26 (Toby item 8): the FLYING GENERAL musters an airborne column — the province's humanoid flyers
+  // first (they fly and each carries one foot soldier), then liftable foot up to the number of flyers he
+  // will have; nothing that would ground the column (horses, hulls, creatures, monsters).
+  if(sky){
+    const ft=botFlyerType(prov); const have=(cmdr.armies||[]);
+    let flyers=have.filter(a=>a&&BOT_FLYING_TYPES.has(a.type)).length, foot=have.filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)).length;
+    if(ft&&!done[ft]){ const cost=ARMY_COST_MASTER[ft]||4; let q=0; const wantF=Math.max(1,Math.min(perTypeLimit,foot+1-flyers));
+      while(q<wantF&&canAff(cost)){ q++; botSpend(L,cost); flyers++; }
+      if(q>0){ tokens.push(`${ft}|${q}`); done[ft]=1; D.tokens=(D.tokens||0)+q; } }
+    for(const t of kinds){ if(done[t]||BOT_FLYING_TYPES.has(t)||!botLiftable(t)||BOT_SEA_ALL.has(t)) continue; if(foot>=flyers) break; if(!canAff(1)) break;
+      const cost=ARMY_COST_MASTER[t]||2; let q=0; while(q<perTypeLimit&&foot<flyers&&canAff(cost)){ q++; botSpend(L,cost); foot++; }
+      if(q>0){ tokens.push(`${t}|${q}`); done[t]=1; D.tokens=(D.tokens||0)+q; } }
+    return tokens;
+  }
   for(const t of kinds){
     if(done[t]) continue; if(!canAff(1)){ if(L.budget<1) D.budgetStop=(D.budgetStop||0)+1; else D.capStop=(D.capStop||0)+1; break; } if(adm&&(!botLiftable(t)||berths<=0)) continue;
     const cost=ARMY_COST_MASTER[t]||2; let q=0;
@@ -5658,7 +5694,7 @@ function botSpecialistRoles(G,pi,excluded){
   const want={
     slayer: 1+(lairs>=6?1:0)+(titles.includes('monster')?1:0),   // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
     scout:  unmapped>0?Math.min(3,1+Math.floor(unmapped/6)):0,
-    scholar:(land>=8?2:1)+(p.alignment==='Neutral'?1:0)+(titles.includes('lore')?1:0),      // Neutral scholars find twice as much
+    scholar:(land>=12?2:1)+(p.alignment==='Neutral'?1:0)+(titles.includes('lore')?1:0),     // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 12+ land — gold and armies come first
     spy:    ((met||turn>=3)?(war?2:1):0)+(titles.includes('spy')?1:0),
     thief:  (met||turn>=4)?1:0,
   };
@@ -5678,6 +5714,11 @@ function botSpecialistRoles(G,pi,excluded){
     if(!best) break;
     taken.add(best.c.id); byId[best.c.id]=role; filled[role]=(filled[role]||0)+1; n++;
   }
+  // 2026-09-26 (Toby item 1/3): nobody sits idle. Every free hero the wanted counts did not claim (the one
+  // muster reserve excepted) becomes a further scout while ground is unmapped, else a further slayer —
+  // both explore and hunt lairs rather than drilling at the capital.
+  for(const c of heroes){ if(n>=slots) break; if(taken.has(c.id)||c.isKing) continue; const role=unmapped>0?'scout':'slayer';
+    taken.add(c.id); byId[c.id]=role; filled[role]=(filled[role]||0)+1; n++; }
   heroes.forEach(c=>{ if(byId[c.id]) c._botRole=byId[c.id]; else if(BOT_SPECIALIST_ROLES.has(c._botRole)) delete c._botRole;
     // review II A11: a working thief fights by stealing and fleeing; anyone else keeps the engine's auto plan
     const ep=c.encounterPlan||{}; if(c._botRole==='thief'&&((c.skills||{}).thief||0)>=3){ c.encounterPlan={...ep,tactics:['ST','FL','FL','FL','FL','FL'],_botTactics:true}; }
@@ -5731,6 +5772,22 @@ function botScoutOrders(G,pi,c,pre){
   if(pre.length+path.length>=5) return null;
   const out=[...pre,...path.map(d=>botMoveOrder(d,'Scout '+t.X.name))];
   while(out.length<5) out.push({action:'explore',target:'',extra:'',desc:'Explore '+t.X.name});
+  return out;
+}
+// ROAM (2026-09-26, Toby item 5) — a hero sent out to FIND wandering heroes: the nearest known land
+// province (not an enemy's) that none of the realm's characters has ever stood in, up to five hops
+// through any land; explore on arrival so the walk maps ground too. Falls back to the scout target.
+function botRoamOrders(G,pi,c,pre){
+  const P=G.world.provinces[c.location]; if(!P) return null; let best=null;
+  (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||X.id===P.id||!botKnows(G,pi,X.id)) return;
+    const bo=botBelievedOwner(G,pi,X); if(bo!=null&&bo!==pi&&botRelationRaw(G,pi,bo)!=='allied') return;
+    if((X.visitedBy||[]).includes(pi)) return;
+    const d=botPathLenAny(G,P,X.id,5); if(d==null) return;
+    const sc=(X.tax||0)-d*3+((X.features||[]).length?1:0); if(!best||sc>best.sc) best={X,d,sc}; });
+  if(!best) return botScoutOrders(G,pi,c,pre);
+  const path=botPathAny(G,P,best.X.id,5)||[]; if(path.length!==best.d||pre.length+path.length>=5) return botScoutOrders(G,pi,c,pre);
+  const out=[...pre,...path.map(d=>botMoveOrder(d,'Roam to '+best.X.name+' (seek heroes)'))];
+  while(out.length<5) out.push({action:'explore',target:'',extra:'',desc:'Explore '+best.X.name});
   return out;
 }
 // SPY — a rival's province the realm has seen, within reach; prefer capitals, wealth, war enemies and
@@ -5832,7 +5889,11 @@ function botLairOrders(G,pi,c,pre){
 }
 function botSpecialistOrders(G,pi,c,pre,role,L){
   switch(role){
-    case 'slayer':  { const lp=botLairPlan(G,pi,c,pre,L); if(lp) return lp; return botTrainOrders(G,pi,c,pre,botSlayerTrainSkill(c),'slayer'); }
+    case 'slayer':  { const lp=botLairPlan(G,pi,c,pre,L); if(lp) return lp;
+      // 2026-09-26 (Toby item 1): a slayer fit to fight (Melee 3+) with no lair worth the trip goes LOOKING for
+      // one — lairs are found by exploring — instead of drilling Melee at the capital year after year.
+      if(((c.skills||{}).melee||0)>=3){ const so=botScoutOrders(G,pi,c,pre); if(so) return so; }
+      return botTrainOrders(G,pi,c,pre,botSlayerTrainSkill(c),'slayer'); }
     case 'scholar': return botScholarOrders(G,pi,c,pre);
     case 'scout':   { if(((c.skills||{}).explorer||0)>=7&&pre.length<4){ const P=G.world.provinces[c.location]; const cand=[P]; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N) cand.push(N); }
         const X=cand.filter(N=>N&&N.terrain!=='sea'&&((N.exploredBy||{})[pi]||0)<100&&(N.owner===pi||N.owner==null)).sort((a,b)=>((a.exploredBy||{})[pi]||0)-((b.exploredBy||{})[pi]||0))[0];
@@ -5921,8 +5982,13 @@ function botDrillOrder(G,pi,c){
 // the character's practice fallback — drilling a host, else the skill most worth training (with
 // co-located partners when possible, toward the drill cap of 5). Practice is always secondary: it
 // only ever fills phases nothing else claimed.
-function botPracticeFallback(G,pi,c){
+function botPracticeFallback(G,pi,c,opts){
   const drill=botDrillOrder(G,pi,c); if(drill) return drill;
+  // 2026-09-26 (Toby item 1): Practice is the LAST resort, not the default. Ground under the character's
+  // feet that the realm has not fully mapped is explored first (lairs, features and wanderers come of it).
+  // Only for a character standing still this turn — an Explore after a march would land on other ground.
+  const P=G.world.provinces[c.location];
+  if(!(opts&&opts.moving)&&P&&P.terrain!=='sea'&&(P.owner===pi||P.owner==null)&&((P.exploredBy||{})[pi]||0)<100) return {action:'explore',target:'',extra:'',desc:'Explore '+P.name};
   const sk=botCrossTrainSkill(G,c,pi)||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
   if(!sk) return null;
   const sg=((c.skills||{}).sage||0);
@@ -5959,7 +6025,7 @@ function botFillOrders(G, pi, c, pre, moves){
   const armed=(c.armies||[]).length>0, met=botHasMetPlayers(G,pi);
   const watch=armed&&met&&botNearbyThreat(G,pi,c)?[{action:'defend',target:'',extra:'',desc:'Watch'}]:[];
   const out=(moves.length?[...watch,...pre,...moves]:[...pre,...(met?[{action:'defend',target:'',extra:'',desc:'Hold'}]:[])]).slice(0,5);
-  const tail=botPracticeFallback(G,pi,c);
+  const tail=botPracticeFallback(G,pi,c,{moving:out.some(o=>o&&(o.action==='move'||o.action==='encounter'))});
   while(out.length<5) out.push(tail?{...tail}:{action:'defend',target:'',extra:'',desc:'Hold'});
   return out;
 }
@@ -6426,34 +6492,93 @@ function botLairPlan(G,pi,c,pre,L){
 // holds two coastal provinces that can build ships and there is sea worth taking (unowned sea in reach, or
 // an at-war coast across the water). Fleets are still bought for ordinary hosts only for the old reasons.
 function botCoastalPorts(G,pi){ return (G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea'&&botCoastalFleetType(p)); }
+// 2026-09-26 (Toby item 1/6): ONE port is enough to want an admiral (was two — most realms never got there).
 function botSeaWorthTaking(G,pi){
-  const ports=botCoastalPorts(G,pi); if(ports.length<2) return false;
+  const ports=botCoastalPorts(G,pi); if(ports.length<1) return false;
   return ports.some(p=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,p,i); if(!N||N.terrain!=='sea') continue; if(N.owner==null||N.owner!==pi) return true; } return botNavalEnemyCoast(G,p,pi); });
 }
+// ── FLYING GENERAL (2026-09-26, Toby item 8) ── the owned provinces that raise a humanoid flyer (the
+// only units that both fly AND carry a foot soldier), and the reach of an airborne column: the slowest
+// self-flying unit sets the pace, March never speeds flight (mirrors computeMovePoolMax's FLYING CARRY).
+function botFlyerType(prov){ return ((prov&&prov.armyTypes)||[]).find(t=>BOT_FLYING_TYPES.has(t))||null; }
+function botFlyerPorts(G,pi){ return (G.world.provinces||[]).filter(p=>p&&p.owner===pi&&p.terrain!=='sea'&&botFlyerType(p)); }
+function botAirReach(c){ const sp=(c.armies||[]).filter(a=>a&&BOT_AERIAL_TYPES.has(a.type)).map(a=>ARMY_SPEED_MASTER[a.type]||3); return sp.length?Math.max(0,Math.min(5,Math.min(...sp))):0; }
+// Nearest of `list` (owned land provinces) by path length; {X,d} or null. Unarmed walks through any land.
+function botNearestOf(G,pi,c,list,unarmed){ const P=G.world.provinces[c.location]; if(!P) return null; let best=null;
+  (list||[]).forEach(X=>{ const d=(X.id===P.id)?0:botPathLen(G,pi,P,X.id,!!unarmed); if(d==null) return; if(!best||d<best.d||(d===best.d&&(X.tax||0)>(best.X.tax||0))) best={X,d}; });
+  return best; }
+// The berths an admiral still has free: hulls minus the liftable land units he already carries.
+function botSpareBerths(c){ const a=(c&&c.armies)||[]; return a.filter(x=>x&&BOT_CARRIER_TYPES.has(x.type)).length-a.filter(x=>x&&botLiftable(x.type)&&!BOT_SEA_ALL.has(x.type)).length; }
 function botLiftable(t){ return !(BOT_SEA_ALL.has(t)||BOT_AERIAL_TYPES.has(t)||BOT_CREATURE_ARMIES.has(t)||BOT_MONSTER_ARMIES.has(t)||BOT_CAVALRY_TYPES.has(t)); }
 // BFS over sea hexes from `P` (a coast or a sea hex): the best landing — an enemy or unowned land province
 // beside the water that this column can beat — or an unowned sea hex to claim. Returns {moves,N} or null.
+// 2026-09-26 (Toby item 6): SEA TARGETS ARE NOW STRENGTH-GATED — before this an admiral would sail into a
+// Leviathan sea on its tax alone. Order of preference among winnable seas: OPEN water first (no defenders,
+// +40), WHALE waters next (+15), then the Primal monster / creature seas. Coastal land: poor before rich
+// falls out of the same gate — a weak fleet can only take a poorly-held coast, a strong one prefers the
+// wealth. Item 7: an admiral with spare berths also sails to an owned coast where a GENERAL stands with
+// liftable troops (a rendezvous: the general hands his foot soldiers over next turn).
 function botSeaStrike(G,pi,c,P,myStr,T,maxHops){
   if(maxHops<=0||botSeaCap(c.armies)==='land') return null;
   const margin=botMarginFor(G,pi,c,T); const plainStr=botBattleForce(G,c,null,'plain'); const k=plainStr>0?myStr/plainStr:1; const strIn=t=>botBattleForce(G,c,null,t)*k;
+  const adm=(c._botRole==='admiral'); const spare=adm?botSpareBerths(c):0;
   const prev={}; prev[P.id]=null; const dirOf={}; let q=[P], depth=0, best=null;
   const consider=(N,d,viaSea)=>{ if(!N||N.id===P.id) return;
-    let sc=null, fight=false;
-    if(N.terrain==='sea'){ if(N.owner==null&&botKnows(G,pi,N.id)) sc=(N.tax||1)*T.taxScoreWeight-d*2; }
-    else { const bo=N.owner; if(bo===pi||(bo!=null&&botRelationRaw(G,pi,bo)!=='enemy')) return; if(!botKnows(G,pi,N.id)) return;
+    let sc=null, fight=false, rv=false;
+    if(N.terrain==='sea'){ if(N.owner==null&&botKnows(G,pi,N.id)){
+        const tStr=botTargetDefence(G,pi,N); if(tStr>0&&strIn('sea')<tStr*margin) return;
+        const kind=(N.race==='Primal:Whale')?'whale':(N.race&&String(N.race).startsWith('Primal:'))?'primal':'open';
+        sc=(N.tax||1)*T.taxScoreWeight-tStr-d*2+(kind==='open'?40:kind==='whale'?15:0); fight=tStr>0; } }
+    else { const bo=N.owner;
+      // rendezvous: an owned coast where a general with liftable foot soldiers stands, when the hulls have room
+      if(bo===pi){ if(spare>=1){ const gen=(G.characters||[]).find(l=>l&&l.alive&&l.player===pi&&l.id!==c.id&&l.location===N.id&&l._botRole!=='admiral'&&botIsLeader(G,pi,l.id)&&(l.armies||[]).some(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)));
+          if(gen){ const lift=(gen.armies||[]).filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)).length; sc=20+Math.min(spare,lift)*4-d*3; rv=true; } }
+        if(sc==null) return; }
+      else { if(bo!=null&&botRelationRaw(G,pi,bo)!=='enemy') return; if(!botKnows(G,pi,N.id)) return;
       const ec=botEnemyChars(G,N,pi); let tStr=botTargetDefence(G,pi,N)+(bo==null?ec.force*BOT_DEF_BONUS:0);
       const rem=bo!=null?botRememberedHostAt(G,pi,N.id):{units:0,strength:0}; tStr+=rem.strength*BOT_DEF_BONUS;
       const eff=botHostMargin(ec.hasKing?margin*0.9:margin,ec.units+rem.units); if(tStr>0&&strIn(N.terrain)<tStr*eff*1.1) return;   // an amphibious assault asks a little more
-      fight=tStr>0; sc=(N.tax||0)*T.taxScoreWeight*1.5-tStr+(bo!=null?T.rivalBias*2:0)+ec.value+ec.units*3-d*3; }
-    if(sc!=null&&(!best||sc>best.sc)) best={N,sc,d,fight}; };
+      fight=tStr>0; sc=(N.tax||0)*T.taxScoreWeight*1.5-tStr+(bo!=null?T.rivalBias*2:0)+ec.value+ec.units*3-d*3; } }
+    if(sc!=null&&(!best||sc>best.sc)) best={N,sc,d,fight,rv}; };
   while(q.length&&depth<maxHops){ const next=[]; depth++;
     q.forEach(cur=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||prev[N.id]!==undefined) continue;
-      if(N.terrain==='sea'){ prev[N.id]=cur.id; dirOf[N.id]=i; next.push(N); consider(N,depth,true); }
+      if(N.terrain==='sea'){ prev[N.id]=cur.id; dirOf[N.id]=i; consider(N,depth,true);
+        // sail ON through waters that will not stop the fleet: ours, an ally's, or unowned and undefended (a guarded sea may be the target, never the road)
+        if(N.owner===pi||(N.owner!=null&&botRelationRaw(G,pi,N.owner)==='allied')||(N.owner==null&&!(N.neutralDefenders||[]).length)) next.push(N); }
       else { prev[N.id]=cur.id; dirOf[N.id]=i; consider(N,depth,false); } } });
     q=next; }
   if(!best) return null;
   const dirs=[]; let id=best.N.id; while(prev[id]!==null&&prev[id]!==undefined){ dirs.unshift(dirOf[id]); id=prev[id]; }
-  const moves=dirs.map((d,i)=>botMoveOrder(d,(i===dirs.length-1)?(best.fight?'Assault from the sea':(best.N.terrain==='sea'?'Claim the sea':'Land')):'Sail'));
+  const moves=dirs.map((d,i)=>botMoveOrder(d,(i===dirs.length-1)?(best.rv?'Rendezvous with the general':best.fight?(best.N.terrain==='sea'?'Clear the waters':'Assault from the sea'):(best.N.terrain==='sea'?'Claim the sea':'Land')):'Sail'));
+  return {moves,N:best.N};
+}
+// ── AIR STRIKE (2026-09-26, Toby item 8) ── the FLYING GENERAL's planner. An airborne column (humanoid
+// flyers carrying every foot soldier) crosses sea and land alike, so the BFS passes over open sea, its
+// own and allied land and unowned land it could simply take, and looks for the best winnable target within
+// its reach: an enemy province BEHIND THE FRONT (one that touches none of our land, +25 — a lightning
+// strike on the rear), any other enemy province, or unowned land / sea to claim. Returns {moves,N} or null.
+function botAirStrike(G,pi,c,P,myStr,T,maxHops){
+  if(maxHops<=0||!botCanFly(c.armies)) return null;
+  const margin=botMarginFor(G,pi,c,T); const plainStr=botBattleForce(G,c,null,'plain'); const k=plainStr>0?myStr/plainStr:1; const strIn=t=>botBattleForce(G,c,null,t)*k;
+  const touchesOurs=N=>{ for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&K.owner===pi) return true; } return false; };
+  const prev={}; prev[P.id]=null; const dirOf={}; let q=[P], depth=0, best=null;
+  const winnable=N=>{ const bo=N.owner; if(bo===pi||(bo!=null&&botRelationRaw(G,pi,bo)!=='enemy')) return null; if(!botKnows(G,pi,N.id)) return null;
+    const ec=botEnemyChars(G,N,pi); let tStr=botTargetDefence(G,pi,N)+(bo==null?ec.force*BOT_DEF_BONUS:0);
+    const rem=bo!=null?botRememberedHostAt(G,pi,N.id):{units:0,strength:0}; tStr+=rem.strength*BOT_DEF_BONUS;
+    const eff=botHostMargin(ec.hasKing?margin*0.9:margin,ec.units+rem.units); if(tStr>0&&strIn(N.terrain)<tStr*eff) return null;
+    return {tStr,ec,bo}; };
+  const consider=(N,d)=>{ if(!N||N.id===P.id) return; const w=winnable(N); if(!w) return;
+    const enemy=w.bo!=null; const rear=enemy&&!touchesOurs(N);
+    const sc=(N.tax||0)*T.taxScoreWeight*(N.terrain==='sea'?0.5:1.2)-w.tStr+(enemy?T.rivalBias*2:0)+(rear?25:0)+w.ec.value+w.ec.units*3-d*2;
+    if(!best||sc>best.sc) best={N,sc,d,fight:w.tStr>0}; };
+  const passable=N=>N.terrain==='sea'?(N.owner==null?!(N.neutralDefenders||[]).length:(N.owner===pi||botRelationRaw(G,pi,N.owner)==='allied')):(N.owner===pi||(N.owner!=null&&botRelationRaw(G,pi,N.owner)==='allied'));
+  while(q.length&&depth<maxHops){ const next=[]; depth++;
+    q.forEach(cur=>{ for(let i=0;i<6;i++){ const N=botNeighbourProv(G,cur,i); if(!N||prev[N.id]!==undefined) continue;
+      prev[N.id]=cur.id; dirOf[N.id]=i; consider(N,depth); if(passable(N)) next.push(N); } });
+    q=next; }
+  if(!best) return null;
+  const dirs=[]; let id=best.N.id; while(prev[id]!==null&&prev[id]!==undefined){ dirs.unshift(dirOf[id]); id=prev[id]; }
+  const moves=dirs.map((d,i)=>botMoveOrder(d,(i===dirs.length-1)?(best.fight?'Lightning strike':(best.N.terrain==='sea'?'Claim the sea':'Seize')):'Fly'));
   return {moves,N:best.N};
 }
 // ══ HONEST KNOWLEDGE OF RIVAL CHARACTERS (Sept 2026, Toby / review II A5) ════
@@ -6685,6 +6810,21 @@ function runBotMovement(G, botIdxSet, hooks){
           const path=botPathAny(G,P,bestH.h.location,5);
           if(path&&path.length===bestH.d){ heroClaimed.add(bestH.h.id); const mv=path.map(d=>botMoveOrder(d,'Seek '+bestH.h.name)); if(pre.length+mv.length<5) mv.push({action:'hire',target:String(bestH.h.id),extra:'',desc:'Hire '+bestH.h.name}); G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,mv); return; }
         }
+        // ── ROAM FOR WANDERERS (2026-09-26, Toby item 5): a court under three heroes sends every hero who is
+        // not the general out to find them — no wanderer is in sight, so he walks to the nearest land the
+        // realm has never set foot in (wanderers are seen only from where our characters stand) and
+        // explores it on arrival. Kings never roam. ──
+        if(!c.isKing && !isLeader && _heroesNow<3 && maxHops>0){
+          const rm=botRoamOrders(G,pi,c,pre); if(rm){ G.turnOrders[c.id]=rm; assigned.add(c.id); return; }
+        }
+        // ── An unarmed ADMIRAL walks to the nearest port, an unarmed FLYING GENERAL to the nearest eyrie —
+        // that is where each raises his column (2026-09-26, Toby items 6 / 8). ──
+        if(c._botRole==='admiral'||c._botRole==='skygeneral'){
+          const grounds=c._botRole==='admiral'?botCoastalPorts(G,pi):botFlyerPorts(G,pi);
+          const g=botNearestOf(G,pi,c,grounds,true);
+          if(g&&g.d>0){ const path=botPathDirs(G,pi,P,g.X.id,maxHops,true); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,path.map(d=>botMoveOrder(d,(c._botRole==='admiral'?'To the port of ':'To the eyrie at ')+g.X.name))); assigned.add(c.id); return; } }
+          if(g&&g.d===0){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]); assigned.add(c.id); return; }   // at his muster ground: recruit (pre) and hold
+        }
         // ── COMPANION: stand with the general, cast for him, follow a phase behind. ──
         const gen=escortOf[c.id];
         if(gen && !isLeader){
@@ -6706,7 +6846,7 @@ function runBotMovement(G, botIdxSet, hooks){
               const safe=N.owner===pi||(N.owner!=null&&botRelationRaw(G,pi,N.owner)==='allied')||(follow.length===0&&/^Advance/.test(o.desc||''))
                 ||(follow.length===0&&/^(Attack|Assault)/.test(o.desc||'')&&botBattleForce(G,gen,null,N.terrain)>=2*botTargetDefence(G,pi,N));
               if(!safe) break; follow.push({...o,desc:'Follow '+gen.name}); cur=N; }
-            const lead=[...pre,...casts]; const lag=botPracticeFallback(G,pi,c)||{action:'defend',target:'',extra:'',desc:'Hold'};
+            const lead=[...pre,...casts]; const lag=botPracticeFallback(G,pi,c,{moving:follow.length>0})||{action:'defend',target:'',extra:'',desc:'Hold'};
             while(follow.length && lead.length<firstMovePh+1 && lead.length<5) lead.push({...lag});
             G.turnOrders[c.id]=botFillOrders(G,pi,c,lead,follow); assigned.add(c.id); return;
           } else {
@@ -6820,6 +6960,28 @@ function runBotMovement(G, botIdxSet, hooks){
         G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[botMoveOrder(reinforce.dirIdx,'Reinforce')]); return;
       }
       if(maxHops<=0){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]); return; }
+      // ── ADMIRAL without hulls (2026-09-26, Toby item 6): a fleet is raised at a port, so an admiral leading a
+      // land column elsewhere marches to the nearest port first (his muster order there buys the hulls). ──
+      if(c._botRole==='admiral' && !(c.armies||[]).some(a=>a&&BOT_CARRIER_TYPES.has(a.type))){
+        const g=botNearestOf(G,pi,c,botCoastalPorts(G,pi),false);
+        if(g&&g.d>0){ const path=botPathDirs(G,pi,P,g.X.id,maxHops,false); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,path.map(d=>botMoveOrder(d,'To the port of '+g.X.name))); return; } }
+      }
+      // ── ADMIRAL waits for the general (item 7): with berths to spare and a general standing here with
+      // foot soldiers to embark, the fleet stays in harbour this year (the general hands them over below —
+      // leaders plan in order, the admiral first) and sails loaded next year. ──
+      if(c._botRole==='admiral' && botSpareBerths(c)>0 && all.some(o=>o.id!==c.id&&o.location===c.location&&roles.leaders.includes(o.id)&&o._botRole!=='admiral'&&o._botRole!=='skygeneral'&&(o.armies||[]).some(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type))&&!botScanTargets(G,pi,o,P,botBattleForce(G,o,null,'plain'),T,new Set([P.id])).best)){
+        G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]); return;
+      }
+      // ── FLYING GENERAL (2026-09-26, Toby item 8): airborne, he strikes over sea and behind the front; grounded
+      // (too few flyers for the foot he leads), he goes to the nearest eyrie and musters flyers there. ──
+      if(c._botRole==='skygeneral'){
+        if(botCanFly(c.armies)){ const as=botAirStrike(G,pi,c,P,myStr,T,Math.max(1,Math.min(5,botAirReach(c),5-pre.length)));
+          if(as&&as.moves.length){ const buff=((c.armies||[]).length>=3&&pre.length<=2)?botCastPlan(G,pi,c,P,{max:1,fighting:c}).find(o=>['Oratory','Phantasmal Armies'].includes(o.target)):null; const pre2=buff?[...pre,buff]:pre;
+            G.turnOrders[c.id]=botFillOrders(G,pi,c,pre2,as.moves); return; } }
+        else { const g=botNearestOf(G,pi,c,botFlyerPorts(G,pi),false);
+          if(g&&g.d>0){ const path=botPathDirs(G,pi,P,g.X.id,maxHops,false); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,path.map(d=>botMoveOrder(d,'To the eyrie at '+g.X.name))); return; } }
+          if(g&&g.d===0){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]); return; } }   // at the eyrie: muster flyers (pre) and hold
+      }
       // A host carrying ships cannot march overland: leave the hulls in this province's garrison
       // first
       // (one phase) when the chosen move is land→land. They are picked up again if a naval move is chosen later.
@@ -6840,6 +7002,15 @@ function runBotMovement(G, botIdxSet, hooks){
         let str=myStr, fights=0; if(best.targetStr>0){ str*=0.85; fights=1; }
         moves.push(...botChainHops(G,pi,c,best.N,str,T,maxHops-1,visited,fights));
         G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,moves); return;
+      }
+      // ── JOIN FORCES (2026-09-26, Toby item 7): a general with nothing to attack, standing with the ADMIRAL,
+      // puts his foot soldiers aboard — every liftable unit the hulls have room for — so the fleet carries
+      // them over the water. He keeps whatever cannot sail and raises a fresh column. ──
+      if(isLeader && c._botRole!=='admiral' && c._botRole!=='skygeneral'){
+        const adm=all.find(o=>o.id!==c.id&&o.location===c.location&&o._botRole==='admiral'&&(o.armies||[]).some(a=>a&&BOT_CARRIER_TYPES.has(a.type)));
+        const spare=adm?botSpareBerths(adm):0;
+        if(adm&&spare>0){ const give=(c.armies||[]).filter(a=>a&&botLiftable(a.type)&&!BOT_SEA_ALL.has(a.type)&&!a._isSkeletal).sort((x,y)=>unitBaseStrength(y)-unitBaseStrength(x)).slice(0,spare);
+          if(give.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,[...pre,{action:'leave_army',target:give.map(a=>a.unitName||a.type).join(','),extra:String(adm.id),desc:'Embark '+give.length+' unit'+(give.length>1?'s':'')+' with '+adm.name}],[]); return; } }
       }
       // Nothing winnable HERE (a field host expands before it raids lairs — lairs are for the
       // unarmed): look across the whole realm for a winnable province and march on it. Before this
@@ -6879,6 +7050,15 @@ function runBotMovement(G, botIdxSet, hooks){
           moves.push(...botChainHops(G,pi,c,cur,myStr,T,maxHops-moves.length,visited,0));
           G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,moves); return;
         }
+      }
+      // ── RAISE ARMIES WHERE THEY CAN BE RAISED (2026-09-26, Toby items 1/7): a leader with nothing to attack and
+      // no frontier does not stand and drill — he marches to the best owned province that recruits field
+      // troops (a coastal port first when the realm has an admiral to carry him) and musters there. ──
+      if(isLeader && !(P.owner===pi&&(P.armyTypes||[]).some(t=>t&&!/garrison/i.test(t)&&!BOT_NAVAL_TYPES.has(t)))){
+        const hasAdm=all.some(o=>o._botRole==='admiral'); let bestM=null;
+        (G.world.provinces||[]).forEach(x=>{ if(!x||x.owner!==pi||x.terrain==='sea'||x.id===P.id||!(x.armyTypes||[]).some(t=>t&&!/garrison/i.test(t)&&!BOT_NAVAL_TYPES.has(t))) return;
+          const d=botPathLen(G,pi,P,x.id,false); if(d==null||d>6) return; const sc=(x.tax||0)-d*2+((hasAdm&&botCoastalFleetType(x))?6:0); if(!bestM||sc>bestM.sc) bestM={x,sc,d}; });
+        if(bestM){ const path=botPathDirs(G,pi,P,bestM.x.id,maxHops,false); if(path&&path.length){ G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,path.map(d=>botMoveOrder(d,'March to muster at '+bestM.x.name))); return; } }
       }
       // At the edge with nothing winnable: hold, watch and drill (muster orders still apply).
       G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[]);
@@ -7370,7 +7550,11 @@ function runBotActions(G, botIdxSet){
       const botSageOrResearch=(sk)=>{ const sg=((c.skills||{}).sage||0);
         if(sk==='sage'&&sg>=1&&(sg>=5||Math.random()<0.5)) return {action:'research',target:'',extra:'',desc:'Research'};
         return sk?{action:'practice',target:sk,extra:'',desc:'Practice '+(SKILL_LABELS[sk]||sk)}:{action:'defend',target:'',extra:'',desc:'Hold'}; };
-      const practiceTail=()=>{ const sk=(_landUnits>=5?'tactical':null)||botCrossTrainSkill(G,c,pi)||_drillPick||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
+      // 2026-09-26 (Toby item 1): unmapped ground under a character who is standing still is explored before any
+      // practice — Practice is the last resort, not the default (a host's commander still drills it).
+      const _here=G.world.provinces[c.location];
+      const _exploreHere=(_landUnits<3&&_here&&_here.terrain!=='sea'&&(_here.owner===pi||_here.owner==null)&&((_here.exploredBy||{})[pi]||0)<100)?{action:'explore',target:'',extra:'',desc:'Explore '+_here.name}:null;
+      const practiceTail=()=>{ if(_exploreHere) return {..._exploreHere}; const sk=(_landUnits>=5?'tactical':null)||botCrossTrainSkill(G,c,pi)||_drillPick||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
         return botSageOrResearch(sk); };
       // Offensive casts fire first — hexing a nearby enemy beats anything peaceful.
       if(castOrder && OFFENSIVE_CAST.has(castOrder.target)){
@@ -7391,6 +7575,7 @@ function runBotActions(G, botIdxSet){
         overlay(c.id,[..._castPlan,{...tail},{...tail},{...tail},{...tail}].slice(0,5));
         return;
       }
+      if(_exploreHere){ fill(c.id,_exploreHere); return; }
       const skill=botCrossTrainSkill(G,c,pi)||_drillPick||botTitleFocusSkill(c,botTargetTitles(G,pi))||botPracticeSkill(c);
       if(skill){ fill(c.id,botSageOrResearch(skill)); return; }
       const prov=G.world.provinces[c.location];
@@ -24669,6 +24854,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1135</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1218</div>
 </body>
 </html>
