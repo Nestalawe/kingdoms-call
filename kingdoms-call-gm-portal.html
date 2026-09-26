@@ -368,8 +368,8 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.26-1713';
-const KC_BUILD_STAMP='2026.09.26-1713'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_DATA_MIN='2026.09.26-1745';
+const KC_BUILD_STAMP='2026.09.26-1745'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -2250,10 +2250,18 @@ function alignDistP(a,b){
   if(i<0||j<0) return 0;
   return Math.abs(i-j);
 }
-function heroHireWage(kingdomAlign, heroAlign, waiveBan){
+// A hero's SKILL premium on top of the alignment base. Neutral heroes now grow while they wander
+// (progressNeutralHeroes + battle experience), so a chieftain who has held his province for twenty
+// turns is a far better buy than a fresh wanderer — and used to cost exactly the same, because the
+// hire wage was alignment-only. The premium mirrors the in-service wage formula (ceil(total/4))
+// with the starting hero's one gold taken off, so a freshly generated 3-point wanderer still hires
+// at the old 2–5g and every point earned since shows up in the asking price.
+function heroSkillTotal(ch){ return Object.values((ch&&ch.skills)||{}).reduce((s,v)=>s+(v||0),0); }
+function heroSkillWage(ch){ return Math.max(0, Math.ceil(heroSkillTotal(ch)/4)-1); }
+function heroHireWage(kingdomAlign, heroAlign, waiveBan, hero){
   const d=alignDistP(kingdomAlign, heroAlign);
   if(d>=6&&!waiveBan) return null;               // Divine <-> Undead: will never serve
-  return 2+Math.floor(Math.min(d,6)/2);
+  return 2+Math.floor(Math.min(d,6)/2)+(hero?heroSkillWage(hero):0);
 }
 const TEMPERS_P=['Berserk','Brave','Cautious','Cowardly'];
 function temperOf(t){ return TEMPER_TRAITS[t]||TEMPER_TRAITS.Brave; }
@@ -5741,12 +5749,12 @@ function botHireOrder(G,pi,c,L){
   // botSeesChar — a hero standing beside our own character is normally plainly visible, but one who
   // moved in unspotted, is Invisible or wears a Cloak of Many Faces is not, and the human's Hire
   // list would not offer them either.
-  const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id)&&botSeesChar(G,pi,h)&&heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)!=null); if(!hh) return null;
+  const hh=(G.characters||[]).find(h=>h&&h.alive&&h.player===null&&h.location===c.location&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id)&&botSeesChar(G,pi,h)&&heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false,h)!=null); if(!hh) return null;
   // Self-play finding: an uncapped court (15 heroes, no army) ate the whole wage budget. Cap heroes
   // to the realm's size so wages stay with the field army.
   const heroes=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length;
   if(heroes>=botHeroCap(G,pi)) return null;
-  const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral', hh.alignment, false);
+  const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral', hh.alignment, false, hh);
   // a hero's wage (1–3g) is paid from the chest and no longer competes with troops for the upkeep
   // cap — bots try to hire at least one wanderer every turn they can reach one.
   if(wage==null||L.budget<wage) return null;
@@ -6524,7 +6532,7 @@ function botSignaturePre(G,pi,c,P,L){
         let best=null; (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated&&!L.hired.has(h.id))) return;
           if(h.location===c.location) return;                          // a plain Hire does that
           const X=G.world.provinces[h.location]; if(!X||!(X.owner===pi||(X.visitedBy||[]).includes(pi))) return;   // the engine's own Broker visibility
-          const w=heroHireWage(pl.alignment,h.alignment,false); if(w==null||L.budget<w) return;
+          const w=heroHireWage(pl.alignment,h.alignment,false,h); if(w==null||L.budget<w) return;
           const v=Object.values(h.skills||{}).reduce((a,b)=>a+(b||0),0)-w; if(!best||v>best.v) best={h,w,v}; });
         if(best){ botSpend(L,best.w); L.hired.add(best.h.id); L.sig.broker=1; return {action:'broker',target:'hire:'+best.h.id,extra:'',desc:'Broker — hire '+best.h.name}; }
       }
@@ -7075,7 +7083,7 @@ function runBotMovement(G, botIdxSet, hooks){
         // seen.
         if(_heroesNow<botHeroCap(G,pi)) (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated)) return;
           if(!botSeesChar(G,pi,h)) return;
-          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)==null) return;
+          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false,h)==null) return;
           if(h.location===c.location||heroClaimed.has(h.id)) return;
           // seekers walk through neutral country too (an unarmed character is never engaged by a
           // guard), up to 5 hops — the whole of an unarmed character's reach.
@@ -7303,9 +7311,9 @@ function runBotMovement(G, botIdxSet, hooks){
       // Sept 2026 (Toby: hire as much as possible): a host with nothing to attack walks to a seen wanderer and hires him.
       { const heroesNow=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x.isKing&&!x._isHeir).length; let bestH=null;
         if(heroesNow<botHeroCap(G,pi)) (G.characters||[]).forEach(h=>{ if(!(h&&h.alive&&h.player===null&&!h._isNeutralGuard&&!h._justDefeated&&botSeesChar(G,pi,h)&&!heroClaimed.has(h.id)&&h.location!==c.location)) return;
-          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false)==null) return;
+          if(heroHireWage((G.players[pi]||{}).alignment||'Neutral',h.alignment,false,h)==null) return;
           const d=botPathLen(G,pi,P,h.location,false); if(d==null||d>maxHops-1) return; if(!bestH||d<bestH.d) bestH={h,d}; });
-        if(bestH){ const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral',bestH.h.alignment,false); const path=botPathDirs(G,pi,P,bestH.h.location,maxHops-1,false)||[]; if(path.length===bestH.d&&wage!=null&&L.budget>=wage){ heroClaimed.add(bestH.h.id); botSpend(L,wage); L.hired=L.hired||new Set(); L.hired.add(bestH.h.id);
+        if(bestH){ const wage=heroHireWage((G.players[pi]||{}).alignment||'Neutral',bestH.h.alignment,false,bestH.h); const path=botPathDirs(G,pi,P,bestH.h.location,maxHops-1,false)||[]; if(path.length===bestH.d&&wage!=null&&L.budget>=wage){ heroClaimed.add(bestH.h.id); botSpend(L,wage); L.hired=L.hired||new Set(); L.hired.add(bestH.h.id);
           G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,[...path.map(d=>botMoveOrder(d,'Ride to '+bestH.h.name)),{action:'hire',target:String(bestH.h.id),extra:'',desc:'Hire '+bestH.h.name}]); return; } } }
       // Sept 2026 (Toby: naval): a sea-capable host with no land target sails — claim the sea, land on an enemy coast.
       { const ss=(c._botRole==='admiral'||botSeaCap(c.armies)!=='land')?botSeaStrike(G,pi,c,P,myStr,T,maxHops):null;
@@ -8843,7 +8851,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     };
     h.maxHp=h.hp;
     ABILITIES_P.forEach(ab=>{h.aptitude[ab]=rP(1,4);});
-    h.pay=Math.max(1,Math.ceil(Object.values(hSkills).reduce((s,v)=>s+v,0)/4));
+    h.pay=Math.max(1,1+Math.max(0,Math.ceil(Object.values(hSkills).reduce((s,v)=>s+v,0)/4)-1)); // wandering default; the hire desk quotes alignment + skill premium
     allChars.push(h);
     lp.characters.push(hid);
     // Province still keeps neutralDefenders for backward-compat intel display, but armies actually
@@ -10245,7 +10253,7 @@ function buildTurnReport(gameState, playerIndex){
       // sd31 waiver, if the realm holds it, is applied at the real hire). Guards keep their beast
       // label; a defeated guard now wandering (player===null, not a guard) shows a proper race (see
       // runTurn normaliser).
-      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment);
+      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment, false, c);
       const _wHireTxt=c._isNeutralGuard?'':(_wWage!=null?` Available to hire for ${_wWage}g/turn.`:' Will not serve your crown — the alignment gulf is too wide.');
       heroSightings.push({
         type:c._isNeutralGuard?'neutral_guard':'wandering',
@@ -11750,6 +11758,32 @@ async function runTurn(opts){
   // player report cannot disagree about what a character's skills actually are. Equipped items only
   //, minus any Curse, plus the Crown of Command aura; capped 0..5.
   function effStat(c,stat){ return effSkillOf(c,stat,G.characters||[]); }
+  // ── WHAT A VIEWER MAY BE TOLD ABOUT SOMEONE ELSE'S HERO (2026-09-26, Toby) ────────────────
+  // Roll lines used to print BOTH sides' skill levels — "Pursuit — Merek (Spy 0) closing on
+  // Astrigg (Spy 0)" handed the pursuer's owner a rival hero's Spy level for free, which is
+  // exactly what Spy missions and Clairvoyance are supposed to buy. `botKnownSkills` is already
+  // the game's single test of whether a realm has earned that knowledge (own hero, a wanderer —
+  // hired on sight of their skills — or a hero spied within the last eight turns), so these two
+  // helpers route every roll line through it. A viewer who has not earned it simply sees a name.
+  function skillsKnownTo(pi, ch){ return pi!=null && botKnownSkills(G, pi, ch)!==null; }
+  // " (Spy 3)" when this viewer may know it, "" when they may not.
+  function statNote(pi, ch, stat, label){
+    if(!ch||!skillsKnownTo(pi,ch)) return '';
+    return ` (${label||SKILL_LABELS[stat]||stat} ${effStat(ch,stat)})`;
+  }
+  // An OPPOSED roll's percentage is itself a disclosure: pursuit is 50 +5×(my Spy) −5×(their Spy),
+  // so a player who knows their own level can read the rival's straight off the number. Hiding the
+  // "(Spy N)" label alone would change nothing. When the viewer has not earned the knowledge the
+  // exact odds are replaced by a band — they still learn how the attempt felt and whether it landed,
+  // but cannot solve for the hidden level. Known rival (own hero, wanderer, spied within 8 turns) →
+  // the full working, unchanged.
+  const _ODDS_BANDS=[[20,'long odds'],[40,'the odds against you'],[60,'even odds'],[80,'the odds in your favour'],[101,'the odds strongly in your favour']];
+  function oddsNote(pi, ch, chance, roll){
+    if(!ch||skillsKnownTo(pi,ch)) return fmtRoll(chance,roll);
+    const c0=Math.max(0,Math.min(100,dispFloor(chance)));
+    const band=(_ODDS_BANDS.find(b=>c0<b[0])||_ODDS_BANDS[_ODDS_BANDS.length-1])[1];
+    return `${band} [${dispFloor(roll)<=c0?'✓':'✗'}]`;
+  }
   // 2026-09-21 (Toby: "Illusory 3 … rises to level 1"): every skill-rise line quoted the character's
   // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
   // + aura). A hero with Illusory 0 and a +3 diadem cast "(Illusory 3)" and then "rose to level 1",
@@ -11781,7 +11815,11 @@ async function runTurn(opts){
   // it stayed 1g forever), but it applied to every hero in the game. Kings draw no wage.
   function recalcHeroPay(c){
     if(!c||c.isKing) return;
-    c.pay=Math.max(1,Math.ceil(Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0)/4));
+    // base = what the crown agreed to pay for this hero's ALLEGIANCE (the alignment part of the
+    // hire bargain, 1g for a founding hero who was never hired), plus the skill premium as it
+    // stands now. Same formula the hire desk quotes, so a wage never jumps when a hero changes
+    // hands and the alignment premium survives every later rise.
+    c.pay=Math.max(1,(c._hireAlignWage!=null?c._hireAlignWage:1)+heroSkillWage(c));
   }
 
   // ── SKILL GAIN THROUGH EXPERIENCE ────
@@ -18515,13 +18553,18 @@ const BATTLE_ARMY_SPELLS={
         // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
         const kingdomAlign=G.players[c.player]?.alignment||'Neutral';
         const _waiveBan=hasDisc(c.player,'sd31');
-        const hireWage=h.player===null?heroHireWage(kingdomAlign,h.alignment,_waiveBan):(h.pay||1);
+        const hireWage=h.player===null?heroHireWage(kingdomAlign,h.alignment,_waiveBan,h):(h.pay||1);
         if(hireWage==null){
           log('hire',`${h.name} (${h.alignment}) recoils from ${c.name}'s offer — ${kingdomAlign==='Divine'?'no creature of the grave will serve a Divine crown':'the faithful will never serve an Undead throne'}. (Alignment gulf too wide: Divine and Undead cannot hire one another.)`,{actor:c.player,targets:[c.player]});
           break;
         }
         if((player.gold||0)<hireWage){log('hire',`${c.name} cannot afford to hire ${h.name} — needs ${hireWage}g/turn, treasury has only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
         h.pay=hireWage;
+        // remember the ALIGNMENT part of the bargain (wage minus the skill premium). recalcHeroPay
+        // rebuilds the wage from skills whenever the hero improves in service, and without this the
+        // alignment premium a Divine crown paid for an Undead sword would vanish on their first
+        // skill rise.
+        h._hireAlignWage=Math.max(1, hireWage-heroSkillWage(h));
         player.gold-=hireWage;h.player=c.player;h.name=h.name.replace(' (wandering)','');
         if(h.race==='Dwarven'&&G.players[c.player]?.race==='Dwarven') grantMithrilTo(h, G); // mithril on hire into a dwarf realm
         player.heroes=(player.heroes||[]);player.heroes.push(h.id);
@@ -18598,7 +18641,7 @@ const BATTLE_ARMY_SPELLS={
             if(_tgt.player!=null) _catch+=discSum(_tgt.player,'catchSpy','pct',e=>_spyScope(e,_tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
             _catch=Math.max(5,Math.min(95,_catch));
             const _cr=d100();
-            log('system',`📊 Detection — ${_tgt.name} (Spy ${_tgSpy}) noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${fmtRoll(_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            log('system',`📊 Detection — ${_tgt.name}${statNote(c.player,_tgt,'spy')} noticing ${c.name}${_tgRealmLand?' in their own land':_myLand?' in your land':''}: ${oddsNote(c.player,_tgt,_catch,_cr)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             if(_cr<=_catch){
               if(_tgt.player!=null) log('system',`[Intelligence] ${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''} was caught spying on ${_tgt.name} in ${prov.name}.`,{actor:c.player,targets:[_tgt.player],provinceId:prov.id,charId:_tgt.id});
               thiefCaughtScuffle(c,_tgt,'spying on them');
@@ -18706,7 +18749,7 @@ const BATTLE_ARMY_SPELLS={
           if(!bh||bh.player!==null||!bh.alive||bh._isNeutralGuard||bh._justDefeated||!_visible){
             log('hire',`${c.name}'s brokers find no such hero within reach of the realm's agents.`,{actor:c.player,targets:[c.player]});break;}
           if(bh._releasedTurn===G.turn){log('hire',`${bh.name} was only just released from service and will hear no offers this turn. Try again next turn.`,{actor:c.player,targets:[c.player]});break;} // same rule as Hire Hero
-          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(c.player,'sd31'));
+          const bWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',bh.alignment,hasDisc(c.player,'sd31'),bh);
           if(bWage==null){log('hire',`${bh.name} will not treat with your brokers — the alignment gulf is too wide.`,{actor:c.player,targets:[c.player]});break;}
           if((player.gold||0)<bWage){log('hire',`${c.name} cannot afford ${bh.name} — needs ${bWage}g/turn.`,{actor:c.player,targets:[c.player]});break;}
           bh.pay=bWage; player.gold-=bWage;
@@ -19327,7 +19370,7 @@ const BATTLE_ARMY_SPELLS={
         noteServedRealm(c,c.player); // the releasing realm stays in their service history
         c.player=null; c._isNeutralGuard=false; delete c._isHeir; delete c.hiredInPhase; delete c._pursuit;
         c._releasedTurn=G.turn; c._releasedBy=_relPi;
-        c.pay=Math.max(1,Math.ceil(Object.values(c.skills||{}).reduce((s,v)=>s+(v||0),0)/4)); // wandering default; the real hire wage is alignment-based
+        delete c._hireAlignWage; c.pay=Math.max(1,1+heroSkillWage(c)); // wandering default; the real asking price is rebuilt at the hire desk (alignment + skill premium)
         if(G.turnOrders[c.id]) for(let p2=ph+1;p2<5;p2++) G.turnOrders[c.id][p2]=null;
         log('hire',`🕊 ${c.name} is released from ${_relPl?_relPl.name:'the realm'}'s service in ${prov.name} and takes up the wanderer's life.${_itemNote} They may be hired again from next turn.`,{actor:_relPi,targets:[_relPi],provinceId:prov.id,charId:c.id,phase:ph});
         break;
@@ -19977,7 +20020,7 @@ const BATTLE_ARMY_SPELLS={
             // realm.
             if(t._releasedTurn===G.turn&&t._releasedBy===c.player){ log('system',`${c.name}'s Charm finds ${t.name} unmoved — a hero only just dismissed will not be drawn back the same season.`,{actor:c.player,targets:[c.player]}); break; }
             // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
-            const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'));
+            const _chWage=heroHireWage(G.players[c.player]?.alignment||'Neutral',t.alignment,hasDisc(c.player,'sd31'),t);
             if(_chWage==null){
               log('system',`${c.name}'s Charm washes over ${t.name} and finds nothing to grip — ${t.alignment} souls cannot be swayed to a ${G.players[c.player]?.alignment} crown.`,{actor:c.player,targets:[c.player]});
               break;
@@ -20644,7 +20687,13 @@ const BATTLE_ARMY_SPELLS={
         const chance=Math.min(80, 25+skillLevel(c,'spy')*6)-(victim.isKing?25:0);
         const roll=d100();
         markProvinceCombat(prov,[c.player,victim.player]); // purple swords: knife-work counts as a personal combat
-        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id});
+        // The roll line is the ASSASSIN'S working: it names their own Spy level and the odds, so it
+        // goes to their realm alone. The victim's realm is told an attempt was made on their hero —
+        // they would certainly notice a knife in the dark — but never the assassin's skill or the
+        // numbers behind it. (Before 2026-09-26 both realms got the full line, handing the victim
+        // the attacker's Spy level for free.)
+        log('spy',`📊 Assassination — ${c.name} (Spy ${skillLevel(c,'spy')}) stalks ${victim.name}: ${chance}% (roll ${roll}${roll<=chance?' ✓':' ✗'})${victim.isKing?' (king — heavily guarded)':''}`,{actor:c.player,charIds:[c.id,victim.id].filter(v=>v!=null),targets:[c.player],provinceId:prov.id});
+        if(victim.player!=null&&victim.player!==c.player) log('spy',`🗡 An attempt is made on ${victim.name}'s life${victim.isKing?' — the royal guard close ranks':''}.`,{actor:victim.player,charIds:[victim.id].filter(v=>v!=null),targets:[victim.player],provinceId:prov.id});
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
           else { log('combat',`🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true});
@@ -23052,7 +23101,7 @@ const BATTLE_ARMY_SPELLS={
     if(c._encounteredThisPhase===quarry.id||quarry._encounteredThisPhase===c.id){ endPursuit(c); return; }
     const chance=pursuitCatchChance(c,quarry);
     const roll=d100();
-    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name} (Spy ${effStat(quarry,'spy')}): ${fmtRoll(chance,roll)}`,
+    log('system',`📊 Pursuit — ${c.name} (Spy ${effStat(c,'spy')}) closing on ${quarry.name}${statNote(c.player,quarry,'spy')}: ${oddsNote(c.player,quarry,chance,roll)}`,
       {actor:c.player,targets:[c.player]});
     if(roll>chance){
       log('move',`${quarry.name} slips away through the country around ${prov.name} — ${c.name} keeps the trail but cannot close.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -23122,7 +23171,7 @@ const BATTLE_ARMY_SPELLS={
         const _pct=Math.max(ENC_BREAK_RANKS_MIN,Math.min(ENC_BREAK_RANKS_MAX,
           ENC_BREAK_RANKS_BASE-ENC_BREAK_RANKS_PER_UNIT*_units+ENC_BREAK_RANKS_SPY*_spy-ENC_BREAK_RANKS_TAC*_tac));
         const _roll=d100();
-        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''} (Tactical ${_tac}): ${fmtRoll(_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        log('system',`📊 Breaking ranks — ${c.name} (Spy ${_spy}) slips toward ${quarry.name}'s tent through a camp of ${_units} unit${_units!==1?'s':''}${statNote(c.player,quarry,'tactical')}: ${oddsNote(c.player,quarry,_pct,_roll)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         if(_roll>_pct){
           log('system',`${c.name} runs ${quarry.name} to ground in ${prov.name}, but the sentries of their column are awake — the challenger is turned away from the lines before reaching the commander, and the chase is abandoned.`,{actor:c.player,targets:[c.player],charId:c.id,provinceId:prov.id});
           notifyTarget(quarry,`👁 ${c.name}${realmTag(c.player)} came for ${quarry.name} in ${prov.name} — a lone challenger, turned away by the sentries before reaching the tent.`,ph,'system');
@@ -25321,6 +25370,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1713</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1745</div>
 </body>
 </html>
