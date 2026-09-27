@@ -369,7 +369,7 @@ section{display:none;}.section-active{display:block;}
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
 const KC_DATA_MIN='2026.09.26-1745';
-const KC_BUILD_STAMP='2026.09.26-1745'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.27-1625'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -3187,7 +3187,8 @@ const LEGENDARY_NAMES_P=new Set(LEGENDARY_ITEMS_P.map(it=>it.name));
 //   UTILITY : the field skills (tactical, march, naval, sage, spy, thief, explorer, druid), tax and army
 //             and unit-type bonuses, siege, home defence, fleet, spell charms, oracle/hidden/promote,
 //             and a +1 in psychic or necromancy (measured: worth less than the weakest ward in the game,
-//             and both are realm schools — the spy's and the army-raiser's).
+//             and both are realm schools — the spy's and the army-raiser's) — but ONLY when that +1
+//             carries no pc rider of its own; a rider makes it combat whatever the stat (2026-09-27).
 // A combat item's floor is Moderate; a utility item may sit anywhere. Toby's ruling: a utility item in a
 // weapon/armour/shield slot (Boots of the Wind, Tyrant's Sceptre) stays eligible for Weak — giving up
 // the slot to carry it is the trade.
@@ -3197,8 +3198,13 @@ const ITEM_FIELD_SCHOOLS=new Set(['psychic','necromancy']);
 function itemRole(it){
   const e=(it&&it.effect)||{}; const s=e.stat;
   if(ITEM_COMBAT_STATS.has(s)||ITEM_DUEL_SCHOOLS.has(s)) return 'combat';
-  if(ITEM_FIELD_SCHOOLS.has(s)) return ((e.bonus||0)>=2)?'combat':'utility';
+  // A pc RIDER outranks the stat it rides on (2026-09-27). The field-schools test used to run first
+  // and return early, so a Necromancy +1 item carrying a duel effect - Rod of the Pale Court, a DR-2
+  // ward against undead and fiends - was filed utility and could sit in a Weak lair, against rule 1.
+  // The rider is read the same way pcCharCombatant reads it, so this cannot file anything as combat
+  // for a power it does not have.
   if(e.pc) return 'combat';
+  if(ITEM_FIELD_SCHOOLS.has(s)) return ((e.bonus||0)>=2)?'combat':'utility';
   return 'utility';
 }
 // the lowest ordinary tier an item may hold: combat never below Moderate
@@ -8006,33 +8012,82 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     return hc;
   };
   const layoutMinDist=(hc)=>{let ms=Infinity;for(let a=0;a<hc.length;a++)for(let b=a+1;b<hc.length;b++){const d=cellDistRC(hc[a],hc[b]);if(d<ms)ms=d;}return hc.length<2?Infinity:ms;};
-  // Build many candidate layouts, then HARD-REQUIRE a minimum spacing of 4 hexes — i.e. at least 3
-  // empty ("neutral") provinces between every pair of capitals. The map ladder (sizemap) is sized
-  // so this floor is reliably achievable at each player count; we pick RANDOMLY among all layouts
-  // that meet it (for row variety) and only fall back to the best-available layout if — on an
-  // undersized custom map — none reaches the floor. Taking the single most-spread layout every time
-  // forces the degenerate "everyone on the extreme rows" result, so random-among-acceptable
-  // matters.
+  // HARD FLOOR: a minimum spacing of 4 hexes — i.e. at least 3 empty ("neutral") provinces between
+  // every pair of capitals. The map ladder (sizemap) is sized so this is reliably achievable at
+  // each player count.
   const KING_MIN_SPACING=4; // >=3 neutral hexes between capitals
-  // 2026-09-21 (Toby: "make sure there are at least three provinces between homes, bots
-  // included"): 80 layouts were tried and, if NONE reached the floor, the roomiest was taken anyway.
-  // Now keep drawing layouts (up to 1,200) until at least one meets it, and only then fall back.
-  // `cellDistRC` is a lower bound on the true hex distance (max(|dc|,|dr|) on the wrapped offset
-  // grid), so a layout accepted here is never closer than the floor in reality.
-  const _cands=[]; let _nFloor=0;
-  for(let att=0;att<1200;att++){ const c=buildLayout(); const d=layoutMinDist(c); _cands.push([c,d]); if(isFinite(d)&&d>=KING_MIN_SPACING) _nFloor++; if(att>=79&&_nFloor>0) break; }
-  const _atFloor=_cands.filter(x=>isFinite(x[1])&&x[1]>=KING_MIN_SPACING);
-  if(!_atFloor.length) console.warn(`World gen: no home layout on a ${cols}x${rows} map keeps ${KING_MIN_SPACING} hexes between all ${setupPlayers.length} capitals — the map is too small for this many realms.`);
-  let _acceptable;
-  if(_atFloor.length){ _acceptable=_atFloor; }
-  else {
-    // Undersized map: no layout reaches the floor. Keep the roomiest layouts available.
-    const _finiteMins=_cands.map(x=>x[1]).filter(v=>isFinite(v));
-    const _maxMin=_finiteMins.length?Math.max(..._finiteMins):Infinity;
-    _acceptable=_cands.filter(x=>x[1]>=_maxMin);
+  // 2026-09-27 (Toby item 1): capitals are now placed as FAR APART AS THE MAP ALLOWS, not merely
+  // "far enough". The previous pass drew up to 1,200 farthest-point layouts, kept every one that
+  // reached the floor of 4, and then chose among them AT RANDOM — so a world that could have seated
+  // its kings 6 hexes apart routinely seated them at 4, and the spread was uneven because only the
+  // single tightest pair was ever looked at. Three changes:
+  //   1. SCORED, not merely floor-tested. `layoutScore` is a lexicographic triple —
+  //      [minimum pairwise distance, −(number of pairs sitting at that minimum), Σ each king's
+  //      nearest-neighbour distance]. The first term is the guarantee, the second breaks up
+  //      crowding, and the third rewards an even spread once the tight pairs are settled.
+  //   2. REFINED by hill-climbing (`refineLayout`): each king in turn is offered every free
+  //      eligible cell and moved wherever the score improves, sweeping until nothing improves.
+  //      Farthest-point placement is greedy and its random first seed routinely costs it a hex or
+  //      two; the climb recovers that, and it is what makes the result even rather than merely
+  //      spread. Sweeps are capped so world gen stays quick.
+  //   3. The BEST-scoring refined layout wins, with a random draw only among EXACT ties — row
+  //      variety is kept without paying for it in spacing.
+  // `cellDistRC` is a lower bound on the true hex distance (max(|dc|,|dr|,(|dc|+|dr|)/2) on the
+  // wrapped offset grid), so a layout accepted here is never closer than the floor in reality.
+  const layoutScore=(hc)=>{
+    const n=hc.length;
+    if(n<2) return [Infinity,0,Infinity];
+    let mn=Infinity,nAtMin=0;
+    const near=new Array(n).fill(Infinity);
+    for(let a=0;a<n;a++) for(let b=a+1;b<n;b++){
+      const d=cellDistRC(hc[a],hc[b]);
+      if(d<near[a]) near[a]=d;
+      if(d<near[b]) near[b]=d;
+      if(d<mn){ mn=d; nAtMin=1; } else if(d===mn) nAtMin++;
+    }
+    let nnSum=0; for(let i=0;i<n;i++) nnSum+=near[i];
+    return [mn,-nAtMin,nnSum];
+  };
+  const scoreCmp=(x,y)=>{ for(let i=0;i<x.length;i++){ if(x[i]!==y[i]) return x[i]<y[i]?-1:1; } return 0; };
+  const HOME_REFINE_SWEEPS=6;
+  const refineLayout=(hc)=>{
+    let cur=hc.slice(), curS=layoutScore(cur);
+    if(cur.length<2) return [cur,curS];
+    for(let sweep=0;sweep<HOME_REFINE_SWEEPS;sweep++){
+      let moved=false;
+      for(let k=0;k<cur.length;k++){
+        const taken=new Set(cur.map(h=>h.id));
+        let bestCell=null,bestS=curS;
+        for(const cell of eligibleCells){
+          if(taken.has(cell.id)) continue;
+          const keep=cur[k]; cur[k]=cell;
+          const s=layoutScore(cur);
+          cur[k]=keep;
+          if(scoreCmp(s,bestS)>0){ bestS=s; bestCell=cell; }
+        }
+        if(bestCell){ cur[k]=bestCell; curS=bestS; moved=true; }
+      }
+      if(!moved) break;
+    }
+    return [cur,curS];
+  };
+  // Seeds: a handful of refined layouts is worth far more than a thousand raw ones, but on an
+  // undersized custom map keep drawing (raw, unrefined, which is cheap) until something reaches the
+  // floor before spending the refinement budget.
+  const HOME_SEEDS=10;
+  const _cands=[];
+  for(let att=0;att<HOME_SEEDS;att++) _cands.push(refineLayout(buildLayout()));
+  if(!_cands.some(x=>isFinite(x[1][0])&&x[1][0]>=KING_MIN_SPACING)){
+    for(let att=0;att<400;att++){
+      const raw=buildLayout();
+      if(layoutMinDist(raw)>=KING_MIN_SPACING){ _cands.push(refineLayout(raw)); break; }
+    }
   }
+  const _best=_cands.reduce((b,x)=>(b==null||scoreCmp(x[1],b)>0)?x[1]:b,null);
+  const _acceptable=_cands.filter(x=>scoreCmp(x[1],_best)===0);
   const _pick=_acceptable.length?_acceptable[Math.floor(Math.random()*_acceptable.length)]:_cands[0];
-  let homeCells=_pick[0], homeMin=_pick[1];
+  let homeCells=_pick[0], homeMin=_pick[1][0];
+  if(!(homeMin>=KING_MIN_SPACING)) console.warn(`World gen: no home layout on a ${cols}x${rows} map keeps ${KING_MIN_SPACING} hexes between all ${setupPlayers.length} capitals (best ${homeMin}) — the map is too small for this many realms.`);
   const homeIdSet=new Set(homeCells.map(h=>h.id));
 
   // ── PHASE 2: tailor each king's home NEIGHBOURHOOD ── Pre-assign terrain (and a tax band) to
@@ -10669,6 +10724,11 @@ function buildTurnReport(gameState, playerIndex){
         name:gameState.players[o]?.name||('Realm '+(o+1)),
         color:gameState.players[o]?.color||null,
         alignment:gameState.players[o]?.alignment||null,
+        // 2026-09-27 (Toby item 7): a realm that has quit the game is no longer a party anyone can
+        // treat with. The portal shows the state and withdraws every diplomacy control against it.
+        conceded:!!gameState.players[o]?.conceded,
+        concededTurn:gameState.players[o]?.concededTurn||null,
+        eliminated:!!gameState.players[o]?._eliminated,
         relation:relOf(o)
       })) };
     })(),
@@ -10702,7 +10762,7 @@ function buildTurnReport(gameState, playerIndex){
         canCallReckoning: isPublic && kingAlive && !rk && !over && _elig.ok,
         kingAlive, // Orders → Realm shows why the call is unavailable
         reckoning: rk?{byName:gameState.players[rk.by]?.name||null, calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
-        gameOver: over?{winner:over.winner, winnerName:over.winner!=null?(gameState.players[over.winner]?.name||null):null, byElimination:!!over.byElimination, byConcession:!!over.byConcession, standings:(over.standings||[]).map(s=>({...s,titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)}))}:null,
+        gameOver: over?{winner:over.winner, winnerName:over.winner!=null?(gameState.players[over.winner]?.name||null):null, byElimination:!!over.byElimination, byConcession:!!over.byConcession, byReckoning:!!over.byReckoning, standings:(over.standings||[]).map(s=>({...s,titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)}))}:null,
         standings: isPublic?st.standings.map(s=>({...s, titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)})):null,
         holders: isPublic?Object.fromEntries(TITLE_DEFS.map(t=>{ const h=st.titles[t.key]; const hc=h.charId!=null?(gameState.characters||[]).find(c=>c.id===h.charId):null; return [t.key,{name:t.name,prize:t.prize,holderIndex:h.playerIndex,holderName:h.playerIndex!=null?(gameState.players[h.playerIndex]?.name||null):null,charName:hc?hc.name:null,kingdomLevel:!!t.kingdomLevel,req:t.req,perk:t.perk,mine:h.playerIndex===playerIndex,race:_race[t.key]||null}]; })):null,
         minor: isPublic?(()=>{
@@ -11868,7 +11928,14 @@ async function runTurn(opts){
     // allowance and a single success closes it. The log is keyed to the current turn and reset each
     // turn.
     const _sgPh=(_logCtx.phase!=null?_logCtx.phase:_currentPhase);
-    if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
+    if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}, turnSkills:{}};
+    if(!real._sgLog.turnSkills) real._sgLog.turnSkills={};
+    // 2026-09-27 (Toby item 5): ONE EXPERIENCE RISE PER SKILL PER HERO PER TURN. Once a skill has
+    // risen through experience this turn, no further experience check is rolled for that skill for
+    // the rest of the turn — not in a later phase, not in another battle, not from a move. The
+    // PRACTICE order is deliberately outside this rule: it neither sets the lock nor is stopped by
+    // it (a drilled skill still feeds the ×0.8 diminishing return below).
+    if(real._sgLog.turnSkills[skill]) return;
     if(real._sgLog.phaseNo!==_sgPh){ real._sgLog.phaseNo=_sgPh; real._sgLog.phaseSkills={}; }
     if(real._sgLog.phaseSkills[skill]) return;                       // already raised this skill this phase
     // 2026-09-26b (Toby item 7): one rise per phase. A pending candidate list left over from an
@@ -11921,13 +11988,18 @@ async function runTurn(opts){
   function resolvePendingSkillGain(real){
     const P=real&&real._sgPending; if(!P) return;
     real._sgPending=null; if(P.done) return; P.done=true;
-    const list=(P.list||[]).filter(e=>e&&e.skill);
+    if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}, turnSkills:{}};
+    if(!real._sgLog.turnSkills) real._sgLog.turnSkills={};
+    // 2026-09-27 (Toby item 5): a candidate whose skill has already risen through experience this
+    // turn (a Practice-driven phase change, or a rise settled between the roll and the draw) is
+    // dropped before the draw, so the lock cannot be slipped by a stale pending entry.
+    const list=(P.list||[]).filter(e=>e&&e.skill&&!real._sgLog.turnSkills[e.skill]);
     if(!list.length) return;
     const e=list[Math.floor(Math.random()*list.length)];
     const skill=e.skill; const lvl=(real.skills||{})[skill]||0;
     if(lvl>=9) return;
-    if(!real._sgLog || real._sgLog.turn!==G.turn) real._sgLog={turn:G.turn, phaseNo:e.phase, phaseSkills:{}, provSkills:{}, turnGains:{}};
     (real._sgLog.gainedPhases||(real._sgLog.gainedPhases={}))[e.phase]=true;
+      real._sgLog.turnSkills[skill]=true; // 2026-09-27 (Toby item 5): this skill is done with experience for the turn
       real._sgLog.turnGains=real._sgLog.turnGains||{}; real._sgLog.turnGains[skill]=((real._sgLog.turnGains[skill])||0)+1;
       real.skills=real.skills||{}; real.skills[skill]=lvl+1;
       if(real.player==null) real._neutralXpTurn=G.turn; // battle-earned: this turn's idle roll is spent
@@ -13585,7 +13657,7 @@ const BATTLE_ARMY_SPELLS={
       const friendlyAdj=retreatOptions(c, prov, _retLive); // own/allied ground it could legally enter, or the unowned sea it sailed from
       prov._hadBattleThisTurn=true;
       const infStay=activeItems(c).some(it=>it.effect&&it.effect.stat==='infStay');
-      if(friendlyAdj.length===0&&!infStay){ const _st=seaTrapLine(cName,c,prov,_retLive); if(_st) narrative.push(_st); }
+      const _npcSeaTrap=(friendlyAdj.length===0&&!infStay)?seaTrapLine(cName,c,prov,_retLive):null;
       // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
       // there is water to reach. They withdraw to the ships rather than being cut down.
       const _seaEscape=_npcCorsairs&&adjProvs.some(p2=>p2&&p2.terrain==='sea');
@@ -13594,7 +13666,15 @@ const BATTLE_ARMY_SPELLS={
       const _sfNPC=_npcSF&&armies.some(a=>!a._died);
       const _liveNPC=armies.filter(a=>!a._died&&!a._disbanded);
       const _dmNPC=_liveNPC.length>0&&_liveNPC.every(a=>a._isSkeletal)&&G.players[c.player]?.alignment==='Undead';
-      if(friendlyAdj.length===0 || infStay){
+      // 2026-09-27 (Toby item 3): a beaten force with SHIPS on a coastal shore splits — the fleet
+      // makes for friendly water with the hero and all it can lift, the rest falls back overland or
+      // holds the ground. Tried before the trapped branch, because a mixed column that cannot carry
+      // itself reads as "nowhere to retreat" to retreatOptions while its hulls could still sail.
+      // The Shield-Wall Rune (infStay) refuses every retreat, so it is honoured first.
+      const _navalSplitNPC=infStay?'':navalSplitRetreat(c, prov, _retLive, narrative, cName);
+      if(_navalSplitNPC){ /* handled above — no further retreat or rout */ }
+      else if(friendlyAdj.length===0 || infStay){
+        if(_npcSeaTrap) narrative.push(_npcSeaTrap);
         if(_dmNPC&&!infStay){
           narrative.push(`💀 Deathless March — ${cName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`);
           prov._battleUnresolved=true;
@@ -13757,14 +13837,23 @@ const BATTLE_ARMY_SPELLS={
     const plan=[];
     // A CA: spell so they also cast in a personal encounter/duel (the plan-filter keeps CA:).
     if(magic>0) plan.push('CA:'+NPC_SPELL_BY_SCHOOL[bestSchool]);
-    // Sept 2026 (bot hunter tactics): a player-led (bot) character with a school at 2+ readies a
-    // SECOND spell — the per-fight cap allows two from level 2 — from that school, or from a second
-    // school at 1+.
+    // Sept 2026 (bot hunter tactics): a player-led (bot) character readies a SECOND spell — the
+    // per-fight cap allows two from level 2 — from a second school they know.
+    // 2026-09-27 (Toby item 2): ONE ATTEMPT PER DISTINCT SPELL. The old line pushed the SAME spell
+    // a second time whenever the best school stood at 2+ ("Lightning Bolt, Lightning Bolt"), which
+    // is what Toby was seeing in bot plans. A second CA: entry is now added only when it is a
+    // DIFFERENT spell — the next school the hero actually knows — whatever the best school's level.
     if(ch.player!=null && magic>0){
       const second=schools.filter(s=>s!==bestSchool&&effStat(ch,s)>0).sort((x,y)=>effStat(ch,y)-effStat(ch,x))[0];
-      if(magic>=2) plan.push('CA:'+NPC_SPELL_BY_SCHOOL[bestSchool]);
-      else if(second) plan.push('CA:'+NPC_SPELL_BY_SCHOOL[second]);
+      if(second&&NPC_SPELL_BY_SCHOOL[second]&&NPC_SPELL_BY_SCHOOL[second]!==NPC_SPELL_BY_SCHOOL[bestSchool]) plan.push('CA:'+NPC_SPELL_BY_SCHOOL[second]);
     }
+    // Final guard on the spell slots (2026-09-27, Toby item 2): whatever built the list above, no
+    // spell may be attempted twice in one plan. Done here, before the bow and blade actions fill
+    // the budget, so a dropped duplicate frees a real action rather than leaving a short plan.
+    { const _seen=new Set();
+      for(let i=plan.length-1;i>=0;i--){ const s=String(plan[i]).toUpperCase();
+        if(!s.startsWith('CA:')) continue;
+        if(_seen.has(s)) plan.splice(i,1); else _seen.add(s); } }
     if(arch>0){
       // A Berserk charges regardless; everyone else works the bow while the range allows it.
       const shots=(temper==='Berserk')?1:(arch>=melee?3:1);
@@ -16136,7 +16225,14 @@ const BATTLE_ARMY_SPELLS={
       // DWARF — Shield Fort: trapped, the Guard hold contested WITHOUT extra no-escape losses; with
       // a path open, they withdraw in good order (mechanics applied above) — no pin.
       const _dmDef=def.armies.length>0&&def.armies.every(a=>a._isSkeletal)&&G.players[def.player]?.alignment==='Undead';
-      if(defFriendlyAdj.length===0){
+      // 2026-09-27 (Toby item 3): the naval split. Evaluated once, ahead of the branch chain, so a
+      // mixed column whose hulls can still sail is never filed as "nowhere to retreat". A host that
+      // is still the stronger and means to fight on (_wantsToStay) keeps that choice, and a dead
+      // commander never retreats — both are checked first. Cut the Line closes the water to it too.
+      const _defStays=(defFriendlyAdj.length>0)&&_wantsToStay(def.armies, def, atk.armies, atk);
+      const _navalDef=(_defStays||def.alive===false||def.killedThisTurn)?'':navalSplitRetreat(def, prov, def.armies, narrative, defName, _cutAtk);
+      if(_navalDef){ if(_navalDef==='stay'){ prov._battleUnresolved=true; _heldField=true; } }
+      else if(defFriendlyAdj.length===0){
         { const _st=seaTrapLine(defName,def,prov,def.armies); if(_st) narrative.push(_st); }
         if(_dmDef){
           // UNDEAD — Deathless March: the dead do not panic. A trapped all-skeletal force takes no
@@ -16152,7 +16248,7 @@ const BATTLE_ARMY_SPELLS={
           def.armies=def.armies.filter(a=>!a._died&&!a._disbanded);
           if(def.armies.length>0) prov._battleUnresolved=true; _heldField=true; // trapped survivors fight again next phase
         }
-      } else if(_wantsToStay(def.armies, def, atk.armies, atk)){
+      } else if(_defStays){
         // still the stronger host — the defender refuses to yield and fights on.
         narrative.push(`${defName}'s forces are pushed back but not broken — still the stronger host (${n0(_stayLo)} vs ${n0(_stayWi)} on the same footing, before fortune), they hold their ground in ${prov.name} and re-form to fight on rather than retreat.`);
         prov._battleUnresolved=true; _heldField=true;
@@ -16227,7 +16323,11 @@ const BATTLE_ARMY_SPELLS={
       // DWARF — Shield Fort: trapped, the Guard hold contested WITHOUT extra no-escape losses; with
       // a path open, they withdraw in good order (mechanics applied above) — no pin.
       const _dmAtk=atk.armies.length>0&&atk.armies.every(a=>a._isSkeletal)&&G.players[atk.player]?.alignment==='Undead';
-      if(atkFriendlyAdj.length===0){
+      // 2026-09-27 (Toby item 3): the naval split — see the defender's block above for the reasoning.
+      const _atkStays=(atkFriendlyAdj.length>0)&&_wantsToStay(atk.armies, atk, def.armies, def);
+      const _navalAtk=(_atkStays||atk.alive===false||atk.killedThisTurn)?'':navalSplitRetreat(atk, prov, atk.armies, narrative, atkName, _cutDef);
+      if(_navalAtk){ if(_navalAtk==='stay'){ prov._battleUnresolved=true; _heldField=true; } }
+      else if(atkFriendlyAdj.length===0){
         { const _st=seaTrapLine(atkName,atk,prov,atk.armies); if(_st) narrative.push(_st); }
         if(_dmAtk){
           narrative.push(`💀 Deathless March — ${atkName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${prov.name}.`);
@@ -16241,7 +16341,7 @@ const BATTLE_ARMY_SPELLS={
           atk.armies=atk.armies.filter(a=>!a._died&&!a._disbanded);
           if(atk.armies.length>0) prov._battleUnresolved=true; _heldField=true; // trapped survivors fight again next phase
         }
-      } else if(_wantsToStay(atk.armies, atk, def.armies, def)){
+      } else if(_atkStays){
         // still the stronger host — the attacker refuses to break off and fights on.
         narrative.push(`${atkName}'s assault is thrown back but their host is still the stronger (${n0(_stayLo)} vs ${n0(_stayWi)} on the same footing, before fortune) — they hold the field in ${prov.name} and re-form to press the attack again rather than retreat.`);
         prov._battleUnresolved=true; _heldField=true;
@@ -18732,7 +18832,7 @@ const BATTLE_ARMY_SPELLS={
         const _ctaQ=(discEff(c.player,'ctaQuality').filter(e=>e.pct==null||Math.random()<e.pct).map(e=>e.quality).find(q=>q&&QUALITY_TIERS.includes(q)))||'Green'; // ag05 Muster Rolls (a chance per muster)
         ctaProv.garrisonArmies.push({type:ctaType,quality:_ctaQ,race:ctaProv.race||'Human',unitName:armyUnitName(ctaType)});
         player._calledToArmsTurn=G.turn;
-        log('hire',`📯 Call to Arms! The folk of ${ctaProv.name} answer their king — ${_ctaQ==='Green'?'a Green':'an '+_ctaQ} ${ctaType} joins the province garrison, free of wages this muster. (Once per turn.)`,{actor:c.player,targets:[c.player],provinceId:ctaProv.id,public:true});
+        log('hire',`📯 Call to Arms! The folk of ${ctaProv.name} answer their king — ${_ctaQ==='Green'?'a Green':'an '+_ctaQ} ${ctaType} joins the province garrison, free of wages this muster. (Once per turn.)`,{actor:c.player,targets:[c.player],provinceId:ctaProv.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
         break;
       }
       // NEUTRAL — Broker: money moves what armies cannot. Remote hire, or a paid remote spy.
@@ -18895,7 +18995,7 @@ const BATTLE_ARMY_SPELLS={
               const disc=_side[Math.floor(Math.random()*_side.length)];
               player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1;
               if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; }
-              if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } }
+              if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } }
               log('explore',`💡 An unlooked-for find! Among the pages ${c.name} was not even studying, **${disc.name}** (${disc.category}) comes to light — and the ordinary course of study is set aside for it. ${disc.desc}`,{actor:c.player,targets:[c.player]});
               trySkillGain(c,'sage',SKILLGAIN_STD);
               _sideFound=true;
@@ -18917,14 +19017,14 @@ const BATTLE_ARMY_SPELLS={
             player.pendingDiscoveryChoices.push({key:`rc${G.turn}_${c.id}_${ph}`,turn:G.turn,charId:c.id,charName:c.name,category:(_rcat&&_rcat.toLowerCase()!=='any')?_rcat:'',options:[d1.id,d2.id]});
             TM(c).discoveries+=1; // TITLE MERIT: Loremaster — the deed is the research, whichever is kept
             if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
-            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } } // SAGE L8
+            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } } // SAGE L8
             log('explore',`💡 ${c.name}'s research bears fruit — two discoveries come to light: **${d1.name}** (${d1.category}) and **${d2.name}** (${d2.category}). Only one can be pursued: choose which to keep in next turn's orders (the 💡 Research box just under the Realm section). The other will be lost for good.`,{actor:c.player,targets:[c.player]});
             trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
           } else if(available.length>0){
             const disc=available[Math.floor(Math.random()*available.length)];
             player.discoveries.push({id:disc.id,name:disc.name,category:disc.category,desc:disc.desc,turnDiscovered:G.turn}); TM(c).discoveries+=1; // TITLE MERIT: Loremaster
             if(perkTier(c,'sage')>0){ player.gold=(player.gold||0)+5; } // SAGE L6: +5g per new discovery
-            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+2); } } // SAGE L8: +2 tax (max 10) to the province you are in
+            if(perkTier(c,'sage')>=3){ const _sp=provOf(c); if(_sp&&_sp.owner===c.player){ const _sb=_sp.tax||0; _sp.tax=Math.min(10,_sb+1); } } // SAGE L8 (2026-09-27, Toby item 4): +1 tax (max 10) to the province you are in — was +2
             log('explore',`💡 ${c.name}'s research bears fruit! **${disc.name}** (${disc.category}) discovered — the last discovery this field still holds for your realm, so there is nothing to choose between. ${disc.desc}`,{actor:c.player,targets:[c.player]});
             trySkillGain(c,'sage',SKILLGAIN_STD); // Sage: made a discovery
           } else {
@@ -19024,7 +19124,7 @@ const BATTLE_ARMY_SPELLS={
           // a practice rise counts toward the same per-turn tally that dampens EXPERIENCE gains
           // (×0.8 per earlier rise of this skill this turn, see trySkillGain), so a skill drilled
           // up in phase 1 is proportionally harder to raise again in the field later on.
-          if(!c._sgLog || c._sgLog.turn!==G.turn) c._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}};
+          if(!c._sgLog || c._sgLog.turn!==G.turn) c._sgLog={turn:G.turn, phaseNo:null, phaseSkills:{}, provSkills:{}, turnGains:{}, turnSkills:{}};
           c._sgLog.turnGains=c._sgLog.turnGains||{}; c._sgLog.turnGains[skill]=(c._sgLog.turnGains[skill]||0)+1;
           // 2026-09-26b (Toby item 7): a Practice rise IS this phase's one skill rise — it closes the phase
           // to experience gains and voids any field candidates already drawn up this phase.
@@ -19836,7 +19936,7 @@ const BATTLE_ARMY_SPELLS={
             const curMonarch=G.characters.find(k=>k.isKing&&k.player===grave.player&&k.alive&&k.id!==deadHero.id);
             if(curMonarch){
               curMonarch.isKing=false; curMonarch._isHeir=false; curMonarch._pendingSkillAllocation=0;
-              log('system',`👑 ${curMonarch.name} steps down from the throne as ${deadHero.name} is restored to life — the former regent now serves the realm as a hero.`,{actor:grave.player,targets:[grave.player],provinceId:prov.id,public:true});
+              log('system',`👑 ${curMonarch.name} steps down from the throne as ${deadHero.name} is restored to life — the former regent now serves the realm as a hero.`,{actor:grave.player,targets:[grave.player],provinceId:prov.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
             }
             deadHero.isKing=true; deadHero._isHeir=false; deadHero._pendingSkillAllocation=0;
             if(G.players[grave.player]) G.players[grave.player]._resurrectableMonarchId=null; // slot spent — he lives again
@@ -19850,9 +19950,9 @@ const BATTLE_ARMY_SPELLS={
           G._resurrectedThisTurn.push(grave.id);
           const wasEnemy=(grave.player!=null&&grave.player!==c.player);
           if(grave._monarch){
-            log('explore',`✨👑 ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health and reclaims the throne of ${player.name}! The rightful king walks again, stripped of all possessions but restored in spirit and skill.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+            log('explore',`✨👑 ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health and reclaims the throne of ${player.name}! The rightful king walks again, stripped of all possessions but restored in spirit and skill.`,{actor:c.player,targets:[c.player],provinceId:prov.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
           } else {
-            log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy?' The fallen foe is bound to a new master.':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+            log('explore',`✨ ${c.name} calls upon divine power — ${deadHero.name} rises from death at full health, stripped of all possessions, and now serves ${player.name}!${wasEnemy?' The fallen foe is bound to a new master.':''}`,{actor:c.player,targets:[c.player],provinceId:prov.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
           }
           // The raise succeeded — now, and only now, honour any orders this player pre-wrote for
           // this hero. Matched on caster AND hero so a rival's pre-orders for the same corpse are
@@ -20196,7 +20296,7 @@ const BATTLE_ARMY_SPELLS={
           const _n=Math.min(_elig.length, Math.max(1, Math.floor(0.10*Math.min(spellLevel,5)*_realForce.length))); // 10% of the host per level, capped at level 5 (was 15%)
           t._phantoms=t._phantoms||[];
           shuffleP(_elig).slice(0,_n).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); t._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
-          log('explore',`✨ ${c.name} conjures phantasmal duplicates of ${_n} of ${t===c?'their':t.name+"'s"} humanoid ${_n===1?'army':'armies'} — spectral doubles that march and fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:t.location,public:true});
+          log('explore',`✨ ${c.name} conjures phantasmal duplicates of ${_n} of ${t===c?'their':t.name+"'s"} humanoid ${_n===1?'army':'armies'} — spectral doubles that march and fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:t.location}/* 2026-09-27 (Toby item 6): realm-private — never public */);
         }
         else if(fn==='illusory_hide_feature'){
           const casterProv=G.world.provinces[c.location];
@@ -20414,7 +20514,7 @@ const BATTLE_ARMY_SPELLS={
           const _nH=Math.min(_eligH.length, Math.max(1, Math.floor(0.10*Math.min(spellLevel,5)*_realForceH.length))); // 10% of the host per level, capped at level 5 (was 15%)
           c._phantoms=c._phantoms||[];
           shuffleP(_eligH).slice(0,_nH).forEach(orig=>{ if(!orig._phTag) orig._phTag='ph'+(G._phSeq=(G._phSeq||0)+1); c._phantoms.push({type:orig.type,quality:orig.quality,race:orig.race,unitName:orig.unitName,_phantomOf:orig._phTag}); }); // random selection
-          log('explore',`✨ ${c.name} conjures a Phantom Host — spectral doubles of ${_nH} of their ${_nH===1?'beast':'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          log('explore',`✨ ${c.name} conjures a Phantom Host — spectral doubles of ${_nH} of their ${_nH===1?'beast':'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`,{actor:c.player,targets:[c.player],provinceId:prov.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
         }
         else if(fn==='illusory_invisibility'){
           // Invisibility as an ACTION spell — self only. 80% to slip from all enemy sight for the
@@ -21047,6 +21147,99 @@ const BATTLE_ARMY_SPELLS={
       return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
     });
   }
+  // ── NAVAL RETREAT: THE FLEET MAKES FOR WATER (2026-09-27, Toby item 3) ─────────────────────
+  // A beaten force that has SHIPS on a coastal shore no longer falls back as one body.
+  //   • Friendly water alongside → the hulls sail there carrying the hero and as many land and
+  //     flying units as their lift allows. `pickStrandedUnits` decides exactly who fits (weakest
+  //     left ashore first) — the same rule the stranding sweep already uses, so the two can never
+  //     disagree about what a column can carry.
+  //   • Whatever will not fit falls back overland to an adjacent province of the realm's OWN if
+  //     there is one, joining its garrison (they have no commander any more). Otherwise they hold
+  //     the ground and fight again.
+  //   • NO friendly water, but friendly land → the hero and every land / flying unit march inland;
+  //     the SHIPS stay and fight on. Hulls cannot be dragged overland.
+  //   • Ships that must retreat with no water to retreat to stay and fight again.
+  // Returns '' when it did nothing (the caller then runs the ordinary retreat), 'left' when the
+  // whole force got away, or 'stay' when part of it is still contesting the province.
+  // JUDGEMENT CALL: a leaderless contingent can only join a garrison of its OWN realm. Units left
+  // on ground the realm does not hold — a landing thrown back off an enemy coast — have no
+  // garrison to join and no commander left, so they scatter as mercenaries: the same fate the
+  // engine already gives a fallen commander's host on hostile ground.
+  function _navalLeaveBehind(ch, prov, units, why, narrative, cName){
+    if(!units||!units.length) return false;
+    const owner=(ch._charmTempControl&&ch._charmOriginalPlayer!=null)?ch._charmOriginalPlayer:ch.player;
+    const temps=units.filter(a=>a._temporary), real=units.filter(a=>!a._temporary);
+    if(temps.length) narrative.push(`— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} ${temps.length===1?'is':'are'} left behind ${why}; the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`);
+    if(!real.length) return false;
+    if(prov.owner===owner){
+      prov.garrisonArmies=(prov.garrisonArmies||[]).concat(real);
+      prov._battleUnresolved=true;
+      narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left in ${prov.name} ${why} — ${real.length===1?'it holds':'they hold'} the ground and will fight again.`);
+      return true;
+    }
+    if(!G.mercenaries) G.mercenaries=[];
+    real.forEach(a=>G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
+      location:prov.id,isSea:SEA_TYPES.has(a.type),id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`}));
+    narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length===1?'it scatters':'they scatter'} into the mercenary bands.`);
+    return false;
+  }
+  function navalSplitRetreat(ch, prov, live, narrative, cName, noSea){
+    if(!ch||!prov||prov.terrain==='sea'||ch.alive===false||ch.killedThisTurn) return '';
+    live=(live||[]).filter(a=>a&&!a._died&&!a._disbanded&&!a._phantom);
+    const ships=live.filter(a=>SEA_TYPES.has(a.type));
+    if(!ships.length) return '';                                  // no fleet — the ordinary retreat applies
+    const adj=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>p2&&p2.id!==prov.id);
+    const from=G.world.provinces[ch._attackedFrom];
+    // Friendly water: ours or an ally's, plus the unowned, undefended sea a landing came from (the
+    // 2026-09-23c ruling — a beaten landing falls back to its ships).
+    const seaOk=noSea?[]:adj.filter(p2=>p2.terrain==='sea'&&!p2._flood&&(isFriendlyProvFor(p2,ch.player)
+      ||(!!from&&p2.id===from.id&&p2.owner==null&&!(p2.neutralDefenders||[]).length)));
+    const landFriendly=adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(p2,ch.player));
+    const landOwn=landFriendly.filter(p2=>p2.owner===ch.player);
+    const move=(dest)=>{ prov.characters=(prov.characters||[]).filter(id=>id!==ch.id);
+      dest.characters=dest.characters||[]; if(!dest.characters.includes(ch.id)) dest.characters.push(ch.id);
+      ch.location=dest.id; ch.locationName=dest.name; };
+    let stayed=false;
+    if(seaOk.length){
+      const dest=bestRetreat(ch,seaOk)||seaOk[0];
+      const ashore=pickStrandedUnits(live, ch);                   // exactly who the hulls cannot lift
+      const taken=live.filter(a=>!ashore.includes(a));
+      ch.armies=(ch.armies||[]).filter(a=>!ashore.includes(a));   // dead/disbanded stay for the caller's own sweep
+      move(dest);
+      narrative.push(`⛵ ${cName} puts to sea — the fleet stands off ${prov.name} and makes for ${dest.name}${taken.length?` with ${describeArmy(taken)}`:' with the hulls alone'}.`);
+      if(ashore.length){
+        const shore=bestRetreat(ch,landOwn);
+        if(shore){
+          const temps=ashore.filter(a=>a._temporary), real=ashore.filter(a=>!a._temporary);
+          if(temps.length) narrative.push(`— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} cannot be carried; the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`);
+          if(real.length){
+            shore.garrisonArmies=(shore.garrisonArmies||[]).concat(real);
+            narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} cannot be carried and fall back overland to ${shore.name}, joining its garrison.`);
+          }
+        } else stayed=_navalLeaveBehind(ch,prov,ashore,'with no room aboard and no friendly ground to fall back to',narrative,cName)||stayed;
+      }
+      refreshMovePool(ch);
+      return stayed?'stay':'left';
+    }
+    const goInland=live.filter(a=>!SEA_TYPES.has(a.type));
+    if(landFriendly.length&&goInland.length){
+      const dest=bestRetreat(ch,landFriendly)||landFriendly[0];
+      ch.armies=(ch.armies||[]).filter(a=>!ships.includes(a));
+      move(dest);
+      narrative.push(`${cName} retreats overland to ${dest.name} with ${describeArmy(goInland)} — there is no friendly water to sail to, so the ships are left behind.`);
+      stayed=_navalLeaveBehind(ch,prov,ships,'because no friendly water lies alongside for them to sail to',narrative,cName);
+      refreshMovePool(ch);
+      return stayed?'stay':'left';
+    }
+    if(!goInland.length){
+      // A fleet alone, with nowhere to sail: hulls cannot take to the road, so they stand and fight
+      // on rather than being run down in a rout they could not have fled.
+      prov._battleUnresolved=true;
+      narrative.push(`⚓ ${cName}'s ships have no friendly water to fall back to and cannot take to the road — they hold ${prov.name} and will fight again.`);
+      return 'stay';
+    }
+    return '';                                                    // nothing to fall back on at all — the ordinary rules decide
+  }
   // The line that explains WHY a beaten force at sea cannot fall back (null when that is not why).
   function seaTrapLine(name, ch, prov, force){
     if(!isOpenSea(prov)) return null;
@@ -21622,7 +21815,12 @@ const BATTLE_ARMY_SPELLS={
           if((attacker.armies||[]).length>0 && attacker.location===prov.id){
             // Attacker repelled and still here: try to retreat, else stay pinned and fight again
             const adj=retreatOptions(attacker, prov, attacker.armies||[]); // 2026-09-23c: the one retreat rule (was own LAND only)
-            if(adj.length>0){
+            // 2026-09-27 (Toby item 3): a pinned column with ships tries the naval split first — the
+            // fleet sails for friendly water with what it can lift and the rest falls back or holds.
+            const _nrLines=[]; const _nrRes=navalSplitRetreat(attacker, prov, attacker.armies||[], _nrLines, forceLabel(attacker));
+            _nrLines.forEach(l=>log('combat',l,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id}));
+            if(_nrRes){ /* handled by the naval split */ }
+            else if(adj.length>0){
               const _fromS=G.world.provinces[attacker._attackedFrom];
               const dest=(_fromS&&adj.some(p2=>p2.id===_fromS.id))?_fromS:(bestRetreat(attacker,adj)||adj[0]); // with a choice, the most valuable ground wins
               prov.characters=(prov.characters||[]).filter(id=>id!==attacker.id);
@@ -24334,13 +24532,22 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // score takes the crown and the standings are shown.
   if(!G.gameOver && G.players.length>1 && (G.players||[]).some(p=>p&&p.conceded)){
     const live=G.players.map((p,pi)=>({pi, alive:!p.conceded&&(((p.provinces)||[]).length>0||(G.characters||[]).some(c=>c.alive&&c.player===pi))})).filter(x=>x.alive).map(x=>x.pi);
-    const allAllied=live.length>=2 && live.every(a=>live.every(b=>a===b||relationBetween(a,b)==='ally'));
+    // BUG (found 2026-09-27): this tested relationBetween(a,b)==='ally'. The engine's relation
+    // value is 'allied' — areAllied is the one reader — so the allied-bloc ending could never fire.
+    const allAllied=live.length>=2 && live.every(a=>live.every(b=>a===b||areAllied(a,b)));
     if(live.length<=1 || allAllied){
+      // 2026-09-27 (Toby item 8): when everyone but one realm has conceded, the RECKONING IS CALLED
+      // AT ONCE — no grace period, no waiting for a claim. The survivor takes the crown, but the
+      // Legacy standings (titles and relics included) are still counted up and published exactly as
+      // they would be at a contested Reckoning, so the game ends with a proper final table.
+      delete G.reckoning;                       // any claim in its grace period is overtaken by this
       const rw=reckoningWinner(G);
       const stand=(rw.standings&&rw.standings.standings)||[];
       let winner=live.length===1?live[0]:null;
       if(winner==null && live.length>1){ const best=stand.filter(s=>live.includes(s.index??s.pi??-1)).sort((a,b)=>b.score-a.score)[0]; winner=best?(best.index??best.pi):live[0]; }
-      G.gameOver={winner, byConcession:true, turn:G.turn, standings:stand};
+      const _nOut=(G.players||[]).filter(p=>p&&p.conceded).length;
+      log('system',`👑 THE RECKONING IS CALLED — ${_nOut} realm${_nOut!==1?'s have':' has'} conceded and ${live.length<=1?'only one crown still contests the world':'the last crowns standing are sworn to one another'}. The throne is settled here and now; the Legacy of every realm, titles and relics counted, is set down below.`,{actor:null,targets:[],system:true,public:true});
+      G.gameOver={winner, byConcession:true, byReckoning:true, turn:G.turn, standings:stand};
     }
   }
 
@@ -24610,7 +24817,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     G.heroGraveyard=G.heroGraveyard.filter(g=>g.id!==grave.id);
     // Log to turn report
     const turnLog=G.turnLog||[];
-    log('explore',`✨ **Divine Resurrection**: ${hero.name}${_wasKing?', your monarch,':''} returns to life by the grace of the divine! They appear in ${homeProv.name}, the nearest consecrated ground, with ${hero.hp} HP — no armies or items, but their spirit and skills endure. The miracle spends the province's consecration: ${homeProv.name} is holy ground no longer, and the crown may sanctify new ground in its place.${_wasKing?' The crown is worn once more.':''}`,{actor:grave.player,targets:[grave.player],provinceId:homeProv.id,public:true});
+    log('explore',`✨ **Divine Resurrection**: ${hero.name}${_wasKing?', your monarch,':''} returns to life by the grace of the divine! They appear in ${homeProv.name}, the nearest consecrated ground, with ${hero.hp} HP — no armies or items, but their spirit and skills endure. The miracle spends the province's consecration: ${homeProv.name} is holy ground no longer, and the crown may sanctify new ground in its place.${_wasKing?' The crown is worn once more.':''}`,{actor:grave.player,targets:[grave.player],provinceId:homeProv.id}/* 2026-09-27 (Toby item 6): realm-private — never public */);
   });
 
   // 7e. Battlefield grave pool decay — ~10% of remaining graves rot each turn, halved to 5% in
@@ -25089,6 +25296,14 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       if(ph!=null && presenceByPhase[ph] && presenceByPhase[ph].get(prov)?.has(pi)) return true;
       return false;
     };
+    // 2026-09-27 (Toby item 6): can this realm SEE what happens in a province right now? Its own
+    // ground, a character of its own standing there at that phase, or a spy on it that phase or
+    // earlier. Having once walked through the province is explicitly NOT enough.
+    const canSeeProvinceNow=(prov,ph)=>{
+      if(prov==null) return false;
+      if(playerOwnedProvs.has(prov)) return true;
+      return canSeeBattle(prov,ph);
+    };
 
     const _filteredLog=turnLog.filter(e=>{
       // 0. Written for everyone EXCEPT these realms (the private half of a logSplit pair covers them)
@@ -25119,11 +25334,21 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         if(e.type==='combat'){
           if(e.summary){
             if(e.phase!=null) return charPresentAt(e.provinceId, e.phase);
-            return playerVisitedProvs.has(e.provinceId);
+            return canSeeProvinceNow(e.provinceId, e.phase);
           }
           return false; // battle detail — participants only (handled by the targets/actor/charId checks above)
         }
-        return playerVisitedProvs.has(e.provinceId);
+        // 2026-09-27 (Toby item 6) — ROOT CAUSE of "another realm's Call to Arms turned up in my
+        // Realm Events". A public entry carrying a province was shown to anyone in
+        // `playerVisitedProvs`, which is every province the realm has EVER set foot in (plus the
+        // Messenger Birds ring). So a realm that marched through Wendmeadow on turn 2 went on
+        // reading every public line written there for the rest of the game — musters, rites,
+        // resurrections, spell results — with no spy, no character standing there and no claim on
+        // the ground. A public event in a province now needs EYES THERE at the time: the province
+        // is the viewer's own, or one of their characters stood in it that phase, or they spied it
+        // that phase or earlier. That is the same standard battle summaries have used since
+        // 2026-09-26; memory of the MAP is unaffected (that is built separately, from visitedBy).
+        return canSeeProvinceNow(e.provinceId, e.phase);
       }
       // Everything else: hidden
       return false;
@@ -25370,6 +25595,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.26-1745</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1625</div>
 </body>
 </html>

@@ -3154,7 +3154,14 @@ function _renderDiplomacyInto(el, report, withControls){
   el.innerHTML = known.map(k=>{
     const pending=diploChoices[k.index];
     let controls;
-    if(!withControls){
+    // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
+    // There is nobody left to treat with, so the entry says so and every control is withdrawn — and
+    // any declaration already pending against them this turn is dropped rather than sent into the
+    // void.
+    if(k.conceded||k.eliminated){
+      if(pending!=null) delete diploChoices[k.index];
+      controls=`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated&&!k.conceded?'This dynasty is extinguished':'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
+    } else if(!withControls){
       controls=pending?`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`:'';
     } else if(pending){
       controls=`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;`
@@ -3172,7 +3179,7 @@ function _renderDiplomacyInto(el, report, withControls){
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <strong style="color:${reportColour(k.color)||'#333'}">${k.name}</strong>
         <span style="font-size:.72rem;color:#332c20">${k.alignment||''}</span>
-        ${relBadge(k.relation)}
+        ${(k.conceded||k.eliminated)?`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated&&!k.conceded?'\u2620 Extinguished':'\u{1F3F3} Conceded'}${(k.conceded&&k.concededTurn)?` (turn ${k.concededTurn})`:''}</span>`:relBadge(k.relation)}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
@@ -3243,7 +3250,7 @@ const MASTERY_EFFECTS={
   tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
   march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
   naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
-  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +2 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
+  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +1 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
   druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole wild (Creature or Monster) province's defenders to your side."},
@@ -5971,18 +5978,26 @@ async function resubmitOrders(){
   });
 }
 
+// ══ THE NEW PLAYER'S BRIEFING — RACE, ALIGNMENT, TEMPER ═══════════════════════════════════
+// STANDING RULE (Toby, 2026-09-27): these three boxes are the ONLY thing most players read before
+// committing to a realm for a whole game, and they are the first thing that goes stale. Keep them
+// SHORT — the main things a newcomer needs to choose — and update them in the SAME change as any
+// rule they describe. The deep detail lives in the rulebook; this is the shop window.
 function updateAlignmentDesc(){
   const sel=document.getElementById('join-alignment');
   const desc=document.getElementById('join-alignment-desc');
   if(!sel||!desc) return;
+  // Alignment decides your realm's signature order, its battle fervour, and which heroes will
+  // serve you (the further a hero's own alignment sits from yours, the more they cost; Divine and
+  // Undead will never serve one another). Only ONE realm per game may be Divine, and one Undead.
   const DESCS={
-    Divine:'✨ <strong>Divine:</strong> All heroes heal 2× from Rest (60% of max HP vs 30%). Fallen characters return after one full turn dead at the nearest consecrated province, which then loses its consecration — no consecrated province, no return. 50% fanaticism chance — highest of any alignment. Bless Province gives an 80% tax bonus — 100% when the king casts it in person. <strong>Consecrate</strong> (king only, up to White level): +50% tax, defenders 2× as likely to be fanatical, Undead/Evil attackers −15%; if captured it is de-consecrated and each conquering unit has a 50% chance to gain a level. Cannot hire Undead heroes; dark-hearted heroes cost extra.',
-    Good:'⚔ <strong>Good:</strong> 40% fanaticism chance. Banner of Fellowship: +15% Contingent Unify. Righteous Defence: +10% defending provinces you own. <strong>Call to Arms</strong> (king, once/turn): free Green garrison unit in any owned humanoid province. Near-centre spectrum keeps heroes cheap.',
-    Druidic:'🌿 <strong>Druidic:</strong> King starts with Druid +1. Creature armies need no Druid skill, lift the whole host to ×1.25 in every battle (not stacking with zeal), and fight ×1.5 in forest and jungle (Home of the Wild). <strong>Awaken the Wild</strong>: summon Creatures from owned wild land (Druid 1/2/3 tiers). 20% fanaticism chance.',
-    Neutral:'⚖ <strong>Neutral:</strong> Province tax +20%. Cheapest heroes in the world — every alignment at 2–3g (spectrum centre). <strong>Broker</strong> (king): hire any visible wandering hero remotely, or buy a guaranteed Spy report anywhere seen for 2g. Mercenaries cost 2g less. Sage discoveries twice as often.',
-    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods answer — for a price. King starts with Explorer +1. <strong>Perform Rite</strong> at discovered ritual sites (now widespread; commonest in wild Creature and Monster country): the <strong>Wild Hunt</strong> binds the province\'s creatures to your host, the only way to field Creatures or Monsters without Druid magic; a <strong>Blood Offering</strong> sacrifices units to empower an equal number of others (+2 quality tiers each). <strong>Blood Harvest</strong>: +1g per enemy unit destroyed in victory. 15% fanaticism.',
-    Evil:'💀 <strong>Evil:</strong> Monster armies (Wyvern Riders, Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Kraken Tentacles, Elder Dragons, Titan Warbeasts, Leviathan Pods) lift the whole host to ×1.25 in every battle (not stacking with zeal). Decisive battle wins cause Terror (−10% enemy strength next battle). Conquered provinces are looted for 50% of their tax value — or, per character, <strong>Enslaved</strong> instead: a free Green native garrison unit, but −1 tax there for 3 turns. Choose each character\'s doctrine in their orders.',
-    Undead:'💀 <strong>Undead:</strong> King starts with Necromancy +1 and a free Skeletal unit. Skeletal armies: always fanatical (+50% king-led, +30% hero-led), 1g upkeep, no Druid penalty. Graves decay at half rate in your provinces. <strong>Harvest the Field</strong>: raise a grave as a skeleton for 2g, no magic needed. <strong>Deathless March</strong>: all-skeletal forces never take flight casualties. Cannot hire Divine heroes; righteous heroes cost extra.',
+    Divine:'✨ <strong>Divine:</strong> The holy crown. Best battle fervour in the game (50% chance your host fights fanatically). Your king may <strong>Consecrate</strong> provinces: +50% tax and much stiffer defence. A fallen character returns to life one turn later on consecrated ground — no other realm can do that. Heroes heal twice as fast resting. Will not hire Undead heroes, and dark ones cost extra. One Divine realm per game.',
+    Good:'⚔ <strong>Good:</strong> The steady defender. 40% fervour, +10% strength defending land you own, and better odds that your armies join up for a combined attack. <strong>Call to Arms</strong> gives the king a free garrison unit in one of your provinces every turn. Heroes of most alignments are cheap to hire. A forgiving choice.',
+    Druidic:'🌿 <strong>Druidic:</strong> The wild crown. Your king starts with Druid +1, and every character leads <strong>Creature</strong> armies (griffons, ents, giants, eagles) with no Druid training at all. Creature hosts fight at ×1.25 everywhere and ×1.5 in forest and jungle. <strong>Awaken the Wild</strong> summons beasts straight out of your own wild provinces.',
+    Neutral:'⚖ <strong>Neutral:</strong> The merchant crown, and the easiest to learn. <strong>+20% tax from every province</strong>, the cheapest heroes in the world (2–3g whatever their alignment), and Sage discoveries come twice as often. <strong>Broker</strong> lets the king hire a distant wandering hero, or buy a spy report on anywhere you have seen, without leaving home.',
+    Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods, for a price. King starts with Explorer +1. At a discovered ritual site you may <strong>Perform Rite</strong>: the <strong>Wild Hunt</strong> binds that province\'s beasts to your host — the only way to field Creatures or Monsters with no Druid magic — or a <strong>Blood Offering</strong> sacrifices units to make an equal number far better. You also earn +1g for every enemy unit you destroy in a victory.',
+    Evil:'💀 <strong>Evil:</strong> The tyrant. <strong>Monster</strong> armies (trolls, wyverns, dragons, krakens) lift your whole host to ×1.25 in every battle. A crushing win leaves the enemy in Terror (−10% in their next fight). Each conquest is either <strong>looted</strong> for half the province\'s tax value in gold, or <strong>enslaved</strong> for a free garrison unit at the cost of its tax for three turns — your choice, character by character.',
+    Undead:'💀 <strong>Undead:</strong> The deathless. King starts with Necromancy +1 and a free skeletal unit. Skeletal armies cost just 1g, need no Druid skill, <strong>always</strong> fight fanatically (+50% under the king, +30% under a hero), and never lose men fleeing a lost battle. <strong>Harvest the Field</strong> raises a grave as a soldier for 2g with no magic at all. Will not hire Divine heroes. One Undead realm per game.',
   };
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
@@ -6059,28 +6074,32 @@ function updateRaceDesc(){
   const sel=document.getElementById('join-race');
   const desc=document.getElementById('join-race-desc');
   if(!sel||!desc) return;
+  // Race decides which troops your home province can raise, and carries one signature strength.
+  // Two rules apply to everybody: a commander leading troops of their OWN race fights at +20% and
+  // needs no Druid skill for them, and the two ancient feuds (Human↔Orc, Elf↔Dwarf) cost a
+  // commander 20% when leading the rival kin's troops.
   const DESCS={
-    Human:'🛡 <strong>Human:</strong> The versatile all-rounders. Recruit the broadest roster — Shieldwall Levies, Free Lances and Yeoman Longbows, heavily-armoured Gilded Lances, and flying Noble Griffons — plus the strongest navy in the game (Galleon Fleet and fast Corsair Fleet). No terrain is closed to you: the most flexible race for any strategy. A commander leading troops of their own race fights at +20% and needs no Druid skill to command them. Feud: Humans and Orcs bear an ancient animosity — an Orc commanding Human troops (or the reverse) fights at −20%. Heroes of your own race cost 2g/turn to keep.',
-    Elven:'🏹 <strong>Elven:</strong> Masters of the bow and the wild. Elven Bowmen, Forest Wardens and elite Shadow Archers make Elves devastating archers, fighting best in forest and jungle. Swift flying Eagle Riders (speed 5) scout and strike, and Elven Galleys rule the seas. An Elven realm\u2019s own troops fight at +50% in forest and jungle (Woodland Mastery). Homeward Flight: an Elven unit that would fall in battle may instead slip away and return home — chance by terrain (30% desert/mountain, 45% plains, 60% forest/jungle); the survivors reach the king\u2019s home (or wealthiest province) as the turn closes. A commander leading their own race fights at +20% with no Druid requirement. Feud: Elves and Dwarves are old rivals — either leading the other\u2019s troops fights at −20%. You win through mobility and missile fire, not brute force.',
-    Dwarven:'⛏ <strong>Dwarven:</strong> The mountain kings. Tough Dwarven Guard and Ironwood Crossbows anchor the line, and Mountain Guns (Str 7) smash fortified foes. Gnomish Gyrocopters give you flyers, and armoured Dwarf Ironclads dominate coastal waters. Every Dwarven character of a Dwarven realm is issued MITHRIL ARMOUR — melee and arrow blows against them deal 2 less damage. Dwarves are deadliest defending or fighting in mountains (but move slowly). Own-race command gives +20% and no Druid penalty. Feud: Dwarves and Elves fight at −20% under a rival-kin commander.',
-    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, aggressive and fast — Goblin Horde units cost just 1g, Warg Riders race across the map, and Orc Berserkers (Str 6) hit hard. Terrifying Wyvern Riders (Str 7, flying) thrive in forest, jungle and mountains. A commander leading their own race fights at +20% with no Druid requirement. Feud: Orcs and Humans loathe one another — either leading the other\u2019s troops fights at −20%. Orcs overwhelm through numbers and speed rather than quality.',
+    Human:'🛡 <strong>Human:</strong> The all-rounders — the widest choice of troops and the strongest navy (Galleons and fast Corsairs). Their units also <strong>learn twice as fast</strong>, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
+    Elven:'🏹 <strong>Elven:</strong> Archers and woodsmen. Elven troops fight at <strong>×1.5 in forest and jungle</strong>, and an Elven unit that would be destroyed often slips away home instead of dying. Swift Eagle Riders scout and strike. Weakest in the open. Feud with Dwarves.',
+    Dwarven:'⛏ <strong>Dwarven:</strong> The anvil. Dwarven troops fight at <strong>×1.5 whenever they defend</strong>, and every Dwarven character of a Dwarven realm wears <strong>Mithril Armour</strong> — 2 less damage from every blow and arrow they take. Mountain Guns and armoured Ironclads hit very hard. Slow to march. Feud with Elves.',
+    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with <strong>18 HP instead of 15</strong> and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
   };
-  desc.innerHTML=DESCS[sel.value]||'';
+  desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
 
 function updateTemperDesc(){
   const sel=document.getElementById('join-temper');
   const desc=document.getElementById('join-temper-desc');
   if(!sel||!desc) return;
-  // Temper affects how a character behaves in personal encounters, duels and monster fights, and
-  // how often they trigger encounters while exploring/searching (AK 2.4).
+  // Temper is how your KING behaves in personal combat — duels, lair guardians, ambushes. It does
+  // nothing in army battles. It is the single biggest factor in whether your king survives.
   const DESCS={
-    Berserk:'🔥 <strong>Berserk:</strong> All-out attack. <strong>+18% melee to hit, +3 melee damage</strong> \u2014 the hardest hitter in the game by a wide margin \u2014 and they shrug off <strong>12%</strong> of every melee or archery hit they take (spells cut straight through). They carry no other guard at all: rage is their only armour. The cost is a wide-open stance — enemies get <strong>+10% to hit them</strong> — plus −10% to disengage and −20% to flee, and they fight on until below 15% health. The hardest hitter in the game and by far the likeliest to die.',
-    Brave:'🦁 <strong>Brave:</strong> The complete soldier. +12% melee and +8% archery to hit, +1 melee damage, +4% guard. Their real strength is <strong>Second Wind</strong>: once per fight, on first dropping below about a quarter health, they steady themselves and recover <strong>26% of maximum HP</strong> \u2014 enough to turn a fight they were losing. Considers withdrawing below 25% health, but only while actually losing. No specialism and no weakness.',
-    Cautious:'🧭 <strong>Cautious:</strong> The duellist\'s guard. Enemies suffer <strong>−14% melee to hit them</strong> (a guard does not turn arrows) <em>and can never exceed 66% to hit them however skilled they are</em>, while every melee blow that lands does <strong>2 less damage</strong>. When a melee attack on them MISSES, they have a <strong>40% chance to riposte</strong> with a free blow of their own \u2014 the guard is how they win, not just how they survive. +10% to disengage, +20% to flee. No attack bonus; breaks off below 40% health. The hardest temper to kill, and murder on anyone who swings wildly.',
-    Cowardly:'🏃 <strong>Cowardly:</strong> Fights only on their own terms. <strong>+22% archery to hit, +15% to Steal, +15% to break out of melee, +30% to flee</strong>, a +6% guard, and if felled they may beg for mercy and be spared. Their <strong>opening shot</strong> never fails: the first time they give ground to firing range in a fight they get there and loose before anything can reach them. The cost is only −4% melee to hit, and they break off below 40% health. Still poor in a melee, but deadly as an archer, and excellent as a thief or spy — and the safest temper for a king you cannot afford to lose.',
+    Berserk:'🔥 <strong>Berserk:</strong> The hammer. +18% to hit and +3 damage in melee — far the hardest hitter — and shrugs off 12% of every blow and arrow. But enemies hit them 10% more easily, and they fight on until nearly dead. The most likely of all to be killed.',
+    Brave:'🦁 <strong>Brave:</strong> The soldier. Good at everything (+12% melee, +8% archery, +1 damage) and, once per fight, <strong>Second Wind</strong>: when first badly wounded they recover about a quarter of their health. No weakness. The safe default.',
+    Cautious:'🧭 <strong>Cautious:</strong> The survivor. Enemies are 14% less likely to hit them (and can never beat 66% however skilled), every melee blow that does land does 2 less damage, and a missed attack draws a <strong>40% riposte</strong>. No attack bonus — they win by outlasting. The hardest king to kill.',
+    Cowardly:'🏃 <strong>Cowardly:</strong> The archer and the spy. +22% archery, +15% to Steal, best in the game at breaking off and fleeing, and if struck down they may beg for mercy and be spared. Poor with a blade. The sensible choice for a king you cannot afford to lose.',
   };
-  desc.innerHTML=DESCS[sel.value]||'';
+  desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
 
 // ── SUBMIT-WRAP MARKUP — ONE SOURCE OF TRUTH ────
@@ -9307,6 +9326,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.26-1536</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1625</div>
 </body>
 </html>
