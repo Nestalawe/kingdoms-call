@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdoms Call — Hall of Fame</title>
+<script>
+// ── BOOT-FAILURE REPORTER ── mirrors the two portals: the first uncaught error replaces the
+// spinner with the message and a hint, so a boot failure is never a silent "Loading…".
+(function(){
+  let shown=false;
+  function hint(m){
+    if(/supabase is not defined/i.test(m)) return 'The Supabase library could not be downloaded from cdn.jsdelivr.net or unpkg.com. Check your internet connection, ad-blocker or firewall, then reload.';
+    return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
+  }
+  function show(msg){
+    if(shown) return;
+    const go=()=>{
+      const sp=document.getElementById('spinner');
+      if(!sp||sp.style.display==='none') return;
+      shown=true;
+      const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      sp.innerHTML='<div style="max-width:640px;margin:auto;text-align:left;font-family:\'Crimson Text\',serif;letter-spacing:0;color:#f2e8d0;border:1px solid #7a1c1c;border-radius:4px;padding:14px 18px;background:#1a0c0c">'
+        +'<div style="font-family:\'Cinzel\',serif;color:#e8b84b;margin-bottom:6px">⚠ The Hall of Fame could not start</div>'
+        +'<div style="font-family:monospace;font-size:.8rem;color:#f0c0c0;word-break:break-word;margin-bottom:8px">'+esc(msg)+'</div>'
+        +'<div style="font-size:.9rem">'+hint(msg)+'</div>'
+        +'<div style="margin-top:10px"><button onclick="location.reload()" style="padding:6px 14px;background:#7a1c1c;color:#fff;border:none;border-radius:3px;cursor:pointer;font-family:\'Cinzel\',serif">Reload</button></div></div>';
+    };
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',go); else go();
+  }
+  window.addEventListener('error',e=>show(e.message||String(e.error||'Unknown error')));
+  window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'Crimson Text',Georgia,serif;color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+#page{max-width:1060px;margin:0 auto;padding:18px;}
+.masthead{text-align:center;padding:24px 0 16px;border-bottom:1px solid var(--gold);margin-bottom:18px;--stone:var(--stone-dim);}
+.masthead h1{font-family:'Cinzel',serif;font-size:1.9rem;font-weight:800;color:var(--gold-light);letter-spacing:.06em;}
+.masthead .sub{font-family:'Cinzel',serif;font-size:.78rem;color:var(--stone-dim);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;}
+.topbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;}
+.card{background:var(--parchment);border:1px solid var(--stone);border-radius:3px;padding:18px;margin-bottom:14px;color:var(--ink);}
+h2{font-family:'Cinzel',serif;font-size:1rem;color:var(--crimson);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--parchment-dark);}
+h3{font-family:'Cinzel',serif;font-size:.86rem;color:var(--ink-light);margin-bottom:8px;}
+h4{font-family:'Cinzel',serif;font-size:.74rem;color:var(--crimson);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em;}
+label{font-size:.68rem;color:var(--stone);display:block;margin-bottom:3px;font-family:'Cinzel',serif;letter-spacing:.04em;text-transform:uppercase;}
+input,select,textarea{font-family:'Crimson Text',serif;font-size:.9rem;background:#fdf8ee;border:1px solid var(--stone);color:var(--ink);padding:6px 8px;border-radius:2px;width:100%;margin-bottom:0;}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--gold);}
+.btn{font-family:'Cinzel',serif;font-size:.72rem;font-weight:600;padding:8px 15px;border:none;cursor:pointer;border-radius:2px;letter-spacing:.05em;transition:all .15s;display:inline-block;text-decoration:none;}
+.btn-crimson{background:var(--crimson);color:#fff;border:1px solid #5a1010;}.btn-crimson:hover{background:#9a2c2c;}
+.btn-gold{background:var(--gold);color:var(--ink);border:1px solid #a07020;}.btn-gold:hover{background:var(--gold-light);}
+.btn-forest{background:var(--forest);color:#fff;border:1px solid #1a2e10;}.btn-forest:hover{background:#3d6a28;}
+.btn-ghost{background:transparent;color:#e0cfae;border:1px solid #a8926e;}.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.card .btn-ghost{color:#33270f;border-color:#4a3a22;}.card .btn-ghost:hover{color:#6d1414;border-color:#6d1414;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.tab-bar{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--stone);border-radius:3px;overflow:hidden;}
+.tab-bar button{flex:1;padding:10px 6px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.04em;background:var(--parchment-dark);color:var(--stone);}
+.tab-bar button.active{background:var(--crimson);color:#fff;}
+.msg-error{background:#fde8e8;border:1px solid #c00;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#900;margin-bottom:12px;}
+.msg-info{background:#e8f4ff;border:1px solid #5a8ab0;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a3a5a;margin-bottom:12px;}
+.msg-warning{background:#fff8e1;border:1px solid #c8922a;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#5a4208;margin-bottom:12px;}
+.msg-success{background:#e8f5e9;border:1px solid #2d7a2d;padding:9px 12px;border-radius:2px;font-size:.85rem;color:#1a4a10;margin-bottom:12px;}
+#spinner{text-align:center;padding:48px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.1em;}
+.pill{display:inline-block;font-size:.62rem;padding:2px 7px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;margin-left:5px;}
+.pill-green{background:#d4edda;color:#155724;}.pill-amber{background:#fff3cd;color:#856404;}
+.pill-blue{background:#cce5ff;color:#004085;}.pill-red{background:#f8d7da;color:#721c24;}
+.pill-grey{background:#e2ddd2;color:#3a3224;}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px;}
+table.kc{width:100%;border-collapse:collapse;font-size:.83rem;}
+table.kc th{font-family:'Cinzel',serif;font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--stone);text-align:left;padding:5px 7px;border-bottom:1px solid var(--stone);white-space:nowrap;}
+table.kc td{padding:5px 7px;border-bottom:1px solid var(--parchment-dark);vertical-align:top;}
+table.kc tr:hover td{background:#fdf3d8;}
+table.kc td.num,table.kc th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.ach-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;}
+.ach{background:#fdf8ee;border:1px solid var(--parchment-dark);border-radius:3px;padding:11px 13px;}
+.ach .t{font-family:'Cinzel',serif;font-size:.8rem;color:var(--crimson);margin-bottom:2px;}
+.ach .n{font-size:.72rem;color:var(--stone);margin-bottom:7px;}
+.ach ol{list-style:none;counter-reset:r;}
+.ach li{counter-increment:r;display:flex;gap:7px;align-items:baseline;padding:3px 0;border-bottom:1px dotted #ddd0b4;font-size:.8rem;}
+.ach li:last-child{border-bottom:none;}
+.ach li::before{content:counter(r);font-family:'Cinzel',serif;font-size:.62rem;color:#8a7550;min-width:13px;text-align:right;}
+.ach .v{font-family:'Cinzel',serif;font-weight:600;color:var(--forest);min-width:62px;text-align:right;font-variant-numeric:tabular-nums;}
+.ach li.top1 .v{color:#8a5a00;}
+.ach .w{flex:1;line-height:1.35;}
+.ach .sm{display:block;font-size:.7rem;color:var(--stone);}
+.bar{height:9px;background:var(--parchment-dark);border-radius:2px;overflow:hidden;min-width:60px;}
+.bar>i{display:block;height:100%;background:var(--crimson);}
+.gamerow{cursor:pointer;}
+.gmbox{background:#fff8e1;border:1px solid var(--gold);border-radius:3px;padding:10px 12px;margin-top:6px;}
+.muted{color:var(--stone);font-size:.78rem;}
+.hidden-row td{opacity:.5;font-style:italic;}
+@media(max-width:640px){#page{padding:10px}.card{padding:13px}.ach-grid{grid-template-columns:1fr}table.kc{font-size:.78rem}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="masthead">
+    <h1>🏆 Kingdoms Call</h1>
+    <div class="sub">Hall of Fame — Leaderboard &amp; Achievements</div>
+  </div>
+
+  <div id="spinner">Loading…</div>
+
+  <div id="main" style="display:none">
+    <div class="topbar">
+      <a href="kingdoms-call-player-portal.html" class="btn btn-ghost">⚔ Player Portal</a>
+      <a href="kingdoms-call-rules.html" class="btn btn-ghost">📜 Rules</a>
+      <span id="gm-pill"></span>
+      <button class="btn btn-ghost" onclick="loadAll(true)">↻ Reload</button>
+    </div>
+
+    <div id="msg"></div>
+
+    <div class="card">
+      <h2>Filters</h2>
+      <div class="filters">
+        <div><label>Opponents</label><select id="f-kind" onchange="render()">
+          <option value="">All games</option>
+          <option value="human">All-human games</option>
+          <option value="mixed">Humans vs bots</option>
+          <option value="withbots">Any game with bots</option>
+          <option value="allbot">All-bot games</option>
+        </select></div>
+        <div><label>Bots in game</label><select id="f-bots" onchange="render()"><option value="">Any</option></select></div>
+        <div><label>Bot behaviour</label><select id="f-diplo" onchange="render()">
+          <option value="">Any</option><option value="normal">Normal</option><option value="hostile">Aggressive</option>
+        </select></div>
+        <div><label>Realms</label><select id="f-realms" onchange="render()"><option value="">Any</option></select></div>
+        <div><label>Human players</label><select id="f-humans" onchange="render()"><option value="">Any</option></select></div>
+        <div><label>Map</label><select id="f-map" onchange="render()"><option value="">Any size</option></select></div>
+        <div><label>Sea</label><select id="f-sea" onchange="render()">
+          <option value="">Any</option><option value="lo">Mostly land (&lt;30%)</option><option value="mid">Mixed (30–45%)</option><option value="hi">Ocean world (&gt;45%)</option>
+        </select></div>
+        <div><label>Won by</label><select id="f-vic" onchange="render()">
+          <option value="">Any</option><option value="reckoning">Reckoning</option><option value="elimination">Elimination</option><option value="concession">Concession</option>
+        </select></div>
+        <div><label>Length</label><select id="f-len" onchange="render()">
+          <option value="">Any</option><option value="s">Short (≤10 turns)</option><option value="m">Medium (11–20)</option><option value="l">Long (21+)</option>
+        </select></div>
+        <div><label>Played from</label><input type="date" id="f-from" onchange="render()"></div>
+        <div><label>Played to</label><input type="date" id="f-to" onchange="render()"></div>
+        <div><label>Search</label><input type="text" id="f-q" placeholder="game, realm, player" oninput="render()"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:11px">
+        <button class="btn btn-ghost" style="font-size:.66rem" onclick="resetFilters()">Clear filters</button>
+        <label id="show-hidden-wrap" style="display:none;text-transform:none;font-size:.78rem;color:var(--stone);align-items:center;gap:5px">
+          <input type="checkbox" id="f-hidden" onchange="render()" style="width:auto"> Show games hidden from the board
+        </label>
+        <span id="filter-count" class="muted" style="margin-left:auto"></span>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button id="tb-champions" class="active" onclick="setTab('champions')">🏆 Champions</button>
+      <button id="tb-achievements" onclick="setTab('achievements')">🎖 Achievements</button>
+      <button id="tb-peoples" onclick="setTab('peoples')">🧭 Races &amp; Creeds</button>
+      <button id="tb-games" onclick="setTab('games')">📜 Games</button>
+    </div>
+
+    <div id="body"></div>
+    <div style="text-align:center;padding:14px 0 30px" class="muted" id="foot"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// KINGDOMS CALL — HALL OF FAME
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// Reads ONE table, public.game_records: one row per finished game, written by the GM portal when
+// the game ends (or by its "Record missing games" button). Every figure on this page was computed
+// there, where the engine's tables live; this page only filters, merges and ranks. That is
+// deliberate — the alternative, reading turn_events here, is tens of megabytes per visit and would
+// repeat the 2026-09-25 Disk-IO fault.
+//
+// GM MODE. Opened from the GM portal the link carries ?gm=1. Edit controls appear only if the
+// signed-in account is a real GM (it owns at least one row in `games`), and the table's own policy
+// enforces the same thing server-side, so ?gm=1 by itself grants nothing.
+const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let GAMES=[], TAB='champions', GM=false, ME=null;
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const $=id=>document.getElementById(id);
+const nf=n=>(n==null||!isFinite(n))?'—':Number(n).toLocaleString('en-NZ',{maximumFractionDigits:2});
+const dstr=s=>{ if(!s) return '—'; const d=new Date(s); return isNaN(d)?'—':d.toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'}); };
+
+// ── THE ACHIEVEMENT CATALOGUE ─────────────────────────────────────────────────────────────────
+// key → {c category, l label, n note, f format, d direction}. The GM portal's buildGameRecords()
+// emits the keys; a key missing from here still appears, under "Other records", with its key
+// prettified — so the two can never fall out of step in a way that loses a record.
+// f: int · pct · x (a multiplier) · power (guardian band) · hp · turn
+const KC_CAT=[
+  ['realm','👑 Realm &amp; dominion'],
+  ['conquest','⚔ Conquest'],
+  ['armies','🛡 Hosts &amp; armies'],
+  ['battles','💥 Battles'],
+  ['lairs','🐉 Lairs &amp; guardians'],
+  ['heroes','🎖 Champions'],
+  ['skills','📖 Skills at their height'],
+  ['titles','🏅 Imperial Titles'],
+  ['magic','✨ Magic'],
+  ['finish','🏁 At the final Reckoning'],
+  ['dubious','💀 Dubious honours'],
+  ['games','🌍 The games themselves'],
+  ['other','❓ Other records'],
+];
+const KC_ACH={
+  most_provinces:{c:'realm',l:'Widest realm',n:'Most provinces held at one moment',f:'int'},
+  most_land:{c:'realm',l:'Greatest landholder',n:'Most land provinces held at once',f:'int'},
+  most_sea:{c:'realm',l:'Master of the waves',n:'Most sea provinces held at once',f:'int'},
+  top_tax_share:{c:'realm',l:'Shadow over the world',n:'Greatest share of the world’s tax base',f:'pct'},
+  richest:{c:'realm',l:'Fullest treasury',n:'Most gold held at one moment',f:'int'},
+  gold_gain_turn:{c:'realm',l:'Greatest windfall',n:'Most gold gained in a single turn',f:'int'},
+  str_gain_turn:{c:'realm',l:'Fastest muster',n:'Most army strength raised in one turn',f:'int'},
+  most_explored:{c:'realm',l:'Great explorer',n:'Most provinces ever seen by a realm',f:'int'},
+  most_discoveries:{c:'realm',l:'Most learned realm',n:'Most discoveries held at once',f:'int'},
+  most_consecrated:{c:'realm',l:'Most holy ground',n:'Most consecrated provinces held',f:'int'},
+  most_relics:{c:'realm',l:'Greatest relic hoard',n:'Most legendary relics held by one realm',f:'int'},
+  most_heroes:{c:'realm',l:'Largest court',n:'Most living heroes serving at once',f:'int'},
+  most_units_realm:{c:'realm',l:'Most under arms',n:'Most units in a realm at one time',f:'int'},
+  largest_garrison:{c:'realm',l:'Strongest garrisons',n:'Greatest garrison strength held',f:'int'},
+
+  captures_turn:{c:'conquest',l:'Blitzkrieg',n:'Most provinces taken in a single turn',f:'int'},
+  captures_game:{c:'conquest',l:'Great conqueror',n:'Most provinces taken across a game',f:'int'},
+  richest_capture:{c:'conquest',l:'Richest prize',n:'Highest tax value of a province taken',f:'int'},
+  fastest_ten:{c:'conquest',l:'Fastest to ten provinces',n:'Earliest turn a realm reached ten',f:'turn',d:'min'},
+
+  mightiest_host:{c:'armies',l:'Mightiest realm',n:'Greatest total army strength, led and garrisoned',f:'int'},
+  biggest_field_army:{c:'armies',l:'Greatest army in the field',n:'Strongest host under a single commander',f:'int'},
+  most_units_one_char:{c:'armies',l:'Most units under one banner',n:'Most units led by one character',f:'int'},
+  grand_armada:{c:'armies',l:'Grand armada',n:'Strongest fleet and sea-beast host led by one commander',f:'int'},
+  sky_host:{c:'armies',l:'Host of the air',n:'Strongest airborne host led by one commander',f:'int'},
+  beast_host:{c:'armies',l:'Host of beasts',n:'Strongest creature and monster host led by one commander',f:'int'},
+  horse_host:{c:'armies',l:'Host of horse',n:'Strongest cavalry host led by one commander',f:'int'},
+  arrow_storm:{c:'armies',l:'Storm of arrows',n:'Strongest missile host led by one commander',f:'int'},
+  undead_legion:{c:'armies',l:'Undead legion',n:'Most skeletal units led by one commander',f:'int'},
+
+  biggest_battle:{c:'battles',l:'Biggest battle',n:'Greatest combined strength on a field',f:'int'},
+  biggest_pvp:{c:'battles',l:'Greatest clash of realms',n:'Biggest battle between two players',f:'int'},
+  bloodiest_battle:{c:'battles',l:'Bloodiest battle',n:'Most units destroyed in one battle',f:'int'},
+  greatest_upset:{c:'battles',l:'Greatest upset',n:'Won a battle at the longest odds of strength',f:'x',d:'min'},
+  stubbornest_defence:{c:'battles',l:'Most stubborn defence',n:'Held the field against the heaviest odds',f:'x',d:'min'},
+  flawless_victory:{c:'battles',l:'Flawless victory',n:'Most enemy strength broken without losing a unit',f:'int'},
+  longest_siege:{c:'battles',l:'Longest battle',n:'Most carried-over rounds of fighting',f:'int'},
+  battles_turn:{c:'battles',l:'Busiest turn of war',n:'Most battles fought by a realm in one turn',f:'int'},
+  battles_game:{c:'battles',l:'Most battles in a game',n:'By one realm across the whole game',f:'int'},
+  battles_won_game:{c:'battles',l:'Most victories in a game',n:'Battles won by one realm',f:'int'},
+  kills_turn:{c:'battles',l:'Deadliest turn',n:'Most enemy units destroyed in one turn',f:'int'},
+  kills_game:{c:'battles',l:'Most enemy units destroyed',n:'By one realm across a game',f:'int'},
+  best_win_rate:{c:'battles',l:'Finest record of arms',n:'Best battle win rate (four battles or more)',f:'pct'},
+
+  guardian_slain:{c:'lairs',l:'Greatest guardian slain',n:'Strongest band of guardian beaten in a lair',f:'power'},
+  luckiest_kill:{c:'lairs',l:'Luckiest guardian kill',n:'Beat a Powerful or Legendary guardian with the fewest hit points left',f:'hp',d:'min'},
+  narrowest_escape:{c:'lairs',l:'Narrowest escape',n:'Won a lair fight on the fewest hit points',f:'hp',d:'min'},
+  hardest_fight:{c:'lairs',l:'Hardest-won lair',n:'Most damage taken and still victorious',f:'int'},
+  lairs_turn:{c:'lairs',l:'Most lairs cleared in a turn',n:'By one realm',f:'int'},
+  lairs_game:{c:'lairs',l:'Great lair-breaker',n:'Most lairs cleared across a game',f:'int'},
+  deadliest_guardian:{c:'lairs',l:'Deadliest guardian',n:'The strongest guardian to slay a champion',f:'power'},
+
+  greatest_hero:{c:'heroes',l:'Greatest champion',n:'Highest total of all skill levels on one character',f:'int'},
+  most_items_one_char:{c:'heroes',l:'Best-equipped champion',n:'Most magic items carried at once',f:'int'},
+  hardiest:{c:'heroes',l:'Hardiest champion',n:'Highest maximum hit points reached',f:'int'},
+  deadliest_champion:{c:'heroes',l:'Deadliest champion',n:'Most enemy characters slain by one character',f:'int'},
+  champions_slain:{c:'heroes',l:'Slayer of champions',n:'Most enemy characters slain by a realm',f:'int'},
+  kingslayer:{c:'heroes',l:'Kingslayer',n:'Most enemy kings slain by a realm',f:'int'},
+
+  spells_turn:{c:'magic',l:'Storm of sorcery',n:'Most spells cast by a realm in one turn',f:'int'},
+  spells_game:{c:'magic',l:'Greatest sorcery',n:'Most spells cast across a game',f:'int'},
+  longest_shot:{c:'magic',l:'Longest shot',n:'The least likely casting that still took',f:'pct',d:'min'},
+  grandest_casting:{c:'magic',l:'Grandest casting',n:'Highest spell level successfully cast',f:'int'},
+  favourite_spell:{c:'magic',l:'Signature spell',n:'The spell one realm leaned on hardest in a game',f:'int'},
+
+  final_score:{c:'finish',l:'Highest final score',n:'At the Reckoning',f:'int'},
+  final_provinces:{c:'finish',l:'Largest realm at the end',f:'int'},
+  final_gold:{c:'finish',l:'Richest at the end',f:'int'},
+  final_strength:{c:'finish',l:'Strongest at the end',f:'int'},
+  final_tax_share:{c:'finish',l:'Greatest share at the end',f:'pct'},
+
+  losses_turn:{c:'dubious',l:'Heaviest day',n:'Most of a realm’s own units destroyed in one turn',f:'int'},
+  losses_game:{c:'dubious',l:'Heaviest losses',n:'Most of a realm’s own units destroyed across a game',f:'int'},
+  lost_turn:{c:'dubious',l:'Worst turn',n:'Most provinces lost in a single turn',f:'int'},
+  lost_game:{c:'dubious',l:'Greatest collapse',n:'Most provinces lost across a game',f:'int'},
+  worst_rout:{c:'dubious',l:'Worst rout',n:'Most units lost in a single battle',f:'int'},
+  champions_lost:{c:'dubious',l:'Heaviest toll',n:'Most of a realm’s own characters killed in a game',f:'int'},
+  deaths_turn:{c:'dubious',l:'Blackest day',n:'Most of a realm’s characters killed in one turn',f:'int'},
+  flights_game:{c:'dubious',l:'Better part of valour',n:'Most flights from lair fights in a game',f:'int'},
+  failed_spells_game:{c:'dubious',l:'Fizzled',n:'Most failed castings in a game',f:'int'},
+  earliest_out:{c:'dubious',l:'Shortest reign',n:'Earliest turn a realm was eliminated or conceded',f:'turn',d:'min'},
+
+  longest_game:{c:'games',l:'Longest game',f:'int'},
+  shortest_game:{c:'games',l:'Shortest game',f:'int',d:'min'},
+  most_realms:{c:'games',l:'Most realms in a game',f:'int'},
+  most_humans:{c:'games',l:'Most human players',f:'int'},
+  biggest_world:{c:'games',l:'Biggest world',n:'Provinces on the map',f:'int'},
+  most_battles_game:{c:'games',l:'Most battles in one game',f:'int'},
+  bloodiest_game:{c:'games',l:'Bloodiest game',n:'Units destroyed in total',f:'int'},
+  most_captures_game:{c:'games',l:'Most provinces changing hands',f:'int'},
+  most_deaths_game:{c:'games',l:'Most characters killed',f:'int'},
+  most_lairs_game:{c:'games',l:'Most lairs fought',f:'int'},
+  most_spells_game:{c:'games',l:'Most spells cast',f:'int'},
+};
+const POWER_WORD=['—','Weak','Moderate','Powerful','Legendary'];
+function achDef(key){
+  if(KC_ACH[key]) return KC_ACH[key];
+  if(key.indexOf('sk_')===0) return {c:'skills',l:null,f:'int'};
+  if(key.indexOf('title_')===0) return {c:'titles',l:null,f:'int'};
+  return {c:'other',l:null,f:'int'};
+}
+function achLabel(key,rec){
+  if(rec&&rec.lbl) return rec.lbl;
+  const d=KC_ACH[key];
+  if(d&&d.l) return d.l;
+  return key.replace(/^sk_/,'Highest ').replace(/^title_/,'Title: ').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
+}
+function fmtVal(v,f){
+  if(v==null) return '—';
+  switch(f){
+    case 'pct': return nf(v)+'%';
+    case 'x': return nf(v)+'×';
+    case 'power': return POWER_WORD[Math.max(0,Math.min(4,Math.round(v)))]||nf(v);
+    case 'hp': return nf(v)+' hp';
+    case 'turn': return 'turn '+nf(v);
+    default: return nf(v);
+  }
+}
+
+// ── LOADING ───────────────────────────────────────────────────────────────────────────────────
+async function loadAll(force){
+  const msg=$('msg');
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    ME=session?session.user:null;
+  }catch(e){ ME=null; }
+  GM=false;
+  if(ME&&new URLSearchParams(location.search).get('gm')==='1'){
+    try{
+      const {data}=await sb.from('games').select('id').eq('gm_user_id',ME.id).limit(1);
+      GM=!!(data&&data.length);
+    }catch(e){ GM=false; }
+  }
+  $('gm-pill').innerHTML=GM?'<span class="btn btn-gold" style="cursor:default">✏ GM editing on</span>':'';
+  $('show-hidden-wrap').style.display=GM?'inline-flex':'none';
+
+  const rows=[];
+  try{
+    for(let from=0;;from+=200){
+      const {data,error}=await sb.from('game_records').select('*').order('finished_at',{ascending:false}).range(from,from+199);
+      if(error) throw error;
+      rows.push(...(data||[]));
+      if(!data||data.length<200) break;
+    }
+  }catch(e){
+    $('spinner').style.display='none'; $('main').style.display='block';
+    msg.innerHTML='<div class="msg-error"><strong>The Hall of Fame could not be read.</strong> '+esc(e.message||e)+
+      '<br>If you are the Game Master, open the GM portal — the game list shows the one statement to run in Supabase that creates the <code>game_records</code> table.</div>';
+    $('body').innerHTML=''; return;
+  }
+  GAMES=rows.map(r=>({...r,
+    setup:jp(r.setup)||{}, standings:jp(r.standings)||[], records:jp(r.records)||{}, totals:jp(r.totals)||{}}));
+  msg.innerHTML = GAMES.length?'':'<div class="msg-info">No finished games have been recorded yet. A game joins the Hall of Fame the moment it ends; the GM can also add older games from the GM portal’s Stats tab.</div>';
+  buildFilterOptions();
+  $('spinner').style.display='none'; $('main').style.display='block';
+  render();
+}
+function jp(v){ if(v==null) return null; if(typeof v==='string'){ try{ return JSON.parse(v); }catch(e){ return null; } } return v; }
+
+function buildFilterOptions(){
+  const opt=(sel,vals,fmt)=>{ const el=$(sel), cur=el.value; el.innerHTML=el.options[0].outerHTML+vals.map(v=>`<option value="${esc(v)}">${esc(fmt?fmt(v):v)}</option>`).join(''); el.value=cur; };
+  const uniqNum=k=>[...new Set(GAMES.map(g=>g.setup[k]).filter(v=>v!=null))].sort((a,b)=>a-b);
+  opt('f-bots',uniqNum('bots'));
+  opt('f-realms',uniqNum('realms'));
+  opt('f-humans',uniqNum('humans'));
+  const maps=[...new Set(GAMES.map(mapKey).filter(Boolean))].sort();
+  opt('f-map',maps);
+}
+function mapKey(g){ const s=g.setup||{}; return (s.cols&&s.rows)?(s.cols+'×'+s.rows):(s.mapSize||null); }
+
+// ── FILTERING ─────────────────────────────────────────────────────────────────────────────────
+function filtered(){
+  const v=id=>$(id).value, q=(v('f-q')||'').trim().toLowerCase();
+  const from=v('f-from')?new Date(v('f-from')+'T00:00:00'):null;
+  const to=v('f-to')?new Date(v('f-to')+'T23:59:59'):null;
+  const showHidden=GM&&$('f-hidden').checked;
+  return GAMES.filter(g=>{
+    const s=g.setup||{}, bots=s.bots||0, humans=s.humans!=null?s.humans:((s.realms||0)-bots);
+    if(g.hidden&&!showHidden) return false;
+    const kind=v('f-kind');
+    if(kind==='human'&&bots>0) return false;
+    if(kind==='withbots'&&bots<1) return false;
+    if(kind==='allbot'&&humans>0) return false;
+    if(kind==='mixed'&&!(bots>0&&humans>0)) return false;
+    if(v('f-bots')!==''&&String(bots)!==v('f-bots')) return false;
+    if(v('f-diplo')!==''&&(s.diplomacy||'normal')!==v('f-diplo')) return false;
+    if(v('f-realms')!==''&&String(s.realms||'')!==v('f-realms')) return false;
+    if(v('f-humans')!==''&&String(humans)!==v('f-humans')) return false;
+    if(v('f-map')!==''&&mapKey(g)!==v('f-map')) return false;
+    const sp=s.seaPct;
+    if(v('f-sea')==='lo'&&!(sp!=null&&sp<30)) return false;
+    if(v('f-sea')==='mid'&&!(sp!=null&&sp>=30&&sp<=45)) return false;
+    if(v('f-sea')==='hi'&&!(sp!=null&&sp>45)) return false;
+    if(v('f-vic')!==''&&(g.victory||'')!==v('f-vic')) return false;
+    const t=g.turns||0;
+    if(v('f-len')==='s'&&!(t<=10)) return false;
+    if(v('f-len')==='m'&&!(t>10&&t<=20)) return false;
+    if(v('f-len')==='l'&&!(t>20)) return false;
+    if(from&&new Date(g.finished_at||0)<from) return false;
+    if(to&&new Date(g.finished_at||0)>to) return false;
+    if(q){
+      const hay=[g.game_name,g.winner_realm,g.winner_player,g.note].concat((g.standings||[]).map(x=>x.realm+' '+(x.player||''))).join(' ').toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+}
+function resetFilters(){
+  ['f-kind','f-bots','f-diplo','f-realms','f-humans','f-map','f-sea','f-vic','f-len'].forEach(i=>$(i).value='');
+  $('f-from').value=''; $('f-to').value=''; $('f-q').value=''; if($('f-hidden')) $('f-hidden').checked=false;
+  render();
+}
+function setTab(t){
+  TAB=t;
+  ['champions','achievements','peoples','games'].forEach(x=>$('tb-'+x).classList.toggle('active',x===t));
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────────────────────
+function render(){
+  const G=filtered();
+  $('filter-count').textContent=`${G.length} of ${GAMES.length} recorded game${GAMES.length===1?'':'s'}`;
+  const el=$('body');
+  if(!GAMES.length){ el.innerHTML=''; $('foot').textContent=''; return; }
+  if(!G.length){ el.innerHTML='<div class="card"><div class="msg-warning">No recorded game matches these filters.</div></div>'; return; }
+  if(TAB==='champions') el.innerHTML=renderChampions(G);
+  else if(TAB==='achievements') el.innerHTML=renderAchievements(G);
+  else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
+  else el.innerHTML=renderGames(G);
+  const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.09.27-1911 · most recent game recorded '+dstr(last);
+}
+
+function pctBar(n,d){ const p=d?Math.round(100*n/d):0; return `<div class="bar" title="${p}%"><i style="width:${p}%"></i></div>`; }
+
+// —— CHAMPIONS ————————————————————————————————————————————————————————————————————————————————
+function renderChampions(G){
+  const byPlayer={}, byRealm={};
+  const add=(map,key,st,g)=>{
+    const a=map[key]=map[key]||{key,games:0,wins:0,podium:0,rankSum:0,ranked:0,score:0,best:0,titles:0,prov:0,bot:st.bot,names:new Set()};
+    a.games++; if(st.winner) a.wins++;
+    if(st.rank){ a.ranked++; a.rankSum+=st.rank; if(st.rank<=3) a.podium++; }
+    a.score+=st.score||0; a.best=Math.max(a.best,st.score||0);
+    a.titles+=(st.titles||[]).length; a.prov+=st.prov||0;
+    a.names.add(st.realm||'—');
+  };
+  G.forEach(g=>(g.standings||[]).forEach(st=>{
+    if(!st.bot&&st.player) add(byPlayer,st.player,st,g);
+    add(byRealm,(st.bot?'🤖 ':'')+((st.player||st.realm)||'—'),st,g);
+  }));
+  const rows=Object.values(byPlayer).sort((a,b)=>b.wins-a.wins||(b.wins/b.games)-(a.wins/a.games)||b.score-a.score);
+  let html='';
+  html+='<div class="card"><h2>🏆 Champions — human players</h2>';
+  if(!rows.length) html+='<div class="msg-info">No human players in the games that match these filters.</div>';
+  else{
+    html+='<table class="kc"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms</th></tr>';
+    rows.forEach((r,i)=>{
+      html+=`<tr><td>${i+1}</td><td><strong>${esc(r.key)}</strong></td><td class="num">${r.games}</td><td class="num">${r.wins}</td>`
+        +`<td style="min-width:90px">${pctBar(r.wins,r.games)}<span class="muted">${Math.round(100*r.wins/r.games)}%</span></td>`
+        +`<td class="num">${r.podium}</td><td class="num">${r.ranked?(r.rankSum/r.ranked).toFixed(1):'—'}</td>`
+        +`<td class="num">${nf(r.best)}</td><td class="num">${r.titles}</td><td class="muted">${esc([...r.names].slice(0,4).join(', '))}</td></tr>`;
+    });
+    html+='</table>';
+  }
+  html+='</div>';
+
+  // humans vs bots
+  let hG=0,hW=0,bG=0,bW=0;
+  G.forEach(g=>(g.standings||[]).forEach(st=>{ if(st.bot){bG++; if(st.winner)bW++;} else {hG++; if(st.winner)hW++;} }));
+  html+='<div class="card"><h2>⚖ Humans against the bots</h2><table class="kc">'
+    +'<tr><th>Side</th><th class="num">Realms played</th><th class="num">Wins</th><th>Win rate</th></tr>'
+    +`<tr><td>Human realms</td><td class="num">${hG}</td><td class="num">${hW}</td><td style="min-width:110px">${pctBar(hW,hG)}<span class="muted">${hG?Math.round(100*hW/hG):0}%</span></td></tr>`
+    +`<tr><td>Bot realms</td><td class="num">${bG}</td><td class="num">${bW}</td><td>${pctBar(bW,bG)}<span class="muted">${bG?Math.round(100*bW/bG):0}%</span></td></tr>`
+    +'</table><div class="muted" style="margin-top:7px">A win rate is per realm, so in a fair four-realm race every realm sits at 25%.</div></div>';
+
+  // best single performances
+  const perf=[];
+  G.forEach(g=>(g.standings||[]).forEach(st=>perf.push({g,st})));
+  perf.sort((a,b)=>(b.st.score||0)-(a.st.score||0));
+  html+='<div class="card"><h2>⭐ Finest single campaigns</h2><table class="kc">'
+    +'<tr><th>#</th><th>Realm</th><th>Player</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Strength</th><th class="num">Titles</th><th>Game</th><th>Date</th></tr>';
+  perf.slice(0,20).forEach((p,i)=>{
+    html+=`<tr><td>${i+1}</td><td><strong>${esc(p.st.realm)}</strong>${p.st.winner?'<span class="pill pill-green">won</span>':''}</td>`
+      +`<td>${p.st.bot?'<span class="pill pill-grey">bot</span>':esc(p.st.player||'—')}</td>`
+      +`<td class="num">${nf(p.st.score)}</td><td class="num">${nf(p.st.prov)}</td><td class="num">${nf(p.st.str)}</td><td class="num">${(p.st.titles||[]).length}</td>`
+      +`<td class="muted">${esc(p.g.game_name)}</td><td class="muted">${dstr(p.g.finished_at)}</td></tr>`;
+  });
+  html+='</table></div>';
+  return html;
+}
+
+// —— ACHIEVEMENTS ——————————————————————————————————————————————————————————————————————————————
+function renderAchievements(G){
+  const byKey={};
+  G.forEach(g=>{
+    Object.entries(g.records||{}).forEach(([k,r])=>{
+      if(!r||r.v==null) return;
+      (byKey[k]=byKey[k]||[]).push({...r,g});
+    });
+  });
+  const cats={};
+  Object.keys(byKey).forEach(k=>{ const d=achDef(k); (cats[d.c]=cats[d.c]||[]).push(k); });
+  let html='';
+  html+='<div class="card"><h2>🎖 Achievements</h2><div class="muted">Every record below is the best that has ever been recorded in a game matching your filters. Each game contributes its own best, so one runaway campaign cannot fill a whole list.</div></div>';
+  KC_CAT.forEach(([cat,title])=>{
+    const keys=(cats[cat]||[]).sort((a,b)=>achLabel(a,byKey[a][0]).localeCompare(achLabel(b,byKey[b][0])));
+    if(!keys.length) return;
+    html+=`<div class="card"><h2>${title}</h2><div class="ach-grid">`;
+    keys.forEach(k=>{
+      const def=achDef(k), dir=(byKey[k][0].d==='min'||def.d==='min')?'min':'max';
+      const list=byKey[k].slice().sort((a,b)=>dir==='min'?a.v-b.v:b.v-a.v).slice(0,8);
+      html+=`<div class="ach"><div class="t">${esc(achLabel(k,list[0]))}</div>`;
+      if(def.n) html+=`<div class="n">${def.n}</div>`;
+      html+='<ol>';
+      list.forEach((e,i)=>{
+        const who=e.who?esc(e.who)+' · ':'';
+        const realm=e.realm?esc(e.realm):(e.pi==null?'<span class="muted">the game itself</span>':'—');
+        const owner=e.player?' <span class="muted">('+esc(e.player)+')</span>':(e.bot?' <span class="pill pill-grey">bot</span>':'');
+        const bits=[];
+        if(e.race) bits.push(esc(e.race));
+        if(e.al) bits.push(esc(e.al));
+        if(e.t!=null) bits.push('turn '+e.t);
+        if(e.det) bits.push(esc(e.det));
+        bits.push(esc(e.g.game_name)+' · '+dstr(e.g.finished_at));
+        html+=`<li class="${i===0?'top1':''}"><span class="v">${fmtVal(e.v,def.f)}</span><span class="w">${who}${realm}${owner}<span class="sm">${bits.join(' · ')}</span></span></li>`;
+      });
+      html+='</ol></div>';
+    });
+    html+='</div></div>';
+  });
+  return html;
+}
+
+// —— RACES & CREEDS ————————————————————————————————————————————————————————————————————————————
+function renderPeoples(G){
+  const tally=(pick)=>{
+    const m={};
+    G.forEach(g=>(g.standings||[]).forEach(st=>{
+      const k=pick(st); if(!k) return;
+      const a=m[k]=m[k]||{k,n:0,w:0,score:0,prov:0};
+      a.n++; if(st.winner) a.w++; a.score+=st.score||0; a.prov+=st.prov||0;
+    }));
+    return Object.values(m).sort((a,b)=>(b.w/b.n)-(a.w/a.n)||b.n-a.n);
+  };
+  const tbl=(title,rows,head)=>{
+    if(!rows.length) return '';
+    let h=`<div class="card"><h2>${title}</h2><table class="kc"><tr><th>${head}</th><th class="num">Realms</th><th class="num">Wins</th><th>Win rate</th><th class="num">Avg score</th><th class="num">Avg provinces</th></tr>`;
+    rows.forEach(r=>{
+      h+=`<tr><td><strong>${esc(r.k)}</strong></td><td class="num">${r.n}</td><td class="num">${r.w}</td>`
+        +`<td style="min-width:100px">${pctBar(r.w,r.n)}<span class="muted">${Math.round(100*r.w/r.n)}%</span></td>`
+        +`<td class="num">${nf(Math.round(r.score/r.n))}</td><td class="num">${nf(Math.round(10*r.prov/r.n)/10)}</td></tr>`;
+    });
+    return h+'</table></div>';
+  };
+  return tbl('🧭 By race',tally(s=>s.race),'Race')
+    +tbl('☯ By creed',tally(s=>s.al),'Alignment')
+    +tbl('🔀 By race and creed',tally(s=>(s.race&&s.al)?(s.race+' · '+s.al):null),'Race · Alignment')
+    +tbl('🎲 By how the game ended',(()=>{
+        const m={}; G.forEach(g=>{ const k=g.victory||'unfinished'; const a=m[k]=m[k]||{k,n:0,w:0,score:0,prov:0}; a.n++; a.w+=0; a.score+=g.turns||0; a.prov+=(g.setup.realms||0); });
+        return Object.values(m).map(a=>({k:a.k,n:a.n,w:0,score:a.score,prov:a.prov})).sort((a,b)=>b.n-a.n);
+      })(),'Victory');
+}
+
+// —— GAMES ————————————————————————————————————————————————————————————————————————————————————
+function renderGames(G){
+  let html='<div class="card"><h2>📜 Every recorded game</h2>';
+  html+='<div class="muted" style="margin-bottom:9px">Newest first. Click a game to see its final standings.'+(GM?' As a Game Master you can rename a game, change its date, add a note, hide it from the board, or delete it.':'')+'</div>';
+  html+='<table class="kc"><tr><th>Date</th><th>Game</th><th class="num">Turns</th><th>Realms</th><th>Bots</th><th>Map</th><th>Won by</th><th>How</th>'+(GM?'<th></th>':'')+'</tr>';
+  G.forEach(g=>{
+    const s=g.setup||{}, bots=s.bots||0, humans=s.humans!=null?s.humans:((s.realms||0)-bots);
+    const dip=(s.diplomacy==='hostile')?'<span class="pill pill-red">aggressive</span>':(bots?'<span class="pill pill-grey">normal</span>':'');
+    html+=`<tr class="gamerow${g.hidden?' hidden-row':''}" onclick="toggleGame('${esc(g.game_id)}')">`
+      +`<td class="muted">${dstr(g.finished_at)}</td>`
+      +`<td><strong>${esc(g.game_name)}</strong>${g.hidden?'<span class="pill pill-amber">hidden</span>':''}${g.note?'<span class="sm muted"> · '+esc(g.note)+'</span>':''}</td>`
+      +`<td class="num">${g.turns||'—'}</td>`
+      +`<td>${s.realms||'—'} <span class="muted">(${humans}👤 ${bots}🤖)</span></td>`
+      +`<td>${bots?bots+dip:'<span class="pill pill-green">all human</span>'}</td>`
+      +`<td class="muted">${esc(mapKey(g)||'—')}${s.seaPct!=null?' · '+s.seaPct+'% sea':''}</td>`
+      +`<td>${esc(g.winner_realm||'—')}${g.winner_player?' <span class="muted">('+esc(g.winner_player)+')</span>':(g.winner_is_bot?' <span class="pill pill-grey">bot</span>':'')}</td>`
+      +`<td class="muted">${esc(g.victory||'—')}</td>`
+      +(GM?`<td><button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="event.stopPropagation();toggleEdit('${esc(g.game_id)}')">✏</button></td>`:'')
+      +'</tr>';
+    html+=`<tr id="det-${esc(g.game_id)}" style="display:none"><td colspan="${GM?9:8}">${gameDetail(g)}</td></tr>`;
+  });
+  html+='</table></div>';
+  return html;
+}
+function gameDetail(g){
+  let h='<div style="padding:4px 0 8px">';
+  h+='<table class="kc"><tr><th class="num">Rank</th><th>Realm</th><th>Player</th><th>Race</th><th>Creed</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Gold</th><th class="num">Strength</th><th class="num">Titles</th><th>Fate</th></tr>';
+  (g.standings||[]).forEach(st=>{
+    h+=`<tr><td class="num">${st.rank||'—'}</td><td><strong>${esc(st.realm)}</strong>${st.winner?'<span class="pill pill-green">victor</span>':''}</td>`
+      +`<td>${st.bot?'<span class="pill pill-grey">bot</span>':esc(st.player||'—')}</td><td>${esc(st.race||'—')}</td><td>${esc(st.al||'—')}</td>`
+      +`<td class="num">${nf(st.score)}</td><td class="num">${nf(st.prov)}</td><td class="num">${nf(st.gold)}</td><td class="num">${nf(st.str)}</td><td class="num">${(st.titles||[]).length}</td>`
+      +`<td class="muted">${st.outHow?esc(st.outHow)+(st.outTurn?' turn '+st.outTurn:''):'survived'}</td></tr>`;
+  });
+  h+='</table>';
+  const t=g.totals||{};
+  h+=`<div class="muted" style="margin-top:7px">${nf(t.battles||0)} battles · ${nf(t.casualties||0)} units destroyed · ${nf(t.captures||0)} provinces changed hands · ${nf(t.lairs||0)} lair fights · ${nf(t.spells||0)} spells cast · ${nf(t.deaths||0)} characters killed · started ${dstr(g.started_at)}</div>`;
+  if(GM){
+    const d=(g.finished_at||'').slice(0,10);
+    h+=`<div class="gmbox" id="edit-${esc(g.game_id)}" style="display:none">
+      <h4>Game Master — edit this record</h4>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">
+        <div><label>Name on the board</label><input type="text" id="e-name-${esc(g.game_id)}" value="${esc(g.game_name)}"></div>
+        <div><label>Date played</label><input type="date" id="e-date-${esc(g.game_id)}" value="${esc(d)}"></div>
+        <div style="grid-column:1/-1"><label>Note</label><input type="text" id="e-note-${esc(g.game_id)}" value="${esc(g.note||'')}" placeholder="e.g. the first Reckoning played to the wire"></div>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">
+        <button class="btn btn-gold" style="font-size:.66rem" onclick="saveGame('${esc(g.game_id)}')">Save</button>
+        <button class="btn btn-ghost" style="font-size:.66rem" onclick="setHidden('${esc(g.game_id)}',${g.hidden?'false':'true'})">${g.hidden?'👁 Show on the board':'🚫 Hide from the board'}</button>
+        <button class="btn btn-crimson" style="font-size:.66rem;margin-left:auto" onclick="deleteRecord('${esc(g.game_id)}',false)">🗑 Remove from the board</button>
+        <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteRecord('${esc(g.game_id)}',true)">☠ Delete all of its data</button>
+      </div>
+      <div class="muted" style="margin-top:6px"><strong>Remove from the board</strong> deletes this Hall-of-Fame entry only; the game’s recorded turns stay, so the GM portal can rebuild it. <strong>Delete all of its data</strong> also deletes its recorded turns and results — that cannot be undone and the entry can never come back.</div>
+      <div id="e-msg-${esc(g.game_id)}"></div>
+    </div>`;
+  }
+  return h+'</div>';
+}
+function toggleGame(id){ const r=$('det-'+id); if(r) r.style.display=(r.style.display==='none'?'table-row':'none'); }
+function toggleEdit(id){
+  const r=$('det-'+id); if(r&&r.style.display==='none') r.style.display='table-row';
+  const b=$('edit-'+id); if(b) b.style.display=(b.style.display==='none'?'block':'none');
+}
+async function saveGame(id){
+  const msg=$('e-msg-'+id);
+  const name=$('e-name-'+id).value.trim(), note=$('e-note-'+id).value.trim(), date=$('e-date-'+id).value;
+  const patch={game_name:name||null, note:note||null};
+  if(date) patch.finished_at=new Date(date+'T12:00:00').toISOString();
+  const {error}=await sb.from('game_records').update(patch).eq('game_id',id);
+  if(error){ msg.innerHTML='<div class="msg-error">'+esc(error.message)+'</div>'; return; }
+  msg.innerHTML='<div class="msg-success">Saved.</div>';
+  const g=GAMES.find(x=>x.game_id===id); if(g) Object.assign(g,patch);
+  setTimeout(()=>render(),500);
+}
+async function setHidden(id,hide){
+  const {error}=await sb.from('game_records').update({hidden:hide}).eq('game_id',id);
+  if(error){ alert(error.message); return; }
+  const g=GAMES.find(x=>x.game_id===id); if(g) g.hidden=hide;
+  render();
+}
+async function deleteRecord(id,purge){
+  const g=GAMES.find(x=>x.game_id===id);
+  const nm=g?g.game_name:id;
+  const q=purge
+    ? `Delete EVERYTHING recorded about “${nm}” — its Hall-of-Fame entry, its result rows and every recorded turn? This cannot be undone.`
+    : `Remove “${nm}” from the Hall of Fame? Its recorded turns are kept, so the GM portal can rebuild the entry later.`;
+  if(!confirm(q)) return;
+  let err=null;
+  const r1=await sb.from('game_records').delete().eq('game_id',id); err=err||r1.error;
+  if(purge){
+    const r2=await sb.from('game_results').delete().eq('game_id',id); err=err||r2.error;
+    const r3=await sb.from('turn_events').delete().eq('game_id',id); err=err||r3.error;
+  }
+  if(err){ alert(err.message); return; }
+  GAMES=GAMES.filter(x=>x.game_id!==id);
+  buildFilterOptions(); render();
+}
+
+loadAll();
+</script>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.09.27-1911</div>
+</body>
+</html>
