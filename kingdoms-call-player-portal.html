@@ -135,6 +135,21 @@ label:has(>input[type="checkbox"]),label:has(>input[type="radio"]){text-align:le
 .btn-ghost{background:transparent;color:var(--stone);border:1px solid var(--stone);}.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
 .btn-full{width:100%;margin-top:4px;}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
+/* 2026-09-27 (Toby item 1): TOP TOOLBARS. The header rows sit directly on the near-black page
+   background (--bg #0e0a04), where a transparent ghost button and the deep crimson/forest fills
+   were all but invisible. Inside a .topbar every button takes a LIGHT fill with dark ink on it —
+   each colour class keeps a distinct hue so the row still reads as a set of different actions, but
+   every one of them now sits at roughly 10:1 against its own text. Scoped to .topbar so buttons on
+   parchment cards elsewhere are untouched. */
+.topbar .btn,.topbar a.btn{border-width:1px;border-style:solid;font-weight:600;}
+.topbar .btn-ghost{background:var(--parchment-dark);color:#241a08;border-color:#8a7550;}
+.topbar .btn-ghost:hover{background:#f4e8cd;color:#6d1414;border-color:#6d1414;}
+.topbar .btn-gold{background:var(--gold-light);color:#241a08;border-color:#a07020;}
+.topbar .btn-gold:hover{background:#f8d989;color:#241a08;}
+.topbar .btn-forest{background:#a8c98f;color:#14240c;border-color:#5d8a44;}
+.topbar .btn-forest:hover{background:#c2dfa9;color:#14240c;}
+.topbar .btn-crimson{background:#e6b2b2;color:#3a0808;border-color:#9a4a4a;}
+.topbar .btn-crimson:hover{background:#f3cccc;color:#3a0808;}
 .tab-bar{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--stone);border-radius:3px;overflow:hidden;}
 .tab-bar button{flex:1;padding:10px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.05em;background:var(--parchment-dark);color:var(--stone);transition:all .15s;}
 .tab-bar button.active{background:var(--crimson);color:#fff;}
@@ -449,7 +464,7 @@ section{display:none;}.section-active{display:block;}
 
   <!-- GAME LIST -->
   <section id="sec-games">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
         <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Signed in as</div>
         <div id="player-name-display" style="font-size:.95rem;color:var(--parchment)"></div>
@@ -478,7 +493,7 @@ section{display:none;}.section-active{display:block;}
 
   <!-- JOIN GAME -->
   <section id="sec-join">
-    <div class="detail-header">
+    <div class="detail-header topbar">
       <button class="btn btn-ghost" onclick="show('sec-games');loadAllGames()">← Back</button>
       <h2 id="join-game-title">Join Game</h2>
     </div>
@@ -537,7 +552,7 @@ section{display:none;}.section-active{display:block;}
 
   <!-- TURN REPORT -->
   <section id="sec-report">
-    <div class="detail-header" style="max-width:none;padding:10px 16px">
+    <div class="detail-header topbar" style="max-width:none;padding:10px 16px">
       <button class="btn btn-ghost" onclick="show('sec-games');loadAllGames()">← My Games</button>
       <h2 id="report-title">Turn Report</h2>
     </div>
@@ -10058,6 +10073,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2134</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2243</div>
 </body>
 </html>

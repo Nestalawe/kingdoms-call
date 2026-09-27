@@ -103,6 +103,21 @@ label:has(>input[type="checkbox"]),label:has(>input[type="radio"]){text-align:le
 .btn-ghost{background:transparent;color:var(--stone);border:1px solid var(--stone);}.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
 .btn-full{width:100%;margin-top:4px;}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
+/* 2026-09-27 (Toby item 1): TOP TOOLBARS. The header rows sit directly on the near-black page
+   background (--bg #0e0a04), where a transparent ghost button and the deep crimson/forest fills
+   were all but invisible. Inside a .topbar every button takes a LIGHT fill with dark ink on it —
+   each colour class keeps a distinct hue so the row still reads as a set of different actions, but
+   every one of them now sits at roughly 10:1 against its own text. Scoped to .topbar so buttons on
+   parchment cards elsewhere are untouched. */
+.topbar .btn,.topbar a.btn{border-width:1px;border-style:solid;font-weight:600;}
+.topbar .btn-ghost{background:var(--parchment-dark);color:#241a08;border-color:#8a7550;}
+.topbar .btn-ghost:hover{background:#f4e8cd;color:#6d1414;border-color:#6d1414;}
+.topbar .btn-gold{background:var(--gold-light);color:#241a08;border-color:#a07020;}
+.topbar .btn-gold:hover{background:#f8d989;color:#241a08;}
+.topbar .btn-forest{background:#a8c98f;color:#14240c;border-color:#5d8a44;}
+.topbar .btn-forest:hover{background:#c2dfa9;color:#14240c;}
+.topbar .btn-crimson{background:#e6b2b2;color:#3a0808;border-color:#9a4a4a;}
+.topbar .btn-crimson:hover{background:#f3cccc;color:#3a0808;}
 .tab-bar{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--stone);border-radius:3px;overflow:hidden;}
 .tab-bar button{flex:1;padding:10px;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.05em;background:var(--parchment-dark);color:var(--stone);transition:all .15s;}
 .tab-bar button.active{background:var(--crimson);color:#fff;}
@@ -187,7 +202,7 @@ section{display:none;}.section-active{display:block;}
 
   <!-- GAME LIST -->
   <section id="sec-games">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
         <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Game Master</div>
         <div id="gm-email-display" style="font-size:.95rem;color:var(--parchment)"></div>
@@ -296,7 +311,7 @@ section{display:none;}.section-active{display:block;}
 
   <!-- STATS (2026-09-25) — what the telemetry tables say about how the game plays -->
   <section id="sec-stats">
-    <div class="detail-header">
+    <div class="detail-header topbar">
       <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
       <h2 style="color:var(--gold-light)">📈 Game Statistics</h2>
       <button class="btn btn-ghost" style="font-size:.68rem" onclick="openStats(true)">↻ Reload</button>
@@ -333,7 +348,7 @@ section{display:none;}.section-active{display:block;}
 
   <!-- GAME DETAIL -->
   <section id="sec-game-detail">
-    <div class="detail-header">
+    <div class="detail-header topbar">
       <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
       <h2 id="detail-game-name">Game</h2>
       <span id="detail-status-pill"></span>
@@ -384,7 +399,7 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.09.27-1839';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.27-2134'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.27-2243'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -11693,6 +11708,11 @@ async function runTurn(opts){
   // so this turn's move-in / hire / sightings all treat him as the wanderer he really is. This also
   // heals saves carrying the pre-fix case.
   normaliseStrandedGuards(G);
+  // 2026-09-27 (Toby): the stranded-hull marker is a WITHIN-PHASE flag (see navalHeldIn). Every
+  // path that sets it clears it again, but a save written by an older build — or any future path
+  // that forgets — must not carry it into a fresh turn, where it would quietly hold units out of
+  // their own province's defence. One sweep, at the top of the turn.
+  ((G.world&&G.world.provinces)||[]).forEach(p=>((p&&p.garrisonArmies)||[]).forEach(a=>{ if(a&&a._navalHold!=null) delete a._navalHold; }));
   // strip the ' (wandering)' tag from anyone who now serves a crown. Heals live games whose heroes
   // were charmed or resurrected into service before the paths below were fixed.
   // SCOPE TRAP: `log` is a const arrow declared far below inside runTurn, so it is in its temporal
@@ -18514,18 +18534,41 @@ const BATTLE_ARMY_SPELLS={
             // AK [3.15]: a beaten general stops Defending — every general in the beaten party, not only its commander
             if(battle) (battle.won?[defChar,...defReinforcements]:[c,...pvpReinforcements]).forEach(ch=>noteBattleLoss(ch.id));
             // Rallied troops: survivors of the garrison and of any leaderless host.
-            const _garrisonSurv=_garrisonHere.filter(a=>!a._died&&!a._disbanded);
+            // 2026-09-27 (Toby): HULLS LEFT ASHORE. If the beaten defender had ships it could not
+            // take with it, navalSplitRetreat has already put them into toProv.garrisonArmies and
+            // flagged the province contested. Three blocks below then behaved as if they were not
+            // there — the assignment a few lines down replaced the array outright, the fall-back
+            // block emptied it, and the capture check looked only for hostile CHARACTERS — so the
+            // report announced hulls holding the field, then deleted them and handed the attacker
+            // the province in the same breath. Hold them aside from here on.
+            const _navalHeld=navalHeldIn(toProv);
+            // combatVsChar fights on a POOLED COPY, and syncLeaderCopy deliberately does not write
+            // `armies` back — the caller splits the pooled list to its owners, and it only strips
+            // the dead. A hull the naval retreat took off the copy's list was therefore still on
+            // the real commander's, so the same object ended up marching inland with him AND
+            // sitting in the province garrison. Take the stranded hulls off every real party
+            // member on both sides; they belong to the ground now.
+            if(_navalHeld.length){
+              [c,...pvpReinforcements,defChar,...defReinforcements].forEach(ch=>{
+                if(!ch||!Array.isArray(ch.armies)) return;
+                const _n=ch.armies.length;
+                ch.armies=ch.armies.filter(a=>_navalHeld.indexOf(a)<0);
+                if(ch.armies.length!==_n&&typeof refreshMovePool==='function') refreshMovePool(ch);
+              });
+            }
+            const _garrisonSurv=_garrisonHere.filter(a=>!a._died&&!a._disbanded&&_navalHeld.indexOf(a)<0);
             _garrisonSurv.forEach(a=>{delete a._fromGarrison;});
             // A leaderless host that has now taken casualties: strip the dead and, if it is wiped
             // out, retire the corpse's host flag so it stops being a combatant.
             _leaderlessHosts.forEach(dc=>{
-              dc.armies=(dc.armies||[]).filter(a=>!a._died&&!a._disbanded);
+              dc.armies=(dc.armies||[]).filter(a=>!a._died&&!a._disbanded&&_navalHeld.indexOf(a)<0);
               dc.armies.forEach(a=>{delete a._fromLeaderless;});
               if(dc.armies.length===0) delete dc._leaderlessHost;
             });
             // The garrison's home is toProv.garrisonArmies. Whether the survivors stay or fall back
-            // is decided once the battle outcome is known, just below.
-            toProv.garrisonArmies=_garrisonSurv;
+            // is decided once the battle outcome is known, just below. Hulls stranded ashore by the
+            // naval retreat stay put whatever the garrison does — they cannot take to the road.
+            toProv.garrisonArmies=_navalHeld.concat(_garrisonSurv);
             // combatVsChar decides the DEFENDER's fate on the pooled copy too: on a clean rout it
             // moves combinedDef to the retreat province (fixing both provinces' character lists),
             // while a trapped defence (incl. a trapped Dwarven Shield Fort) is deliberately left
@@ -18558,7 +18601,7 @@ const BATTLE_ARMY_SPELLS={
                 const _fallenBack=[..._garrisonSurv, ..._leaderlessHosts.flatMap(dc=>{const a=dc.armies||[];dc.armies=[];delete dc._leaderlessHost;return a;})];
                 if(_fallenBack.length>0){
                   _defFellBackTo.garrisonArmies=(_defFellBackTo.garrisonArmies||[]).concat(_fallenBack);
-                  toProv.garrisonArmies=[];
+                  toProv.garrisonArmies=_navalHeld.slice();   // the stranded hulls do not march inland
                   log('combat',`The standing troops of ${toProv.name} fall back to ${_defFellBackTo.name} with ${defChar.name} rather than be left to the enemy.`,{actor:defChar.player,targets,provinceId:_defFellBackTo.id,public:true});
                 }
               }
@@ -18580,10 +18623,14 @@ const BATTLE_ARMY_SPELLS={
               // resolveStalledBattles resumes the fight next phase.
               const _hostileLeft=(G.characters||[]).some(ch=>ch.alive&&ch.location===toProv.id
                 &&(ch.armies||[]).length>0&&ch.player!==null&&ch.player!==c.player);
+              // …and hulls the beaten defender left ashore are an armed enemy force standing on the
+              // ground too, commander or no commander (2026-09-27, Toby).
+              const _navalBlock=navalHeldIn(toProv, c.player);
               movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
-              if(_hostileLeft){
+              if(_hostileLeft||_navalBlock.length>0){
                 toProv._battleUnresolved=true;
                 log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
+                if(!_hostileLeft&&_navalBlock.length>0) log('combat',navalHoldLine(toProv,_navalBlock,player.name),{actor:c.player,targets,provinceId:toProv.id,public:true});
               } else {
                 G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
                 setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
@@ -18634,6 +18681,10 @@ const BATTLE_ARMY_SPELLS={
               if(typeof refreshMovePool==='function') refreshMovePool(defChar); // added units may change his pace
               log('combat',`🛡 The standing troops of ${toProv.name} fall in with ${defChar.name} and fight on at their side as the battle continues.`,{actor:defChar.player,targets,provinceId:toProv.id,public:true});
             }
+            // The stranded-hull tag has done its work for this phase: the claim decision is made and
+            // the hulls are wherever they belong. From here they are ordinary units again (a pending
+            // resume fights them through resolveUnitGainInProvince), so the marker never persists.
+            clearNavalHold(toProv); _navalHeld.forEach(a=>{ if(a) delete a._navalHold; });
           } else {
             // ── Unled garrison ── A battle is fought exactly as it would be against any other
             // commanderless force. combatVsNPC is driven off prov.neutralDefenders, so the garrison
@@ -21822,7 +21873,19 @@ const BATTLE_ARMY_SPELLS={
     if(temps.length) narrative.push(`— ✨ ${cName}'s ${temps.map(strandLabel).join(', ')} ${temps.length===1?'is':'are'} left behind ${why}; the binding fails and ${temps.length===1?'it dissolves':'they dissolve'}.`);
     if(!real.length) return false;
     if(prov.owner===owner){
-      prov.garrisonArmies=(prov.garrisonArmies||[]).concat(real);
+      // 2026-09-27 (Toby): TAG THE HULLS LEFT ASHORE. These units are now sitting in the province's
+      // garrison array, but they are NOT the standing garrison — they are a beaten force's ships,
+      // left contesting the ground. The post-battle garrison book-keeping (which replaces the array
+      // wholesale, and marches the garrison inland with a routed defender) would otherwise delete
+      // them or drag hulls overland, and the winner's capture check — which looks only for hostile
+      // CHARACTERS — would claim the province out from under them. navalHeldIn() reads this tag;
+      // the battle caller clears it once the outcome is settled, so it never reaches saved state.
+      real.forEach(a=>{ a._navalHold=owner; delete a._fromGarrison; delete a._fromLeaderless; delete a._garrisonOf; });
+      // A ship that rallied out of this province's own garrison is ALREADY in the array (the rally
+      // copies the list, it does not empty it), so concat would duplicate the object. Push only
+      // what is not there.
+      prov.garrisonArmies=prov.garrisonArmies||[];
+      real.forEach(a=>{ if(prov.garrisonArmies.indexOf(a)<0) prov.garrisonArmies.push(a); });
       prov._battleUnresolved=true;
       narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left in ${prov.name} ${why} — ${real.length===1?'it holds':'they hold'} the ground and will fight again.`);
       return true;
@@ -21832,6 +21895,27 @@ const BATTLE_ARMY_SPELLS={
       location:prov.id,isSea:SEA_TYPES.has(a.type),id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`}));
     narrative.push(`— ⚓ ${cName}'s ${real.map(strandLabel).join(', ')} ${real.length===1?'is':'are'} left behind ${why} on ground the realm does not hold — leaderless, ${real.length===1?'it scatters':'they scatter'} into the mercenary bands.`);
     return false;
+  }
+  // ── HULLS LEFT ASHORE, AFTER THE BATTLE (2026-09-27, Toby) ───────────────────────────────────
+  // Units _navalLeaveBehind stranded in a province, still flying their own realm's colours. They
+  // live in prov.garrisonArmies but must be kept out of every "the garrison retreats with the
+  // hero" sweep, and they count as forces still holding the ground when the winner tries to claim
+  // it. `against` is the would-be claimant: hulls of that same realm are not an obstacle to it.
+  function navalHeldIn(prov, against){
+    const out=[];
+    (((prov&&prov.garrisonArmies)||[])).forEach(a=>{
+      if(!a||a._navalHold==null||a._died||a._disbanded) return;
+      if(against!=null&&a._navalHold===against) return;
+      if(out.indexOf(a)<0) out.push(a);
+    });
+    return out;
+  }
+  // The tag is a within-phase marker only: once the battle's outcome is logged the hulls are
+  // ordinary garrison again (a stalled battle resumes against them through resolveUnitGainInProvince).
+  function clearNavalHold(prov){ (((prov&&prov.garrisonArmies)||[])).forEach(a=>{ if(a&&a._navalHold!=null) delete a._navalHold; }); }
+  function navalHoldLine(prov, units, claimant){
+    const who=(units[0]&&units[0]._navalHold!=null&&G.players[units[0]._navalHold])?G.players[units[0]._navalHold].name:'the enemy';
+    return `⚓ ${who}'s ${describeArmy(units)} still ${units.length===1?'lies':'lie'} off ${prov.name} — the ground is not ${claimant}'s while ${units.length===1?'it is':'they are'} there, and the fight resumes next phase.`;
   }
   function navalSplitRetreat(ch, prov, live, narrative, cName, noSea){
     if(!ch||!prov||prov.terrain==='sea'||ch.alive===false||ch.killedThisTurn) return '';
@@ -22485,6 +22569,7 @@ const BATTLE_ARMY_SPELLS={
             }
           }
         }
+        clearNavalHold(prov); // within-phase marker only — see navalHeldIn
         return;
       }
 
@@ -22553,7 +22638,13 @@ const BATTLE_ARMY_SPELLS={
         emitBattle(battle, prov, ph, [attacker.player,defender.player], {actor:attacker.player, charId:_ctxCharId, charIds:[attacker.id,defender.id]}); // item 5; 2026-09-09 item 1: both sections
         const winner=battle.won?attacker:defender;
         const enemyStillHere=(G.characters||[]).some(ch=>ch.alive&&ch.location===prov.id&&(ch.armies||[]).length>0&&ch.player!==winner.player);
-        if(!enemyStillHere && prov.owner!==winner.player){
+        // 2026-09-27 (Toby): hulls the beaten side left ashore hold the ground too — the winner does
+        // not take a province their ships are still sitting in (see navalHeldIn).
+        const _navalBlockSB=navalHeldIn(prov, winner.player);
+        if(!enemyStillHere && _navalBlockSB.length>0){
+          prov._battleUnresolved=true;
+          log('combat',navalHoldLine(prov,_navalBlockSB,(G.players[winner.player]||{}).name||forceLabel(winner)),{charId:_ctxCharId,phase:ph,actor:winner.player,targets:[],provinceId:prov.id,public:true});
+        } else if(!enemyStillHere && prov.owner!==winner.player){
           G.players.forEach((p,pi)=>{if(pi!==winner.player){const i=p.provinces.indexOf(prov.id);if(i>-1)p.provinces.splice(i,1);}});
           setProvinceOwner(prov,winner.player,winner,ph); const wp=G.players[winner.player];
           if(wp&&!wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
@@ -22568,6 +22659,7 @@ const BATTLE_ARMY_SPELLS={
         const _sidesLeft=new Set((G.characters||[]).filter(ch=>(ch.alive||ch._leaderlessHost)&&ch.location===prov.id
           &&(ch.armies||[]).length>0&&ch.player!==null).map(ch=>ch.player));
         if(_sidesLeft.size>=2) prov._battleUnresolved=true;
+        clearNavalHold(prov); // within-phase marker only — see navalHeldIn
         return;
       }
 
@@ -22894,9 +22986,22 @@ const BATTLE_ARMY_SPELLS={
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
       [enemyChar,...defReinf].forEach(d=>{ d.armies=(d.armies||[]).filter(a=>!a._died&&!a._disbanded); });
       if(battle&&battle.won) [enemyChar,...defReinf].forEach(d=>noteBattleLoss(d.id)); // every beaten defender's watch is broken
-      const _garSurv=_garHere.filter(a=>!a._died&&!a._disbanded);
+      // 2026-09-27 (Toby): hulls the beaten defender left ashore (navalSplitRetreat) are sitting in
+      // prov.garrisonArmies but are not the standing garrison — keep them out of the sweep below.
+      const _navalHeldUG=navalHeldIn(prov);
+      if(_navalHeldUG.length){
+        // same pooled-copy split as the move handler: hulls left ashore come off the real
+        // commanders' lists, or they would march away and hold the ground at the same time.
+        [c,enemyChar,...defReinf].forEach(d=>{
+          if(!d||!Array.isArray(d.armies)) return;
+          const _n=d.armies.length;
+          d.armies=d.armies.filter(a=>_navalHeldUG.indexOf(a)<0);
+          if(d.armies.length!==_n&&typeof refreshMovePool==='function') refreshMovePool(d);
+        });
+      }
+      const _garSurv=_garHere.filter(a=>!a._died&&!a._disbanded&&_navalHeldUG.indexOf(a)<0);
       _garSurv.forEach(a=>{delete a._fromGarrison;});
-      if(_garHere.length>0) prov.garrisonArmies=_garSurv;
+      if(_garHere.length>0) prov.garrisonArmies=_navalHeldUG.concat(_garSurv);
       // Same pooled-copy sync as the move handler: combatVsChar retreats the COPY, so the real
       // defenders must follow it or they are left as ghosts in a province they have fled.
       if(combinedDef.location!==enemyChar.location){
@@ -22913,7 +23018,7 @@ const BATTLE_ARMY_SPELLS={
           // the rallied garrison has no commander of its own — it falls back with the beaten heroes
           if(_garSurv.length>0){
             _defFellBackTo.garrisonArmies=(_defFellBackTo.garrisonArmies||[]).concat(_garSurv);
-            prov.garrisonArmies=[];
+            prov.garrisonArmies=_navalHeldUG.slice();   // stranded hulls cannot take to the road
             log('combat',`The standing troops of ${prov.name} fall back to ${_defFellBackTo.name} with ${enemyChar.name} rather than be left to the enemy.`,{actor:enemyChar.player,targets,provinceId:_defFellBackTo.id,public:true});
           }
         }
@@ -22995,6 +23100,9 @@ const BATTLE_ARMY_SPELLS={
       // guards.
       const _hostileLeft=(G.characters||[]).some(d=>d.alive&&d.location===prov.id
         &&(d.armies||[]).length>0&&d.player!=null&&d.player!==c.player);
+      // …as do hulls a beaten defender left ashore: an armed enemy force on the ground with no
+      // commander over it is still an armed enemy force (2026-09-27, Toby).
+      const _navalBlockUG=navalHeldIn(prov, c.player);
       if(guardLeft>0){
         prov._battleUnresolved=true;
         log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but ${neutralGuard.name.replace(' (wandering)','')} still holds the field with ${guardLeft} unit${guardLeft!==1?'s':''} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
@@ -23004,6 +23112,9 @@ const BATTLE_ARMY_SPELLS={
       } else if(_hostileLeft){
         prov._battleUnresolved=true;
         log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but enemy forces still hold their ground — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
+      } else if(_navalBlockUG.length>0){
+        prov._battleUnresolved=true;
+        log('combat',navalHoldLine(prov,_navalBlockUG,player.name),{actor:c.player,targets,provinceId:prov.id,public:true});
       } else if(_garrisonUnfought&&(prov.garrisonArmies||[]).length>0){
         // a third party's column was beaten, but the owner's garrison never fought — the walls still stand
         log('combat',`⚔ ${c.alive===false?`${c.name}'s leaderless host`:c.name} has the better of the fighting in ${prov.name}, but its garrison still ${prov.terrain==='sea'?'holds these waters':'mans the walls'} — the province is not yet taken.`,{actor:c.player,targets,provinceId:prov.id,public:true});
@@ -23015,6 +23126,7 @@ const BATTLE_ARMY_SPELLS={
         log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} overcomes the defenders and claims ${prov.name} for ${player.name}!`,{actor:c.player,targets,provinceId:prov.id,public:true});
       }
     }
+    clearNavalHold(prov); // within-phase marker only — see navalHeldIn
     // OUTCOME FOR THE OWNER. A capture already reaches the dispossessed realm through
     // setProvinceOwner; the other two endings — the province held, or the fight left hanging —
     // did not, so a player who watched an enemy raise troops on their land could not tell whether
@@ -26284,6 +26396,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-2134</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-2243</div>
 </body>
 </html>
