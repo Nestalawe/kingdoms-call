@@ -1253,6 +1253,18 @@ let viewedTurn = null;
 // viewed (if any) is a LIGHTER crimson; all others are the plain outlined style. Buttons carry
 // their turn number in data-turn and the navigator stores the resolved turn in data-resolved, so
 // this can be re-run on its own whenever the viewed turn changes without rebuilding the buttons.
+// ── TURN NUMBERING, PLAYER-FACING (2026-09-27, Toby) ──────────────────────────────────────────
+// ONE number everywhere: the turn the realm is living through — games.turn. That is what the GM
+// portal, the player's game list, the turn-mode/deadline line and the Orders card all show.
+// The report header used to name the most recent RESOLVED turn instead (games.turn − 1), and the
+// history buttons were numbered the same way, so a realm on Turn 13 read "Turn 12" in exactly
+// those two places and 13 everywhere else. Both now read the live turn.
+// The per-turn snapshots in turn_logs are still KEYED by the resolved turn (turn_logs.turn =
+// games.turn − 1 at the moment the row was written). That key lives in the database and is NOT
+// renumbered — snapshotTurnLabel() converts it to the turn the player knew it as: the report
+// written when turn N finished is the briefing acted on during turn N+1, and the founding
+// snapshot (key 0) is the Turn 1 briefing.
+function snapshotTurnLabel(key){ return (parseInt(key)||0)+1; }
 function refreshTurnNavHighlight(){
   const navEl=document.getElementById('turn-nav-btns');
   if(!navEl) return;
@@ -1335,10 +1347,13 @@ function setMobileView(view){
 }
 
 // ── DESKTOP TWO-COLUMN LAYOUT ────
-// Left panel switches Map ↔ Dispatches; right panel switches Report ↔ Orders. (Until 2026-09-27 the
-// left panel's second tab was a second Report; Toby replaced it with the messaging column, so the
-// report now lives permanently in the RIGHT panel and never moves between panels.) Torn down below
-// the desktop breakpoint so the mobile tab bar keeps working unchanged.
+// Left panel switches Map ↔ Report ↔ Dispatches; right panel switches Report ↔ Orders.
+// 2026-09-27 (Toby): the left-hand Report tab is back, between Map and Dispatches, so a player can
+// read the report on the left while the orders form stays open on the right. There is only ONE
+// report column in the document, so it is MOVED into whichever panel is showing it — the left tab
+// wins, and choosing Report on one side pushes the other side to its alternative (Orders on the
+// right, Map on the left). Torn down below the desktop breakpoint so the mobile tab bar keeps
+// working unchanged.
 //
 // _msgEnabled is declared HERE, above the layout functions that read it, rather than in the DISPATCHES
 // block at the end of the script: a top-level `let` is hoisted but sits in its temporal dead zone until
@@ -1364,13 +1379,17 @@ function setupDeskLayout(){
     const left=document.createElement('div'); left.id='desk-left';
     left.innerHTML='<div class="desk-tabs">'
       +'<button data-side="left" data-view="map" onclick="setDeskView(\'left\',\'map\')">🗺 Map</button>'
+      +'<button data-side="left" data-view="report" onclick="setDeskView(\'left\',\'report\')">📜 Report</button>'
       +'<button data-side="left" data-view="messages" id="desk-msg-tab" style="display:none" onclick="setDeskView(\'left\',\'messages\')">✉ Dispatches<span id="desk-msg-badge"></span></button>'
       +'</div><div class="desk-body" id="desk-left-body"></div>';
     const right=document.createElement('div'); right.id='desk-right';
     right.innerHTML='<div class="desk-tabs">'
       +'<button data-side="right" data-view="report" onclick="setDeskView(\'right\',\'report\')">📜 Report</button>'
       +'<button data-side="right" data-view="orders" onclick="setDeskView(\'right\',\'orders\')">📋 Orders</button>'
-      +'</div><div class="desk-body" id="desk-right-body"></div>';
+      +'</div><div class="desk-body" id="desk-right-body">'
+      +'<div id="desk-right-none" style="display:none;padding:22px;font-family:\'Crimson Text\',Georgia,serif;font-size:.9rem;color:#dccba8">'
+      +'The Report is open in the left panel. There are no orders to give for this turn — choose 📜 Report here to bring it back to this side.</div>'
+      +'</div>';
     lay.appendChild(left); lay.appendChild(right);
     document.getElementById('desk-left-body').appendChild(map);
     if(msg) document.getElementById('desk-left-body').appendChild(msg);
@@ -1395,8 +1414,17 @@ function teardownDeskLayout(){
   lay.classList.remove('desk');
 }
 function setDeskView(side,view){
-  if(side==='left'){ if(view==='messages'&&!_msgEnabled) view='map'; _deskLeftView=view; }
-  else { _deskRightView=view; }
+  if(side==='left'){
+    if(view==='messages'&&!_msgEnabled) view='map';
+    _deskLeftView=view;
+    // one report column: asking for it on the left hands the right panel over to Orders.
+    if(view==='report'&&_deskRightView==='report') _deskRightView='orders';
+  }
+  else {
+    _deskRightView=view;
+    // …and asking for it on the right sends the left panel back to the map.
+    if(view==='report'&&_deskLeftView==='report') _deskLeftView='map';
+  }
   applyDeskViews();
   if(side==='left'&&view==='messages'){ try{ onMessagesShown(); }catch(e){} }
 }
@@ -1405,17 +1433,27 @@ function applyDeskViews(){
         msg=document.getElementById('rp-msg-col'), ord=document.getElementById('orders-column');
   const lb=document.getElementById('desk-left-body'), rb=document.getElementById('desk-right-body');
   if(!map||!rep||!ord||!lb||!rb) return;
-  if(rep.parentNode!==rb) rb.appendChild(rep);          // the report only ever sits in the right panel
-  if(msg&&msg.parentNode!==lb) lb.appendChild(msg);
   if(_deskLeftView==='messages'&&!_msgEnabled) _deskLeftView='map';
+  // Both panels cannot show the one report column at once — the left tab wins (a stale pair can
+  // only arise from a restored view state, never from setDeskView).
+  if(_deskLeftView==='report'&&_deskRightView==='report') _deskRightView='orders';
+  const repLeft=(_deskLeftView==='report');
+  if(repLeft){ if(rep.parentNode!==lb) lb.appendChild(rep); }
+  else if(rep.parentNode!==rb) rb.appendChild(rep);
+  if(msg&&msg.parentNode!==lb) lb.appendChild(msg);
   const mt=document.getElementById('desk-msg-tab'); if(mt) mt.style.display=_msgEnabled?'':'none';
   map.style.display=(_deskLeftView==='map')?'':'none';
   if(msg) msg.style.display=(_deskLeftView==='messages')?'flex':'none';
-  ord.style.display=(_deskRightView==='orders'&&_ordersAvailable)?'':'none';
-  rep.style.display=(_deskRightView==='report'||(_deskRightView==='orders'&&!_ordersAvailable))?'':'none';
-  // Reflect active tab state.
+  ord.style.display=((repLeft||_deskRightView==='orders')&&_ordersAvailable)?'':'none';
+  rep.style.display=(repLeft||_deskRightView==='report'||(_deskRightView==='orders'&&!_ordersAvailable))?'':'none';
+  // Report on the left with no orders to give (a past turn, or Turn 0) leaves the right panel with
+  // nothing to show — say so rather than presenting a blank pane.
+  const none=document.getElementById('desk-right-none');
+  if(none) none.style.display=(repLeft&&!_ordersAvailable)?'':'none';
+  // Reflect active tab state. With the report on the left the right panel is showing Orders.
+  const rightTab=repLeft?'orders':_deskRightView;
   document.querySelectorAll('#desk-left .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskLeftView));
-  document.querySelectorAll('#desk-right .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskRightView));
+  document.querySelectorAll('#desk-right .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===rightTab));
   if(_deskLeftView==='map'){ try{ renderPlayerMap(); }catch(e){} }
 }
 // Set whether the Orders view is available (live turn vs past/Turn-0) and re-assert the layout. On
@@ -1427,7 +1465,7 @@ function refreshOrdersVisibility(available){
   const lay=document.getElementById('rp-layout');
   const oc=document.getElementById('orders-column');
   if(lay&&lay.classList.contains('desk')){
-    if(!_ordersAvailable && _deskRightView==='orders') _deskRightView='report'; // can't sit on an unavailable tab
+    if(!_ordersAvailable && _deskRightView==='orders' && _deskLeftView!=='report') _deskRightView='report'; // can't sit on an unavailable tab (unless the report is already on the left)
     applyDeskViews();
   } else if(oc){
     oc.style.display=_ordersAvailable?'flex':'none';
@@ -2654,7 +2692,7 @@ async function loadPastReport(gameId, playerIndex, turn){
     }
   }catch(err){ snapshot=null; }
 
-  banner.innerHTML=`Viewing Turn ${turn}${turn===0?' (founding)':''} — read only. `
+  banner.innerHTML=`Viewing Turn ${snapshotTurnLabel(turn)}${turn===0?' (founding)':''} — read only. `
     +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 
   if(snapshot){
@@ -2693,7 +2731,7 @@ async function loadPastReport(gameId, playerIndex, turn){
   }else if(turn===0){
     document.getElementById('report-log').innerHTML='<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>';
   }
-  banner.innerHTML=`Viewing Turn ${turn} — read only. `
+  banner.innerHTML=`Viewing Turn ${snapshotTurnLabel(turn)} — read only. `
     +`<span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> `
     +`<button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
 }
@@ -2781,24 +2819,28 @@ async function openReport(gamePlayerId){
   initMessaging(gp.game_id, gp.player_index, report).catch(e=>console.warn('Dispatches:',e));
 
   // Turn numbering, player-facing:
-  // liveTurn = the turn currently being PLANNED (the GM runs this next)
-  // resolvedTurn = the most recent RESOLVED turn — i.e. the results THIS report shows.
-  // The founding/starting report (before any turn is run) is Turn 0.
-  const liveTurn=g.turn||1;
+  // liveTurn = the turn the realm is living through — the one being planned now, and the number
+  //   the GM portal, the game list and the Orders card all show. The report header shows it too
+  //   (2026-09-27): a realm on Turn 13 is reading its Turn 13 report.
+  // resolvedTurn = the most recent RESOLVED turn. It is NOT a label any more — it is only the
+  //   turn_logs key of the newest snapshot (see snapshotTurnLabel).
+  const liveTurn=(g.turn!=null?g.turn:1);   // 0 during setup, and the header should say so
   const resolvedTurn=Math.max(0,(g.turn||1)-1);
-  document.getElementById('report-title').textContent=`${g.name} — Turn ${resolvedTurn}`;
-  document.getElementById('orders-turn-num').textContent=liveTurn;
+  document.getElementById('report-title').textContent=`${g.name} — Turn ${liveTurn}`;
+  document.getElementById('orders-turn-num').textContent=Math.max(1,liveTurn);
 
-  // Build turn navigation buttons: Turn 0 (founding).. resolvedTurn (current view).
+  // Build turn navigation buttons: one per snapshot, labelled by the turn the player knew it as
+  // (founding = Turn 1) up to the live turn.
   const navEl=document.getElementById('turn-nav-btns');
   if(navEl){
     navEl.innerHTML='';
     if((g.turn||0)>=1){
       for(let d=0;d<=resolvedTurn;d++){
         const btn=document.createElement('button');
-        btn.textContent=`T${d}`;
+        const lbl=snapshotTurnLabel(d);
+        btn.textContent=`T${lbl}`;
         btn.dataset.turn=d;
-        btn.title=d===0?'Founding — your starting position':`Turn ${d} results`;
+        btn.title=d===0?`Turn ${lbl} — the founding report, your starting position`:`Turn ${lbl} — the report you received then`;
         btn.onclick=(()=>{const turn=d;const pi=gp.player_index;const cur=resolvedTurn;return()=>turn===cur?returnToCurrentReport():loadPastReport(gp.game_id,pi,turn);})();
         navEl.appendChild(btn);
       }
@@ -10073,6 +10115,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2243</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2258</div>
 </body>
 </html>
