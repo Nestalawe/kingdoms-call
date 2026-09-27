@@ -15,6 +15,7 @@
   let shown=false;
   function hint(m){
     if(/supabase is not defined/i.test(m)) return 'The Supabase library could not be downloaded from cdn.jsdelivr.net or unpkg.com. Check your internet connection, ad-blocker or firewall, then reload.';
+    if(/kingdoms-call-data\.js/i.test(m)) return 'The game data file <b>kingdoms-call-data.js</b> is missing or out of date on the server. Please tell your Game Master; if you are the GM, upload the current file beside this page, then hard-reload (Ctrl/Cmd+Shift+R).';
     if(/before initialization|is not defined/i.test(m)) return 'A script error stopped the portal from starting (this build, or a stale cached copy). Hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
     return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
   }
@@ -676,15 +677,35 @@ section{display:none;}.section-active{display:block;}
   </section>
 </div>
 
+<script src="kingdoms-call-data.js"></script>
 <script>
+// ── DATA FILE GUARD (2026-09-27, Toby: collapse to one source) ────
+// The player portal now reads the game's SHARED RULE TABLES (unit classes, the Druid ladder, unit
+// strengths, skills, seasons, the Wonders, the mastery text…) from kingdoms-call-data.js — the same
+// file the GM portal loads, served from the same folder — instead of keeping its own copies, several
+// of which had drifted from the engine. Missing, or older than this build expects → a full-page
+// message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
+const KC_DATA_MIN_P='2026.09.27-1839';
+(function(){
+  const need=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
+  const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
+  const stamp=(typeof KC_DATA_STAMP==='string')?KC_DATA_STAMP:null;
+  const allMissing=missing.length===need.length;
+  if(allMissing||missing.length||!stamp||stamp<KC_DATA_MIN_P){
+    const why=allMissing?'kingdoms-call-data.js not loaded':`kingdoms-call-data.js out of date (${stamp||'no stamp'} < ${KC_DATA_MIN_P}${missing.length?'; missing '+missing.join(', '):''})`;
+    throw new Error(why);   // the boot-failure reporter above turns this into a readable message
+  }
+})();
 // ── CONFIG ────
 const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
-// ── EQUIPMENT SLOTS — mirror of the GM engine's tables ──
-const ITEM_SLOT_CAP_P={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}; // shield slot added 2026-09-10 (mirror) · combat ×2 added 2026-09-11
+// ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.js (KC_ITEM_SLOT_CAP) ──
+const ITEM_SLOT_CAP_P={...KC_ITEM_SLOT_CAP};
+// Lair-guardian grade colours (map rings, lair cards, tooltips). One copy — it was typed four times.
+const GUARD_POWER_COLORS_P={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'};
 const ITEM_SLOT_LABEL_P={weapon:'Weapon',armour:'Armour',shield:'Shield',cloak:'Cloak / clothing',helm:'Helm / crown',ring:'Rings (up to two)',amulet:'Amulet / talisman',combat:'Combat Items (up to two)'};
 const ITEM_SLOT_ORDER_P=['weapon','armour','shield','cloak','helm','ring','amulet','combat'];
 // ── ONLY THE LIVING TAKE ORDERS ────
@@ -730,6 +751,23 @@ function realmOfP(playerIdx, report){
 }
 function realmNameP(playerIdx, report){ const k=realmOfP(playerIdx,report); return k?k.name:'enemy'; }
 function realmOptStyleP(playerIdx, report){ const k=realmOfP(playerIdx,report); return (k&&k.color)?` style="color:${reportColour(k.color)};font-weight:600"`:''; }
+// ── WHOSE HERO WAS THIS? (2026-09-27, Toby item 10) ────
+// Resurrect will raise only your OWN fallen and true wanderers — a body that ever served another
+// crown is refused — so every place a dead hero is shown must say which realm held them when they
+// fell. `player` is null for a hero who never served anyone. `opts.dark` tints for the map tooltip's
+// dark background; `opts.bare` drops the leading em-dash for callers that supply their own.
+function deadHeroRealmTagP(h, report, opts){
+  opts=opts||{};
+  const rep=report||currentReport||{};
+  const own=(rep.playerIndex!=null)?rep.playerIndex:null;
+  const lead=opts.bare?'':'— ';
+  if(h&&h.player==null) return `${lead}a neutral hero, sworn to no crown`;
+  if(h&&own!=null&&h.player===own) return `${lead}your own hero`;
+  const k=realmOfP(h?h.player:null, rep);
+  const nm=(k&&k.name)||'another realm';
+  const col=(k&&k.color)?(opts.dark?(_tintForDarkTooltip(k.color)||'#e8b84b'):reportColour(k.color)):null;
+  return `${lead}a hero of <span style="${col?`color:${col};`:''}font-weight:600">${nm}</span>`;
+}
 // ── PACK ORDER ────
 // A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm,
 // rings, amulet, combat items), with everything else — unequipped slot items, and the unslotted
@@ -782,7 +820,7 @@ function itemSlotP(it){ if(!it) return null;
   if(it.slot!==undefined) return it.slot||null; return ITEM_SLOT_OF_P[it.name]||null; }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded. Item 4:
 // race/alignment-bound items are inert in the wrong hands.
-const _ITEM_RACE_ALIAS_P={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
+const _ITEM_RACE_ALIAS_P={...KC_ITEM_RACE_ALIAS}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
 function itemRaceOfP(it){ const r=it&&it.race; return r?(_ITEM_RACE_ALIAS_P[r]||r):r; }
 function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==itemRaceOfP(it))) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
 function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${itemRaceOfP(it)} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#a33;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
@@ -797,7 +835,7 @@ function itemSlotTag(it,c){
   return ` <span style="color:${it.equipped===false?'#999':'#6b5a2a'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
-const RUMOUR_COST_BY_POWER_P={Weak:1,Moderate:2,Powerful:3,Legendary:4}; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
+const RUMOUR_COST_BY_POWER_P={...KC_RUMOUR_COST_BY_POWER}; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
 function updateRumourTarget(charId, ph){
   const wrap=document.getElementById(`po-rumour-wrap-${charId}-${ph}`); const hidden=document.getElementById(`po-target-${charId}-${ph}`);
   if(!wrap||!hidden) return;
@@ -814,7 +852,7 @@ function updateEquipTarget(charId, ph){
   hidden.value=[...new Set(vals)].join(',');
 }
 
-const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+const SEASONS = KC_SEASONS.slice();
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Explore','Search Lair','Hunting Rumours','Recruit Armies','Hire Hero','Release Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items',
@@ -856,8 +894,32 @@ const L79_ORDERS={
   'Lightning Advance':{skill:'march',lvl:9,target:'none',hint:'March 9: strike before they can set — enemies you attack this turn lose their defensive footing (−20%).'},
   'Raid the Coast':{skill:'naval',lvl:9,target:'none',hint:'Naval 9: an amphibious assault — when you come ashore from the sea this turn and fight for the coast you land on, you hit at +25% strength (the whole landing does, even if another hero takes command of it).'},
   'Wild Calling':{skill:'druid',lvl:9,target:'none',hint:'Druid 9: while standing in a wild (Creature or Monster) province, call its wild host to your banner — several of its beasts defect to you.'},
-  'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your realm\u2019s Grand Design — a unique, once-ever Wonder: every province you hold yields +1 tax, forever.'},
+  // 2026-09-27 (Toby item 3): the old hint promised "+1 tax in every province, forever" — an effect
+  // no Wonder has had for a long time. Each alignment raises a DIFFERENT Wonder (see GD_BY_ALIGNMENT
+  // below, and _GD_DEFS in the GM engine's 'grand_design' case), so the hint is rewritten for the
+  // reader's OWN realm by gdHintFor() as the order form is drawn. This string is only the fallback
+  // for a report that carries no alignment.
+  'Grand Design':{skill:'sage',lvl:9,target:'none',hint:'Sage 9: complete your realm\u2019s Grand Design — a unique, once-ever Wonder whose blessing is set by your realm\u2019s alignment.'},
 };
+// ── THE SEVEN WONDERS ────
+// One per alignment, mirroring _GD_DEFS in the GM engine. Keep the two in step: the engine decides
+// what the Wonder DOES, this decides what the player is told it will do before they spend the order.
+const GD_BY_ALIGNMENT={...KC_GRAND_DESIGNS};
+// 2026-09-27 (Toby item 4): ONE Wonder per realm, ever. The engine pushes the discovery with id 'gd'
+// and refuses a second outright, so once it is there the order is withdrawn from every hero of the
+// realm rather than being offered and then rejected at resolution.
+function gdAlreadyBuiltP(report){
+  const r=report||currentReport||{};
+  return (r.discoveries||[]).some(d=>d&&d.id==='gd');
+}
+// The Grand Design hint for the reader's own realm, naming the Wonder they would actually raise.
+function gdHintFor(report){
+  const r=report||currentReport||{};
+  const al=(r.kingdom&&r.kingdom.alignment)||null;
+  const gd=al?GD_BY_ALIGNMENT[al]:null;
+  if(!gd) return L79_ORDERS['Grand Design'].hint;
+  return `Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
+}
 const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 // ── A CHARACTER WHOSE SHEET THE PLAYER CANNOT READ ──────────────────────────────────────────────
 // Two pre-order cards carry one: a hero being HIRED this turn (`_unknownSkills` — the GM ships only
@@ -912,6 +974,10 @@ function actionsFor(c){
     // hero still being hired, nor for a mind you have merely charmed. A charmed WANDERER who joins
     // for good is an ordinary hero from next turn and the level gate below applies as usual.
     if(L79_ORDERS[a]&&skillsUnseenP(c)) return false;
+    // 2026-09-27 (Toby item 4): a realm raises ONE Grand Design in the whole game. Once the Wonder
+    // stands, the order leaves every hero's dropdown — the engine already refuses a second, and an
+    // order that can only ever be refused should not be on the form.
+    if(a==='Grand Design'&&gdAlreadyBuiltP(currentReport)) return false;
     if(L79_ORDERS[a]&&!skillsUnseenP(c)&&rawSkillLvl(c,L79_ORDERS[a].skill)<L79_ORDERS[a].lvl) return false;
     // Research (Sage 1+) and Steal (Thief 1+) are gated on the character's BASE skill, matching the
     // engine (`case 'research'` / `case 'steal'` both read the raw level). A CHARMED hero is the
@@ -1772,7 +1838,7 @@ const SKILL_INFO={
 const SKILL_COLUMNS=[
   {head:'⚔ Martial', skills:['melee','archery','tactical','march','naval']},
   {head:'✦ Special', skills:['sage','spy','thief','druid','explorer']},
-  {head:'✨ Magic',  skills:['white','psychic','illusory','elemental','necromancy']},
+  {head:'✨ Magic',  skills:KC_MAGIC_SCHOOLS.slice()},
 ];
 
 function renderSkillGrid(){
@@ -1967,8 +2033,8 @@ function intelSectionShell(inner){
         <div style="padding:6px 8px">${inner||''}${host}</div></div>`;
 }
 function buildChronicle(log, chars_for_log){
-  const PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];
-  const PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555'];
+  const PHASE_NAMES=KC_PHASE_NAMES.slice();
+  const PHASE_COLORS=KC_PHASE_COLORS.slice();
 
   // ── the Reckoning / endgame notice is pinned to the VERY TOP of the Chronicle for EVERY player,
   // above all phase events — it is the most consequential thing that can happen in a turn, and all
@@ -2095,7 +2161,7 @@ function buildChronicle(log, chars_for_log){
     // name — tint each by its difficulty tier (Weak → Legendary) instead of the default neutral grey.
     // Registered BEFORE the neutral sightings below so the difficulty colour wins (the first colour
     // registered for a name key sticks). Matches the POWER_COLORS used on the Known Features card.
-    const _GUARD_POWER_COLORS={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'};
+    const _GUARD_POWER_COLORS={...GUARD_POWER_COLORS_P};
     (_chronRep.knownFeatures||[]).forEach(f=>{
       if(!f) return;
       // tint BOTH the guardian AND the lair itself in the guardian's difficulty colour, everywhere
@@ -2711,10 +2777,7 @@ function renderReportView(report){
             const head=`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
             if(arr.length===0) return head+`<div style="font-size:.75rem;color:#3a3224">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel=effSkillP(c,'druid');
-            const isDruidic=((kingdom.alignment)==='Druidic');
-            const hasDragonTamingUI=(report.discoveries||[]).some(d=>d&&d.id==='sd40');
-            const TAMED_FLYERS_UI=new Set(['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons']);
-            const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Noble Griffons':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
+            // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (mirrors the engine).
             let totalStr=0,totalCost=0,druidUnits=0,druidShort=0;
             const lines=arr.map(a=>{
               // humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
@@ -2727,21 +2790,18 @@ function renderReportView(report){
               const leadRaceMatch=!!(a.race&&a.race===c.race);
               // Racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
               // commander.
-              const _RIVAL_RACE_UI={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+              const _RIVAL_RACE_UI={...KC_RIVAL_RACE};
               const feudLed=!!(a.race&&c.race&&_RIVAL_RACE_UI[a.race]===c.race);
               let bs=rawBs;
               if(kingRaceMatch) bs=Math.round(bs*1.2);
               if(leadRaceMatch) bs=Math.round(bs*1.2);
               if(feudLed) bs=Math.round(bs*0.8);
               const creature=CREATURE_ARMIES_UI.has(a.type), monster=MONSTER_ARMIES_UI.has(a.type);
-              let req=DRUID_REQ[a.type]||0;
-              if(a.skeletal) req=0;              // skeletons are exempt from the Druid penalty
-              if(isDruidic&&creature) req=0;      // Druidic realms lead Creatures with no Druid
-              if(hasDragonTamingUI&&TAMED_FLYERS_UI.has(a.type)) req=0; // sd40 Dragon Taming: winged beasts need no Druid (mirrors GM TAMED_FLYER_TYPES_D)
-              if(req>0) druidUnits++;
-              const sameRace=leadRaceMatch;
-              const effDru=sameRace?Math.max(1,druLevel):druLevel;
-              const shortfall=Math.max(0,req-effDru);
+              const _dn=druidNeedP(a,c,report);   // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1
+              const req=_dn.req;
+              if(_dn.counts) druidUnits++;
+              const effDru=_dn.effDru;
+              const shortfall=_dn.shortfall;
               // a Druid shortfall actually REDUCES the unit's strength — apply it to the shown
               // figure and the panel total (matching the engine's max(0.1, 1−0.2×shortfall)),
               // instead of only tagging the penalty beside a full-strength number.
@@ -2762,9 +2822,9 @@ function renderReportView(report){
             // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
             // column that can cross sea), tell the player so the raised speed and sea reach make
             // sense.
-            const _FLY_UI2=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
-            const _SEA_UI2=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
-            const _AER_UI2=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+            const _FLY_UI2=new Set(KC_UNIT_CLASS.flying);
+            const _SEA_UI2=new Set(KC_UNIT_CLASS.sea);
+            const _AER_UI2=new Set(KC_UNIT_CLASS.aerial);
             const _hasFlyer=arr.some(a=>_FLY_UI2.has(a.type));
             const _hasFoot=arr.some(a=>!_AER_UI2.has(a.type)&&!_SEA_UI2.has(a.type));
             const _airborne=_hasFlyer&&_hasFoot&&!arr.some(a=>_SEA_UI2.has(a.type))&&(c.effectiveSeaSpeed>0);
@@ -2775,8 +2835,8 @@ function renderReportView(report){
             // Wardens, Dwarven Guard, Orc Berserkers) take ½ a hull, everything else on foot takes
             // a full hull; flyers and sea units need none; Naval mastery (level 8+) halves the
             // need; a fully airborne column needs no ships at all.
-            const _CARRIER_UI2=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-            const _LIGHT_UI2=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns']);
+            const _CARRIER_UI2=new Set(KC_UNIT_CLASS.carrier);
+            const _LIGHT_UI2=new Set(KC_UNIT_CLASS.lightFoot);
             const _landUnits=arr.filter(a=>!_AER_UI2.has(a.type)&&!_SEA_UI2.has(a.type));
             let _hullNeed=_landUnits.reduce((n,a)=>n+(_LIGHT_UI2.has(a.type)?0.5:1),0);
             if(effSkillP(c,'naval')>=8) _hullNeed/=2;
@@ -2846,11 +2906,13 @@ function renderReportView(report){
   if(visDeadHeroes.length>0){
     otherForcesHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#46275f;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">💀 Fallen Heroes</div>`;
     otherForcesHtml+=visDeadHeroes.map(h=>`<div class="intel-entry" style="border-left-color:#5a3a7a;background:#f8f0ff">
-      <strong>${h.name}</strong> <span style="color:#701010">(dead)</span>${(h.race||h.alignment)?` (${[h.race,h.alignment].filter(Boolean).join(', ')})`:''}${h.isOwn?' — your hero':''} — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
+      <strong>${h.name}</strong> <span style="color:#701010">(dead)</span>${(h.race||h.alignment)?` (${[h.race,h.alignment].filter(Boolean).join(', ')})`:''} ${deadHeroRealmTagP(h,report)} when they fell — body lies in ${h.locationName} (fell turn ${h.killedOnTurn})<br>
       <span style="font-size:.78rem">${h.topSkill?`${skillFameLabel(h.topSkill.level)} <span style="color:var(--gold)">${SKILL_LABELS[h.topSkill.skill]||h.topSkill.skill}</span>`:'No notable skills'}</span><br>
-      ${h.inVisibleProv
-        ?'<span style="font-size:.72rem;color:#46275f">💀 A hero with the Resurrect spell can raise them from this province.</span>'
-        :'<span style="font-size:.72rem;color:#332c20">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>'}
+      ${(h.servedOther!==undefined?h.servedOther:(h.player!=null&&!h.isOwn))
+        ?'<span style="font-size:.72rem;color:#701010">⛔ Sworn to another crown in life — Resurrect will not raise them for you. Only your own fallen and heroes who never served a rival can be brought back.</span>'
+        :(h.inVisibleProv
+          ?'<span style="font-size:.72rem;color:#46275f">💀 A hero with the Resurrect spell can raise them from this province.</span>'
+          :'<span style="font-size:.72rem;color:#332c20">Last known location — send a caster with the Resurrect spell to their province to raise them.</span>')}
     </div>`).join('');
   }
 
@@ -2941,7 +3003,7 @@ function renderReportView(report){
   const provinceEvents=report.provinceEvents||[];
   if(provinceEvents.length>0){
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Province Reports</div>`;
-    const SEASONS_E=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+    const SEASONS_E=KC_SEASONS.slice();
     const _evByProv=new Map();
     provinceEvents.forEach(ev=>{
       const key=ev.provName||'Unknown province';
@@ -2993,7 +3055,7 @@ function renderReportView(report){
   // phases after your agent arrived (the spy's lingering line of sight).
   const spyActivity=report.spyActivity||[];
   if(spyActivity.length>0){
-    const SEASONS_SA=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+    const SEASONS_SA=KC_SEASONS.slice();
     intelHtml+=`<div style="font-family:'Cinzel',serif;font-size:.72rem;color:#2d6a7a;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">🔍 Spy Activity Reports</div>`;
     spyActivity.forEach(sa=>{
       const rows=(sa.lines||[]).map(l=>{
@@ -3021,7 +3083,7 @@ function renderReportView(report){
       <span style="background:#8a1c1c;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">💀 Powerful</span> very dangerous, prepare carefully ·
       <span style="background:#5a0a9a;color:#fff;padding:1px 5px;border-radius:2px;font-size:.65rem">🔥 Legendary</span> near-impossible alone
     </div>`;
-    const POWER_COLORS={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'};
+    const POWER_COLORS={...GUARD_POWER_COLORS_P};
     const POWER_ICONS={Weak:'🐾',Moderate:'⚔',Powerful:'💀',Legendary:'🔥'};
     // Group features by the province they sit in, so a player can see at a glance which province
     // holds which feature. Provinces are listed alphabetically; each feature drops the redundant
@@ -3242,25 +3304,13 @@ function initReportCollapsers(){
 // A permanent, always-available reference: for every one of your characters who has pushed a skill
 // to level 6 or beyond (reachable only through hard experience), list what that mastery grants —
 // the passives that deepen and any new orders/spells unlocked — cumulatively from level 6 up to
-// their current level. Mirror of the GM engine's MASTERY_UNLOCKS (display-only; keep the two in
-// step).
-const MASTERY_EFFECTS={
-  melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},
-  archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\'s Mark orders.',9:"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them."},
-  tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},
-  march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},
-  naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},
-  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +1 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
-  spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
-  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
-  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole wild (Creature or Monster) province's defenders to your side."},
-  explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
-  white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) heal half their maximum HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
-  psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
-  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},
-  elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Chain Lightning: strike several of an enemy hero's units at once.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},
-  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once."},
-};
+// their current level.
+// 2026-09-27 (Toby: collapse to one source): this was a hand-kept mirror of MASTERY_UNLOCKS and had
+// drifted on TEN entries — it told players that Melee, Archery and the magic schools at level 6/8
+// grant nothing, while the engine gives Parry, Counterattack, Impalement, Trueshot, Words of Awe,
+// Shimmer, Elemental Armour and the Necromantic Arts. It now reads the engine's own table from
+// kingdoms-call-data.js, so the two cannot disagree again.
+const MASTERY_EFFECTS=MASTERY_UNLOCKS;
 function renderMastery(report){
   const card=document.getElementById('mastery-card');
   const el=document.getElementById('report-mastery');
@@ -3773,7 +3823,7 @@ const rawMagicLvl=(charObj,school)=>((charObj&&charObj.skills)||{})[school]||0;
 // past a trained 5 to the ceiling of 9. Declared HERE, above effMagicLvl, its first reader — a const
 // declared further down the file is in the temporal dead zone for everything above it, which is
 // this project's oldest and most expensive bug class.
-const ITEM_UNCAPPED_SKILLS_P=new Set(['melee','archery','white','psychic','illusory','elemental','necromancy']);
+const ITEM_UNCAPPED_SKILLS_P=new Set(KC_ITEM_UNCAPPED_SKILLS);
 function effMagicLvl(charObj, school){
   const base=((charObj&&charObj.skills)||{})[school]||0;
   // only EQUIPPED slot items count (unslotted items are always active).
@@ -3816,7 +3866,7 @@ const SPELL_HINTS={
   'Hand of Death':'Combat: 10% per Necromancy level to deal damage equal to 50% of the target\u2019s max HP.',
   'Plague':'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
 };
-const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+const ALL_SKILLS=KC_SKILLS.slice();
 // ── DISPLAY ROUNDING (report text) ────
 // Belt-and-braces partner to the GM engine's n0(): the engine now rounds every battle statistic at
 // source, but this catches anything a future edit forgets. Rounds any decimal number in a report
@@ -3843,9 +3893,8 @@ function roundReportNumbers(text){
 // a deliberate duplicate — the same arrangement as PRIMAL_ARMY_SPEEDS below. KEEP THE TWO IN SYNC:
 // if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
 // be shown a number the battle engine does not agree with.
-const UNIT_BASE_STR_P={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
-  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
-const UNIT_Q_MULT_P={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
+const UNIT_BASE_STR_P={...KC_UNIT_BASE_STR};
+const UNIT_Q_MULT_P={...KC_UNIT_Q_MULT};
 // A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
 function unitBaseStrengthP(a){ return (UNIT_BASE_STR_P[a&&a.type]||4)*(UNIT_Q_MULT_P[(a&&a.quality)||'Average']||2); }
 
@@ -3888,12 +3937,11 @@ function unitEmoji(type){
   // at a glance. Sea monsters therefore get their own icon rather than the land-dragon one, and the
   // winged primals are counted as flying because they genuinely cross water without a fleet. These
   // sets mirror the GM engine's AERIAL_TYPES / SEA_TYPES / CREATURE_ARMIES / MONSTER_ARMIES.
-  const _SEAMON=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
-  const _MON=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Elder Dragons','Titan Warbeasts']);
-  const _FLY=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders',
-    'Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
-  const _SEA=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-  const _CRE=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+  const _SEAMON=new Set(KC_UNIT_CLASS.primalSea);
+  const _MON=new Set(KC_UNIT_CLASS.monster.filter(t=>!KC_UNIT_CLASS.primalSea.includes(t)));
+  const _FLY=new Set(KC_UNIT_CLASS.aerial);
+  const _SEA=new Set(KC_UNIT_CLASS.carrier);
+  const _CRE=new Set(KC_UNIT_CLASS.creature);
   const _ELEM=new Set(['Air Elemental','Fire Elemental','Earth Elemental','Water Elemental','Darkness Elemental']);
   if(_ELEM.has(type))   return '\u{1F300}';   // 🌀 summoned elemental
   if(_SEAMON.has(type)) return '\u{1F30A}';   // 🌊 sea monster
@@ -3912,18 +3960,15 @@ function unitEmoji(type){
 // (AERIAL_TYPES / SEA_TYPES / CARRIER_TYPES / FLYING_TYPES, isAirCarriable, getFlyCapability,
 // getSeaCapability and seaLiftShortfall). If any of those change in the engine, change these too —
 // a warning that disagrees with the resolver is worse than no warning at all.
-const PO_SEA_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
-const PO_CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-const PO_AERIAL_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
-const PO_FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
-const PO_CAVALRY_TYPES=new Set(['Free Lances','Gilded Lances','Warg Riders']);
-const PO_CREATURE_TYPES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-const PO_MONSTER_TYPES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+const PO_SEA_TYPES=new Set(KC_UNIT_CLASS.sea);
+const PO_CARRIER_TYPES=new Set(KC_UNIT_CLASS.carrier);
+const PO_AERIAL_TYPES=new Set(KC_UNIT_CLASS.aerial);
+const PO_FLYING_TYPES=new Set(KC_UNIT_CLASS.flying);
+const PO_CAVALRY_TYPES=new Set(KC_UNIT_CLASS.cavalry);
+const PO_CREATURE_TYPES=new Set(KC_UNIT_CLASS.creature);
+const PO_MONSTER_TYPES=new Set(KC_UNIT_CLASS.monster);
 // Light foot take half a hull; everything else takes a whole one (engine: LIGHT_ARMIES).
-const PO_LIGHT_TYPES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
-  'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde',
-  'Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns',
-  '__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
+const PO_LIGHT_TYPES=new Set([...KC_UNIT_CLASS.lightFoot,'__projected foot__']); // a unit the player has ordered raised or summoned earlier this turn — counted as light foot
 // The stand-in type for a unit an earlier order will produce whose TYPE cannot be known in advance
 // (a grave raised by Skeletal Armies or Harvest the Field). It belongs to no aerial, sea, creature
 // or monster set, so poAirCarriable treats it as humanoid foot and PO_LIGHT_TYPES prices it at half
@@ -4144,7 +4189,7 @@ function lastMoveDirOf(charId, beforePhase){
   const report=currentReport;
   if(!report||!report.worldMeta) return null;
   const wm=report.worldMeta, cols=wm.cols, rows=wm.rows, provs=wm.provinces||[];
-  const HEX=['NW','NE','W','E','SW','SE'];
+  const HEX=KC_HEX_DIRS.slice();
   const EV=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
   const OD=[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
   let found=null;
@@ -4169,7 +4214,7 @@ function lastMoveDirOf(charId, beforePhase){
   return found;
 }
 
-const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
+const SKILL_LABELS={...KC_SKILL_LABELS};
 
 // Encounter plan tactics (AK 5.0-5.8) How a commander answers the call to single combat at the
 // start of an army battle.
@@ -4195,7 +4240,7 @@ const ENCOUNTER_TACTICS=[
 // The crowned heir keeps their base skills; the player spends 4 points on top of that, max +2 into
 // any single skill — exactly the join-screen rule (join skills add on top of the king's base
 // {melee:2,archery:1,sage:1}). _heirBase is the untouchable floor.
-const HEIR_TEMPERS_LIST=['Berserk','Brave','Cautious','Cowardly'];
+const HEIR_TEMPERS_LIST=KC_TEMPERS.slice();
 function heirBaseSkills(c){ return (c&&c._heirBase)||(c&&c.skills)||{}; }
 function heirAddedTo(c,skill){ const b=heirBaseSkills(c); return ((c.skills||{})[skill]||0)-(b[skill]||0); }
 function heirTotalAdded(c){
@@ -4469,7 +4514,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     // Show existing orders read-only so the player can see what they sent
     const savedOrders=typeof existingOrders==='string'?JSON.parse(existingOrders):existingOrders||{};
     const savedO=savedOrders.orders||savedOrders||{};
-    const SEASONS_RO=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+    const SEASONS_RO=KC_SEASONS.slice();
     el.innerHTML=`<div style="opacity:.65;pointer-events:none;user-select:none">
       <div style="font-family:Cinzel,serif;font-size:.72rem;color:var(--stone);text-transform:uppercase;letter-spacing:.08em;padding:6px 0 8px">Submitted orders (read-only):</div>
       ${chars.filter(c=>c.alive!==false).map(c=>{
@@ -4605,14 +4650,10 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
           const armies=c.armies||[];
           if(armies.length===0) return '<span style="color:#aaa">No armies</span>';
           const druLevel=effSkillP(c,'druid');
-          // Druid requirement thresholds (matches server table)
-          const DRUID_REQ={'Stone Giants':4,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':4,'Basilisk Brood':4,'Sea Giants':4,'Kraken Tentacles':4,'Elder Dragons':5,'Crimson Rocs':5,'Titan Warbeasts':5,'Leviathan Pods':5,'Eagle Riders':3,'Wyvern Riders':3,'Whale Cohort':3,'Noble Griffons':3,'Skeletal Legion':2,'Gnomish Gyrocopters':2};
           return armies.map(a=>{
-            const req=DRUID_REQ[a.type]||0;
-            // Same race as the commander → led as if Druid 1 (matches the server rule).
-            const sameRace=!!(a.race&&a.race===c.race);
-            const effDru=sameRace?Math.max(1,druLevel):druLevel;
-            const shortfall=Math.max(0,req-effDru);
+            // 2026-09-27: this copy ignored the Druidic, Dragon Taming and skeleton waivers and lacked
+            // level 1, so it showed penalties the engine never applies (and missed one it does).
+            const {req,effDru,shortfall}=druidNeedP(a,c);
             const penalty=shortfall>0?` <span style="color:var(--crimson);font-size:.7rem">−${shortfall*20}% str (Druid ${effDru}/${req})</span>`:'';
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
@@ -4866,7 +4907,7 @@ function addEncounterTactic(charId, code){
 
     // Also include schools being practised in any phase this turn
     // (same logic as Cast Spell phase orders — the player sets their plan after their orders)
-    const MAGIC_SCHOOLS_EP=new Set(['white','psychic','illusory','elemental','necromancy']);
+    const MAGIC_SCHOOLS_EP=new Set(KC_MAGIC_SCHOOLS);
     const practisingSchoolsEP=new Set();
     for(let prevPh=0;prevPh<5;prevPh++){
       const prevAction=document.getElementById(`po-action-${charId}-${prevPh}`)?.value||'';
@@ -5362,7 +5403,7 @@ function _fillResurrectCard(fakeId, saved){
 }
 function _setResurrectCasterNote(card, casters){
   const el=card.querySelector('.resurrect-casters'); if(!el) return;
-  const SEASONS_R=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const SEASONS_R=KC_SEASONS.slice();
   const who=casters.map(x=>`${x.name} (${SEASONS_R[x.ph]||'?'})`);
   el.textContent=casters.length>1
     ? `Raised by any of: ${who.join(', ')} — whichever succeeds, these orders apply.`
@@ -5436,7 +5477,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
     return null;
   }
 
-  const SEASONS_R=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const SEASONS_R=KC_SEASONS.slice();
   const fakeId=`resurrect_${heroId}_via_${charId}_ph${ph}`;
   // A raised hero returns at full health, STRIPPED of items and armies, where the body lies — i.e.
   // where the caster stands when Resurrect resolves — so their order options (Recruit Armies,
@@ -5577,7 +5618,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   const casterBlock=document.getElementById(`po-action-${charId}-0`)?.closest('.orders-char-block');
   if(!casterBlock) return;
 
-  const SEASONS_C=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const SEASONS_C=KC_SEASONS.slice();
   const fakeId=`charm_${heroId}_via_${charId}_ph${ph}`;
 
   // Register a placeholder so buildTargetField/onActionChange can resolve this id. A charmed
@@ -5714,7 +5755,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
   }
   if(!charBlock) return;
 
-  const SEASONS_H=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const SEASONS_H=KC_SEASONS.slice();
   const hiredCharId=`hired_${heroId}_via_${charId}_ph${ph}`;
 
   // Build a full character object and register it so onActionChange/buildTargetField can find it
@@ -6468,9 +6509,34 @@ function capitalise(s){return s?s[0].toUpperCase()+s.slice(1):'';}
 // internal engine term; players only ever see Creature or Monster. Player-facing class of each
 // primal unit TYPE, mirroring the engine's CREATURE_ARMIES / MONSTER_ARMIES sets. Used where only
 // the unit type is known (race stored as a bare 'Primal').
-const HUMANOID_RACES_UI=new Set(['Human','Elven','Dwarven','Orcish']);
-const CREATURE_ARMIES_UI=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-const MONSTER_ARMIES_UI=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+const HUMANOID_RACES_UI=new Set(KC_HUMANOID_RACES);
+const CREATURE_ARMIES_UI=new Set(KC_UNIT_CLASS.creature);
+const MONSTER_ARMIES_UI=new Set(KC_UNIT_CLASS.monster);
+// ── DRUID: WHAT DOES THIS COMMANDER NEED TO LEAD THIS UNIT? (2026-09-27) ────────────────────────
+// The ONE player-side copy of the engine's druIdPenaltyMult rule. The level table itself is
+// KC_DRUID_LEVELS in kingdoms-call-data.js — the same table the engine builds its Sets from — so the
+// portal and the battle maths cannot drift apart again. (They had: the portal kept two hand-typed
+// tables with no level 1, and one of them ignored every waiver.)
+//   req       — Druid needed after waivers: skeletons 0; a creature under a Druidic realm OR a
+//               personally Druidic commander 0; a winged beast with sd40 Dragon Taming 0
+//   effDru    — the commander's Druid, counted as at least 1 for units of his own race
+//   shortfall — levels short (each costs 20% strength in battle)
+//   counts    — whether leading this unit depends on Druid training at all (an own-race unit's
+//               level-1 need is met by birth, so it does not count)
+const DRUID_LEVEL_OF_P=(()=>{ const m={}; Object.entries(KC_DRUID_LEVELS).forEach(([lvl,types])=>types.forEach(t=>{ m[t]=+lvl; })); return m; })();
+const TAMED_FLYERS_P=new Set(KC_UNIT_CLASS.tamedFlyer);
+function druidNeedP(a, c, report){
+  const rep=report||currentReport||{};
+  if(!a||a.skeletal||a._isSkeletal) return {req:0,effDru:0,shortfall:0,counts:false};
+  let req=DRUID_LEVEL_OF_P[a.type]||0;
+  const realmAlign=(rep.kingdom&&rep.kingdom.alignment)||null;
+  if(req>0&&CREATURE_ARMIES_UI.has(a.type)&&(realmAlign==='Druidic'||(c&&c.alignment==='Druidic'))) req=0;
+  if(req>0&&TAMED_FLYERS_P.has(a.type)&&(rep.discoveries||[]).some(d=>d&&d.id==='sd40')) req=0;
+  const druLevel=effSkillP(c,'druid');
+  const sameRace=!!(a.race&&c&&a.race===c.race);
+  const effDru=sameRace?Math.max(1,druLevel):druLevel;
+  return {req, effDru, shortfall:Math.max(0,req-effDru), counts:req>0&&!(sameRace&&req<=1)};
+}
 const PRIMAL_SUBRACE_CLASS={
   'Stone Giant':'Creature','Forest Ent':'Creature','Giant Eagle':'Creature','Roc':'Creature','Whale':'Creature',
   'Cave Troll':'Monster','Manticore':'Monster','Basilisk':'Monster','Dragon':'Monster','Titan':'Monster',
@@ -6499,7 +6565,7 @@ const PRIMAL_ARMY_SPEEDS={'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cav
 
 
 // ── Alignment spectrum & hero hire pricing (mirrors the GM engine) ────
-const ALIGN_SPECTRUM_PP=['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead'];
+const ALIGN_SPECTRUM_PP=KC_ALIGNMENTS.slice();
 function alignDistPP(a,b){
   const i=ALIGN_SPECTRUM_PP.indexOf(a), j=ALIGN_SPECTRUM_PP.indexOf(b);
   if(i<0||j<0) return 0;
@@ -6591,7 +6657,7 @@ function predictedItems(charId, upToPhaseExclusive){
 // Garrison units always muster straight into the province garrison when recruited, whatever the
 // "Muster to" choice (GM engine, 2026-09-23c). Native recruiting needs the province, so any
 // non-mercenary garrison-type recruit is projected into the garrison, never onto a character.
-const GARRISON_UNIT_TYPES_P=new Set(['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison']);
+const GARRISON_UNIT_TYPES_P=new Set(KC_UNIT_CLASS.garrison);
 function _isAutoGarrisonRecruit(u){ return !!u&&!u._merc&&GARRISON_UNIT_TYPES_P.has(u.type); }
 function _projRecruitUnits(tokens){
   const out=[]; const mercs=((currentReport||{}).mercIntel)||[];
@@ -6760,7 +6826,7 @@ function projectedLedArmies(charId, upToPhaseExclusive, _memo){
 // Loremaster/Trailblazer, capped at 100). Explorer-boosting items aren't visible here.
 function exploreGainFor(c, terr){
   const report=currentReport||{};
-  const BASIC_EXPLORE_P={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
+  const BASIC_EXPLORE_P={...KC_BASIC_EXPLORE};
   const basicRate=BASIC_EXPLORE_P[terr]||15;
   const disc=(report.discoveries||[]);
   const hasSD=(id)=>disc.some(d=>d.id===id);
@@ -6877,7 +6943,7 @@ function predictedLocation(charId, upToPhaseExclusive){
     const dir=tgt.slice(4);
     const curProv=worldMeta.provinces.find(p=>p.id===locId);
     if(!curProv) continue;
-    const HEX_DIRS=['NW','NE','W','E','SW','SE'];
+    const HEX_DIRS=KC_HEX_DIRS.slice();
     const even=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
     const odd= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
     const idx=HEX_DIRS.indexOf(dir);if(idx<0) continue;
@@ -7042,7 +7108,7 @@ function buildTargetField(c, ph, saved){
     // Every mastery-order branch appends hintHtml, so folding the odds in here covers them all at
     // once — Assassinate, Blockade, Grand Heist and any future one. orderChanceNote returns '' for
     // an order with no roll behind it, so the deterministic masteries are unaffected.
-    const hintHtml=`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${cfg.hint}</div>${orderChanceNote(c,action,ph)}`;
+    const hintHtml=`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">${action==='Grand Design'?gdHintFor(report):cfg.hint}</div>${orderChanceNote(c,action,ph)}`;
     if(cfg.target==='none'){
       return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${action} — no target needed" readonly>${hintHtml}`;
     }
@@ -7120,7 +7186,7 @@ function buildTargetField(c, ph, saved){
   }
 
   // Build direction options with adjacent province names where known
-  const HEX_DIRS_BUILD=['NW','NE','W','E','SW','SE'];
+  const HEX_DIRS_BUILD=KC_HEX_DIRS.slice();
   const EVEN_OFF=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
   const ODD_OFF= [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
   const worldMeta_=report.worldMeta||{};
@@ -7461,7 +7527,7 @@ function buildTargetField(c, ph, saved){
     case 'Awaken the Wild':{
       if(report.kingdom?.alignment!=='Druidic')
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="The wild answers only Druidic crowns" disabled>`;
-      const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+      const AWAKEN_TIERS={...KC_AWAKEN_TIERS};
       const dru=effSkillP(c,'druid');
       // 2026-09-24 (Toby): was _unknownSkills only — a charmed hero had every tier above Druid 0 greyed
       // out and stamped "(you: 0)", which is the whole Druid level read straight off the dropdown.
@@ -7554,7 +7620,7 @@ function buildTargetField(c, ph, saved){
       // not succeed, but the player should be able to pre-order a cast in case it does. If the
       // skill is still 0 when the phase resolves, the cast will simply fail with a clear message.
       const practisingSchools=new Set();
-      const MAGIC_SCHOOLS=new Set(['white','psychic','illusory','elemental','necromancy']);
+      const MAGIC_SCHOOLS=new Set(KC_MAGIC_SCHOOLS);
       for(let prevPh=0;prevPh<ph;prevPh++){
         const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
         if(prevAction==='Practice Skill'){
@@ -7759,9 +7825,9 @@ function buildTargetField(c, ph, saved){
             return`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
               <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget('${c.id}',${ph})" style="width:auto;margin:0">
               1× ${at.type} (${costEach}g)${
-                new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']).has(at.type)
+                CREATURE_ARMIES_UI.has(at.type)
                   ? ' <span style="color:#1d5a1d;font-size:.72rem">[Creature]</span>'
-                : new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']).has(at.type)
+                : MONSTER_ARMIES_UI.has(at.type)
                   ? ' <span style="color:#701010;font-size:.72rem">[Monster]</span>'
                 : ''}
             </label>`;
@@ -8045,10 +8111,7 @@ function updateRecruitTarget(charId, ph){
 
 
 // ── TERRAIN COLORS ────
-const TERRAIN_COLORS_MAP={
-  plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',
-  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'
-};
+const TERRAIN_COLORS_MAP={...KC_TERRAIN_COLORS};
 
 // ── TERRAIN ICONS (proper SVG element creation) ────
 function makeTerrainIcon(svgNS, cx, cy, terrain){
@@ -8298,7 +8361,7 @@ function _lairStar(f){
   // province feature data carries `monsterPower` (not `power`) — every popup lair was falling
   // through to the default brown. Difficulty now colours the map popup as everywhere else.
   const _pw=f.monsterPower||f.power;
-  const col=_tintForDarkTooltip({Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[_pw]||'#7a5510'); // lightened for the dark popup
+  const col=_tintForDarkTooltip(GUARD_POWER_COLORS_P[_pw]||'#7a5510'); // lightened for the dark popup
   const _tag=_pw?` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>`:'';
   // the guardian's kind rides along in the popup too.
   const _cat=(!f.cleared&&f.monsterCat)?` <span style="font-size:.68rem;opacity:.7">${f.monsterCat.toLowerCase()}</span>`:'';
@@ -8370,7 +8433,7 @@ function _graveNote(pd){
 // text.
 function _lairName(f){
   if(!f) return '';
-  const col={Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}[f.monsterPower||f.power]||null;
+  const col=GUARD_POWER_COLORS_P[f.monsterPower||f.power]||null;
   return col?`<span style="color:${col}">${f.name}</span>`:(f.name||'');
 }
 // GRAND DESIGN: a Wonder of the age is no secret — anyone who can see the province sees the Wonder
@@ -8404,8 +8467,11 @@ function popupKnownChars(pd, deadHeroes){
   if(wand.length)  s+=wand.map(c=>`<br>${txtGlyph('\u2694')} <span style="color:${c.isNeutralGuard?_tintForDarkTooltip(CHIEFTAIN_MARKER_COLOR):NEUTRAL_GREY}">${neutralCharLabel(c)}</span>${cnt(c)}`).join(''); // chieftains in their marker brown
   // dead heroes whose bodies lie here — labelled '(dead)', mirroring the '(wandering)' tag.
   // 2026-09-17: the map's own ☠ in the map's own crimson, not a purple \u{1F480}.
+  // 2026-09-27 (Toby item 10): name the realm the body served when it fell (or say it served none),
+  // so a player reading the map can tell at a glance whose dead they are looking at — Resurrect
+  // raises only your own fallen and heroes who never served a rival crown.
   if(dead.length){ const _dc=_tintForDarkTooltip(MAP_SYM.dead.fill);
-    s+=dead.map(d=>`<br>${mapSymHtml(MAP_SYM.dead)} <span style="color:${_dc}">${(d.isKing?txtGlyph('\u265B')+' ':'')}${d.name} (dead)</span>`).join(''); }
+    s+=dead.map(d=>`<br>${mapSymHtml(MAP_SYM.dead)} <span style="color:${_dc}">${(d.isKing?txtGlyph('\u265B')+' ':'')}${d.name} (dead)</span> <span style="font-size:.9em;opacity:.9">${deadHeroRealmTagP(d,null,{dark:true,bare:true})}</span>`).join(''); }
   return s;
 }
 // Single function renders into any SVG element (inline or fullscreen)
@@ -9327,6 +9393,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1719</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1839</div>
 </body>
 </html>

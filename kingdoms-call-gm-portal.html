@@ -368,10 +368,14 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.27-1719';
-const KC_BUILD_STAMP='2026.09.27-1719'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_DATA_MIN='2026.09.27-1839';
+// Every shared rule table this build reads from the data file (the player portal checks the same list).
+const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
+const KC_BUILD_STAMP='2026.09.27-1839'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
-  const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
+  const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
+    // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
+    ...KC_SHARED_TABLE_NAMES];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
   const stamp=(typeof KC_DATA_STAMP==='string')?KC_DATA_STAMP:null;
   const allMissing=missing.length===need.length;
@@ -409,12 +413,10 @@ const ARMY_COST_MASTER={
   // ── Orcish ──
   'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
   'Wyvern Riders':4,'Orcish Longships':3,
-  // Costs below match PRIMAL_ARMY_DEFS_P.cost, so mercenary hire and native recruitment now charge
-  // full price.
-  'Stone Giants':5,'Forest Ents':4,'Giant Eagles':4,'Cave Trolls':4,'Manticore Pride':5,
-  'Basilisk Brood':4,'Sea Giants':5,'Kraken Tentacles':6,'Elder Dragons':8,'Crimson Rocs':6,
-  'Titan Warbeasts':7,'Leviathan Pods':8,
+  // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), and
+  // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
 };
+Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_COST_MASTER[t]=d.cost; });
 const ARMY_SPEED_MASTER={
   // ── Human ──
   'Shieldwall Levies':3,'Free Lances':4,'Yeoman Longbows':3,'Gilded Lances':4,'Human Garrison':1,
@@ -428,14 +430,12 @@ const ARMY_SPEED_MASTER={
   // ── Orcish ──
   'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,
   'Wyvern Riders':5,'Orcish Longships':3,
-  // Speeds below match PRIMAL_ARMY_DEFS_P.
-  'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,'Manticore Pride':4,
-  'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,'Elder Dragons':4,'Crimson Rocs':5,
-  'Titan Warbeasts':2,'Leviathan Pods':3,
+  // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), added below.
 };
-// Top-level mirror of the engine's PRIMAL_SEA_TYPES, for report/order-data builders that run
-// outside the resolution scope. Keep the two in sync.
-const PRIMAL_SEA_NAMES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
+Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_SPEED_MASTER[t]=d.speed; });
+// Top-level copy of the primal sea beasts for report/order-data builders that run outside the
+// resolution scope. Built from KC_UNIT_CLASS (kingdoms-call-data.js), like PRIMAL_SEA_TYPES.
+const PRIMAL_SEA_NAMES=new Set(KC_UNIT_CLASS.primalSea);
 // ── DISPLAY ROUNDING ────
 // Battle maths is done in floats (flank ×0.5, tactical ×1.2, dice = Math.random()*range), but a
 // player report should never show a decimal — "roll 7.2384719283" is noise, not information. n0()
@@ -453,7 +453,7 @@ function n0(x){ const v=Number(x); return Number.isFinite(v)?String(Math.round(v
 // Green does not die and does not become mercenaries — it DISBANDS: the men melt back into the
 // population and the unit ceases to exist. Disbanded units are never recorded in battle graves
 // (nobody was killed) and can never be raised as skeletons.
-const QUALITY_TIERS=['Green','Average','Veteran','Crack','Elite'];
+const QUALITY_TIERS=KC_QUALITY_TIERS.slice();
 // Returns true if the unit disbanded. Callers MUST drop units flagged _disbanded from their force
 // and must NOT pass them to recordBattleGraves.
 function demoteOrDisband(a){
@@ -675,8 +675,7 @@ const DRUID_MASTERY_PER_LVL=0.20, DRUID_MASTERY_CAP=1.0, DRUID_MASTERY_MAX_LVL=9
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
 const UNDEAD_SKEL_KING_FAN=1.5, UNDEAD_SKEL_HERO_FAN=1.3;
 function aAn(w){ return /^[aeiou]/i.test(String(w||''))?'an':'a'; } // "an annihilating battle"
-const MISSILE_ARMIES_MASTER=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers',
-  'Ironwood Crossbows','Mountain Guns','Goblin Horde']);
+const MISSILE_ARMIES_MASTER=new Set(KC_UNIT_CLASS.missile);
 
 
 // Add primal armies to ARMY_UNIT_NAMES
@@ -693,9 +692,9 @@ const NB_SLOW=[0,0,1,1,2,3], NB_FAST=[0,1,1,2,2,2];
 // Report helper (2026-09-23, item 7): the movement rate of an UNLED (garrison) unit — base speed,
 // plus the realm's Road / race `move` discoveries for a speed-1/2 land unit, as computeMovePoolMax
 // adds them. No commander, so no March / Naval / title bonus.
-const GARRISON_SEA_TYPES_R=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
-const GARRISON_AIR_TYPES_R=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
-const GARRISON_FLY_TYPES_R=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+const GARRISON_SEA_TYPES_R=new Set(KC_UNIT_CLASS.sea);
+const GARRISON_AIR_TYPES_R=new Set(KC_UNIT_CLASS.aerial);
+const GARRISON_FLY_TYPES_R=new Set(KC_UNIT_CLASS.flying);
 function garrisonMoveRate(a, pl){
   if(!a) return {};
   const base=ARMY_SPEED_MASTER[a.type]||3;
@@ -709,26 +708,25 @@ function navalSpeedBonus(baseSpeed,navalLevel){
   return (baseSpeed<=2?NB_SLOW[lvl]:NB_FAST[lvl]);
 }
   // Flying armies can cross sea provinces without a fleet
-  const FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+  const FLYING_TYPES=new Set(KC_UNIT_CLASS.flying);
   // AERIAL_TYPES governs SEA-CROSSING only: every unit that flies and so needs no naval escort to
   // enter a sea province. It is a superset of FLYING_TYPES and adds the winged primal beasts. It is
   // deliberately separate from FLYING_TYPES so their combat terrain modifiers stay untouched.
-  const AERIAL_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders',
-    'Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+  const AERIAL_TYPES=new Set(KC_UNIT_CLASS.aerial);
   // Non-humanoid army classification for Druidic/Evil alignment bonuses
-  const CREATURE_ARMIES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-  const MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+  const CREATURE_ARMIES=new Set(KC_UNIT_CLASS.creature);
+  const MONSTER_ARMIES=new Set(KC_UNIT_CLASS.monster);
 
 
   // Sea-capable armies (fleets etc) CARRIER_TYPES — the six humanoid fleets. These are the ONLY
   // units that can ferry land armies across a sea province; each hull provides 1 point of carrying
   // capacity.
-  const CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+  const CARRIER_TYPES=new Set(KC_UNIT_CLASS.carrier);
   // PRIMAL_SEA_TYPES — Druid-summoned sea beasts. They swim under their own power, so they need no
   // escort to enter the sea, but they are not ships: they carry NOTHING. A kraken cannot ferry
   // infantry. They also cannot march: like a fleet, their only legal land moves are land→sea and
   // sea→coastal land. Recruitable only in sea provinces (see the 'recruit' case).
-  const PRIMAL_SEA_TYPES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
+  const PRIMAL_SEA_TYPES=new Set(KC_UNIT_CLASS.primalSea);
   // SEA_TYPES — every unit that crosses sea under its own power. Used throughout the engine for "is
   // this a naval unit" (sea-battle penalties, Naval-skill bonuses, hull targeting, move pools).
   const SEA_TYPES=new Set([...CARRIER_TYPES,...PRIMAL_SEA_TYPES]);
@@ -737,7 +735,7 @@ function navalSpeedBonus(baseSpeed,navalLevel){
   // A humanoid flyer (one of FLYING_TYPES) can lift a single humanoid FOOT soldier and carry it
   // through the air, exactly as a fleet ferries land units across the sea. Cavalry, naval hulls,
   // sea beasts and creature/monster units are too heavy or unsuitable and are never carried.
-  const CAVALRY_TYPES=new Set(['Free Lances','Gilded Lances','Warg Riders']);
+  const CAVALRY_TYPES=new Set(KC_UNIT_CLASS.cavalry);
   function isAirCarriable(a){
     if(!a) return false; const t=a.type;
     if(AERIAL_TYPES.has(t)||SEA_TYPES.has(t)) return false;          // flyers carry, hulls/sea-beasts sail
@@ -906,9 +904,8 @@ function missileDamageMult(firer, force, terrain, target){
 // in a battle against province defenders, so it only surfaced in games that actually saw combat.
 // Same trap as FLYING_TYPES and ITEMS_BY_TIER before it: shared lookup tables and the helpers that
 // read them live at module top level, always.
-const UNIT_BASE_STR={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,
-  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11};
-const UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
+const UNIT_BASE_STR={...KC_UNIT_BASE_STR};
+const UNIT_Q_MULT={...KC_UNIT_Q_MULT};
 function unitBaseStrength(army){ return (UNIT_BASE_STR[army.type]||4)*(UNIT_Q_MULT[army.quality||'Average']||2); }
 
 // 2026-09-27: `_flakTargeted` marks a flyer as already engaged so two gyrocopters cannot double up
@@ -952,9 +949,9 @@ function applyFlakScreen(myForce, enemyForce, myName, narr){
 const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const SEASONS = ['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+const SEASONS = KC_SEASONS.slice();
 
-const ALL_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+const ALL_SKILLS=KC_SKILLS.slice();
 // TRAINING gives its benefit up to level 5; levels 6-9 buy mastery perks and mastery orders
 // instead. Magic items and the Crown of Command aura stack above that ONLY for melee and archery,
 // to the skill ceiling of 9. Those two are special: the engine already gives levels past 5 a real
@@ -970,8 +967,29 @@ const SKILL_BENEFIT_CAP=5, SKILL_MAX=9;
 // Armies). The per-turn cast limit already tops out at 3 from level 4, and the per-fight limit at 2
 // from level 2, so neither moves either. A relic focus therefore makes a master more RELIABLE,
 // never more powerful — which is the distinction Toby asked for.
-const ITEM_UNCAPPED_SKILLS=new Set(['melee','archery','white','psychic','illusory','elemental','necromancy']);
-const SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
+const ITEM_UNCAPPED_SKILLS=new Set(KC_ITEM_UNCAPPED_SKILLS);
+const SKILL_LABELS={...KC_SKILL_LABELS};
+// ── ONE-SOURCE ENGINE TABLES (2026-09-27, Toby: collapse to one source) ──────────────────────────
+// GM-only tables that had been re-typed at every site that needed them. Each old site now reads
+// the one below. (Tables BOTH portals need live in kingdoms-call-data.js as KC_*.)
+// Personal-combat tactic codes a duel keeps from an encounter plan (Steal, Talk, Scout and the rest
+// are lair-only and dropped). FI / FIRE / ARROW is ARCHERY — the code the player portal writes for
+// "Fire Arrow" and that autoEncounterPlan writes for every ranged hero. Four of the five copies of
+// this list omitted it, so an archer's shots were silently deleted from Encounter Character,
+// breaking-ranks, caught-thief and failed-charm duels (DEV_LOG §277). AR / ARCHERY are not engine
+// codes (pcAct has no case for them — they fall through to melee); kept so an old plan still acts.
+const COMBAT_ONLY_TACTICS=new Set(['ME','MELEE','AR','ARCHERY','FI','FIRE','ARROW','CA','SPELL','FL','FLEE']);
+// Spells that also work as BATTLE MAGIC (pre-battle phase of an army battle).
+const BATTLE_MAGIC_SPELL_NAMES=['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead'];
+// Chance an army is seized by fanatical zeal, by the realm's alignment.
+const FANATIC_CHANCE_BY_ALIGN={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
+// Lair guardian grade as a number ('' = unknown). The bot's lair ladder and its target sorting.
+const GUARDIAN_POWER_RANK={'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4};
+// Steal from a lair: the success penalty (percentage points) for the guardian's grade.
+const STEAL_TIER_PEN={Weak:0,Moderate:15,Powerful:30,Legendary:45};
+// The one attack spell a caster reaches for in each school (NPC guards, and duels with no named spell).
+const NPC_SCHOOL_SPELL={elemental:'Lightning Bolt',necromancy:'Hand of Death',white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'};
+
 // ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
 // turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler).
 const MASTERY_ORDER_KEYS=new Set(['challenge','rampage','rain_of_arrows','snipers_mark','feigned_retreat','grand_stratagem','forced_march','lightning_advance','blockade','raid_coast','research_breakthrough','grand_design','sabotage','assassinate','grand_heist','vanish','awaken_grove','wild_calling','chart_unknown','discover_ruin']);
@@ -1751,8 +1769,8 @@ async function loadTurnLog(gameId, turn){
   const allPlayers=(gameState?.players||[]);
 
   // index 5 = End of Turn, matching the player portal.
-  const PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];
-  const PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555'];
+  const PHASE_NAMES=KC_PHASE_NAMES.slice();
+  const PHASE_COLORS=KC_PHASE_COLORS.slice();
 
   function renderEntry(e){
     const raw0=e.text||'';
@@ -2081,8 +2099,8 @@ async function commitTurn0(){
 // Self-contained mini game engine for the portal
 // (mirrors the logic in kingdoms-call-gm.html / game.js)
 
-const TERRAIN_COLORS_P={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
-const RACES_P=['Human','Elven','Dwarven','Orcish'];
+const TERRAIN_COLORS_P={...KC_TERRAIN_COLORS};
+const RACES_P=KC_HUMANOID_RACES.slice();
 // The four playable humanoid races, as a Set, for world-gen membership tests (a province race is
 // either one of these, null for open sea, or a 'Primal:<sub-race>' string).
 const HUMANOID_RACES_GEN=new Set(RACES_P);
@@ -2106,7 +2124,7 @@ const SIGNATURE_WEIGHT_P=6;
 // terrain/race rosters themselves, and without ever leaving a province short of its `count` types.
 // The king's home province is untouched
 // (fullRaceLandRoster always grants the complete racial roster).
-const GEN_FLYER_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+const GEN_FLYER_TYPES=new Set(KC_UNIT_CLASS.flying);
 const FLYER_PROVINCE_KEEP=0.5; // share of would-be flyer offers that survive
 function buildHumanoidPool(terrain, race, count, rnd){
   const full=(PROVINCE_ARMIES_P[terrain]||{})[race]||['Shieldwall Levies'];
@@ -2160,34 +2178,20 @@ const COASTAL_NAVAL_CHANCE=0.80;
 // type, only on a coast) and a navy was taking twice as long to build as an army. Read by
 // getRecruitLimit (the engine's gate) and by BOTH order-form `maxPerTurn` payloads.
 const HUMANOID_FLEET_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships']);
-const SEA_TYPES_GEN=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',
-  'Sea Giants','Kraken Tentacles','Leviathan Pods']);
+const SEA_TYPES_GEN=new Set(KC_UNIT_CLASS.sea);
 
-// DRUID ARMY LEVEL TABLE Each entry: { level, label, armies, description } A character's Druid
-// skill must be >= the army's druid level, or a 20% str penalty per shortfall level applies.
-// Exception: Undead-aligned characters treat undead armies as level 0. Own race is always level 0
-// regardless of druid.
-const DRUID_ARMY_LEVELS_P={
-  // Level 0 — any character, own race only (no penalty ever) Level 1 — Druid 1+: all four humanoid
-  // races + garrisons
-  1:new Set(['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison',
-    'Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison',
-    'Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison',
-    'Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison']),
-  // Level 2 — Druid 2+: semi-intelligent natural/machine creatures
-  2:new Set(['Gnomish Gyrocopters']),
-  // Level 3 — Druid 3+: powerful wild creatures; Undead armies level 0 for Undead-aligned
-  3:new Set(['Eagle Riders','Wyvern Riders','Whale Cohort','Noble Griffons']),
-  // Level 4 — Druid 4+: primal non-humanoid beings
-  4:new Set(['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride',
-    'Basilisk Brood','Sea Giants','Kraken Tentacles']),
-  // Level 5 — Druid 5: legendary/divine creatures
-  5:new Set(['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods']),
-};
+// DRUID ARMY LEVEL TABLE — a commander's Druid must be >= a unit's level, or it fights at −20% per
+// level short. A commander leads his OWN race's units as if he had Druid 1.
+// 2026-09-27 (Toby: collapse to one source): this table used to exist THREE times — here and twice
+// in the player portal — and the player-portal copies had drifted (they lacked level 1, so a
+// foreign-race unit under a Druid-0 commander showed no penalty while the engine applied −20%).
+// The ONE copy is now KC_DRUID_LEVELS in kingdoms-call-data.js; this builds the engine's Sets
+// from it, in the same level order (getDruidLevel walks the levels ascending).
+const DRUID_ARMY_LEVELS_P=Object.fromEntries(Object.entries(KC_DRUID_LEVELS).map(([lvl,types])=>[lvl,new Set(types)]));
 
 // sd40 Dragon Taming: the winged beasts a realm with the discovery leads without any Druid penalty
 // (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
-const TAMED_FLYER_TYPES_D=new Set(['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons']);
+const TAMED_FLYER_TYPES_D=new Set(KC_UNIT_CLASS.tamedFlyer);
 // Returns the Druid level required to lead a given army type
 function getDruidLevel(armyType){
   for(const [lvl, armies] of Object.entries(DRUID_ARMY_LEVELS_P)){
@@ -2223,7 +2227,7 @@ function druIdPenaltyMult(heroChar, army, playerAlignment, tamed){
   // wandering hero (player===null, so no realm alignment is passed) also qualifies via the second
   // clause. (druIdPenaltyMult is module-level; the runTurn-local G is out of scope here, so we rely
   // on the caller passing the realm alignment — which every combat call site does.)
-  const CREATURE_ARMIES_D=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
+  const CREATURE_ARMIES_D=new Set(KC_UNIT_CLASS.creature);
   if(CREATURE_ARMIES_D.has(armyType)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic')) return 1.0;
 
   // sd40 Dragon Taming: the caller (inside runTurn, where G is visible) passes tamed=true when the
@@ -2245,7 +2249,7 @@ function druIdPenaltyMult(heroChar, army, playerAlignment, tamed){
   // 20% strength penalty per level of shortfall
   return Math.max(0.1,1-(shortfall*0.20));
 }
-const ALIGNMENTS_P=['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead'];
+const ALIGNMENTS_P=KC_ALIGNMENTS.slice();
 // ── Alignment spectrum & hero hire economics ────
 // ALIGNMENTS_P doubles as the moral SPECTRUM: Divine(0) … Neutral(3) … Undead(6). A wandering
 // hero's wage is 2g base +1g per 2 steps of distance from the hiring KINGDOM's alignment — Neutral
@@ -2270,7 +2274,7 @@ function heroHireWage(kingdomAlign, heroAlign, waiveBan, hero){
   if(d>=6&&!waiveBan) return null;               // Divine <-> Undead: will never serve
   return 2+Math.floor(Math.min(d,6)/2)+(hero?heroSkillWage(hero):0);
 }
-const TEMPERS_P=['Berserk','Brave','Cautious','Cowardly'];
+const TEMPERS_P=KC_TEMPERS.slice();
 function temperOf(t){ return TEMPER_TRAITS[t]||TEMPER_TRAITS.Brave; }
 // A feature's steal-able treasure as a plain number. Tolerates the legacy {gold:n} shape that
 // pre-v1054 sea features saved, so old games don't throw when a thief lifts from them.
@@ -2353,7 +2357,7 @@ function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort){
 // (engine-dependent, and it leaves elements near their original positions far more often than
 // chance), which skewed "pick n at random" draws toward the front of the list.
 function shuffleP(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-const ABILITIES_P=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+const ABILITIES_P=KC_SKILLS.slice();
 // ── UNIQUE-NAME OVERFLOW POOLS (KC item: no two characters share a given name OR a descriptor) ──
 // A game names up to ~184 neutral heroes on the largest map, plus kings and heirs (~210 names).
 // Each alignment's flavoured pools alone cannot supply that many DISTINCT epithets, so these
@@ -2960,7 +2964,7 @@ function itemNameList(items, withDesc){ const wd=(withDesc!==false); return (ite
 // carry 'Elven'/ 'Dwarven'/'Orcish', so every non-Human race-bound item was inert in its OWN race's
 // hands. The item data now uses the canonical names; this alias map keeps items already rolled into
 // saved games working.
-const _ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
+const _ITEM_RACE_ALIAS={...KC_ITEM_RACE_ALIAS};
 function itemRaceOf(it){ const r=it&&it.race; return r?(_ITEM_RACE_ALIAS[r]||r):r; }
 function itemUsableBy(it, c){
   if(!it) return false;
@@ -3142,7 +3146,7 @@ function encounterUntargetableReason(c){
 // `activeItems(c)` is the single gate every effect read goes through; it normalises first
 // (auto-equips an empty slot with the first item held, trims any over-cap), so pre-existing saves
 // and new pick-ups need no migration.
-const ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}; // shield slot added 2026-09-10 · combat ×2 added 2026-09-11
+const ITEM_SLOT_CAP={...KC_ITEM_SLOT_CAP}; // shield slot added 2026-09-10 · combat ×2 added 2026-09-11
 const ITEM_SLOT_OF={
   'Blade of Fury':'weapon','Elven Longbow':'weapon','Staff of the Wildwood':'weapon','Sword of the First Emperor':'weapon','Black Sceptre':'weapon',
   'Warbringer Gauntlets':'armour','Gloves of the Nightcrawler':'armour','Boots of the Wind':'armour',
@@ -3647,7 +3651,7 @@ const SCOUT_ENABLED=false;
 // ── HUNTING RUMOURS (2026-09-17 (late), Toby item 3) ── the order that replaces most of what Scout
 // did, bought in the taverns rather than read off the beast. Cost per lair by grade. 2026-09-23d
 // (Toby): every fact paid for is LEARNED — the old 50% + 10%/Spy roll per fact is retired.
-const RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
+const RUMOUR_COST_BY_POWER={...KC_RUMOUR_COST_BY_POWER};
 // ── DAMAGE FLOOR ────
 // No stack of REDUCTIONS may now take a landed attack below HALF of what it would have dealt.
 // Outright PREVENTION is untouched: a mirror image, a first-hit cuirass or a
@@ -5070,7 +5074,7 @@ function botTuning(G,pi){
   }
   return T;
 }
-const BOT_HEX_DIRS=['NW','NE','W','E','SW','SE'];              // MUST match the engine's HEX_DIRS order
+const BOT_HEX_DIRS=KC_HEX_DIRS.slice();              // MUST match the engine's HEX_DIRS order
 const BOT_OFF_EVEN=[[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]]; // and its even/odd hex offsets
 const BOT_OFF_ODD =[[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
 function botNeighbourProv(G,prov,i){
@@ -5227,7 +5231,7 @@ function botRaceTerrainMult(G,c,a,terrain,defending,ownerPi){
   const oRace=(oPi!=null)?(((G.players||[])[oPi]||{}).race||null):null;
   const lRace=(c&&c.race)||null;
   if(uRace){ if(oRace&&uRace===oRace) m*=1.2; if(lRace&&uRace===lRace) m*=1.2;
-    const RIV={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}; if(lRace&&RIV[uRace]===lRace) m*=0.8; }
+    const RIV={...KC_RIVAL_RACE}; if(lRace&&RIV[uRace]===lRace) m*=0.8; }
   // terrainMod / seaPenalty are runTurn-LOCAL (the scope trap): runTurn hands them in through hooks.terrainMult
   if(terrain){ const tf=botTurnCache(G).terrainMult; if(typeof tf==='function'){ try{ m*=tf(a.type,terrain); }catch(e){} } }
   if(uRace==='Elven'&&oRace==='Elven'&&(terrain==='forest'||terrain==='jungle')) m*=1.5;
@@ -5453,17 +5457,17 @@ function botPlanAssaults(G, pi, chars, assigned){
 // Module-level mirrors of the engine's sea taxonomy + getSeaCapability, so the bot movement/economy
 // passes (which live at module scope, above runTurn) can reason about fleets. Kept in sync with the
 // in-engine sets around the FLYING_TYPES/CARRIER_TYPES block.
-const BOT_CARRIER_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
-const BOT_PRIMAL_SEA_TYPES=new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods']);
-const BOT_AERIAL_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+const BOT_CARRIER_TYPES=new Set(KC_UNIT_CLASS.carrier);
+const BOT_PRIMAL_SEA_TYPES=new Set(KC_UNIT_CLASS.primalSea);
+const BOT_AERIAL_TYPES=new Set(KC_UNIT_CLASS.aerial);
 const BOT_SEA_ALL=new Set([...BOT_CARRIER_TYPES,...BOT_PRIMAL_SEA_TYPES]);
-const BOT_LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns']); // mirrors LIGHT_ARMIES in getSeaCapability
+const BOT_LIGHT_ARMIES=new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIGHT_ARMIES in getSeaCapability
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
-const BOT_FLYING_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
-const BOT_CREATURE_ARMIES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-const BOT_MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
-const BOT_CAVALRY_TYPES=new Set(['Free Lances','Gilded Lances','Warg Riders']);
+const BOT_FLYING_TYPES=new Set(KC_UNIT_CLASS.flying);
+const BOT_CREATURE_ARMIES=new Set(KC_UNIT_CLASS.creature);
+const BOT_MONSTER_ARMIES=new Set(KC_UNIT_CLASS.monster);
+const BOT_CAVALRY_TYPES=new Set(KC_UNIT_CLASS.cavalry);
 // bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the whole
 // column flies (and crosses sea without a fleet)?
 function botCanFly(armies){
@@ -5558,7 +5562,7 @@ function botEmpireDiameter(G,pi){
 function botGeneralship(c){ const s=c.skills||{}; const a=c.armies||[]; const n=a.length;
   // Sept 2026 (review §3): a lord of the column's own blood (+20% kinship, no grudge) and a Necromancy king
   // over skeletons (×1.5 fanaticism vs ×1.3) are better generals than the raw skills say.
-  const kin=n?a.filter(x=>x&&x.race===c.race).length/n:0; const RIV={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+  const kin=n?a.filter(x=>x&&x.race===c.race).length/n:0; const RIV={...KC_RIVAL_RACE};
   const grudge=n?a.filter(x=>x&&RIV[x.race]===c.race).length/n:0;
   const skel=n?a.filter(x=>x&&x._isSkeletal).length/n:0;
   return (s.tactical||0)*4+(s.march||0)*2+(s.melee||0)+(s.archery||0)+Math.min(10,n)+(n>=3?8:0)+Math.round(kin*4-grudge*6)+((c.isKing&&(s.necromancy||0)>=1&&skel>=0.5)?10:0); }   // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
@@ -5794,6 +5798,7 @@ const BOT_SPECIALIST_SKILLS={scholar:'sage',scout:'explorer',spy:'spy',thief:'th
 // strongest (a complementary pick when he holds only one: Elemental with White, otherwise White with Elemental).
 // He casts wherever a cast is worth making (botCastPlan already ranks every school's spells by the situation),
 // stands with the general when nothing is, and trains the weaker of his two schools between times.
+// NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
 const BOT_SCHOOLS=['elemental','white','psychic','illusory','necromancy'];
 function botMageSchools(c){ const s=(c&&c.skills)||{}; const ranked=[...BOT_SCHOOLS].sort((a,b)=>(s[b]||0)-(s[a]||0)||BOT_SCHOOLS.indexOf(a)-BOT_SCHOOLS.indexOf(b));
   const s1=ranked[0]; let s2=ranked.find(x=>x!==s1&&(s[x]||0)>0)||null; if(!s2) s2=(s1==='elemental')?'white':'elemental'; return [s1,s2]; }
@@ -6012,7 +6017,7 @@ function botThiefOrders(G,pi,c,pre){
   // review II A11: a Thief 3+ robs a guardian's hoard by the STEAL tactic (50 + 10×Thief − tier penalty, Weak 0 /
   // Moderate 15 / Powerful 30 / Legendary 45) when that reads 75%+ — his encounter plan is Steal-then-flee
   // (set in botSpecialistRoles), so a failed steal ends in flight rather than a fight.
-  { const th=Math.min(5,(c.skills||{}).thief||0); if(th>=3){ const PEN={Weak:0,Moderate:15,Powerful:30,Legendary:45};
+  { const th=Math.min(5,(c.skills||{}).thief||0); if(th>=3){ const PEN={...STEAL_TIER_PEN};
       const lair=botLairCandidates(G,pi,c,4).filter(k=>k.f.monster&&(50+10*th-(PEN[(k.f.monster.power)||'Weak']||0))>=75&&!(k.rumour&&k.rumour.band>=101)).sort((a,b)=>b.grade-a.grade||a.d-b.d)[0];
       if(lair){ const path=lair.d>0?(botPathDirs(G,pi,P,lair.X.id,4,true)||[]):[]; if((lair.d===0||path.length===lair.d)&&pre.length+path.length<5){
         const out=[...pre,...path.map(d=>botMoveOrder(d,'Creep toward the lair in '+lair.X.name)),{action:'search',target:String(lair.li),extra:'',desc:'Rob the hoard'}]; while(out.length<5) out.push({action:'defend',target:'',extra:'',desc:'Lie in wait'}); return out; } } } }
@@ -6030,7 +6035,7 @@ function botThiefOrders(G,pi,c,pre){
 // within reach of an unarmed fighter (Melee/Archery 3+ — botCanBeatGuardian's own floor).
 function botLairTarget(G,pi,c,maxD){
   const from=G.world.provinces[c.location]; if(!from) return null; let best=null;
-  const POWER_RANK={'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4};
+  const POWER_RANK={...GUARDIAN_POWER_RANK};
   (G.world.provinces||[]).forEach(X=>{ if(!X||X.terrain==='sea'||!botKnows(G,pi,X.id)) return;
     const bo=botBelievedOwner(G,pi,X); if(bo!=null&&bo!==pi&&botRelationRaw(G,pi,bo)!=='allied') return;
     const li=botBeatableLairIn(G,c,X); if(li<0) return;
@@ -6529,7 +6534,7 @@ function botSignaturePre(G,pi,c,P,L){
       if(L.sig.awaken||P.owner!==pi) return null;
       if(!(P.terrain==='forest'||P.terrain==='jungle'||(P.race||'').startsWith('Primal'))) return null;
       const dru=sk.druid||0; if(dru<1) return null;
-      const TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+      const TIERS={...KC_AWAKEN_TIERS};
       const cands=Object.keys(TIERS).filter(t=>TIERS[t]<=dru&&((ARMY_SPEED_MASTER[t]||3)>=2||c._botRole==='defender')).sort((a,b)=>(UNIT_BASE_STR[b]||0)-(UNIT_BASE_STR[a]||0));
       for(const t of cands){ const cost=(ARMY_COST_MASTER[t]||3)+2; if(botCanAfford(L,cost)){ botSpend(L,cost); L.sig.awaken=1; return {action:'awaken_wild',target:t,extra:'',desc:'Awaken the Wild — '+t}; } }
       return null; }
@@ -7376,7 +7381,7 @@ function runBotMovement(G, botIdxSet, hooks){
 // above ARMY_COST_MASTER). So recruitment is gated on BOTH an upfront gold reserve AND an upkeep
 // cap (total wages kept ≤ 90% of the bot's tax income). This ties army size to economic base — a
 // bot recruits more only as it expands — and prevents a wage spiral that would bankrupt it.
-const BOT_NAVAL_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+const BOT_NAVAL_TYPES=new Set(KC_UNIT_CLASS.sea);
 function botRecruitableTypes(prov, G, cmdr){
   // rank by the strength the intended COMMANDER gets out of the unit (Druid shortfall applied, race
   // = the province's race as the engine assigns it), not the raw table value — a Druid-0 king
@@ -7392,7 +7397,7 @@ function botRecruitableTypes(prov, G, cmdr){
   // Sept 2026 (Toby): a general raises troops of his own blood and the king's (+20% kinship each) and never
   // troops of the grudge race (Elf↔Dwarf, Human↔Orc: −20% under him) while any other muster is possible — a
   // grudge-race province yields nothing to that commander; the feeder pipeline brings him kin instead.
-  if(G&&cmdr){ const RIV={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}; const pr=prov.race||'Human';
+  if(G&&cmdr){ const RIV={...KC_RIVAL_RACE}; const pr=prov.race||'Human';
     if(cmdr.race&&RIV[pr]===cmdr.race&&!String(pr).startsWith('Primal')){
       const pi2=cmdr.player; const near=(G.world.provinces||[]).some(x=>x&&x.owner===pi2&&x.id!==prov.id&&x.terrain!=='sea'&&(x.armyTypes||[]).some(t=>t&&!/garrison/i.test(t)&&!BOT_NAVAL_TYPES.has(t))&&RIV[x.race||'Human']!==cmdr.race&&(botPathLen(G,pi2,prov,x.id,false)||99)<=2);
       if(near) return []; } }                                             // "when possible": only while kin can be raised within two hops
@@ -7719,6 +7724,7 @@ function botCrossTrainSkill(G, c, pi){
     && (()=>{const o=G.turnOrders[x.id]; return !o||o.every(y=>y==null||['defend','practice','research','hire','recruit','leave_army'].includes(y.action));})());
   if(partners.length===0) return null;                       // need a training partner
   const group=[c,...partners];
+// NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
   const SKILLS=['melee','tactical','march','archery','naval','white','psychic','illusory','elemental','necromancy','spy','thief','sage','druid','explorer'];
   let bestSkill=null,bestLvl=0;
   // Sept 2026 (Toby): the realm's thin craft skills (Sage first, then Spy / Thief / Explorer) outrank a
@@ -7780,7 +7786,7 @@ function botTitleFocusSkill(c, titles){
   // preserved.
   const pickHighest=list=>{ let best=null,bl=0; list.forEach(k=>{const v=sk[k]||0; if(v>=1&&v<5&&v>bl){bl=v;best=k;}}); return best; };
   for(const t of (titles||[])){
-    if(t==='arch'){ const m=pickHighest(['elemental','necromancy','psychic','white','illusory']); if(m)return m; }
+    if(t==='arch'){ const m=pickHighest(['elemental','necromancy','psychic','white','illusory']); if(m)return m; } // tie-break ORDER — deliberately not KC_MAGIC_SCHOOLS
     if(t==='marshal'||t==='monster'){ const m=pickHighest(['melee','tactical','march','archery']); if(m)return m; }
     if(t==='lore'){ const m=pickHighest(['sage']); if(m)return m; }
     if(t==='sea'){ const m=pickHighest(['naval']); if(m)return m; }
@@ -7825,7 +7831,7 @@ function botBeatableLairIn(G, c, prov){
     if(!f||f.cleared||f.ritualSite) return;
     if(pi!=null && !featDiscovered(f,pi)) return;      // not on this realm's map
     if(!botCanBeatGuardian(c, f.monster, G, pi, f)) return;      // no rumour rating this hero 80%+ yet
-    const POWER_RANK={'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4};
+    const POWER_RANK={...GUARDIAN_POWER_RANK};
     const rating=POWER_RANK[(f.monster&&f.monster.power)||'']||0;   // the guardian's power band IS public once discovered
     if(rating>bestRating){ bestRating=rating; bestIdx=idx; }
   });
@@ -8401,7 +8407,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   // get non-humanoid sea armies only (no player fleets). Their army pool and tax are decided purely
   // by type: 20% Primal (Prosperous, tax 4-6), 20% Whale Cohort (Poor, tax 2-3), 60% open water (no
   // armies, tax 1).
-  const PRIMAL_SEA_TYPES=['Sea Giants','Kraken Tentacles','Leviathan Pods'];
+  const PRIMAL_SEA_TYPES=KC_UNIT_CLASS.primalSea.slice();
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
     const r=Math.random();
     if(r<0.20){
@@ -8630,7 +8636,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       const _ringPrimal=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null&&String(n.race||'').startsWith('Primal'));
       if(_ringPrimal.length>1){
         const keepId=(best._alignPrimalId!=null&&_ringPrimal.some(n=>n.id===best._alignPrimalId))?best._alignPrimalId:_ringPrimal[0].id;
-        const HUM=['Human','Elven','Dwarven','Orcish'];
+        const HUM=KC_HUMANOID_RACES.slice();
         _ringPrimal.filter(n=>n.id!==keepId).forEach(n=>{ _reRaceProvince(n, HUM[Math.floor(Math.random()*HUM.length)]); });
       }
       delete best._alignPrimalId;
@@ -8679,7 +8685,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // least one of their race's naval units is recruitable in their home province. The king still
     // starts with land armies only — this just adds the option to build a fleet from turn one.
     if((kingSkills.naval||0) >= 1){
-      const NAVAL_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'};
+      const NAVAL_BY_RACE={...HOME_FLEET_BY_RACE};
       const navalUnit=NAVAL_BY_RACE[sp.race]||'Galleon Fleet';
       best.armyTypes=best.armyTypes||[];
       if(!best.armyTypes.includes(navalUnit)) best.armyTypes.push(navalUnit);
@@ -8698,8 +8704,8 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         let pool=nonGarrison.length>0?nonGarrison:startArmyPool;
         // Never hand a king a starting unit his own Druid skill can't lead cleanly. Own-race troops
         // are commanded as if Druid 1 (the same-race rule), so keep only types whose required Druid
-        // level is within reach — this filters out exotic own-race beasts (Eagle Riders, Gnomish
-        // Gyrocopters, Wyvern Riders, etc.) that would otherwise saddle a low-Druid king with a
+        // level is within reach — this filters out exotic own-race beasts (Eagle Riders, Noble
+        // Griffons, Wyvern Riders, etc.) that would otherwise saddle a low-Druid king with a
         // strength penalty from turn one. Fall back to the full pool only if nothing qualifies.
         const kingDruidReach=Math.max(1,(kingSkills.druid||0));
         const safe=pool.filter(t=>getDruidLevel(t)<=kingDruidReach);
@@ -8725,7 +8731,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // SECOND is a random race that bears no animosity toward the king's race
     // (Orcs↔Humans and Elves↔Dwarves are the feuding pairs), so a king never opens with a rival-kin
     // hero at his side (who would lead his native troops at −20%).
-    const _RACE_RIVAL={Human:'Orcish',Orcish:'Human',Elven:'Dwarven',Dwarven:'Elven'};
+    const _RACE_RIVAL={...KC_RIVAL_RACE};
     const heroIds=[];
     for(let h=0;h<2;h++){
       const hid=allChars.length;
@@ -8783,7 +8789,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       const coastal=offs.some(([dr,dc])=>{ const nr=conv.row+dr; if(nr<0||nr>=rows) return false;
         const nb=provinces[nr*cols+(((conv.col+dc)%cols+cols)%cols)]; return nb&&nb.terrain==='sea'; });
       if(coastal&&Math.random()<COASTAL_NAVAL_CHANCE){
-        const f=({Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'})[_race];
+        const f=(HOME_FLEET_BY_RACE)[_race];
         if(f&&!conv.armyTypes.includes(f)) conv.armyTypes.push(f);
       }
       const pool=conv.armyTypes.filter(t=>!t.toLowerCase().includes('garrison')&&!SEA_TYPES_GEN.has(t));
@@ -8853,6 +8859,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   // heroes now start with a spread of skills (INCLUDING magic schools) so they are more useful —
   // one skill at level 2 and one at level 1, dealt round-robin from NEUTRAL_SKILL_POOL so the
   // skills are spread evenly across the whole neutral-hero population rather than clustered.
+// NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
   const NEUTRAL_SKILL_POOL=['melee','archery','tactical','march','explorer','naval','sage','spy','thief','druid','white','psychic','illusory','elemental','necromancy'];
   // neutral-hero traits are DEALT FROM RESHUFFLED DECKS rather than rolled. The old round-robin
   // cursor spread skills evenly but in province-id order, so the same skill recurred in a fixed
@@ -8967,11 +8974,11 @@ function getNeighborsP(prov,cols,rows,provinces){
 // Raise Wraiths — "Wraith's Touch": if a force contains a wraith, ONE random highest-experience
 // enemy unit is PERMANENTLY reduced by one experience tier (written back to the real unit). Fires
 // once at the start of a battle, per side that fields a wraith.
-const _WRAITH_DOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
+const _WRAITH_DOWN={...KC_QUALITY_DOWN};
 function applyWraithTouch(friendly, enemy, narr){
   if(!Array.isArray(friendly)||!Array.isArray(enemy)) return;
   if(!friendly.some(a=>a&&a._isWraith)) return;
-  const tiers=['Green','Average','Veteran','Crack','Elite'];
+  const tiers=QUALITY_TIERS.slice();
   const dem=enemy.filter(a=>a&&tiers.indexOf(a.quality)>0);
   if(dem.length===0) return;
   const maxT=Math.max.apply(null,dem.map(a=>tiers.indexOf(a.quality)));
@@ -8985,7 +8992,7 @@ function applyWraithTouch(friendly, enemy, narr){
 // they never appear in rosters, order dropdowns, wages, give/disband/garrison — all of which read
 // ch.armies). They are injected as marked copies into the fighting force only for the duration of a
 // battle, then removed.
-const _PH_TIERS=['Green','Average','Veteran','Crack','Elite'];
+const _PH_TIERS=QUALITY_TIERS.slice();
 function _phBetterQuality(a,b){ return _PH_TIERS.indexOf(a)>=_PH_TIERS.indexOf(b)?a:b; }
 function injectPhantoms(ch, real){
   if(!ch||!Array.isArray(ch._phantoms)||ch._phantoms.length===0||!Array.isArray(ch.armies)) return;
@@ -9053,8 +9060,8 @@ function TM(c){ if(!c.tm)c.tm={marshal:0,sea:0,monster:0,holyCasts:0,darkCasts:0
 // is ever added it must be added to all of them.
 // Creature = the free beasts a realm persuades to fight beside it.
 // Monster = the horrors a realm breaks to its will.
-const TITLE_CREATURE_ARMIES=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-const TITLE_MONSTER_ARMIES=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+const TITLE_CREATURE_ARMIES=new Set(KC_UNIT_CLASS.creature);
+const TITLE_MONSTER_ARMIES=new Set(KC_UNIT_CLASS.monster);
 // file one entry in the Spymaster's ledger. The AGENT is recorded by id and by the name they
 // carried at the time, not just their realm: the Spymaster's whole business is knowing WHO is in
 // your country, and a realm name tells you nothing you could act on. The name is snapshotted
@@ -9153,7 +9160,7 @@ function reckoningDecayOf(state){ return (state&&state.reckoningDecaySteps)|0; }
 //
 // Alignments keep every one of their other distinctions (zeal, hiring costs, signature actions, the
 // starting skill nudge); what they no longer get is a discount on the throne.
-const _MAGIC_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
+const _MAGIC_SCHOOLS=KC_MAGIC_SCHOOLS.slice();
 function _skillItem(c,stat){
   const base=((c&&c.skills)||{})[stat]||0;
   const bonus=activeItems(c).reduce((s,it)=>s+((it&&it.effect&&it.effect.stat===stat)?(it.effect.bonus||0):0),0); // equipped only
@@ -9502,7 +9509,7 @@ function LAIR_TIER_ROLL(){
   // 2026-09-10 item 6: shifted toward the easy end (was 40/32/20/8) — more Weak and Moderate lairs.
   return r<48?'Weak':r<84?'Moderate':r<96?'Powerful':'Legendary';
 }
-const MAGIC_L8_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
+const MAGIC_L8_SCHOOLS=KC_MAGIC_SCHOOLS.slice();
 // ── CAST CHANCE ────
 // 20% + 10% per school level, + the Arcane Codex discovery, + 10% per school mastered to level 8, +
 // any alignment/Sage cast discoveries; hard cap 95%. A spell worked from an ITEM is a flat 95%
@@ -9741,9 +9748,9 @@ const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
 // metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
-const MINOR_CAV=new Set(['Free Lances','Gilded Lances','Warg Riders']); // flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
+const MINOR_CAV=new Set(KC_UNIT_CLASS.cavalry); // flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
 const MINOR_HEAVY=new Set(['Mountain Guns','Dwarf Ironclads','Galleon Fleet','Corsair Fleet','Elven Galleys','Orcish Longships','Whale Cohort','Siege Towers']);
-const _BEST_SCHOOL=c=>Math.max(0,...['white','psychic','illusory','elemental','necromancy'].map(s=>skillLevel(c,s)));
+const _BEST_SCHOOL=c=>Math.max(0,...KC_MAGIC_SCHOOLS.map(s=>skillLevel(c,s)));
 const MINOR_TITLES=[
   {key:'duelist',    name:'The Duelist',            perk:'+1 melee in personal combat',        req:'Highest Melee skill of any living character.', metric:c=>skillLevel(c,'melee')},
   {key:'marksman',   name:'The Marksman',           perk:'+1 archery in personal combat',      req:'Highest Archery skill.', metric:c=>skillLevel(c,'archery')},
@@ -9935,9 +9942,8 @@ function buildTurnReport(gameState, playerIndex){
     const _repPl=(c.player!=null)?(gameState.players[c.player]||null):null;
     function repSpd(a){
       const base=a.speed||3;
-      const SEA_T=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',
-        'Sea Giants','Kraken Tentacles','Leviathan Pods']);
-      const FLY_T=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
+      const SEA_T=new Set(KC_UNIT_CLASS.sea);
+      const FLY_T=new Set(KC_UNIT_CLASS.flying);
       if(SEA_T.has(a.type)) return base+navalSpeedBonus(base,navalLvl); // the engine's naval table (was +navalLvl)
       if(FLY_T.has(a.type)) return base;
       // Road Network (sd13) and the race/alignment `move` discoveries (Toll Roads, Caravan Roads…)
@@ -9948,9 +9954,9 @@ function buildTurnReport(gameState, playerIndex){
       if(base<=2&&_repPl){ discEffectsOf(_repPl,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); } // sd13 Road Network is now a `move` effect
       return base+(base<=2?MB_SLOW[Math.min(marchLvl,5)]:MB_FAST[Math.min(marchLvl,5)])+_road;
     }
-    const SEA_UNIT_TYPES=['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'];
+    const SEA_UNIT_TYPES=new Set(KC_UNIT_CLASS.sea);
     // Winged units cross sea without a fleet (matches AERIAL_TYPES in the engine).
-    const AERIAL_UNIT_TYPES=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']);
+    const AERIAL_UNIT_TYPES=new Set(KC_UNIT_CLASS.aerial);
     const landArmiesRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type));
     const seaArmiesRep=armies.filter(a=>SEA_UNIT_TYPES.includes(a.type));
     const trueLandRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type)&&!AERIAL_UNIT_TYPES.has(a.type));
@@ -9966,10 +9972,10 @@ function buildTurnReport(gameState, playerIndex){
     // air: it moves at the flyers' pace (carried infantry no longer slow it) and crosses sea
     // freely.
     {
-      const FLY_CARRIERS_REP=new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders']);
-      const CAV_REP=new Set(['Free Lances','Gilded Lances','Warg Riders']);
-      const CRE_REP=new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']);
-      const MON_REP=new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']);
+      const FLY_CARRIERS_REP=new Set(KC_UNIT_CLASS.flying);
+      const CAV_REP=new Set(KC_UNIT_CLASS.cavalry);
+      const CRE_REP=new Set(KC_UNIT_CLASS.creature);
+      const MON_REP=new Set(KC_UNIT_CLASS.monster);
       const repAirCarriable=(t)=>!(AERIAL_UNIT_TYPES.has(t)||SEA_UNIT_TYPES.includes(t)||CRE_REP.has(t)||MON_REP.has(t)||CAV_REP.has(t));
       let carriers=0,carried=0,selfFly=false,grounded=false;
       armies.forEach(a=>{
@@ -10232,6 +10238,11 @@ function buildTurnReport(gameState, playerIndex){
     locationId:g.location,
     isOwn:g.player===playerIndex,
     isKing:!!g.isKing,
+    // 2026-09-27 (Toby item 10): the realm that held this hero WHEN THEY FELL (null = neutral), and
+    // whether that puts them beyond this realm's Resurrect. `player` was already on the graveyard
+    // record and on the Resurrect dropdown's own list; it simply never reached the map tooltip or the
+    // Fallen Heroes card, so a player could not tell whose body they were looking at.
+    servedOther:graveServedOther(g,playerIndex),
     inVisibleProv:visibleProvIds.has(g.location)}));
   // Dead heroes this player knows of (for Resurrect targeting). 2026-09-12: the list and the MAP
   // must never disagree again. Anything the map shows as a body (visibleDeadHeroes) is listed here
@@ -10946,10 +10957,10 @@ function discSumOf(pl, kind, field, pred){
 const DISC_CLS_SETS={
   cavalry:new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']),
   infantry:new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']),
-  missile:new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']),
-  fleet:new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']),
-  flyer:new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs']),
-  garrison:new Set(['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison']),
+  missile:new Set(KC_UNIT_CLASS.missile),
+  fleet:new Set(KC_UNIT_CLASS.carrier),
+  flyer:new Set(KC_UNIT_CLASS.aerial),
+  garrison:new Set(KC_UNIT_CLASS.garrison),
 };
 // Garrison units always muster into the province garrison when recruited (2026-09-23c, Toby).
 function isGarrisonUnitType(t){ return DISC_CLS_SETS.garrison.has(t); }
@@ -10959,7 +10970,17 @@ function discUnitIs(cls, army, typeOnly){
   if(cls==='creature') return CREATURE_ARMIES.has(t);
   if(cls==='monster') return MONSTER_ARMIES.has(t);
   if(cls==='skeletal') return !typeOnly&&!!(army&&army._isSkeletal);
-  if(cls==='humanoid') return !CREATURE_ARMIES.has(t)&&!MONSTER_ARMIES.has(t)&&!DISC_CLS_SETS.fleet.has(t)&&!(army&&army._isSkeletal);
+  // 2026-09-27 (Toby item 1): the four HUMANOID RACIAL FLYERS — Eagle Riders, Noble Griffons,
+  // Gnomish Gyrocopters and Wyvern Riders (FLYING_TYPES) — are riders and crews of the playable
+  // races, raised in their own race's provinces and carrying that race on `army.race`. They sit in
+  // CREATURE_ARMIES / MONSTER_ARMIES for the Druid and Druidic/Evil rules (their MOUNTS are beasts),
+  // but for everything that asks "is this one of my own people?" they are their race's soldiers and
+  // must take the same benefits and penalties as the rest of the racial roster. Every RACE-keyed
+  // effect already reached them through `army.race`; this class was the one place that did not, so a
+  // realm's humanoid creed discoveries (recruit cost, upkeep, promotion, death reduction, mercenary
+  // price) skipped exactly those four units. They are folded in here. Fleets and the skeletal dead
+  // stay out, as do the true wild beasts.
+  if(cls==='humanoid') return (FLYING_TYPES.has(t)||(!CREATURE_ARMIES.has(t)&&!MONSTER_ARMIES.has(t)))&&!DISC_CLS_SETS.fleet.has(t)&&!(army&&army._isSkeletal);
   const st=DISC_CLS_SETS[cls]; return !!(st&&st.has(t));
 }
 // Does a unit-filtered effect (race / types / cls) apply to this army? (typeOnly: `army` is a type
@@ -10977,7 +10998,7 @@ function discUnitMatch(e, army, typeOnly){
 // alignment `recruitCost` discoveries (delta, then factor; minimum 1g). Per-character reductions
 // (Druid L6 half-price beasts) are applied by the engine on top. Used by the engine AND the report
 // builders so the player portal's recruit preview shows the realm's real price.
-const _FLEET_TYPES_DISC=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+const _FLEET_TYPES_DISC=new Set(KC_UNIT_CLASS.carrier);
 function realmRecruitCost(pl, armyType, baseCost){
   let c=(baseCost||2); // sd16 Shipbuilding is now an ordinary `recruitCost` factor effect (cls fleet)
   discEffectsOf(pl,'recruitCost').forEach(e=>{ if(!discUnitMatch(e, armyType, true)) return; if(e.delta) c+=e.delta; if(e.factor) c=Math.ceil(c*e.factor); });
@@ -11800,9 +11821,15 @@ async function runTurn(opts){
       return Object.entries(groups).map(([t,n])=>`${n}× ${t}`).join(', ');
     } else if(observerSpySkill>=2){
       // Moderate: count and rough category
-      const cav=armies.filter(a=>['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons','Wyvern Riders','Gnomish Gyrocopters'].includes(a.type)).length;
-      const inf=armies.filter(a=>!['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'].includes(a.type)).length;
-      const naval=armies.filter(a=>['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'].includes(a.type)).length;
+      // 2026-09-27: three hand-typed lists, and the "everything else" list for infantry had drifted
+      // from the cavalry one — Noble Griffons, Wyvern Riders and Gyrocopters were counted as BOTH
+      // cavalry-type and infantry, so a Spy 2+ report overstated the force. One grouping now, from
+      // the shared unit classes: horse + the four racial flyers, fleets, and everything else.
+      const _spyCav=a=>KC_UNIT_CLASS.cavalry.includes(a.type)||KC_UNIT_CLASS.flying.includes(a.type);
+      const _spyNav=a=>KC_UNIT_CLASS.carrier.includes(a.type);
+      const cav=armies.filter(_spyCav).length;
+      const naval=armies.filter(_spyNav).length;
+      const inf=armies.filter(a=>!_spyCav(a)&&!_spyNav(a)).length;
       const parts=[];
       if(cav>0) parts.push(`${cav} cavalry-type`);
       if(inf>0) parts.push(`${inf} infantry-type`);
@@ -11844,12 +11871,15 @@ async function runTurn(opts){
   // exact odds are replaced by a band — they still learn how the attempt felt and whether it landed,
   // but cannot solve for the hidden level. Known rival (own hero, wanderer, spied within 8 turns) →
   // the full working, unchanged.
-  const _ODDS_BANDS=[[20,'long odds'],[40,'the odds against you'],[60,'even odds'],[80,'the odds in your favour'],[101,'the odds strongly in your favour']];
+  // 2026-09-27 (Toby item 5): the descriptive BAND is gone too. "even odds" narrowed the rival's
+  // hidden Spy level to a five-point window — a player who knows their own level could read the
+  // other off the phrasing almost as well as off the number, which is exactly the guessing this
+  // block exists to prevent. A viewer who has not earned the knowledge now learns only whether the
+  // attempt landed; a known rival (own hero, wanderer, spied within 8 turns) still gets the full
+  // working, unchanged.
   function oddsNote(pi, ch, chance, roll){
     if(!ch||skillsKnownTo(pi,ch)) return fmtRoll(chance,roll);
-    const c0=Math.max(0,Math.min(100,dispFloor(chance)));
-    const band=(_ODDS_BANDS.find(b=>c0<b[0])||_ODDS_BANDS[_ODDS_BANDS.length-1])[1];
-    return `${band} [${dispFloor(roll)<=c0?'✓':'✗'}]`;
+    return `[${dispFloor(roll)<=Math.max(0,Math.min(100,dispFloor(chance)))?'✓':'✗'}]`;
   }
   // 2026-09-21 (Toby: "Illusory 3 … rises to level 1"): every skill-rise line quoted the character's
   // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
@@ -12055,7 +12085,7 @@ async function runTurn(opts){
       }
   }
   function resolveAllPendingSkillGains(){ (G.characters||[]).forEach(c=>{ if(c&&c._sgPending) resolvePendingSkillGain(c); }); }
-  const HUMANOID_RACES_SG=new Set(['Human','Elven','Dwarven','Orcish']);
+  const HUMANOID_RACES_SG=new Set(KC_HUMANOID_RACES);
 
 // ── TERRAIN STRENGTH MODIFIERS ────
 // Applied to individual army unit strength during battle resolution. Flying units (Eagle Riders,
@@ -12310,7 +12340,7 @@ function seaPenalty(armyType, terrain){
     const _tr=(ctx&&Array.isArray(ctx.trace))?ctx.trace:null;
     // Oratory (Psychic): armies travelling with an inspired commander fight one quality tier
     // higher.
-    const Q_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
+    const Q_UP={...KC_QUALITY_UP};
     let effQuality=(army.quality||'Average');
     if(heroChar&&heroChar._oratoryBoost){ const _oN=(heroChar._oratoryBoost===true?1:(heroChar._oratoryBoost|0))||1; for(let _oi=0;_oi<_oN;_oi++) effQuality=Q_UP[effQuality]||effQuality; } // PSYCHIC Oratory: +1 quality tier (+2 with Words of Awe, L6)
     if(heroChar&&perkTier(heroChar,'druid')>=3&&(CREATURE_ARMIES.has(army.type)||MONSTER_ARMIES.has(army.type))){ effQuality=Q_UP[effQuality]||effQuality; } // DRUID L8: creatures & monsters fight one tier higher
@@ -12348,7 +12378,7 @@ function seaPenalty(armyType, terrain){
     // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
     // led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
     if(_unitRace&&_leaderRace){
-      const _RIVAL_RACE={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+      const _RIVAL_RACE={...KC_RIVAL_RACE};
       if(_RIVAL_RACE[_unitRace]===_leaderRace){ str=Math.round(str*0.8); if(_tr) _tr.push({label:'racial animosity ×0.8'}); }
     }
     // Apply terrain modifier
@@ -12418,7 +12448,7 @@ function seaPenalty(armyType, terrain){
       const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']);
       const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows']);
       const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
-      const FLEET_I=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort']);
+      const FLEET_I=new Set(KC_UNIT_CLASS.carrier);
       if(has('armyBonus')) str+=2;                                   // Battle Standard
       if(has('cavBonus')&&CAV_I.has(army.type)) str=Math.round(str*1.25); // Golden Spur
       if(has('infBonus')&&INF_I.has(army.type)) str=Math.round(str*1.2);  // Legionnaire's Mark
@@ -12495,7 +12525,7 @@ function seaPenalty(armyType, terrain){
   function provOf(c){return G.world.provinces[c.location];}
 
   // Direction → neighbor lookup
-  const HEX_DIRS=['NW','NE','W','E','SW','SE'];
+  const HEX_DIRS=KC_HEX_DIRS.slice();
   function neighborInDir(prov,dir){
     const{row,col}=prov;
     const cols=G.world.cols,rows=G.world.rows;
@@ -12674,7 +12704,7 @@ const BATTLE_ARMY_SPELLS={
   // pre-battle magic phase a RANDOM battle spell the commander can cast from that school is chosen.
   // Legacy 'CA:<spell>' tactics still cast that exact spell.
   const BATTLE_SPELLS_BY_SCHOOL={white:['Holy Symbol','Spiritwrack'],elemental:['Fireball','Lightning Bolt'],psychic:['Psychic Blast','Telekinetic Storm'],necromancy:['Curse','Control Undead']};
-  const BATTLE_MAGIC_SPELL_SET=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
+  const BATTLE_MAGIC_SPELL_SET=new Set(BATTLE_MAGIC_SPELL_NAMES);
   // A battle spell is only worth choosing if the field offers it a valid target/effect: Storm and
   // Blast need an enemy commander with the skill they negate; Curse needs a commander with any
   // curseable skill; Control Undead and Holy Symbol need enemy undead; Spiritwrack needs enemy
@@ -13005,7 +13035,7 @@ const BATTLE_ARMY_SPELLS={
     const atkHomeBonus=atkHome?1.5:1;
 
     // Calculate strengths with some narrative
-    const MISSILE_ARMIES=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
+    const MISSILE_ARMIES=new Set(KC_UNIT_CLASS.missile);
     const archSkillAtk=atkCmdrSlain?0:effStat(c,'archery');
     const archMissileBonus=1+(archSkillAtk*ARCHERY_MISSILE_PCT); // 2026-09-23b (Toby): Archery lifts missile units +5%/level · sd07 Fire Arrows is a `unitStr` missile effect (armStr)
     let navalSkillAtk=atkCmdrSlain?0:effStat(c,'naval');
@@ -13017,7 +13047,7 @@ const BATTLE_ARMY_SPELLS={
     // PRE-BATTLE PHASE 1: MAGIC Hero casts first CA: spell from their encounter plan that is
     // relevant to army combat (hits provinces/armies)
     // ════
-    const BATTLE_MAGIC_SPELLS=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
+    const BATTLE_MAGIC_SPELLS=new Set(BATTLE_MAGIC_SPELL_NAMES);
     applyWraithTouch(armies, defenders, narrative); applyWraithTouch(defenders, armies, narrative); // Wraith's Touch
     if(c) ensureEncounterPlan(c); // bots/NPCs get an auto battle-magic plan so they cast when attacking
     const heroTactics=(c.encounterPlan?.tactics)||[];
@@ -13394,7 +13424,7 @@ const BATTLE_ARMY_SPELLS={
 
     // Fanaticism check
     const align=G.players[c.player]?.alignment||'Neutral';
-    const FANATIC_CHANCE={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
+    const FANATIC_CHANCE={...FANATIC_CHANCE_BY_ALIGN};
     const fanatic=Math.random()<((FANATIC_CHANCE[align]??0.1)+discSum(c.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,armies))); // fanatic discoveries
     // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
     // heroes serving the Undead realm do not inspire the same undying zeal.
@@ -13486,9 +13516,9 @@ const BATTLE_ARMY_SPELLS={
     const severity=_band.label;
 
     // XP tier multipliers — higher tiers harder to improve
-    const xpMult=['Green','Average','Veteran','Crack','Elite'].map((_,i)=>[1.5,1.0,0.6,0.3,0][i]);
+    const xpMult=QUALITY_TIERS.map((_,i)=>[1.5,1.0,0.6,0.3,0][i]);
     function xpChance(baseChance, quality){
-      const i=['Green','Average','Veteran','Crack','Elite'].indexOf(quality);
+      const i=QUALITY_TIERS.indexOf(quality);
       return baseChance*(xpMult[i]??0);
     }
 
@@ -13510,7 +13540,7 @@ const BATTLE_ARMY_SPELLS={
     // Military Discipline discovery: +20% XP gain chance
     const milMultOf=(a)=>1+discPromo(c.player,a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
 
-    const tiers=['Green','Average','Veteran','Crack','Elite'];
+    const tiers=QUALITY_TIERS.slice();
 
     // ════
     // UNIT ABILITIES vs NEUTRAL GUARDS
@@ -13857,10 +13887,10 @@ const BATTLE_ARMY_SPELLS={
   // (aggressive actions, no Flee anywhere), so they will ISSUE a pre-battle challenge.
   // Cautious and Cowardly open with Flee, so they REFUSE a challenge rather than risk single combat
   // — trading 20% of their force's strength for their commander's life.
-  const NPC_SPELL_BY_SCHOOL={elemental:'Lightning Bolt',necromancy:'Hand of Death',
-    white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'};
+  const NPC_SPELL_BY_SCHOOL={...NPC_SCHOOL_SPELL};
   function autoEncounterPlan(ch){
     const melee=effStat(ch,'melee'), arch=effStat(ch,'archery');
+// NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
     const schools=['elemental','necromancy','psychic','white','illusory'];
     const bestSchool=schools.reduce((b,sk)=>effStat(ch,sk)>effStat(ch,b)?sk:b,'elemental');
     const magic=effStat(ch,bestSchool);
@@ -14571,7 +14601,7 @@ const BATTLE_ARMY_SPELLS={
         if(Math.random()*100<Math.min(SPELL_HOD_MAX_PCT,lvlEff*10*wx)){ const _dfMult=(caster.ref&&hasItemBase(caster.ref,"Death's Finger Ring"))?1.1:1; const d=Math.max(1,Math.round(target.maxHp*SPELL_HOD_BITE_PCT/100*_dfMult)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Hand of Death'); if(dealt)narrative.push(`  ☠ Hand of Death claims ${SPELL_HOD_BITE_PCT}% of ${target.name}'s health — ${dealt} damage! (HP ${Math.max(0,Math.round(target.hp))})`); } else narrative.push(`  ${caster.name}'s Hand of Death fails to take hold. [${Math.min(SPELL_HOD_MAX_PCT,lvlEff*10*wx)}%]`); break; }
       case 'Curse':{
         // Halve (round down) the target's best combat ability for the duration of the fight.
-        const bestSchool=['white','psychic','illusory','elemental','necromancy'].reduce((b,s)=>(target.school[s]||0)>(target.school[b]||0)?s:b,'white');
+        const bestSchool=KC_MAGIC_SCHOOLS.reduce((b,s)=>(target.school[s]||0)>(target.school[b]||0)?s:b,'white');
         const cands=[['melee',target.melee],['archery',target.archery],['magic',target.school[bestSchool]||0]];
         cands.sort((a,b)=>b[1]-a[1]);
         const [bestKey,bestVal]=cands[0];
@@ -15112,7 +15142,7 @@ const BATTLE_ARMY_SPELLS={
         if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast.`); break; }
         // Choose the spell: explicit CA:Name, else best available combat spell.
         let name=arg;
-        if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name={elemental:'Lightning Bolt',necromancy:'Hand of Death',white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'}[best]; }
+        if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name=NPC_SCHOOL_SPELL[best]; } // tie-break ORDER — deliberately not KC_MAGIC_SCHOOLS
         pcCastCombatSpell(actor, foe, name, narrative, state);
         break;
       }
@@ -15150,7 +15180,7 @@ const BATTLE_ARMY_SPELLS={
         if(actor.ref&&hasItemBase(actor.ref,'Lock-Pick of Legends')) bonus+=20; // Lock-Pick of Legends: +20% steal chance
         // Tougher guardians watch their hoard more closely — a flat penalty by tier. A master thief
         // can still rob a Legendary beast, but a novice has little hope of it.
-        const STEAL_TIER_PENALTY={Weak:0, Moderate:15, Powerful:30, Legendary:45};
+        const STEAL_TIER_PENALTY={...STEAL_TIER_PEN};
         const _tier=(foe&&foe.ref&&foe.ref.power)||'Weak';
         const tierPen=STEAL_TIER_PENALTY[_tier]||0;
         const chance=Math.max(5, Math.min(95, 50+10*Math.min(th,5)+bonus-tierPen));
@@ -15778,8 +15808,8 @@ const BATTLE_ARMY_SPELLS={
     // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
 
     // Fanaticism
-    const atkFanChance={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
-    const defFanChance={Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00};
+    const atkFanChance={...FANATIC_CHANCE_BY_ALIGN};
+    const defFanChance={...FANATIC_CHANCE_BY_ALIGN};
     const atkAlign=G.players[atk.player]?.alignment||'Neutral';
     const defAlign=G.players[def.player]?.alignment||'Neutral';
     // ORC — Terror From Above: wyverns overhead take the heart out of the other side.
@@ -15830,7 +15860,7 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`The ${prov.terrain} terrain sets a ${pvpFront}-unit front. Lines behind it fight at ×0.5, ×0.25 and ×0.125.`);
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
-    const MISSILE_A=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
+    const MISSILE_A=new Set(KC_UNIT_CLASS.missile);
     const atkArch=atkCmdrSlain?0:effStat(atk,'archery'); const atkArchBonus=1+(atkArch*ARCHERY_MISSILE_PCT); // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr (unitStr missile)
     const defArch=defCmdrSlain?0:effStat(def,'archery'); const defArchBonus=1+(defArch*ARCHERY_MISSILE_PCT);
     let atkNav=atkCmdrSlain?0:effStat(atk,'naval'); if(atk._curseHalveStat==='naval') atkNav=Math.floor(atkNav/2); const atkNavBonus=1+(atkNav*0.2);
@@ -15865,7 +15895,7 @@ const BATTLE_ARMY_SPELLS={
     // ════
     // PRE-BATTLE PHASE 1: MAGIC (both sides)
     // ════
-    const BATTLE_MAGIC_PVP=new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead']);
+    const BATTLE_MAGIC_PVP=new Set(BATTLE_MAGIC_SPELL_NAMES);
 
     function applyPreBattleMagic(caster, targets, narr, enemyCmdr){
       const tactics=(caster.encounterPlan?.tactics)||[];
@@ -15943,7 +15973,7 @@ const BATTLE_ARMY_SPELLS={
     // ════
     // PRE-BATTLE PHASE 2: ARCHERY (both sides)
     // ════
-    const MISSILE_PVP=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde']);
+    const MISSILE_PVP=new Set(KC_UNIT_CLASS.missile);
     function applyPreBattleArchery(heroChar, myForce, enemyArmies, myCount, narr){
       // ELF — Ambush: Forest Wardens defending their own woods deny the enemy an archery phase.
       if(archeryBlockedBy(enemyArmies, pvpTerrain)){
@@ -16124,7 +16154,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     const closenessRatioPvP=Math.min(atkStr,defStr)/Math.max(atkStr,defStr);
-    const tiers=['Green','Average','Veteran','Crack','Elite'];
+    const tiers=QUALITY_TIERS.slice();
     const xpMultPvP=[1.5,1.0,0.6,0.3,0];
     function xpChancePvP(base,quality){return base*(xpMultPvP[tiers.indexOf(quality)]??0);}
 
@@ -16807,7 +16837,7 @@ const BATTLE_ARMY_SPELLS={
     if(deadArmies.length>0&&prov){
       const scatterAsMercs=()=>{
         if(!G.mercenaries) G.mercenaries=[];
-        const SEA_SET=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+        const SEA_SET=new Set(KC_UNIT_CLASS.sea);
         deadArmies.forEach(army=>{
           G.mercenaries.push({type:army.type,quality:army.quality,race:army.race||'Unknown',
             unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
@@ -17237,7 +17267,7 @@ const BATTLE_ARMY_SPELLS={
         log('system',`${victim.name} catches ${thief.name} ${what}, but wants no part in a brawl — the thief is driven off empty-handed.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:false,charIds:[thief.id,victim.id]});
         return;
       }
-      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const COMBAT_ONLY=COMBAT_ONLY_TACTICS;
       const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase())||String(t).toUpperCase().startsWith('CA:'));
       ensureEncounterPlan(thief);
       const atkPlan=filterPlan(thief.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
@@ -17290,7 +17320,7 @@ const BATTLE_ARMY_SPELLS={
         log('system',`${t.name} rounds on ${caster.name} as the enchantment fails — but ${who.name} is already slipping away, and there is no encounter.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:[caster.id,t.id]});
         return;
       }
-      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const COMBAT_ONLY=COMBAT_ONLY_TACTICS;
       const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(x=>COMBAT_ONLY.has(String(x).split(':')[0].toUpperCase())||String(x).toUpperCase().startsWith('CA:'));
       const atkPlan=filterPlan(t.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
       const defPlan=filterPlan(caster.encounterPlan); if(!defPlan.length) defPlan.push('ME');
@@ -17421,9 +17451,7 @@ const BATTLE_ARMY_SPELLS={
             } else {
               // Restate the ACTUAL capacity rule: light foot take half a hull, everything else a
               // full one, and primal sea beasts (which swim but carry nothing) provide no capacity.
-              const LIGHT_MSG=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
-                'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde',
-                'Forest Wardens','Dwarven Guard','Orc Berserkers']);
+              const LIGHT_MSG=new Set(KC_UNIT_CLASS.lightFoot);
               const hulls=armies.filter(a=>CARRIER_TYPES.has(a.type)).length;
               const capNeed=landArmies.reduce((s,a)=>s+(LIGHT_MSG.has(a.type)?0.5:1),0);
               const swimmers=armies.filter(a=>PRIMAL_SEA_TYPES.has(a.type));
@@ -18120,6 +18148,7 @@ const BATTLE_ARMY_SPELLS={
             if(_fmSlip && Math.random()<0.5){ toProv._battleUnresolved=true; log('move',`⚡ ${c.name}'s Forced March filters into ${toProv.name} without giving battle this phase — but the enemy still holds the ground, and the reckoning only waits.`,{actor:c.player,targets:[c.player],provinceId:toProv.id,public:true}); break; } // MARCH L7 slip
             const llBattle=combatVsNPC(c,toProv,null);
             creditBattle(c,null,llBattle,toProv);   // a leaderless neutral guard still pays merit
+            if(llBattle.won) markOrcAttackWin(c, G, llBattle); // 2026-09-27 (Toby item 8): war-spoils were credited on only three of the six attacking-win paths — a leaderless neutral garrison is still a battle won on the attack
             emitBattle(llBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!=null), {actor:c.player}); // item 5
             c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
             toProv._hadBattleThisTurn=true;
@@ -18194,7 +18223,7 @@ const BATTLE_ARMY_SPELLS={
         // 25%, Forest 15%, Mountain 15%, Jungle 10%, Sea 25% Base explore rate per terrain, cut 15
         // percentage points from the original
         // {plain:50,desert:40,forest:35,mountain:35,jungle:30,sea:40} to slow the early land-grab.
-  const BASIC_EXPLORE={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
+  const BASIC_EXPLORE={...KC_BASIC_EXPLORE};
         const basicRate=BASIC_EXPLORE[prov.terrain]||15;
         // sd24 The Compass: Explorer treated as 1 level higher
         const explorerSkill=Math.min(5,effStat(c,'explorer'));
@@ -18312,7 +18341,7 @@ const BATTLE_ARMY_SPELLS={
         // units are given up to make others stronger. Encoded in the order's `extra` as
         // "S:i,j|E:a,b" — indices into the character's army. Borrowed/temporary/skeletal units can
         // be neither offered nor raised.
-        const _tiers=['Green','Average','Veteran','Crack','Elite'];
+        const _tiers=QUALITY_TIERS.slice();
         const _army=c.armies||[];
         const _bOffElig=i=>{ const a=_army[i]; return !!a && !a._temporary && a._wildHuntUntilTurn==null && !a._isSkeletal; };
         let _sacI=[], _benI=[];
@@ -18936,7 +18965,7 @@ const BATTLE_ARMY_SPELLS={
         // holds across phases, across characters and across realms.
         if(prov._awakenTurn===G.turn){
           log('system',`${c.name} calls again to the deep places of ${prov.name}, but the wild has already answered here this season — it will not stir a second time until the year turns.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        const AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+        const AWAKEN_TIERS={...KC_AWAKEN_TIERS};
         const wType=target;
         const needDru=AWAKEN_TIERS[wType];
         if(needDru==null){
@@ -18972,7 +19001,7 @@ const BATTLE_ARMY_SPELLS={
         player.gold-=_hCost;
         const hGrave=takeBestGrave(prov); // the most experienced dead are worked first
         const _uTierH=gdActive(c.player,'Undead'); // GRAND DESIGN — Undead
-        const hSkel={type:hGrave.type,quality:(_uTierH?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[hGrave.quality]||hGrave.quality):hGrave.quality),race:'Undead',_isSkeletal:true,
+        const hSkel={type:hGrave.type,quality:(_uTierH?(KC_QUALITY_UP[hGrave.quality]||hGrave.quality):hGrave.quality),race:'Undead',_isSkeletal:true,
           unitName:`${hGrave.unitName||armyUnitName(hGrave.type)} (Skeletal)`};
         c.armies=(c.armies||[]); c.armies.push(hSkel);
         log('hire',`💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (${_hCost}g; upkeep 1g/turn.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -19191,11 +19220,11 @@ const BATTLE_ARMY_SPELLS={
         // each skill improves the troops it actually commands in battle.) Local set (self-contained
         // to avoid any resolveTurn-scope hazard) — the naval units that benefit from the Naval
         // skill in a sea battle are exactly the ones Naval practice drills.
-        const NAVAL_DRILL_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+        const NAVAL_DRILL_TYPES=new Set(KC_UNIT_CLASS.sea);
         if(skill==='tactical'||skill==='naval'){
           const isNaval=skill==='naval';
           const drillLvl=c.skills[skill]||0;
-          const tiers=['Green','Average','Veteran','Crack','Elite'];
+          const tiers=QUALITY_TIERS.slice();
           const DRILL_BASE=UNIT_DRILL_BASE; // module level — the end-of-turn garrison drill reads the same table
           // Tactical drills land & air units; Naval drills sea units.
           const trainable=(c.armies||[]).filter(a=>!a._isSkeletal&&(isNaval?NAVAL_DRILL_TYPES.has(a.type):!NAVAL_DRILL_TYPES.has(a.type)));
@@ -19260,7 +19289,7 @@ const BATTLE_ARMY_SPELLS={
           // engine's unled units live in `pv.garrisonArmies` everywhere else. Garrison troops were
           // therefore NEVER promoted, and a realm whose strength sat in its garrisons could invoke
           // the Stone and see almost nothing happen.
-          const UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
+          const UP={...KC_QUALITY_UP};
           const _promote=(arr)=>{ let k=0; (arr||[]).forEach(a=>{ if(a&&!a._isSkeletal&&UP[a.quality]&&UP[a.quality]!==a.quality){ a.quality=UP[a.quality]; k++; } }); return k; };
           let led=0, garr=0, already=0;
           const _count=(arr)=>(arr||[]).filter(a=>a&&!a._isSkeletal).length;
@@ -19541,7 +19570,7 @@ const BATTLE_ARMY_SPELLS={
 
         // Create mercenary army objects in the province
         if(!G.mercenaries) G.mercenaries=[];
-        const SEA_TYPES_D=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']);
+        const SEA_TYPES_D=new Set(KC_UNIT_CLASS.sea);
         disbanding.forEach(army=>{
           const merc={
             id:`merc_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
@@ -20465,7 +20494,7 @@ const BATTLE_ARMY_SPELLS={
           for(let _sk=0;_sk<_skN&&(prov.battleGraves||[]).length>0;_sk++){
             const grave=takeBestGrave(prov); // the most experienced dead answer first
             if(!grave) break;
-            const skel={ type:grave.type,quality:(_uTier?({Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}[grave.quality]||grave.quality):grave.quality),race:'Undead',_isSkeletal:true,
+            const skel={ type:grave.type,quality:(_uTier?(KC_QUALITY_UP[grave.quality]||grave.quality):grave.quality),race:'Undead',_isSkeletal:true,
               unitName:`${grave.unitName||armyUnitName(grave.type)} (Skeletal)` };
             c.armies=(c.armies||[]);c.armies.push(skel);
             log('explore',`💀 ${c.name} calls forth ${skel.unitName} — a ${skel.quality} ${skel.type} rises from the graves of ${prov.name} to serve! (Upkeep 1g/turn.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
@@ -20617,7 +20646,7 @@ const BATTLE_ARMY_SPELLS={
         else if(fn==='necromancy_dominion'){
           const graves=prov.battleGraves||[];
           if(graves.length===0){log('explore',`${c.name}'s Death's Dominion finds no fallen army in ${prov.name} to raise.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-          const QUALITY_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
+          const QUALITY_UP={...KC_QUALITY_UP};
           // Death's Dominion already raises the dead one tier stronger than they fell. The
           // Deathless Legion adds ITS tier on top, so an Undead realm holding its Wonder pulls them
           // up TWO tiers — Average dead rise Crack. Elite is still the ceiling.
@@ -20991,7 +21020,7 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'sage')<9){log('system',`${c.name} lacks the Sage mastery (9) to realise a Grand Design.`,{actor:c.player,targets:[c.player]});break;}
         const player=G.players[c.player]; if(!player.discoveries) player.discoveries=[];
         if(player.discoveries.some(d=>d.id==='gd')){log('system',`${G.players[c.player]?.name} has already completed its Grand Design — there can be only one.`,{actor:c.player,targets:[c.player]});break;}
-        const _GD_DEFS={Divine:{name:'Grand Cathedral',desc:'Bless costs you no casting slot, and its ward lies permanently over your capital.'},Good:{name:'Free City Charter',desc:'Every province you hold that keeps a garrison yields +2 tax.'},Neutral:{name:'Grand Library',desc:'Your scholars make one guaranteed Sage discovery every turn.'},Pagan:{name:'Standing Stones',desc:'Your armies fight at +25% strength when defending forest, jungle or mountain provinces.'},Evil:{name:'Iron Throne of Skulls',desc:'Enemy units slain in battles you win may rise as your skeletons.'},Undead:{name:'Deathless Legion',desc:'Your skeletal units never disband for unpaid wages, and rise one experience tier stronger.'},Druidic:{name:'World-Tree Grove',desc:'Your monsters and creatures cost half their wages and muster as Veterans.'}};
+        const _GD_DEFS={...KC_GRAND_DESIGNS};
         const _gdA=(G.players[c.player]&&G.players[c.player].alignment)||'Neutral';
         const _gdD=_GD_DEFS[_gdA]||{name:'The Great Work',desc:'A unique realm-wide Wonder.'};
         // the Wonder now STANDS SOMEWHERE. Its province is recorded on the realm and on the
@@ -21034,11 +21063,7 @@ const BATTLE_ARMY_SPELLS={
     if(getFlyCapability(armies)) return 'sea';
     // Fleet capacity: light foot = 0.5 capacity (2 per hull), heavy/cavalry/siege/beast = 1 per
     // hull
-    const LIGHT_ARMIES=new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',
-      'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison',
-      'Goblin Horde',
-      'Forest Wardens','Dwarven Guard','Orc Berserkers',
-      'Mountain Guns']); // gun-crews ride as light foot — an Ironclad ferries a Gun + a Guard
+    const LIGHT_ARMIES=new Set(KC_UNIT_CLASS.lightFoot); // gun-crews ride as light foot — an Ironclad ferries a Gun + a Guard
     // HULLS AND FLYERS POOL THEIR LIFT. Now:
     // • units a flyer cannot lift (cavalry, siege, walking creatures/monsters) MUST go aboard ship;
     // • everything a flyer CAN lift rides a hull if there is room, else is carried by one humanoid
@@ -21531,7 +21556,7 @@ const BATTLE_ARMY_SPELLS={
       // section's "Wandering Heroes" list — no need to log each phase's movement here.)
     });
   }
-  const SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+  const SEASONS=KC_SEASONS.slice();
   // Turn-wide recruit tracking: provId → armyType → count recruited this turn
   // Limits: Garrisons = 2 per turn; home province (tax≥10) = 2 per type; elsewhere = 1 per type
   const recruitedThisTurn={};
@@ -21638,7 +21663,7 @@ const BATTLE_ARMY_SPELLS={
   // ── PLAGUE (Necromancy) ────
   // Each humanoid army unit in the province has a (10% + 5%/level) chance to lose an experience
   // level. Survivors are immunised (half chance thereafter). Only the four humanoid races suffer.
-  const _PLAGUE_QDOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
+  const _PLAGUE_QDOWN={...KC_QUALITY_DOWN};
   function _isHumanoidRace(r){ return r==='Human'||r==='Elven'||r==='Dwarven'||r==='Orcish'; }
   // ── Bless ward (item) ── A province blessed this turn can shrug off a later ENEMY negative spell
   // (Flood / Earthquake / Plague / Part Sea). Chance = 50% + 5% × the blesser's White skill, counted to
@@ -21825,6 +21850,7 @@ const BATTLE_ARMY_SPELLS={
         else if(guard){ guard.armies=[]; guard._isNeutralGuard=false; }
         attacker.armies=(attacker.armies||[]).filter(a=>atkCopy.armies.includes(a));
         if(atkCopy.location!==attacker.location){ attacker.location=atkCopy.location; const np=G.world.provinces[attacker.location]; if(np) attacker.locationName=np.name; }
+        if(battle.won) markOrcAttackWin(attacker, G, battle); // 2026-09-27 (Toby item 8): war-spoils on the stalled-battle re-fight too
         emitBattle(battle, prov, ph, [attacker.player], {actor:attacker.player, charId:_ctxCharId}); // item 5 (NPC/guard defender)
         const liveGuard=!!guard&&!_guardDiedNow;
         if(battle.won){
@@ -22342,12 +22368,14 @@ const BATTLE_ARMY_SPELLS={
       battle=combatVsNPC(c, prov, null);
       creditBattle(c,null,battle,prov);   // a leaderless neutral guard still pays merit
       prov._leaderlessDefenders=(prov.neutralDefenders||[]).length>0;
+      if(battle.won) markOrcAttackWin(c, G, battle); // 2026-09-27 (Toby item 8): war-spoils on the resumed leaderless fight
       emitBattle(battle, prov, ph, [c.player], {actor:c.player}); // item 5
     } else {
       const _savedDefs=prov.neutralDefenders; prov.neutralDefenders=[...garrison];
       battle=combatVsNPC(c, prov, null);
       creditBattle(c,null,battle,prov);   // breaking an enemy realm's garrison pays merit
       prov.neutralDefenders=_savedDefs;
+      if(battle.won) markOrcAttackWin(c, G, battle); // 2026-09-27 (Toby item 8): storming a rival's garrison is an attacking win and pays war-spoils
       emitBattle(battle, prov, ph, [c.player,prov.owner].filter(x=>x!=null), {actor:c.player}); // item 5
       if(battle.won){
         // combatVsNPC set._died (and narrated + graved) on the garrison units that fell IN the
@@ -23188,7 +23216,7 @@ const BATTLE_ARMY_SPELLS={
         if(!quarryProv.visitedBy.includes(c.player)) quarryProv.visitedBy.push(c.player);
       }
       const prov=quarryProv;
-      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const COMBAT_ONLY=COMBAT_ONLY_TACTICS;
       const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase())||String(t).toUpperCase().startsWith('CA:'));
       ensureEncounterPlan(c); ensureEncounterPlan(quarry);
       const atkPlan=filterPlan(c.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
@@ -23434,7 +23462,7 @@ const BATTLE_ARMY_SPELLS={
           endPursuit(c); return;
         }
       }
-      const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE']);
+      const COMBAT_ONLY=COMBAT_ONLY_TACTICS;
       const filterPlan=(plan)=>((plan&&plan.tactics)||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase())||String(t).toUpperCase().startsWith('CA:'));
       ensureEncounterPlan(quarry);
       const atkPlan=filterPlan(c.encounterPlan); if(!atkPlan.length) atkPlan.push('ME');
@@ -23517,7 +23545,7 @@ const BATTLE_ARMY_SPELLS={
         a.id=-1; b.id=-2; delete a._sgLog; delete b._sgLog;
         a.encounterPlan={tactics:autoEncounterPlan(a),notes:'',_auto:true};
         if(!(b.encounterPlan&&Array.isArray(b.encounterPlan.tactics)&&b.encounterPlan.tactics.length)) b.encounterPlan={tactics:autoEncounterPlan(b),notes:'',_auto:true};
-        const COMBAT_ONLY=new Set(['ME','MELEE','AR','ARCHERY','FI','FIRE','CA','SPELL','FL','FLEE']);
+        const COMBAT_ONLY=COMBAT_ONLY_TACTICS;
         const filt=pl=>(pl||['ME']).filter(t=>COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase()));
         const A=pcCharCombatant(a), B=pcCharCombatant(b); A.tactics=filt(a.encounterPlan.tactics); B.tactics=filt(b.encounterPlan.tactics); if(!A.tactics.length)A.tactics=['ME']; if(!B.tactics.length)B.tactics=['ME'];
         const res=resolvePersonalCombat(A,B,{maxRounds:20});
@@ -24000,6 +24028,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         playerChars.forEach(ch=>{ if(perkTier(ch,'druid')>0||gdActive(p.id,'Druidic'))(ch.armies||[]).forEach(a=>{ if(CREATURE_ARMIES.has(a.type)||MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a); }); }); // + GRAND DESIGN Druidic
         const _upkAcc=new Map(); let _discUpkeepG=0;
         let _orcSpoilsG=0; // 2026-09-10 item 3: itemised so the report can explain the one-off discount
+        // 2026-09-27 (Toby items 8 & 9): ORC WAR-SPOILS WAS NOT PAYING 50%.
+        // The discount was `Math.max(1, Math.round(w*0.5))` PER UNIT, and every odd wage rounds the
+        // wrong way: a 3g unit halved to 2g, not 1.5g. A host of four 3g units and one 4g unit —
+        // 16g of wages — therefore saved 6g where the rule promises 8g, which is exactly the
+        // shortfall reported. Rounding each unit DOWN instead would overshoot the other way (10g off
+        // the same host). The halving now carries its remainder from unit to unit: each qualifying
+        // unit pays floor(w/2), and the accumulated half-golds are paid by rounding the next unit up
+        // as soon as a whole gold has built up. Across the qualifying units the total is exactly half
+        // (or half rounded to the nearest gold), which is what "half upkeep" has always meant.
+        // The 1g floor still applies per unit, so a 1g unit is never free.
+        let _orcFrac=0;
         let armyWages=allKingdomArmies.reduce((s,a)=>{
           if(a._temporary) return s;
           // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
@@ -24007,7 +24046,20 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           if(a._wildHuntUntilTurn!=null) return s;
           if(a._isSkeletal) return s+1;
           let w=ARMY_COST[a.type]||2;
-          if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn){ const _w0=w; w=Math.max(1,Math.round(w*0.5)); _orcSpoilsG+=_w0-w; }
+          if(_orcKingdom && a.race==='Orcish' && a._orcAtkWinTurn===G.turn){
+            const _w0=w, _half=_w0*0.5;
+            let _wHalf=Math.floor(_half);
+            if(_wHalf<1){
+              // The 1g floor bites: this unit already pays MORE than half, so it neither banks a
+              // remainder nor spends one. (Letting a 1g unit both claim the floor and consume the
+              // carry undercharged the rest of the host by a gold every time.)
+              _wHalf=1;
+            } else {
+              _orcFrac+=_half-_wHalf;
+              if(_orcFrac>=1-1e-9){ _wHalf+=1; _orcFrac-=1; }
+            }
+            w=_wHalf; _orcSpoilsG+=_w0-w;
+          }
           if(_druidHalfWage.has(a)) w=Math.max(1,Math.floor(w*0.5)); // DRUID L6
           { const _w0=w; w=discUpkeepWage(p,a,w,_upkAcc,_taxCap); _discUpkeepG+=_w0-w; } // `upkeep` discoveries
           return s+w;
@@ -24658,7 +24710,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
       _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills, and may set name + temper, before ordering
     };
-    const ABILITIES_P2=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+    const ABILITIES_P2=KC_SKILLS.slice();
     ABILITIES_P2.forEach(ab=>{heir.aptitude[ab]=Math.ceil(Math.random()*4);});
     G.characters.push(heir);
     heirProv.characters=(heirProv.characters||[]);
@@ -24783,7 +24835,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const charsAtHome=(G.characters||[]).filter(c=>c.alive&&c.player===pi&&c.location===homeProv.id);
     const allArmies=charsAtHome.flatMap(c=>c.armies||[]);
     if(allArmies.length===0) return;
-    const tiers=['Green','Average','Veteran','Crack','Elite'];
+    const tiers=QUALITY_TIERS.slice();
     // Skeletal armies never gain experience/quality tiers — the dead don't learn.
     const eligible=allArmies.filter(a=>!a._isSkeletal&&tiers.indexOf(a.quality)<4);
     if(eligible.length===0) return;
@@ -25637,6 +25689,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1719</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1839</div>
 </body>
 </html>

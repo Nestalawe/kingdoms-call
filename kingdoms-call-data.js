@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.09.27-1719
+// Data file v2026.09.27-1839
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.09.27-1719';
+const KC_DATA_STAMP='2026.09.27-1839';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -76,7 +76,7 @@ const MASTERY_UNLOCKS={
   sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +1 (max 10).',9:'New order — Grand Design: realise your alignment\'s unique realm-wide Wonder.'},
   spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},
   thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},
-  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole primal province's defenders to your side."},
+  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:"New order — Wild Calling: turn a whole wild (Creature or Monster) province's defenders to your side."},
   explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},
   white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) heal half their maximum HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},
   psychic:{6:'Words of Awe — your Oratory raises the armies it inspires by TWO quality levels instead of one.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side."},
@@ -1379,7 +1379,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"ro20","name":"Wyvern Eyries","category":"Orcish Heritage","race":"Orcish","desc":"Each Wyvern Riders unit you recruit has a 20% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitQ","pct":0.2,"types":["Wyvern Riders"]}},
   // ── Divine Creed ──
   {"id":"ad01","name":"Hymnals of War","category":"Divine Creed","alignment":"Divine","desc":"White Magic spells cast by your characters have +25% chance of success (capped at 95%).","effect":{"kind":"cast","pct":25,"school":"white"}},
-  {"id":"ad02","name":"Consecrated Steel","category":"Divine Creed","alignment":"Divine","desc":"Your humanoid (non-beast, non-fleet, living) units are 30% less likely to be destroyed in battle.","effect":{"kind":"deathRed","pct":0.3,"cls":"humanoid"}},
+  {"id":"ad02","name":"Consecrated Steel","category":"Divine Creed","alignment":"Divine","desc":"Your humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) units are 30% less likely to be destroyed in battle.","effect":{"kind":"deathRed","pct":0.3,"cls":"humanoid"}},
   {"id":"ad03","name":"Holy Sites","category":"Divine Creed","alignment":"Divine","desc":"A consecrating character with White Magic 3 or more may hold 1 more consecrated province than their White Magic skill allows.","effect":{"kind":"consecrate","cap":1,"minWhite":3}},
   {"id":"ad04","name":"Tithes","category":"Divine Creed","alignment":"Divine","desc":"Every province you own with tax 4 or more yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"minTax":4}},
   {"id":"ad05","name":"Sacred Oaths","category":"Divine Creed","alignment":"Divine","desc":"Your forces are 15% more likely to be seized by fanatical zeal in battle.","effect":{"kind":"fanatic","pct":0.15}},
@@ -1405,7 +1405,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"ag04","name":"Shieldbearers","category":"Good Creed","alignment":"Good","desc":"Your infantry are 60% less likely to be destroyed in battle.","effect":{"kind":"deathRed","pct":0.6,"cls":"infantry"}},
   {"id":"ag05","name":"Muster Rolls","category":"Good Creed","alignment":"Good","desc":"Each Call to Arms has a 40% chance to raise an Average-quality garrison instead of a Green one.","effect":{"kind":"ctaQuality","quality":"Average","pct":0.4}},
   {"id":"ag06","name":"Healers' Guild","category":"Good Creed","alignment":"Good","desc":"Every Rest order taken in a province you own restores +6 HP.","effect":{"kind":"rest","hp":6,"owned":true}},
-  {"id":"ag07","name":"Recruiting Sergeants","category":"Good Creed","alignment":"Good","desc":"Your humanoid (non-beast, non-fleet, living) units cost 2g less to recruit (minimum 1g).","effect":{"kind":"recruitCost","delta":-2,"cls":"humanoid"}},
+  {"id":"ag07","name":"Recruiting Sergeants","category":"Good Creed","alignment":"Good","desc":"Your humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) units cost 2g less to recruit (minimum 1g).","effect":{"kind":"recruitCost","delta":-2,"cls":"humanoid"}},
   {"id":"ag08","name":"Common Cause","category":"Good Creed","alignment":"Good","desc":"Each infantry unit you recruit has a 25% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitQ","pct":0.25,"cls":"infantry"}},
   {"id":"ag09","name":"Righteous Fervour","category":"Good Creed","alignment":"Good","desc":"Your forces are 30% more likely to be seized by fanatical zeal in battle when defending. Also: All your armies and fleets fight at +6% strength when defending.","effect":{"kind":"fanatic","pct":0.3,"side":"def"},"effect2":{"kind":"unitStr","pct":0.06,"side":"def"}},
   {"id":"ag10","name":"Bulwark of the Realm","category":"Good Creed","alignment":"Good","desc":"Your forces defending your capital fight at +30% strength. Also: A rival spying on one of your characters in your capital is 50% more likely to be caught. (On top of Righteous Defence.)","effect":{"kind":"defOwn","pct":0.3,"home":true},"effect2":{"kind":"catchSpy","pct":50,"home":true}},
@@ -1416,7 +1416,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"ag15","name":"Yeomanry","category":"Good Creed","alignment":"Good","desc":"Your missile units (bows, crossbows, guns, goblin hordes) cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"cls":"missile","max":1}},
   {"id":"ag16","name":"Oathkeepers","category":"Good Creed","alignment":"Good","desc":"Your characters learn White Magic and Melee 20% faster, by every means.","effect":{"kind":"skillGain","pct":0.2,"skills":["white","melee"]}},
   {"id":"ag17","name":"Watchmen","category":"Good Creed","alignment":"Good","desc":"Enemy Spy orders against your capital have 60% lower success. Also: Every Rest order taken in your capital restores +6 HP.","effect":{"kind":"counterSpy","pct":0.6,"home":true},"effect2":{"kind":"rest","hp":6,"home":true}},
-  {"id":"ag18","name":"Free Swords","category":"Good Creed","alignment":"Good","desc":"Mercenary humanoid (non-beast, non-fleet, living) units cost 3g less to hire (minimum 1g). Also: Each humanoid (non-beast, non-fleet, living) unit you recruit has a 5% chance to start at Veteran quality instead of Average.","effect":{"kind":"merc","delta":-3,"cls":"humanoid"},"effect2":{"kind":"recruitQ","pct":0.05,"cls":"humanoid"}},
+  {"id":"ag18","name":"Free Swords","category":"Good Creed","alignment":"Good","desc":"Mercenary humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) units cost 3g less to hire (minimum 1g). Also: Each humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) unit you recruit has a 5% chance to start at Veteran quality instead of Average.","effect":{"kind":"merc","delta":-3,"cls":"humanoid"},"effect2":{"kind":"recruitQ","pct":0.05,"cls":"humanoid"}},
   {"id":"ag19","name":"Veterans' Pensions","category":"Good Creed","alignment":"Good","desc":"Your infantry are 150% more likely to be promoted after a battle.","effect":{"kind":"promo","pct":1.5,"cls":"infantry"}},
   {"id":"ag20","name":"Temple Charities","category":"Good Creed","alignment":"Good","desc":"Every province you own whose folk are of your king's race yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"ownRace":true}},
   // ── Druidic Creed ──
@@ -1489,14 +1489,14 @@ const SAGE_DISCOVERIES_P=[
   {"id":"ae04","name":"Poisoners' Guild","category":"Evil Creed","alignment":"Evil","desc":"+50% to your Spy orders' success against targets in plains or desert. Also: +50% to your characters' chance of reading a rival character (Spy on a character) in plains or desert.","effect":{"kind":"spy","pct":0.5,"terrains":["plain","desert"]},"effect2":{"kind":"spyChar","pct":0.5,"terrains":["plain","desert"]}},
   {"id":"ae05","name":"Dark Pacts","category":"Evil Creed","alignment":"Evil","desc":"All spells cast by your characters as pre-battle magic in army battles have +25% chance of success (capped at 95%). Also: Your characters learn White Magic, Psychic Magic and Illusory Magic 20% faster, by every means.","effect":{"kind":"cast","pct":25,"ctx":"battle"},"effect2":{"kind":"skillGain","pct":0.2,"skills":["white","psychic","illusory"]}},
   {"id":"ae06","name":"Extortion","category":"Evil Creed","alignment":"Evil","desc":"Every province you own whose folk are NOT of your king's race yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"foreign":true}},
-  {"id":"ae07","name":"Whip and Chain","category":"Evil Creed","alignment":"Evil","desc":"Your humanoid (non-beast, non-fleet, living) units are 55% more likely to be promoted after a battle.","effect":{"kind":"promo","pct":0.55,"cls":"humanoid"}},
+  {"id":"ae07","name":"Whip and Chain","category":"Evil Creed","alignment":"Evil","desc":"Your humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) units are 55% more likely to be promoted after a battle.","effect":{"kind":"promo","pct":0.55,"cls":"humanoid"}},
   {"id":"ae08","name":"Scavengers","category":"Evil Creed","alignment":"Evil","desc":"Gold carried off from lairs your characters clear in plains, desert or forest is increased by 55%.","effect":{"kind":"lairGold","pct":0.55,"terrains":["plain","desert","forest"]}},
   {"id":"ae09","name":"Sack and Burn","category":"Evil Creed","alignment":"Evil","desc":"Plunder on conquest seizes a further 20% of the captured province's tax value in gold.","effect":{"kind":"plunder","pct":0.2}},
   {"id":"ae10","name":"Warmongers","category":"Evil Creed","alignment":"Evil","desc":"All your armies and fleets fight at +6% strength when attacking.","effect":{"kind":"unitStr","pct":0.06,"side":"atk"}},
   {"id":"ae11","name":"Beast Masters","category":"Evil Creed","alignment":"Evil","desc":"Your Monster armies cost 2g less to recruit (minimum 1g). Also: Each Monster army unit you recruit has a 10% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitCost","delta":-2,"cls":"monster"},"effect2":{"kind":"recruitQ","pct":0.1,"cls":"monster"}},
   {"id":"ae12","name":"Dark Riders","category":"Evil Creed","alignment":"Evil","desc":"Warg Riders and Wyvern Riders of your realm fight at +21% strength.","effect":{"kind":"unitStr","pct":0.21,"types":["Warg Riders","Wyvern Riders"]}},
   {"id":"ae13","name":"Blood Magic","category":"Evil Creed","alignment":"Evil","desc":"Practice orders in Necromancy and Psychic Magic have +30% chance of success.","effect":{"kind":"practice","pct":0.3,"skills":["necromancy","psychic"]}},
-  {"id":"ae14","name":"Cruel Overseers","category":"Evil Creed","alignment":"Evil","desc":"Your humanoid (non-beast, non-fleet, living) units cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"cls":"humanoid","max":1}},
+  {"id":"ae14","name":"Cruel Overseers","category":"Evil Creed","alignment":"Evil","desc":"Your humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) units cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"cls":"humanoid","max":1}},
   {"id":"ae15","name":"Dread Lords","category":"Evil Creed","alignment":"Evil","desc":"All your armies and fleets led by your KING in person fight at +10% strength when attacking.","effect":{"kind":"unitStr","pct":0.1,"king":true,"side":"atk"}},
   {"id":"ae16","name":"Spies in Every Court","category":"Evil Creed","alignment":"Evil","desc":"Enemy Spy orders against your plains or desert provinces have 60% lower success. Also: Enemy characters lurking alone in your plains or desert provinces are 50% more likely to be spotted.","effect":{"kind":"counterSpy","pct":0.6,"terrains":["plain","desert"]},"effect2":{"kind":"spotLurker","pct":50,"terrains":["plain","desert"]}},
   {"id":"ae17","name":"Dungeon Keepers","category":"Evil Creed","alignment":"Evil","desc":"Your Monster armies are 60% less likely to be destroyed in battle.","effect":{"kind":"deathRed","pct":0.6,"cls":"monster"}},
@@ -1523,7 +1523,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"az17","name":"Grave Rites","category":"Undead Creed","alignment":"Undead","desc":"Practice orders in Necromancy, Psychic Magic and Illusory Magic have +21% chance of success. Also: Necromancy spells cast by your characters in personal combat have +10% chance of success (capped at 95%).","effect":{"kind":"practice","pct":0.21,"skills":["necromancy","psychic","illusory"]},"effect2":{"kind":"cast","pct":10,"school":"necromancy","ctx":"duel"}},
   {"id":"az18","name":"Lich-Kings","category":"Undead Creed","alignment":"Undead","desc":"Your skeletal armies led by your KING in person fight at +20% strength.","effect":{"kind":"unitStr","pct":0.2,"king":true,"cls":"skeletal"}},
   {"id":"az19","name":"Tomb Taxes","category":"Undead Creed","alignment":"Undead","desc":"Every province you own with tax 6 or more yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"minTax":6}},
-  {"id":"az20","name":"Ghoul Hordes","category":"Undead Creed","alignment":"Undead","desc":"Your humanoid (non-beast, non-fleet, living) units are 35% less likely to be destroyed in battle when they defend.","effect":{"kind":"deathRed","pct":0.35,"cls":"humanoid","side":"def"}},
+  {"id":"az20","name":"Ghoul Hordes","category":"Undead Creed","alignment":"Undead","desc":"Your humanoid (racial soldiers and winged riders; non-primal, non-fleet, living) units are 35% less likely to be destroyed in battle when they defend.","effect":{"kind":"deathRed","pct":0.35,"cls":"humanoid","side":"def"}},
 ];
 
 // ── SPELL DEFINITIONS ────
@@ -1649,3 +1649,97 @@ const SPELL_DEFS_P={
     desc:'Action (Necromancy 9): the fallen of your province rise en masse — raise several skeletal units at once from its battlefield graves, each risen one experience level higher.',
     fn:'necromancy_dominion'},
 };
+
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// SHARED RULE TABLES — the ONE copy both portals read (2026-09-27, Toby: "collapse to one source")
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Until now each of these lived in two to eleven places — the GM engine, the bot, the report builder
+// and the player portal each kept their own — and several had drifted (see DEV_LOG §274–§281). They
+// are now declared ONCE, here. Both portals load this file (the player portal since v2026.09.27, Toby's collapse-to-one-source pass),
+// and every former copy is now built FROM these: an engine Set is `new Set(KC_UNIT_CLASS.creature)`,
+// an array is `KC_SEASONS.slice()`, an object `{...KC_SKILL_LABELS}` — so each consumer holds its
+// own copy and nothing can mutate another's.
+//
+// RULES FOR EDITING:
+//  • Change a rule HERE, then bump KC_DATA_STAMP and KC_DATA_MIN in BOTH portals (their guards
+//    refuse a data file older than the build they were cut against).
+//  • ORDER MATTERS. Arrays are iterated (random picks, tie-breaks, dropdowns) and object keys are
+//    walked, so every list keeps the exact order it had in the engine. Append; never re-sort.
+//  • Plain data only — no Sets, no functions. The portals build their own lookups from these.
+//  • Names start KC_ so they can never collide with a portal's own top-level names: a clash is a
+//    SyntaxError that stops a whole portal loading.
+
+// Unit classification. A type may sit in several (Eagle Riders: flying, aerial, creature, tamedFlyer).
+//   flying     — the four humanoid racial flyers: lift one foot soldier each; the racial-flyer rules
+//   aerial     — every unit that crosses sea without a hull (flying + the winged primal beasts)
+//   creature / monster — the two primal families (Druidic favours creatures, Evil monsters)
+//   carrier    — hulls that ferry land units (1 berth each; light foot take half)
+//   primalSea  — Druid-summoned sea beasts: swim, carry nothing
+//   sea        — carrier ++ primalSea, in that order: every unit that moves by sea
+//   cavalry    — horse (never air-lifted; Ride Them Down)
+//   missile    — units that loose in the pre-battle archery phase
+//   garrison   — the four racial garrisons (always muster into the province garrison)
+//   lightFoot  — take HALF a hull aboard ship
+//   tamedFlyer — winged beasts sd40 Dragon Taming leads with no Druid (not the Gyrocopter: a machine)
+const KC_UNIT_CLASS={
+  flying:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'],
+  aerial:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'],
+  creature:['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'],
+  monster:['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'],
+  carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'],
+  primalSea:['Sea Giants','Kraken Tentacles','Leviathan Pods'],
+  cavalry:['Free Lances','Gilded Lances','Warg Riders'],
+  missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'],
+  garrison:['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'],
+  lightFoot:['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns'],
+  tamedFlyer:['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'],
+  sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'],
+};
+
+// DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
+// OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
+// A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;
+// skeletons are exempt. Level 2 is empty since 2026-09-27 (Gyrocopters are machines).
+const KC_DRUID_LEVELS={
+  1:['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison','Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison','Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison','Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison'],
+  2:[],
+  3:['Eagle Riders','Wyvern Riders','Whale Cohort','Noble Griffons'],
+  4:['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles'],
+  5:['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods'],
+};
+
+// Base strength per unit type (× the quality multiplier). Humanoid units and fleets, then every
+// primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place primal stats are written),
+// then the five summoned elementals.
+const KC_UNIT_BASE_STR=Object.assign(
+  {'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4},
+  Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t,d])=>[t,d.str])),
+  {'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11});
+const KC_UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
+const KC_QUALITY_TIERS=['Green','Average','Veteran','Crack','Elite'];
+const KC_QUALITY_UP={Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'};
+const KC_QUALITY_DOWN={Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'};
+const KC_SKILLS=['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy'];
+// The five magic schools in their standard order. Some code deliberately keeps its OWN order as a
+// tie-break priority (a bot preferring Elemental on a tie, say) — those lists are not copies of this.
+const KC_MAGIC_SCHOOLS=['white','psychic','illusory','elemental','necromancy'];
+const KC_SKILL_LABELS={melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'};
+const KC_ITEM_UNCAPPED_SKILLS=['melee','archery','white','psychic','illusory','elemental','necromancy'];
+const KC_ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2};
+const KC_ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
+const KC_RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
+const KC_AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+const KC_BASIC_EXPLORE={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
+const KC_TERRAIN_COLORS={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
+const KC_PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];
+const KC_PHASE_COLORS=['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555'];
+const KC_SEASONS=['Spring','Early Summer','Late Summer','Fall','Early Winter'];
+const KC_ALIGNMENTS=['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead'];
+const KC_TEMPERS=['Berserk','Brave','Cautious','Cowardly'];
+const KC_HUMANOID_RACES=['Human','Elven','Dwarven','Orcish'];
+const KC_RIVAL_RACE={Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'};
+const KC_HEX_DIRS=['NW','NE','W','E','SW','SE'];
+const KC_GRAND_DESIGNS={Divine:{name:'Grand Cathedral',desc:'Bless costs you no casting slot, and its ward lies permanently over your capital.'},Good:{name:'Free City Charter',desc:'Every province you hold that keeps a garrison yields +2 tax.'},Neutral:{name:'Grand Library',desc:'Your scholars make one guaranteed Sage discovery every turn.'},Pagan:{name:'Standing Stones',desc:'Your armies fight at +25% strength when defending forest, jungle or mountain provinces.'},Evil:{name:'Iron Throne of Skulls',desc:'Enemy units slain in battles you win may rise as your skeletons.'},Undead:{name:'Deathless Legion',desc:'Your skeletal units never disband for unpaid wages, and rise one experience tier stronger.'},Druidic:{name:'World-Tree Grove',desc:'Your monsters and creatures cost half their wages and muster as Veterans.'}};
+
+// MASTERY_UNLOCKS (declared above) is ALSO read by both portals now: the player portal's own copy,
+// MASTERY_EFFECTS, had drifted from the engine on ten entries and was deleted (DEV_LOG §276).
