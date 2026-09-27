@@ -46,7 +46,7 @@ if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/su
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;}
+:root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;--item-ink:#523405;--item-desc:#2a2016;}
 /* 2026-09-26b (Toby item 9): second contrast pass — every ink darker again on parchment (--stone
    #4a3a22 → #33270f, about 12:1), the light muted tone on dark panels lighter (#c0ab88 → #dccba8),
    and the hard-coded muted greys/greens/browns in inline styles deepened to match. */
@@ -918,7 +918,10 @@ const ITEM_SLOT_OF_P={
 // they beat for it. Only a legendary relic scores a point.
 const ITEM_TIER_NAME_P={1:'Weak',2:'Moderate',3:'Powerful',4:'Legendary'};
 function isLegendaryItemP(it){ return !!it && it.tier===4; }
-const ITEM_TIER_COLOUR_P={1:'var(--stone)',2:'#4a6a3a',3:'#7a4a12',4:'#b8860b'};
+// 2026-09-27 (Toby item 5): darkened for readability on parchment — the old tier pills (mid-green,
+// tan, #b8860b goldenrod) and the gold item name sat at ~2.3:1 against #f2e8d0 and were hard to
+// read. Every tier now clears 5:1, and the item name/description use --item-ink / --item-desc.
+const ITEM_TIER_COLOUR_P={1:'var(--stone)',2:'#2c4a1e',3:'#6a3d08',4:'#7a5806'};
 // The small pill shown beside an item name wherever a pack is listed.
 function itemTierTagP(it){
   const n=(it&&it.tier)||1;
@@ -937,16 +940,16 @@ function itemSlotP(it){ if(!it) return null;
 const _ITEM_RACE_ALIAS_P={...KC_ITEM_RACE_ALIAS}; // 2026-09-10 item 3: mirrors GM itemRaceOf()
 function itemRaceOfP(it){ const r=it&&it.race; return r?(_ITEM_RACE_ALIAS_P[r]||r):r; }
 function itemUsableByP(it,c){ if(!it) return false; if(it.race&&(!c||c.race!==itemRaceOfP(it))) return false; if(it.alignment&&(!c||c.alignment!==it.alignment)) return false; return true; }
-function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${itemRaceOfP(it)} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#a33;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
+function itemBoundTag(it,c){ if(!it||(!it.race&&!it.alignment)) return ''; const who=it.race?`${itemRaceOfP(it)} characters`:`${it.alignment} characters`; return itemUsableByP(it,c)?'':` <span style="color:#7a1010;font-size:.72rem">[${who} only — unusable by this character]</span>`; }
 function itemSlotTag(it,c){
   // name the slot AND how many of that slot the character still has free.
   const sl=itemSlotP(it);
-  if(!sl) return ` <span style="color:#2f281c;font-size:.72rem">[carried — needs no slot]</span>`;
+  if(!sl) return ` <span style="color:#2a2419;font-size:.72rem">[carried — needs no slot]</span>`;
   const cap=ITEM_SLOT_CAP_P[sl]||1;
   const used=c?((c.items||[]).filter(o=>o&&itemSlotP(o)===sl&&o.equipped!==false&&itemUsableByP(o,c)).length):(it.equipped===false?0:1);
   const free=Math.max(0,cap-used);
   const st=it.equipped===false?'not equipped':'equipped';
-  return ` <span style="color:${it.equipped===false?'#999':'#6b5a2a'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
+  return ` <span style="color:${it.equipped===false?'#5b5b5b':'#43350f'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
 const RUMOUR_COST_BY_POWER_P={...KC_RUMOUR_COST_BY_POWER}; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
@@ -1187,61 +1190,20 @@ function setConcede(v){
   concedeGame=!!v; renderConcede();
 }
 
-// ── PLAYER-TO-PLAYER DISPATCHES (compose) ────
-// Pending dispatches for THIS turn: [{to:[recipientIdx…] | 'all', text}]. Submitted with orders;
-// the GM engine delivers them into each addressee's report. Recipients are the realms you've
-// encountered.
-let pendingDispatches = [];
-function _dispatchKnown(){ const r=currentReport||{}; return (r.diplomacy&&r.diplomacy.known)||[]; }
-function syncDispatchesFromDOM(){
-  const wrap=document.getElementById('dispatch-compose'); if(!wrap) return;
-  const rows=wrap.querySelectorAll('[data-dispatch-row]');
-  pendingDispatches=Array.from(rows).map(row=>{
-    const text=(row.querySelector('.dispatch-text')?.value||'');
-    const allBox=row.querySelector('.dispatch-all');
-    if(allBox&&allBox.checked) return {to:'all',text};
-    const to=Array.from(row.querySelectorAll('.dispatch-rcpt:checked')).map(cb=>parseInt(cb.value)).filter(n=>Number.isInteger(n));
-    return {to,text};
-  });
-}
-function addDispatch(){ syncDispatchesFromDOM(); pendingDispatches.push({to:[],text:''}); renderDispatchCompose(); }
-function removeDispatch(i){ syncDispatchesFromDOM(); pendingDispatches.splice(i,1); renderDispatchCompose(); }
-function _dispatchEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-function renderDispatchCompose(){
-  const wrap=document.getElementById('dispatch-compose'); if(!wrap) return;
-  const known=_dispatchKnown();
-  let head=`<div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:6px 0">
-      <span style="font-size:1rem">📨</span><span style="font-weight:600">Dispatches to other realms</span></div>`;
-  if(!known.length){
-    wrap.innerHTML=head+`<div style="font-size:.78rem;color:var(--stone);padding:2px 2px 8px">You have not encountered another realm yet — once you have, you can send them dispatches here.</div>`;
-    return;
-  }
-  const rowsHtml=pendingDispatches.map((m,i)=>{
-    const isAll=(m.to==='all');
-    const chosen=new Set(Array.isArray(m.to)?m.to:[]);
-    const rcptBoxes=known.map(k=>`<label style="font-size:.72rem;display:inline-flex;align-items:center;gap:3px;margin-right:8px;white-space:nowrap">
-        <input type="checkbox" class="dispatch-rcpt" value="${k.index}" ${(!isAll&&chosen.has(k.index))?'checked':''} ${isAll?'disabled':''} onchange="syncDispatchesFromDOM()"> ${_dispatchEsc(k.name)}</label>`).join('');
-    return `<div data-dispatch-row style="border:1px solid var(--parchment-dark);border-radius:3px;padding:8px;margin-bottom:8px;background:#fdf5e0">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
-        <label style="font-size:.72rem;font-weight:600;display:inline-flex;align-items:center;gap:3px;white-space:nowrap">
-          <input type="checkbox" class="dispatch-all" ${isAll?'checked':''} onchange="syncDispatchesFromDOM();renderDispatchCompose()"> All realms</label>
-        <span style="font-size:.72rem;color:var(--stone)">${isAll?'(sending to every realm you\\u2019ve met)':'choose recipients:'}</span>
-        <button type="button" onclick="removeDispatch(${i})" title="Remove this dispatch" style="margin-left:auto;font-size:.7rem;padding:2px 8px;border:1px solid #b04a4a;background:transparent;color:#b04a4a;border-radius:2px;cursor:pointer">✕ remove</button>
-      </div>
-      ${isAll?'':`<div style="margin-bottom:5px;line-height:1.9">${rcptBoxes}</div>`}
-      <textarea class="dispatch-text" rows="2" maxlength="1000" placeholder="Write your message…" oninput="syncDispatchesFromDOM()" style="width:100%;font-family:'Crimson Text',Georgia,serif;font-size:.82rem;padding:6px;border:1px solid var(--stone);border-radius:2px;background:#fff;resize:vertical">${_dispatchEsc(m.text||'')}</textarea>
-    </div>`;
-  }).join('');
-  wrap.innerHTML=head+rowsHtml+`<button type="button" onclick="addDispatch()" style="font-family:Cinzel,serif;font-size:.72rem;padding:6px 12px;border:1px solid var(--gold);background:transparent;color:var(--ink);border-radius:2px;cursor:pointer">＋ Add dispatch</button>`;
-}
-// Read the composer into the submit payload: only well-formed, non-empty dispatches with
-// recipients.
-function collectMessages(){
-  syncDispatchesFromDOM();
-  return pendingDispatches
-    .map(m=>({to:(m.to==='all'?'all':(Array.isArray(m.to)?m.to.filter(n=>Number.isInteger(n)):[])), text:(m.text||'').trim()}))
-    .filter(m=>m.text && (m.to==='all' || (Array.isArray(m.to)&&m.to.length>0)));
-}
+// ── PLAYER-TO-PLAYER DISPATCHES (compose) — RETIRED 2026-09-27 (Toby item 4) ────
+// This was the turn-bound composer at the head of the Orders column: you queued up to one message
+// per recipient per turn and the GM engine delivered it into their next report. The ✉ Dispatches
+// tab replaces it outright — real threads, sent and read at once, no waiting for a turn to resolve.
+// The composer UI is gone from the orders form.
+//
+// What is deliberately KEPT:
+//  · `collectMessages()` still exists and now always returns [], so the submit payload shape is
+//    unchanged and an older GM build reading `orders.messages` still parses it.
+//  · The engine's delivery code and the Chronicle's "Dispatches" section are untouched, so dispatch
+//    lines already written into past turn reports still render when a player browses their history.
+// To restore the old composer, put the `<div id="dispatch-compose"></div>` back in _realmTop and
+// re-add the render/sync helpers — nothing else was removed.
+function collectMessages(){ return []; }
 let currentGamePlayerId = null; // last game_player row opened — lets UI actions re-render the report
 // The report currently shown on the map (current turn, or a past-turn snapshot when browsing
 // history)
@@ -1808,8 +1770,11 @@ async function loadMyGames(){
     if(!g) return `<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
     const statusLabel=slot.orders_submitted?'Orders submitted':g.status==='active'?'Orders needed':g.status==='setup'?'Waiting to start':'Complete';
     const pillClass=slot.orders_submitted?'pill-blue':g.status==='active'?'pill-amber':g.status==='setup'?'pill-green':'';
-    return`<div class="game-card clickable" onclick="openGameFresh('${slot.id}')">
-      <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span></div>
+    // 2026-09-27 (Toby item 1): the GM can ARCHIVE a game — it is put away, not deleted. The card
+    // still opens and the whole Chronicle is still readable; the pill just says no turn is coming.
+    const _arch=gameArchivedP(g)?' <span class="pill" style="background:#e4d4b0;color:#4a3105">🗄 Archived by the GM</span>':'';
+    return`<div class="game-card clickable" onclick="openGameFresh('${slot.id}')"${gameArchivedP(g)?' style="opacity:.85"':''}>
+      <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span>${_arch}</div>
       <div class="gc-meta">
         Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
         Turn ${g.turn||0}
@@ -1838,6 +1803,13 @@ const GAME_LITE_COLS_P='id,name,gm_user_id,status,turn,max_players,created_at,me
 function gameMetaP(g){
   if(!g||g.meta==null) return null;
   try{ const m=typeof g.meta==='string'?JSON.parse(g.meta):g.meta; return (m&&typeof m==='object'&&m.v)?m:null; }catch(e){ return null; }
+}
+// ARCHIVED (2026-09-27, Toby item 1). The GM portal writes `archived` onto game_state and mirrors it
+// into meta; nothing is deleted, so an archived game still opens and still shows every past turn.
+function gameArchivedP(g){
+  const m=gameMetaP(g);
+  if(m&&m.archived!==undefined) return !!m.archived;
+  return !!parseGameStateP(g).archived;
 }
 // Light read of games by id; if the meta column does not exist yet (the GM has not run the
 // one-line migration) the query errors on the unknown column and we fall back to the full rows.
@@ -2993,7 +2965,7 @@ function renderReportView(report){
           <span style="color:var(--forest)" title="1 province per phase used to move, +1 per province conquered"><strong>Move:</strong> ${effSpd} province${effSpd!==1?'s':''}/turn</span>
           ${!c.isKing?`<span><strong>Pay:</strong> ${c.pay||1}g/turn</span>`:''}
           ${skillRow}
-          ${itemsForDisplayP(c).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">${itemAcquiredTagP(i)}🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` (${i.desc})`:''}</div>`).join('')}
+          ${itemsForDisplayP(c).map(i=>`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(i)}🔮 ${itemLoreTip(i,i.name)}${itemTierTagP(i)}${itemBoundTag(i,c)}${itemUsableByP(i,c)?itemSlotTag(i,c):''}${i.desc?` <span style="color:var(--item-desc);font-weight:400">(${i.desc})</span>`:''}</div>`).join('')}
           ${(()=>{
             const maj=c.titlesHeld||[], min=c.minorHeld||[];
             if(!maj.length && !min.length) return '';
@@ -3117,6 +3089,7 @@ function renderReportView(report){
           <br>Recruitable: ${(p.armyTypes||[]).map(t=>unitAbilityTip(t, `${unitEmoji(t)} ${t}`)).join(' · ')||'none'}
           ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
           ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#231e16">${armyLabel(d)}</span>`)).join('')}`:''}
+          ${provinceGrandDesignHTML(p)}
         </div>
       </div>`).join('')
     :'<div style="color:#3a3224;font-size:.85rem">No provinces owned yet.</div>';
@@ -3653,8 +3626,13 @@ function renderTitles(report){
   }
 
   // ── Standings board ──
+  // 2026-09-27 (Toby item 3): a realm this crown has not yet MET arrives from the engine already
+  // nameless ("An unknown realm") with no colour. Its score and its titles are public knowledge and
+  // are still shown; only its identity is withheld. Rendered in grey italics so it is plainly a
+  // blank on the map rather than a realm someone has oddly named.
+  const _unmetStyle='color:#5a5348;font-style:italic';
   const board=(t.standings||[]).slice().sort((a,b)=>b.score-a.score).map((s,i)=>
-    `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;color:${reportColour(s.color)||'#333'}">${s.name}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
+    `<tr style="${s.index===(currentReport&&currentReport.playerIndex)?'font-weight:700':''}"><td style="padding:2px 8px">${i+1}</td><td style="padding:2px 8px;${s.unmet?_unmetStyle:`color:${reportColour(s.color)||'#333'}`}">${s.name}${s.unmet?' <span style="font-size:.66rem;opacity:.8">(not yet encountered)</span>':''}</td><td style="padding:2px 8px;text-align:right">${s.score}</td></tr>`).join('');
 
   // ── the Imperial Titles — holder (character + realm), how earned, perk while held ──
   const holders=t.holders||{};
@@ -3690,9 +3668,11 @@ function renderTitles(report){
     const raceLine=r?titleRaceLine(r):`<span style="color:#3a3224">Standing percentages are missing from this turn report — it was resolved by ${(report&&report.engineStamp)?`<strong>GM Portal v${report.engineStamp}</strong>, which predates them`:'a GM Portal build that predates them'}. They appear once a turn is resolved on GM Portal v2026.09.20-0153 or later.</span>`;
     const raceHtml=raceLine?`<div style="font-size:.74rem;margin:1px 0;color:${r&&r.mine?'var(--forest)':'#5a4a2a'}">📊 ${raceLine}</div>`:'';
     const who = h.holderName
-      ? (h.kingdomLevel
-          ? `${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
-          : `${h.charName||'—'} <span style="color:${h.mine?'var(--forest)':'#777'};font-weight:${h.mine?'700':'400'}">(${h.holderName})</span>`)
+      ? (h.unmet
+          ? `<span style="${_unmetStyle}">${h.charName?`${h.charName} of `:''}${h.holderName}</span> <span style="font-size:.66rem;color:#5a5348">— a realm you have not yet encountered</span>`
+          : (h.kingdomLevel
+            ? `${h.charName?`${h.charName} — `:''}<span style="color:${h.mine?'var(--forest)':'#333'};font-weight:${h.mine?'700':'400'}">${h.holderName}</span>`
+            : `${h.charName||'—'} <span style="color:${h.mine?'var(--forest)':'#777'};font-weight:${h.mine?'700':'400'}">(${h.holderName})</span>`))
       : '<span style="color:#3a3224">— vacant —</span>';
     return `<div style="border-bottom:1px solid var(--parchment-dark);padding:5px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
@@ -4346,12 +4326,17 @@ function projectedMoveHost(charId, ph){
   out.uncounted=[...new Set(out.uncounted)];
   return out;
 }
-function poMoveModeNote(ch, destProv, host){
+function poMoveModeNote(ch, destProv, host, fromProv){
   const H=host||{armies:((ch&&ch.armies)||[]).map(a=>({...a})),uncounted:[],gained:0,base:((ch&&ch.armies)||[]).length};
   const A=H.armies||[];
   const an=poSeaAnalysis(A,((ch&&ch.skills)||{}).naval||0);
   const destSea=!!(destProv&&destProv.terrain==='sea');
   const destKnown=!!(destProv&&destProv.terrain);
+  // Where the column SETS OUT FROM at this phase — after any earlier move this turn, not where the
+  // hero stands now (2026-09-27, Toby item 6). Needed because the land→land ban on naval units only
+  // bites when the leg starts on land.
+  const fromSea=!!(fromProv&&fromProv.terrain==='sea');
+  const fromKnown=!!(fromProv&&fromProv.terrain);
   // One footnote for every verdict: what the count is based on, and what could not be counted.
   const _foot=(()=>{
     const bits=[];
@@ -4366,13 +4351,25 @@ function poMoveModeNote(ch, destProv, host){
   const bad =h=>box('#fdeaea','#c06060','#7a1010',h);
   const where=destProv?` into <strong>${destProv.name||'that province'}</strong>`:'';
   if(!A.length) return good(`🚶 <strong>Solo ride</strong> — ${ch.name} leads no troops${where}, and travels by land or takes passage over water freely.`);
+  // ── SHIPS CANNOT CROSS LAND (2026-09-27, Toby item 6) ───────────────────────────────────────────
+  // The engine refuses a land→land step outright while the column leads ANY naval unit — fleet or
+  // sea-beast, coastal or not ("cannot march overland while leading naval units"). The old note
+  // said only that the hulls "can only follow along a coast", which read as though a coast-to-coast
+  // march were legal; it is not, and the order was silently wasted. This is now a hard red warning,
+  // raised BEFORE every other verdict so it cannot be buried, and it names the way out.
+  const _navalAboard=an.hulls+an.seaBeasts;
+  if(_navalAboard>0 && !fromSea && !destSea && fromKnown && destKnown){
+    const _names=[...new Set(A.filter(a=>PO_SEA_TYPES.has(a.type)).map(a=>a.unitName||a.type))];
+    return bad(`⛔ <strong>This move will be refused — ships cannot cross land.</strong> ${ch.name} would be marching from one land province${fromProv?` (<strong>${fromProv.name||'here'}</strong>)`:''} to another${where} while leading ${_navalAboard} naval unit${_navalAboard!==1?'s':''} (${_names.slice(0,3).join(', ')}${_names.length>3?'…':''}). There is no coast-to-coast march for a fleet. Either <strong>Leave/Transfer</strong> the ships into this province's garrison in an earlier phase and march without them, or sail instead — from a land province a fleet may only move to an <strong>adjacent sea province</strong>.`);
+  }
   // A column that can fly crosses anything.
   if(an.allAerial) return good(`🦅 <strong>Flying move</strong> — every unit is winged, so the column crosses land and sea alike and needs no fleet.`);
   if(an.lifted)   return good(`🦅 <strong>Flying move</strong> — the ${an.flyers} humanoid flyer${an.flyers!==1?'s':''} lift the whole column${where}; land and sea are both open to it.`);
   if(an.allSea){
-    return destSea
-      ? good(`⛵ <strong>Naval move</strong> — a fleet of ${an.total} at sea${where}.`)
-      : warn(`⛵ <strong>Naval move</strong> — this column is all ships and sea-beasts. It can only put in at a <strong>coastal</strong> province; an inland hex will turn it back.`);
+    if(destSea) return good(`⛵ <strong>Naval move</strong> — a fleet of ${an.total} at sea${where}.`);
+    return fromSea
+      ? good(`⛵ <strong>Coastal landing</strong> — the fleet puts in${where}. A landing is only possible on a <strong>coastal</strong> province; an inland hex will turn it back.`)
+      : warn(`⛵ <strong>Naval move</strong> — this column is all ships and sea-beasts. From a land province its only legal move is to an <strong>adjacent sea province</strong>; it cannot march overland.`);
   }
   if(destSea){
     if(an.cap!=='land'){
@@ -4383,9 +4380,23 @@ function poMoveModeNote(ch, destProv, host){
   }
   // Land destination (or an unmapped hex).
   const bits=[];
-  if(an.hulls||an.seaBeasts) bits.push(`${an.hulls+an.seaBeasts} naval unit${(an.hulls+an.seaBeasts)!==1?'s':''} in the column can only follow along a coast`);
   if(an.aerial&&!an.allAerial) bits.push(`${an.aerial} winged unit${an.aerial!==1?'s':''} march with the rest`);
+  if(_navalAboard>0){
+    // Reaching here means the hard case above did not apply: either the column sets out from SEA
+    // (a legal coastal landing), or one of the two hexes is not mapped yet and the ban cannot be
+    // confirmed — which is a risk worth naming.
+    if(fromSea) return good(`⛵ <strong>Coastal landing</strong>${where} — the ships put in and the land units come ashore.${bits.length?` (${bits.join('; ')}.)`:''} Once ashore the column cannot march on while it still leads ships: leave them in the garrison first.`);
+    return warn(`⚠ <strong>Land march with ships in the column.</strong> ${ch.name} leads ${_navalAboard} naval unit${_navalAboard!==1?'s':''}, and a column carrying ships or sea-beasts <strong>cannot step from one land province to another</strong> — if this leg turns out to start and end on land the order will be refused. Leave the hulls behind to march, or sail to an adjacent sea province.${bits.length?` (${bits.join('; ')}.)`:''}`);
+  }
   return good(`🛡 <strong>Land march</strong>${where}${destKnown?'':' (destination not yet mapped)'}${bits.length?` — ${bits.join('; ')}.`:'.'}`);
+}
+// The province a Move order SETS OUT from at this phase, with its terrain — predictedLocation gives
+// only {id,name}, so the full worldMeta record is looked up for the terrain the note needs.
+function moveOriginProv(charId, ph){
+  const provs=(currentReport&&currentReport.worldMeta&&currentReport.worldMeta.provinces)||[];
+  const loc=(typeof predictedLocation==='function')?predictedLocation(charId,ph):null;
+  if(!loc) return null;
+  return provs.find(p=>p.id===loc.id)||{id:loc.id,name:loc.name};
 }
 // Recompute the notice under one Move order (the dropdown's onchange; later phases are rebuilt
 // wholesale by onMoveEdited, which regenerates the note with them).
@@ -4398,7 +4409,7 @@ function refreshMoveModeNote(charId, ph){
   const provs=(currentReport&&currentReport.worldMeta&&currentReport.worldMeta.provinces)||[];
   let dest=null;
   if(tgt.startsWith('prov:')){ const id=parseInt(tgt.slice(5)); if(!isNaN(id)) dest=provs.find(p=>p.id===id)||null; }
-  host.innerHTML=poMoveModeNote(ch,dest,projectedMoveHost(charId,ph));
+  host.innerHTML=poMoveModeNote(ch,dest,projectedMoveHost(charId,ph),moveOriginProv(charId,ph));
 }
 // Every Move notice on the form, rebuilt. A Recruit, Pick Up, Leave/Transfer, Disband, rite or
 // summoning in ANY phase — this hero's or another of the player's — changes the host a later move
@@ -4825,17 +4836,22 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
   setTimeout(renderDiscoveryChoices,0);
   concedeGame=(rawSaved.concede===true); setTimeout(renderConcede,0); setTimeout(renderReckoningOrders,0); // the Reckoning control lives here too
 
-  // realm-level controls FIRST — dispatches to other realms, the diplomacy declarations (moved here
-  // from the report's Diplomacy card, which keeps the information) and the Concede control (moved
-  // up from the sticky submit block, where it was easy to miss on a phone).
+  // realm-level controls FIRST — the diplomacy declarations (moved here from the report's Diplomacy
+  // card, which keeps the information) and the Concede control (moved up from the sticky submit
+  // block, where it was easy to miss on a phone).
+  // 2026-09-27 (Toby item 4): the old turn-bound dispatch composer that used to head this block is
+  // GONE. It let you queue one message per turn, delivered with the next report; the ✉ Dispatches
+  // tab supersedes it completely — messages there are written and delivered at once, threaded, and
+  // read without waiting for a turn. Nothing else changes: the engine still understands an
+  // `orders.messages` payload, and dispatch lines already written into past turn reports still
+  // render in the Chronicle, so no history is lost.
   const _realmTop=`<div id="orders-realm-top" class="orders-char-block" style="background:#fdf8ee">
       <div class="orders-char-head" style="background:#5c3d14">
         <button type="button" class="sec-toggle" aria-expanded="true" title="Minimise / maximise" onclick="toggleSection(this)">&#9662;</button>
-        🏰 Realm — dispatches, diplomacy &amp; concession
+        🏰 Realm — diplomacy &amp; concession
       </div>
       <div style="padding:6px 10px 10px">
-        <div id="dispatch-compose"></div>
-        <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
+        <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:2px 0 4px">
           <span style="font-size:1rem">🤝</span><span style="font-weight:600">Diplomacy — declarations this turn</span></div>
         <div id="orders-diplomacy"></div>
         <div style="font-family:Cinzel,serif;font-size:.8rem;color:var(--ink);display:flex;align-items:center;gap:8px;padding:8px 0 4px;border-top:1px solid var(--parchment-dark);margin-top:8px">
@@ -4889,7 +4905,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
             return`<div style="flex-basis:100%;width:100%;color:var(--crimson)">${unitEmoji(a.type)} ${armyLabel(a)}${penalty}</div>`;
           }).join('');
         })()}
-        ${itemsForDisplayP(c).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--gold)">${itemAcquiredTagP(it)}🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` (${it.desc})`:''}</div>`).join('')}
+        ${itemsForDisplayP(c).map(it=>`<div style="flex-basis:100%;width:100%;color:var(--item-ink);font-weight:600">${itemAcquiredTagP(it)}🔮 ${itemLoreTip(it,it.name)}${itemTierTagP(it)}${itemBoundTag(it,c)}${itemUsableByP(it,c)?itemSlotTag(it,c):''}${it.desc?` <span style="color:var(--item-desc);font-weight:400">(${it.desc})</span>`:''}</div>`).join('')}
       </div>
       <div class="orders-char-body">
         ${SEASONS.map((season,ph)=>{
@@ -4984,9 +5000,9 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
     </div>`;
   }).join('');
 
-  // Task 10 / player-to-player dispatch composer — now at the TOP of the orders form.
-  pendingDispatches = Array.isArray(rawSaved.messages) ? rawSaved.messages.map(m=>({to:m.to,text:m.text||''})) : [];
-  renderDispatchCompose();
+  // (The turn-bound dispatch composer that used to be restored here was retired 2026-09-27 — see
+  // collectMessages. A saved draft in `rawSaved.messages` is simply ignored; the ✉ Dispatches tab
+  // is where realm-to-realm messages are written now.)
   renderDiplomacy(report); // the declaration buttons live in #orders-diplomacy
   renderConcede();
 
@@ -7496,7 +7512,7 @@ function buildTargetField(c, ph, saved){
       const _initDest=(()=>{ if(!_initSel.startsWith('prov:')) return null; const id=parseInt(_initSel.slice(5));
         return isNaN(id)?null:(wProvs.find(p=>p.id===id)||null); })();
       return`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited('${c.id}',${ph})">${dirOpts}${stayOpt}</select>${edgeNote}
-        <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c,_initDest,projectedMoveHost(c.id,ph))}</div>
+        <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c,_initDest,projectedMoveHost(c.id,ph),moveOriginProv(c.id,ph))}</div>
         <div id="po-move-note-${c.id}-${ph}" style="display:none;font-size:.72rem;color:#8a4a00;background:#fff3e0;border:1px solid #e0b070;border-radius:2px;padding:3px 6px;margin-top:3px"></div>`;
     }
 
@@ -8675,6 +8691,35 @@ function _grandDesignNote(pd){
   return `<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span>`
     +`<span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${gd.ownerName||'a fallen realm'}</strong>`
     +(gd.active?`.` :`, dormant while another crown holds this ground.`)+`</span>`;
+}
+// \u2500\u2500 GRAND DESIGN in YOUR PROVINCES (2026-09-27, Toby item 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// The map popup has named the Wonder standing in a province for a while, but the Your Provinces list
+// said nothing \u2014 a realm could raise its one Grand Design and never see it again on the report. The
+// province entry now carries it, with what it actually does. The effect text is read from the shared
+// KC_GRAND_DESIGNS table by name (the report payload carries the Wonder's name, its builder and
+// whether it is active, not its alignment), so the wording can never drift from the engine's.
+// (Built lazily, never as a top-level IIFE: a throw at script top level stops the whole portal
+// booting — the standing ITEMS_BY_TIER lesson.)
+let _GD_DESC_BY_NAME=null;
+function grandDesignDesc(name){
+  if(!_GD_DESC_BY_NAME){
+    _GD_DESC_BY_NAME={};
+    try{ Object.values(GD_BY_ALIGNMENT||{}).forEach(d=>{ if(d&&d.name) _GD_DESC_BY_NAME[d.name]=d.desc||''; }); }catch(e){}
+  }
+  return _GD_DESC_BY_NAME[name]||'';
+}
+function provinceGrandDesignHTML(p){
+  const gd=p&&p.grandDesign; if(!gd) return '';
+  const desc=grandDesignDesc(gd.name);
+  const mine=!!gd.active;   // active === the builder still holds the ground, i.e. its powers are working
+  return `<div style="margin-top:4px;border-left:3px solid ${mine?'#8a6208':'#7a7160'};background:${mine?'#fdf3d8':'#efe9dc'};border-radius:2px;padding:4px 7px">
+      <div style="font-family:Cinzel,serif;font-size:.76rem;color:#4a3105;font-weight:700">\u{1F3DB} ${gd.name}
+        <span style="font-weight:400;font-size:.7rem;color:${mine?'#1d541d':'#7a1010'}">\u2014 ${mine?'active':'dormant'}</span></div>
+      ${desc?`<div style="font-size:.73rem;color:#2a2419;line-height:1.45;margin-top:1px">${desc}</div>`:''}
+      <div style="font-size:.68rem;color:#4a4335;margin-top:1px">Raised by <strong>${gd.ownerName||'a fallen realm'}</strong>.
+        ${mine?'A realm may raise only one Grand Design, and its powers last while that realm holds this province.'
+              :'Its powers serve only the realm that built it \u2014 while another crown holds this ground it is dormant stonework.'}</div>
+    </div>`;
 }
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
@@ -10115,6 +10160,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2258</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2339</div>
 </body>
 </html>

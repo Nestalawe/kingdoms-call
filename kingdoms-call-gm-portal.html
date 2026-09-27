@@ -352,6 +352,7 @@ section{display:none;}.section-active{display:block;}
       <button class="btn btn-ghost" onclick="show('sec-games');loadGames()">← All Games</button>
       <h2 id="detail-game-name">Game</h2>
       <span id="detail-status-pill"></span>
+      <button class="btn btn-ghost" id="detail-archive-btn" style="font-size:.68rem" onclick="setGameArchived(currentGame?.id, !gameArchived(currentGame))">🗄 Archive Game</button>
       <button class="btn btn-ghost" style="color:#c00;border-color:#c00;font-size:.68rem" onclick="deleteGame(currentGame?.id)">🗑 Delete Game</button>
     </div>
     <div id="detail-msg"></div>
@@ -399,7 +400,7 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.09.27-1839';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.27-2258'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.27-2339'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1167,7 +1168,22 @@ async function loadGames(){
   if(!data||data.length===0){
     el.innerHTML='<div class="msg-info">No games yet. Click "+ New Game" to create your first game.</div>';return;
   }
-  el.innerHTML=data.map(g=>{
+  // ARCHIVE (2026-09-27 item 1): the main list shows live games; the Archived list shows the rest.
+  // Nothing is deleted either way — the switch only changes which half is on screen.
+  const _archCount=data.filter(gameArchived).length;
+  const _rows=data.filter(g=>gameArchived(g)===_showArchived);
+  const _switch=(_archCount>0||_showArchived)
+    ? `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+         <button class="btn btn-ghost" style="font-size:.7rem" onclick="toggleArchivedView()">${_showArchived?`← Back to active games (${data.length-_archCount})`:`🗄 Archived games (${_archCount})`}</button>
+       </div>`
+    : '';
+  const _banner=_showArchived
+    ? `<div class="msg-info" style="margin-bottom:10px">🗄 <strong>Archived games.</strong> Everything is kept — the world, the players, every turn report, the dispatches, the statistics and the Hall-of-Fame record. Archived games are simply out of the way, and the auto-turn watcher leaves them alone. Open one and press <strong>Restore</strong> to bring it back.</div>`
+    : '';
+  if(_rows.length===0){
+    el.innerHTML=_switch+_banner+`<div class="msg-info">${_showArchived?'No archived games.':'No active games. Click "+ New Game" to start one.'}</div>`;return;
+  }
+  el.innerHTML=_switch+_banner+_rows.map(g=>{
     const total=g.game_players?.length||0;
     const joined=g.game_players?.filter(p=>p.user_id).length||0;
     const submitted=g.game_players?.filter(p=>p.orders_submitted).length||0;
@@ -1205,9 +1221,10 @@ async function loadGames(){
       : (_ranAt
           ? ` · Last turn run ${_ranAt}${_ranAgo?` <span style="opacity:.75">(${_ranAgo})</span>`:''}`
           : ` · Last turn run <span style="opacity:.75">not recorded</span>`);
-    return`<div class="game-card" onclick="openGame('${g.id}')">
+    const _archTag=gameArchived(g)?` <span class="pill pill-amber" title="Archived — all data kept">🗄 Archived${(()=>{const a=gameArchivedAt(g);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:'';
+    return`<div class="game-card" onclick="openGame('${g.id}')"${gameArchived(g)?' style="opacity:.82"':''}>
       <div>
-        <div class="gc-name">${g.name}${pill}${_visTag}</div>
+        <div class="gc-name">${g.name}${pill}${_visTag}${_archTag}</div>
         <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
       </div>
       <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
@@ -1548,7 +1565,14 @@ async function openGame(gameId){
   const reservedBots=game.status==='setup'?Math.max(0,plannedBots-existingBots):0;
   const humanCap=allBot?0:(maxP-plannedBots);
   const statusLabel=game.status==='setup'?'Setup':game.status==='active'?`Turn ${game.turn}`:'Complete';
-  document.getElementById('detail-status-pill').innerHTML=`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>`;
+  // ARCHIVE (2026-09-27 item 1) — the header says so, and the button becomes Restore.
+  const _isArch=gameArchived(game);
+  document.getElementById('detail-status-pill').innerHTML=`<span class="pill ${game.status==='active'?'pill-blue':'pill-amber'}">${statusLabel}</span>${_isArch?` <span class="pill pill-amber" title="Archived — every scrap of this game is kept">🗄 Archived${(()=>{const a=gameArchivedAt(game);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:''}`;
+  { const _ab=document.getElementById('detail-archive-btn');
+    if(_ab){ _ab.textContent=_isArch?'♻ Restore Game':'🗄 Archive Game';
+             _ab.title=_isArch
+               ? 'Bring this game back into the main list. Nothing was lost while it was archived.'
+               : 'Put this game away. Everything is kept — the world, the players, every report, the statistics and the Hall-of-Fame record — it simply leaves the main list and the auto-turn watcher stops watching it.'; } }
   document.getElementById('detail-player-count').textContent=game.status==='setup'
     ? `${joined}/${humanCap} human${humanCap!==1?'s':''}${plannedBots?` · ${plannedBots} bot${plannedBots!==1?'s':''}`:''} · sea ${seaPctOf(game)}%`
     : `${joined} human${joined!==1?'s':''}${existingBots?` · ${existingBots} bot${existingBots!==1?'s':''}`:''} / ${maxP}`;
@@ -1908,8 +1932,13 @@ async function loadTurnLog(gameId, turn){
 }
 
 // ── DELETE GAME ────
+// 2026-09-27 (Toby item 1): a delete now really is a delete. The telemetry tables and the
+// Hall-of-Fame row key off `game_id` as plain text with no foreign key, so before this they
+// SURVIVED the games row — a deleted game went on being counted in the Stats tab and went on
+// showing on the leaderboard for ever, with no way to reach it. All four are purged here. If you
+// want the game kept but out of the way, use Archive instead.
 async function deleteGame(gameId){
-  if(!confirm('Delete this game permanently? This cannot be undone.')) return;
+  if(!confirm('Delete this game permanently?\n\nThe world, the players, every turn report and dispatch, all recorded statistics AND its Hall-of-Fame leaderboard entry are destroyed. This cannot be undone.\n\nTo keep the game but take it out of your list, cancel and use Archive instead.')) return;
   const msg=document.getElementById('detail-msg');
   msg.innerHTML='<div class="msg-info">Deleting…</div>';
   // Delete players first (cascade should handle it, but be explicit)
@@ -1921,6 +1950,18 @@ async function deleteGame(gameId){
       await sb.from('game_messages').delete().eq('game_id',String(gameId));
       await sb.from('game_message_reads').delete().eq('game_id',String(gameId));
     }catch(e){ console.warn('dispatch cleanup:',e); }
+  }
+  // Telemetry + Hall of Fame — same reason, and the game_records write policy checks the games row
+  // exists, so this must happen while it still does.
+  if(_kcHasTel){
+    try{
+      await sb.from('turn_events').delete().eq('game_id',String(gameId));
+      await sb.from('game_results').delete().eq('game_id',String(gameId));
+    }catch(e){ console.warn('telemetry cleanup:',e); }
+  }
+  if(_kcHasLb){
+    try{ await sb.from('game_records').delete().eq('game_id',String(gameId)); }
+    catch(e){ console.warn('leaderboard cleanup:',e); }
   }
   await sb.from('game_players').delete().eq('game_id',gameId);
   const {error}=await sb.from('games').delete().eq('id',gameId);
@@ -4083,6 +4124,11 @@ function buildGameMeta(gs){
   gs=(gs&&typeof gs==='object')?gs:{};
   const m={v:1, turnMode:normalizeTurnMode(gs.turnMode)};
   ['mapSize','maxPlayers','botCount','allBot','botDifficulty','botDiplomacy','visibility','invited'].forEach(k=>{ if(gs[k]!==undefined) m[k]=gs[k]; });
+  // ARCHIVE (2026-09-27, Toby item 1). The flag lives in game_state — the one place every writer
+  // round-trips — and is copied up into meta here so the LIGHT games-list read can see it without
+  // pulling the world. Because meta is rebuilt from game_state on every save, a later turn
+  // resolution cannot silently drop it.
+  if(gs.archived){ m.archived=true; if(gs.archivedAt) m.archivedAt=gs.archivedAt; }
   const sp=gs.seaPct!=null?gs.seaPct:(gs.world&&gs.world.seaPct!=null?gs.world.seaPct:null);
   if(sp!=null) m.seaPct=sp;
   if(Array.isArray(gs.players)){
@@ -4098,6 +4144,55 @@ function metaPatch(gs){ return _kcHasMeta?{meta:buildGameMeta(gs)}:{}; }
 const GAME_LITE_COLS='id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta';
 const PLAYER_LITE_COLS='id,game_id,user_id,player_index,display_name,orders_submitted';
 function gamesListCols(){ return _kcHasMeta?`${GAME_LITE_COLS}, game_players(${PLAYER_LITE_COLS})`:'*, game_players(*)'; }
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// ARCHIVE A GAME (2026-09-27, Toby item 1)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// Deleting a game destroys it. Archiving puts it away: the row, its world, its players, its turn
+// logs, its dispatches, its telemetry and its Hall-of-Fame record are ALL kept exactly as they are —
+// the game simply drops out of the main list, and the auto-turn watcher stops watching it. The GM
+// sees archived games by switching the list to Archived, and can restore one at any time.
+//
+// NO SCHEMA CHANGE. The flag is `archived` on game_state (the object every save round-trips) and is
+// mirrored into `meta` by buildGameMeta, so the light list read sees it without pulling the world.
+// A build that predates this feature simply ignores the key.
+//
+// An archived game is NOT hidden from the leaderboard — nothing is deleted, so the Hall of Fame
+// keeps its record. To take a finished game off the board, use the Hall-of-Fame `hidden` flag
+// instead; that is what it is for.
+function gameArchived(game){
+  const m=gameMetaOf(game);
+  if(m&&m.archived!==undefined) return !!m.archived;
+  return !!parseGameState(game).archived;
+}
+function gameArchivedAt(game){
+  const m=gameMetaOf(game);
+  if(m&&m.archivedAt) return m.archivedAt;
+  return parseGameState(game).archivedAt||null;
+}
+let _showArchived=false;   // which list the GM is looking at
+// Set or clear the flag. Reads the full row (game_state is the source of truth), writes it back
+// with a conditional guard on `turn` so an archive click can never clobber a turn another tab
+// resolved in the meantime.
+async function setGameArchived(gameId, archived){
+  if(!gameId) return;
+  const msg=document.getElementById('detail-msg')||document.getElementById('msg-games');
+  if(msg) msg.innerHTML=`<div class="msg-info">${archived?'Archiving':'Restoring'}…</div>`;
+  const {data:row,error}=await sb.from('games').select('id,turn,game_state').eq('id',gameId).single();
+  if(error||!row){ if(msg) msg.innerHTML=`<div class="msg-error">${(error&&error.message)||'Game not found.'}</div>`; return; }
+  const gs=parseGameState(row);
+  if(archived){ gs.archived=true; gs.archivedAt=new Date().toISOString(); }
+  else { delete gs.archived; delete gs.archivedAt; }
+  let q=sb.from('games').update({game_state:JSON.stringify(gs),...metaPatch(gs)}).eq('id',gameId);
+  if(row.turn!=null) q=q.eq('turn',row.turn);       // the turn must not have moved under us
+  const {data:done,error:e2}=await q.select('id').maybeSingle();
+  if(e2){ if(msg) msg.innerHTML=`<div class="msg-error">${e2.message}</div>`; return; }
+  if(!done){ if(msg) msg.innerHTML='<div class="msg-error">The turn advanced while you were archiving — reload and try again.</div>'; return; }
+  if(msg) msg.innerHTML='';
+  _showArchived=archived;    // land on the list the game just moved into
+  show('sec-games');
+  loadGames();
+}
+function toggleArchivedView(){ _showArchived=!_showArchived; loadGames(); }
 // One-off: any of this GM's games saved before the column existed gets its meta computed from
 // game_state now, so the light reads never have to fall back for it again.
 async function backfillGameMeta(){
@@ -5406,7 +5501,8 @@ async function autoTurnTick(){
     // open. runTurn loads the full world itself when a turn is actually due.
     const {data,error}=await sb.from('games').select(gamesListCols()).eq('gm_user_id',currentUser.id).eq('status','active');
     if(error||!data) return;
-    const watched=data.map(g=>({g,tm:turnModeOf(g)})).filter(x=>x.tm.mode!=='manual');
+    // An ARCHIVED game is put away, so the watcher leaves it alone (2026-09-27 item 1).
+    const watched=data.filter(g=>!gameArchived(g)).map(g=>({g,tm:turnModeOf(g)})).filter(x=>x.tm.mode!=='manual');
     if(!watched.length){ setAutoTurnStatus(''); return; }
     const lines=[];
     for(const {g,tm} of watched){
@@ -11344,11 +11440,31 @@ function buildTurnReport(gameState, playerIndex){
       const rk=gameState.reckoning||null, over=gameState.gameOver||null;
       const isPublic=turn>=TITLES_PUBLIC_FROM_TURN || !!over;
       const _race=isPublic?titleRaceFor(gameState, st, playerIndex):{}; // this realm's best contender per title, as percentages only
+      // ── UNMET REALMS STAY NAMELESS (2026-09-27, Toby item 3) ────────────────────────────────────
+      // The Titles & Victory card listed every realm in the world by name — standings board, title
+      // holders, minor titles, a title lost to a rival, the Reckoning claimant — which handed a
+      // player the name of every crown in the game on the turn the titles went public, long before
+      // their scouts had found any of them. The title INTEL lines have respected `_encountered`
+      // since 2026-09-24 (see the `met` helper on the intel sweep); the payload did not.
+      // A realm is named only once this player has met it — the same list that gates Treat /
+      // Declare War, and the same list the Dispatches tab uses. An unmet realm is still counted in
+      // the standings (its score and its titles are public knowledge); only its name, its
+      // character's name and its colour are withheld. The ONE exception is the end-of-game board:
+      // once the world is judged, every realm is revealed with the final result.
+      const _metSet=new Set([playerIndex, ...((player._encountered)||[])]);
+      const _reveal=!!over;                                   // game over → the whole field is named
+      const _metPi=(pi)=>pi==null||_reveal||_metSet.has(pi);
+      const UNMET_REALM='An unknown realm', UNMET_CHAR='an unknown champion';
+      const _realmNm=(pi)=>pi==null?null:(_metPi(pi)?(gameState.players[pi]?.name||('Realm '+(pi+1))):UNMET_REALM);
+      const _realmCol=(pi)=>(pi!=null&&_metPi(pi))?(gameState.players[pi]?.color||null):null;
+      const _charNm=(pi,nm)=>(!nm)?null:(_metPi(pi)?nm:UNMET_CHAR);
       return {
         publicFromTurn:TITLES_PUBLIC_FROM_TURN,
         public:isPublic,
         gains:(gameState._titleGainsByPlayer||{})[playerIndex]||[],   // titles this player won this turn
-        losses:(gameState._titleLossesByPlayer||{})[playerIndex]||[], // titles this player LOST this turn
+        losses:((gameState._titleLossesByPlayer||{})[playerIndex]||[]).map(l=>(l&&l.newHolderIndex!=null&&!_metPi(l.newHolderIndex))
+          ? {...l, newHolderName:UNMET_REALM, newCharName:(l.newCharName?UNMET_CHAR:null)}
+          : l), // titles this player LOST this turn — a rival they have not met is not named
         // the bar THIS realm must carry — its own bloc's size raises it. The solo bar is shipped
         // alongside so the portal can say what an alliance is costing.
         threshold:_elig.threshold,
@@ -11362,14 +11478,14 @@ function buildTurnReport(gameState, playerIndex){
         callBlockedReason:_elig.reason,   // 'tooEarly' | 'blocShort' | 'callerShort' | null
         canCallReckoning: isPublic && kingAlive && !rk && !over && _elig.ok,
         kingAlive, // Orders → Realm shows why the call is unavailable
-        reckoning: rk?{byName:gameState.players[rk.by]?.name||null, calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
+        reckoning: rk?{byName:_realmNm(rk.by), calledTurn:rk.calledTurn, resolveAtTurn:rk.resolveAtTurn, mine:rk.by===playerIndex||(rk.bloc||[]).includes(playerIndex)}:null,
         gameOver: over?{winner:over.winner, winnerName:over.winner!=null?(gameState.players[over.winner]?.name||null):null, byElimination:!!over.byElimination, byConcession:!!over.byConcession, byReckoning:!!over.byReckoning, standings:(over.standings||[]).map(s=>({...s,titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)}))}:null,
-        standings: isPublic?st.standings.map(s=>({...s, titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)})):null,
-        holders: isPublic?Object.fromEntries(TITLE_DEFS.map(t=>{ const h=st.titles[t.key]; const hc=h.charId!=null?(gameState.characters||[]).find(c=>c.id===h.charId):null; return [t.key,{name:t.name,prize:t.prize,holderIndex:h.playerIndex,holderName:h.playerIndex!=null?(gameState.players[h.playerIndex]?.name||null):null,charName:hc?hc.name:null,kingdomLevel:!!t.kingdomLevel,req:t.req,perk:t.perk,mine:h.playerIndex===playerIndex,race:_race[t.key]||null}]; })):null,
+        standings: isPublic?st.standings.map(s=>({...s, name:_realmNm(s.index), color:_realmCol(s.index), unmet:!_metPi(s.index), titleNames:(s.titles||[]).map(k=>_TITLE_LABEL[k]||k)})):null,
+        holders: isPublic?Object.fromEntries(TITLE_DEFS.map(t=>{ const h=st.titles[t.key]; const hc=h.charId!=null?(gameState.characters||[]).find(c=>c.id===h.charId):null; return [t.key,{name:t.name,prize:t.prize,holderIndex:h.playerIndex,holderName:_realmNm(h.playerIndex),charName:_charNm(h.playerIndex,hc?hc.name:null),unmet:h.playerIndex!=null&&!_metPi(h.playerIndex),kingdomLevel:!!t.kingdomLevel,req:t.req,perk:t.perk,mine:h.playerIndex===playerIndex,race:_race[t.key]||null}]; })):null,
         minor: isPublic?(()=>{
           const mh=computeMinorTitles(gameState);
           const chById=id=>(gameState.characters||[]).find(c=>c.id===id);
-          const all=MINOR_TITLES.map(t=>{ const h=mh[t.key]; const holder=h?chById(h.charId):null; return {key:t.key,name:t.name,perk:t.perk,req:t.req,holderName:holder?holder.name:null,kingdomName:(h&&h.playerIndex!=null)?(gameState.players[h.playerIndex]?.name||null):null,holderIndex:h?h.playerIndex:null,mine:!!(h&&h.playerIndex===playerIndex)}; });
+          const all=MINOR_TITLES.map(t=>{ const h=mh[t.key]; const holder=h?chById(h.charId):null; const _pi=h?h.playerIndex:null; return {key:t.key,name:t.name,perk:t.perk,req:t.req,holderName:_charNm(_pi,holder?holder.name:null),kingdomName:_realmNm(_pi),unmet:_pi!=null&&!_metPi(_pi),holderIndex:_pi,mine:!!(h&&h.playerIndex===playerIndex)}; });
           return { all, mine: all.filter(x=>x.mine) };
         })():null,
       };
@@ -15481,6 +15597,25 @@ const BATTLE_ARMY_SPELLS={
         narrative.push(`  🏹 ${foe.name} looses an arrow as ${actor.name} comes on. (parting shot)`);
         pcFireOne(foe, actor, narrative);
         if(actor.hp<=0) return;
+      }
+      // ── ADVANCE AND STRIKE (2026-09-27, Toby item 7) ────────────────────────────────────────────
+      // Closing the distance is no longer the whole action. Once the step is taken, the attacker
+      // attacks if the new range allows it: a charge that ends in melee lands its blow, and a
+      // charge that ends at bow range looses a single snap shot if the attacker carries a bow.
+      // (Spells and monster specials were never range-gated, so they never lost a round to moving;
+      // only the melee closer did, and a fight that opens at spell range cost a plain fighter TWO
+      // rounds of standing still before they could swing. Both sides gain this alike.)
+      // A shot or a blow is still refused to anyone stunned this round or bound by Spiritwrack, and
+      // a foe already down is not struck again.
+      if(!foe || foe.hp<=0 || actor.hp<=0) return;
+      if(actor.status && actor.status.stun>0) return;
+      if(state.range==='melee'){
+        pcMeleeStrike(actor, foe, narrative);
+        return;
+      }
+      if(state.range==='bow' && pcHasRanged(actor) && !(actor.status&&actor.status.silenceRounds>0)){
+        narrative.push(`  ${actor.name} draws as they come and looses a snap shot.`);
+        pcFireOne(actor, foe, narrative);
       }
       return;
     }
@@ -25951,6 +26086,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         (lossesByPlayer[loserPi]=lossesByPlayer[loserPi]||[]).push({
           scope, key:t.key, name:t.name, kingdomLevel:!!t.kingdomLevel,
           vacant: (cur.playerIndex==null),
+          newHolderIndex: (cur.playerIndex!=null?cur.playerIndex:null), // 2026-09-27 item 3: lets the report withhold the name of a realm this player has not met
           newHolderName: cur.playerIndex!=null?pName(cur.playerIndex):null,
           newCharName: (t.kingdomLevel||cur.charId==null)?null:chName(cur.charId),
         });
@@ -26267,9 +26403,28 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       }
       return null;
     };
+    // ── UNMET REALMS STAY NAMELESS in broadcast lines (2026-09-27, Toby item 3) ──────────────────
+    // A handful of announcements go to EVERY realm — a concession, the Reckoning called or broken,
+    // a province claimed "for <realm>" — and they printed the realm's name to readers whose scouts
+    // had never found it. For a line this realm is NOT a party to (not its actor, not addressed to
+    // it), every realm it has not met is rewritten as "an unknown realm". Lines it is a party to are
+    // left alone (a battle you fought names your foe — you have met them by fighting). Longest names
+    // first, so "The Outriders II" is not half-replaced by "The Outriders". Once the game is over the
+    // whole field is revealed, as on the Titles card. The ✉ Dispatches tab is unaffected.
+    const _metHere=new Set([pi,...(((G.players[pi]||{})._encountered)||[])]);
+    const _unmetNames=G.gameOver?[]:(G.players||[]).map((pl,i)=>(pl&&pl.name&&!_metHere.has(i))?pl.name:null).filter(Boolean)
+      .filter(nm=>!(G.players||[]).some((pl,i)=>pl&&pl.name===nm&&_metHere.has(i)))   // a name shared with a met realm is not a secret
+      .sort((a,b)=>b.length-a.length);
+    const _reEsc=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const _unmetRe=_unmetNames.length?new RegExp('(^|[^A-Za-z0-9])('+_unmetNames.map(_reEsc).join('|')+')(?![A-Za-z0-9])','g'):null;
+    const _maskText=(e)=>{
+      if(!_unmetRe||typeof e.text!=='string') return e.text;
+      if(e.actor===pi||(e.targets||[]).includes(pi)) return e.text;
+      return e.text.replace(_unmetRe,(m,pre,nm,off,whole)=>{ const before=whole.slice(0,off+pre.length); const cap=!/[A-Za-z0-9]/.test(before)||/[.!?:—]\s*$/.test(before); return pre+(cap?'An unknown realm':'an unknown realm'); });
+    };
     report.lastTurnLog=_filteredLog.map(e=>({
       // Preserve charId and phase so the player portal can group entries correctly
-      type:e.type, text:e.text,
+      type:e.type, text:_maskText(e),
       charId:_reattributeCharId(e),
       phase:e.phase??null,
       pinNotice:!!e.pinNotice, // battle-lock notice — the player portal hoists this to the top of its phase
@@ -26396,6 +26551,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-2258</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-2339</div>
 </body>
 </html>
