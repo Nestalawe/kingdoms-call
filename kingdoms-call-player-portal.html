@@ -237,7 +237,46 @@ section{display:none;}.section-active{display:block;}
 .detail-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
 .detail-header h2{margin:0;border:none;padding:0;flex:1;}
 
-/* ─── MOBILE (≤820px): show ONE of Map / Report / Orders at a time, switched by a fixed bottom
+/* ═══ DISPATCHES (realm-to-realm messaging), 2026-09-27 ═══════════════════════════════════════════
+   Lives in #rp-msg-col — a fourth report column, shown on the LEFT desktop panel in place of the old
+   duplicate Report tab, and on its own phone tab. Dark ground like the map column, because it sits
+   in the same panel. Three stacked parts: channel strip (fixed), thread (the only scroller),
+   composer (fixed). */
+#msg-channels{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;background:#160f06;border-bottom:1px solid #2a1c0c;flex:0 0 auto;max-height:118px;overflow-y:auto;}
+.msg-chan{display:flex;align-items:center;gap:5px;background:#231709;border:1px solid #4a3416;color:#c9b189;font-family:'Cinzel',serif;font-size:.63rem;letter-spacing:.03em;padding:4px 8px;border-radius:11px;cursor:pointer;white-space:nowrap;max-width:100%;}
+.msg-chan:hover{border-color:#c8922a;color:#f0d9a8;}
+.msg-chan.active{background:#3a2710;border-color:#c8922a;color:#f0c96a;}
+.msg-chan.gone{opacity:.55;font-style:italic;}
+.msg-chan .mc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+.msg-chan .mc-label{overflow:hidden;text-overflow:ellipsis;}
+/* Not scoped to .msg-chan: the same pill marks an unread dispatch inside the thread. */
+.mc-unread{display:inline-block;min-width:15px;height:15px;line-height:15px;text-align:center;border-radius:8px;background:#a32020;color:#fff;font-family:'Crimson Text',serif;font-size:.6rem;font-weight:700;padding:0 4px;letter-spacing:.02em;}
+#msg-thread{flex:1 1 0;min-height:0;overflow-y:auto;padding:8px 9px;background:#120c05;display:flex;flex-direction:column;gap:7px;}
+.msg-bubble{max-width:92%;border:1px solid #3a2a12;border-radius:4px;padding:6px 9px 7px;background:#1e1509;font-size:.82rem;line-height:1.45;color:#e6d9be;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;}
+.msg-bubble.mine{align-self:flex-end;background:#25301c;border-color:#48602f;}
+.msg-bubble.pub{background:#1a1320;border-color:#4a3560;}
+.msg-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.03em;margin-bottom:3px;}
+.msg-from{font-weight:700;}
+.msg-when{color:#8a7a5c;}
+.msg-to{color:#8a7a5c;font-style:italic;}
+.msg-day{align-self:center;font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.09em;text-transform:uppercase;color:#7a6a4c;border-top:1px solid #2a1c0c;border-bottom:1px solid #2a1c0c;padding:2px 10px;margin:3px 0;}
+.msg-empty{align-self:center;margin:auto 0;color:#7a6a4c;font-size:.8rem;font-style:italic;text-align:center;padding:0 14px;line-height:1.5;}
+#msg-composer{flex:0 0 auto;border-top:1px solid #2a1c0c;background:#1a1208;padding:6px 8px 7px;}
+#msg-composer textarea{width:100%;margin:0 0 5px;background:#0f0a04;border:1px solid #4a3416;color:#e6d9be;font-family:'Crimson Text',serif;font-size:.85rem;padding:6px 8px;border-radius:3px;resize:vertical;min-height:52px;max-height:200px;}
+#msg-composer textarea:focus{outline:none;border-color:#c8922a;}
+#msg-send-row{display:flex;align-items:center;gap:8px;}
+#msg-send-row .mc-hint{flex:1;font-size:.63rem;color:#8a7a5c;line-height:1.3;}
+#msg-send-btn{background:#3a2710;border:1px solid #c8922a;color:#f0c96a;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.05em;padding:6px 14px;border-radius:3px;cursor:pointer;flex:0 0 auto;}
+#msg-send-btn:hover:not(:disabled){background:#4d3415;}
+#msg-send-btn:disabled{opacity:.45;cursor:not-allowed;}
+#msg-note{font-size:.66rem;color:#c07a7a;padding:0 0 4px;display:none;}
+#msg-group-pick{background:#160f06;border-bottom:1px solid #2a1c0c;padding:6px 9px;display:none;}
+#msg-group-pick .mg-row{display:flex;flex-wrap:wrap;gap:5px 12px;margin:5px 0 7px;}
+#msg-group-pick label{display:flex;align-items:center;gap:5px;font-family:'Crimson Text',serif;font-size:.78rem;text-transform:none;letter-spacing:0;color:#d8c8a8;cursor:pointer;margin:0;}
+#msg-group-pick input[type=checkbox]{width:auto;margin:0;}
+.msg-tabbadge{display:inline-block;min-width:15px;height:15px;line-height:15px;text-align:center;border-radius:8px;background:#a32020;color:#fff;font-family:'Crimson Text',serif;font-size:.6rem;font-weight:700;padding:0 4px;margin-left:5px;vertical-align:middle;}
+
+/* ─── MOBILE (≤820px): show ONE of Map / Report / Messages / Orders at a time, switched by a fixed bottom
    tab bar. Desktop (>820px) is completely unaffected — the tab bar is hidden and all three columns
    render side by side exactly as before. Pure CSS + a tiny setMobileView() toggle; no engine touch. */
 #mobile-tabbar{display:none;}
@@ -250,7 +289,7 @@ section{display:none;}.section-active{display:block;}
   #sec-report{margin-left:0!important;margin-right:0!important;width:100%!important;max-width:100%!important;}
   #rp-layout{flex-direction:column!important;width:100%!important;min-height:0!important;overflow-x:hidden!important;}
   #rp-layout>.rp-spacer{display:none!important;}
-  #rp-map-col,#rp-report-col,#orders-column{
+  #rp-map-col,#rp-report-col,#rp-msg-col,#orders-column{
     width:100%!important;min-width:0!important;max-width:100%!important;
     position:static!important;height:auto!important;border-right:none!important;
     box-sizing:border-box;padding-bottom:66px!important;         /* clear the fixed tab bar */
@@ -264,13 +303,31 @@ section{display:none;}.section-active{display:block;}
   #rp-report-col{overflow:visible!important;}
   #orders-column{overflow:visible!important;} /* 2026-09-23: so the orders header + treasury ledger stick on phones too */
   #sec-report,#rp-layout{overflow:visible!important;overflow-x:clip!important;}
-  /* Show only the column matching the active view */
+  /* Show only the column matching the active view. Four views since 2026-09-27 (Messages), so every
+     pairing is spelled out rather than relying on cascade order — each selector carries two ids plus
+     a class, so it beats the plain `#rp-map-col{display:block!important}` rule further down on
+     SPECIFICITY and not on position. */
   #rp-layout.mv-map    #rp-report-col,
+  #rp-layout.mv-map    #rp-msg-col,
   #rp-layout.mv-map    #orders-column,
   #rp-layout.mv-report #rp-map-col,
+  #rp-layout.mv-report #rp-msg-col,
   #rp-layout.mv-report #orders-column,
+  #rp-layout.mv-messages #rp-map-col,
+  #rp-layout.mv-messages #rp-report-col,
+  #rp-layout.mv-messages #orders-column,
   #rp-layout.mv-orders #rp-map-col,
-  #rp-layout.mv-orders #rp-report-col{display:none!important;}
+  #rp-layout.mv-orders #rp-report-col,
+  #rp-layout.mv-orders #rp-msg-col{display:none!important;}
+  /* On a phone the PAGE scrolls, so the messages column is laid out like the map column: it keeps its
+     natural height, the thread gets a fixed slice of the viewport and scrolls inside itself, and the
+     composer follows it in normal flow. (Giving the column `height:calc(100vh - …)` instead pinned the
+     composer to the foot of a box that started ~215px down the page, which put it below the fold.) */
+  #rp-msg-col{display:flex!important;flex-direction:column!important;height:auto!important;}
+  #rp-msg-col.mcol-off{display:none!important;}
+  #msg-thread{flex:0 0 auto!important;height:56vh!important;}
+  #msg-channels{max-height:none!important;overflow:visible!important;}
+  #msg-composer textarea{font-size:16px!important;}   /* 16px stops iOS auto-zooming on focus */
   /* Map panel: scroll & pan inside the panel; the SVG is drawn large enough to read. The ⛶ Fullscreen
      button remains for a bigger view, and native browser pinch-zoom is left enabled. */
   /* Map fix 2 (2026-09-08): the column is a BLOCK on phones. Its inline desktop styles make it a column
@@ -310,7 +367,8 @@ section{display:none;}.section-active{display:block;}
 @media (min-width:821px){
   #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important;
     margin-left:calc(-50vw + 50%)!important; margin-right:calc(-50vw + 50%)!important; }
-  #rp-layout.desk > #rp-map-col, #rp-layout.desk > #rp-report-col, #rp-layout.desk > #orders-column,
+  #rp-layout.desk > #rp-map-col, #rp-layout.desk > #rp-report-col, #rp-layout.desk > #rp-msg-col,
+  #rp-layout.desk > #orders-column,
   #rp-layout.desk > .rp-spacer{ display:none!important; } /* originals live inside the panels now */
   #desk-left,#desk-right{ flex:1 1 0; min-width:0; display:flex; flex-direction:column;
     height:calc(100vh - 120px); border:1px solid var(--stone); border-radius:3px; overflow:hidden; background:#0e0a04; }
@@ -319,10 +377,15 @@ section{display:none;}.section-active{display:block;}
     font-size:.72rem; letter-spacing:.04em; padding:9px 6px; cursor:pointer; border-bottom:2px solid transparent; }
   .desk-tabs button.active{ color:#e8b84b; border-bottom-color:#c8922a; background:#241810; }
   .desk-body{ flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; position:relative; }
-  .desk-body > #rp-map-col, .desk-body > #rp-report-col, .desk-body > #orders-column{
+  .desk-body > #rp-map-col, .desk-body > #rp-report-col, .desk-body > #rp-msg-col, .desk-body > #orders-column{
     position:static!important; width:100%!important; max-width:100%!important; height:100%!important;
     min-width:0!important; border-right:none!important; flex:1 1 auto; overflow:auto; box-sizing:border-box; }
   .desk-body > #rp-map-col{ overflow:hidden; }
+  /* The messages column owns its own inner scroller (the thread), so the column itself must NOT
+     scroll — otherwise the composer pinned to its foot scrolls away with the thread. */
+  /* NO `display` here: applyDeskViews() sets it inline ('flex' / 'none'), and a `display:flex!important`
+     rule would beat that inline value and leave the column permanently visible. */
+  .desk-body > #rp-msg-col{ overflow:hidden!important; flex-direction:column!important; padding-bottom:0!important; }
   /* Map zoom controls */
   #map-zoom-bar{ display:flex; gap:4px; align-items:center; }
   #map-zoom-bar button{ background:#2a1c0c; color:#e8b84b; border:1px solid #5a4020; border-radius:2px;
@@ -627,6 +690,39 @@ section{display:none;}.section-active{display:block;}
 
       </div><!-- end middle report column -->
 
+      <!-- DISPATCHES: realm-to-realm messaging (2026-09-27). A fourth column, moved by
+           setupDeskLayout() into the LEFT desktop panel (where it replaced the duplicate Report tab)
+           and shown on its own phone tab. Messages are NOT part of the turn report: they are sent
+           and read straight away against public.game_messages and they persist for the whole game.
+           Hidden altogether in a game with only one human realm. -->
+      <div id="rp-msg-col" style="width:0;min-width:0;display:none;flex-direction:column;background:#120c05;border-right:2px solid #333;height:calc(100vh - 120px)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;background:#1a1208;border-bottom:1px solid #333;flex:0 0 auto">
+          <span id="msg-col-title" style="font-family:'Cinzel',serif;font-size:.75rem;color:#c8922a;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">✉ Dispatches</span>
+          <span style="display:flex;gap:4px;align-items:center;flex:0 0 auto">
+            <button id="msg-group-btn" class="btn btn-ghost" style="font-size:.62rem;padding:3px 8px" onclick="toggleMsgGroupPicker()">＋ Group</button>
+            <button class="btn btn-ghost" style="font-size:.62rem;padding:3px 8px" onclick="refreshMessages(true)" title="Check for new dispatches now">↻</button>
+          </span>
+        </div>
+        <div id="msg-group-pick">
+          <div style="font-size:.68rem;color:#c9b189;font-family:'Cinzel',serif;letter-spacing:.04em">Address a private dispatch to several realms at once</div>
+          <div class="mg-row" id="msg-group-list"></div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost" style="font-size:.62rem;padding:3px 9px" onclick="createMsgGroup()">Open conversation</button>
+            <button class="btn btn-ghost" style="font-size:.62rem;padding:3px 9px" onclick="toggleMsgGroupPicker(false)">Cancel</button>
+          </div>
+        </div>
+        <div id="msg-channels"></div>
+        <div id="msg-thread"><div class="msg-empty">Loading dispatches…</div></div>
+        <div id="msg-composer">
+          <div id="msg-note"></div>
+          <textarea id="msg-input" maxlength="4000" rows="2" placeholder="Write your dispatch…" oninput="onMsgInput()"></textarea>
+          <div id="msg-send-row">
+            <span class="mc-hint" id="msg-hint"></span>
+            <button id="msg-send-btn" onclick="sendMessage()" disabled>Send</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Spacer between turn info and orders -->
       <div class="rp-spacer" style="width:2%;min-width:12px;background:var(--bg);flex-shrink:0;height:calc(100vh - 120px)"></div>
 
@@ -674,6 +770,7 @@ section{display:none;}.section-active{display:block;}
     <nav id="mobile-tabbar" aria-label="Section switcher">
       <button type="button" data-mv="map"    onclick="setMobileView('map')"><span class="mt-ico">🗺</span>Map</button>
       <button type="button" data-mv="report" onclick="setMobileView('report')"><span class="mt-ico">📜</span>Report</button>
+      <button type="button" data-mv="messages" id="mt-messages" onclick="setMobileView('messages')" style="display:none"><span class="mt-ico">✉</span>Msgs<span id="mt-msg-badge"></span></button>
       <button type="button" data-mv="orders" onclick="setMobileView('orders')"><span class="mt-ico">✍️</span>Orders</button>
     </nav>
   </section>
@@ -1193,6 +1290,7 @@ function show(id){
   // leaving the report drops the "#game=…" address, so a refresh from any other screen does not
   // bounce back into a report.
   if(id!=='sec-report'&&/^#game=/.test(location.hash||'')){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} }
+  if(id!=='sec-report'){ try{ stopMessagePolling(); saveMessageReads(); }catch(e){} } // no dispatch poll off the report screen
   document.querySelectorAll('section').forEach(s=>s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
   // On a phone, default the report screen to the Report view the first time it's shown.
@@ -1206,18 +1304,32 @@ function show(id){
 function setMobileView(view){
   const lay=document.getElementById('rp-layout');
   if(!lay) return;
-  lay.classList.remove('mv-map','mv-report','mv-orders');
+  if(view==='messages'&&!_msgEnabled) view='report';   // no messaging in a one-human game
+  // The messages column ships with an inline display:none (so it cannot flash before the desk layout
+  // places it). On a phone the mv-* classes own visibility, and an inline value would beat them — so
+  // clear it here. teardownDeskLayout does the same, but it returns early on a session that never
+  // built the desk layout at all (a phone that opened a report straight away).
+  if(window.innerWidth<821){ const _mc=document.getElementById('rp-msg-col'); if(_mc) _mc.style.display=''; }
+  lay.classList.remove('mv-map','mv-report','mv-messages','mv-orders');
   lay.classList.add('mv-'+view);
   try{ _closeMapTip(); }catch(e){} // a lingering province popup must not survive a view switch
   document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-mv')===view));
   if(view==='map'){ try{ applyMapZoom(); }catch(e){} } // map fix: re-fit the SVG height now the column is visible
+  if(view==='messages'){ try{ onMessagesShown(); }catch(e){} }
   try{ window.scrollTo(0,0); }catch(e){}   // start each view at its head
 }
 
 // ── DESKTOP TWO-COLUMN LAYOUT ────
-// Left panel switches Map ↔ Report; right panel switches Report ↔ Orders. The single report element
-// moves between the two panels on demand (appendChild preserves its listeners). Torn down below the
-// desktop breakpoint so the mobile tab bar keeps working unchanged.
+// Left panel switches Map ↔ Dispatches; right panel switches Report ↔ Orders. (Until 2026-09-27 the
+// left panel's second tab was a second Report; Toby replaced it with the messaging column, so the
+// report now lives permanently in the RIGHT panel and never moves between panels.) Torn down below
+// the desktop breakpoint so the mobile tab bar keeps working unchanged.
+//
+// _msgEnabled is declared HERE, above the layout functions that read it, rather than in the DISPATCHES
+// block at the end of the script: a top-level `let` is hoisted but sits in its temporal dead zone until
+// its declaration executes, and setupDeskLayout / setMobileView can be reached from a hash-restored
+// report before the tail of the script has run. (The ITEMS_BY_TIER hang is the same trap.)
+let _msgEnabled=false;
 let _deskLeftView='map', _deskRightView='report';
 // Whether the Orders view is currently AVAILABLE (true on the live turn; false on past turns and
 // Turn 0). On desktop the orders column's actual visibility is owned by applyDeskViews (the
@@ -1229,6 +1341,7 @@ function setupDeskLayout(){
   const lay=document.getElementById('rp-layout');
   const map=document.getElementById('rp-map-col');
   const rep=document.getElementById('rp-report-col');
+  const msg=document.getElementById('rp-msg-col');
   const ord=document.getElementById('orders-column');
   if(!lay||!map||!rep||!ord) return;
   if(window.innerWidth<821){ return; } // mobile: leave the columns as direct children of #rp-layout
@@ -1236,7 +1349,7 @@ function setupDeskLayout(){
     const left=document.createElement('div'); left.id='desk-left';
     left.innerHTML='<div class="desk-tabs">'
       +'<button data-side="left" data-view="map" onclick="setDeskView(\'left\',\'map\')">🗺 Map</button>'
-      +'<button data-side="left" data-view="report" onclick="setDeskView(\'left\',\'report\')">📜 Report</button>'
+      +'<button data-side="left" data-view="messages" id="desk-msg-tab" style="display:none" onclick="setDeskView(\'left\',\'messages\')">✉ Dispatches<span id="desk-msg-badge"></span></button>'
       +'</div><div class="desk-body" id="desk-left-body"></div>';
     const right=document.createElement('div'); right.id='desk-right';
     right.innerHTML='<div class="desk-tabs">'
@@ -1245,8 +1358,9 @@ function setupDeskLayout(){
       +'</div><div class="desk-body" id="desk-right-body"></div>';
     lay.appendChild(left); lay.appendChild(right);
     document.getElementById('desk-left-body').appendChild(map);
+    if(msg) document.getElementById('desk-left-body').appendChild(msg);
     document.getElementById('desk-right-body').appendChild(ord);
-    document.getElementById('desk-left-body').appendChild(rep); // report starts on the left (hidden)
+    document.getElementById('desk-right-body').appendChild(rep); // the report lives on the right, permanently
     injectMapZoomBar();
   }
   lay.classList.add('desk');
@@ -1256,27 +1370,34 @@ function teardownDeskLayout(){
   const lay=document.getElementById('rp-layout');
   const dl=document.getElementById('desk-left'), dr=document.getElementById('desk-right');
   if(!lay||!dl) return;
-  const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'), ord=document.getElementById('orders-column');
-  // Restore original order as direct children of #rp-layout for the mobile stacked view.
-  [map,rep,ord].forEach(el=>{ if(el){ el.style.display=''; lay.appendChild(el); } });
+  const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'),
+        msg=document.getElementById('rp-msg-col'), ord=document.getElementById('orders-column');
+  // Restore original order as direct children of #rp-layout for the mobile stacked view. The
+  // messages column's visibility is owned by the mv-* class on #rp-layout there, so clear the inline
+  // display the desk layout set on it (an inline display:none would beat the media block).
+  [map,rep,msg,ord].forEach(el=>{ if(el){ el.style.display=''; lay.appendChild(el); } });
   dl.remove(); if(dr) dr.remove();
   lay.classList.remove('desk');
 }
 function setDeskView(side,view){
-  if(side==='left'){ _deskLeftView=view; if(view==='report'&&_deskRightView==='report') _deskRightView='orders'; }
-  else { _deskRightView=view; if(view==='report'&&_deskLeftView==='report') _deskLeftView='map'; }
+  if(side==='left'){ if(view==='messages'&&!_msgEnabled) view='map'; _deskLeftView=view; }
+  else { _deskRightView=view; }
   applyDeskViews();
+  if(side==='left'&&view==='messages'){ try{ onMessagesShown(); }catch(e){} }
 }
 function applyDeskViews(){
-  const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'), ord=document.getElementById('orders-column');
+  const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'),
+        msg=document.getElementById('rp-msg-col'), ord=document.getElementById('orders-column');
   const lb=document.getElementById('desk-left-body'), rb=document.getElementById('desk-right-body');
   if(!map||!rep||!ord||!lb||!rb) return;
-  // Place the report in whichever panel currently wants it (left wins ties; right handled above).
-  if(_deskLeftView==='report'){ if(rep.parentNode!==lb) lb.appendChild(rep); }
-  else if(_deskRightView==='report'){ if(rep.parentNode!==rb) rb.appendChild(rep); }
+  if(rep.parentNode!==rb) rb.appendChild(rep);          // the report only ever sits in the right panel
+  if(msg&&msg.parentNode!==lb) lb.appendChild(msg);
+  if(_deskLeftView==='messages'&&!_msgEnabled) _deskLeftView='map';
+  const mt=document.getElementById('desk-msg-tab'); if(mt) mt.style.display=_msgEnabled?'':'none';
   map.style.display=(_deskLeftView==='map')?'':'none';
+  if(msg) msg.style.display=(_deskLeftView==='messages')?'flex':'none';
   ord.style.display=(_deskRightView==='orders'&&_ordersAvailable)?'':'none';
-  rep.style.display=(_deskLeftView==='report'||_deskRightView==='report'||(_deskRightView==='orders'&&!_ordersAvailable))?'':'none';
+  rep.style.display=(_deskRightView==='report'||(_deskRightView==='orders'&&!_ordersAvailable))?'':'none';
   // Reflect active tab state.
   document.querySelectorAll('#desk-left .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskLeftView));
   document.querySelectorAll('#desk-right .desk-tabs button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===_deskRightView));
@@ -1364,7 +1485,7 @@ window.addEventListener('resize',()=>{
 });
 function ensureMobileDefault(){
   const lay=document.getElementById('rp-layout');
-  if(lay && !/\bmv-(map|report|orders)\b/.test(lay.className)) setMobileView('report');
+  if(lay && !/\bmv-(map|report|messages|orders)\b/.test(lay.className)) setMobileView('report');
 }
 
 // ── AUTH ────
@@ -1415,6 +1536,7 @@ async function doSignUp(){
 }
 
 async function doSignOut(){
+  try{ stopMessagePolling(); await saveMessageReads(); }catch(e){} // flush read marks before the session goes
   await sb.auth.signOut();
   currentUser=null;currentProfile=null;currentGamePlayer=null;currentReport=null;
   location.reload(); // full reset so no stale state carries over when another player signs in on the same browser
@@ -2637,6 +2759,11 @@ async function openReport(gamePlayerId){
   discoveryChoices={};
   reckoningCall=false; concedeGame=false;
   viewingReport=report;              // map/history starts on the current report
+
+  // DISPATCHES (2026-09-27). Started here, BEFORE the waiting-for-Turn-0 return below, because
+  // messages are not part of the turn cycle: realms can write to each other from the moment the game
+  // has two human players. It is awaited nowhere — a slow roster query must not hold up the report.
+  initMessaging(gp.game_id, gp.player_index, report).catch(e=>console.warn('Dispatches:',e));
 
   // Turn numbering, player-facing:
   // liveTurn = the turn currently being PLANNED (the GM runs this next)
@@ -9434,12 +9561,503 @@ function showFullscreenMap(){
   modal.addEventListener('click',ev=>{if(ev.target===modal){_closeMapTip();modal.remove();}});
 }
 
+// ════════════════════════════════════════════════════════════════════════════════════════════════════
+// DISPATCHES — realm-to-realm messaging (2026-09-27, Toby)
+// ════════════════════════════════════════════════════════════════════════════════════════════════════
+// This is the column that replaced the left desktop panel's duplicate Report tab. What it is, and
+// what it deliberately is not:
+//
+//  * It is NOT part of the turn report. A dispatch is written straight to public.game_messages and
+//    read back by a short poll, so it arrives within seconds — no waiting for the GM to resolve the
+//    turn — and it stays in that table for the life of the game, so nothing is lost between turns.
+//  * Scope is ONE GAME. Every row carries game_id, and the channel list is built from that game's
+//    realms only. There is no cross-game inbox.
+//  * WHO you may write to: any realm you have MET — report.diplomacy.known, the same encountered
+//    list the Diplomacy card renders — that is played by a HUMAN, singly or in any combination. Plus
+//    one public channel that every realm in the game reads, met or not.
+//  * Bots are left OUT of the roster: a bot cannot read a dispatch, so offering it would be a message
+//    into the void. A bot row is the only game_players row with a null user_id (the GM portal's
+//    isBotRow relies on exactly that), which is how they are told apart here without having to ship a
+//    bot flag down in the turn report.
+//  * A game with ONE human realm (solo against bots) gets no messaging at all — the tab is never
+//    shown, on either the desktop panel or the phone tab bar.
+//
+// CHANNELS. A channel key is derived from the message itself, so both ends compute the same key:
+//     public                        → 'public'
+//     private, participants a,b,…   → 'p:' + the sorted unique realm indices, dash-joined, SENDER
+//                                     INCLUDED.
+// A two-realm conversation is therefore one channel whichever side writes into it, and a dispatch
+// addressed to two realms at once becomes its own conference thread rather than landing separately in
+// two 1:1 threads.
+//
+// UNREAD. game_message_reads holds one row per (game, realm) carrying a {channelKey: lastMessageId}
+// map. Message IDS are compared, never timestamps, so a clock skew between two players' browsers
+// cannot silently mark a dispatch as read.
+//
+// SECURITY. Forging a sender is prevented by the TABLE, not by this code: the insert policy requires
+// from_index to be the realm the signed-in account actually holds in that game, and from_user_id to
+// be auth.uid(). The "must have met them" rule, by contrast, is enforced only in this UI — a
+// determined player could address an unmet realm straight through the API. That leaks nothing (they
+// still cannot READ anything not addressed to them) and is recorded in DEV_LOG as a known limit.
+const KC_MSG_TABLE='game_messages';
+const KC_MSG_READS='game_message_reads';
+const MSG_POLL_MS=8000;      // tick length while the Dispatches view is open
+const MSG_SLOW_EVERY=4;      // … and one tick in four when it is not (≈32s, for the unread badge)
+const MSG_MAX_LEN=4000;
+const MSG_PAGE=400;          // most recent dispatches loaded on entry; later ones arrive by id, and
+                             // anything older is fetched a page at a time by loadOlderMessages()
+let _msgGameId=null, _msgMyIndex=null, _msgMyName='', _msgMyColor=null;
+let _msgRows=[], _msgIds=new Set(), _msgMaxId=0, _msgMinId=0, _msgMoreOlder=false, _msgLoadingOlder=false;
+let _msgReads={};            // channelKey -> highest message id this realm has seen
+let _msgRealms={};           // realm index -> {index,name,color,human,met,conceded,eliminated}
+let _msgChannel='public';
+let _msgExtraGroups=[];      // conference channels opened this session that carry no messages yet
+let _msgTimer=null, _msgTick=0, _msgBusy=false, _msgSending=false;
+let _msgTableOk=null;        // null = not probed, false = the SQL has not been run
+let _msgErr=null, _msgReadsDirty=false, _msgReadSaveTimer=null;
+
+function _msgEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _msgNum(v){ const n=Number(v); return Number.isFinite(n)?n:null; }
+function _msgArr(v){ return Array.isArray(v)?v:[]; }
+
+// ── channel keys ──
+function msgChannelKeyOf(row){
+  if(!row) return 'public';
+  if(row.scope==='public'||!_msgArr(row.to_indexes).length) return 'public';
+  return msgGroupKey([_msgNum(row.from_index), ..._msgArr(row.to_indexes).map(_msgNum)]);
+}
+// Sorted, de-duplicated, numeric — the ONE place a key is spelled, so the sender's key and the
+// recipient's key cannot drift apart.
+function msgGroupKey(indices){
+  const set=[...new Set(_msgArr(indices).map(_msgNum).filter(i=>i!=null))].sort((a,b)=>a-b);
+  return 'p:'+set.join('-');
+}
+function msgParticipantsOf(key){
+  if(!key||key==='public') return [];
+  return String(key).slice(2).split('-').map(_msgNum).filter(i=>i!=null);
+}
+function msgRealmName(i){ const r=_msgRealms[i]; return (r&&r.name)||('Realm '+((_msgNum(i)||0)+1)); }
+function msgRealmColour(i){
+  const r=_msgRealms[i];
+  const hex=(r&&r.color)||null;
+  if(!hex) return '#c9b189';
+  // The thread sits on a very dark ground, so a realm colour is lifted for contrast the same way the
+  // map tooltip lifts its symbols — hue kept, lightness raised only as far as it must be.
+  try{ return _tintForDarkTooltip?_tintForDarkTooltip(hex):hex; }catch(e){ return hex; }
+}
+
+// ── ROSTER ── who is in this game, who is human, and whom this realm has met.
+async function loadMessageRoster(gameId, report){
+  const known={};
+  _msgArr(report&&report.diplomacy&&report.diplomacy.known).forEach(k=>{
+    const i=_msgNum(k&&k.index); if(i==null) return;
+    known[i]={index:i,name:k.name||('Realm '+(i+1)),color:k.color||null,alignment:k.alignment||null,
+              conceded:!!k.conceded,eliminated:!!k.eliminated,relation:k.relation||'neutral'};
+  });
+  // A bot is the only slot with no user_id. display_name is the realm name the GM stored at join /
+  // bot creation, and is the fallback when a realm has been met but carries no name in the report.
+  let humans=new Set(), total=0;
+  try{
+    const {data:slots,error}=await sb.from('game_players').select('player_index,user_id,display_name').eq('game_id',gameId);
+    if(error) throw error;
+    _msgArr(slots).forEach(s=>{
+      const i=_msgNum(s.player_index); if(i==null) return;
+      total++;
+      if(s.user_id) humans.add(i);
+      if(known[i]&&!known[i].name&&s.display_name) known[i].name=s.display_name;
+    });
+  }catch(e){ _msgErr='Could not read the realm roster: '+(e&&e.message||e); }
+  _msgRealms={};
+  Object.values(known).forEach(k=>{ _msgRealms[k.index]={...k,human:humans.has(k.index),met:true}; });
+  // My own realm, for the "you" label on my dispatches.
+  if(_msgMyIndex!=null) _msgRealms[_msgMyIndex]={index:_msgMyIndex,name:_msgMyName||msgRealmName(_msgMyIndex),
+    color:_msgMyColor,human:true,met:true,conceded:false,eliminated:false,mine:true};
+  // Messaging exists only where there is someone to message: two or more HUMAN realms in the game.
+  _msgEnabled=humans.size>=2;
+  return {humans:humans.size,total};
+}
+// The realms this player may address privately: met, human, and not themselves.
+function msgContacts(){
+  return Object.values(_msgRealms)
+    .filter(r=>r&&r.met&&r.human&&r.index!==_msgMyIndex)
+    .sort((a,b)=>a.index-b.index);
+}
+function msgChannelIsSendable(key){
+  if(key==='public') return true;
+  const others=msgParticipantsOf(key).filter(i=>i!==_msgMyIndex);
+  if(!others.length) return false;
+  // Every addressee gone from the game → nothing to send to. One still standing is enough.
+  return others.some(i=>{ const r=_msgRealms[i]; return r&&r.human&&!r.conceded&&!r.eliminated; });
+}
+function msgChannelLabel(key){
+  if(key==='public') return '📣 All Realms';
+  const others=msgParticipantsOf(key).filter(i=>i!==_msgMyIndex);
+  if(!others.length) return 'Private note';
+  if(others.length===1) return msgRealmName(others[0]);
+  return others.map(i=>msgRealmName(i)).join(' + ');
+}
+
+// ── ENTRY POINT ── called by openReport once the report is in hand.
+async function initMessaging(gameId, myIndex, report){
+  const same=(String(_msgGameId)===String(gameId) && _msgMyIndex===_msgNum(myIndex));
+  _msgGameId=gameId!=null?String(gameId):null;
+  _msgMyIndex=_msgNum(myIndex);
+  _msgMyName=(report&&report.playerName)||'';
+  _msgMyColor=(report&&report.kingdom&&report.kingdom.color)||null;
+  if(!same){ _msgRows=[]; _msgIds=new Set(); _msgMaxId=0; _msgMinId=0; _msgMoreOlder=false;
+             _msgReads={}; _msgChannel='public'; _msgExtraGroups=[]; _msgErr=null; }
+  await loadMessageRoster(gameId, report);
+  { const h=document.getElementById('msg-col-title');   // the tab already says "Dispatches"; the column
+    if(h) h.textContent='✉ Dispatches — '+(_msgMyName||'your realm'); }  // header says who is writing
+  const mt=document.getElementById('mt-messages'); if(mt) mt.style.display=_msgEnabled?'':'none';
+  const dt=document.getElementById('desk-msg-tab'); if(dt) dt.style.display=_msgEnabled?'':'none';
+  try{ applyDeskViews(); }catch(e){}
+  if(!_msgEnabled){ stopMessagePolling(); updateMsgBadges(); return; }
+  if(_msgTableOk===null) await probeMessagesTable();
+  if(!same) await loadMessageReads();
+  _msgBindChannelClicks(); _msgBindComposerKeys();
+  renderMessageChannels(); renderMessageThread();
+  await refreshMessages(true);
+  startMessagePolling();
+}
+async function probeMessagesTable(){
+  try{
+    const {error}=await sb.from(KC_MSG_TABLE).select('id').limit(1);
+    _msgTableOk=!error;
+    if(error) _msgErr=error.message;
+  }catch(e){ _msgTableOk=false; _msgErr=String(e&&e.message||e); }
+  return _msgTableOk;
+}
+async function loadMessageReads(){
+  if(!_msgGameId||_msgMyIndex==null) return;
+  try{
+    const {data,error}=await sb.from(KC_MSG_READS).select('reads')
+      .eq('game_id',_msgGameId).eq('player_index',_msgMyIndex).maybeSingle();
+    if(error) throw error;
+    const r=data&&data.reads;
+    _msgReads=(r&&typeof r==='object'&&!Array.isArray(r))?{...r}:{};
+  }catch(e){ _msgReads={}; }   // no row yet, or the table is missing — everything reads as unread
+}
+function queueMessageReadSave(){
+  _msgReadsDirty=true;
+  if(_msgReadSaveTimer) return;
+  _msgReadSaveTimer=setTimeout(()=>{ _msgReadSaveTimer=null; saveMessageReads(); }, 1200);
+}
+async function saveMessageReads(){
+  if(!_msgReadsDirty||!_msgGameId||_msgMyIndex==null||!currentUser) return;
+  _msgReadsDirty=false;
+  try{
+    await sb.from(KC_MSG_READS).upsert({
+      game_id:_msgGameId, player_index:_msgMyIndex, user_id:currentUser.id,
+      reads:_msgReads, updated_at:new Date().toISOString()
+    },{onConflict:'game_id,player_index'});
+  }catch(e){ /* read marks are a convenience; a failure only means a badge lingers */ }
+}
+
+// ── POLLING ── one timer. Every tick while the view is open; one tick in four otherwise, which keeps
+// the unread badge live without a request every 8 seconds for a panel nobody is looking at.
+function startMessagePolling(){
+  if(_msgTimer) return;
+  _msgTimer=setInterval(()=>{
+    _msgTick++;
+    if(document.hidden) return;
+    if(!_msgEnabled||!_msgGameId) return;
+    if(_activeSectionId()!=='sec-report') return;
+    if(!_msgViewVisible() && (_msgTick%MSG_SLOW_EVERY)!==0) return;
+    refreshMessages(false);
+  }, MSG_POLL_MS);
+}
+function stopMessagePolling(){ if(_msgTimer){ clearInterval(_msgTimer); _msgTimer=null; } }
+function _msgViewVisible(){
+  if(_activeSectionId()!=='sec-report') return false;
+  const lay=document.getElementById('rp-layout'); if(!lay) return false;
+  if(lay.classList.contains('desk')) return _deskLeftView==='messages';
+  return lay.classList.contains('mv-messages');
+}
+
+// ── FETCH ── first call pulls the most recent MSG_PAGE rows; every later call asks only for ids above
+// the highest already held, so a long game does not re-download its whole correspondence each tick.
+async function refreshMessages(force){
+  if(!_msgEnabled||!_msgGameId) return;
+  if(_msgBusy&&!force) return;
+  if(_msgTableOk===null) await probeMessagesTable();
+  if(!_msgTableOk){ renderMessageThread(); return; }
+  _msgBusy=true;
+  try{
+    const cols='id,turn,from_index,to_indexes,scope,body,created_at';
+    let q=sb.from(KC_MSG_TABLE).select(cols).eq('game_id',_msgGameId);
+    q=(_msgMaxId>0)
+      ? q.gt('id',_msgMaxId).order('id',{ascending:true}).limit(MSG_PAGE)
+      : q.order('id',{ascending:false}).limit(MSG_PAGE);
+    const {data,error}=await q;
+    if(error) throw error;
+    let rows=_msgArr(data);
+    const wasFirst=(_msgMaxId<=0);
+    if(wasFirst){ rows=rows.slice().reverse(); _msgMoreOlder=rows.length>=MSG_PAGE; } // newest-first page → chronological
+    const added=_msgAbsorb(rows);
+    _msgErr=null;
+    if(added||force){ renderMessageChannels(); renderMessageThread(); }
+    updateMsgBadges();
+  }catch(e){
+    _msgErr=String(e&&e.message||e);
+    renderMessageThread();
+  }finally{ _msgBusy=false; }
+}
+
+// Fold a fetched page into the held rows, ignoring anything already there (a poll and a manual refresh
+// can overlap). Returns how many were new, and keeps the id watermarks in step.
+function _msgAbsorb(rows){
+  let added=0;
+  _msgArr(rows).forEach(r=>{
+    const id=_msgNum(r&&r.id); if(id==null||_msgIds.has(id)) return;
+    _msgIds.add(id); _msgRows.push(r); added++;
+    if(id>_msgMaxId) _msgMaxId=id;
+    if(_msgMinId===0||id<_msgMinId) _msgMinId=id;
+  });
+  if(added) _msgRows.sort((a,b)=>_msgNum(a.id)-_msgNum(b.id));
+  return added;
+}
+// A game that has run to hundreds of dispatches loads only its most recent page on entry; this walks
+// back through the rest one page at a time, so nothing written is ever out of reach.
+async function loadOlderMessages(){
+  if(_msgLoadingOlder||!_msgMoreOlder||!_msgGameId||_msgMinId<=0) return;
+  _msgLoadingOlder=true; renderMessageThread();
+  try{
+    const {data,error}=await sb.from(KC_MSG_TABLE)
+      .select('id,turn,from_index,to_indexes,scope,body,created_at')
+      .eq('game_id',_msgGameId).lt('id',_msgMinId).order('id',{ascending:false}).limit(MSG_PAGE);
+    if(error) throw error;
+    const page=_msgArr(data);
+    _msgMoreOlder=page.length>=MSG_PAGE;
+    _msgAbsorb(page.slice().reverse());
+  }catch(e){ _msgErr=String(e&&e.message||e); }
+  finally{ _msgLoadingOlder=false; renderMessageChannels(); renderMessageThread(); }
+}
+
+// ── UNREAD ──
+function msgRowsOf(key){ return _msgRows.filter(r=>msgChannelKeyOf(r)===key); }
+function msgUnreadIn(key){
+  const seen=_msgNum(_msgReads[key])||0;
+  return msgRowsOf(key).filter(r=>(_msgNum(r.id)||0)>seen && _msgNum(r.from_index)!==_msgMyIndex).length;
+}
+function msgUnreadTotal(){ return msgChannelKeys().reduce((n,k)=>n+msgUnreadIn(k),0); }
+function markChannelRead(key){
+  const rows=msgRowsOf(key); if(!rows.length) return;
+  const top=rows.reduce((m,r)=>Math.max(m,_msgNum(r.id)||0),0);
+  if((_msgNum(_msgReads[key])||0)>=top) return;
+  _msgReads[key]=top; queueMessageReadSave(); updateMsgBadges(); renderMessageChannels();
+}
+function updateMsgBadges(){
+  const n=_msgEnabled?msgUnreadTotal():0;
+  const txt=n?(n>99?'99+':String(n)):'';
+  ['desk-msg-badge','mt-msg-badge'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.className=txt?'msg-tabbadge':'';
+    el.textContent=txt;
+  });
+}
+
+// ── CHANNEL LIST ── public, then every met human realm (whether or not it has been written to yet),
+// then any conference thread that exists in the history or was opened this session.
+function msgChannelKeys(){
+  const keys=['public'];
+  msgContacts().forEach(r=>{ const k=msgGroupKey([_msgMyIndex,r.index]); if(!keys.includes(k)) keys.push(k); });
+  const groups=new Set();
+  _msgRows.forEach(r=>{ const k=msgChannelKeyOf(r); if(k!=='public'&&!keys.includes(k)) groups.add(k); });
+  _msgExtraGroups.forEach(k=>{ if(k!=='public'&&!keys.includes(k)) groups.add(k); });
+  return keys.concat([...groups].sort());
+}
+function setMsgChannel(key){
+  _msgChannel=key||'public';
+  renderMessageChannels(); renderMessageThread();
+  if(_msgViewVisible()) markChannelRead(_msgChannel);
+  const ta=document.getElementById('msg-input'); if(ta) try{ ta.focus(); }catch(e){}
+}
+function renderMessageChannels(){
+  const el=document.getElementById('msg-channels'); if(!el) return;
+  const keys=msgChannelKeys();
+  if(!keys.includes(_msgChannel)) _msgChannel='public';
+  el.innerHTML=keys.map(k=>{
+    const others=msgParticipantsOf(k).filter(i=>i!==_msgMyIndex);
+    const gone=k!=='public'&&!msgChannelIsSendable(k);
+    const dot=(k==='public')
+      ? '<span class="mc-dot" style="background:#7d5fb5"></span>'
+      : (others.length===1?'<span class="mc-dot" style="background:'+_msgEsc(msgRealmColour(others[0]))+'"></span>'
+                          :'<span class="mc-dot" style="background:linear-gradient(90deg,'+others.slice(0,3).map(i=>_msgEsc(msgRealmColour(i))).join(',')+')"></span>');
+    const u=msgUnreadIn(k);
+    return '<button type="button" class="msg-chan'+(k===_msgChannel?' active':'')+(gone?' gone':'')+'" data-ch="'+_msgEsc(k)+'" title="'+_msgEsc(msgChannelLabel(k))+(gone?' — no longer in the game':'')+'">'
+      +dot+'<span class="mc-label">'+_msgEsc(msgChannelLabel(k))+'</span>'
+      +(u?'<span class="mc-unread">'+(u>99?'99+':u)+'</span>':'')+'</button>';
+  }).join('');
+  updateMsgComposer();
+}
+// One delegated listener rather than an inline onclick per chip: a channel key would otherwise have to
+// survive being written into an HTML attribute and read back as JavaScript.
+function _msgBindChannelClicks(){
+  const el=document.getElementById('msg-channels'); if(!el||el._bound) return;
+  el._bound=true;
+  el.addEventListener('click',ev=>{
+    const b=ev.target&&ev.target.closest?ev.target.closest('.msg-chan'):null;
+    if(b&&b.dataset&&b.dataset.ch) setMsgChannel(b.dataset.ch);
+  });
+}
+
+// ── THREAD ──
+function _msgWhen(iso){
+  const d=new Date(iso); if(isNaN(d)) return '';
+  return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function _msgDay(iso){
+  const d=new Date(iso); if(isNaN(d)) return '';
+  return d.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'});
+}
+function renderMessageThread(){
+  const el=document.getElementById('msg-thread'); if(!el) return;
+  if(!_msgEnabled){ el.innerHTML='<div class="msg-empty">This game has only one human realm, so there is no one to send dispatches to.</div>'; return; }
+  if(_msgTableOk===false){
+    el.innerHTML='<div class="msg-empty">Dispatches are not switched on for this server yet — the <strong>game_messages</strong> table is missing. Ask your GM to run the messaging SQL shown on their portal.'
+      +(_msgErr?'<br><span style="font-size:.72rem;opacity:.7">'+_msgEsc(_msgErr)+'</span>':'')+'</div>';
+    updateMsgComposer(); return;
+  }
+  // Keep the thread pinned to the foot when it already was — a dispatch arriving mid-read must not
+  // yank the view, but the normal case is "show me the newest".
+  const atBottom=(el.scrollHeight-el.scrollTop-el.clientHeight)<60;
+  const rows=msgRowsOf(_msgChannel);
+  const older=_msgMoreOlder
+    ? '<button type="button" class="msg-chan" style="align-self:center" onclick="loadOlderMessages()"'+(_msgLoadingOlder?' disabled':'')+'>'
+      +(_msgLoadingOlder?'Loading…':'↑ Earlier dispatches')+'</button>'
+    : '';
+  if(!rows.length){
+    const who=_msgChannel==='public'?'every realm in the game':msgChannelLabel(_msgChannel);
+    el.innerHTML=older+'<div class="msg-empty">No dispatches here yet.<br>Anything you write goes to <strong>'+_msgEsc(who)+'</strong>.</div>';
+    updateMsgComposer(); return;
+  }
+  const seen=_msgNum(_msgReads[_msgChannel])||0;
+  let lastDay=null, html=older;
+  rows.forEach(r=>{
+    const day=_msgDay(r.created_at);
+    if(day&&day!==lastDay){ lastDay=day; html+='<div class="msg-day">'+_msgEsc(day)+'</div>'; }
+    const from=_msgNum(r.from_index);
+    const mine=from===_msgMyIndex;
+    const pub=(r.scope==='public'||!_msgArr(r.to_indexes).length);
+    const others=_msgArr(r.to_indexes).map(_msgNum).filter(i=>i!=null&&i!==from);
+    const showTo=pub?'to all realms':(others.length>1?('to '+others.map(i=>msgRealmName(i)).join(', ')):'');
+    const fresh=!mine&&(_msgNum(r.id)||0)>seen;
+    html+='<div class="msg-bubble'+(mine?' mine':'')+(pub&&!mine?' pub':'')+'">'
+      +'<div class="msg-meta">'
+        +'<span class="msg-from" style="color:'+_msgEsc(msgRealmColour(from))+'">'+_msgEsc(mine?(msgRealmName(from)+' (you)'):msgRealmName(from))+'</span>'
+        +(showTo?'<span class="msg-to">'+_msgEsc(showTo)+'</span>':'')
+        +'<span class="msg-when">'+(r.turn!=null?('T'+_msgEsc(r.turn)+' · '):'')+_msgEsc(_msgWhen(r.created_at))+'</span>'
+        +(fresh?'<span class="mc-unread" title="New since you last read this thread">new</span>':'')
+      +'</div>'+_msgEsc(r.body)+'</div>';
+  });
+  el.innerHTML=html;
+  if(atBottom) el.scrollTop=el.scrollHeight;
+  updateMsgComposer();
+}
+function onMessagesShown(){
+  _msgBindChannelClicks();
+  renderMessageChannels(); renderMessageThread();
+  const el=document.getElementById('msg-thread'); if(el) el.scrollTop=el.scrollHeight;
+  markChannelRead(_msgChannel);
+  refreshMessages(true);
+}
+
+// ── COMPOSER ──
+function updateMsgComposer(){
+  const btn=document.getElementById('msg-send-btn'), ta=document.getElementById('msg-input'),
+        hint=document.getElementById('msg-hint'), note=document.getElementById('msg-note');
+  if(!btn||!ta) return;
+  const sendable=_msgEnabled&&_msgTableOk!==false&&msgChannelIsSendable(_msgChannel);
+  const len=(ta.value||'').trim().length;
+  btn.disabled=!sendable||!len||_msgSending;
+  ta.disabled=!sendable;
+  if(hint){
+    hint.innerHTML=!sendable
+      ? (_msgTableOk===false?'Messaging is not active on this server.':'Every realm in this conversation has left the game.')
+      : (_msgChannel==='public'
+          ? 'Public — <strong>every realm in this game</strong> will read this.'
+          : 'Private to '+_msgEsc(msgChannelLabel(_msgChannel))+'.')
+        +' <span style="opacity:.75">Ctrl+Enter sends. '+(MSG_MAX_LEN-len)+' left.</span>';
+  }
+  if(note){ note.style.display=_msgErr&&_msgTableOk!==false?'block':'none'; note.textContent=_msgErr||''; }
+}
+function onMsgInput(){ updateMsgComposer(); }
+// Ctrl/Cmd+Enter sends; a bare Enter stays a newline, because a dispatch is usually a paragraph and
+// not a chat line.
+function _msgBindComposerKeys(){
+  const ta=document.getElementById('msg-input'); if(!ta||ta._bound) return;
+  ta._bound=true;
+  ta.addEventListener('keydown',ev=>{
+    if(ev.key==='Enter'&&(ev.ctrlKey||ev.metaKey)){ ev.preventDefault(); sendMessage(); }
+  });
+}
+async function sendMessage(){
+  const ta=document.getElementById('msg-input'); if(!ta) return;
+  const body=(ta.value||'').trim();
+  if(!body||_msgSending||!_msgEnabled||!_msgGameId||_msgMyIndex==null) return;
+  if(!msgChannelIsSendable(_msgChannel)) return;
+  const key=_msgChannel;
+  const pub=(key==='public');
+  const to=pub?[]:msgParticipantsOf(key).filter(i=>i!==_msgMyIndex);
+  if(!pub&&!to.length) return;
+  _msgSending=true; updateMsgComposer();
+  const turn=_msgNum(currentGamePlayer&&currentGamePlayer._liveTurn)||_msgNum(currentReport&&currentReport._liveTurn);
+  try{
+    const {error}=await sb.from(KC_MSG_TABLE).insert({
+      game_id:_msgGameId, turn:turn, from_index:_msgMyIndex,
+      from_user_id:(currentUser&&currentUser.id)||null,
+      to_indexes:to, scope:pub?'public':'private',
+      body:body.slice(0,MSG_MAX_LEN)
+    });
+    if(error) throw error;
+    ta.value=''; _msgErr=null;
+    await refreshMessages(true);                 // straight back out of the table, so the sender sees it
+    const th=document.getElementById('msg-thread'); if(th) th.scrollTop=th.scrollHeight;
+    markChannelRead(key);
+  }catch(e){
+    _msgErr='Dispatch not sent: '+String(e&&e.message||e);
+  }finally{ _msgSending=false; updateMsgComposer(); }
+}
+
+// ── CONFERENCE PICKER ── address one private dispatch to several met realms at once.
+function toggleMsgGroupPicker(force){
+  const p=document.getElementById('msg-group-pick'); if(!p) return;
+  const open=(force===undefined)?(p.style.display!=='block'):!!force;
+  p.style.display=open?'block':'none';
+  if(!open) return;
+  const list=document.getElementById('msg-group-list');
+  const cs=msgContacts();
+  if(list) list.innerHTML=cs.length
+    ? cs.map(r=>'<label><input type="checkbox" value="'+r.index+'">'
+        +'<span style="color:'+_msgEsc(msgRealmColour(r.index))+'">'+_msgEsc(r.name)+'</span>'
+        +((r.conceded||r.eliminated)?' <span style="opacity:.6;font-size:.72rem">(out)</span>':'')+'</label>').join('')
+    : '<span style="font-size:.76rem;color:#8a7a5c">You have not met another player\'s realm yet.</span>';
+}
+function createMsgGroup(){
+  const list=document.getElementById('msg-group-list'); if(!list) return;
+  const picked=[...list.querySelectorAll('input[type=checkbox]:checked')].map(c=>_msgNum(c.value)).filter(i=>i!=null);
+  if(!picked.length) return;
+  const key=msgGroupKey([_msgMyIndex,...picked]);
+  if(!_msgExtraGroups.includes(key)) _msgExtraGroups.push(key);
+  toggleMsgGroupPicker(false);
+  setMsgChannel(key);
+}
+// Leaving or backgrounding the tab flushes the read marks (the save is debounced, so a pending one
+// would otherwise be lost); coming back to it pulls anything that arrived meanwhile straight away
+// rather than waiting out the poll.
+window.addEventListener('pagehide',()=>{ try{ saveMessageReads(); }catch(e){} });
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ try{ saveMessageReads(); }catch(e){} }
+  else if(_msgEnabled&&_msgViewVisible()){ try{ refreshMessages(true); }catch(e){} }
+});
+
 // ── BOOT ────
 init().catch(err=>{
   console.error('Init error:', err);
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1958</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-2134</div>
 </body>
 </html>

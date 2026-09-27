@@ -204,6 +204,7 @@ section{display:none;}.section-active{display:block;}
     <div id="msg-games"></div>
     <div id="msg-telemetry"></div>
     <div id="msg-leaderboard"></div>
+    <div id="msg-messaging"></div>
     <div id="auto-turn-status" style="display:none;margin-bottom:10px;font-size:.78rem;color:var(--parchment);border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c"></div>
     <div id="games-list"></div>
   </section>
@@ -383,7 +384,7 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.09.27-1839';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.27-1958'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.27-2134'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1134,6 +1135,7 @@ async function onSignedIn(){
   await probeGameMeta();      // Disk-IO fix (2026-09-25): is the light `games.meta` column there?
   probeTelemetry().then(ok=>{ if(ok) backfillGameResults(); }); // telemetry tables (2026-09-25) — never blocks sign-in
   probeLeaderboard();                                                 // Hall-of-Fame table (2026-09-27); records are built on game-over or by button, never at sign-in
+  probeMessaging();                                                   // player-messaging tables (2026-09-27); the GM portal only reports whether the SQL has been run
   loadGames();
   startAutoTurnWatcher(); // automatic turn modes only fire while a signed-in GM tab is open
   backfillGameMeta();     // one-off: stamp meta on any game that predates the column (no-op after)
@@ -1897,6 +1899,14 @@ async function deleteGame(gameId){
   msg.innerHTML='<div class="msg-info">Deleting…</div>';
   // Delete players first (cascade should handle it, but be explicit)
   await sb.from('turn_logs').delete().eq('game_id',gameId);
+  // Dispatches BEFORE the games row: the delete policy on game_messages checks that the caller is the
+  // GM of a game with this id, so once the games row is gone nobody can remove them any more.
+  if(_kcHasMsg){
+    try{
+      await sb.from('game_messages').delete().eq('game_id',String(gameId));
+      await sb.from('game_message_reads').delete().eq('game_id',String(gameId));
+    }catch(e){ console.warn('dispatch cleanup:',e); }
+  }
   await sb.from('game_players').delete().eq('game_id',gameId);
   const {error}=await sb.from('games').delete().eq('id',gameId);
   if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
@@ -4165,6 +4175,96 @@ function renderTelemetryBanner(){
     el.innerHTML=`<div class="msg-error"><strong>📈 Telemetry write failed</strong> on the last turn run: ${String(_kcTelLastErr).replace(/</g,'&lt;')}. The turn itself was saved; only the statistics row was lost.</div>`;
   } else el.innerHTML='';
 }
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// DISPATCHES — the player-to-player messaging tables (2026-09-27)
+// ════════════════════════════════════════════════════════════════════════════════════════════════
+// The messaging UI lives entirely in the PLAYER portal (it replaced the duplicate Report tab beside
+// the map). The GM portal carries only this: the one-off SQL paste, a probe so the game list can say
+// when it has not been run, and the two deletes that keep a removed game from leaving dispatches
+// behind. No turn-path code touches these tables, so a messaging fault can never cost a turn.
+//
+// WHAT THE POLICIES GUARANTEE, and what they do not:
+//  * A dispatch can only be INSERTED with from_index = the realm the signed-in account actually holds
+//    in that game, and from_user_id = auth.uid(). A player cannot write in another realm's name.
+//  * A dispatch can only be READ by its sender, its addressees, or anybody in the game if it is
+//    public — plus the GM of that game. THE GM CAN THEREFORE READ PRIVATE DIPLOMACY. That is a
+//    referee power, deliberate and easy to revoke: delete the second `or exists (…games…)` branch of
+//    the read policy and re-run it.
+//  * "You may only write to a realm you have MET" is enforced in the player portal's UI only — the
+//    encountered list lives inside game_state, which SQL here cannot read. Bypassing it would let a
+//    player write to a stranger; it would NOT let them read anything more.
+//  * Nobody can UPDATE a dispatch and only the game's GM can DELETE one, so a message cannot be
+//    edited or withdrawn after it is sent — which is what "messages don't get lost" has to mean.
+// game_id is TEXT and casts the other side (gp.game_id::text) so it does not matter whether the games
+// table's key is uuid or text, and the rows outlive the game row itself.
+const KC_MSG_SQL=`create table if not exists public.game_messages (
+  id bigserial primary key,
+  game_id text not null,
+  turn integer,
+  from_index integer not null,
+  from_user_id uuid not null default auth.uid(),
+  to_indexes integer[] not null default '{}',
+  scope text not null default 'private',
+  body text not null,
+  created_at timestamptz not null default now(),
+  constraint game_messages_scope_ck check (scope in ('public','private')),
+  constraint game_messages_to_ck check (scope = 'public' or coalesce(array_length(to_indexes,1),0) >= 1)
+);
+create index if not exists game_messages_game_idx on public.game_messages (game_id, id);
+create table if not exists public.game_message_reads (
+  game_id text not null,
+  player_index integer not null,
+  user_id uuid not null,
+  reads jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (game_id, player_index)
+);
+alter table public.game_messages enable row level security;
+alter table public.game_message_reads enable row level security;
+drop policy if exists "read game_messages" on public.game_messages;
+create policy "read game_messages" on public.game_messages for select to authenticated using (
+  exists (select 1 from public.game_players gp
+          where gp.game_id::text = game_messages.game_id
+            and gp.user_id = auth.uid()
+            and ( game_messages.scope = 'public'
+                  or gp.player_index = game_messages.from_index
+                  or gp.player_index = any (game_messages.to_indexes) ))
+  or exists (select 1 from public.games g
+             where g.id::text = game_messages.game_id and g.gm_user_id = auth.uid())
+);
+drop policy if exists "send game_messages" on public.game_messages;
+create policy "send game_messages" on public.game_messages for insert to authenticated with check (
+  from_user_id = auth.uid()
+  and exists (select 1 from public.game_players gp
+              where gp.game_id::text = game_messages.game_id
+                and gp.user_id = auth.uid()
+                and gp.player_index = game_messages.from_index)
+);
+drop policy if exists "gm tidy game_messages" on public.game_messages;
+create policy "gm tidy game_messages" on public.game_messages for delete to authenticated using (
+  exists (select 1 from public.games g
+          where g.id::text = game_messages.game_id and g.gm_user_id = auth.uid())
+);
+drop policy if exists "own game_message_reads" on public.game_message_reads;
+create policy "own game_message_reads" on public.game_message_reads for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());`;
+let _kcHasMsg=false;
+async function probeMessaging(){
+  try{
+    const a=await sb.from('game_messages').select('id').limit(1);
+    const b=await sb.from('game_message_reads').select('game_id').limit(1);
+    _kcHasMsg=!a.error&&!b.error;
+    if(a.error) console.warn('game_messages probe:',a.error.message);
+    if(b.error) console.warn('game_message_reads probe:',b.error.message);
+  }catch(e){ _kcHasMsg=false; }
+  renderMessagingBanner();
+  return _kcHasMsg;
+}
+function renderMessagingBanner(){
+  const el=document.getElementById('msg-messaging'); if(!el) return;
+  el.innerHTML=_kcHasMsg?'':`<div class="msg-info"><strong>✉ Player messaging not active</strong> — the <code>game_messages</code> / <code>game_message_reads</code> tables are missing, so the Dispatches panel in the player portal cannot send or receive. In Supabase → SQL Editor paste and run the statement below, then reload this page.<br>
+      <textarea readonly onclick="this.select()" style="width:100%;height:110px;font-family:monospace;font-size:.7rem;margin:6px 0 0;background:#fdf8ee">${KC_MSG_SQL.replace(/</g,'&lt;')}</textarea></div>`;
+}
 // ── SNAPSHOT of one realm's situation, from a parsed game state. Module level: uses only module-level
 // helpers (unitBaseStrength, relOfReport, consecratedIds), so buildGameResultRows can call it on any
 // loaded state, not just inside runTurn.
@@ -5220,6 +5320,13 @@ async function saveTurnMode(){
 // conditional save in runTurn (`.eq('turn',expected)`), which also covers two different devices.
 const AUTO_WATCH_MS=60000;
 let _autoWatcherTimer=null, _autoRunBusy=false;
+// ── CRASH COOLDOWN (2026-09-27) ────
+// A turn that throws is very likely to throw again on identical input, and the watcher ticks once a
+// minute: without this, one broken build turns into a failed turn every 60 seconds per game, for as
+// long as the tab is open. After a failed run a game is left alone for AUTO_FAIL_COOLDOWN_MS, and
+// the watcher says so on the banner. Any successful run clears the mark, and so does a reload.
+const AUTO_FAIL_COOLDOWN_MS=15*60000;
+const _autoFailUntil=new Map(); // gameId -> timestamp to resume trying
 const _tabId=Math.random().toString(36).slice(2);
 function _autoLease(gameId,take){
   try{
@@ -5294,14 +5401,22 @@ async function autoTurnTick(){
         lines.push(`${g.name}: Turn ${g.turn} — ${r.reason}${tm.mode==='deadline'?` · deadline ${fmtDeadline(tm.nextDeadlineAt)}`:''}`);
         continue;
       }
+      if(_autoFailUntil.get(g.id)>Date.now()){
+        lines.push(`${g.name}: Turn ${g.turn} — paused after a failed run, retrying ${fmtDeadline(new Date(_autoFailUntil.get(g.id)).toISOString())}`);
+        continue;
+      }
       if(await refreshIfNewerBuild(g)) return; // a newer build is uploaded — reload first, the turn runs on it after the reload
       if(!_autoLease(g.id,true)){ lines.push(`${g.name}: another GM tab is running Turn ${g.turn}`); continue; }
       lines.push(`${g.name}: ⏳ running Turn ${g.turn} (${r.reason})…`);
       setAutoTurnStatus(`<strong>⚙️ Auto-turn watcher</strong> · checked ${new Date().toLocaleTimeString()}<br>${lines.join('<br>')}`);
       try{
         if(currentGame&&currentGame.id===g.id){ currentGame.turn=g.turn; if(g.game_state!==undefined) currentGame.game_state=g.game_state; if(g.meta!==undefined) currentGame.meta=g.meta; }
-        await runTurn({auto:true,game:g,reason:r.reason});
-      }catch(e){ console.error('auto-turn error',e); lines[lines.length-1]=`${g.name}: ⚠ ${e.message}`; }
+        const _res=await runTurn({auto:true,game:g,reason:r.reason});
+        // runTurn reports its own failures rather than throwing; a failed run puts this game on the
+        // crash cooldown so a broken build cannot grind a turn every minute.
+        if(_res&&_res.ok===false){ _autoFailUntil.set(g.id,Date.now()+AUTO_FAIL_COOLDOWN_MS); lines[lines.length-1]=`${g.name}: ⚠ Turn ${g.turn} failed (${_res.error||'see console'}) — paused for ${Math.round(AUTO_FAIL_COOLDOWN_MS/60000)} min`; }
+        else _autoFailUntil.delete(g.id);
+      }catch(e){ console.error('auto-turn error',e); _autoFailUntil.set(g.id,Date.now()+AUTO_FAIL_COOLDOWN_MS); lines[lines.length-1]=`${g.name}: ⚠ ${e.message} — paused for ${Math.round(AUTO_FAIL_COOLDOWN_MS/60000)} min`; }
       finally{ _autoLease(g.id,false); }
       // One turn per tick: the next tick re-reads fresh rows (and the next game).
       break;
@@ -10410,9 +10525,9 @@ function buildTurnReport(gameState, playerIndex){
     const SEA_UNIT_TYPES=new Set(KC_UNIT_CLASS.sea);
     // Winged units cross sea without a fleet (matches AERIAL_TYPES in the engine).
     const AERIAL_UNIT_TYPES=new Set(KC_UNIT_CLASS.aerial);
-    const landArmiesRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type));
-    const seaArmiesRep=armies.filter(a=>SEA_UNIT_TYPES.includes(a.type));
-    const trueLandRep=armies.filter(a=>!SEA_UNIT_TYPES.includes(a.type)&&!AERIAL_UNIT_TYPES.has(a.type));
+    const landArmiesRep=armies.filter(a=>!SEA_UNIT_TYPES.has(a.type));
+    const seaArmiesRep=armies.filter(a=>SEA_UNIT_TYPES.has(a.type));
+    const trueLandRep=armies.filter(a=>!SEA_UNIT_TYPES.has(a.type)&&!AERIAL_UNIT_TYPES.has(a.type));
     let effSpd=armies.length===0?5:landArmiesRep.length>0?Math.min(...landArmiesRep.map(a=>repSpd(a))):0;
     // Sea speed: use fleets if present; else all-flying/empty forces cross by air at their land
     // speed. 2026-09-12: the squadron sails at its SLOWEST ship and a lone hero takes passage at a
@@ -10429,7 +10544,7 @@ function buildTurnReport(gameState, playerIndex){
       const CAV_REP=new Set(KC_UNIT_CLASS.cavalry);
       const CRE_REP=new Set(KC_UNIT_CLASS.creature);
       const MON_REP=new Set(KC_UNIT_CLASS.monster);
-      const repAirCarriable=(t)=>!(AERIAL_UNIT_TYPES.has(t)||SEA_UNIT_TYPES.includes(t)||CRE_REP.has(t)||MON_REP.has(t)||CAV_REP.has(t));
+      const repAirCarriable=(t)=>!(AERIAL_UNIT_TYPES.has(t)||SEA_UNIT_TYPES.has(t)||CRE_REP.has(t)||MON_REP.has(t)||CAV_REP.has(t));
       let carriers=0,carried=0,selfFly=false,grounded=false;
       armies.forEach(a=>{
         if(FLY_CARRIERS_REP.has(a.type)){carriers++;selfFly=true;}
@@ -10460,7 +10575,7 @@ function buildTurnReport(gameState, playerIndex){
     // is the header's "Land: N/turn".
     { const _mh=(gameState._minorHolders||{});
       const _swift=!!(_mh.swift&&_mh.swift.charId===c.id), _seawolf=!!(_mh.seawolf&&_mh.seawolf.charId===c.id);
-      armies.forEach(a=>{ const _sea=SEA_UNIT_TYPES.includes(a.type);
+      armies.forEach(a=>{ const _sea=SEA_UNIT_TYPES.has(a.type);
         a.moveRate=repSpd(a)+(_sea?(_seawolf?1:0):(_swift?1:0));
         a.moveKind=_sea?'sea':(AERIAL_UNIT_TYPES.has(a.type)?'air':'land'); });
       // the column pace quoted in the orders header must match computeMovePoolMax, which adds the
@@ -11510,12 +11625,14 @@ async function runTurn(opts){
   const {data:freshGame,error:gErr}=await sb.from('games').select('*').eq('id',gameRow.id).single();
   const {data:freshPlayers,error:pErr}=await sb.from('game_players').select('*').eq('game_id',gameRow.id);
   if(gErr||pErr||!freshGame){
-    msg.innerHTML=`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;return;
+    msg.innerHTML=`<div class="msg-error">Could not load game: ${gErr?.message||pErr?.message}</div>`;
+    return {ok:false, committed:false, error:'could not load game'};
   }
 
   // Verify the turn hasn't already advanced (double-run protection)
   if(freshGame.turn!==expectedTurnToRun){
-    msg.innerHTML=`<div class="msg-error">⚠ Turn mismatch: expected Turn ${expectedTurnToRun} but game is now on Turn ${freshGame.turn}. The turn may have already been run. Reload the page.</div>`;return;
+    msg.innerHTML=`<div class="msg-error">⚠ Turn mismatch: expected Turn ${expectedTurnToRun} but game is now on Turn ${freshGame.turn}. The turn may have already been run. Reload the page.</div>`;
+    return {ok:false, committed:false, conflict:true, error:'turn mismatch'};
   }
 
   let G;
@@ -11534,7 +11651,8 @@ async function runTurn(opts){
     // top of the turn, whatever the save held.
     (G.world&&G.world.provinces||[]).forEach(p=>{ if(p){ delete p._hadBattleThisTurn; delete p._combatPlayersThisTurn; } });
   }catch(e){
-    msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';return;
+    msg.innerHTML='<div class="msg-error">Could not parse game state JSON.</div>';
+    return {ok:false, committed:false, error:'could not parse game state'};
   }
   // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
   // the collectors the hooks below fill (battles, lair fights, captures, deaths, spells). Written to
@@ -11748,12 +11866,24 @@ async function runTurn(opts){
   });
 
   // 2b. Snapshot orders to memory before clearing — we restore them if resolution fails
-  const ordersSnapshot=freshPlayers.filter(p=>p.user_id&&p.orders).map(p=>({id:p.id,orders:p.orders}));
+  // 2026-09-27: the snapshot now carries each row's ORIGINAL orders_submitted flag. It used to
+  // restore `orders_submitted:true` for every row that held any `orders` value, which promoted a
+  // merely SAVED DRAFT into a submitted turn whenever a run failed.
+  const ordersSnapshot=freshPlayers.filter(p=>p.user_id&&p.orders).map(p=>({id:p.id,orders:p.orders,submitted:!!p.orders_submitted}));
   const playersWithOrders=freshPlayers.filter(p=>p.user_id&&p.orders).length;
   msg.innerHTML=`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders!==1?'s':''}. Resolving 5 phases…</div>`;
   // Clear orders from DB now — restored below if resolution fails
   await sb.from('game_players').update({orders:null,orders_submitted:false}).eq('game_id',gameRow.id);
   let _saveConflict=false; // set if the conditional state save finds the turn already advanced elsewhere
+  // ── RUNAWAY-TURN GUARD (2026-09-27) ────
+  // Set the moment the new world state is committed. Everything after that point — reports,
+  // turn_logs, telemetry — is post-commit work, and a throw there must NOT put the orders back:
+  // the turn they belonged to has already been resolved and the game has advanced past it.
+  // Restoring them re-flagged every realm as "orders in", so the auto-turn watcher ran the NEXT
+  // turn a minute later, and the next, and the next — games resolving themselves turn after turn
+  // with nobody submitting anything. (The trigger was a TypeError in buildTurnReport: SEA_UNIT_TYPES
+  // is a Set and was being called with .includes.)
+  let _turnCommitted=false;
 
   // NOTE (Sept 2026): the bot passes and the default-to-Defend pass now run INSIDE the resolution
   // try-block
@@ -25753,6 +25883,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }).eq('id',gameRow.id).eq('turn',expectedTurnToRun).select('id').maybeSingle();
   if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
   if(!_savedRow){ _saveConflict=true; throw new Error(`Turn ${expectedTurnToRun} was already run elsewhere (another GM tab or device) — this run was discarded.`); }
+  _turnCommitted=true; // from here on the turn is resolved and saved: never put the orders back
 
   // 10. Generate and push new turn reports to each player
   msg.innerHTML='<div class="msg-info">⏳ Generating turn reports…</div>';
@@ -26115,16 +26246,26 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }
 
   } catch(e){
-    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_saveConflict?'Nothing was changed by this run.':'Check browser console (F12) for full details. Your orders have been restored.'}</small></div>`;
+    // Three different situations, three different messages — and only ONE of them puts the orders
+    // back. _saveConflict: another tab resolved this turn, nothing here was changed.
+    // _turnCommitted: THIS run resolved and saved the turn, then something after the save failed —
+    // the turn stands, the orders belonged to it and are spent, and re-arming them would make the
+    // auto-turn watcher resolve the following turn on them a minute later (see the runaway-turn
+    // guard above). Otherwise: resolution failed before anything was saved, so the orders are
+    // genuinely unspent and go back exactly as they were.
+    const _why = _saveConflict ? 'Nothing was changed by this run.'
+      : _turnCommitted ? `Turn ${expectedTurnToRun} WAS resolved and saved — the failure came after the save, while writing reports. The orders for that turn are spent and have not been restored. Players may be missing this turn's report; re-push reports or check the browser console (F12).`
+      : 'Check browser console (F12) for full details. Your orders have been restored.';
+    msg.innerHTML=`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
     console.error('runTurn error:', e);
     // Restore orders to DB so players don't lose their submissions — unless another run already
-    // consumed them (restoring would re-flag stale orders as submitted for the NEW turn).
-    if(!_saveConflict&&ordersSnapshot&&ordersSnapshot.length>0){
+    // consumed them, or this run already committed the turn they belonged to.
+    if(!_saveConflict&&!_turnCommitted&&ordersSnapshot&&ordersSnapshot.length>0){
       await Promise.all(ordersSnapshot.map(snap=>
-        sb.from('game_players').update({orders:snap.orders,orders_submitted:true}).eq('id',snap.id)
+        sb.from('game_players').update({orders:snap.orders,orders_submitted:snap.submitted}).eq('id',snap.id)
       ));
     }
-    return;
+    return {ok:false, committed:_turnCommitted, conflict:_saveConflict, error:e.message};
   }
 
   // Refresh UI (only the game the GM is looking at; a watcher run of another game just refreshes
@@ -26136,12 +26277,13 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   }else if(auto&&document.getElementById('sec-games')?.classList.contains('section-active')){
     loadGames();
   }
+  return {ok:true, committed:true, turn:G.turn};
 }
 
 init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1958</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-2134</div>
 </body>
 </html>
