@@ -6017,7 +6017,7 @@ const UNIT_ABILITIES={
   'Eagle Riders':'Skyward Retreat — never suffer the extra casualties of being trapped with no retreat.',
   'Elven Galleys':'Sea Archers — your missile units ignore the land-unit penalty at sea.',
   'Dwarven Guard':'Shield Fort — if at least half the force are Guard, a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties.',
-  'Ironwood Crossbows':'Punch Through — can soften a target to 45% instead of the usual 30% limit.',
+  'Ironwood Crossbows':'Punch Through — can soften a target to 55% instead of the usual 40% limit (90% instead of 80% against a winged rider).', // 2026-09-27: was "45% / 30%" — the engine moved to 55/40 (and 90/80 winged) on 2026-09-24 and this blurb never followed. Kept in step with missileCap / _MISSILE_CAP_FRAC.
   'Mountain Guns':'Bombardment — fire before all other missile units, and +50% damage against garrisons.',
   'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
   'Dwarf Ironclads':'Armoured Hulls — immune to pre-battle missile damage.',
@@ -6029,7 +6029,8 @@ const UNIT_ABILITIES={
   'Whale Cohort':'Breach and Swamp — 25% chance each to sink one enemy fleet outright before the battle is fought.',
   // ── Creature / Monster / primal army abilities ── Each carries an always-on signature multiplier
   // PLUS a pre-battle strike (fires in the pre-battle magic phase; its chance rises with the
-  // commanding hero’s Druid skill — 20% base, +10% per level).
+  // commanding hero’s Druid skill — 30% base, +10% per level, hard cap 90%; see primalStrikeChance
+  // in the GM portal. 2026-09-27: this comment read "20% base" and had done for some time.
   'Noble Griffons':'Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4). Chance rises with the commander’s Druid skill.',
   'Giant Eagles':'Stoop on the Archers — ×1.25 strength when the enemy fields missile troops. Diving Talons: a pre-battle strike on one enemy unit (4–8).',
   'Forest Ents':'Rooted Grove — ×1.3 strength in forest and jungle. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each).',
@@ -9326,6 +9327,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1625</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1700</div>
 </body>
 </html>

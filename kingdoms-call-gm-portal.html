@@ -368,8 +368,8 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.26-1745';
-const KC_BUILD_STAMP='2026.09.27-1625'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_DATA_MIN='2026.09.27-1700';
+const KC_BUILD_STAMP='2026.09.27-1700'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -911,6 +911,13 @@ const UNIT_BASE_STR={'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'
 const UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
 function unitBaseStrength(army){ return (UNIT_BASE_STR[army.type]||4)*(UNIT_Q_MULT[army.quality||'Average']||2); }
 
+// 2026-09-27: `_flakTargeted` marks a flyer as already engaged so two gyrocopters cannot double up
+// on one target IN THE SAME BATTLE. It was set here and never cleared anywhere — not by the three
+// battle-end sweeps that wipe _tempStrReduction / _terrorMult / _archeryRed / _tacUp / _drumUp /
+// _laNoTerrain, and not by the snapshot copier — so it persisted on the army object, was serialised
+// with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
+// GAME. It is now deleted alongside those flags at every one of those five sites. If a new
+// battle-only flag is added, add it to all five.
 function applyFlakScreen(myForce, enemyForce, myName, narr){
   const gyros=(myForce||[]).filter(a=>a&&a.type==='Gnomish Gyrocopters');
   if(!gyros.length) return;
@@ -13718,7 +13725,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
-    [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
+    [...(c.armies||[]),...(prov.neutralDefenders||[]),...((neutralGuardHero&&neutralGuardHero.armies)||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;delete a._flakTargeted;});
     clearPhantomCopies(c, !won, realCharOf(c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
@@ -16149,7 +16156,7 @@ const BATTLE_ARMY_SPELLS={
     const _atkFanDet=Math.max(1, atkSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (atkDruidCreature||atkEvilMonster)?1.25:1, atkSkelHero?UNDEAD_SKEL_HERO_FAN:1);
     const _defFanDet=Math.max(1, defSkelFanatic?UNDEAD_SKEL_KING_FAN:1, (defDruidCreature||defEvilMonster)?1.25:1, defSkelHero?UNDEAD_SKEL_HERO_FAN:1);
     const _survStr=(isAtk)=>{
-      const clean=f=>(f||[]).filter(a=>a&&!a._died&&!a._disbanded).map(a=>{ const c={...a}; delete c._tempStrReduction; delete c._terrorMult; delete c._archeryRed; delete c._tacUp; delete c._drumUp; return c; });
+      const clean=f=>(f||[]).filter(a=>a&&!a._died&&!a._disbanded).map(a=>{ const c={...a}; delete c._tempStrReduction; delete c._terrorMult; delete c._archeryRed; delete c._tacUp; delete c._drumUp; delete c._flakTargeted; return c; });
       const mine=clean(isAtk?atk.armies:def.armies), foe=clean(isAtk?def.armies:atk.armies);
       if(!mine.length) return 0;
       const rows=mine.map(a=>_pvpRow(a,isAtk,mine,foe));
@@ -16368,7 +16375,7 @@ const BATTLE_ARMY_SPELLS={
     }
 
     // Battle-magic strength reductions last only for this battle — units recover afterward.
-    [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;});
+    [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;delete a._flakTargeted;});
     clearPhantomCopies(atk, !won, realCharOf(atk)); clearPhantomCopies(def, won, realCharOf(def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
     // ORC — Run Them Down: a warg-heavy victor takes up the chase without being told to.
     (function(){
@@ -24683,7 +24690,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     delete c._necroAutoUsed;
     // Units fully recover between turns — clear any lingering battle-scoped strength loss
     // (e.g. a Telekinetic Storm cast in an action phase that saw no ensuing battle).
-    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._terrorMult!=null) delete a._terrorMult; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
+    (c.armies||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._terrorMult!=null) delete a._terrorMult; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; if(a._flakTargeted) delete a._flakTargeted; });
   });
   G.world.provinces.forEach(p=>{
     if(p._blessBonus){delete p._blessBonus;}
@@ -24695,7 +24702,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     // Clear any battle-scoped strength reductions still sitting on this province's neutral
     // defenders
     // (e.g. a Telekinetic Storm cast with no ensuing battle) so units fully recover between turns.
-    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._terrorMult!=null) delete a._terrorMult; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; });
+    (p.neutralDefenders||[]).forEach(a=>{ if(a._tempStrReduction) delete a._tempStrReduction; if(a._terrorMult!=null) delete a._terrorMult; if(a._turnStrReduction) delete a._turnStrReduction; if(a._archeryRed) delete a._archeryRed; if(a._tacUp) delete a._tacUp; if(a._drumUp) delete a._drumUp; if(a._laNoTerrain) delete a._laNoTerrain; if(a._flakTargeted) delete a._flakTargeted; });
     // Hidden features persist until they fade (10%/turn).
     (p.features||[]).forEach(f=>{ if(f._hidden && Math.random()<0.20){ delete f._hidden; delete f._hiddenBy; } });
     if(p._phantomArmies) delete p._phantomArmies;
@@ -25595,6 +25602,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1625</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1700</div>
 </body>
 </html>
