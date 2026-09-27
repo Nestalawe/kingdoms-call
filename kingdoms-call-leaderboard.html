@@ -186,7 +186,22 @@ const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let GAMES=[], TAB='champions', GM=false, ME=null;
+let GAMES=[], TAB='champions', GM=false, ME=null, PEOPLE={};
+// ── REALM ≠ PLAYER ────────────────────────────────────────────────────────────────────────────
+// A realm name is per game — the same person rules Aranthia one season and the Vale the next. The
+// PERSON is their auth account, and their name lives in `profiles.name`. Every player statistic on
+// this board is keyed on that id (`uid` in the standings) and printed with the name the profile
+// carries RIGHT NOW, so renaming yourself renames your whole history instead of splitting it.
+// `PEOPLE` is that lookup; if it cannot be read (signed out, or RLS), each standing's stored
+// `player` — the name at the time the game ended — is used instead.
+const personName=st=>(st&&st.uid&&PEOPLE[st.uid])||(st&&st.player)||null;
+// A record points at a realm by index; who that was lives once, in its game's standings.
+function whoOf(e){
+  const st=(e.g&&e.g.standings||[]).find(x=>x&&x.pi===e.pi);
+  if(st) return {realm:st.realm, player:personName(st), race:st.race, al:st.al, bot:!!st.bot, uid:st.uid||null};
+  // a row written by the first build (lb1) carried the identity on the record itself
+  return {realm:e.realm||null, player:e.player||null, race:e.race||null, al:e.al||null, bot:!!e.bot, uid:null};
+}
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const $=id=>document.getElementById(id);
 const nf=n=>(n==null||!isFinite(n))?'—':Number(n).toLocaleString('en-NZ',{maximumFractionDigits:2});
@@ -365,6 +380,12 @@ async function loadAll(force){
   }
   GAMES=rows.map(r=>({...r,
     setup:jp(r.setup)||{}, standings:jp(r.standings)||[], records:jp(r.records)||{}, totals:jp(r.totals)||{}}));
+  // the people behind the realms, by their current name
+  PEOPLE={};
+  try{
+    const {data:profs}=await sb.from('profiles').select('id,name');
+    (profs||[]).forEach(r=>{ if(r&&r.id&&r.name) PEOPLE[r.id]=r.name; });
+  }catch(e){ /* signed out, or the profiles policy does not cover this reader — snapshot names are used */ }
   msg.innerHTML = GAMES.length?'':'<div class="msg-info">No finished games have been recorded yet. A game joins the Hall of Fame the moment it ends; the GM can also add older games from the GM portal’s Stats tab.</div>';
   buildFilterOptions();
   $('spinner').style.display='none'; $('main').style.display='block';
@@ -414,7 +435,7 @@ function filtered(){
     if(from&&new Date(g.finished_at||0)<from) return false;
     if(to&&new Date(g.finished_at||0)>to) return false;
     if(q){
-      const hay=[g.game_name,g.winner_realm,g.winner_player,g.note].concat((g.standings||[]).map(x=>x.realm+' '+(x.player||''))).join(' ').toLowerCase();
+      const hay=[g.game_name,g.winner_realm,g.note].concat((g.standings||[]).map(x=>[x.realm,x.player,personName(x)].filter(Boolean).join(' '))).join(' ').toLowerCase();
       if(hay.indexOf(q)<0) return false;
     }
     return true;
@@ -443,39 +464,50 @@ function render(){
   else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
   else el.innerHTML=renderGames(G);
   const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
-  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.09.27-1911 · most recent game recorded '+dstr(last);
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.09.27-1939 · most recent game recorded '+dstr(last);
 }
 
+function winnerName(g){
+  const st=(g.standings||[]).find(x=>x&&x.winner);
+  return (st&&personName(st))||g.winner_player||null;
+}
 function pctBar(n,d){ const p=d?Math.round(100*n/d):0; return `<div class="bar" title="${p}%"><i style="width:${p}%"></i></div>`; }
 
 // —— CHAMPIONS ————————————————————————————————————————————————————————————————————————————————
 function renderChampions(G){
-  const byPlayer={}, byRealm={};
-  const add=(map,key,st,g)=>{
-    const a=map[key]=map[key]||{key,games:0,wins:0,podium:0,rankSum:0,ranked:0,score:0,best:0,titles:0,prov:0,bot:st.bot,names:new Set()};
+  // One line per PERSON, keyed on their account id — not on a realm name and not on the name they
+  // happened to be using at the time. A player who ruled Aranthia, then the Vale, then Karn is one
+  // champion with three realms listed, and renaming themselves moves the whole line.
+  const byPlayer={};
+  G.forEach(g=>(g.standings||[]).forEach(st=>{
+    if(!st||st.bot) return;
+    const key=st.uid||('name:'+(st.player||'')); if(key==='name:') return;
+    const a=byPlayer[key]=byPlayer[key]||{key,uid:st.uid||null,name:personName(st)||'(unnamed player)',
+      games:0,wins:0,podium:0,rankSum:0,ranked:0,score:0,best:0,titles:0,realms:new Set()};
     a.games++; if(st.winner) a.wins++;
     if(st.rank){ a.ranked++; a.rankSum+=st.rank; if(st.rank<=3) a.podium++; }
     a.score+=st.score||0; a.best=Math.max(a.best,st.score||0);
-    a.titles+=(st.titles||[]).length; a.prov+=st.prov||0;
-    a.names.add(st.realm||'—');
-  };
-  G.forEach(g=>(g.standings||[]).forEach(st=>{
-    if(!st.bot&&st.player) add(byPlayer,st.player,st,g);
-    add(byRealm,(st.bot?'🤖 ':'')+((st.player||st.realm)||'—'),st,g);
+    a.titles+=(st.titles||[]).length;
+    if(st.realm) a.realms.add(st.realm);
   }));
   const rows=Object.values(byPlayer).sort((a,b)=>b.wins-a.wins||(b.wins/b.games)-(a.wins/a.games)||b.score-a.score);
   let html='';
-  html+='<div class="card"><h2>🏆 Champions — human players</h2>';
+  html+='<div class="card"><h2>🏆 Champions — the players</h2>';
+  html+='<div class="muted" style="margin-bottom:9px">One line per person, however many realms they have ruled. Realm names change from game to game; the player does not.'+(GM?' As a Game Master you can correct a player’s name here — it changes their name everywhere on the board, past games included.':'')+'</div>';
   if(!rows.length) html+='<div class="msg-info">No human players in the games that match these filters.</div>';
   else{
-    html+='<table class="kc"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms</th></tr>';
+    html+='<table class="kc"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms ruled</th>'+(GM?'<th></th>':'')+'</tr>';
     rows.forEach((r,i)=>{
-      html+=`<tr><td>${i+1}</td><td><strong>${esc(r.key)}</strong></td><td class="num">${r.games}</td><td class="num">${r.wins}</td>`
+      const rl=[...r.realms];
+      html+=`<tr><td>${i+1}</td><td><strong>${esc(r.name)}</strong></td><td class="num">${r.games}</td><td class="num">${r.wins}</td>`
         +`<td style="min-width:90px">${pctBar(r.wins,r.games)}<span class="muted">${Math.round(100*r.wins/r.games)}%</span></td>`
         +`<td class="num">${r.podium}</td><td class="num">${r.ranked?(r.rankSum/r.ranked).toFixed(1):'—'}</td>`
-        +`<td class="num">${nf(r.best)}</td><td class="num">${r.titles}</td><td class="muted">${esc([...r.names].slice(0,4).join(', '))}</td></tr>`;
+        +`<td class="num">${nf(r.best)}</td><td class="num">${r.titles}</td>`
+        +`<td class="muted">${esc(rl.slice(0,4).join(', '))}${rl.length>4?' +'+(rl.length-4):''}</td>`
+        +(GM?`<td>${r.uid?`<button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="renamePlayer('${esc(r.uid)}')">✏</button>`:'<span class="muted" title="This player has no account on record — nothing to rename">—</span>'}</td>`:'')
+        +'</tr>';
     });
-    html+='</table>';
+    html+='</table><div id="rename-msg"></div>';
   }
   html+='</div>';
 
@@ -496,7 +528,7 @@ function renderChampions(G){
     +'<tr><th>#</th><th>Realm</th><th>Player</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Strength</th><th class="num">Titles</th><th>Game</th><th>Date</th></tr>';
   perf.slice(0,20).forEach((p,i)=>{
     html+=`<tr><td>${i+1}</td><td><strong>${esc(p.st.realm)}</strong>${p.st.winner?'<span class="pill pill-green">won</span>':''}</td>`
-      +`<td>${p.st.bot?'<span class="pill pill-grey">bot</span>':esc(p.st.player||'—')}</td>`
+      +`<td>${p.st.bot?'<span class="pill pill-grey">bot</span>':esc(personName(p.st)||'—')}</td>`
       +`<td class="num">${nf(p.st.score)}</td><td class="num">${nf(p.st.prov)}</td><td class="num">${nf(p.st.str)}</td><td class="num">${(p.st.titles||[]).length}</td>`
       +`<td class="muted">${esc(p.g.game_name)}</td><td class="muted">${dstr(p.g.finished_at)}</td></tr>`;
   });
@@ -528,12 +560,13 @@ function renderAchievements(G){
       if(def.n) html+=`<div class="n">${def.n}</div>`;
       html+='<ol>';
       list.forEach((e,i)=>{
+        const id=whoOf(e);
         const who=e.who?esc(e.who)+' · ':'';
-        const realm=e.realm?esc(e.realm):(e.pi==null?'<span class="muted">the game itself</span>':'—');
-        const owner=e.player?' <span class="muted">('+esc(e.player)+')</span>':(e.bot?' <span class="pill pill-grey">bot</span>':'');
+        const realm=id.realm?esc(id.realm):(e.pi==null?'<span class="muted">the game itself</span>':'—');
+        const owner=id.player?' <span class="muted">('+esc(id.player)+')</span>':(id.bot?' <span class="pill pill-grey">bot</span>':'');
         const bits=[];
-        if(e.race) bits.push(esc(e.race));
-        if(e.al) bits.push(esc(e.al));
+        if(id.race) bits.push(esc(id.race));
+        if(id.al) bits.push(esc(id.al));
         if(e.t!=null) bits.push('turn '+e.t);
         if(e.det) bits.push(esc(e.det));
         bits.push(esc(e.g.game_name)+' · '+dstr(e.g.finished_at));
@@ -591,7 +624,7 @@ function renderGames(G){
       +`<td>${s.realms||'—'} <span class="muted">(${humans}👤 ${bots}🤖)</span></td>`
       +`<td>${bots?bots+dip:'<span class="pill pill-green">all human</span>'}</td>`
       +`<td class="muted">${esc(mapKey(g)||'—')}${s.seaPct!=null?' · '+s.seaPct+'% sea':''}</td>`
-      +`<td>${esc(g.winner_realm||'—')}${g.winner_player?' <span class="muted">('+esc(g.winner_player)+')</span>':(g.winner_is_bot?' <span class="pill pill-grey">bot</span>':'')}</td>`
+      +`<td>${esc(g.winner_realm||'—')}${winnerName(g)?' <span class="muted">('+esc(winnerName(g))+')</span>':(g.winner_is_bot?' <span class="pill pill-grey">bot</span>':'')}</td>`
       +`<td class="muted">${esc(g.victory||'—')}</td>`
       +(GM?`<td><button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="event.stopPropagation();toggleEdit('${esc(g.game_id)}')">✏</button></td>`:'')
       +'</tr>';
@@ -605,7 +638,7 @@ function gameDetail(g){
   h+='<table class="kc"><tr><th class="num">Rank</th><th>Realm</th><th>Player</th><th>Race</th><th>Creed</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Gold</th><th class="num">Strength</th><th class="num">Titles</th><th>Fate</th></tr>';
   (g.standings||[]).forEach(st=>{
     h+=`<tr><td class="num">${st.rank||'—'}</td><td><strong>${esc(st.realm)}</strong>${st.winner?'<span class="pill pill-green">victor</span>':''}</td>`
-      +`<td>${st.bot?'<span class="pill pill-grey">bot</span>':esc(st.player||'—')}</td><td>${esc(st.race||'—')}</td><td>${esc(st.al||'—')}</td>`
+      +`<td>${st.bot?'<span class="pill pill-grey">bot</span>':esc(personName(st)||'—')}</td><td>${esc(st.race||'—')}</td><td>${esc(st.al||'—')}</td>`
       +`<td class="num">${nf(st.score)}</td><td class="num">${nf(st.prov)}</td><td class="num">${nf(st.gold)}</td><td class="num">${nf(st.str)}</td><td class="num">${(st.titles||[]).length}</td>`
       +`<td class="muted">${st.outHow?esc(st.outHow)+(st.outTurn?' turn '+st.outTurn:''):'survived'}</td></tr>`;
   });
@@ -655,6 +688,34 @@ async function setHidden(id,hide){
   const g=GAMES.find(x=>x.game_id===id); if(g) g.hidden=hide;
   render();
 }
+// ── GM: correct a player's name ───────────────────────────────────────────────────────────────
+// Writes `profiles.name`, the one place a person's name lives. Nothing in game_records is
+// rewritten: the board reads names live, so the change shows on every past game at once. A GM
+// needs an UPDATE policy on `profiles` covering other people's rows; the default policy usually
+// only lets an account edit itself, so the exact statement is shown if the write is refused.
+const KC_PROFILE_SQL=`drop policy if exists "gm rename players" on public.profiles;
+create policy "gm rename players" on public.profiles
+  for update to authenticated
+  using (exists (select 1 from public.games g where g.gm_user_id = auth.uid()))
+  with check (exists (select 1 from public.games g where g.gm_user_id = auth.uid()));`;
+async function renamePlayer(uid){
+  const cur=PEOPLE[uid]||'';
+  const name=prompt('Player name on the leaderboard.\n\nThis is the person, not their realm — it changes on every game they have played.',cur);
+  if(name==null) return;
+  const t=name.trim();
+  const msg=$('rename-msg');
+  if(!t){ if(msg) msg.innerHTML='<div class="msg-warning">A player needs a name — nothing changed.</div>'; return; }
+  const {error}=await sb.from('profiles').update({name:t}).eq('id',uid);
+  if(error){
+    if(msg) msg.innerHTML='<div class="msg-error"><strong>Could not rename that player.</strong> '+esc(error.message)+
+      '<br>Most likely the <code>profiles</code> table only lets an account edit its own row. To let any Game Master correct a name, run this once in Supabase → SQL Editor:'+
+      '<textarea readonly onclick="this.select()" style="width:100%;height:92px;font-family:monospace;font-size:.7rem;margin:6px 0 0;background:#fdf8ee">'+esc(KC_PROFILE_SQL)+'</textarea></div>';
+    return;
+  }
+  PEOPLE[uid]=t;
+  render();
+  const m2=$('rename-msg'); if(m2) m2.innerHTML='<div class="msg-success">Renamed to '+esc(t)+' — on every game they have played.</div>';
+}
 async function deleteRecord(id,purge){
   const g=GAMES.find(x=>x.game_id===id);
   const nm=g?g.game_name:id;
@@ -675,6 +736,6 @@ async function deleteRecord(id,purge){
 
 loadAll();
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.09.27-1911</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.09.27-1939</div>
 </body>
 </html>

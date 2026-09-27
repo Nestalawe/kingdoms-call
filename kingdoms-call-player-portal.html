@@ -393,6 +393,7 @@ section{display:none;}.section-active{display:block;}
       </div>
       <a href="kingdoms-call-leaderboard.html" target="_blank" class="btn btn-gold" style="text-decoration:none;font-size:.7rem">🏆 Leaderboard</a>
       <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
+        <button class="btn btn-ghost" onclick="changeDisplayName()">✏ Change Display Name</button>
         <button class="btn btn-ghost" onclick="changePassword()">🔑 Change Password</button>
         <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
     </div>
@@ -1417,6 +1418,51 @@ async function doSignOut(){
   await sb.auth.signOut();
   currentUser=null;currentProfile=null;currentGamePlayer=null;currentReport=null;
   location.reload(); // full reset so no stale state carries over when another player signs in on the same browser
+}
+
+// ── Change Display Name (2026-09-27b) ──────────────────────────────────────────────────────────
+// The name a PERSON is known by, in `profiles.name`. It is NOT the realm name: the realm is chosen
+// per game on the join form and written to game_players.display_name, and the same player rules a
+// differently-named realm in every game. The Hall of Fame keys every player statistic on the auth
+// account and prints whatever this name is at the time it is read, so changing it here renames the
+// player on every game they have ever played rather than splitting their record in two.
+function changeDisplayName(){
+  if(document.getElementById('dn-overlay')) return;
+  const cur=(currentProfile&&currentProfile.name)||currentUser?.user_metadata?.display_name||'';
+  const ov=document.createElement('div');
+  ov.id='dn-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999';
+  ov.innerHTML=`
+    <div style="background:#f5ecd8;color:#1a1208;border:2px solid #c8922a;border-radius:6px;padding:20px;max-width:380px;width:90%">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:6px;color:#7a1c1c">✏ Change Display Name</div>
+      <div style="font-size:.8rem;margin-bottom:12px;color:#4a3a22">This is <strong>you</strong>, not your realm. Your realm is named afresh in every game you join; this name follows you across all of them and is what the Hall of Fame records your wins under. Changing it updates your name on every game you have played.</div>
+      <label style="font-size:.75rem;display:block;margin-bottom:2px">Display name</label>
+      <input type="text" id="dn-name" maxlength="40" value="${String(cur).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="How other players will see you" style="width:100%;padding:7px;margin-bottom:8px;border:1px solid #c8922a;border-radius:3px;box-sizing:border-box" onkeydown="if(event.key==='Enter')submitDisplayName()">
+      <div id="dn-msg" style="font-size:.78rem;margin-bottom:10px;min-height:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeDisplayName()" style="padding:7px 14px;border:1px solid #999;background:#eee;border-radius:3px;cursor:pointer">Cancel</button>
+        <button onclick="submitDisplayName()" style="padding:7px 14px;border:none;background:#7a1c1c;color:#fff;border-radius:3px;cursor:pointer">Save Name</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  const f=document.getElementById('dn-name'); f.focus(); f.select();
+}
+function closeDisplayName(){ const o=document.getElementById('dn-overlay'); if(o)o.remove(); }
+async function submitDisplayName(){
+  const msg=document.getElementById('dn-msg');
+  const name=(document.getElementById('dn-name').value||'').trim();
+  if(name.length<2){ msg.innerHTML='<span style="color:#c00">Please give a name of at least two characters.</span>'; return; }
+  msg.innerHTML='<span style="color:#231e16">Saving…</span>';
+  try{
+    // upsert, not update: an account created before the profiles trigger existed has no row yet
+    const {error}=await sb.from('profiles').upsert({id:currentUser.id,name},{onConflict:'id'});
+    if(error){ msg.innerHTML=`<span style="color:#c00">${error.message}</span>`; return; }
+    try{ await sb.auth.updateUser({data:{display_name:name}}); }catch(e){}   // keep the auth copy in step; not fatal
+    currentProfile=Object.assign({},currentProfile||{},{id:currentUser.id,name});
+    const el=document.getElementById('player-name-display'); if(el) el.textContent=name;
+    msg.innerHTML='<span style="color:#1d5a1d">✓ Saved — this is your name on every game you have played.</span>';
+    setTimeout(closeDisplayName,1400);
+  }catch(e){ msg.innerHTML=`<span style="color:#c00">${e.message||'Could not save the name.'}</span>`; }
 }
 
 // ── Change Password (Supabase updateUser — requires the active signed-in session) ──
@@ -9394,6 +9440,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1911</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1939</div>
 </body>
 </html>

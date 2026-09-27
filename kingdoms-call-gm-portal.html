@@ -383,7 +383,7 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.09.27-1839';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.27-1911'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.27-1939'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -4587,7 +4587,7 @@ create policy "gm write game_records" on public.game_records
   for all to authenticated
   using (exists (select 1 from public.games g where g.gm_user_id = auth.uid()))
   with check (exists (select 1 from public.games g where g.gm_user_id = auth.uid()));`;
-const KC_LB_V=1;                    // bump when the row shape changes (rows carry it in build)
+const KC_LB_V=2;                    // bump when the row shape changes (rows carry it in build)
 let _kcHasLb=false, _kcLbLastErr=null;
 async function probeLeaderboard(){
   try{
@@ -4633,26 +4633,42 @@ function lbRecorder(){
     if(better) R[key]=Object.assign({v:Math.round(v*100)/100,d:(dir==='min'?'min':'max')},ctx||{});
   }};
 }
-// One realm's identity, carried on every record it sets.
-function lbCtx(info,pi,turn,extra){
-  const i=info[pi]||{};
-  return Object.assign({pi, realm:i.realm||null, player:i.player||null, race:i.race||null, al:i.al||null, bot:!!i.bot, t:(turn==null?null:turn)}, extra||{});
+// A record points at a realm by its INDEX and says when it happened — nothing else. The realm's
+// name, race, creed, bot flag and the human behind it all live once, in this game's `standings`,
+// and the board resolves them by `pi`. Two reasons: the row is far smaller (no identity repeated
+// on 95 records), and a player who later renames themselves is renamed on every record at once,
+// because nothing is snapshotted in the record itself.
+function lbCtx(pi,turn,extra){
+  return Object.assign({pi:(pi==null?null:pi), t:(turn==null?null:turn)}, extra||{});
 }
 
 // ── THE BUILDER ──────────────────────────────────────────────────────────────────────────────────
 // gameRow  : the games row (id, name, created_at) — may be null for a game since deleted
-// players  : game_players rows (display names; may be [])
+// players  : game_players rows (user_id + display_name; may be [])
 // results  : this game's game_results rows (one per realm)
 // events   : this game's turn_events rows, each {turn, player_index, is_bot, realm, race, alignment, post, outcomes}
 // gs       : the final parsed game_state, when the game still exists — only the Imperial Title
 //            merits need it; everything else is built from results + events.
-function buildGameRecords(gameId, gameRow, players, results, events, gs){
+// profNames: {auth user id → profiles.name}, the PEOPLE. See the note below on why this is needed.
+//
+// REALM ≠ PLAYER (2026-09-27b). `game_players.display_name` is NOT the player's name — the join
+// form writes the KINGDOM name into it (`display_name:kingdomName`), and the portal renders it as
+// "Your realm: …". The person's own name lives in `profiles.name`, keyed on the auth user id. The
+// first cut of this builder took display_name for the player and so printed the realm twice. Each
+// standing now carries `uid` (the auth id — stable for ever) and `player` (the name at the time,
+// a fallback only); the board keys every player statistic on `uid` and prints the CURRENT name, so
+// one person is one line on the leaderboard however many realms they have ruled, and a rename
+// rewrites their whole history rather than splitting it in two.
+function buildGameRecords(gameId, gameRow, players, results, events, gs, profNames){
   results=(results||[]).filter(Boolean); events=(events||[]).filter(Boolean);
   if(!results.length) return null;
-  const nameByIdx={};
-  (players||[]).forEach(p=>{ if(p&&p.player_index!=null&&p.display_name) nameByIdx[p.player_index]=p.display_name; });
-  const info={};
-  results.forEach(r=>{ info[r.player_index]={realm:r.realm, player:r.is_bot?null:(nameByIdx[r.player_index]||null), race:r.race, al:r.alignment, bot:!!r.is_bot}; });
+  profNames=_lbObj(profNames);
+  const uidByIdx={}, kingdomByIdx={};
+  (players||[]).forEach(p=>{ if(!p||p.player_index==null) return;
+    if(p.user_id) uidByIdx[p.player_index]=p.user_id;
+    if(p.display_name) kingdomByIdx[p.player_index]=p.display_name; });
+  const uidOf=pi=>uidByIdx[pi]||null;
+  const personOf=pi=>{ const u=uidOf(pi); return (u&&profNames[u])||null; };
   const any=results[0];
   const setupIn=_lbObj(any.setup);
   const meta=gameRow?gameMetaOf(gameRow):null;
@@ -4687,7 +4703,8 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs){
   if(titleTop) Object.entries(titleTop).forEach(([k,v])=>{ (titlesByPi[v.pi]=titlesByPi[v.pi]||[]).push(k); });
   const standings=results.slice().sort((a,b)=>(a.rank||99)-(b.rank||99)).map(r=>{
     const f=_lbObj(r.final);
-    return {pi:r.player_index, realm:r.realm, player:info[r.player_index].player, race:r.race, al:r.alignment,
+    return {pi:r.player_index, realm:r.realm||kingdomByIdx[r.player_index]||null,
+      uid:r.is_bot?null:uidOf(r.player_index), player:r.is_bot?null:personOf(r.player_index), race:r.race, al:r.alignment,
       bot:!!r.is_bot, rank:r.rank||null, score:r.score||0, winner:!!r.winner, outTurn:r.out_turn||null, outHow:r.out_how||null,
       prov:f.provinces||0, land:f.land||0, sea:f.sea||0, gold:f.gold||0, tax:f.tax||0, taxShare:f.taxShare||0,
       str:f.str||0, units:f.units||0, heroes:f.heroes||0, items:f.items||0, relics:f.relics||0,
@@ -4705,8 +4722,7 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs){
 
   events.forEach(ev=>{
     const pi=ev.player_index, post=_lbObj(ev.post), out=_lbObj(ev.outcomes), t=ev.turn;
-    if(!info[pi]) info[pi]={realm:ev.realm,player:nameByIdx[pi]||null,race:ev.race,al:ev.alignment,bot:!!ev.is_bot};
-    const a=A(pi), C=(x)=>lbCtx(info,pi,t,x);
+    const a=A(pi), C=(x)=>lbCtx(pi,t,x);
 
     // realm & dominion
     put('most_provinces',post.provinces,C()); put('most_land',post.land,C()); put('most_sea',post.sea,C());
@@ -4813,7 +4829,7 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs){
 
   // per-realm totals → game-long records
   Object.entries(agg).forEach(([k,a])=>{
-    const pi=Number(k), C=x=>lbCtx(info,pi,null,x);
+    const pi=Number(k), C=x=>lbCtx(pi,null,x);
     put('captures_game',a.caps,C()); put('lost_game',a.lost,C());
     put('battles_game',a.battles,C()); put('battles_won_game',a.won,C());
     put('kills_game',a.unitsKilled,C()); put('losses_game',a.unitsLost,C());
@@ -4833,17 +4849,17 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs){
 
   // from the final results rows
   results.forEach(r=>{
-    const pi=r.player_index, f=_lbObj(r.final), C=x=>lbCtx(info,pi,turns,x);
+    const pi=r.player_index, f=_lbObj(r.final), C=x=>lbCtx(pi,turns,x);
     put('final_score',r.score,C()); put('final_provinces',f.provinces,C()); put('final_gold',f.gold,C());
     put('final_strength',f.str,C()); put('final_tax_share',f.taxShare,C());
     if(r.out_turn) put('earliest_out',r.out_turn,C({det:r.out_how||'out'}),'min');
   });
   // the Imperial Titles — highest merit recorded for each, this game
   if(titleTop) Object.entries(titleTop).forEach(([k,v])=>{
-    put('title_'+k,v.merit,lbCtx(info,v.pi,turns,{who:v.who,lbl:v.name+' — highest rating',det:v.name}));
+    put('title_'+k,v.merit,lbCtx(v.pi,turns,{who:v.who,lbl:v.name+' — highest rating',det:v.name}));
   });
   // whole-game records (no realm)
-  const G0={pi:null,realm:null,player:null,race:null,al:null,bot:null,t:null};
+  const G0={pi:null,t:null};
   put('longest_game',turns,G0); put('shortest_game',turns,G0,'min');
   put('most_realms',setup.realms,G0); put('most_humans',setup.humans,G0);
   put('biggest_world',(setup.cols||0)*(setup.rows||0),G0,'max');
@@ -4860,7 +4876,7 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs){
     finished_at:finishedAt,
     turns,
     winner_realm:win?win.realm:null,
-    winner_player:win?(win.is_bot?null:(nameByIdx[win.player_index]||null)):null,
+    winner_player:win?(win.is_bot?null:personOf(win.player_index)):null,
     winner_is_bot:win?!!win.is_bot:null,
     victory:any.victory||null,
     setup, standings, records:rk.R,
@@ -4891,7 +4907,7 @@ async function writeGameRecord(gameId, opts){
       const {data:full}=await sb.from('games').select('id,name,gm_user_id,created_at,max_turns,meta,game_state,game_players(id,player_index,user_id,display_name)').eq('id',gid).maybeSingle();
       if(full){ gameRow=gameRow||full; players=players||full.game_players||[]; if(!gs){ const p=parseGameState(full); if(p&&p.players) gs=p; } }
     }
-    const row=buildGameRecords(gid, gameRow, players||[], results, events, gs);
+    const row=buildGameRecords(gid, gameRow, players||[], results, events, gs, await lbProfileNames(players));
     if(!row) return false;
     const {data:old}=await sb.from('game_records').select('note,hidden,game_name').eq('game_id',gid).maybeSingle();
     if(old){ if(old.note) row.note=old.note; if(old.hidden) row.hidden=true; if(old.game_name) row.game_name=old.game_name; }
@@ -4900,6 +4916,25 @@ async function writeGameRecord(gameId, opts){
     _kcLbLastErr=null; renderLeaderboardBanner();
     return true;
   }catch(e){ _kcLbLastErr=String(e&&e.message||e); return false; }
+}
+// {auth user id → profiles.name} for the humans in one game's slots. `profiles` is the only place
+// a PERSON's name lives (game_players.display_name is their kingdom), and the GM portal can already
+// read the table — the invite picker does. Cached for the tab's lifetime so a backfill over twenty
+// games is one query, not twenty. A failure is not fatal: the standings then carry uid but no name,
+// and the board falls back to whatever name it can resolve itself.
+let _lbProfCache=null;
+async function lbProfileNames(players){
+  const want=[...new Set((players||[]).map(p=>p&&p.user_id).filter(Boolean))];
+  if(!want.length) return {};
+  if(!_lbProfCache){
+    _lbProfCache={};
+    try{
+      const {data}=await sb.from('profiles').select('id,name');
+      (data||[]).forEach(r=>{ if(r&&r.id&&r.name) _lbProfCache[r.id]=r.name; });
+    }catch(e){ /* RLS or no table — names stay unresolved, uids still recorded */ }
+  }
+  const out={}; want.forEach(id=>{ if(_lbProfCache[id]) out[id]=_lbProfCache[id]; });
+  return out;
 }
 // Build a Hall-of-Fame row for every finished game of this GM's that has results but no record yet.
 // Button-driven, NOT automatic at sign-in: each game costs one sweep of its turn_events, and the
@@ -26091,6 +26126,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1911</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1939</div>
 </body>
 </html>
