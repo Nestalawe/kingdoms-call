@@ -383,7 +383,7 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.09.27-1839';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.27-1939'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.27-1958'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -4909,6 +4909,7 @@ async function writeGameRecord(gameId, opts){
     }
     const row=buildGameRecords(gid, gameRow, players||[], results, events, gs, await lbProfileNames(players));
     if(!row) return false;
+    lbCountRow(row);
     const {data:old}=await sb.from('game_records').select('note,hidden,game_name').eq('game_id',gid).maybeSingle();
     if(old){ if(old.note) row.note=old.note; if(old.hidden) row.hidden=true; if(old.game_name) row.game_name=old.game_name; }
     const {error}=await sb.from('game_records').upsert([row],{onConflict:'game_id'});
@@ -4922,19 +4923,27 @@ async function writeGameRecord(gameId, opts){
 // read the table — the invite picker does. Cached for the tab's lifetime so a backfill over twenty
 // games is one query, not twenty. A failure is not fatal: the standings then carry uid but no name,
 // and the board falls back to whatever name it can resolve itself.
-let _lbProfCache=null;
+let _lbProfCache=null, _lbProfErr=null;
 async function lbProfileNames(players){
-  const want=[...new Set((players||[]).map(p=>p&&p.user_id).filter(Boolean))];
-  if(!want.length) return {};
   if(!_lbProfCache){
-    _lbProfCache={};
+    _lbProfCache={}; _lbProfErr=null;
     try{
-      const {data}=await sb.from('profiles').select('id,name');
+      const {data,error}=await sb.from('profiles').select('id,name');
+      if(error) _lbProfErr=error.message;
       (data||[]).forEach(r=>{ if(r&&r.id&&r.name) _lbProfCache[r.id]=r.name; });
-    }catch(e){ /* RLS or no table — names stay unresolved, uids still recorded */ }
+      if(!error&&!Object.keys(_lbProfCache).length) _lbProfErr='the profiles table returned no names at all';
+    }catch(e){ _lbProfErr=String(e&&e.message||e); }
   }
+  const want=[...new Set((players||[]).map(p=>p&&p.user_id).filter(Boolean))];
   const out={}; want.forEach(id=>{ if(_lbProfCache[id]) out[id]=_lbProfCache[id]; });
   return out;
+}
+// What the last build actually managed to resolve — the tally the rebuild button reports, so a
+// silent "names are still wrong" has a visible cause instead of needing the console.
+const _lbTally={games:0, humans:0, uids:0, named:0};
+function lbCountRow(row){
+  _lbTally.games++;
+  (row.standings||[]).forEach(st=>{ if(!st||st.bot) return; _lbTally.humans++; if(st.uid) _lbTally.uids++; if(st.player) _lbTally.named++; });
 }
 // Build a Hall-of-Fame row for every finished game of this GM's that has results but no record yet.
 // Button-driven, NOT automatic at sign-in: each game costs one sweep of its turn_events, and the
@@ -4953,13 +4962,20 @@ async function backfillGameRecords(force){
     const todo=[...withResults].filter(id=>force||!done.has(id));
     if(!todo.length){ say('Every finished game already has a Hall-of-Fame record.'); return 0; }
     if(btn) btn.disabled=true;
+    _lbProfCache=null;                                   // a rebuild re-reads the names
+    _lbTally.games=_lbTally.humans=_lbTally.uids=_lbTally.named=0;
     let n=0;
     for(let i=0;i<todo.length;i++){
       say(`Building ${i+1} of ${todo.length}…`);
       const g=(games||[]).find(x=>String(x.id)===todo[i])||null;
       if(await writeGameRecord(todo[i],{gameRow:g})) n++;
     }
-    say(`Recorded ${n} game${n!==1?'s':''}.`);
+    const el=document.getElementById('lb-build-msg');
+    const t=_lbTally;
+    let out=`Recorded ${n} game${n!==1?'s':''} · ${t.humans} human realm${t.humans!==1?'s':''} · ${t.uids} with a player account · <strong>${t.named} with a name</strong> · built by <code>${KC_BUILD_STAMP} lb${KC_LB_V}</code>`;
+    if(t.humans&&!t.named) out+=`<div class="msg-warning" style="margin-top:6px"><strong>No player names were resolved.</strong> A player's name lives in the <code>profiles</code> table (<code>game_players.display_name</code> is their realm), and this build could not read one for any of them.${_lbProfErr?' The table said: <em>'+String(_lbProfErr).replace(/</g,'&lt;')+'</em>.':''}<br>Either those accounts have no name saved — each player can set one with <strong>✏ Change Display Name</strong> in the player portal — or this GM account cannot read <code>profiles</code> under its Row-Level Security policy (the same policy the invite picker needs).</div>`;
+    else if(t.uids>t.named) out+=` <span style="color:#8a5a00">(${t.uids-t.named} account${t.uids-t.named!==1?'s have':' has'} no name saved yet)</span>`;
+    if(el) el.innerHTML=out; else say(out);
     if(btn) btn.disabled=false;
     return n;
   }catch(e){ say('Failed: '+(e&&e.message||e)); if(btn) btn.disabled=false; return 0; }
@@ -26126,6 +26142,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1939</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1958</div>
 </body>
 </html>

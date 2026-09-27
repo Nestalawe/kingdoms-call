@@ -194,7 +194,17 @@ let GAMES=[], TAB='champions', GM=false, ME=null, PEOPLE={};
 // carries RIGHT NOW, so renaming yourself renames your whole history instead of splitting it.
 // `PEOPLE` is that lookup; if it cannot be read (signed out, or RLS), each standing's stored
 // `player` — the name at the time the game ended — is used instead.
-const personName=st=>(st&&st.uid&&PEOPLE[st.uid])||(st&&st.player)||null;
+// The stored `player` is only a fallback for when profiles cannot be read. A row written by the
+// FIRST build (lb1) put the KINGDOM name in that field, so a legacy row would otherwise print the
+// realm twice. Any stored name equal to the realm is therefore refused outright — it is either
+// that bug or a realm named after its ruler, and in both cases it tells the reader nothing.
+const personName=st=>{
+  if(!st) return null;
+  if(st.uid&&PEOPLE[st.uid]) return PEOPLE[st.uid];
+  if(st.player&&st.player!==st.realm) return st.player;
+  return null;
+};
+const isLegacyRow=g=>!(g&&/lb[2-9]/.test(String(g.build||'')))||!(g&&(g.standings||[]).some(st=>st&&!st.bot&&st.uid));
 // A record points at a realm by index; who that was lives once, in its game's standings.
 function whoOf(e){
   const st=(e.g&&e.g.standings||[]).find(x=>x&&x.pi===e.pi);
@@ -464,9 +474,33 @@ function render(){
   else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
   else el.innerHTML=renderGames(G);
   const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
-  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.09.27-1939 · most recent game recorded '+dstr(last);
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.09.27-1958 · most recent game recorded '+dstr(last);
 }
 
+// GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
+// possible causes is in play: rows written by the old builder, no player account on the slots, or
+// `profiles` unreadable.
+function lbDiagnostics(G){
+  const legacy=G.filter(isLegacyRow);
+  let humanSlots=0, withUid=0, named=0;
+  G.forEach(g=>(g.standings||[]).forEach(st=>{ if(!st||st.bot) return; humanSlots++; if(st.uid) withUid++; if(personName(st)) named++; }));
+  const builds=[...new Set(G.map(g=>String(g.build||'unknown')))];
+  const newest=(G.slice().sort((a,b)=>String(b.finished_at||'').localeCompare(String(a.finished_at||'')))[0]||{}).build||'—';
+  const peopleN=Object.keys(PEOPLE).length;
+  let warn='';
+  if(legacy.length) warn+=`<div class="msg-warning" style="margin:8px 0 0"><strong>${legacy.length} of ${G.length} games were recorded by an older build of the GM portal</strong>, which stored the realm name where the player's name belongs. Those games show no player until they are rebuilt.<br>
+    In the GM portal: check the footer reads <strong>v2026.09.27-1958 or later</strong> first — if it does not, hard-reload it (Ctrl/Cmd+Shift+R), because a cached copy will rebuild with the same fault. Then 📈 Stats → <strong>↻ Rebuild all</strong>.</div>`;
+  if(!peopleN) warn+=`<div class="msg-warning" style="margin:8px 0 0"><strong>No player names could be read from the <code>profiles</code> table on this page</strong> — names stored with each game are being used instead. If you are signed out, sign in to the player or GM portal in this browser first. If you are signed in, the <code>profiles</code> table needs a SELECT policy covering this account.</div>`;
+  if(peopleN&&withUid&&!named) warn+=`<div class="msg-warning" style="margin:8px 0 0"><strong>${withUid} player slots carry an account, but none of them matches a row in <code>profiles</code>.</strong> Those accounts have no profile row, or no name in it. Each player can set one with <strong>✏ Change Display Name</strong> in the player portal; you can set it here with the ✏ beside their line once they appear.</div>`;
+  return `<div class="card"><h2>🔧 Diagnostics <span class="muted" style="font-weight:400">— only you see this</span></h2>
+    <table class="kc">
+      <tr><th>Games on the board</th><td class="num">${G.length}</td><td class="muted">${legacy.length} recorded by an older build</td></tr>
+      <tr><th>Newest row built by</th><td colspan="2"><code>${esc(newest)}</code></td></tr>
+      <tr><th>Builds present</th><td colspan="2" class="muted">${esc(builds.join(' · '))}</td></tr>
+      <tr><th>Human realms</th><td class="num">${humanSlots}</td><td class="muted">${withUid} carry a player account · ${named} resolve to a name</td></tr>
+      <tr><th>Names read from profiles</th><td class="num">${peopleN}</td><td class="muted">${peopleN?'read live, so a rename shows everywhere at once':'falling back to the name stored with each game'}</td></tr>
+    </table>${warn}</div>`;
+}
 function winnerName(g){
   const st=(g.standings||[]).find(x=>x&&x.winner);
   return (st&&personName(st))||g.winner_player||null;
@@ -481,8 +515,9 @@ function renderChampions(G){
   const byPlayer={};
   G.forEach(g=>(g.standings||[]).forEach(st=>{
     if(!st||st.bot) return;
-    const key=st.uid||('name:'+(st.player||'')); if(key==='name:') return;
-    const a=byPlayer[key]=byPlayer[key]||{key,uid:st.uid||null,name:personName(st)||'(unnamed player)',
+    const nm=personName(st);
+    const key=st.uid||(nm?('name:'+nm):null); if(!key) return;
+    const a=byPlayer[key]=byPlayer[key]||{key,uid:st.uid||null,name:nm||'(name not recorded)',
       games:0,wins:0,podium:0,rankSum:0,ranked:0,score:0,best:0,titles:0,realms:new Set()};
     a.games++; if(st.winner) a.wins++;
     if(st.rank){ a.ranked++; a.rankSum+=st.rank; if(st.rank<=3) a.podium++; }
@@ -492,11 +527,12 @@ function renderChampions(G){
   }));
   const rows=Object.values(byPlayer).sort((a,b)=>b.wins-a.wins||(b.wins/b.games)-(a.wins/a.games)||b.score-a.score);
   let html='';
+  if(GM) html+=lbDiagnostics(G);
   html+='<div class="card"><h2>🏆 Champions — the players</h2>';
   html+='<div class="muted" style="margin-bottom:9px">One line per person, however many realms they have ruled. Realm names change from game to game; the player does not.'+(GM?' As a Game Master you can correct a player’s name here — it changes their name everywhere on the board, past games included.':'')+'</div>';
   if(!rows.length) html+='<div class="msg-info">No human players in the games that match these filters.</div>';
   else{
-    html+='<table class="kc"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms ruled</th>'+(GM?'<th></th>':'')+'</tr>';
+    html+='<table class="kc" id="champ-table"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms ruled</th>'+(GM?'<th></th>':'')+'</tr>';
     rows.forEach((r,i)=>{
       const rl=[...r.realms];
       html+=`<tr><td>${i+1}</td><td><strong>${esc(r.name)}</strong></td><td class="num">${r.games}</td><td class="num">${r.wins}</td>`
@@ -644,7 +680,7 @@ function gameDetail(g){
   });
   h+='</table>';
   const t=g.totals||{};
-  h+=`<div class="muted" style="margin-top:7px">${nf(t.battles||0)} battles · ${nf(t.casualties||0)} units destroyed · ${nf(t.captures||0)} provinces changed hands · ${nf(t.lairs||0)} lair fights · ${nf(t.spells||0)} spells cast · ${nf(t.deaths||0)} characters killed · started ${dstr(g.started_at)}</div>`;
+  h+=`<div class="muted" style="margin-top:7px">${nf(t.battles||0)} battles · ${nf(t.casualties||0)} units destroyed · ${nf(t.captures||0)} provinces changed hands · ${nf(t.lairs||0)} lair fights · ${nf(t.spells||0)} spells cast · ${nf(t.deaths||0)} characters killed · started ${dstr(g.started_at)}${GM?' · recorded by <code>'+esc(g.build||'unknown')+'</code>':''}</div>`;
   if(GM){
     const d=(g.finished_at||'').slice(0,10);
     h+=`<div class="gmbox" id="edit-${esc(g.game_id)}" style="display:none">
@@ -736,6 +772,6 @@ async function deleteRecord(id,purge){
 
 loadAll();
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.09.27-1939</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.09.27-1958</div>
 </body>
 </html>
