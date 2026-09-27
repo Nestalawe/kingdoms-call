@@ -368,8 +368,8 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.27-1700';
-const KC_BUILD_STAMP='2026.09.27-1700'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_DATA_MIN='2026.09.27-1719';
+const KC_BUILD_STAMP='2026.09.27-1719'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -13258,7 +13258,15 @@ const BATTLE_ARMY_SPELLS={
     // DEFENDER ARCHERY: defending missile units fire at the attackers
     if(_cLA){ (defenders||[]).forEach(d=>{ if(d) d._laNoTerrain=true; }); narrative.push(`⚡ ${c.name}'s Lightning Advance catches the defenders completely unready — they fight with no terrain advantage, no pre-battle magic and no answering volley.`); }
     applyFlakScreen(_cLA?[]:defenders, armies, (defHero&&defHero.name)||'The defenders', narrative);
-    const missileDef=_cLA?[]:abilityMissileUnits(defenders, prov.terrain);
+    // ELF — Ambush, the other direction (2026-09-27, Toby): only the ATTACKER's volley was gated here,
+    // so Forest Wardens marching on a neutral garrison did not silence its archers, while the very
+    // same Wardens attacking another PLAYER did (the PvP path tests the OTHER side's force whichever
+    // way round it is). Both paths now agree: a force facing Wardens in forest or jungle loses its
+    // volley, attacking or defending.
+    const _defArchBlocked=!_cLA&&archeryBlockedBy(armies, prov.terrain);
+    if(_defArchBlocked&&defenders.some(a=>MISSILE_ARMIES.has(a.type)))
+      narrative.push(`🌲 The defenders' archers can find no target — ${cName}'s Forest Wardens hold the thickets and the answering volley never comes.`);
+    const missileDef=(_cLA||_defArchBlocked)?[]:abilityMissileUnits(defenders, prov.terrain);
     if(missileDef.length>0&&armies.length>0){
       const defArchSkill=defHero?effStat(defHero,'archery'):0; // a leaderless garrison shoots at Archery 0
       narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} missile unit${missileDef.length!==1?'s':''}`);
@@ -13531,6 +13539,12 @@ const BATTLE_ARMY_SPELLS={
     // DWARF — Shield Fort (replaces Hold the Line): a beaten Guard-heavy assault withdraws in good
     // order when a path exists, and holds trapped WITHOUT extra no-escape losses otherwise.
     const _npcSF=isHalfOrMore(armies,'Dwarven Guard');
+    // 2026-09-27 (Toby): the same for a Guard-heavy NEUTRAL GARRISON. A neutral force never retreats,
+    // so the "good order withdrawal" half cannot apply to it — what it gets is the other half: the
+    // attacker's Free Lances find no broken backs, and the pinned-against-their-own-ground roll does
+    // not touch them. Race-converted neutral provinces really can field Dwarven Guard, so this is a
+    // live case, not a theoretical one.
+    const _npcSFDef=isHalfOrMore(defenders,'Dwarven Guard');
 
     if(won){
       const guardName=defHero?defHero.name+' and their forces':('the defenders of '+prov.name);
@@ -13572,20 +13586,31 @@ const BATTLE_ARMY_SPELLS={
       const _defOwnerNm=defHero?defHero.name.replace(' (wandering)',''):('The defenders of '+prov.name);
       narrative.push(`🛡 **${_defOwnerNm}'s forces** (defender):`);
       if(_noDefLeft) narrative.push(`— None left to fight: every defending unit was lost before the lines closed.`);
-      if(_npcRideAtk>0) narrative.push(`🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${dispFloor(_npcRideAtk*100)}% losses).`);
+      // DWARF — Shield Fort on the DEFENDING side (2026-09-27, Toby): a Guard-heavy garrison gives no
+      // broken backs to ride down.
+      const _npcRideAtkEff=_npcSFDef?0:_npcRideAtk;
+      if(_npcRideAtk>0&&_npcSFDef) narrative.push(`🛡 The defenders' Dwarven Guard lock shields where they stand — ${cName}'s Free Lances find no broken backs to ride down.`);
+      else if(_npcRideAtk>0) narrative.push(`🐎 ${cName}'s Free Lances ride down the broken companies across open ground (+${dispFloor(_npcRideAtk*100)}% losses).`);
       defenders.forEach(a=>{
-        if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtk){
+        if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtkEff){
           a._died=true;
           narrative.push(`— ${unitRef(_defOwnerNm,a)} were destroyed in the rout!`);
         }
       });
       const _trapped=defenders.filter(a=>!a._died);
       if(_trapped.length>0){
-        narrative.push(`The defenders of ${prov.name} have nowhere to retreat — they are pinned against their own ground and take further losses!`);
-        _trapped.forEach(a=>{
-          if(a.type==='Eagle Riders'){ narrative.push(`— ${a.unitName||a.type} climb away over the encircling lines, untouched.`); return; }
-          if(Math.random()<0.15){ a._died=true; narrative.push(`— ${a.unitName||a.type} are cut down with no escape!`); }
-        });
+        // Shield Fort: locked shields take NO pinned-against-the-ground losses, exactly as a trapped
+        // Guard-heavy player force does. Announced instead of the "further losses" line, which would
+        // otherwise promise casualties that never come.
+        if(_npcSFDef){
+          narrative.push(`🛡 Shield Fort — the defenders of ${prov.name} have nowhere to retreat, so they lock shields where they stand. None are cut down.`);
+        } else {
+          narrative.push(`The defenders of ${prov.name} have nowhere to retreat — they are pinned against their own ground and take further losses!`);
+          _trapped.forEach(a=>{
+            if(a.type==='Eagle Riders'){ narrative.push(`— ${a.unitName||a.type} climb away over the encircling lines, untouched.`); return; }
+            if(Math.random()<0.15){ a._died=true; narrative.push(`— ${a.unitName||a.type} are cut down with no escape!`); }
+          });
+        }
       }
       const _defFallen=defenders.filter(a=>a._died);
       if(_defFallen.length>0) recordBattleGraves(prov, _defFallen);
@@ -13636,19 +13661,29 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>delete a._defDied);
 
       narrative.push(`⚔ **${cName}'s forces** (attacker):`);
-      if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef*100)}% losses).`);
+      // DWARF — Shield Fort, the GOOD-ORDER half (2026-09-27, Toby): this block never consulted
+      // _npcSF, so a beaten Guard-heavy force attacking a neutral garrison still took the defenders'
+      // Ride Them Down losses and still demoted — under a narrative line a few dozen lines below
+      // saying it had withdrawn in good order. Now mirrors the PvP branch exactly: no Ride Them Down
+      // against it, and a demotion roll becomes an orderly fall-back instead of a loss of quality.
+      const _npcRideDefEff=_npcSF?0:_npcRideDef;
+      if(_npcRideDef>0&&_npcSF) narrative.push(`🛡 ${cName}'s Dwarven Guard lock shields as they give ground — the defenders' Free Lances find no broken backs to ride down.`);
+      else if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef*100)}% losses).`);
       armies.forEach(a=>{
         const idx=tiers.indexOf(a.quality);
         const roll=Math.random();
-        if(roll<loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDef){
+        if(roll<loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDefEff){
           narrative.push(`— ${unitRef(cName,a)} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
           a._died=true;
         } else if(!a._isSkeletal){
           const roll2=Math.random();
           if(roll2<loseDemoteChance*tacMultNPC){
-            const _q0=a.quality;
-            if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
-            else {a._notable=true;narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`);}
+            if(_npcSF){ narrative.push(`— ${unitRef(cName,a)} fall back behind the shield wall in good order.`); }
+            else {
+              const _q0=a.quality;
+              if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
+              else {a._notable=true;narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`);}
+            }
           } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G)){
             if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];a._notable=true;narrative.push(`— Despite defeat, ${unitRef(cName,{...a,quality:_q0})} improved to ${a.quality}!`);}
           }
@@ -25602,6 +25637,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1700</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.27-1719</div>
 </body>
 </html>

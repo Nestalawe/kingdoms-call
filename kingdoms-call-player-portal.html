@@ -6012,11 +6012,11 @@ const UNIT_ABILITIES={
   'Galleon Fleet':'Broadside — fires in the pre-battle archery phase during sea battles.',
   'Corsair Fleet':'Cut the Line — if at least half your winning force are Corsairs, the enemy cannot retreat by sea. Against neutral guards they instead keep your own line of escape to the ships open.',
   'Elven Bowmen':'Woodland Volley — double missile damage in forest and jungle.',
-  'Forest Wardens':'Ambush — enemy archers cannot fire at all when Wardens defend forest or jungle.',
+  'Forest Wardens':'Ambush — in forest or jungle, the side facing them gets no archery phase at all. Works attacking or defending, and against province defenders as well as another realm.', // 2026-09-27: was "when Wardens DEFEND" — Ambush has always fired on attack too in PvP, and now does against neutral defenders as well.
   'Shadow Archers':'Loosed From Cover — cannot be targeted by enemy missile fire.',
   'Eagle Riders':'Skyward Retreat — never suffer the extra casualties of being trapped with no retreat.',
   'Elven Galleys':'Sea Archers — your missile units ignore the land-unit penalty at sea.',
-  'Dwarven Guard':'Shield Fort — if at least half the force are Guard, a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties.',
+  'Dwarven Guard':'Shield Fort — if at least half the force are Guard, a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and to demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties. Both halves work in every battle, and a province\'s own Guard defenders get the same protection when they lose.', // 2026-09-27: the good-order half used to be wired for player-vs-player battles only.
   'Ironwood Crossbows':'Punch Through — can soften a target to 55% instead of the usual 40% limit (90% instead of 80% against a winged rider).', // 2026-09-27: was "45% / 30%" — the engine moved to 55/40 (and 90/80 winged) on 2026-09-24 and this blurb never followed. Kept in step with missileCap / _MISSILE_CAP_FRAC.
   'Mountain Guns':'Bombardment — fire before all other missile units, and +50% damage against garrisons.',
   'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
@@ -9327,6 +9327,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1700</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.27-1719</div>
 </body>
 </html>
