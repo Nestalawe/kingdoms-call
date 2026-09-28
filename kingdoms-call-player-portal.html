@@ -489,6 +489,16 @@ section{display:none;}.section-active{display:block;}
       <h2>🌍 Open Games — Available to Join</h2>
       <div id="open-games-list"><div class="msg-info">Loading…</div></div>
     </div>
+
+    <!-- Archived games (2026-09-28, Toby item 2): games the GM has archived leave Your Games and are
+         listed here. The card can be minimised; a minimised card stays minimised on later visits
+         (remembered in this browser) until the player opens it again. Hidden when there are none. -->
+    <div class="card" id="archived-games-card" style="display:none">
+      <h2 style="display:flex;align-items:center;gap:8px">🗄 Archived Games <span id="archived-games-count" style="font-size:.75rem;color:var(--stone);font-family:'Crimson Text',serif"></span>
+        <button type="button" id="archived-games-toggle" class="secall-btn" style="margin-left:auto" onclick="toggleArchivedGamesCard()" aria-expanded="true">&#9662; minimise</button>
+      </h2>
+      <div id="archived-games-list"></div>
+    </div>
   </section>
 
   <!-- JOIN GAME -->
@@ -1701,7 +1711,7 @@ async function pollForUpdates(){
   if(document.hidden) return;         // don't poll a backgrounded tab
   try{
     // One light query: this player's slots (turn/status live on the game rows we fetch next).
-    const {data:mySlots}=await sb.from('game_players').select('id,game_id,orders_submitted').eq('user_id',currentUser.id);
+    const {data:mySlots}=await sb.from('game_players').select('id,game_id,player_index,orders_submitted').eq('user_id',currentUser.id);
     if(!mySlots||!mySlots.length) return;
     const gameIds=[...new Set(mySlots.map(s=>s.game_id))];
     const {data:games}=await sb.from('games').select('id,turn,status').in('id',gameIds);
@@ -1715,9 +1725,12 @@ async function pollForUpdates(){
     (pollSlots||[]).forEach(r=>{ if(!r.user_id) return; const t=_tally[r.game_id]=_tally[r.game_id]||[0,0]; t[1]++; if(r.orders_submitted) t[0]++; });
 
     // Signature of everything the My Games cards show — cheap change-detection.
-    const sig=mySlots.map(s=>{const g=gById[s.game_id]||{};const t=_tally[s.game_id]||[0,0];return `${s.id}:${g.turn||0}:${g.status||''}:${s.orders_submitted?1:0}:${t[0]}/${t[1]}`;}).sort().join('|');
-
     const active=_activeSectionId();
+    // 2026-09-28 (Toby item 3): unread Dispatches are part of what the cards show, so they are part
+    // of the change signature — but only counted while the list is on screen.
+    const _unread=(active==='sec-games')?await fetchUnreadDispatchCounts(mySlots, pollSlots):{};
+    const sig=mySlots.map(s=>{const g=gById[s.game_id]||{};const t=_tally[s.game_id]||[0,0];return `${s.id}:${g.turn||0}:${g.status||''}:${s.orders_submitted?1:0}:${t[0]}/${t[1]}:u${_unread[String(s.game_id)]||0}`;}).sort().join('|');
+
     if(active==='sec-games'){
       // Safe to repaint the list — no order state lives here.
       if(sig!==_lastMyGamesSig){ _lastMyGamesSig=sig; loadMyGames(); }
@@ -1765,7 +1778,9 @@ async function loadMyGames(){
   const {data:allSlots}=await sb.from('game_players').select('game_id,user_id,player_index,orders_submitted').in('game_id',gameIds);
   const slotsByGame={};
   (allSlots||[]).forEach(s=>{ (slotsByGame[s.game_id]=slotsByGame[s.game_id]||[]).push(s); });
-  el.innerHTML=mySlots.map(slot=>{
+  // 2026-09-28 (Toby item 3): unread Dispatches per game, for the ✉ badge on each card.
+  const unreadByGame=await fetchUnreadDispatchCounts(mySlots, allSlots);
+  const cardOf=slot=>{
     const g=gamesById[slot.game_id];
     if(!g) return `<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
     const statusLabel=slot.orders_submitted?'Orders submitted':g.status==='active'?'Orders needed':g.status==='setup'?'Waiting to start':'Complete';
@@ -1774,7 +1789,7 @@ async function loadMyGames(){
     // still opens and the whole Chronicle is still readable; the pill just says no turn is coming.
     const _arch=gameArchivedP(g)?' <span class="pill" style="background:#e4d4b0;color:#4a3105">🗄 Archived by the GM</span>':'';
     return`<div class="game-card clickable" onclick="openGameFresh('${slot.id}')"${gameArchivedP(g)?' style="opacity:.85"':''}>
-      <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span>${_arch}</div>
+      <div class="gc-name">${g.name} <span class="pill ${pillClass}">${statusLabel}</span>${_arch}${unreadDispatchPillP(unreadByGame[String(slot.game_id)])}</div>
       <div class="gc-meta">
         Your realm: <strong>${slot.display_name||'(joining…)'}</strong> ·
         Turn ${g.turn||0}
@@ -1782,7 +1797,77 @@ async function loadMyGames(){
       ${(()=>{ const t=ordersInTextP(g,slotsByGame[slot.game_id]); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
       ${(()=>{ const t=turnDeadlineText(g); return t?`<div class="gc-meta" style="margin-top:3px">${t}</div>`:''; })()}
     </div>`;
-  }).join('');
+  };
+  // 2026-09-28 (Toby item 2): archived games move to their own card below Open Games.
+  const _liveSlots=mySlots.filter(slot=>{ const g=gamesById[slot.game_id]; return !(g&&gameArchivedP(g)); });
+  const _archSlots=mySlots.filter(slot=>{ const g=gamesById[slot.game_id]; return !!(g&&gameArchivedP(g)); });
+  el.innerHTML=_liveSlots.length
+    ? _liveSlots.map(cardOf).join('')
+    : '<div style="color:#3a3224;font-size:.85rem;font-style:italic">No active games — your archived games are listed further down.</div>';
+  renderArchivedGamesCard(_archSlots.map(cardOf));
+}
+// ── ARCHIVED GAMES CARD (2026-09-28, Toby item 2) ────
+// Minimised state is remembered per browser: once the player folds the card it stays folded on
+// every later visit until they open it again. localStorage can be unavailable (private windows,
+// blocked site data) — every access is wrapped, and the card then simply starts open.
+const ARCH_CARD_KEY='kc_archived_games_min';
+function archivedCardMinimised(){ try{ return localStorage.getItem(ARCH_CARD_KEY)==='1'; }catch(e){ return false; } }
+function renderArchivedGamesCard(cards){
+  const card=document.getElementById('archived-games-card'); if(!card) return;
+  if(!cards.length){ card.style.display='none'; return; }
+  card.style.display='';
+  const cnt=document.getElementById('archived-games-count'); if(cnt) cnt.textContent=`(${cards.length})`;
+  const list=document.getElementById('archived-games-list'); if(list) list.innerHTML=cards.join('');
+  applyArchivedCardState();
+}
+function applyArchivedCardState(){
+  const min=archivedCardMinimised();
+  const list=document.getElementById('archived-games-list'); if(list) list.style.display=min?'none':'';
+  const b=document.getElementById('archived-games-toggle');
+  if(b){ b.innerHTML=min?'&#9656; show':'&#9662; minimise'; b.setAttribute('aria-expanded',min?'false':'true'); }
+}
+function toggleArchivedGamesCard(){
+  const min=!archivedCardMinimised();
+  try{ if(min) localStorage.setItem(ARCH_CARD_KEY,'1'); else localStorage.removeItem(ARCH_CARD_KEY); }catch(e){}
+  applyArchivedCardState();
+}
+// ── UNREAD DISPATCHES ON THE GAME CARDS (2026-09-28, Toby item 3) ────
+// The same rule the Dispatches panel uses (msgUnreadIn): a dispatch is unread when its id is above
+// the highest id this realm has marked seen in that dispatch's channel, and it was not sent by this
+// realm. Row-Level Security already limits game_messages to what this player may read (their own,
+// addressed to them, or public), so no filtering on addressee is needed here. Only games with two or
+// more HUMAN realms have messaging at all. Light columns only — never the message bodies. If the
+// tables do not exist yet (the GM has not run the SQL) the query errors and every count is simply 0.
+async function fetchUnreadDispatchCounts(mySlots, allSlots){
+  const out={};
+  try{
+    const humans={};
+    _msgArr(allSlots).forEach(s=>{ if(s&&s.user_id){ const k=String(s.game_id); humans[k]=(humans[k]||0)+1; } });
+    const mine={};
+    _msgArr(mySlots).forEach(s=>{ const k=String(s.game_id); if((humans[k]||0)>=2&&_msgNum(s.player_index)!=null) mine[k]=_msgNum(s.player_index); });
+    const ids=Object.keys(mine); if(!ids.length) return out;
+    const {data:rows,error}=await sb.from(KC_MSG_TABLE).select('id,game_id,from_index,to_indexes,scope').in('game_id',ids).order('id',{ascending:false}).limit(3000);
+    if(error||!rows) return out;
+    let reads=[];
+    try{
+      const r=await sb.from(KC_MSG_READS).select('game_id,player_index,reads').in('game_id',ids).eq('user_id',currentUser.id);
+      if(!r.error) reads=_msgArr(r.data);
+    }catch(e){}
+    const seenBy={};
+    reads.forEach(r=>{ const k=String(r.game_id); if(mine[k]!==_msgNum(r.player_index)) return; const m=r.reads; seenBy[k]=(m&&typeof m==='object'&&!Array.isArray(m))?m:{}; });
+    rows.forEach(r=>{
+      const k=String(r.game_id); if(!(k in mine)) return;
+      if(_msgNum(r.from_index)===mine[k]) return;
+      const ch=msgChannelKeyOf(r);
+      const seen=_msgNum((seenBy[k]||{})[ch])||0;
+      if((_msgNum(r.id)||0)>seen) out[k]=(out[k]||0)+1;
+    });
+  }catch(e){ /* a convenience only — no badge on any failure */ }
+  return out;
+}
+function unreadDispatchPillP(n){
+  if(!n) return '';
+  return ` <span class="pill" style="background:#a32020;color:#fff" title="${n} unread dispatch${n!==1?'es':''} — open the game and choose ✉ Dispatches">✉ ${n>99?'99+':n} new</span>`;
 }
 
 // ── Orders-in tally ────
@@ -2233,14 +2318,39 @@ function buildChronicle(log, chars_for_log){
   // ── the Reckoning / endgame notice is pinned to the VERY TOP of the Chronicle for EVERY player,
   // above all phase events — it is the most consequential thing that can happen in a turn, and all
   // endgame updates belong in this one prominent place.
+  // 2026-09-28 (Toby item 6): the END-OF-GAME report (the "👑 THE RECKONING IS CALLED — …" and
+  // "🏆 THE GAME IS DECIDED — …" announcements and the numbered Legacy standings) is lifted OUT of
+  // Realm Events and set directly under the Game-is-Decided banner, so it is the first thing every
+  // player reads. The engine tags these lines gameEnd:true; older reports are matched by shape.
+  const _goActive=!!(currentReport&&currentReport.titles&&currentReport.titles.gameOver);
+  const _GE_HEAD_RE=/^\s*(👑 THE RECKONING IS CALLED —|🏆 THE GAME IS DECIDED —)/;
+  const _GE_STAND_RE=/^\s+\d+\.\s.+ — -?\d+ Legacy\b/;
+  const _isGameEnd=e=>!!e && (e.gameEnd || (_goActive && e.charId==null && (_GE_HEAD_RE.test(e.text||'') || _GE_STAND_RE.test(e.text||''))));
+  const _gameEndLines=(log||[]).filter(_isGameEnd);
+  if(_gameEndLines.length) log=log.filter(e=>!_isGameEnd(e));
+  const _gameEndHtml=(()=>{
+    if(!_gameEndLines.length) return '';
+    const _esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const _realms=((currentReport&&currentReport.allKingdoms)||[]).filter(k=>k&&k.name).sort((a,b)=>b.name.length-a.name.length);
+    const _tint=txt=>{ let h=_esc(txt); _realms.forEach(k=>{ if(!k.color) return; const n=_esc(k.name); if(h.includes(n)) h=h.split(n).join(`<strong style="color:${reportColour(k.color)}">${n}</strong>`); }); return h; };
+    const heads=_gameEndLines.filter(e=>!_GE_STAND_RE.test(e.text||''));
+    const rows=_gameEndLines.filter(e=>_GE_STAND_RE.test(e.text||''));
+    return heads.map(e=>`<div style="font-size:.8rem;color:#231e16;margin-top:6px;line-height:1.5">${_tint((e.text||'').trim())}</div>`).join('')
+      +(rows.length?`<div style="margin-top:8px;border-top:1px solid #d9c48f;padding-top:6px"><div style="font-family:'Cinzel',serif;font-size:.8rem;color:#5a4410;margin-bottom:3px">Final Legacy standings</div>`
+        +rows.map((e,i)=>`<div style="font-size:.8rem;color:#231e16;line-height:1.55;${i===0?'font-weight:600;':''}">${_tint((e.text||'').trim())}</div>`).join('')+`</div>`:'');
+  })();
   const _reckoningBanner=(()=>{
     const t=(currentReport&&currentReport.titles)||{};
     if(t.gameOver){
       const go=t.gameOver;
       return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
         <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 ${go.byConcession?'The game is decided':'The Reckoning is complete'} — ${go.winnerName||'No-one'} ${go.byElimination?'is the last realm standing':go.byConcession?'holds the field as every rival concedes':'is judged supreme'}!</div>
-        <div style="font-size:.76rem;color:#231e16;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>
+        ${_gameEndHtml||`<div style="font-size:.76rem;color:#231e16;margin-top:3px">The game is over. See Titles &amp; Victory for the final standings.</div>`}
       </div>`;
+    }
+    if(_gameEndHtml){
+      return `<div style="background:#fdf3d8;border:2px solid var(--gold);border-radius:3px;padding:9px 12px;margin-bottom:12px">
+        <div style="font-family:'Cinzel',serif;font-size:.92rem;color:var(--crimson)">🏆 The game is decided</div>${_gameEndHtml}</div>`;
     }
     if(t.reckoning){
       const r=t.reckoning;
@@ -4275,10 +4385,46 @@ function projectedMoveHost(charId, ph){
   const ch=(report.characters||[]).find(x=>String(x.id)===String(charId));
   const out={armies:[],uncounted:[],gained:0,base:0};
   if(!ch) return out;
-  out.armies=(typeof projectedLedArmies==='function')?projectedLedArmies(charId, ph):((ch.armies||[]).map(a=>({...a})));
+  out.armies=(typeof projectedLedArmies==='function')?projectedLedArmies(ch.id, ph):((ch.armies||[]).map(a=>({...a})));
   out.base=(ch.armies||[]).length;
+  out.sameFrom=[];
   const pod=report.provinceOrderData||{};
   const add=(a)=>{ out.armies.push(a); out.gained++; };
+  // ── SAME-PHASE HAND-OVERS (2026-09-28, Toby item 5) ────
+  // The engine resolves every non-moving order of a phase (Leave/Transfer, Recruit, casting …) BEFORE
+  // any Move in that phase, and a transfer to a hero who is about to march is ordered ahead of his
+  // move. So troops another of your characters hands to this hero — or recruits straight into his
+  // column — in the SAME phase as the move really do march with him. projectedLedArmies only counts
+  // other characters' orders from strictly earlier phases, so those are added here. Both sides must
+  // be standing in the same province at the start of the phase (the engine refuses the hand-over
+  // otherwise).
+  {
+    const myLoc=(typeof predictedLocation==='function')?predictedLocation(ch.id,ph):null;
+    const _memo=new Map();
+    (report.characters||[]).forEach(o=>{
+      if(!o||o.alive===false||String(o.id)===String(ch.id)) return;
+      const oAct=(document.getElementById(`po-action-${o.id}-${ph}`)||{}).value||'';
+      if(oAct!=='Recruit Armies'&&oAct!=='Leave/Transfer Army') return;
+      const oLoc=predictedLocation(o.id,ph);
+      if(!myLoc||!oLoc||oLoc.id!==myLoc.id) return;
+      const oTgt=String((document.getElementById(`po-target-${o.id}-${ph}`)||{}).value||'');
+      const toks=oTgt.split(',').map(t=>t.trim()).filter(Boolean);
+      let got=[];
+      if(oAct==='Recruit Armies'){
+        if(!toks.includes('to:'+ch.id)) return;
+        got=(typeof _projRecruitUnits==='function'?_projRecruitUnits(toks):[]).filter(u=>!_isAutoGarrisonRecruit(u)); // garrison units never join a character
+      } else {
+        const oExtra=(document.getElementById(`po-extra-${o.id}-${ph}`)||{}).value||'';
+        if(String(oExtra)!==String(ch.id)) return;
+        const oArm=projectedLedArmies(o.id, ph, _memo);
+        if(toks.includes('all')) got=oArm.slice();
+        else { const pool=oArm.slice(); toks.forEach(val=>{ const i=pool.findIndex(x=>(x.unitName||x.type)===val||x.type===val); if(i>=0) got.push(pool.splice(i,1)[0]); }); }
+      }
+      if(!got.length) return;
+      got.forEach(u=>add({...u,_projected:true}));
+      out.sameFrom.push(`${got.length} unit${got.length!==1?'s':''} ${oAct==='Recruit Armies'?'recruited for him':'handed over'} by ${o.name}`);
+    });
+  }
   for(let p=0;p<ph;p++){
     const act=(document.getElementById(`po-action-${charId}-${p}`)||{}).value||'';
     if(!act) continue;
@@ -4341,7 +4487,8 @@ function poMoveModeNote(ch, destProv, host, fromProv){
   const _foot=(()=>{
     const bits=[];
     const diff=(A.length)-(H.base||0);
-    if(diff!==0||H.gained) bits.push(`counting your earlier orders this turn — ${A.length} unit${A.length!==1?'s':''} under command by then${diff>0?` (${diff} more than now)`:diff<0?` (${-diff} fewer than now)`:''}`);
+    const _same=(H.sameFrom||[]);
+    if(diff!==0||H.gained) bits.push(`counting your ${_same.length?`orders this turn, including this phase's hand-overs (${_same.join('; ')} — these resolve before any move)`:'earlier orders this turn'} — ${A.length} unit${A.length!==1?'s':''} under command by then${diff>0?` (${diff} more than now)`:diff<0?` (${-diff} fewer than now)`:''}`);
     if((H.uncounted||[]).length) bits.push(`<strong>not counted:</strong> ${H.uncounted.join(', ')} — there is no telling in advance what they will bring`);
     return bits.length?`<div style="opacity:.85;margin-top:2px">${bits.join(' · ')}.</div>`:'';
   })();
@@ -8232,7 +8379,7 @@ function buildTargetField(c, ph, saved){
           </label>
           <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
         </div>
-        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;
+        <select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="setTimeout(refreshAllMoveModeNotes,0)">${recipOpts}</select>`;
       }
       const checkboxes=baseArmies.map((a,i)=>{
         const val=a.unitName||a.type;
@@ -8250,7 +8397,7 @@ function buildTargetField(c, ph, saved){
         ${checkboxes}
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${target||''}">
       </div>
-      <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;}
+      <select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="setTimeout(refreshAllMoveModeNotes,0)">${recipOpts}</select>`;}
 
     // ── DISBAND ARMY ── ── RELEASE HERO ── dismiss this hero from your service; they become a
     // wandering hero (keeping every magic item they carry) and take no further orders this turn.
@@ -10160,6 +10307,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.28-1810</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.28-2258</div>
 </body>
 </html>

@@ -400,7 +400,7 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.09.27-1839';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.28-1810'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.28-2258'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1173,7 +1173,7 @@ async function loadGames(){
   const _archCount=data.filter(gameArchived).length;
   const _rows=data.filter(g=>gameArchived(g)===_showArchived);
   const _switch=(_archCount>0||_showArchived)
-    ? `<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    ? `<div class="topbar" style="display:flex;justify-content:flex-end;margin-bottom:10px">
          <button class="btn btn-ghost" style="font-size:.7rem" onclick="toggleArchivedView()">${_showArchived?`← Back to active games (${data.length-_archCount})`:`🗄 Archived games (${_archCount})`}</button>
        </div>`
     : '';
@@ -9414,6 +9414,12 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   const allChars=[];
   let nextItemId=0;
 
+  // 2026-09-28 (Toby item 1): realm colours are dealt from a SHUFFLED palette. They used to be
+  // REALM_COLOURS[player index], and humans always take the lowest indices (bots are appended after
+  // them), so a player alone against bots was Rose (pink) in every game. shuffleP is the unbiased
+  // Fisher-Yates at module top level; the palette's rules (terrain clearance, luma spacing) are
+  // properties of the set, not of the seat, so any order keeps them.
+  const _realmColourDeal=shuffleP(REALM_COLOURS);
   const players=setupPlayers.map((sp,pi)=>{
     const best=provinces[homeCells[pi].id];
     // Home province race always matches the king's race, and army pool updates accordingly
@@ -9685,7 +9691,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // homeProvinceId is the founding capital and is written ONCE, here. It is deliberately separate
     // from provinces[0], which shifts as land is won and lost — the player map is centred on this
     // province for the whole game, so it must never move under them mid-campaign.
-    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:REALM_COLOURS[pi]||REALM_COLOUR_FALLBACK,race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:20,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
+    return{id:pi,name:sp.kingdomName||sp.name,kingName:sp.kingName||sp.name,_isBot:!!sp.isBot,color:_realmColourDeal[pi]||REALM_COLOUR_FALLBACK,race:sp.race,alignment:sp.alignment,temper:sp.temper,gold:20,king:kingId,heroes:[...heroIds],provinces:[best.id],homeProvinceId:best.id,merits:0,
       // ── Diplomacy (KC alliance system) ── players this king has ENCOUNTERED (seen a character or
       // province of). Only encountered players may be treated with. Accumulated in
       // updateProvinceMemory.
@@ -12461,6 +12467,7 @@ async function runTurn(opts){
                                               // flood, plague, blessing, part-sea …) → Province Reports
       battleId: meta.battleId??null,          // 2026-09-23d: which battle this line belongs to (emitBattle)
       bTier: meta.bTier??null,                // 'k' key · 'd' detail · 't' tally · 's' onlooker summary
+      gameEnd: meta.gameEnd??false,           // 2026-09-28 (Toby item 6): end-of-game announcement / standings → top of the player report
     });
     console.log(`[${type}] ${text}`);
   };
@@ -25738,7 +25745,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       let winner=live.length===1?live[0]:null;
       if(winner==null && live.length>1){ const best=stand.filter(s=>live.includes(s.index??s.pi??-1)).sort((a,b)=>b.score-a.score)[0]; winner=best?(best.index??best.pi):live[0]; }
       const _nOut=(G.players||[]).filter(p=>p&&p.conceded).length;
-      log('system',`👑 THE RECKONING IS CALLED — ${_nOut} realm${_nOut!==1?'s have':' has'} conceded and ${live.length<=1?'only one crown still contests the world':'the last crowns standing are sworn to one another'}. The throne is settled here and now; the Legacy of every realm, titles and relics counted, is set down below.`,{actor:null,targets:[],system:true,public:true});
+      log('system',`👑 THE RECKONING IS CALLED — ${_nOut} realm${_nOut!==1?'s have':' has'} conceded and ${live.length<=1?'only one crown still contests the world':'the last crowns standing are sworn to one another'}. The throne is settled here and now; the Legacy of every realm, titles and relics counted, is set down below.`,{actor:null,targets:[],system:true,public:true,gameEnd:true});
       G.gameOver={winner, byConcession:true, byReckoning:true, turn:G.turn, standings:stand};
     }
   }
@@ -25749,11 +25756,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const wi=G.gameOver.winner;
     const wn=wi!=null?(G.players[wi]?.name||('Realm '+(wi+1))):'No-one';
     const how=G.gameOver.byElimination?'the last realm standing in a world of ruins':G.gameOver.byConcession?'the last crown still contesting the world — every rival has conceded':'judged supreme at the Reckoning';
-    log('system',`🏆 THE GAME IS DECIDED — ${wn} is ${how}!`,{actor:null,targets:[],system:true,public:true});
+    log('system',`🏆 THE GAME IS DECIDED — ${wn} is ${how}!`,{actor:null,targets:[],system:true,public:true,gameEnd:true});
     (G.gameOver.standings||[]).slice().sort((a,b)=>b.score-a.score).forEach((st,i)=>{
       const tHeld=(st.titles||[]).map(k=>_TITLE_LABEL[k]||k).join(', ');
       const relicTxt=st.relics?`${st.titles&&st.titles.length?', ':''}${st.relics} relic${st.relics!==1?'s':''}`:'';
-      log('system',`   ${i+1}. ${st.name} — ${st.score} Legacy${(tHeld||relicTxt)?` (${tHeld}${relicTxt})`:''}`,{actor:null,targets:[],system:true,public:true});
+      log('system',`   ${i+1}. ${st.name} — ${st.score} Legacy${(tHeld||relicTxt)?` (${tHeld}${relicTxt})`:''}`,{actor:null,targets:[],system:true,public:true,gameEnd:true});
     });
   }
 
@@ -26697,6 +26704,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       phase:e.phase??null,
       pinNotice:!!e.pinNotice, // battle-lock notice — the player portal hoists this to the top of its phase
       env:!!e.env, // routed to Province Reports, kept OUT of Chronicle / Realm Events
+      ...(e.gameEnd?{gameEnd:true}:{}), // 2026-09-28: shown at the TOP of the player report, under the Game-is-Decided banner
       ...(e.battleId!=null?{battleId:e.battleId, bTier:e.bTier}:{}), // 2026-09-23d: battle folding (player portal)
     }));
     // ── Task 7(a): CLAIRVOYANCE FEED ────
@@ -26819,6 +26827,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.28-1810</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.28-2258</div>
 </body>
 </html>
