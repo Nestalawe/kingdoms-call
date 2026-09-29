@@ -809,7 +809,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.09.27-1839';
+const KC_DATA_MIN_P='2026.09.29-2329';
 (function(){
   const need=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -3511,6 +3511,11 @@ function _renderDiplomacyInto(el, report, withControls){
   if(!el) return;
   const known=(report&&report.diplomacy&&report.diplomacy.known)||[];
   const alliancesAllowed=!report||!report.diplomacy||report.diplomacy.alliancesAllowed!==false;
+  // 2026-09-29 (Toby): SAFE START — no Treat or declaration of war until the orders for Turn N
+  // (safeStartUntil, 6). The engine discards any sent earlier; here the controls are withdrawn.
+  const _ssUntil=Number(report&&report.diplomacy&&report.diplomacy.safeStartUntil)||0;
+  const _ssLive=Number(report&&(report._liveTurn||report.turn))||1;
+  const safeLocked=_ssUntil>0 && _ssLive<_ssUntil;
   if(!known.length){
     el.innerHTML='<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival\'s province or one of their characters, you may treat with them here.</em>';
     return;
@@ -3537,6 +3542,9 @@ function _renderDiplomacyInto(el, report, withControls){
     if(k.conceded||k.eliminated){
       if(pending!=null) delete diploChoices[k.index];
       controls=`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated&&!k.conceded?'This dynasty is extinguished':'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
+    } else if(safeLocked){
+      if(pending!=null) delete diploChoices[k.index];
+      controls=withControls?`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`:'';
     } else if(!withControls){
       controls=pending?`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`:'';
     } else if(pending){
@@ -3560,7 +3568,8 @@ function _renderDiplomacyInto(el, report, withControls){
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
   }).join('')
-   + (withControls?`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${alliancesAllowed
+   + (withControls&&safeLocked?`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`:'')
+   + (withControls&&!safeLocked?`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${alliancesAllowed
        ? 'An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.'
        : 'In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).'} Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`:'');
 }
@@ -6667,6 +6676,9 @@ async function doSubmitOrders(){
       const extra=getOrderExtra(c.id,ph);
       const _spyName=(action==='Spy'&&String(target||'').startsWith('char:'))?(((currentReport||{}).visibleChars||[]).find(x=>String(x.id)===String(target).slice(5))?.name||null):null;
       const desc=action+(target&&action!=='Move'&&action!=='Defend'&&action!=='Rest'&&action!=='Spy'&&action!=='Explore'?` — ${target}`:'')+(_spyName?` — on ${_spyName}`:'');
+      // 2026-09-29: a Search Lair order names its lair by index within a province — send the province
+      // this form was written for, so the engine never searches a different lair if the move there fails.
+      if(action==='Search Lair'||action==='Search Feature'){ const _pl=predictedLocation(c.id,ph); if(_pl&&_pl.id!=null) return{action,target,extra,desc,prov:_pl.id}; }
       return{action,target,extra,desc};
     });
     // Collect encounter plan
@@ -10307,6 +10319,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.28-2258</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.29-2331</div>
 </body>
 </html>

@@ -270,6 +270,10 @@ section{display:none;}.section-active{display:block;}
         <option value="hostile">Aggressive — every bot is at war with every human realm and never allies with one</option>
       </select>
       <div id="new-game-bot-hint" class="msg-info" style="margin-top:4px;display:none"></div>
+      <!-- 2026-09-29 (Toby): SAFE START — no realm (human or bot) may Treat or declare war before Turn 6. -->
+      <label style="display:flex;align-items:center;gap:8px;font-weight:normal;margin-top:10px;cursor:pointer">
+        <input type="checkbox" id="new-game-safestart"> 🕊 Safe Start — no Treats or declarations of war until the orders for Turn 6
+      </label>
 
       <!-- Turn running: manual / automatic when all orders are in / automatic with a fixed clock deadline -->
       <label style="margin-top:12px">Turn Running</label>
@@ -397,10 +401,21 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.27-1839';
+const KC_DATA_MIN='2026.09.29-2329';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
-const KC_BUILD_STAMP='2026.09.28-2258'; // this build (the footer shows the same; telemetry rows carry it)
+// SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
+// orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
+// make none. `turn` is the turn being resolved (games.turn when its orders are run).
+const SAFE_START_TURN=6;
+function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)||0)<SAFE_START_TURN; }
+// BOTS' reading of Safe Start (2026-09-29): true while even NEXT turn is still locked, so no war can
+// touch the realm before its next orders — the bot posts no defenders and leaves the capital
+// ungarrisoned, putting every hero and levy into expansion. On the last locked turn (Turn
+// SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
+// for the first turn on which war may be declared.
+function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
+const KC_BUILD_STAMP='2026.09.29-2331'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1483,6 +1498,7 @@ async function createGame(){
   const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
   _cfg.seaPct=normSeaPct(document.getElementById('new-game-seapct')?.value); // 20–80% of the world is water (world gen makes it exact)
   _cfg.botDiplomacy=(document.getElementById('new-game-botdiplomacy')?.value==='hostile')?'hostile':'normal'; // 2026-09-26b (Toby item 10)
+  _cfg.safeStart=!!document.getElementById('new-game-safestart')?.checked; // 2026-09-29 (Toby): Safe Start
   _cfg.botDifficulty='hard'; // 2026-09-26 (Toby item 9): one bot strength — the former Hard. Saved with the game so Turn 0 and telemetry read it.
   _cfg.turnMode=readTurnModeForm('new-game'); // manual / auto / deadline (deadline clock starts at Turn 0)
   if(isPrivate){ _cfg.visibility='private'; _cfg.invited=invited; }
@@ -2047,7 +2063,7 @@ async function runTurn0(){
     _mapUse='p'+Math.min(10,totalKingdoms); _szUse=sizemap[_mapUse]||sz;
     console.warn(`Turn 0: ${totalKingdoms} realms on a ${mapSize} map — using the ${_mapUse} map (${_szUse.cols}x${_szUse.rows}) so capitals stay 3+ provinces apart.`);
   }
-  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null, botDiplomacy:(cfg.botDiplomacy==='hostile'?'hostile':'normal')};
+  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null, botDiplomacy:(cfg.botDiplomacy==='hostile'?'hostile':'normal'), safeStart:!!cfg.safeStart};
 
   if(botSetups.length>0){
     renderTurn0Preview();      // GM confirms the generated roster before we commit anything
@@ -2088,7 +2104,7 @@ function renderTurn0Preview(){
 async function commitTurn0(){
   const msg=document.getElementById('detail-msg');
   if(!_pendingTurn0){ msg.innerHTML='<div class="msg-error">No pending setup — press Run Turn 0 again.</div>'; return; }
-  const {humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty, botDiplomacy}=_pendingTurn0;
+  const {humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty, botDiplomacy, safeStart}=_pendingTurn0;
   msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
 
   try{
@@ -2123,6 +2139,7 @@ async function commitTurn0(){
 
     // 3. Generate the world.
     const gameState=await generateNewGame(setupPlayers,sz,maxTurns,{seaPct});
+    if(safeStart) gameState.safeStart=true; // 2026-09-29 (Toby): Safe Start — no diplomacy before Turn SAFE_START_TURN
     gameState.botDiplomacy=(botDiplomacy==='hostile')?'hostile':'normal'; // 2026-09-26b (Toby item 10): 'hostile' = bots always at war with humans, never allied
     gameState.botDifficulty='hard'; // 2026-09-26 (Toby item 9): every bot game plays at the one strength (Easy / Normal retired); the saved cfg value is ignored
     // Turn-running mode carries over from the setup config; a deadline clock starts now (Turn 0 =
@@ -3694,7 +3711,7 @@ function migrateMaxHpV2(gs){
 }
 // guardian HP rescaled. Uncleared lairs in older saves adopt the current table stats for their
 // creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=16; // 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+const GUARDIAN_TABLE_VER=17; // 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -4123,7 +4140,7 @@ function gameMetaOf(game){
 function buildGameMeta(gs){
   gs=(gs&&typeof gs==='object')?gs:{};
   const m={v:1, turnMode:normalizeTurnMode(gs.turnMode)};
-  ['mapSize','maxPlayers','botCount','allBot','botDifficulty','botDiplomacy','visibility','invited'].forEach(k=>{ if(gs[k]!==undefined) m[k]=gs[k]; });
+  ['mapSize','maxPlayers','botCount','allBot','botDifficulty','botDiplomacy','safeStart','visibility','invited'].forEach(k=>{ if(gs[k]!==undefined) m[k]=gs[k]; });
   // ARCHIVE (2026-09-27, Toby item 1). The flag lives in game_state — the one place every writer
   // round-trips — and is copied up into meta here so the LIGHT games-list read can see it without
   // pulling the world. Because meta is rebuilt from game_state on every save, a later turn
@@ -5361,7 +5378,7 @@ function renderTurnModePanel(game){
       ${turnModeFormHtml('detail',tm)}
       ${watcherNote}
       <div id="detail-turnmode-msg" style="font-size:.78rem;margin-top:4px"></div>
-    </div>${botDiplomacyPanelHtml(game)}`;
+    </div>${botDiplomacyPanelHtml(game)}${safeStartNoteHtml(game)}`;
 }
 // 2026-09-26b (Toby item 10): Bot Diplomacy for a game that has bot realms — Normal (bots follow
 // their alignment; some may ally with humans) or Aggressive (every bot at war with every human realm,
@@ -5372,6 +5389,12 @@ function _gameHasBots(gs){
   if(typeof currentGamePlayers!=='undefined' && Array.isArray(currentGamePlayers) && currentGamePlayers.some(isBotRow)) return true;
   if(Array.isArray(gs.players) && gs.players.some(p=>p&&(p.isBot||p.bot))) return true;
   return (gs.botCount||0)>0||!!gs.allBot;
+}
+// SAFE START (2026-09-29): read-only note in the game detail — set at creation, not changeable.
+function safeStartNoteHtml(game){
+  const gs=parseGameState(game); if(!gs||!gs.safeStart) return '';
+  const t=Number(game&&game.turn)||0, open=t>=SAFE_START_TURN;
+  return `<div style="border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c;margin-top:8px;color:var(--parchment);font-size:.84rem">🕊 <strong>Safe Start</strong> — no Treats or declarations of war until the orders for Turn ${SAFE_START_TURN}. ${open?'<span style="color:var(--stone)">(Diplomacy is now open.)</span>':''}</div>`;
 }
 function botDiplomacyPanelHtml(game){
   const gs=parseGameState(game); if(!_gameHasBots(gs)) return '';
@@ -6028,6 +6051,157 @@ function botMutualFoe(G,pi,j){
   return false;
 }
 function botConceded(G,pi){ return !!(((G.players||[])[pi]||{}).conceded); }
+// ══ WAR ASSESSMENT (2026-09-29, Toby) ══════════════════════════════════════════════════════════════
+// A bot no longer declares war the moment it meets a crown two or more steps away on the alignment
+// wheel. It declares only when it judges the war winnable, from what it KNOWS (hosts seen in the last
+// few turns, the land and wealth it has seen the rival hold, the heroes it has met) — never the true
+// state of an unseen realm:
+//   1 STRENGTH — our side (plus allies, minus half of any other war we are fighting) against theirs
+//     (plus their allies), needing a margin (BOT_WAR.base) that alignment, temper and opportunity
+//     move. Numbers: see BOT_WAR below.
+//   2 A PRIZE — one of their land provinces on (or one beyond) our border that one of our hosts can
+//     take; without one, war only on a markedly bigger margin.
+//   3 OPPORTUNITY — each lowers the bar (capped): they lost a battle we know of lately, their crown
+//     passed to an heir lately, an ally of ours is already at war with them, their field host was
+//     seen far from home, their capital stands empty in our sight.
+//   5 EXPAND FIRST — while free neutral land still borders ours (and we are not stalled on it), the
+//     bar rises: conquest of a rival waits until the easy land is gone.
+//   6 NO DOGPILE — no new war while an existing one is going badly (we are weaker than that foe).
+//   7 SUE FOR PEACE — at war for minWarTurns+ and badly outmatched, or losing the battles against
+//     them, the bot offers peace; it accepts a peace the rival offers this turn only when it is
+//     not winning.
+//   8 PERSONALITY — the king's Temper moves the bar (Berserk −0.25 … Cowardly +0.3), with a small
+//     fixed per-realm lean; a new war is kept minWarTurns before peace is weighed, and a new peace
+//     peaceCooldown turns before war is weighed again.
+// The Aggressive bot-diplomacy setting, a Reckoning claim, the grudge (with its survival exception)
+// and alignment alliances (one step or less; never with a realm allied to one of our enemies) are
+// decided before this is consulted (collectBotDiplomacy).
+// Tuning 2026-09-29b (Toby: "I still want bloody games") — chosen over 32 fuzz games of 6 bots × 20 turns
+// against the old war-on-contact rule: realm battles ≈ the same (38 vs 38 a game), realms eliminated
+// 17 vs 12, ~7 standing wars a game at mid-game.
+const BOT_WAR={base:0.8, floor:0.75, farStep:0.1, dark:0.15, expand:0.1, stallFree:3,
+  oppStep:0.2, oppCap:0.5, peaceRatio:0.35, peaceLosses:3, minWarTurns:5, peaceCooldown:6,
+  allyWeight:0.6, burden:0.25, knowTurns:4, newsTurns:4, landUnit:5, farFromHome:3,
+  temper:{Berserk:-0.25, Brave:-0.1, Cautious:0.15, Cowardly:0.3},
+  grudgeYield:5, grudgeRecall:2,   // a grudge yields when the human is 5× our strength, returns at 2×
+  prizeHops:2,          // a prize may lie on our border or one province beyond it
+  losingRatio:0.6,      // no new war while any foe is > 1/0.6 ≈ 1.7× our own strength
+  noPrizeMult:1.3,      // with no prize in reach, war still if the ratio clears 1.3× the bar
+  acceptRatio:0.9, acceptNoPrize:0.7};   // accept a rival's peace below these ratios (and below the bar)
+// Battles between two realms, kept a few turns so bots can read recent fortunes (GM creditBattle).
+function noteRealmBattle(G,provId,atk,def,won,atkLost,defLost){
+  const t=G.turn||0;
+  G._battleNews=(G._battleNews||[]).filter(x=>x&&t-x.t<=BOT_WAR.newsTurns);
+  G._battleNews.push({t,p:provId,a:atk,d:def,w:won?1:0,al:atkLost||0,dl:defLost||0});
+}
+// News of a battle reaches realm pi if it or an ally fought in it, or it can see the field.
+function botHeardBattle(G,pi,x){
+  if(x.a===pi||x.d===pi) return true;
+  if(botRelationRaw(G,pi,x.a)==='allied'||botRelationRaw(G,pi,x.d)==='allied') return true;
+  return x.p!=null&&botSees(G,pi,x.p);
+}
+function botOwnPower(G,pi){
+  let field=0,gar=0,heroes=0,inc=0;
+  (G.characters||[]).forEach(c=>{ if(!(c&&c.alive&&c.player===pi)) return; heroes++; if((c.armies||[]).length) field+=botBattleForce(G,c,null,'plain',{viewerPi:pi}); });
+  (G.world.provinces||[]).forEach(p=>{ if(!p||p.owner!==pi) return; inc+=(p.tax||0); gar+=botForceStrength(p.garrisonArmies); });
+  return field+0.5*gar+2*inc+3*heroes;
+}
+// What realm pi BELIEVES realm j can put in the field. Hosts seen lately (their plain-ground
+// strength), or — where the realm has seen little — about one unit for each province it has seen
+// them hold; their wealth from the land it has seen; the characters it has met.
+function botRivalPower(G,pi,j){
+  const I=botEnemyIntel(G,pi), turn=G.turn||0, seen=new Set(); let field=0;
+  Object.keys(I.generals||{}).forEach(k=>{ const r=I.generals[k]; if(r&&r.player===j&&turn-r.turn<=BOT_WAR.knowTurns){ field+=(r.strength||0); seen.add(String(k)); } });
+  Object.keys(I.heroes||{}).forEach(k=>{ const r=I.heroes[k]; if(r&&r.player===j&&turn-r.turn<=6) seen.add(String(k)); });
+  (G.characters||[]).forEach(e=>{ if(!(e&&e.alive&&e.player===j)||seen.has(String(e.id))||!botSeesChar(G,pi,e)) return; seen.add(String(e.id)); if((e.armies||[]).length) field+=botBattleForce(G,e,null,'plain',{viewerPi:pi}); });
+  let inc=0,land=0;
+  (G.world.provinces||[]).forEach(p=>{ if(!p||!botKnows(G,pi,p.id)) return; const b=botBelief(G,pi,p); if(!b||b.owner!==j) return; inc+=(b.tax||0); if(b.terrain!=='sea') land++; });
+  field=Math.max(field, land*BOT_WAR.landUnit);
+  return field+3+2*inc+3*Math.max(1,seen.size);   // +3: the capital's garrison, assumed
+}
+// The realm's standing with j: {since, peaceAt} kept on the player record.
+function botWarBook(G,pi,j){
+  const p=(G.players||[])[pi]; if(!p) return {};
+  p._botWar=p._botWar||{}; const b=p._botWar[j]=p._botWar[j]||{};
+  if(botRelationRaw(G,pi,j)==='enemy'){ if(b.since==null) b.since=G.turn||0; }
+  else if(b.since!=null){ b.peaceAt=G.turn||0; delete b.since; }
+  return b;
+}
+// Is there a province of j's on our border that one of our hosts could take?
+function botWarPrize(G,pi,j){
+  const hosts=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&(c.armies||[]).length);
+  if(!hosts.length) return false;
+  const T=botTuning(G,pi); const margin=Math.min(T.kingAttackMargin||1.2,T.heroAttackMargin||1.2);
+  return (G.world.provinces||[]).some(X=>{
+    if(!X||X.terrain==='sea'||!botKnows(G,pi,X.id)||botBelievedOwner(G,pi,X)!==j) return false;
+    // on our border — or, with prizeHops 2, one province beyond it
+    let border=false; for(let i=0;i<6&&!border;i++){ const N=botNeighbourProv(G,X,i); if(!N||N.terrain==='sea') continue; if(N.owner===pi){ border=true; break; }
+      if(BOT_WAR.prizeHops>=2) for(let k=0;k<6;k++){ const M=botNeighbourProv(G,N,k); if(M&&M.owner===pi&&M.terrain!=='sea'){ border=true; break; } } }
+    if(!border) return false;
+    const def=botTargetDefence(G,pi,X);
+    return hosts.some(c=>botBattleForce(G,c,null,X.terrain,{viewerPi:pi})>=def*margin);
+  });
+}
+// Free neutral land still on our border (and we are not stalled against it)?
+function botStillExpanding(G,pi){
+  if(botStallTurns(G,pi)>=BOT_WAR.stallFree) return false;
+  return (G.world.provinces||[]).some(P=>{ if(!P||P.owner!==pi||P.terrain==='sea') return false;
+    for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea'||!botKnows(G,pi,N.id)) continue; if(botBelievedOwner(G,pi,N)===null) return true; }
+    return false; });
+}
+function botWarAssess(G,pi,j,opts){
+  opts=opts||{}; const turn=G.turn||0, pls=G.players||[];
+  const book=botWarBook(G,pi,j), rel=botRelationRaw(G,pi,j);
+  const enc=((pls[pi]||{})._encountered)||[];
+  // 1 + 6: the two sides
+  let mine=botOwnPower(G,pi), theirs=botRivalPower(G,pi,j), losingElsewhere=false;
+  pls.forEach((q,k)=>{ if(!q||k===pi||k===j||q.conceded||q._eliminated) return;
+    const rpk=botRelationRaw(G,pi,k), rjk=botRelationRaw(G,j,k);
+    if(rpk==='allied') mine+=BOT_WAR.allyWeight*botRivalPower(G,pi,k);
+    else if(rjk==='allied') theirs+=BOT_WAR.allyWeight*botRivalPower(G,pi,k);   // alliances are known to all
+    if(rpk==='enemy'){ const pk=botRivalPower(G,pi,k); mine-=BOT_WAR.burden*pk; if(botOwnPower(G,pi)<pk*BOT_WAR.losingRatio) losingElsewhere=true; } });
+  const ratio=Math.max(0,mine)/Math.max(1,theirs);
+  // 3: opportunities
+  const opp=[]; const news=(G._battleNews||[]).filter(x=>x&&turn-x.t<=3&&botHeardBattle(G,pi,x));
+  if(news.some(x=>(x.a===j&&!x.w)||(x.d===j&&x.w))) opp.push('lost a battle');
+  if((G.characters||[]).some(c=>c&&c.alive&&c.isKing&&c.player===j&&c._crownedTurn!=null&&turn-c._crownedTurn<=4)) opp.push('new heir');
+  if(pls.some((q,k)=>q&&k!==pi&&k!==j&&botRelationRaw(G,pi,k)==='allied'&&botRelationRaw(G,k,j)==='enemy')) opp.push('ally at war with them');
+  const home=(pls[j]||{}).homeProvinceId, H=home!=null?G.world.provinces[home]:null;
+  if(H&&botKnows(G,pi,H.id)){
+    const I=botEnemyIntel(G,pi);
+    if(Object.keys(I.generals||{}).some(k=>{ const r=I.generals[k]; if(!(r&&r.player===j&&turn-r.turn<=2&&r.provId!=null&&r.provId!==H.id)) return false;
+        const P=G.world.provinces[r.provId]; if(!P) return false; const d=botPathLenAny(G,P,H.id,BOT_WAR.farFromHome); return d==null||d>=BOT_WAR.farFromHome; })) opp.push('host far from home');
+    if(botSees(G,pi,H.id)&&H.owner===j&&!(H.garrisonArmies||[]).length&&!botVisibleCharsIn(G,pi,H).some(e=>e.player===j&&(e.armies||[]).length)) opp.push('capital unguarded');
+  }
+  // 5 + 8 + alignment: the bar
+  const king=(G.characters||[]).find(c=>c&&c.alive&&c.isKing&&c.player===pi);
+  const lean=(((pi*37)+(((pls[pi]||{}).name||'').length*11))%21-10)/100;   // fixed per realm, −0.10…+0.10
+  const dist=alignDistP(botAlignOf(G,pi),botAlignOf(G,j));
+  const expanding=botStillExpanding(G,pi);
+  let thr=BOT_WAR.base+(BOT_WAR.temper[(king||{}).temper]||0)+lean
+    -(['Evil','Undead'].includes(botAlignOf(G,pi))?BOT_WAR.dark:0)
+    -Math.max(0,dist-2)*BOT_WAR.farStep
+    +(expanding?BOT_WAR.expand:0)
+    -Math.min(BOT_WAR.oppCap,opp.length*BOT_WAR.oppStep);
+  thr=Math.max(BOT_WAR.floor,thr);
+  const prize=botWarPrize(G,pi,j);
+  // 7: our record against them lately
+  let wins=0,losses=0; (G._battleNews||[]).forEach(x=>{ if(!x||turn-x.t>BOT_WAR.newsTurns) return;
+    if(x.a===pi&&x.d===j){ if(x.w) wins++; else losses++; } else if(x.a===j&&x.d===pi){ if(x.w) losses++; else wins++; } });
+  let decision=null, why='';
+  if(rel==='enemy'){
+    const age=book.since!=null?turn-book.since:99;
+    if(age>=BOT_WAR.minWarTurns){
+      if(ratio<BOT_WAR.peaceRatio){ decision='peace'; why='outmatched'; }
+      else if(losses>=BOT_WAR.peaceLosses&&losses>wins){ decision='peace'; why='losing the battles'; }
+      else if(opts.offeredPeace&&(ratio<Math.min(thr,BOT_WAR.acceptRatio)||(!prize&&ratio<BOT_WAR.acceptNoPrize))){ decision='peace'; why='accepts their offer'; }
+    }
+  } else if(rel==='neutral'){
+    const cooling=book.peaceAt!=null&&turn-book.peaceAt<BOT_WAR.peaceCooldown;
+    if(!cooling&&!losingElsewhere&&(prize||ratio>=thr*BOT_WAR.noPrizeMult)&&ratio>=thr){ decision='war'; why=opp.length?opp.join(', '):'stronger'; }
+  }
+  return {decision,why,ratio,thr,prize,expanding,opp,losingElsewhere,wins,losses};
+}
 // Defending strength of an ENEMY PLAYER's province (Phase 4): the owner's characters standing there
 // (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
 // `viewerPi` is the realm doing the looking. Without sight of the province it gets the wealth-band
@@ -6308,7 +6482,7 @@ function botRoles(G,pi){
   // companion duty instead.
   const leaderSet=new Set(leaders);
   const freeHeroes=all.filter(c=>!c.isKing&&!leaderSet.has(c.id)).length;
-  const wantDef=(botHasMetPlayers(G,pi)||(G.turn||0)>=4)?Math.max(0,Math.min(3,Math.floor(botLandCount(G,pi)/4),freeHeroes-3)):0;
+  const wantDef=botSafeWindow(G)?0:(botHasMetPlayers(G,pi)||(G.turn||0)>=4)?Math.max(0,Math.min(3,Math.floor(botLandCount(G,pi)/4),freeHeroes-3)):0;
   let defenders=sticky.filter(c=>!leaderSet.has(c.id));
   const defScore=c=>{ const s=c.skills||{}; return (c.armies||[]).length*5+(s.tactical||0)*3+(s.melee||0)+(s.archery||0)-botMagicScore(c)*2-((s.sage||0)+(s.spy||0)+(s.thief||0)+(s.explorer||0))*2; };
   defenders.sort((a,b)=>defScore(b)-defScore(a)); defenders=defenders.slice(0,wantDef);
@@ -6340,6 +6514,11 @@ function botLedger(G,pi){
   // 2026-09-28 (Toby: slayers must always have the gold to hunt rumours): 4g a slayer (two Moderate or four Weak
   // rumours) is set aside BEFORE any muster can spend it; botRumourAffordable / botSpendRumour draw on it first.
   { const nSl=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&c._botRole==='slayer').length; L.rumourFund=Math.max(0,Math.min(Math.max(0,budget),nSl*BOT_RUMOUR_FUND_PER_SLAYER)); L.budget-=L.rumourFund; }
+  // 2026-09-29 (Toby): WAR CHEST — for every host of ours in CONTACT (botInContact) 10g is held back, up to
+  // half the free treasury, BEFORE the planner and the economy can spend it; runBotPhaseOne('muster') opens
+  // it for those hosts' Spring musters and hands back whatever is left.
+  { const nC=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&botInContact(G,pi,c)).length;
+    L.warChest=Math.max(0,Math.min(Math.floor(Math.max(0,L.budget)*BOT_P1.chestShare),nC*BOT_P1.chestPerHost)); L.budget-=L.warChest; }
   L.diag={gold:player.gold||0,income,reserve,budget0:budget,upkeep0:L.upkeep,cap:L.upkeepCap,calls:0,noTypes:0,noKin:0,capStop:0,budgetStop:0,tokens:0,holdersIdle:0,holdersInRecruit:0};   // Sept 2026 (§99 diagnosis; read by the study through window.__botDiag)
   // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer than three
   // units each), 30% of the wage ceiling is held back from the field hosts' muster so the posts get
@@ -6394,7 +6573,7 @@ function botGarrisonTarget(G,prov,pi){
   // else is held by the defenders and the field army — every levy not sunk into a garrison marches with the general.
   const home=prov.id===botHomeId(G,pi);
   const attacked=botUnderAttack(G,pi);
-  if(home) return attacked?2:1;
+  if(home) return attacked?2:(botSafeWindow(G)?0:1);   // Safe Start: no peace garrison while no war can come before next turn
   return (attacked&&(prov.tax||0)>=7)?1:0;
 }
 function botGarrisonType(prov){ return (prov.armyTypes||[]).find(x=>/garrison/i.test(x))||null; }
@@ -6747,9 +6926,15 @@ function botThiefOrders(G,pi,c,pre){
   // Moderate 15 / Powerful 30 / Legendary 45) when that reads 75%+ — his encounter plan is Steal-then-flee
   // (set in botSpecialistRoles), so a failed steal ends in flight rather than a fight.
   { const th=Math.min(5,(c.skills||{}).thief||0); if(th>=3){ const PEN={...STEAL_TIER_PEN};
-      const lair=botLairCandidates(G,pi,c,4).filter(k=>k.f.monster&&(50+10*th-(PEN[(k.f.monster.power)||'Weak']||0))>=75&&!(k.rumour&&k.rumour.band>=101)).sort((a,b)=>b.grade-a.grade||a.d-b.d)[0];
+      const lair=botLairCandidates(G,pi,c,4).filter(k=>k.f.monster&&(50+10*th-(PEN[(k.f.monster.power)||'Weak']||0))>=75&&!(k.rumour&&k.rumour.band>=101)&&!((k.f._pickedCleanBy||[]).includes(pi))).sort((a,b)=>b.grade-a.grade||a.d-b.d)[0];   // 2026-09-29: never a hoard this realm has already emptied
       if(lair){ const path=lair.d>0?(botPathDirs(G,pi,P,lair.X.id,4,true)||[]):[]; if((lair.d===0||path.length===lair.d)&&pre.length+path.length<5){
-        const out=[...pre,...path.map(d=>botMoveOrder(d,'Creep toward the lair in '+lair.X.name)),{action:'search',target:String(lair.li),extra:'',desc:'Rob the hoard'}]; while(out.length<5) out.push({action:'defend',target:'',extra:'',desc:'Lie in wait'}); return out; } } } }
+        // 2026-09-29 (Toby, lair study): the robber goes in to STEAL AND RUN. The steal-then-flee plan was set
+        // only for a hero whose PRIMARY role is thief (botSpecialistRoles), but this order also reaches a hero
+        // with Thief 3+ working his secondary role — who then walked into a Moderate guardian with an ordinary
+        // melee plan and fought it (40 bot games: every "untrained" Moderate death was one of these). The plan
+        // now travels with the order; the role pass resets `_botTactics` plans next turn as before.
+        c.encounterPlan={...(c.encounterPlan||{}),tactics:['ST','FL','FL','FL','FL','FL'],_botTactics:true};
+        const out=[...pre,...path.map(d=>botMoveOrder(d,'Creep toward the lair in '+lair.X.name)),{action:'search',target:String(lair.li),extra:'',desc:'Rob the hoard',prov:lair.X.id}]; while(out.length<5) out.push({action:'defend',target:'',extra:'',desc:'Lie in wait'}); return out; } } } }
   const t=botStealTarget(G,pi,c,4); if(!t) return null;
   const path=t.d>0?(botPathAny(G,P,t.provId,4)||[]):[]; if(t.d>0&&path.length!==t.d) return null;
   if(pre.length+path.length>=5) return null;
@@ -6777,7 +6962,7 @@ function botLairOrders(G,pi,c,pre){
   const P=G.world.provinces[c.location]; const t=botLairTarget(G,pi,c,4); if(!t) return null;
   const path=t.d>0?(botPathDirs(G,pi,P,t.X.id,4,true)||[]):[]; if(t.d>0&&path.length!==t.d) return null;
   if(pre.length+path.length>=5) return null;
-  const mv=[...path.map(d=>botMoveOrder(d,'Seek the lair in '+t.X.name)),{action:'search',target:String(t.li),extra:'',desc:'Search Lair'}];
+  const mv=[...path.map(d=>botMoveOrder(d,'Seek the lair in '+t.X.name)),{action:'search',target:String(t.li),extra:'',desc:'Search Lair',prov:t.X.id}];
   return botFillOrders(G,pi,c,pre,mv);
 }
 // ROLE WORK — the orders a role does when it has real work this year, or null (2026-09-26, Toby: primary role,
@@ -7043,6 +7228,7 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
   const plainStr=botBattleForce(G,c,null,'plain'); const k=plainStr>0?myStr/plainStr:1;
   const strIn=t=>botBattleForce(G,c,null,t)*k;
   let best=null, reinforce=null, maxThreat=0, threatDir=-1;
+  const _pins=botPins(G,pi);
   for(let i=0;i<6;i++){
     const N=botNeighbourProv(G,P,i); if(!N) continue;
     // the doorstep threat is what the realm can SEE next door — a hex bordering our land shows
@@ -7051,6 +7237,7 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
     botVisibleCharsIn(G,pi,N).forEach(e=>{ if(e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)==='enemy') enemyForceInN+=botEffForce(G,e); });
     if(enemyForceInN>maxThreat){ maxThreat=enemyForceInN; threatDir=i; }
     if(visited&&visited.has(N.id)) continue;
+    if(_pins.has(N.id)) continue;                                          // 2026-09-29: flooded this Spring by our own mage — sea all year
     if(N.terrain==='sea' && botSeaCap(c.armies)==='land') continue;      // no shipping — can't put to sea
     if(N.terrain!=='sea' && botFleetOnly(c.armies)) continue;            // 2026-09-28: bare hulls cannot step ashore
     if(N.owner===pi){
@@ -7069,7 +7256,7 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
     // a winnable enemy HOST is the prize — the bigger the stack we can smash, the better.
     // 2026-09-12: an ally's enemy is the enemy to press — a shared front ends the war sooner.
     // Sept 2026 (Toby: avoid stronger armies): a province standing beside an enemy host we could not beat is a trap
-    let trap=0; if(enemyTarget){ for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(!K||K.terrain==='sea'||K.id===P.id) continue; const kc=botEnemyChars(G,K,pi); const kr=botRememberedHostAt(G,pi,K.id); const f=kc.force+kr.strength; if(f>0&&strIn(N.terrain)<f*1.2){ trap=-25; break; } } }
+    let trap=0; if(enemyTarget){ for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(!K||K.terrain==='sea'||K.id===P.id||_pins.has(K.id)) continue; const kc=botEnemyChars(G,K,pi);   /* a pinned host cannot come to its neighbour's aid */ const kr=botRememberedHostAt(G,pi,K.id); const f=kc.force+kr.strength; if(f>0&&strIn(N.terrain)<f*1.2){ trap=-25; break; } } }
     let score=(N.tax||0)*T.taxScoreWeight - targetStr + (enemyTarget?T.rivalBias:0) + ec.value + ec.units*3 + terrainEdge + (ec.units>0?T.rivalBias:0) + trap
               + ((enemyTarget&&botMutualFoe(G,pi,N.owner))?T.rivalBias:0)
               + ((enemyTarget&&botAllyNear(G,pi,N))?T.rivalBias/2:0);      // Sept 2026 (R7): press the front an ally is already on
@@ -7084,6 +7271,7 @@ function botScanTargets(G,pi,c,P,myStr,T,visited){
 // CHAINED HOPS — continue a march from a predicted position: attack the next winnable neighbour,
 // else walk toward the frontier. Strength is discounted 15% per fight fought (losses) and each
 // extra hop that fights demands a stiffer margin; at most two fights per turn are chained.
+const BOT_MAX_FIGHTS=3;
 function botChainHops(G,pi,c,startProv,myStr,T,hopsLeft,visited,fights){
   const moves=[]; let cur=startProv, str=myStr, fought=fights||0;
   while(hopsLeft>0 && cur){
@@ -7091,7 +7279,7 @@ function botChainHops(G,pi,c,startProv,myStr,T,hopsLeft,visited,fights){
     if(scan.best&&str===0&&scan.best.targetStr>0) scan.best=null;                          // exhausted host: no third fight
     if(scan.best){
       moves.push(botMoveOrder(scan.best.dirIdx, scan.best.targetStr>0?'Attack':'Advance')); visited.add(scan.best.N.id); cur=scan.best.N; hopsLeft--;
-      if(scan.best.targetStr>0){ str*=0.85; fought++; if(fought>=2) str=0; }   // Sept 2026 (Toby): two fights a year, then only unguarded ground — but every hop is used
+      if(scan.best.targetStr>0){ str*=0.85; fought++; if(fought>=BOT_MAX_FIGHTS) str=0; }   // 2026-09-29 (Toby: attack more than one enemy province a year): three fights a year (was two), then only unguarded ground — every hop is used
       continue;
     }
     const ft=botFrontierTarget(G,pi,cur); if(ft==null) break;
@@ -7428,7 +7616,7 @@ function botHostMargin(base,hostUnits){ if(!(hostUnits>0)) return base; return M
 // gained a level, is stale. Lairs are taken weakest grade first.
 const BOT_LAIR_GRADE={'':0,'Weak':0,'Moderate':1,'Powerful':2,'Legendary':3};
 function botRumourFor(G,pi,c,f){ const r=f&&f._rumourOdds&&f._rumourOdds[pi]; if(!r||r.charId!==c.id) return null; if((G.turn||0)-r.turn>3) return null;
-  if(r.rating!=null&&botLairRating(c)<r.rating) return null; return r; }   // 2026-09-28: stale only if he has WEAKENED since (a level gained no longer voids it)
+  if(r.rating!=null&&botLairRating(c)<r.rating) return null; if(BOT_LAIR_REASK_GAIN>0&&r.rating!=null&&botLairRating(c)>=r.rating+BOT_LAIR_REASK_GAIN) return null; return r; }   // 2026-09-28: stale only if he has WEAKENED since (a level gained no longer voids it)
 function botLairRating(c){ const sk=c.skills||{}; return (c.maxHp||20)+(sk.melee||0)*6+(sk.tactical||0)*3+(sk.archery||0)*2+((sk.elemental||0)+(sk.necromancy||0)+(sk.psychic||0))*4+(c.items||[]).length; }
 // Candidate lairs for this hero: {X,li,f,grade,d,rumour}. `maxD` hops through own/allied/unowned ground.
 function botLairCandidates(G,pi,c,maxD){
@@ -7478,25 +7666,42 @@ function botSpendRumour(L,price){ const f=Math.min(L.rumourFund||0,price); L.rum
 //   can reach in the year, up to three; every search after the first carries `_botMinHp` (0.6): the engine
 //   turns it into a Rest if the earlier fight left him under 60%.
 const BOT_LAIR_WEAK_BAND=80, BOT_LAIR_WEAK_HP=0.95, BOT_LAIR_REACH=6, BOT_LAIR_MAX_RUMOURS=3;   // 2026-09-28 (options 3, 5)
-const BOT_LAIR_GO_BAND=90, BOT_LAIR_OWN_AFTER=2, BOT_LAIR_PROMOTE_AT=6, BOT_LAIR_RETRY_EXTRA=2, BOT_LAIR_MIN_HP=0.75, BOT_LAIR_NEXT_HP=0.6, BOT_LAIR_MAX_SEARCHES=3;
+// 2026-09-29 (Toby): PROMOTE_AT 6 → 4 → 2 (study C4; RETRY_EXTRA 2 → 0: no hold after a poor reading) — the rumour (80%+) still decides whether he goes in, so asking sooner
+// costs a few gold, not a life.
+// 2026-09-29 tuning knobs (defaults = previous behaviour): BOT_LAIR_GO_BAND_HI is the rumour band that sends a hero
+// into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
+// lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns).
+const BOT_LAIR_GO_BAND_HI=90, BOT_LAIR_REASK_GAIN=3;   // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
+function botGoBand(g){ return g>0?BOT_LAIR_GO_BAND_HI:BOT_LAIR_GO_BAND; }
+const BOT_LAIR_GO_BAND=90, BOT_LAIR_OWN_AFTER=2, BOT_LAIR_PROMOTE_AT=2, BOT_LAIR_RETRY_EXTRA=0, BOT_LAIR_MIN_HP=0.75, BOT_LAIR_NEXT_HP=0.6, BOT_LAIR_MAX_SEARCHES=3;
 const BOT_LAIR_GN=['Weak','Moderate','Powerful','Legendary'];
+// 2026-09-29 (Toby): PROMOTION ON STRENGTH as well as kills. A hero who owns his grade and is already
+// kitted or trained for the grade above asks about it without waiting for the kill count: equipped items
+// at least BOT_LAIR_STRONG_ITEMS[g], OR his best fighting skill (Melee, Archery or a duelling school,
+// items included) at least BOT_LAIR_STRONG_SKILL[g]. Indexed by the grade he would move UP to. Moderate
+// 4 items / skill 5, Powerful 6 / 7, Legendary 8 / 9 — the guardian-ladder benchmark heroes carry 5
+// tier-1 items for Moderate.
+const BOT_LAIR_STRONG_ITEMS=[0,3,5,7], BOT_LAIR_STRONG_SKILL=[0,4,6,8];   // 2026-09-29 (Toby, study C4): was [0,4,6,8] / [0,5,7,9]
+function botLairStrongFor(c,g){ if(!c||g<1||g>3) return false;
+  const n=activeItems(c).length; const best=Math.max(...['melee','archery','elemental','necromancy','psychic','white'].map(k=>effSkillOf(c,k,[])||0));
+  return n>=BOT_LAIR_STRONG_ITEMS[g]||best>=BOT_LAIR_STRONG_SKILL[g]; }
 function botLairTiers(c){ const K=c._botLairKills||{}; const k=g=>K[BOT_LAIR_GN[g]]||0; const lad=c._botLadder||{};
   let cur=-1; for(let g=0;g<4;g++) if(k(g)>=BOT_LAIR_OWN_AFTER) cur=g;
-  let up=null; if(cur<0) up=0; else if(cur<3&&(k(cur)>=BOT_LAIR_PROMOTE_AT||k(cur+1)>=1)&&k(cur)>=(lad.retryAt||0)) up=cur+1;
+  let up=null; if(cur<0) up=0; else if(cur<3&&(k(cur)>=BOT_LAIR_PROMOTE_AT||k(cur+1)>=1||botLairStrongFor(c,cur+1))&&k(cur)>=(lad.retryAt||0)) up=cur+1;
   return {cur,up,k}; }
 function botLairPlan(G,pi,c,pre,L){
   const sk=c.skills||{}; const _cs=Math.max(sk.elemental||0,sk.necromancy||0,sk.psychic||0);
   if((sk.melee||0)<3&&(sk.archery||0)<3&&((sk.melee||0)+(sk.archery||0))<5&&!((sk.melee||0)>=2&&((sk.melee||0)+(sk.archery||0)+_cs)>=6)) return null;   // a combat school counts toward the gate (the rumour still decides)
   const P=G.world.provinces[c.location]; if(!P) return null; const cands=botLairCandidates(G,pi,c,BOT_LAIR_REACH).filter(x=>x.f&&x.f.monster); if(!cands.length) return null;   // option 5: six hops
   const rating=botLairRating(c); const lad=c._botLadder=c._botLadder||{};
-  const told=f=>{ const r=f._rumourOdds&&f._rumourOdds[pi]; return (r&&r.charId===c.id&&(G.turn||0)-r.turn<=6&&!(r.rating!=null&&rating<r.rating))?r:null; };   // an assessment still good for him
+  const told=f=>{ const r=f._rumourOdds&&f._rumourOdds[pi]; return (r&&r.charId===c.id&&(G.turn||0)-r.turn<=6&&!(r.rating!=null&&rating<r.rating)&&!(BOT_LAIR_REASK_GAIN>0&&r.rating!=null&&rating>=r.rating+BOT_LAIR_REASK_GAIN))?r:null; };   // an assessment still good for him
   let T=botLairTiers(c);
   // a fresh "below 80%" on the grade above: clear two more of his own grade before he asks again
-  if(T.up!=null&&T.cur>=0&&T.up>T.cur&&cands.some(x=>x.grade===T.up&&(()=>{ const r=told(x.f); return r&&r.band<BOT_LAIR_GO_BAND&&(G.turn||0)-r.turn<=1; })())&&!((lad.retryAt||0)>T.k(T.cur))){ lad.retryAt=T.k(T.cur)+BOT_LAIR_RETRY_EXTRA; T=botLairTiers(c); }
+  if(T.up!=null&&T.cur>=0&&T.up>T.cur&&cands.some(x=>x.grade===T.up&&(()=>{ const r=told(x.f); return r&&r.band<botGoBand(x.grade)&&(G.turn||0)-r.turn<=1; })())&&!((lad.retryAt||0)>T.k(T.cur))){ lad.retryAt=T.k(T.cur)+BOT_LAIR_RETRY_EXTRA; T=botLairTiers(c); }
   const mhp0=c.maxHp||20, hp0=(c.hp!=null?c.hp:mhp0);
   // option 3: a WEAK lair on a 60–80% rumour ("the odds favour you") when he stands at full health (95%+)
   const weakRisk=x=>x.grade===0&&x.rumour&&x.rumour.band>=BOT_LAIR_WEAK_BAND&&x.rumour.band<BOT_LAIR_GO_BAND;
-  const searchable=x=>(T.cur>=0&&x.grade<=T.cur)||(x.rumour&&x.rumour.band>=BOT_LAIR_GO_BAND)||(weakRisk(x)&&hp0>=mhp0*BOT_LAIR_WEAK_HP);
+  const searchable=x=>(T.cur>=0&&x.grade<=T.cur)||(x.rumour&&x.rumour.band>=botGoBand(x.grade))||(weakRisk(x)&&hp0>=mhp0*BOT_LAIR_WEAK_HP);
   const askable=x=>T.up!=null&&x.grade===T.up&&!x.rumour&&!told(x.f)&&L&&botRumourAffordable(G,pi,L,x.price);
   if(!cands.some(searchable)&&!cands.some(askable)) return null;
   // rest first when hurt: to 75% of max HP, 30% a phase
@@ -7505,21 +7710,27 @@ function botLairPlan(G,pi,c,pre,L){
   const mv=[]; for(let i=0;i<restN&&pre.length+mv.length<5;i++) mv.push({action:'rest',target:'',extra:'',desc:'Rest before the hunt'});
   const left=()=>5-pre.length-mv.length;
   let pos=P, searches=0, asked=0; const used=new Set(), askedProv=new Set();
+  // 2026-09-29 (Toby: bots never climb past Weak lairs): once his ladder says the grade above is due
+  // (T.up > T.cur), the year's FIRST move is to hear the talk of that grade, before farming his own. The loop
+  // below only reached the rumour branch when no searchable own-grade lair was left in reach, so a slayer with
+  // Weak lairs about him cleared Weak lairs forever and never asked about a Moderate one (40 bot games, 30
+  // turns: 50 heroes past six Weak kills, 17 Moderate rumours heard in all).
+  const preferAsk=T.cur>=0&&T.up!=null&&T.up>T.cur;
   while(left()>0){
-    const opts=searches<BOT_LAIR_MAX_SEARCHES?cands.filter(x=>!used.has(x.X.id+':'+x.li)&&searchable(x)).map(x=>({x,d:x.X.id===pos.id?0:botPathLen(G,pi,pos,x.X.id,true)})).filter(o=>o.d!=null&&o.d+1<=left()).sort((a,b)=>a.d-b.d||b.x.grade-a.x.grade):[];
+    const aopts=asked<BOT_LAIR_MAX_RUMOURS?cands.filter(x=>!askedProv.has(x.X.id)&&askable(x)).map(x=>({x,d:x.X.id===pos.id?0:botPathLen(G,pi,pos,x.X.id,true)})).filter(o=>o.d!=null&&o.d+1<=left()).sort((a,b)=>a.d-b.d):[];
+    const opts=(preferAsk&&asked===0&&aopts.length)?[]:searches<BOT_LAIR_MAX_SEARCHES?cands.filter(x=>!used.has(x.X.id+':'+x.li)&&searchable(x)).map(x=>({x,d:x.X.id===pos.id?0:botPathLen(G,pi,pos,x.X.id,true)})).filter(o=>o.d!=null&&o.d+1<=left()).sort((a,b)=>a.d-b.d||b.x.grade-a.x.grade):[];
     if(opts.length){ const o=opts[0]; const path=o.d>0?(botPathDirs(G,pi,pos,o.x.X.id,left()-1,true)||[]):[]; if(o.d>0&&path.length!==o.d){ used.add(o.x.X.id+':'+o.x.li); continue; }
       path.forEach(d=>mv.push(botMoveOrder(d,'Seek the lair in '+o.x.X.name)));
       if(searches===0&&(sk.illusory||0)>=1&&left()>=2) mv.push({action:'cast_spell',target:'Invisibility',extra:'',desc:'Cast Invisibility (before the lair)'});
-      const own=(T.cur>=0&&o.x.grade<=T.cur); const so={action:'search',target:String(o.x.li),extra:'',desc:'Search Lair'+(own?' (his own grade)':'')}; if(searches>0) so._botMinHp=BOT_LAIR_NEXT_HP;
+      const own=(T.cur>=0&&o.x.grade<=T.cur); const so={action:'search',target:String(o.x.li),extra:'',desc:'Search Lair'+(own?' (his own grade)':''),prov:o.x.X.id}; if(searches>0) so._botMinHp=BOT_LAIR_NEXT_HP;
       if(!own&&weakRisk(o.x)) so._botMinHp=BOT_LAIR_WEAK_HP;   // a 60–80% Weak lair only at full health
       mv.push(so); used.add(o.x.X.id+':'+o.x.li); pos=o.x.X; searches++; continue; }
-    const aopts=asked<BOT_LAIR_MAX_RUMOURS?cands.filter(x=>!askedProv.has(x.X.id)&&askable(x)).map(x=>({x,d:x.X.id===pos.id?0:botPathLen(G,pi,pos,x.X.id,true)})).filter(o=>o.d!=null&&o.d+1<=left()).sort((a,b)=>a.d-b.d):[];
     if(aopts.length){ const o=aopts[0]; const path=o.d>0?(botPathDirs(G,pi,pos,o.x.X.id,left()-1,true)||[]):[]; if(o.d>0&&path.length!==o.d){ askedProv.add(o.x.X.id); continue; }
       botSpendRumour(L,o.x.price); path.forEach(d=>mv.push(botMoveOrder(d,'Hear the talk of '+o.x.X.name)));
       mv.push({action:'hunt_rumours',target:String(o.x.li),extra:'',desc:'Hunt Rumours — '+o.x.f.name}); askedProv.add(o.x.X.id); pos=o.x.X; asked++;
       // option 2: SEARCH IN THE SAME YEAR if the talk is good — a conditional order the engine checks against the
       // rumour this hero heard this turn (80%+, or 60%+ on a Weak lair at full health); otherwise he rests.
-      if(left()>0&&searches<BOT_LAIR_MAX_SEARCHES){ const so={action:'search',target:String(o.x.li),extra:'',desc:'Search Lair (if the talk is good)',_botIfRumour:BOT_LAIR_GO_BAND,_botMinHp:(searches>0?BOT_LAIR_NEXT_HP:0.5)};
+      if(left()>0&&searches<BOT_LAIR_MAX_SEARCHES){ const so={action:'search',target:String(o.x.li),extra:'',desc:'Search Lair (if the talk is good)',prov:o.x.X.id,_botIfRumour:botGoBand(o.x.grade),_botMinHp:(searches>0?BOT_LAIR_NEXT_HP:0.5)};
         if(o.x.grade===0){ so._botIfRumourLow=BOT_LAIR_WEAK_BAND; so._botIfRumourLowHp=BOT_LAIR_WEAK_HP; }
         mv.push(so); used.add(o.x.X.id+':'+o.x.li); searches++; }
       continue; }
@@ -8251,7 +8462,7 @@ function runBotMovement(G, botIdxSet, hooks){
       // A beatable lair in our own adjacent land — go clear it (hoard + strength).
       const ld=botLairDir(G,P,c,pi);
       if(ld>=0){ const LP=botNeighbourProv(G,P,ld); const li=botBeatableLairIn(G,c,LP);
-        const mv=[botMoveOrder(ld,'Raid lair')]; if(li>=0) mv.push({action:'search',target:String(li),extra:'',desc:'Search Lair'});
+        const mv=[botMoveOrder(ld,'Raid lair')]; if(li>=0) mv.push({action:'search',target:String(li),extra:'',desc:'Search Lair',prov:LP.id});
         G.turnOrders[c.id]=botFillOrders(G,pi,c,pre,mv); return; }
       // Nothing winnable anywhere in reach: march for the frontier (multi-hop) and strike from
       // there if hops remain.
@@ -8515,10 +8726,21 @@ function botCastPlan(G, pi, c, prov, opts){
   const armyLeader=[...hereEnemies].filter(e=>(e.armies||[]).length>=2).sort((a,b)=>(b.armies||[]).length-(a.armies||[]).length)[0];
   if(armyLeader) push('psychic','Telekinetic Storm',armyLeader.id,'Cast Telekinetic Storm on '+armyLeader.name);
   const juiciest=[...hereEnemies].sort((a,b)=>((b.isKing?100:0)+skillTotal(b))-((a.isKing?100:0)+skillTotal(a)))[0];
-  if(juiciest){ push('psychic','Psychic Blast',juiciest.id,'Cast Psychic Blast on '+juiciest.name); push('necromancy','Curse',juiciest.id,'Cast Curse on '+juiciest.name); }
+  // 2026-09-29 (Toby): CURSE THE GENERAL — every skill halved for the rest of the turn, Tactical included, so a
+  // host whose commander is cursed in Spring fights the rest of the year at a fraction of its battle multiplier.
+  // An enemy KING here takes it first (a cursed king is a king who can fall); else the enemy leading the
+  // biggest host here; else the most valuable hero.
+  if(juiciest){ push('psychic','Psychic Blast',juiciest.id,'Cast Psychic Blast on '+juiciest.name); const _cz=(juiciest.isKing)?juiciest:(armyLeader||juiciest); push('necromancy','Curse',_cz.id,'Cast Curse on '+_cz.name+(_cz===armyLeader?' (break the general before the battle)':'')); }
   // ── OFFENCE: enemy provinces in reach ──
   const withArmies=enemyProvs.filter(N=>armiesIn(N)>0).sort((a,b)=>armiesIn(b)-armiesIn(a));
-  if(withArmies[0]&&!withArmies[0]._flood) push('elemental','Flood',withArmies[0].id,'Cast Flood on '+withArmies[0].name);
+  // FLOOD (2026-09-29): pins — Floods that strand an enemy host we cannot meet — are chosen centrally
+  // (botPins) and written into the caster's Spring by the phase-one pass. What remains here is the old
+  // harassing Flood on an enemy province holding forces: never where a host of ours stands, never on a
+  // pinned province (its caster is already on it), never the siege target.
+  { const oursThere=N=>(G.characters||[]).some(x=>x&&x.alive&&x.player===pi&&x.location===N.id&&(x.armies||[]).length);
+    const _pins=botPins(G,pi);
+    const fl=withArmies.find(N=>!N._flood&&N.id!==opts.siege&&!oursThere(N)&&!_pins.has(N.id));
+    if(fl) push('elemental','Flood',fl.id,'Cast Flood on '+fl.name); }
   const plagueT=withArmies.find(N=>N._flood)||withArmies[0];
   if(plagueT) push('necromancy','Plague',plagueT.id,'Cast Plague on '+plagueT.name);
   const rich=[...enemyProvs].sort((a,b)=>(b.tax||0)-(a.tax||0))[0];
@@ -8814,7 +9036,7 @@ function runBotActions(G, botIdxSet){
       const li=botBeatableLair(G,c);
       if(li>=0){
         const tail=practiceTail();
-        overlay(c.id,[{action:'search',target:String(li),extra:'',desc:'Search Lair'},{...tail},{...tail},{...tail},{...tail}]);
+        overlay(c.id,[{action:'search',target:String(li),extra:'',desc:'Search Lair',prov:c.location},{...tail},{...tail},{...tail},{...tail}]);
         return;
       }
       if(castOrder){
@@ -8830,6 +9052,347 @@ function runBotActions(G, botIdxSet){
       if(prov && mapped<100){ fill(c.id,{action:'explore',target:'',extra:'',desc:'Explore'}); return; }
       // else: nothing worthwhile — leave the character to the default-to-Defend pass.
     });
+  });
+}
+
+// ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
+// Engine facts it relies on: within a phase every NON-MOVING order (recruit, hand-over, cast,
+// challenge…) resolves before anyone's Move, the Defend step sits between the two, a host caught on a
+// war front fights at the END of Spring, a stalled battle resumes at the top of every phase, and a
+// Flooded province is sea for the rest of the year (land armies there are stranded, none may enter).
+// So what a bot writes into Spring (phase 1) happens before any enemy can march.
+// Stage 'muster' (after the movement planner, BEFORE the economy — first claim on the chest):
+//   W. WAR CHEST — the ledger holds back gold for every host in contact (botLedger); it is released
+//      here, spent on those hosts' musters first, and whatever is left goes back to the economy.
+//   A. TRIAGE — (1) a host on an enemy's ground or beside an enemy host, not locked in battle and
+//      clearly outmatched, withdraws in Spring; (2) a host outmatched by an enemy host NEXT DOOR: if that
+//      host is pinned by a Flood (botPins) the Flood goes off in Spring and the host withdraws in the
+//      second phase ("flood, then retreat"); unpinned and badly outmatched, it withdraws in Spring. The
+//      capital and Rich land are held instead (muster + pin).
+//   R. RELIEF — a host locked in battle is joined in Spring by any armed character of ours standing
+//      next door with nothing better to do; a feeder hands it his column in the second phase.
+//   V. EVACUATION — an unarmed character (the king included) sharing a province with an enemy host, or
+//      the king beside one on ground we cannot hold, leaves in Spring (or cloaks with Invisibility).
+//   B. MUSTER — a host in contact in an OWNED province (a battle there does not stop it) with no
+//      muster in its plan gets one in Spring, with an emergency levy past the wage ceiling.
+// Stage 'order' (after every other pass):
+//   E. NO SELF-FLOOD — a Flood on ground our own host stands on or marches into is struck out.
+//   P. PINS — every Flood pin (botPins) is written into its caster's Spring.
+//   B–D. REORDER — a stable sort of each plan's pre-move block: strikes (5), musters in contact (4),
+//      guard magic and the watch under threat (3), hire (1), the rest (0).
+// Reordering is confined to the orders before the first move (all resolve in the starting province).
+const BOT_P1={retreatRatio:0.75, fleeRatio:0.5, levyCap:1.2, levyWages:8, chestPerHost:10, chestShare:0.5,
+  strike:new Set(['Flood','Plague','Curse','Psychic Blast','Telekinetic Storm','Charm']),
+  guard:new Set(['Illusory Terrain','Oratory','Phantasmal Armies']), gainSpell:new Set(['Elemental Summon','Skeletal Armies']),
+  reloc:new Set(['move','pursue','encounter','forced_march','lightning_advance'])};
+function botOrderDest(G,cur,o){ if(!cur||!o) return null; if(String(o.target).startsWith('dir:')) return botNeighbourProv(G,cur,BOT_HEX_DIRS.indexOf(String(o.target).slice(4))); const n=Number(o.target); return Number.isFinite(n)?G.world.provinces[n]:null; }
+function botIsFiller(o){ return !o||(o.action==='defend'&&o.desc!=='Watch')||((o.action==='practice'||o.action==='explore'||o.action==='research')&&!botIsTeach(o)); }
+function botEnemyHostsIn(G,pi,X){ return X?botVisibleCharsIn(G,pi,X).filter(e=>e.player!=null&&e.player!==pi&&(e.armies||[]).length&&botRelationRaw(G,pi,e.player)==='enemy'):[]; }
+// A host in CONTACT: battle running here, a visible at-war host here or next door, or standing on enemy ground.
+function botInContact(G,pi,c){
+  if(!c||!(c.armies||[]).length) return false; const P=G.world.provinces[c.location]; if(!P) return false;
+  if(P._battleUnresolved||botEnemyHostsIn(G,pi,P).length) return true;
+  if(P.owner!=null&&P.owner!==pi&&botRelationRaw(G,pi,P.owner)==='enemy') return true;
+  for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N&&botEnemyHostsIn(G,pi,N).length) return true; }
+  return false;
+}
+// FLOOD PINS (2026-09-29, Toby: flood to slow the enemy, and to lock a host in place while we strike
+// elsewhere). Chosen from the start-of-year board, lazily, before the movement planner reads them:
+// every visible at-war enemy host on land not ours, bordering our land or within two hexes of a host
+// of ours, that no host / garrison of ours beside it could meet at BOT_PIN_EDGE, strongest first, each
+// given to one of our Elemental casters standing NEXT to it (never in it) with a casting to spare.
+// The planner treats a pinned province as sea this year — no attack into it, and no longer a "trap"
+// beside a target — so the generals strike the unflooded provinces around it instead.
+const BOT_PIN_EDGE=1.2;
+function botPins(G,pi){
+  const cache=botTurnCache(G); cache.pins=cache.pins||{}; if(cache.pins[pi]) return cache.pins[pi];
+  const pins=new Map(); cache.pins[pi]=pins;
+  if(!botAtWar(G,pi)) return pins;
+  const mine=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir);
+  const casters=mine.filter(c=>((c.skills||{}).elemental||0)>=1); if(!casters.length) return pins;
+  const hosts=mine.filter(c=>(c.armies||[]).length);
+  const cands=[];
+  (G.world.provinces||[]).forEach(X=>{
+    if(!X||X.terrain==='sea'||X._flood||X.owner===pi||!botSees(G,pi,X.id)) return;
+    const foes=botEnemyHostsIn(G,pi,X); if(!foes.length) return;
+    if(hosts.some(h=>h.location===X.id)) return;
+    const s=foes.reduce((t,e)=>t+botForceStrength(e.armies),0);
+    let border=false, best=0;
+    for(let i=0;i<6;i++){ const K=botNeighbourProv(G,X,i); if(!K) continue; if(K.owner===pi) border=true;
+      let f=K.owner===pi?botForceStrength(K.garrisonArmies):0; hosts.forEach(h=>{ if(h.location===K.id) f+=botForceStrength(h.armies); }); if(f>best) best=f; }
+    const near=hosts.some(h=>{ const H=G.world.provinces[h.location]; return H&&botHexDist(G,H,X)<=2; });
+    if(!border&&!near) return;
+    if(best>=s*BOT_PIN_EDGE) return;                    // beatable where it stands — let it come, or go and break it
+    cands.push({X,s});
+  });
+  cands.sort((a,b)=>b.s-a.s);
+  const used=new Map();
+  cands.forEach(({X})=>{
+    const cs=casters.filter(c=>{ const P=G.world.provinces[c.location]; return P&&P.id!==X.id&&botAdj(G,P,X)&&(used.get(c.id)||0)<botSchoolLimit((c.skills||{}).elemental||0); })
+      .sort((a,b)=>((a.armies||[]).length?1:0)-((b.armies||[]).length?1:0))[0];   // an unarmed mage before a general
+    if(cs){ pins.set(X.id,cs.id); used.set(cs.id,(used.get(cs.id)||0)+1); }
+  });
+  return pins;
+}
+// Write "Flood X" into a character's Spring: drop a filler from the pre-move block (or the last
+// phase if it is a filler, shifting the plan a phase); make room in the school's casting limit.
+function botAdj(G,A,B){ if(!A||!B) return false; if(A.id===B.id) return true; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,A,i); if(N&&N.id===B.id) return true; } return false; }
+function botPutSpring(o,order){
+  let end=o.findIndex(x=>x&&BOT_P1.reloc.has(x.action)); if(end<0) end=5;
+  const fi=o.findIndex((x,i)=>i<end&&botIsFiller(x));
+  if(fi>=0){ o.splice(fi,1); o.unshift(order); return true; }
+  if(botIsFiller(o[4])){ o.splice(4,1); o.unshift(order); return true; }
+  return false;
+}
+function botSafeStep(G,pi,P,awayFrom){
+  let best=null; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea'||N._flood) continue;
+    const own=N.owner===pi, ally=N.owner!=null&&botRelationRaw(G,pi,N.owner)==='allied'; if(!own&&!ally) continue;
+    if(botEnemyHostsIn(G,pi,N).length) continue;
+    let near=0; for(let j=0;j<6;j++){ const K=botNeighbourProv(G,N,j); if(K&&botEnemyHostsIn(G,pi,K).length) near++; }
+    const sc=(own?10:0)+(N.id===botHomeId(G,pi)?5:0)+(N.tax||0)-near*6+(awayFrom?botHexDist(G,N,awayFrom)*4:0);
+    if(!best||sc>best.sc) best={N,i,sc}; }
+  return best;
+}
+function runBotPhaseOne(G, botIdxSet, stage){
+  const MUSTER=stage==='muster';
+  if(!botIdxSet||!botIdxSet.size||!G.world) return;
+  botIdxSet.forEach(pi=>{
+    if(botConceded(G,pi)) return;
+    const L=botLedger(G,pi);
+    if(MUSTER&&L.warChest){ L.budget+=L.warChest; L.warChest=0; }            // W: the chest opens for the hosts in contact
+    const mine=(G.characters||[]).filter(c=>c&&c.alive&&c.player===pi&&!c._isHeir&&Array.isArray(G.turnOrders[c.id]));
+    const leaderIds=new Set(botRoles(G,pi).leaders||[]);
+    const pins=botPins(G,pi), pinCasters=new Set(pins.values());
+    const spring=new Set();                                                    // characters whose plans this pass rewrote outright
+    const valuable=P=>P&&P.owner===pi&&botIsValuable(G,P,pi);
+    const hold=d=>({action:'defend',target:'',extra:'',desc:d||'Hold'});
+    if(MUSTER){
+      // ── A: triage ──
+      mine.forEach(c=>{
+        const o=G.turnOrders[c.id]; const P=G.world.provinces[c.location]; if(!P||!(c.armies||[]).length||P._battleUnresolved) return;
+        if(o[0]&&o[0].action==='move'&&!/^Advance/.test(o[0].desc||'')) return;          // already marching somewhere on purpose
+        let mineStr=0; botVisibleCharsIn(G,pi,P).forEach(x=>{ if(x.player===pi) mineStr+=botBattleForce(G,x,null,P.terrain,{}); });
+        const onEnemy=P.owner!=null&&P.owner!==pi&&botRelationRaw(G,pi,P.owner)==='enemy', here=botEnemyHostsIn(G,pi,P);
+        if(onEnemy||here.length){                                                   // A1
+          let foe=onEnemy?botTargetDefence(G,pi,P):0; if(!onEnemy) here.forEach(e=>{ foe+=botBattleForce(G,e,null,P.terrain,{defending:true,viewerPi:pi}); });
+          if(foe>0&&mineStr<foe*BOT_P1.retreatRatio){ const st=botSafeStep(G,pi,P,null); if(st){
+            const out=[botMoveOrder(st.i,'Withdraw from '+P.name+' to '+st.N.name+' (outmatched)')];
+            if(st.N.owner===pi){ const ro=botRecruitOrder(botFieldRecruitTokens(G,pi,c,st.N,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])),null); if(ro) out.push(ro); }
+            while(out.length<5) out.push(hold()); G.turnOrders[c.id]=out; spring.add(c.id); } }
+          return;
+        }
+        // A2 — the strongest enemy host next door
+        let worst=null; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N) continue; const f=botEnemyHostsIn(G,pi,N).reduce((t,e)=>t+botBattleForce(G,e,null,P.terrain,{viewerPi:pi}),0); if(f>0&&(!worst||f>worst.f)) worst={N,f}; }
+        if(!worst) return;
+        const gar=P.owner===pi?botBattleForce(G,null,P.garrisonArmies||[],P.terrain,{defending:true,ownerPi:pi}):0;
+        const ratio=(mineStr+gar)/worst.f;
+        if(ratio>=BOT_P1.retreatRatio||valuable(P)) return;                        // hold the capital and Rich land (muster + pin)
+        const pinned=pins.has(worst.N.id);
+        if(!pinned&&ratio>=BOT_P1.fleeRatio) return;
+        const st=botSafeStep(G,pi,P,worst.N); if(!st) return;
+        const mv=botMoveOrder(st.i,'Withdraw to '+st.N.name+(pinned?' behind the flood':' (outmatched)'));
+        const out=pinned?[hold('Stand while the flood rises'),mv]:[mv];
+        while(out.length<5) out.push(hold()); G.turnOrders[c.id]=out; spring.add(c.id);
+        if(pinned){ const cid=pins.get(worst.N.id); const k=(G.characters||[]).find(x=>x&&x.id===cid);
+          if(k&&k.id!==c.id&&k.location===c.location){                              // the caster floods, then goes with the host
+            const fl={action:'cast_spell',target:'Flood',extra:String(worst.N.id),desc:'Flood '+worst.N.name+' — strand the enemy host'};
+            const ko=[fl,{...mv,desc:'Withdraw with '+c.name}]; while(ko.length<5) ko.push(hold()); G.turnOrders[k.id]=ko; spring.add(k.id); }
+          else if(k&&k.id===c.id){ out[0]={action:'cast_spell',target:'Flood',extra:String(worst.N.id),desc:'Flood '+worst.N.name+' — strand the enemy host'}; } }
+      });
+      // ── R: relieve a host locked in battle ──
+      mine.filter(h=>(h.armies||[]).length&&G.world.provinces[h.location]&&G.world.provinces[h.location]._battleUnresolved&&botEnemyHostsIn(G,pi,G.world.provinces[h.location]).length).forEach(h=>{
+        const B=G.world.provinces[h.location];
+        mine.forEach(x=>{
+          if(x.id===h.id||spring.has(x.id)||!(x.armies||[]).length||x.location===B.id) return;
+          const X=G.world.provinces[x.location]; if(!X||X.id===B.id||!botAdj(G,X,B)||X._battleUnresolved) return;
+          if(x._botRole==='defender'&&B.owner!==pi) return;                        // a post leaves only to save our own ground
+          const o=G.turnOrders[x.id]||[]; if(o.some(y=>y&&BOT_P1.reloc.has(y.action))) return;   // already marching
+          if(botInContact(G,pi,x)&&X.owner===pi&&botEnemyHostsIn(G,pi,X).length) return;          // besieged himself
+          let d=-1; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,X,i); if(N&&N.id===B.id){ d=i; break; } } if(d<0) return;
+          const out=[botMoveOrder(d,'Reinforce '+h.name+' in the battle for '+B.name)];
+          if(!leaderIds.has(x.id)) out.push({action:'leave_army',target:'all',extra:String(h.id),desc:'Hand the column to '+h.name});
+          while(out.length<5) out.push(hold()); G.turnOrders[x.id]=out; spring.add(x.id);
+        });
+      });
+      // ── V: evacuate the unarmed ──
+      mine.forEach(c=>{
+        if((c.armies||[]).length||spring.has(c.id)||pinCasters.has(c.id)) return;
+        const o=G.turnOrders[c.id]; const P=G.world.provinces[c.location]; if(!P) return;
+        if(o.some(x=>x&&(BOT_P1.strike.has(x.target)||['steal','spy','encounter','challenge','grand_heist','assassinate','sabotage'].includes(x.action)))) return;   // there on purpose
+        if(o[0]&&o[0].action==='move') return;
+        const here=botEnemyHostsIn(G,pi,P).filter(e=>e._invisTurn!==G.turn);
+        let danger=here.length>0;
+        if(!danger&&c.isKing){ let f=0; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N) botEnemyHostsIn(G,pi,N).forEach(e=>{ f+=botForceStrength(e.armies); }); }
+          if(f>0){ let def=P.owner===pi?botForceStrength(P.garrisonArmies):0; botVisibleCharsIn(G,pi,P).forEach(x=>{ if(x.player===pi) def+=botForceStrength(x.armies); }); danger=def<f; } }
+        if(!danger) return;
+        if(((c.skills||{}).illusory||0)>=1&&!o.some(x=>x&&x.target==='Invisibility')){ o.unshift({action:'cast_spell',target:'Invisibility',extra:'',desc:'Cast Invisibility (evacuate: an enemy host is at hand)'}); o.length=5; spring.add(c.id); return; }
+        const st=botSafeStep(G,pi,P,P); if(!st) return;
+        const out=[botMoveOrder(st.i,'Evacuate to '+st.N.name+' (an enemy host is at hand)')]; while(out.length<5) out.push(hold());
+        G.turnOrders[c.id]=out; spring.add(c.id);
+      });
+      // ── B: muster in contact (the war chest pays first) ──
+      mine.forEach(c=>{
+        if(spring.has(c.id)||!botInContact(G,pi,c)) return;
+        const o=G.turnOrders[c.id]; const P=G.world.provinces[c.location]; if(!P||P.owner!==pi||!(P.armyTypes||[]).length) return;   // only in a province we control — a battle there does not stop it
+        if(!(leaderIds.has(c.id)||(c.armies||[]).length>=2)) return;
+        let end=o.findIndex(x=>x&&BOT_P1.reloc.has(x.action)); if(end<0) end=5;
+        if(end===0&&/^(Attack|Assault|Lightning strike)/.test((o[0]||{}).desc||'')) return;       // striking first outranks mustering
+        if(o.slice(0,end).some(x=>x&&(x.action==='recruit'||x.action==='pickup_army'||x.action==='awaken_wild'))) return;
+        const _cap0=L.upkeepCap; L.upkeepCap=Math.max(_cap0*BOT_P1.levyCap,(L.upkeep||0)+BOT_P1.levyWages);   // EMERGENCY LEVY
+        let toks=[]; try{ toks=botFieldRecruitTokens(G,pi,c,P,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])||c._botRole==='admiral'); } finally { L.upkeepCap=_cap0; }
+        const ro=botRecruitOrder(toks,null); if(!ro) return;
+        ro.desc+=' (war chest — the enemy is at hand)';
+        botPutSpring(o,ro);
+      });
+      return;
+    }
+    // ═══ stage 'order' ═══
+    const entered=new Set(); mine.filter(c=>(c.armies||[]).length).forEach(c=>{ let cur=G.world.provinces[c.location]; (G.turnOrders[c.id]||[]).forEach(o=>{ if(o&&o.action==='move'){ const N=botOrderDest(G,cur,o); if(N){ entered.add(N.id); cur=N; } } }); });
+    mine.forEach(c=>{ if((c.armies||[]).length) entered.add(c.location); });
+    // E: never flood our own march or our own host
+    mine.forEach(c=>{ const o=G.turnOrders[c.id]; o.forEach((x,i)=>{ if(x&&x.action==='cast_spell'&&x.target==='Flood'&&entered.has(Number(x.extra))) o[i]=hold(); }); });
+    // P: every pin is cast in Spring by its caster
+    pins.forEach((cid,Xid)=>{
+      if(entered.has(Xid)) return;
+      const k=mine.find(x=>x.id===cid); if(!k) return; const o=G.turnOrders[k.id]; const X=G.world.provinces[Xid]; if(!X) return;
+      if(o[0]&&o[0].action==='cast_spell'&&o[0].target==='Flood'&&Number(o[0].extra)===Xid) return;
+      o.forEach((x,i)=>{ if(x&&x.action==='cast_spell'&&x.target==='Flood'&&Number(x.extra)===Xid) o[i]=hold(); });
+      const lim=botSchoolLimit((k.skills||{}).elemental||0), EL=new Set(['Flood','Earthquake','Elemental Summon']);
+      let n=o.filter(x=>x&&x.action==='cast_spell'&&EL.has(x.target)).length;
+      for(let i=4;i>=0&&n>=lim;i--){ const x=o[i]; if(x&&x.action==='cast_spell'&&EL.has(x.target)&&!(x.target==='Flood'&&pins.has(Number(x.extra)))){ o[i]=hold(); n--; } }
+      if(n>=lim) return;
+      botPutSpring(o,{action:'cast_spell',target:'Flood',extra:String(Xid),desc:'Flood '+X.name+' — strand the enemy host'});
+    });
+    // T: TACTICS ON THE WRITTEN PLANS (2026-09-29, Toby: "implement all of your other tactics"). Every
+    // attack a general has written this year is prepared in Spring by whoever of ours can reach it:
+    //   T1 SOFTEN — Plague (humanoid units lose a level) and Illusory Terrain (defenders fight disoriented)
+    //      over each attack target, cast in Spring by any caster of ours standing in or next to it with a
+    //      casting to spare — before any move, so even a Spring assault meets a weakened garrison.
+    //   T2 FORCED MARCH — a March-7 general with two or more attacks this year makes the march between
+    //      them (or the approach to the first) a Forced March: a 50% chance to slip past a battle that
+    //      would otherwise stop him short of his second target.
+    //   T3 FEINT — (after the reorder) a general whose first target sits beside an enemy host that would
+    //      turn the battle if it rode to its aid sends one unit with a hero at his side, in Spring, into
+    //      ANOTHER province of that realm beside the host but not beside his target: a host on Defend
+    //      answers the incursion and can no longer reach his target from where it has gone.
+    const attacksOf=g=>{ const out=[]; let cur=G.world.provinces[g.location]; (G.turnOrders[g.id]||[]).forEach((x,i)=>{ if(!x||!BOT_P1.reloc.has(x.action)||x.action==='encounter'||x.action==='pursue') return; const N=botOrderDest(G,cur,x); if(!N) return; if(/^(Attack|Assault|Lightning strike)/.test(x.desc||'')) out.push({N,i}); cur=N; }); return out; };
+    const castsOf=(k,school,spells)=>(G.turnOrders[k.id]||[]).filter(x=>x&&x.action==='cast_spell'&&spells.has(x.target)).length;
+    const SCH={illusory:new Set(['Illusory Terrain','Invisibility','Phantasmal Armies']),necromancy:new Set(['Plague','Curse','Skeletal Armies'])};
+    const softened=new Set();
+    mine.filter(g=>(g.armies||[]).length).forEach(g=>{
+      attacksOf(g).forEach(({N})=>{
+        if(N.terrain==='sea'||N._flood||pins.has(N.id)) return;
+        const enemyThere=(N.owner!=null&&N.owner!==pi)||botEnemyHostsIn(G,pi,N).length;
+        if(!enemyThere) return;
+        [['illusory','Illusory Terrain',N._illusoryTerrain&&N._illusoryTerrain.appliedTurn===G.turn],['necromancy','Plague',N._plaguedTurn===G.turn]].forEach(([school,spell,done])=>{
+          if(done||softened.has(spell+':'+N.id)) return;
+          const k=mine.find(m=>{ const P=G.world.provinces[m.location]; if(!P||!botAdj(G,P,N)) return false; const lv=(m.skills||{})[school]||0; if(lv<1) return false;
+            if((G.turnOrders[m.id]||[]).some(x=>x&&x.action==='cast_spell'&&x.target===spell&&Number(x.extra)===N.id)) return true;   // already on it
+            return castsOf(m,school,SCH[school])<botSchoolLimit(lv); });
+          if(!k) return; softened.add(spell+':'+N.id);
+          const o=G.turnOrders[k.id]; if(o.some(x=>x&&x.action==='cast_spell'&&x.target===spell&&Number(x.extra)===N.id)){
+            const i=o.findIndex(x=>x&&x.action==='cast_spell'&&x.target===spell&&Number(x.extra)===N.id); const x=o[i]; o.splice(i,1); o.unshift(x); return; }   // move it to Spring
+          botPutSpring(o,{action:'cast_spell',target:spell,extra:String(N.id),desc:spell+' over '+N.name+' (before '+g.name+' attacks)'});
+        });
+      });
+      // T2 forced march
+      if(skillLevel(g,'march')>=7){ const atk=attacksOf(g); const o=G.turnOrders[g.id];
+        if(atk.length>=2&&!o.some(x=>x&&x.action==='forced_march')){
+          let j=-1; for(let i=atk[0].i+1;i<atk[atk.length-1].i;i++){ if(o[i]&&o[i].action==='move'){ j=i; break; } }
+          if(j<0) j=atk[1].i;   // no march between them: the second assault itself goes in as a forced march
+          if(j>=0&&o[j]&&o[j].action==='move') o[j]={...o[j],action:'forced_march',desc:'Forced March — '+(o[j].desc||'march')}; } }
+    });
+    // B–D: reorder each pre-move block
+    mine.forEach(c=>{
+      const o=G.turnOrders[c.id]; const P=G.world.provinces[c.location]; if(!P) return;
+      const hostsHere=botEnemyHostsIn(G,pi,P);
+      let hostsAdj=0; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(N) hostsAdj+=botEnemyHostsIn(G,pi,N).length; }
+      const contact=botInContact(G,pi,c), nearby=contact||botNearbyThreat(G,pi,c);
+      let end=o.findIndex(x=>x&&BOT_P1.reloc.has(x.action)); if(end<0) end=5;
+      const isEnemyChar=id=>{ const e=(G.characters||[]).find(x=>x&&x.id===Number(id)); return !!(e&&e.player!=null&&e.player!==pi&&botRelationRaw(G,pi,e.player)!=='allied'); };
+      const urgency=x=>{
+        if(!x) return 0; const a=x.action;
+        if(a==='cast_spell'&&x.target==='Invisibility') return 5;              // the cloak stays ahead of the strikes it covers
+        if(a==='cast_spell'&&BOT_P1.strike.has(x.target)) return (x.target==='Charm'&&!isEnemyChar(x.extra))?1:5;   // a wanderer's Charm is a hire
+        if(a==='challenge') return 5;
+        if(a==='steal'&&x.target!=='garrison') return 5;
+        if(contact){
+          if(a==='recruit'&&!/to:garrison/.test(x.target)) return 4;
+          if(a==='pickup_army'||a==='awaken_wild'||a==='harvest_field'||a==='rite') return 4;
+          if(a==='leave_army'&&leaderIds.has(Number(x.extra))) return 4;
+          if(a==='cast_spell'&&BOT_P1.gainSpell.has(x.target)) return 4;
+        }
+        if(a==='recruit'&&/to:garrison/.test(x.target)&&P.owner===pi&&(hostsHere.length||hostsAdj)) return 4;
+        if(nearby){
+          if(a==='cast_spell'&&BOT_P1.guard.has(x.target)) return 3;
+          if(a==='feigned_retreat') return 3;
+          if(a==='defend'&&x.desc==='Watch') return 3;
+        }
+        if(a==='hire') return 1;
+        return 0;
+      };
+      const block=o.slice(0,end).map((x,i)=>({x,i,u:urgency(x)}));
+      if(block.some(b=>b.u>1)){ block.sort((a,b)=>b.u-a.u||a.i-b.i); block.forEach((b,k)=>{ o[k]=b.x; }); }
+    });
+    // T3: FEINT (see above)
+    { const T=botTuning(G,pi);
+      mine.filter(g=>leaderIds.has(g.id)&&(g.armies||[]).length>=3).forEach(g=>{
+        const S=G.world.provinces[g.location]; if(!S||S._battleUnresolved) return;
+        const atk=attacksOf(g); if(!atk.length) return; const t1=atk[0].N;
+        const mG=botMarginFor(G,pi,g,T), def1=botTargetDefence(G,pi,t1), myF=botBattleForce(G,g,null,t1.terrain,{});
+        if(myF<def1*mG) return;
+        let foe=null; for(let i=0;i<6;i++){ const X=botNeighbourProv(G,t1,i); if(!X||X.id===S.id||X.terrain==='sea'||X._flood||pins.has(X.id)) continue;
+          botEnemyHostsIn(G,pi,X).forEach(e=>{ if(X.owner!==e.player) return; const f=botEffForce(G,e); if(!foe||f>foe.f) foe={X,e,f}; }); }
+        if(!foe||myF>=(def1+foe.f*BOT_DEF_BONUS)*mG) return;                      // it could not turn the battle anyway
+        const hero=mine.find(h=>h.id!==g.id&&h.location===g.location&&!h.isKing&&!(h.armies||[]).length&&!spring.has(h.id)&&!pinCasters.has(h.id)
+          &&((h.hp!=null?h.hp:(h.maxHp||20))>=(h.maxHp||20)*0.7)&&!(G.turnOrders[h.id]||[]).some(x=>x&&['steal','spy','encounter','challenge','hire'].includes(x.action)));
+        if(!hero) return;
+        let A=null; for(let i=0;i<6;i++){ const N=botNeighbourProv(G,S,i); if(!N||N.terrain==='sea'||N._flood||N.id===t1.id||N.owner!==foe.e.player||pins.has(N.id)||entered.has(N.id)) continue;
+          if(!botAdj(G,N,foe.X)||N.id===foe.X.id||botAdj(G,N,t1)) continue; A={N,i}; break; }
+        if(!A) return;
+        const unit=(g.armies||[]).filter(a=>a&&!a._temporary&&!BOT_SEA_ALL.has(a.type)).sort((x,y)=>unitBaseStrength(x)-unitBaseStrength(y))[0]; if(!unit) return;
+        const o=G.turnOrders[g.id];
+        const lv={action:'leave_army',target:unit.unitName||unit.type,extra:String(hero.id),desc:'Feint — '+(unit.unitName||unit.type)+' to '+hero.name+' to draw '+foe.e.name+' into '+A.N.name};
+        if(!botPutSpring(o,lv)) return;
+        const li=o.indexOf(lv); if(attacksOf(g)[0]&&attacksOf(g)[0].i<=li) { o.splice(li,1); while(o.length<5) o.push(hold()); return; }   // the feint must go in before the blow falls
+        const out=[]; while(out.length<li) out.push(hold('Wait for the column'));
+        out.push(botMoveOrder(A.i,'Feint on '+A.N.name+' (draw '+foe.e.name+' away from '+t1.name+')'));
+        while(out.length<5) out.push(hold('Hold'));
+        G.turnOrders[hero.id]=out.slice(0,5); spring.add(hero.id); entered.add(A.N.id);
+      }); }
+    // S: SECOND FRONT (2026-09-29, Toby: attack more than one province a year). A general whose host can
+    // spare a detachment strong enough to take ANOTHER province next to where he stands — and still beat
+    // his own first target — hands it in Spring to an unarmed hero at his side (never the king, never a
+    // pin caster), who marches on that province in the same phase (hand-overs resolve before moves).
+    { const T=botTuning(G,pi), taken=new Set(entered);
+      mine.filter(g=>leaderIds.has(g.id)&&(g.armies||[]).length>=4&&!spring.has(g.id)).forEach(g=>{
+        const o=G.turnOrders[g.id]; const P=G.world.provinces[g.location]; if(!P||P._battleUnresolved) return;
+        let cur=P, t1=null; for(const x of o){ if(!x) continue; if(x.action==='move'){ const N=botOrderDest(G,cur,x); if(!N) break; if(/^(Attack|Assault)/.test(x.desc||'')){ t1=N; break; } cur=N; } }
+        const hero=mine.find(h=>h.id!==g.id&&h.location===g.location&&!h.isKing&&!(h.armies||[]).length&&!spring.has(h.id)&&!pinCasters.has(h.id)
+          &&((h.hp!=null?h.hp:(h.maxHp||20))>=(h.maxHp||20)*0.7)&&!(G.turnOrders[h.id]||[]).some(x=>x&&['steal','spy','encounter','challenge','hire'].includes(x.action)));
+        if(!hero) return;
+        const mH=botMarginFor(G,pi,hero,T), mG=botMarginFor(G,pi,g,T);
+        let best=null;
+        for(let i=0;i<6;i++){ const N=botNeighbourProv(G,P,i); if(!N||N.terrain==='sea'||N._flood||N.owner===pi||taken.has(N.id)||pins.has(N.id)||(t1&&N.id===t1.id)) continue;
+          if(N.owner!=null&&botRelationRaw(G,pi,N.owner)!=='enemy') continue;
+          const d=botTargetDefence(G,pi,N)+botEnemyChars(G,N,pi).force*BOT_DEF_BONUS;
+          const sc=(N.tax||0)*2+(N.owner!=null?8:0)-d/4; if(!best||sc>best.sc) best={N,i,d,sc}; }
+        if(!best) return;
+        // weakest units first until the detachment would take N
+        const ranked=(g.armies||[]).filter(a=>a&&!a._temporary&&!BOT_SEA_ALL.has(a.type)).map(a=>({a,v:unitBaseStrength(a)})).sort((x,y)=>x.v-y.v);
+        const give=[]; for(const r of ranked){ if(best.d<=0&&give.length>=1) break; give.push(r.a); if(botBattleForce(G,hero,give,best.N.terrain,{})>=best.d*mH) break; }
+        if(!give.length||give.length>=(g.armies||[]).length-1) return;
+        if(best.d>0&&botBattleForce(G,hero,give,best.N.terrain,{})<best.d*mH) return;
+        if(t1){ const keep=(g.armies||[]).filter(a=>!give.includes(a)); if(botBattleForce(G,g,keep,t1.terrain,{})<botTargetDefence(G,pi,t1)*mG) return; }
+        const lv={action:'leave_army',target:give.map(a=>a.unitName||a.type).join(','),extra:String(hero.id),desc:'Second front — '+give.length+' unit'+(give.length!==1?'s':'')+' to '+hero.name+' for '+best.N.name};
+        if(!botPutSpring(o,lv)) return;
+        const li=o.indexOf(lv);
+        const ho=G.turnOrders[hero.id]||[]; const keepCasts=ho.filter((x,i)=>x&&x.action==='cast_spell'&&BOT_P1.strike.has(x.target)&&i<3);
+        const out=[...keepCasts]; while(out.length<li) out.push(hold('Wait for the column'));
+        out.push(botMoveOrder(best.i,(best.d>0?'Attack ':'Advance on ')+best.N.name+' (second front)'));
+        while(out.length<5) out.push(hold('Hold '+best.N.name));
+        G.turnOrders[hero.id]=out.slice(0,5); spring.add(hero.id); taken.add(best.N.id);
+      }); }
   });
 }
 
@@ -11667,7 +12230,7 @@ function buildTurnReport(gameState, playerIndex){
       const rels=gameState.relations||{};
       const relOf=(o)=>{ if(o===playerIndex) return 'self'; const k=playerIndex<o?playerIndex+'-'+o:o+'-'+playerIndex; return rels[k]||'neutral'; };
       const enc=(player._encountered||[]);
-      return { alliancesAllowed:(gameState.players||[]).length>3, known: enc.filter(o=>o!==playerIndex&&gameState.players[o]).map(o=>({
+      return { alliancesAllowed:(gameState.players||[]).length>3, safeStartUntil:(gameState.safeStart?SAFE_START_TURN:null), known: enc.filter(o=>o!==playerIndex&&gameState.players[o]).map(o=>({
         index:o,
         name:gameState.players[o]?.name||('Realm '+(o+1)),
         color:gameState.players[o]?.color||null,
@@ -12112,6 +12675,7 @@ async function runTurn(opts){
   // Diplomacy declarations submitted this turn, keyed by player index → { targetPlayerIndex: 'treat'|'enemy' }.
   // Recorded here, applied at end of turn (relations change "at the start of the next turn").
   const diploDeclarations={};
+  const safeStartRefused=[]; // SAFE START: realms whose declarations were discarded this turn (told privately)
   const discoveryChoicePicks={}; // research choice: player index → {pendingKey: keptDiscoveryId}
   // Victory: players who Called the Reckoning this turn (king-only, one per realm).
   const reckoningCalls=new Set();
@@ -12141,7 +12705,13 @@ async function runTurn(opts){
       forTurn=raw.forTurn??null;
       // Diplomacy declarations (king-only, one stance per target). Validated at resolution time
       // against the encountered set; stored raw here.
-      if(raw.diplomacy && typeof raw.diplomacy==='object') diploDeclarations[gp.player_index]=raw.diplomacy;
+      if(raw.diplomacy && typeof raw.diplomacy==='object'){
+        // SAFE START (2026-09-29): before the orders for Turn SAFE_START_TURN no Treat or war may be
+        // declared — the declarations are discarded and the realm is told why.
+        if(safeStartLocked(G,expectedTurnToRun)){
+          if(Object.values(raw.diplomacy).some(v=>v==='treat'||v==='enemy')) safeStartRefused.push(gp.player_index);
+        } else diploDeclarations[gp.player_index]=raw.diplomacy;
+      }
       // RESEARCH CHOICE: which of each pending pair to keep ({key: discoveryId}); honoured only when
       // the payload is for this turn (a stale draft's picks are ignored like its orders).
       if(raw.discoveryChoices && typeof raw.discoveryChoices==='object' && (raw.forTurn==null||raw.forTurn===expectedTurnToRun)) discoveryChoicePicks[gp.player_index]=raw.discoveryChoices;
@@ -12285,6 +12855,7 @@ async function runTurn(opts){
   ensureAllLairHoards(G); // stocks any lair from a pre-hoard save (no-op afterwards)
 
   function collectBotDiplomacy(){
+  if(safeStartLocked(G,G.turn)) return; // SAFE START: bots make no Treat or declaration before Turn SAFE_START_TURN either
   // ── BOT DIPLOMACY — ALIGNMENT DECIDES ────
   //
   // ALIGNMENTS_P is the moral spectrum — Divine(0) Good(1) Druidic(2) Neutral(3) Pagan(4) Evil(5)
@@ -12369,16 +12940,39 @@ async function runTurn(opts){
           }
           return;
         }
-        if(_grudgeAgainst(idx,rival)){
-          // They declared war on us once. No overture, ever again, whatever the alignment wheel
-          // says.
+        // THE GRUDGE: they declared war on us once. No overture, ever again (no alliance, no peace
+        // offer, no acceptance), whatever the alignment wheel or the war assessment says.
+        const _grudge=_grudgeAgainst(idx,rival);
+        // 2026-09-29b (Toby): THE GRUDGE BENDS ONLY TO SURVIVAL. If the human it holds a grudge against
+        // is 5× the bot's strength (as the bot reckons it), the bot swallows its pride and treats —
+        // for peace, then an alliance — to save itself. Once the human is no more than 2× its
+        // strength again, it remembers the grudge and breaks the alliance. (The flag in between is
+        // hysteresis, so it does not flip every turn.)
+        if(_grudge){
+          const _bp=(G.players||[])[idx]; _bp._botGrudgeTruce=_bp._botGrudgeTruce||{};
+          const _r=botOwnPower(G,idx)/Math.max(1,botRivalPower(G,idx,rival));
+          if(_r<=1/BOT_WAR.grudgeYield) _bp._botGrudgeTruce[rival]=G.turn||0;
+          else if(_r>=1/BOT_WAR.grudgeRecall) delete _bp._botGrudgeTruce[rival];
+          if(_bp._botGrudgeTruce[rival]!=null){
+            if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
+            return;
+          }
+          if(areAllied(idx,rival)){ (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy'; return; }   // the grudge remembered
+        }
+        // 2026-09-29b (Toby): a bot never ALLIES with a realm that is allied to any of its enemies
+        // (alliances are known to all). Peace (Enemy→Neutral) is still possible.
+        const _alliedToMyFoe=(G.players||[]).some((q,k)=>q&&k!==idx&&k!==rival&&relationBetween(idx,k)==='enemy'&&relationBetween(rival,k)==='allied');
+        if(botAlignFriendly(G,idx,rival)){
+          if(!_grudge&&!areAllied(idx,rival)&&!(_alliedToMyFoe&&relationBetween(idx,rival)==='neutral')) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
           return;
         }
-        if(botAlignFriendly(G,idx,rival)){
-          if(!areAllied(idx,rival)) (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
-        } else {
-          if(relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
-        }
+        // 2026-09-29 (Toby): an ally of any alignment is kept faith with; otherwise war and peace are
+        // a JUDGEMENT (botWarAssess) — strength, a prize on the border, opportunity, expansion first,
+        // other wars, temper — not automatic on contact.
+        if(areAllied(idx,rival)) return;
+        const _wa=botWarAssess(G,idx,rival,{offeredPeace:((diploDeclarations[rival]||{})[idx]==='treat')});
+        if(_wa.decision==='war'&&relationBetween(idx,rival)!=='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='enemy';
+        else if(_wa.decision==='peace'&&!_grudge&&relationBetween(idx,rival)==='enemy') (diploDeclarations[idx]=diploDeclarations[idx]||{})[rival]='treat';
       });
     });
   }
@@ -12669,6 +13263,9 @@ async function runTurn(opts){
   // attacker is still debited for their own dead when a garrison throws them back.
   function creditBattle(atkChar, defChar, battle, prov){
     if(!atkChar||!battle||atkChar.player==null) return;
+    // WAR ASSESSMENT news (2026-09-29): a battle between two realms is remembered a few turns.
+    { const _dp=(defChar&&defChar.player!=null)?defChar.player:((prov&&prov.owner!=null)?prov.owner:null);
+      if(_dp!=null&&_dp!==atkChar.player) noteRealmBattle(G,prov?prov.id:null,atkChar.player,_dp,!!battle.won,battle.atkLost,battle.defLost); }
     // 2026-09-21: a commander killed in this battle's pre-battle duel earns nothing from it.
     // handleHeroDeath docks 25% of accumulated Title merit AT the moment of death, so anything
     // credited afterwards escapes that penalty entirely and can swing a Title race.
@@ -12726,6 +13323,7 @@ async function runTurn(opts){
   }
 
   // Flush any stale-order warnings collected during the merge phase
+  safeStartRefused.forEach(pi=>log('system',`🕊 Safe Start: no Treat or declaration of war may be made before the orders for Turn ${SAFE_START_TURN}. Your diplomacy this turn was set aside — relations are unchanged.`,{actor:null,targets:[pi],system:true}));
   if(staleOrderWarnings.length>0){
     staleOrderWarnings.forEach(w=>log('system',w,{actor:-1,targets:[],system:true,public:w.startsWith('\u{1F3F3}')}));
   }
@@ -15607,7 +16205,7 @@ const BATTLE_ARMY_SPELLS={
       // the fight the moment the skill rose, and a trained 6+ mage jumped past the level-5 cap. The
       // level in play is re-read exactly as pcCharCombatant built it, and only when it actually rose.
       const _lvB=skillLevel(caster.ref,school);
-      trySkillGain(caster.ref, school, SKILLGAIN_STD, narrative);
+      pcCombatXP(caster, school, narrative); // 2026-09-29: per successful cast, until the first success
       if(skillLevel(caster.ref,school)>_lvB) caster.school[school]=Math.max(caster.school[school]||0, effStat(caster.ref,school));
     }
     return true;
@@ -15729,6 +16327,19 @@ const BATTLE_ARMY_SPELLS={
   // riposted — there is nobody within reach to answer — but the Melee L8 perk keeps its old
   // behaviour on both channels so nothing regresses. The two do not stack: the better chance is
   // used.
+  // ── COMBAT EXPERIENCE (2026-09-29, Toby) ────
+  // A character rolls for experience on EVERY successful hit (melee blow, riposte, free strike,
+  // arrow) and every successful spell cast, as it happens — not once at the end for the victor. The
+  // first roll that succeeds ends it: no further experience rolls for that combatant in this fight.
+  // (The success becomes a phase candidate in trySkillGain; the one-rise-per-phase draw and every
+  // other guard there still apply.)
+  function pcCombatXP(cbt, skill, narrative){
+    if(!cbt||cbt.kind!=='character'||!cbt.ref||cbt._xpGained) return;
+    const _had=!!(cbt.ref._sgPending&&(cbt.ref._sgPending.list||[]).some(e=>e&&e.skill===skill));
+    trySkillGain(cbt.ref, skill, SKILLGAIN_STD, narrative);
+    const _p=cbt.ref._sgPending;
+    if(!_had && _p && (_p.list||[]).some(e=>e&&e.skill===skill)) cbt._xpGained=true;
+  }
   function pcTryCounter(hero, foe, narrative, chan){
     if(!hero||!foe||hero.hp<=0||foe.hp<=0) return;
     const _perk=hero.perkCounter?0.5:0;
@@ -15740,7 +16351,7 @@ const BATTLE_ARMY_SPELLS={
     const _src=(_temper>=_perk&&_temper>0)?`${hero.temper} riposte`:'Counterattack';
     const hit=pcHitChance(hero,foe), roll=Math.random()*100;
     if(roll<hit){
-      hero._didMelee=true;
+      hero._didMelee=true; pcCombatXP(hero,'melee',narrative);
       const dmg=pcMeleeDamage(hero,foe);
       // 2026-09-23 (Toby item 8): announce the riposte BEFORE the blow is resolved. pcTakeHit
       // writes any ward / armour / parry line as it computes the damage, so with the announcement
@@ -15770,7 +16381,7 @@ const BATTLE_ARMY_SPELLS={
     const hitI=dispFloor(hit), roll=d100();
     narrative.push(`  ${actor.name} attacks (${pcSkillLabel(actor,'melee')}, ${hitI}% to hit [roll ${roll}]${roll<=hitI?' ✓':' ✗'})`);
     if(roll<=hitI){
-      actor._didMelee=true;
+      actor._didMelee=true; pcCombatXP(actor,'melee',narrative);
       const dmg=pcMeleeDamage(actor,foe);
       const dealt=pcTakeHit(foe,dmg,narrative,actor.name,'blow');
       if(dealt)narrative.push(`  ${actor.name} strikes ${foe.name} for ${dealt} damage! (HP ${Math.max(0,Math.round(foe.hp))})`);
@@ -15815,7 +16426,7 @@ const BATTLE_ARMY_SPELLS={
     const hitI=dispFloor(pcHitChance(actor,foe)), roll=d100();
     narrative.push(`  ⚔ ${actor.name} takes a free strike at ${foe.name}'s back (${pcSkillLabel(actor,'melee')}, ${hitI}% to hit [roll ${roll}]${roll<=hitI?' ✓':' ✗'})`);
     if(roll<=hitI){
-      actor._didMelee=true;
+      actor._didMelee=true; pcCombatXP(actor,'melee',narrative);
       const dealt=pcTakeHit(foe,pcMeleeDamage(actor,foe),narrative,actor.name,'free strike');
       if(dealt) narrative.push(`  ${actor.name} lands it for ${dealt} damage! (${foe.name} HP ${Math.max(0,Math.round(foe.hp))})`);
       if(foe.hp<=0 && foe._rebirth){ foe._rebirth=false; foe.hp=Math.max(5,Math.round(foe.maxHp*0.4)); narrative.push(`  🔥 ${foe.name} bursts into ash — then blazes back to life! (HP ${foe.hp})`); }
@@ -15930,7 +16541,7 @@ const BATTLE_ARMY_SPELLS={
     const hit=pcArrowHitChance(actor,foe), roll=d100();
     narrative.push(`  ${actor.name} shoots (${pcSkillLabel(actor,'archery')}, ${hit}% to hit [roll ${roll}]${roll<=hit?' ✓':' ✗'})`);
     if(roll<=hit){
-      actor._didArchery=true;
+      actor._didArchery=true; pcCombatXP(actor,'archery',narrative);
       const d=pcArrowDamage(actor);
       const dealt=pcTakeHit(foe,d,narrative,actor.name,'arrow');
       if(dealt)narrative.push(`  ${actor.name}'s shot hits ${foe.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(foe.hp))})`);
@@ -16527,10 +17138,8 @@ const BATTLE_ARMY_SPELLS={
     // improves Thief. Pass the encounter narrative so these lines appear at the END of the
     // encounter report (like battle-driven gains) instead of being log()'d mid-resolution — which
     // landed them ABOVE the encounter report, i.e. at the top of the phase in the player Chronicle.
-    if(winner&&winner.kind==='character'&&winner.ref){
-      if(winner._didMelee) trySkillGain(winner.ref,'melee',SKILLGAIN_STD,narrative);
-      if(winner._didArchery) trySkillGain(winner.ref,'archery',SKILLGAIN_STD,narrative);
-    }
+    // 2026-09-29 (Toby): melee/archery experience is now rolled per successful hit as it lands
+    // (pcCombatXP) — the old single end-of-fight roll for the victor is retired.
     if(state.stoleBy&&state.stoleBy.kind==='character'&&state.stoleBy.ref) trySkillGain(state.stoleBy.ref,'thief',SKILLGAIN_STD,narrative);
     return {winner, loser, fledBy:state.fledBy, parley:state.parley, stoleBy:state.stoleBy,
             aHp:Math.max(0,Math.round(A.hp)), bHp:Math.max(0,Math.round(B.hp)), narrative};
@@ -18187,6 +18796,16 @@ const BATTLE_ARMY_SPELLS={
       const _hpR=(c.hp!=null?c.hp:(c.maxHp||20))/(c.maxHp||20);
       const _ok=!!(_r&&_r.charId===c.id&&_r.turn===G.turn&&(_r.band>=o._botIfRumour||(o._botIfRumourLow&&_r.band>=o._botIfRumourLow&&_hpR>=(o._botIfRumourLowHp||0.95))));
       if(!_ok){ log('explore',`${c.name} weighs what the taverns said of the ${_f?_f.name:'lair'} and leaves it for another day.`,{actor:c.player,targets:[c.player],provinceId:c.location}); action='rest'; } }
+    // 2026-09-29 (Toby, lair study): a Search names its lair by INDEX within a province. When the move
+    // meant to carry the searcher there fell short (pinned, blocked, pool spent), the old search ran
+    // on whatever lair sat at that index where he actually stood, or on ANY uncleared lair there, so
+    // untrained heroes died to Moderate guardians nobody chose (40 bot games: 12 such deaths). Every
+    // bot search, and every player search from this build on, carries `prov`, the province it was
+    // written for; standing anywhere else, the searcher does not go in.
+    if(action==='search'&&o.prov!=null&&o.prov!==''&&String(o.prov)!==String(c.location)){
+      const _pw=G.world.provinces[parseInt(o.prov)];
+      log('explore',`${c.name} never reaches the lair they set out for${_pw?` in ${_pw.name}`:''}, and will not go blind into another — the search is abandoned and they rest instead.`,{actor:c.player,targets:[c.player],provinceId:c.location});
+      action='rest'; }
     const target=o.target||'';
     const extra=o.extra||'';
     const prov=provOf(c);
@@ -19469,6 +20088,10 @@ const BATTLE_ARMY_SPELLS={
         let fi=0;
         if(target&&!isNaN(parseInt(target))) fi=parseInt(target);
         if(!prov.features||prov.features.length===0){log('explore',`${c.name} searches ${prov.name} but finds nothing of note.`,{actor:c.player,targets:[c.player]});break;}
+        // 2026-09-29: a search that NAMES a lair searches that lair or none — no falling back on some
+        // other uncleared lair here (that fallback sent heroes into guardians they had never assessed).
+        const _named=(target!==''&&!isNaN(parseInt(target)));
+        if(_named&&!prov.features[fi]){log('explore',`${c.name} looks for the lair they meant to search in ${prov.name}, but it is not here.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
         let f=prov.features[fi]||prov.features.find(fe=>fe&&!fe.cleared&&!fe.ritualSite)||prov.features.find(fe=>fe&&!fe.ritualSite)||prov.features[0];
         if(!f){break;}
         // A RITUAL SITE CANNOT BE SEARCHED (Toby 2026-09-20): it holds no guardian and no hoard, and
@@ -19514,6 +20137,7 @@ const BATTLE_ARMY_SPELLS={
           const hoard=featureTreasure(f);
           if(f._hoardGoldOrig==null) f._hoardGoldOrig=hoard; // back-compat for pre-revision saves
           if(hoard<=0){
+            if(c.player!=null){ f._pickedCleanBy=f._pickedCleanBy||[]; if(!f._pickedCleanBy.includes(c.player)) f._pickedCleanBy.push(c.player); } // 2026-09-29: this realm now KNOWS the hoard is empty (bots stop robbing it)
             log('explore',`${c.name} slips past the ${f.monster?.name||'guardian'} of the ${f.name}, but the hoard is already picked clean — nothing left to steal.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           } else {
             // Thief revision: the cut is 10% PER THIEF LEVEL (capped at 5 → 50%) of the
@@ -19524,6 +20148,7 @@ const BATTLE_ARMY_SPELLS={
             setFeatureTreasure(f, hoard-gold);
             player.gold=(player.gold||0)+gold;c.merits=(c.merits||0)+gold;
             const left=featureTreasure(f);
+            if(left<=0&&c.player!=null){ f._pickedCleanBy=f._pickedCleanBy||[]; if(!f._pickedCleanBy.includes(c.player)) f._pickedCleanBy.push(c.player); } // 2026-09-29: emptied it — known to this realm
             const _dregs=left<=0?` They have cleaned out the last of it — the hoard is empty.`:` (~${left}g still hidden here.)`;
             log('explore',`${c.name} escapes with ${gold}g lifted from the ${f.name}'s hoard (Thief ${_thLvl}: ${_thLvl*10}% of the original hoard)! The ${f.monster?.name||'guardian'} still guards the site.${_dregs}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
@@ -24431,6 +25056,16 @@ const BATTLE_ARMY_SPELLS={
       log('move',`${c.name} presses the chase after ${quarry.name}, but the quarry melts into the shadows and is gone. (Vanish)`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       endPursuit(c); return;
     }
+    // 2026-09-29 (Toby): ONE BATTLE PER PHASE applies to a chase already under way. Stage 1b only
+    // cancels a Pursue/Encounter ORDER given this phase; a pursuit set in an EARLIER phase runs here
+    // and bypassed that check, so a pursuer who had just fought the resumed battle for a province at
+    // the top of the phase could "run his quarry to ground" and fight a second battle in the same
+    // phase. An army-leading pursuer who has already fought this phase, or who is still locked in an
+    // unresolved battle where he stands, holds the chase over to the next phase (it stays live).
+    if(meArmed && (c._foughtStalledBattlePhase===ph || (here&&here._battleUnresolved))){
+      log('move',`${c.name} has a battle on their hands in ${here?here.name:'the field'} this season — the chase after ${quarry.name} must wait.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
+      return;
+    }
 
     // Not yet co-located: close one province along a legal route.
     if(c.location!==quarry.location){
@@ -24491,6 +25126,12 @@ const BATTLE_ARMY_SPELLS={
     }
 
     if(meArmed&&themArmed){
+      // 2026-09-29: nor may the chase force a battle on a quarry who has already fought this phase,
+      // or in a province whose own battle is still being fought — the pursuit carries on next phase.
+      if(quarry._foughtStalledBattlePhase===ph || prov._battleUnresolved){
+        log('move',`${c.name} closes on ${quarry.name} in ${prov.name}, but the ground is already a battlefield this season — the reckoning must wait.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+        return;
+      }
       // Both lead armies: "the pursuing character will attempt to run him down and defeat him in
       // battle." Defenders in the province unify behind the quarry as in any other battle.
       const defReinf=(G.characters||[]).filter(d=>d.alive&&d.id!==quarry.id&&d.player===quarry.player&&d.location===prov.id&&(d.armies||[]).length>0);
@@ -24500,6 +25141,7 @@ const BATTLE_ARMY_SPELLS={
       log('combat',`⚔ ${c.name} runs ${quarry.name} to ground in ${prov.name} and forces battle!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:[c.id,quarry.id]});
       const battle=combatVsChar(combinedAtk,combinedDef,prov);
       creditBattle(c,quarry,battle,prov);
+      c._foughtStalledBattlePhase=ph; quarry._foughtStalledBattlePhase=ph; defReinf.forEach(d=>{ d._foughtStalledBattlePhase=ph; }); // their one battle for the phase
       emitBattle(battle, prov, ph, targetsPi, {actor:c.player, charIds:[c.id,quarry.id]}); // into both combatants' sections
       // Write casualties back from the pooled copies to the real characters.
       c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
@@ -24666,10 +25308,13 @@ const BATTLE_ARMY_SPELLS={
   // Phase 3b — economy: holders (characters not moving) in owned provinces spend the treasury on
   // sustainable reinforcements (and opportunistic hires). Must run AFTER movement so movers are
   // skipped.
+  runBotPhaseOne(G, _botPlayerIdx, 'muster');   // 2026-09-29: hosts in contact claim the chest first (and outmatched war-front hosts withdraw)
   runBotEconomy(G, _botPlayerIdx);
   // Phase 3c — character actions: any bot character still idle (didn't move or recruit) trains,
   // heals, or explores instead of sitting on Defend. Must run AFTER movement + economy.
   runBotActions(G, _botPlayerIdx);
+  // Phase 3d — PHASE-ONE PASS (2026-09-29): what must happen in Spring, before any enemy can move, goes first.
+  runBotPhaseOne(G, _botPlayerIdx, 'order');
 
   // Phase 5 — a dominant bot king Calls the Reckoning (adds itself to the calls processed below).
   runBotReckoning(G, _botPlayerIdx, reckoningCalls);
@@ -25813,7 +26458,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       hp:15,maxHp:15,skills:heirSkills,aptitude:{}, // a new king rises at full royal vigour — 15 HP, same as a founding king
       armies:[],items:[],location:heirProv.id,alive:true,merits:0,taxBonus:0,
       pay:0,spellsUsedThisTurn:[],locationName:heirProv.name,
-      _isHeir:true,_pendingSkillAllocation:4, // player allocates 4 more skills, and may set name + temper, before ordering
+      _isHeir:true,_crownedTurn:G.turn||0,_pendingSkillAllocation:4, // player allocates 4 more skills, and may set name + temper, before ordering
     };
     const ABILITIES_P2=KC_SKILLS.slice();
     ABILITIES_P2.forEach(ab=>{heir.aptitude[ab]=Math.ceil(Math.random()*4);});
@@ -26827,6 +27472,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.28-2258</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.29-2331</div>
 </body>
 </html>
