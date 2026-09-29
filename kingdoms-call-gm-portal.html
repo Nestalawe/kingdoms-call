@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.09.29-2331'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.09.30-0038'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -8693,6 +8693,105 @@ function botPracticeSkill(c){
   // unmaxed.
   for(const k of ['melee','tactical','march']){ if((sk[k]||0)<5) return k; }
   return null; // everything relevant already at the drill cap
+}
+// ══ BOT ORDER HYGIENE (2026-09-29, Toby) ════
+// The last bot pass of the turn, after every planner has written its orders. A 30-game audit found 8.6% of bot
+// orders could not have worked when they were given: Practice on a skill already at the drill cap of 5 (240 a
+// game, many sources: the generic fillers, cross-training, the host/fleet drills), casts past the per-turn school
+// limit (154 a game, mostly a second or third Elemental Summon / Skeletal Armies), a Hire of a hero the SAME realm
+// had already hired, a hero the hirer will not be standing with, or one the treasury cannot pay (73), and column
+// hand-overs whose Skeletal Armies then refuse a living commander and disband (2 a game).
+// Rules (Toby): a hero at 5+ in a skill practises it ONLY to teach a comrade practising it beside him (or, for
+// Tactical / Naval, to drill troops that can still improve). Heroes still train TOGETHER: a phase freed here is
+// first offered to a comrade training in the same place (learn from him, teach him, or pair at equal level for
+// +50% each), and a final pass pulls a free hero standing with a trainee into teaching or pairing with him.
+const BOT_PRACTICE_BASE=[0.25,0.20,0.15,0.10,0.05];   // the engine's solo chance by level (case 'practice')
+const BOT_HYG_CRAFT=new Set(['sage','explorer','spy','thief']);
+function botDrillUseful(c,S){ if(S!=='tactical'&&S!=='naval') return false; const sea=new Set((KC_UNIT_CLASS&&KC_UNIT_CLASS.sea)||[]);
+  return (c.armies||[]).some(a=>a&&!a._isSkeletal&&!a._phantom&&(UNIT_DRILL_BASE[a.quality]||0)>0&&(S==='naval'?sea.has(a.type):!sea.has(a.type))); }
+function botCastLimit(G,c,school){ const l=effSkillOf(c,school,G.characters||[]);
+  const w=(G._minorHolders&&G._minorHolders.warlock&&G._minorHolders.warlock.charId===c.id&&_BEST_SCHOOL(c)===skillLevel(c,school))?1:0;
+  return (l>=4?3:l>=3?2:1)+w; }
+function runBotOrderHygiene(G, botIdxSet){
+  const tally=(typeof window!=='undefined'&&window.__botHyg)?window.__botHyg:null; const bump=k=>{ if(tally) tally[k]=(tally[k]||0)+1; };
+  botIdxSet.forEach(pi=>{
+    const P=(G.players||[])[pi]; if(!P) return;
+    const mine=(G.characters||[]).filter(x=>x&&x.alive&&x.player===pi&&!x._isHeir&&Array.isArray(G.turnOrders[x.id]));
+    if(!mine.length) return;
+    const LOC=new Map(); mine.forEach(x=>LOC.set(x.id,botOrderLocs(G,x)));
+    const lv=(ch,S)=>((ch.skills||{})[S]||0);
+    const ord=(ch,p)=>(G.turnOrders[ch.id]||[])[p];
+    const at=(ch,p)=>{ const l=LOC.get(ch.id); return l?l[p]:null; };
+    const here=(a,b,p)=>at(a,p)!=null&&at(a,p)===at(b,p);
+    const isPr=o=>!!(o&&o.action==='practice'&&o.target);
+    const isDrill=o=>/drill the host|drill the fleet|lead the host cleanly/.test((o&&o.desc)||'');
+    const dead=[];   // [char, phase] slots to refill
+    // ── 1. SPELLS: the per-turn school limit, and one Elemental Summon a turn
+    mine.forEach(c=>{ const o=G.turnOrders[c.id]; const used={}; let summoned=false;
+      for(let p=0;p<5;p++){ const x=o[p]; if(!(x&&x.action==='cast_spell')) continue; const d=SPELL_DEFS_P[x.target]; if(!d||!d.school) continue;
+        if(x.target==='Elemental Summon'){ if(summoned){ dead.push([c,p]); bump('summonTwice'); continue; } summoned=true; }
+        const lim=botCastLimit(G,c,d.school); used[d.school]=(used[d.school]||0);
+        if(used[d.school]>=lim){ dead.push([c,p]); bump('overLimit'); continue; }
+        used[d.school]++; } });
+    // ── 2. HIRES: one order per hero per realm, the hirer standing where the hero is, a wage the treasury can meet
+    { const taken=new Set(); let gold=P.gold||0; const H=[];
+      mine.forEach(c=>{ const o=G.turnOrders[c.id]; for(let p=0;p<5;p++){ const x=o[p]; if(x&&x.action==='hire') H.push([c,p,x]); } });
+      H.sort((a,b)=>a[1]-b[1]);
+      H.forEach(([c,p,x])=>{ const h=(G.characters||[]).find(z=>z&&z.id===parseInt(x.target));
+        if(!h||h.player!==null||!h.alive){ dead.push([c,p]); bump('hireGone'); return; }
+        if(taken.has(h.id)){ dead.push([c,p]); bump('hireTwice'); return; }
+        if(at(c,p)!==h.location){ dead.push([c,p]); bump('hireElsewhere'); return; }
+        const w=heroHireWage(P.alignment||'Neutral',h.alignment,false,h);
+        if(w==null||gold<w){ dead.push([c,p]); bump('hireUnaffordable'); return; }
+        taken.add(h.id); gold-=w; }); }
+    // ── 3. HAND-OVERS: Skeletal Armies follow only an Undead commander — keep them, pass on the rest
+    mine.forEach(c=>{ const o=G.turnOrders[c.id];
+      for(let p=0;p<5;p++){ const x=o[p]; if(!(x&&x.action==='leave_army'&&x.extra)) continue;
+        const r=(G.characters||[]).find(z=>z&&z.id===parseInt(x.extra)); if(!r) continue;
+        const undead=(r.alignment==='Undead')||(r.player!=null&&((G.players||[])[r.player]||{}).alignment==='Undead'); if(undead) continue;
+        const skel=(c.armies||[]).filter(a=>a&&a._isSkeletal); if(!skel.length) continue;
+        const live=(c.armies||[]).filter(a=>a&&!a._isSkeletal&&(x.target==='all'||String(x.target).split(',').map(t=>t.trim()).some(t=>t===a.type||t===a.unitName)));
+        if(!live.length){ dead.push([c,p]); bump('handoverAllSkeletal'); continue; }
+        x.target=live.map(a=>(a.unitName&&!/,/.test(a.unitName))?a.unitName:a.type).join(','); x.desc=(x.desc||'Hand column')+' (the living only)'; bump('handoverTrimmed'); } });
+    // ── 4. PRACTICE at the drill cap: only to teach, or to drill troops that can still improve
+    mine.forEach(c=>{ const o=G.turnOrders[c.id];
+      for(let p=0;p<5;p++){ const x=o[p]; if(!isPr(x)) continue; const S=x.target; if(lv(c,S)<5) continue;
+        if((S==='tactical'||S==='naval')&&botDrillUseful(c,S)) continue;
+        if(mine.some(t=>t.id!==c.id&&here(t,c,p)&&isPr(ord(t,p))&&ord(t,p).target===S&&lv(t,S)<lv(c,S))) continue;   // teaching
+        dead.push([c,p]); bump('practiceCapped'); } });
+    // ── refill each dead slot: join a comrade training here, else own best skill below 5, else drill, else hold
+    const filler=(c,p)=>{ let best=null;
+      mine.forEach(t=>{ if(t.id===c.id||!here(t,c,p)) return; const o=ord(t,p); if(!isPr(o)||isDrill(o)) return; const S=o.target; if(!SKILL_LABELS[S]) return;
+        const me=lv(c,S), him=lv(t,S); let sc=0;
+        if(me<5&&him>me) sc=3; else if(him<me) sc=2; else if(me<5&&him===me) sc=1;
+        if(sc&&(!best||sc>best.sc)) best={S,sc,t}; });
+      if(best) return {action:'practice',target:best.S,extra:'',desc:'Practice '+(SKILL_LABELS[best.S]||best.S)+' ('+(best.sc===3?'taught by ':best.sc===2?'teach ':'with ')+best.t.name+')'};
+      const S=botPracticeSkill(c); if(S) return {action:'practice',target:S,extra:'',desc:'Practice '+(SKILL_LABELS[S]||S)};
+      if(botDrillUseful(c,'tactical')) return {action:'practice',target:'tactical',extra:'',desc:'Practice Tactical (drill the host)'};
+      if(botDrillUseful(c,'naval')) return {action:'practice',target:'naval',extra:'',desc:'Practice Naval (drill the fleet)'};
+      return {action:'defend',target:'',extra:'',desc:'Hold'}; };
+    dead.forEach(([c,p])=>{ G.turnOrders[c.id][p]=null; });
+    dead.forEach(([c,p])=>{ if(!G.turnOrders[c.id][p]) G.turnOrders[c.id][p]=filler(c,p); });
+    // ── 5. TRAIN TOGETHER: a free hero standing with a trainee teaches him (a certain level), or pairs with him at
+    // equal level when the pair's +50% beats his own solo chance. "Free" = a plain practice (not a drill, a lesson,
+    // a pairing, a specialist's own craft, a slayer's ladder) or a Hold after Spring with no threat near.
+    const free=(m,p)=>{ const k=ord(m,p); if(!k) return true;
+      if(k.action==='defend') return p>0&&!/Watch|lies in wait/i.test(k.desc||'')&&!botNearbyThreat(G,pi,m);
+      if(!isPr(k)||isDrill(k)||/\((teach|taught by|with) /.test(k.desc||'')) return false;
+      if(m._botRole==='slayer'||m._botRole==='mage') return false;
+      if(BOT_HYG_CRAFT.has(k.target)&&BOT_SPECIALIST_ROLES.has(m._botRole)) return false;
+      return true; };
+    for(let p=0;p<5;p++){
+      mine.forEach(t=>{ const x=ord(t,p); if(!isPr(x)||isDrill(x)) return; const S=x.target; const tl=lv(t,S); if(tl>=5||!SKILL_LABELS[S]) return;
+        if(mine.some(m=>m.id!==t.id&&here(m,t,p)&&isPr(ord(m,p))&&ord(m,p).target===S&&lv(m,S)>tl)) return;   // already taught
+        let mentor=null; mine.forEach(m=>{ if(m.id===t.id||!here(m,t,p)||!free(m,p)) return; if(lv(m,S)>tl&&(!mentor||lv(m,S)>lv(mentor,S))) mentor=m; });
+        if(mentor){ G.turnOrders[mentor.id][p]={action:'practice',target:S,extra:'',desc:'Practice '+(SKILL_LABELS[S]||S)+' (teach '+t.name+')'}; bump('teachAdded'); return; }
+        if(mine.some(m=>m.id!==t.id&&here(m,t,p)&&isPr(ord(m,p))&&ord(m,p).target===S&&lv(m,S)===tl)) return;   // already paired
+        let peer=null; mine.forEach(m=>{ if(peer||m.id===t.id||!here(m,t,p)||!free(m,p)||lv(m,S)!==tl) return;
+          const k=ord(m,p); const own=isPr(k)?(lv(m,k.target)<5?BOT_PRACTICE_BASE[Math.min(4,lv(m,k.target))]:0):0;
+          if(BOT_PRACTICE_BASE[Math.min(4,tl)]*1.5>=own) peer=m; });
+        if(peer){ G.turnOrders[peer.id][p]={action:'practice',target:S,extra:'',desc:'Practice '+(SKILL_LABELS[S]||S)+' (with '+t.name+')'}; bump('pairAdded'); } }); }
+  });
 }
 // ══ BOT SPELLCRAFT (Sept 2026 self-play batch) ════
 // Replaces the single-cast botActionCast. botCastPlan builds an ORDERED list of action-phase casts
@@ -18786,6 +18885,16 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-28: a BOT slayer's second / third lair of the year carries _botMinHp — if an earlier fight left him
     // below that share of his HP, he rests instead of walking into another guardian half-dead. (Never set on
     // a player's order.)
+    // 2026-09-29 (Toby): a BOT's Practice on a skill that has reached 5 SINCE its orders were written (an earlier
+    // phase's practice or experience in the field this turn) switches to its next skill below 5 — unless it is
+    // teaching a comrade practising that skill beside it this phase, or drilling troops that can still improve.
+    if(action==='practice'&&c.player!=null&&_botPlayerIdx&&_botPlayerIdx.has(c.player)&&o.target){
+      const _S=String(o.target); const _sn=(G._phaseSkillSnapshot||{})[c.id]||c.skills||{}; const _myL=_sn[_S]||0;
+      if(_myL>=5&&!((_S==='tactical'||_S==='naval')&&botDrillUseful(c,_S))){
+        const _teaching=(G.characters||[]).some(t=>t&&t.alive&&t.id!==c.id&&t.player===c.player&&t.location===c.location&&(()=>{ const k=(G.turnOrders[t.id]||[])[ph]; return k&&normaliseAction(k)==='practice'&&String(k.target)===_S&&(((G._phaseSkillSnapshot||{})[t.id]||t.skills||{})[_S]||0)<_myL; })());
+        if(!_teaching){ const _nx=botPracticeSkill(c); if(_nx){ o={...o,target:_nx,desc:'Practice '+(SKILL_LABELS[_nx]||_nx)}; } else { action='defend'; } }
+      }
+    }
     if(action==='search'&&o._botMinHp&&c.player!=null&&(c.hp!=null?c.hp:(c.maxHp||20))<(c.maxHp||20)*o._botMinHp){
       log('explore',`${c.name} is too badly hurt to face another guardian this season and rests instead.`,{actor:c.player,targets:[c.player],provinceId:c.location});
       action='rest'; }
@@ -25315,6 +25424,9 @@ const BATTLE_ARMY_SPELLS={
   runBotActions(G, _botPlayerIdx);
   // Phase 3d — PHASE-ONE PASS (2026-09-29): what must happen in Spring, before any enemy can move, goes first.
   runBotPhaseOne(G, _botPlayerIdx, 'order');
+  // Phase 3e — ORDER HYGIENE (2026-09-29): drop bot orders that cannot work (capped practice, casts past the limit,
+  // dead hires, skeletons handed to the living) and refill those phases, training together where possible.
+  runBotOrderHygiene(G, _botPlayerIdx);
 
   // Phase 5 — a dominant bot king Calls the Reckoning (adds itself to the calls processed below).
   runBotReckoning(G, _botPlayerIdx, reckoningCalls);
@@ -27472,6 +27584,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.29-2331</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.30-0038</div>
 </body>
 </html>
