@@ -45,6 +45,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | Test | From | Level | Status | Checks |
 |---|---|---|---|---|
 | `syntax` | new | 0 | ✅ pass | Every inline script in every page, and `kingdoms-call-data.js`, parses |
+| `review-gate` | new | 1 | ✅ pass | The review gate's decision: gated paths (renames count by their old name too), the `needs-theo` label, whose approval counts, and only an approval of the latest commit |
 | `boot-pages` | new | 4 | ✅ pass | Every page boots in jsdom with no error, rejection or `console.error` |
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
 | `home-placement` | `claude_homeplacement_0927.js` | 1 | ✅ pass | Capitals are at least 4 hexes apart on every map size |
