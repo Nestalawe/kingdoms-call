@@ -3,7 +3,7 @@
 //   npm test                      syntax check, page boot check, small turn fuzz, every kept harness
 //   npm run test:full             the same with bigger fuzz runs
 //   npm run test:quarantine       the quarantined harnesses (expected to fail; see tests/README.md)
-//   npm test -- --seed 123        a different fixed seed (default below); printed at the end
+//   npm test -- --seed 123        a different fixed seed (default below); printed at the start
 //   npm test -- --only fuzz       only tests whose name contains "fuzz"
 const {spawnSync}=require('child_process');
 const fs=require('fs'), path=require('path');
