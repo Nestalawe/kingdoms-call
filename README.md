@@ -19,6 +19,9 @@ runs the tests again and, if they pass, publishes `site/` to GitHub Pages (`.git
 Changes to the database, the workflows or third-party code (the paths in `.github/review-gate-paths`), and
 PRs labelled `needs-theo`, need Theo's approval before they can merge (`.github/workflows/review-gate.yml`).
 
+Working on the code, or an agent starting a session? Read [CLAUDE.md](CLAUDE.md) first, then
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/traps.md](docs/traps.md).
+
 ## Running the tests
 
 You need Node 24 (see `.nvmrc`).
