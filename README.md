@@ -13,6 +13,9 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 
 Only `site/` is published, so page addresses don't change.
 
+Every pull request runs `npm test` in GitHub Actions (`.github/workflows/ci.yml`). Merging to `main`
+runs the tests again and, if they pass, publishes `site/` to GitHub Pages (`.github/workflows/deploy.yml`).
+
 ## Running the tests
 
 You need Node 24 (see `.nvmrc`).

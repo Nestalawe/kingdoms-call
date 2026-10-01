@@ -1,0 +1,47 @@
+# Publishes site/ to GitHub Pages, exactly as it is (no build step, no Jekyll).
+# Runs only for main: on a push to main, or by hand. It runs the tests first (ci.yml),
+# and the deploy job refuses any other branch, so a manual run from a branch only tests.
+# Needs Settings → Pages → Source set to "GitHub Actions".
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# One deploy at a time, in order; never cut off a deploy that has started.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/
+
+      - id: deployment
+        uses: actions/deploy-pages@v5
