@@ -6,7 +6,8 @@ npm run test:full           # bigger fuzz runs
 npm run test:quarantine     # the quarantined harnesses below (expected to fail)
 npm test -- --only fuzz     # only tests whose name contains "fuzz"
 npm test -- --seed 123      # another fixed seed (the default is printed at the start)
-node tests/<name>.test.js   # one test on its own
+npm test -- --only concede --seed 123   # reproduce one failure exactly (same seed and sizes)
+node tests/<name>.test.js   # one test on its own (unseeded, its own default sizes)
 ```
 
 `tests/run.js` runs each test as its own Node process; a test passes when it exits 0. On a failure
@@ -31,7 +32,8 @@ it prints the end of that test's output and the seed to repeat it with.
 
 ## The tests
 
-Level is from the testing strategy: 0 static, 1 unit, 2 scenario, 3 simulation, 4 page.
+Level is from the testing strategy: 0 static, 1 unit, 1d database unit (pgTAP, from P0-16), 2 scenario,
+3 simulation, 4 page.
 
 The original files are the harnesses kept in the claude.ai Project on 27 Sept 2026. When they moved
 here, only their plumbing changed:

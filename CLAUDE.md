@@ -39,12 +39,13 @@ Node 24 (`.nvmrc`).
 
 ```sh
 npm ci && npx playwright install chromium   # once
-npm test                                    # the standard run (~1–2 min); CI runs the same
+npm test                                    # the standard run (about a minute); CI runs the same
 npm run test:full                           # bigger fuzz runs
 npm run test:quarantine                     # quarantined harnesses (expected to fail)
 npm test -- --only fuzz                     # tests whose name contains "fuzz"
 npm test -- --seed 123                      # another fixed seed; a failing run prints its seed
-node tests/<name>.test.js                   # one test on its own
+npm test -- --only turn-fuzz --seed 123     # reproduce one failure: same test, same seed, same sizes
+node tests/<name>.test.js                   # one test on its own: unseeded, its own default sizes
 KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs)
 ```
 
@@ -54,11 +55,15 @@ Run `npm test` before every push. It must be green.
 
 - **Toby's batches:** numbered items in game terms, sometimes with pasted battle reports. **One PR per
   batch, one commit per item** (decision D-06). Commit message `Item N: <short title>`; PR title
-  `Batch YYYY-MM-DD: <a few items>`; branch `batch/YYYY-MM-DD`. If one item isn't ready, split it out
-  rather than holding the batch.
+  `Batch YYYY-MM-DD: <a few items>`; branch `batch/YYYY-MM-DD` (the date you open it). If one item
+  isn't ready, split it out rather than holding the batch.
 - **Plan steps:** PR title `[P0-13] Per-environment config`, branch `p0-13-per-environment-config`. Open draft
-  PRs whose titles start with `[P` are the live view of work in progress.
+  PRs whose titles start with `[P` are the live view of work in progress. Plan steps are grouped in
+  phases; a **unit** is a set of steps done together in one sitting (e.g. the cutover).
 - Open a **draft PR early**, and fill in the template as you go.
+
+**Staging** is a separate test site with its own database and no real players. Until it receives
+deploys (plan step P0-13), "What to try on staging" says what Toby will try once it can.
 
 ## Rules
 
@@ -73,8 +78,11 @@ Run `npm test` before every push. It must be green.
 - **When something slips through** to a simulation, staging or live play: first add a test at the
   lowest level that would have caught it, show it fails, then fix.
 - **Never "fix" a test to make it pass**, and never edit a quarantined test to pass. If a test fails
-  on the current build for a reason outside your change, quarantine it with a one-line reason
-  (first line of the file and `tests/README.md`), in its own commit.
+  on the current build for a reason outside your change, quarantine it in its own commit: move it to
+  `tests/quarantine/`, take it out of `SUITE` in `tests/run.js`, and give the one-line reason as the
+  file's first line and in `tests/README.md`. It comes back, in its own PR, only once the reason no
+  longer applies (e.g. Toby confirms the behaviour the test should expect); updating it to that
+  confirmed behaviour is fine, loosening it until it passes is not.
 - Tests use synthetic, seeded data only. No test, fixture or CI job may read the live database.
 
 **Changes**
@@ -106,8 +114,9 @@ Run `npm test` before every push. It must be green.
 
    Toby's pasted reports stay in the session. Tests and PRs use made-up names.
 5. **Never describe security weaknesses in public.** Security-fix PRs get neutral titles and
-   descriptions that don't say what was wrong or how it could be used. If you find a weakness, tell
-   Theo privately; don't write it into an issue, PR, commit, comment or doc.
+   descriptions that don't say what was wrong or how it could be used. If you find a weakness, say so
+   to the person running your session, for Theo; don't write it into an issue, PR, commit, comment or
+   doc.
 6. **Never copy from the private plan.** If your clone has a `plan/` folder, it's the private plan repo
    (git-excluded). Follow `plan/24-agent-brief.md` for updating its STATUS, and never add its files,
    or text from them, to this repo.
@@ -130,7 +139,8 @@ The `review-gate` check (`.github/workflows/review-gate.yml`) fails until Theo a
   `site/vendor/**` (the gate reads this list from the PR's base branch, so editing it affects later
   PRs, not the current one); **or**
 - carries the label **`needs-theo`**. Add it to any PR that changes who can see or change data, any
-  plan step marked ✓ for Theo, and any unit step (e.g. the cutover).
+  plan step whose STATUS row has ✓ in the Theo column, and any step of a unit (e.g. the cutover). If
+  unsure, add it.
 
 If Theo opened the PR, Toby's approval counts instead. **Only an approval of the PR's latest commit
 counts:** a new push needs a new approval, and "changes requested" or a dismissed review cancels it.
