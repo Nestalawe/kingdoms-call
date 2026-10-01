@@ -1,0 +1,1110 @@
+[
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const PRIMAL_SEA_NAMES=",
+  "old": "new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.primalSea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MISSILE_ARMIES_MASTER=",
+  "old": "new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers',\n  'Ironwood Crossbows','Mountain Guns','Goblin Horde'])",
+  "new": "new Set(KC_UNIT_CLASS.missile)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const GARRISON_SEA_TYPES_R=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const GARRISON_AIR_TYPES_R=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const GARRISON_FLY_TYPES_R=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const FLYING_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const AERIAL_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders',\n    'Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const CREATURE_ARMIES=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MONSTER_ARMIES=",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.monster)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const CARRIER_TYPES=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "PRIMAL_SEA_TYPES (engine)",
+  "old": "new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.primalSea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "PRIMAL_SEA_TYPES (world gen, array)",
+  "old": "['Sea Giants','Kraken Tentacles','Leviathan Pods']",
+  "new": "KC_UNIT_CLASS.primalSea.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const CAVALRY_TYPES=",
+  "old": "new Set(['Free Lances','Gilded Lances','Warg Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.cavalry)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const UNIT_BASE_STR=",
+  "old": "{'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,\n  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11}",
+  "new": "{...KC_UNIT_BASE_STR}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const UNIT_Q_MULT=",
+  "old": "{Green:1,Average:2,Veteran:3,Crack:4,Elite:5}",
+  "new": "{...KC_UNIT_Q_MULT}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const QUALITY_TIERS=",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "KC_QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "SEASONS (module)",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const ALL_SKILLS=",
+  "old": "['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_SKILLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const ITEM_UNCAPPED_SKILLS=",
+  "old": "new Set(['melee','archery','white','psychic','illusory','elemental','necromancy'])",
+  "new": "new Set(KC_ITEM_UNCAPPED_SKILLS)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const SKILL_LABELS=",
+  "old": "{melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'}",
+  "new": "{...KC_SKILL_LABELS}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const TERRAIN_COLORS_P=",
+  "old": "{plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'}",
+  "new": "{...KC_TERRAIN_COLORS}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const RACES_P=",
+  "old": "['Human','Elven','Dwarven','Orcish']",
+  "new": "KC_HUMANOID_RACES.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const GEN_FLYER_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const SEA_TYPES_GEN=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',\n  'Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const TAMED_FLYER_TYPES_D=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'])",
+  "new": "new Set(KC_UNIT_CLASS.tamedFlyer)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const CREATURE_ARMIES_D=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const ALIGNMENTS_P=",
+  "old": "['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead']",
+  "new": "KC_ALIGNMENTS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const TEMPERS_P=",
+  "old": "['Berserk','Brave','Cautious','Cowardly']",
+  "new": "KC_TEMPERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const ABILITIES_P=",
+  "old": "['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_SKILLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _ITEM_RACE_ALIAS=",
+  "old": "{Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}",
+  "new": "{...KC_ITEM_RACE_ALIAS}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const ITEM_SLOT_CAP=",
+  "old": "{weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}",
+  "new": "{...KC_ITEM_SLOT_CAP}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const RUMOUR_COST_BY_POWER=",
+  "old": "{Weak:1,Moderate:2,Powerful:3,Legendary:4}",
+  "new": "{...KC_RUMOUR_COST_BY_POWER}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_HEX_DIRS=",
+  "old": "['NW','NE','W','E','SW','SE']",
+  "new": "KC_HEX_DIRS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_CARRIER_TYPES=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_PRIMAL_SEA_TYPES=",
+  "old": "new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.primalSea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_AERIAL_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_LIGHT_ARMIES=",
+  "old": "new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns'])",
+  "new": "new Set(KC_UNIT_CLASS.lightFoot)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_FLYING_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_CREATURE_ARMIES=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_MONSTER_ARMIES=",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.monster)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_CAVALRY_TYPES=",
+  "old": "new Set(['Free Lances','Gilded Lances','Warg Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.cavalry)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BOT_NAVAL_TYPES=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const TITLE_CREATURE_ARMIES=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const TITLE_MONSTER_ARMIES=",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.monster)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "COMBAT_ONLY [FIX]",
+  "old": "new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE'])",
+  "new": "COMBAT_ONLY_TACTICS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "COMBAT_ONLY [FIX]",
+  "old": "new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE'])",
+  "new": "COMBAT_ONLY_TACTICS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "COMBAT_ONLY [FIX]",
+  "old": "new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE'])",
+  "new": "COMBAT_ONLY_TACTICS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "COMBAT_ONLY [FIX]",
+  "old": "new Set(['ME','MELEE','AR','ARCHERY','CA','SPELL','FL','FLEE'])",
+  "new": "COMBAT_ONLY_TACTICS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "COMBAT_ONLY (bot duel sim) [+ARROW]",
+  "old": "new Set(['ME','MELEE','AR','ARCHERY','FI','FIRE','CA','SPELL','FL','FLEE'])",
+  "new": "COMBAT_ONLY_TACTICS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BATTLE_MAGIC_SPELL_SET=",
+  "old": "new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead'])",
+  "new": "new Set(BATTLE_MAGIC_SPELL_NAMES)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BATTLE_MAGIC_SPELLS=",
+  "old": "new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead'])",
+  "new": "new Set(BATTLE_MAGIC_SPELL_NAMES)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BATTLE_MAGIC_PVP=",
+  "old": "new Set(['Holy Symbol','Spiritwrack','Fireball','Telekinetic Storm','Lightning Bolt','Curse','Psychic Blast','Control Undead'])",
+  "new": "new Set(BATTLE_MAGIC_SPELL_NAMES)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MISSILE_ARMIES=",
+  "old": "new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'])",
+  "new": "new Set(KC_UNIT_CLASS.missile)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MISSILE_A=",
+  "old": "new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'])",
+  "new": "new Set(KC_UNIT_CLASS.missile)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MISSILE_PVP=",
+  "old": "new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'])",
+  "new": "new Set(KC_UNIT_CLASS.missile)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const FANATIC_CHANCE=",
+  "old": "{Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00}",
+  "new": "{...FANATIC_CHANCE_BY_ALIGN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const atkFanChance=",
+  "old": "{Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00}",
+  "new": "{...FANATIC_CHANCE_BY_ALIGN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const defFanChance=",
+  "old": "{Divine:0.50,Good:0.40,Druidic:0.20,Neutral:0.10,Pagan:0.15,Evil:0.25,Undead:0.00}",
+  "new": "{...FANATIC_CHANCE_BY_ALIGN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "POWER_RANK (1)",
+  "old": "{'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4}",
+  "new": "{...GUARDIAN_POWER_RANK}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "POWER_RANK (2)",
+  "old": "{'':0,'Weak':1,'Moderate':2,'Powerful':3,'Legendary':4}",
+  "new": "{...GUARDIAN_POWER_RANK}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "bot steal PEN",
+  "old": "{Weak:0,Moderate:15,Powerful:30,Legendary:45}",
+  "new": "{...STEAL_TIER_PEN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const STEAL_TIER_PENALTY=",
+  "old": "{Weak:0, Moderate:15, Powerful:30, Legendary:45}",
+  "new": "{...STEAL_TIER_PEN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const NPC_SPELL_BY_SCHOOL=",
+  "old": "{elemental:'Lightning Bolt',necromancy:'Hand of Death',\n    white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'}",
+  "new": "{...NPC_SCHOOL_SPELL}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "duel fallback spell map (inline)",
+  "old": "{elemental:'Lightning Bolt',necromancy:'Hand of Death',white:'Holy Symbol',psychic:'Psychic Blast',illusory:'Mirror Image'}",
+  "new": "NPC_SCHOOL_SPELL"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MINOR_CAV=",
+  "old": "new Set(['Free Lances','Gilded Lances','Warg Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.cavalry)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const SEA_T=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort',\n        'Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const FLY_T=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const SEA_UNIT_TYPES=",
+  "old": "['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods']",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const AERIAL_UNIT_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const FLY_CARRIERS_REP=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const CAV_REP=",
+  "old": "new Set(['Free Lances','Gilded Lances','Warg Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.cavalry)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const CRE_REP=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MON_REP=",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.monster)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _FLEET_TYPES_DISC=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const FLEET_I=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const SEA_SET=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const NAVAL_DRILL_TYPES=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const SEA_TYPES_D=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const LIGHT_ARMIES=",
+  "old": "new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',\n      'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison',\n      'Goblin Horde',\n      'Forest Wardens','Dwarven Guard','Orc Berserkers',\n      'Mountain Guns'])",
+  "new": "new Set(KC_UNIT_CLASS.lightFoot)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "LIGHT_MSG [FIX: +Mountain Guns]",
+  "old": "new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',\n                'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde',\n                'Forest Wardens','Dwarven Guard','Orc Berserkers'])",
+  "new": "new Set(KC_UNIT_CLASS.lightFoot)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "DISC_CLS_SETS.missile",
+  "old": "new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'])",
+  "new": "new Set(KC_UNIT_CLASS.missile)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "DISC_CLS_SETS.fleet",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "DISC_CLS_SETS.flyer",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "DISC_CLS_SETS.garrison",
+  "old": "new Set(['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'])",
+  "new": "new Set(KC_UNIT_CLASS.garrison)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const HUMANOID_RACES_SG=",
+  "old": "new Set(['Human','Elven','Dwarven','Orcish'])",
+  "new": "new Set(KC_HUMANOID_RACES)"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const HUM=",
+  "old": "['Human','Elven','Dwarven','Orcish']",
+  "new": "KC_HUMANOID_RACES.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const ABILITIES_P2=",
+  "old": "['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_SKILLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _WRAITH_DOWN=",
+  "old": "{Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'}",
+  "new": "{...KC_QUALITY_DOWN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _PLAGUE_QDOWN=",
+  "old": "{Elite:'Crack',Crack:'Veteran',Veteran:'Average',Average:'Green'}",
+  "new": "{...KC_QUALITY_DOWN}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "armStr Q_UP",
+  "old": "{Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}",
+  "new": "{...KC_QUALITY_UP}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const UP=",
+  "old": "{Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}",
+  "new": "{...KC_QUALITY_UP}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const QUALITY_UP=",
+  "old": "{Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}",
+  "new": "{...KC_QUALITY_UP}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "harvest skeleton tier (inline)",
+  "old": "{Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}",
+  "new": "KC_QUALITY_UP"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "skeletal armies tier (inline)",
+  "old": "{Green:'Average',Average:'Veteran',Veteran:'Crack',Crack:'Elite',Elite:'Elite'}",
+  "new": "KC_QUALITY_UP"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "engine HEX_DIRS",
+  "old": "['NW','NE','W','E','SW','SE']",
+  "new": "KC_HEX_DIRS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const BASIC_EXPLORE=",
+  "old": "{plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25}",
+  "new": "{...KC_BASIC_EXPLORE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const AWAKEN_TIERS=",
+  "old": "{'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3}",
+  "new": "{...KC_AWAKEN_TIERS}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "bot awaken TIERS",
+  "old": "{'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3}",
+  "new": "{...KC_AWAKEN_TIERS}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "bot RIV (1)",
+  "old": "{Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}",
+  "new": "{...KC_RIVAL_RACE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "bot RIV (2)",
+  "old": "{Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}",
+  "new": "{...KC_RIVAL_RACE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "bot RIV (3)",
+  "old": "{Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}",
+  "new": "{...KC_RIVAL_RACE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _RACE_RIVAL=",
+  "old": "{Human:'Orcish',Orcish:'Human',Elven:'Dwarven',Dwarven:'Elven'}",
+  "new": "{...KC_RIVAL_RACE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _RIVAL_RACE=",
+  "old": "{Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}",
+  "new": "{...KC_RIVAL_RACE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "GM chronicle PHASE_NAMES",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn']",
+  "new": "KC_PHASE_NAMES.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "GM chronicle PHASE_COLORS",
+  "old": "['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555']",
+  "new": "KC_PHASE_COLORS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "SEASONS (runTurn local)",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder tiers (local)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder tiers (local)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder tiers (local)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder tiers (local)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder tiers (local)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder _PH_TIERS",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "quality ladder _tiers",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "xpMult ladder (inline)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "xp tier index (inline)",
+  "old": "['Green','Average','Veteran','Crack','Elite']",
+  "new": "QUALITY_TIERS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "DRUID_ARMY_LEVELS_P (whole table)",
+  "old": "{\n  // Level 0 — any character, own race only (no penalty ever) Level 1 — Druid 1+: all four humanoid\n  // races + garrisons\n  1:new Set(['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison',\n    'Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison',\n    'Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison',\n    'Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison']),\n  // Level 2 — EMPTY since 2026-09-27 (Toby item 2). Gnomish Gyrocopters were the only entry, and a\n  // gyrocopter is a MACHINE — a dwarven crew in a flying contraption, not a beast anyone has to\n  // charm. sd40 Dragon Taming already excluded them on exactly that reasoning. They now need no\n  // Druid at all, like any other unit of a realm's own racial roster. Keep the rung declared (empty)\n  // so getDruidLevel's table walk is unchanged and a future level-2 unit has a home.\n  2:new Set([]),\n  // Level 3 — Druid 3+: powerful wild creatures; Undead armies level 0 for Undead-aligned\n  3:new Set(['Eagle Riders','Wyvern Riders','Whale Cohort','Noble Griffons']),\n  // Level 4 — Druid 4+: primal non-humanoid beings\n  4:new Set(['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride',\n    'Basilisk Brood','Sea Giants','Kraken Tentacles']),\n  // Level 5 — Druid 5: legendary/divine creatures\n  5:new Set(['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods']),\n};",
+  "new": "DRUID_ARMY_LEVELS_P",
+  "kind": "druid"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const NAVAL_BY_RACE=",
+  "old": "{Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'}",
+  "new": "{...HOME_FLEET_BY_RACE}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "home fleet inline map",
+  "old": "{Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'}",
+  "new": "HOME_FLEET_BY_RACE"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _GD_DEFS=",
+  "old": "{Divine:{name:'Grand Cathedral',desc:'Bless costs you no casting slot, and its ward lies permanently over your capital.'},Good:{name:'Free City Charter',desc:'Every province you hold that keeps a garrison yields +2 tax.'},Neutral:{name:'Grand Library',desc:'Your scholars make one guaranteed Sage discovery every turn.'},Pagan:{name:'Standing Stones',desc:'Your armies fight at +25% strength when defending forest, jungle or mountain provinces.'},Evil:{name:'Iron Throne of Skulls',desc:'Enemy units slain in battles you win may rise as your skeletons.'},Undead:{name:'Deathless Legion',desc:'Your skeletal units never disband for unpaid wages, and rise one experience tier stronger.'},Druidic:{name:'World-Tree Grove',desc:'Your monsters and creatures cost half their wages and muster as Veterans.'}}",
+  "new": "{...KC_GRAND_DESIGNS}"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const _MAGIC_SCHOOLS=",
+  "old": "['white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_MAGIC_SCHOOLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "const MAGIC_L8_SCHOOLS=",
+  "old": "['white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_MAGIC_SCHOOLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "_BEST_SCHOOL list (inline)",
+  "old": "['white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_MAGIC_SCHOOLS"
+ },
+ {
+  "file": "kingdoms-call-gm-portal.html",
+  "label": "bestSchool tie-break list (same order)",
+  "old": "['white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_MAGIC_SCHOOLS"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const ITEM_SLOT_CAP_P=",
+  "old": "{weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2}",
+  "new": "{...KC_ITEM_SLOT_CAP}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _ITEM_RACE_ALIAS_P=",
+  "old": "{Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'}",
+  "new": "{...KC_ITEM_RACE_ALIAS}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const RUMOUR_COST_BY_POWER_P=",
+  "old": "{Weak:1,Moderate:2,Powerful:3,Legendary:4}",
+  "new": "{...KC_RUMOUR_COST_BY_POWER}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "PP SEASONS (module)",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const SEASONS_E=",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const SEASONS_SA=",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const SEASONS_RO=",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const SEASONS_C=",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const SEASONS_H=",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "SEASONS_R (1)",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "SEASONS_R (2)",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter']",
+  "new": "KC_SEASONS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "PP PHASE_NAMES",
+  "old": "['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn']",
+  "new": "KC_PHASE_NAMES.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "PP PHASE_COLORS",
+  "old": "['#2d6a2d','#7a5a10','#8a6010','#6a3a10','#1a3a6a','#555']",
+  "new": "KC_PHASE_COLORS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const GD_BY_ALIGNMENT=",
+  "old": "{\n  Divine:{name:'Grand Cathedral',desc:'Bless costs you no casting slot, and its ward lies permanently over your capital.'},\n  Good:{name:'Free City Charter',desc:'Every province you hold that keeps a garrison yields +2 tax.'},\n  Neutral:{name:'Grand Library',desc:'Your scholars make one guaranteed Sage discovery every turn.'},\n  Pagan:{name:'Standing Stones',desc:'Your armies fight at +25% strength when defending forest, jungle or mountain provinces.'},\n  Evil:{name:'Iron Throne of Skulls',desc:'Enemy units slain in battles you win may rise as your skeletons.'},\n  Undead:{name:'Deathless Legion',desc:'Your skeletal units never disband for unpaid wages, and rise one experience tier stronger.'},\n  Druidic:{name:'World-Tree Grove',desc:'Your monsters and creatures cost half their wages and muster as Veterans.'},\n}",
+  "new": "{...KC_GRAND_DESIGNS}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _RIVAL_RACE_UI=",
+  "old": "{Elven:'Dwarven',Dwarven:'Elven',Human:'Orcish',Orcish:'Human'}",
+  "new": "{...KC_RIVAL_RACE}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _FLY_UI2=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _SEA_UI2=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _AER_UI2=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _CARRIER_UI2=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _LIGHT_UI2=",
+  "old": "new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns'])",
+  "new": "new Set(KC_UNIT_CLASS.lightFoot)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _SEAMON=",
+  "old": "new Set(['Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.primalSea)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _FLY=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders',\n    'Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _SEA=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _CRE=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_SEA_TYPES=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.sea)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_CARRIER_TYPES=",
+  "old": "new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'])",
+  "new": "new Set(KC_UNIT_CLASS.carrier)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_AERIAL_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'])",
+  "new": "new Set(KC_UNIT_CLASS.aerial)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_FLYING_TYPES=",
+  "old": "new Set(['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.flying)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_CAVALRY_TYPES=",
+  "old": "new Set(['Free Lances','Gilded Lances','Warg Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.cavalry)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_CREATURE_TYPES=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const PO_MONSTER_TYPES=",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.monster)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const CREATURE_ARMIES_UI=",
+  "old": "new Set(['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'])",
+  "new": "new Set(KC_UNIT_CLASS.creature)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const MONSTER_ARMIES_UI=",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'])",
+  "new": "new Set(KC_UNIT_CLASS.monster)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const GARRISON_UNIT_TYPES_P=",
+  "old": "new Set(['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'])",
+  "new": "new Set(KC_UNIT_CLASS.garrison)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "_MON (land monsters, derived)",
+  "old": "new Set(['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Elder Dragons','Titan Warbeasts'])",
+  "new": "new Set(KC_UNIT_CLASS.monster.filter(t=>!KC_UNIT_CLASS.primalSea.includes(t)))"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "PO_LIGHT_TYPES (+projected foot)",
+  "old": "new Set(['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers',\n  'Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde',\n  'Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns',\n  '__projected foot__'])",
+  "new": "new Set([...KC_UNIT_CLASS.lightFoot,'__projected foot__'])"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const HUMANOID_RACES_UI=",
+  "old": "new Set(['Human','Elven','Dwarven','Orcish'])",
+  "new": "new Set(KC_HUMANOID_RACES)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const ALIGN_SPECTRUM_PP=",
+  "old": "['Divine','Good','Druidic','Neutral','Pagan','Evil','Undead']",
+  "new": "KC_ALIGNMENTS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const HEIR_TEMPERS_LIST=",
+  "old": "['Berserk','Brave','Cautious','Cowardly']",
+  "new": "KC_TEMPERS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const ITEM_UNCAPPED_SKILLS_P=",
+  "old": "new Set(['melee','archery','white','psychic','illusory','elemental','necromancy'])",
+  "new": "new Set(KC_ITEM_UNCAPPED_SKILLS)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const UNIT_BASE_STR_P=",
+  "old": "{'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4,\n  'Stone Giants':9,'Forest Ents':8,'Giant Eagles':7,'Cave Trolls':8,'Manticore Pride':8,'Basilisk Brood':7,'Sea Giants':9,'Kraken Tentacles':10,'Elder Dragons':12,'Crimson Rocs':10,'Titan Warbeasts':11,'Leviathan Pods':13,'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11}",
+  "new": "{...KC_UNIT_BASE_STR}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const UNIT_Q_MULT_P=",
+  "old": "{Green:1,Average:2,Veteran:3,Crack:4,Elite:5}",
+  "new": "{...KC_UNIT_Q_MULT}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const ALL_SKILLS=",
+  "old": "['melee','archery','tactical','march','naval','sage','spy','thief','druid','explorer','white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_SKILLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const SKILL_LABELS=",
+  "old": "{melee:'Melee',archery:'Archery',tactical:'Tactical',march:'March',naval:'Naval',sage:'Sage',spy:'Spy',thief:'Thief',druid:'Druid',explorer:'Explorer',white:'White Magic',psychic:'Psychic Magic',illusory:'Illusory Magic',elemental:'Elemental Magic',necromancy:'Necromancy'}",
+  "new": "{...KC_SKILL_LABELS}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const HEX=",
+  "old": "['NW','NE','W','E','SW','SE']",
+  "new": "KC_HEX_DIRS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "PP HEX_DIRS (dir picker)",
+  "old": "['NW','NE','W','E','SW','SE']",
+  "new": "KC_HEX_DIRS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const HEX_DIRS_BUILD=",
+  "old": "['NW','NE','W','E','SW','SE']",
+  "new": "KC_HEX_DIRS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const AWAKEN_TIERS=",
+  "old": "{'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3}",
+  "new": "{...KC_AWAKEN_TIERS}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const BASIC_EXPLORE_P=",
+  "old": "{plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25}",
+  "new": "{...KC_BASIC_EXPLORE}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const TERRAIN_COLORS_MAP=",
+  "old": "{\n  plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',\n  jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'\n}",
+  "new": "{...KC_TERRAIN_COLORS}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "skill sheet Magic row",
+  "old": "['white','psychic','illusory','elemental','necromancy']",
+  "new": "KC_MAGIC_SCHOOLS.slice()"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const MAGIC_SCHOOLS_EP=",
+  "old": "new Set(['white','psychic','illusory','elemental','necromancy'])",
+  "new": "new Set(KC_MAGIC_SCHOOLS)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const MAGIC_SCHOOLS=",
+  "old": "new Set(['white','psychic','illusory','elemental','necromancy'])",
+  "new": "new Set(KC_MAGIC_SCHOOLS)"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "recruit list Creature tag (inline)",
+  "old": "['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders']",
+  "new": "[...CREATURE_ARMIES_UI]",
+  "kind": "arr"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "recruit list Monster tag (inline)",
+  "old": "['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods']",
+  "new": "[...MONSTER_ARMIES_UI]",
+  "kind": "arr"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const _GUARD_POWER_COLORS=",
+  "old": "{Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}",
+  "new": "{...GUARD_POWER_COLORS_P}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "const POWER_COLORS=",
+  "old": "{Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}",
+  "new": "{...GUARD_POWER_COLORS_P}"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "map tooltip grade colour (inline)",
+  "old": "{Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}",
+  "new": "GUARD_POWER_COLORS_P"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "lair card grade colour (inline)",
+  "old": "{Weak:'#4a8a4a',Moderate:'#c8922a',Powerful:'#8a1c1c',Legendary:'#5a0a9a'}",
+  "new": "GUARD_POWER_COLORS_P"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "MASTERY_EFFECTS [FIX: engine text]",
+  "old": "{\n  melee:{6:'Master of the blade — your melee benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Challenge: call out an enemy commander in your province to single combat.',8:'Grandmaster of the blade — no further melee bonus (capped at 5); mastery is in your Challenge and Rampage orders.',9:'New order — Rampage: after winning a duel, immediately strike a second enemy force.'},\n  archery:{6:'Master archer — your archery benefit is capped at level 5, but this renown counts toward Imperial Titles.',7:'New order — Rain of Arrows: a free pre-battle volley that softens the enemy front line.',8:'Grandmaster archer — no further archery bonus (capped at 5); mastery is in your Rain of Arrows and Sniper\\'s Mark orders.',9:\"New order — Sniper's Mark: target an enemy commander before battle for a chance to wound or slay them.\"},\n  tactical:{6:'Each unit you lead has a 10% chance to fight one experience tier higher in each battle.',7:'New order — Feigned Retreat: bait an attacker, then counter at +strength.',8:'Units you lead are 50% less likely to die or disband after losing a battle.',9:'New order — Grand Stratagem: dictate the terms of one battle.'},\n  march:{6:'Each army you lead adds +2% exploration to every province you move into.',7:\"New order — Forced March: march to an adjacent province with a 50% chance to slip past a battle this phase (once per turn).\",8:'All terrain combat bonuses for the units you lead are doubled, and they suffer no terrain penalties.',9:'New order — Lightning Advance: a foe you attack this turn fights with no terrain bonus, no pre-battle magic and no pre-battle archery.'},\n  naval:{6:'Moving into a sea province while leading naval units adds +5% exploration to each adjacent land province.',7:'New order — Blockade (needs a fleet): a 50% chance to seal a sea province so enemies may not cross it this turn.',8:'Land units you lead take no penalty fighting at sea, and one naval hull now carries what once needed two.',9:'New order — Raid the Coast (needs a fleet): an amphibious assault launched from the sea at +strength, plundering the province treasury if you capture it.'},\n  sage:{6:'Gain +5 gold each time you make a new Sage discovery (discovery chance still caps at 5; your level counts toward the Loremaster title).',7:'New order — Research Breakthrough: a guaranteed Sage discovery this turn.',8:'Each new Sage discovery permanently raises the tax base of the province you are in by +1 (max 10).',9:'New order — Grand Design: realise your alignment\\'s unique realm-wide Wonder.'},\n  spy:{6:'Your spy actions now always succeed.',7:'New order — Sabotage: wreck an enemy province (−tax / disband a garrison unit next turn).',8:'Your spycraft deepens — infiltration grows surer.',9:'New order — Assassinate: attempt to kill an enemy hero in a province you have infiltrated.'},\n  thief:{6:'A personal stipend adds +5 gold to your income each turn.',7:'New order — Grand Heist: once per turn, crack the vaults of the enemy capital or rich province you stand in — a quarter of that realm\\'s treasury and a magic item off one of their couriers.',8:'Gold you steal with a Grand Heist is doubled — you take the full amount even if the victim cannot cover it — and your own pockets can no longer be picked.',9:'New order — Vanish: nothing can bring you to bay this turn — no pursuit, Encounter or ambush.'},\n  druid:{6:'Creature and Monster units you lead cost half to recruit and draw half wages.',7:'New order — Awaken Grove: raise a temporary Creature host from a forest or jungle you hold.',8:'Creature and Monster units you lead fight one experience tier higher in every battle.',9:\"New order — Wild Calling: turn a whole wild (Creature or Monster) province's defenders to your side.\"},\n  explorer:{6:'On entering a province you automatically spot one random undiscovered lair.',7:'New order — Chart the Unknown: fully explore this province and reveal all its neighbours.',8:'Each Explore action has a 50% chance to permanently raise the province tax base by +2 (max 10).',9:'New order — Discover Lost Ruin: guaranteed to find and reveal a hidden lair or treasure site.'},\n  white:{6:'Mass Healing — at the end of every turn, all friendly characters sharing your province (you included) heal half their maximum HP.',7:'New spell — Sanctuary: ward a province so enemy armies there fight at −strength.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Divine Judgment: smite a chosen enemy force for heavy holy damage.'},\n  psychic:{6:'Master of Psychic Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Mass Confusion: an enemy hero loses their Tactical command in their next battle.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:\"New spell — Dominate: seize an enemy hero's orders, turning up to half their armies to your side.\"},\n  illusory:{6:'Master of Illusory Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:'New spell — Phantom Host: duplicate the monsters and creatures you lead as phantom doubles that fight for the rest of the turn.',8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Veil: one of your forces vanishes from all enemy sight this turn.'},\n  elemental:{6:'Master of Elemental Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:\"New spell — Chain Lightning: strike several of an enemy hero's units at once.\",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:'New spell — Cataclysm: devastate a province — heavy damage to every enemy force, and it yields no tax.'},\n  necromancy:{6:'Master of Necromancy Magic — the per-turn casting benefit is capped at level 5, but your level counts toward the Archmage title.',7:\"New spell — Raise Wraiths: raise the strongest battlefield dead as an elite Wraith whose Wraith's Touch withers the enemy's finest each battle.\",8:'+10% to your chance to cast ANY spell — stacks with the same L8 perk from your other magic schools (hard 95% cap).',9:\"New spell — Death's Dominion: mass-raise skeletal units from a battle's graves at once.\"},\n}",
+  "new": "MASTERY_UNLOCKS"
+ },
+ {
+  "file": "kingdoms-call-player-portal.html",
+  "label": "DRUID_REQ x2 + TAMED_FLYERS_UI [FIX: -> druidNeedP]",
+  "old": "",
+  "new": "",
+  "kind": "druidPP"
+ }
+]
