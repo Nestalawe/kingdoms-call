@@ -16,6 +16,9 @@ Only `site/` is published, so page addresses don't change.
 Every pull request runs `npm test` in GitHub Actions (`.github/workflows/ci.yml`). Merging to `main`
 runs the tests again and, if they pass, publishes `site/` to GitHub Pages (`.github/workflows/deploy.yml`).
 
+Changes to the database, the workflows or third-party code (the paths in `.github/review-gate-paths`), and
+PRs labelled `needs-theo`, need Theo's approval before they can merge (`.github/workflows/review-gate.yml`).
+
 ## Running the tests
 
 You need Node 24 (see `.nvmrc`).
