@@ -22,6 +22,7 @@ function parsePaths(text){
 }
 
 // "**" matches across folders, "*" within one folder, "?" one character. Everything else is literal.
+// Case is ignored: on a Mac or Windows checkout "Supabase/" and "supabase/" are the same folder.
 function globToRegExp(glob){
   let re='';
   for(let i=0;i<glob.length;i++){
@@ -31,7 +32,7 @@ function globToRegExp(glob){
     else if(c==='?') re+='[^/]';
     else re+=c.replace(/[.+^${}()|[\]\\]/g,'\\$&');
   }
-  return new RegExp('^'+re+'$');
+  return new RegExp('^'+re+'$','i');
 }
 
 function isGated(filename,globs){
