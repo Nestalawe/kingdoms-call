@@ -104,6 +104,15 @@ test('globs: ** spans folders, * stays within one, and the folder name must matc
   assert.equal(isGated('site/package.json',['package.json']),false);
 });
 
+test('globs ignore case: a gated folder spelled with other capitals is still gated',()=>{
+  assert.equal(isGated('Supabase/migrations/x.sql',GLOBS),true);
+  assert.equal(isGated('.GitHub/workflows/ci.yml',GLOBS),true);
+  assert.equal(isGated('site/Vendor/x.js',GLOBS),true);
+  assert.equal(isGated('SITE/VENDOR/x.js',GLOBS),true);
+  assert.equal(isGated('Site/Vendorx.js',GLOBS),false);
+  assert.equal(pr({files:[file('Supabase/x.sql')]}).pass,false);
+});
+
 test('paths file: one glob per line; comments and blank lines are skipped',()=>{
   assert.deepEqual(parsePaths('# heading\n\nsupabase/**\n  .github/**  \n# package.json\n'),['supabase/**','.github/**']);
 });

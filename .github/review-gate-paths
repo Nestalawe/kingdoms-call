@@ -1,7 +1,7 @@
 # Theo's review gate (decision D-07): a PR that changes any path matching a line below needs Theo's
 # approval (Toby's, when Theo opened the PR). Read by .github/workflows/review-gate.yml.
-# One glob per line: "**" matches across folders, "*" within one folder. Lines starting with "#" are
-# comments. The gate always reads this file from the PR's base branch, so a change here applies to
+# One glob per line: "**" matches across folders, "*" within one folder; case is ignored. Lines starting
+# with "#" are comments. The gate always reads this file from the PR's base branch, so a change here applies to
 # the PRs after it, not to itself.
 
 # Database: migrations, access rules and their tests.
