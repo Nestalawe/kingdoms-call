@@ -20,6 +20,7 @@ const GM='kingdoms-call-gm-portal.html';
 // [name, file, args, env]. Sizes are the harnesses' own command-line arguments.
 const SUITE=[
   ['syntax',               'tests/syntax.test.js'],
+  ['review-gate',          'tests/review-gate.test.js'],
   ['boot-pages',           'tests/boot-pages.test.js'],
   ['turn-fuzz',            'tests/turn-fuzz.test.js',            FULL?['16','12']:['4','6']],
   ['home-placement',       'tests/home-placement.test.js',       [], {RUNS:FULL?'1000':'200'}],
