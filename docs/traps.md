@@ -39,6 +39,19 @@ Both portals refuse to start on a data file older than the one they were cut aga
   work.
 - A portal-only change leaves `KC_DATA_MIN` alone.
 
+## The GM portal's two build stamps
+
+The GM portal carries its build stamp twice, and each copy has a different reader:
+- the footer (`GM Portal v…`, in `#kc-build-stamp`): the GM tab's auto-reload before a due turn
+  (`refreshIfNewerBuild`) compares the running footer with the first `GM Portal v…` in the freshly
+  fetched page;
+- `KC_BUILD_STAMP`: written into telemetry rows, the training export and Hall-of-Fame records.
+
+Bump both together. If only `KC_BUILD_STAMP` changes, a pinned GM tab doesn't reload onto the new
+engine. If only the footer changes, statistics are filed under the previous build. That has happened
+once: in Sept 2026 a whole build's telemetry claimed to be the build before it. Don't write
+`GM Portal v` followed by a stamp anywhere above the footer, or the auto-reload reads that instead.
+
 ## `select('*')` on big tables
 
 `games.game_state` is hundreds of KB per game, and `game_players.turn_report` tens of KB per realm.
