@@ -170,8 +170,23 @@ save still carries the old one. Add to that set; never remove from it. Removing 
 three places: its row in the data file, its effect in the GM portal (check every branch), and anything
 the player portal shows for it.
 
-## Live saves keep copies of items
+## Live saves keep copies
 
-An awarded item is a copy stored in the game state, and the engine reads the effect from that copy. So
-changing an item's effect in `kingdoms-call-data.js` doesn't reach items players already hold. Whether
-it should is a design decision for Toby: raise it as a ruling, don't decide it in code.
+A running game's saved world holds its own copies of content: awarded items, the guardians in
+uncleared lairs, held Sage discoveries, unit names. The engine reads those copies, so changing a table
+in `kingdoms-call-data.js` changes new games only, unless a migration carries the change into running
+games.
+
+- **Migrations run at the start of every turn**, on the world `runTurn` has just loaded:
+  `migrateMaxHpV2` (which calls `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireDiscoveries`
+  and `migrateLegacyUnitNames`, then `migrateItemTiers` and `ensureAllLairHoards` before the phases
+  resolve. `migrateHoardTally` runs wherever the find tally is read or written. A running game picks
+  up a change at its next turn.
+- **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
+- **Guardians:** `migrateLairGuardiansV2` re-stats uncleared lairs from `MONSTERS_P`, by name, only
+  when `GUARDIAN_TABLE_VER` is higher than the save's `_guardiansVer`. When you change a guardian's
+  stats, bump `GUARDIAN_TABLE_VER`, or running games keep the old guardian. The re-stat also heals a
+  wounded guardian to its new full HP.
+- **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
+  awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
+  design decision for Toby: raise it as a ruling, don't decide it in code.
