@@ -146,7 +146,9 @@ is hidden in games with fewer than two human realms.
 Each page carries a New Zealand-time build stamp (`YYYY.MM.DD-HHMM`) in its footer. The GM portal also
 has it in `KC_BUILD_STAMP`, which telemetry rows record. The data file carries two stamp lines: the
 `// Data file v…` comment and `KC_DATA_STAMP`. Since the cutover, git history is the version record,
-but the stamps still drive the data-file guard and the GM tab's auto-reload, so keep bumping them.
+but the stamps still drive the data-file guard and the GM tab's auto-reload, so keep bumping them, both
+copies each time ([traps.md](traps.md#the-gm-portals-two-build-stamps),
+[traps.md](traps.md#the-data-file-stamp-guard)).
 
 ## Tests
 
