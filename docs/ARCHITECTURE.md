@@ -72,7 +72,8 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   `parseGameState(game)`.
 - **Turn 0.** `runTurn0` previews the bot roster; `commitTurn0` generates the world, saves it and
   pushes each realm's first report.
-- **`runTurn`** loads the full world and every slot, merges the submitted orders, then (inside the
+- **`runTurn`** loads the full world and every slot, brings an older save up to the current tables
+  ([traps.md](traps.md#live-saves-keep-copies)), merges the submitted orders, then (inside the
   resolution block) runs the bot passes, defaults missing orders to Defend and resolves the five phases
   (look for `// 4. Run all 5 phases`). Then:
   1. **saves the world with a conditional update** (`.eq('turn', n)`): if another tab already
