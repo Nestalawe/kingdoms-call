@@ -20,6 +20,9 @@ it prints the end of that test's output and the seed to repeat it with.
   - `bootJsdom` boots it in jsdom;
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
     folder, as deployed; the CDN gets a stub and the fonts get nothing.
+- **`lib/scenario.js`** stages one real turn on a small world for scenario tests: it boots the GM
+  portal (with any code-anchor hooks), lets the test edit a fresh world, gives every human-held
+  character its orders (Rest by default), runs `runTurn` and returns the saved world and the GM's log.
 - **`lib/stub-db.js`** holds every Supabase stand-in the tests use. Nothing connects to a real
   database. The harnesses were written with five different stubs; each is kept exactly as it
   behaved, so moving a harness onto the shared file didn't change what it sees.
@@ -63,6 +66,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `hit-cap` | new | 2 | ✅ pass | No single hit in personal combat takes more than half the target's maximum HP: guardian on hero, hero on guardian, hero on hero; a Legendary's tighter 20% cap still wins |
 | `move-points` | new | 2 | ✅ pass | Taking an undefended enemy province costs 1 movement point; pressing on with a battle against neutral defenders costs 1 a phase while points remain |
 | `overtures` | new | 2 | ✅ pass | An overture of peace or alliance makes the courted realm meet the sender and shows on its Diplomacy card; in a game of three realms or fewer an impossible alliance offer is not sent |
+| `pursuit-one-battle` | new | 2 | ✅ pass | A Warg Riders chase obeys one battle per phase: a hunter who has just fought (even as the defender) holds the chase over, stays where he is, and his report says why his Move order waited |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |

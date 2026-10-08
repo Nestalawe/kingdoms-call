@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.08-2207'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0909'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -13114,6 +13114,17 @@ async function runTurn(opts){
     const arr=battleCommanders[k]||(battleCommanders[k]=[]);
     ids.forEach(id=>{ if(id!=null&&!arr.includes(id)) arr.push(id); });
   };
+  // 2026-10-08 (Toby item 7): every character who stood in a field battle, by id → the phase it was
+  // fought in. That is both leaders AND every armed character of either side standing on the ground,
+  // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
+  // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
+  const fieldBattlePhase={};
+  function noteFieldBattle(atk,def,prov){
+    const ph=_currentPhase; if(ph==null||!prov) return;
+    const sides=new Set([atk&&atk.player,def&&def.player].filter(x=>x!=null));
+    [atk,def].forEach(x=>{ if(x&&x.id!=null) fieldBattlePhase[x.id]=ph; });
+    (G.characters||[]).forEach(ch=>{ if(ch&&ch.alive&&ch.location===prov.id&&sides.has(ch.player)&&(ch.armies||[]).length>0) fieldBattlePhase[ch.id]=ph; });
+  }
   // Current character context — set by processOrder so all log calls get charId/phase automatically
   let _logCtx={charId:null,phase:null};
   // the phase currently being resolved. _logCtx is cleared to null between characters and after
@@ -17424,6 +17435,7 @@ const BATTLE_ARMY_SPELLS={
     // nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
     // real commander's id, so the per-player report can file the battle under either player's hero.
     recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
+    noteFieldBattle(atk, def, prov); // one battle per phase, for both sides (item 7)
     // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE per side which units fight a tier
     // higher this battle.
     [atk,def].forEach(_ld=>{ if(_ld&&Array.isArray(_ld.armies)){ const _tac=perkTier(_ld,'tactical')>0, _drum=activeItems(_ld).some(it=>it&&it.drumTierUp); _ld.armies.forEach(a=>{ if(a){ a._tacUp=_tac&&Math.random()<0.10; a._drumUp=_drum&&Math.random()<0.20; } }); } });
@@ -25213,7 +25225,10 @@ const BATTLE_ARMY_SPELLS={
     // the top of the phase could "run his quarry to ground" and fight a second battle in the same
     // phase. An army-leading pursuer who has already fought this phase, or who is still locked in an
     // unresolved battle where he stands, holds the chase over to the next phase (it stays live).
-    if(meArmed && (c._foughtStalledBattlePhase===ph || (here&&here._battleUnresolved))){
+    // 2026-10-08 (Toby item 7): …or who has fought ANY battle this phase. A chaser whose quarry turned
+    // and attacked him first (the quarry acts before his hunter) had defended a province, won, and
+    // then rode straight after the beaten foe into a second battle in the same phase.
+    if(meArmed && (c._foughtStalledBattlePhase===ph || fieldBattlePhase[c.id]===ph || (here&&here._battleUnresolved))){
       log('move',`${c.name} has a battle on their hands in ${here?here.name:'the field'} this season — the chase after ${quarry.name} must wait.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       return;
     }
@@ -25745,6 +25760,13 @@ const BATTLE_ARMY_SPELLS={
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
         _logCtx={charId:c.id,phase:ph};
+        // 2026-10-08 (Toby item 7): a chase the Warg Riders took up on their own (setPhase −1) sets
+        // aside whatever the player ordered for this phase. Say so, or a Move order seems to have
+        // turned into a pursuit nobody asked for.
+        { const _own=(G.turnOrders[c.id]||[])[ph], _oa=normaliseAction(_own);
+          const _q=(G.characters||[]).find(x=>x&&x.id===c._pursuit.targetId);
+          if(c._pursuit.setPhase===-1&&_own&&!_own._pinned&&_oa&&_oa!=='defend')
+            log('move',`🐺 ${c.name}'s Warg Riders are still on the trail of ${_q?_q.name:'their quarry'} — the pack will not be called off, so ${c.name}'s own orders for this season wait until the chase is done.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph}); }
         advancePursuit(c,ph);
         _logCtx={charId:null,phase:null};
         settleStrandedAtSea(ph); // a chase that ended in a sea battle
@@ -27642,6 +27664,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2207</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0909</div>
 </body>
 </html>
