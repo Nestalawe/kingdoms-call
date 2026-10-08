@@ -1,5 +1,5 @@
-// 2026-10-08 (item 7) — a Warg Riders chase obeys ONE BATTLE PER PHASE, and says why a Move order
-// was set aside.
+// 2026-10-08 (item 7) — a Warg Riders chase obeys ONE BATTLE PER PHASE, says why a Move order was set
+// aside, and a chase battle won takes the province like any other battle.
 // The story from play: an Orc general marches into an enemy province and wins; the beaten foe
 // retreats next door, and the Warg Riders take up the chase unbidden. Next season the foe turns and
 // attacks the province first (a quarry acts before its hunter), so the general fights as the
@@ -46,6 +46,37 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // that left the province he had just held and put him on enemy ground with no battle fought.
   ok(!p1.some(e=>/(rides|presses on) into .*(finds|trail of)/.test(e.text)&&(e.charId===A.id||(e.text||'').startsWith(A.name))),`${A.name} stays in ${X.name} for the season`);
   ok(p1.some(e=>/Warg Riders are still on the trail/.test(e.text)&&e.charId===A.id),`${A.name}'s report says the Move order waits on the chase`);
+
+  // (2) The chase battle itself (the same for a Warg chase and an Encounter order). The report said the hunter "seized" the province, but its owner
+  // never changed: the hunter won and the province stayed the foe's. Hunter and quarry start in the
+  // hunter's own province X, the quarry in his own province Y next door, and
+  // the foe has ground of his own (V) to fall back to. The catch is a roll, so a few turns are staged
+  // and every one whose chase battle the hunter won is checked.
+  let fought=0;
+  for(let t=0;t<4&&fought<2;t++){
+    const r2=await sc.turn({cols:10,rows:6,seaPct:10,prepare(S){
+      S.relations=S.relations||{}; S.relations['0-1']='enemy';
+      const A=S.characters.find(c=>c.alive&&c.player===0&&c.isKing), B=S.characters.find(c=>c.alive&&c.player===1&&c.isKing);
+      let X,Y,V;
+      for(const p of S.world.provinces.filter(p=>p.terrain!=='sea')){ const n=nb(S,p).filter(q=>q.terrain!=='sea'); if(n.length>=2){ Y=p; X=n[0]; V=n.find(q=>q.id!==X.id&&!nb(S,X).some(z=>z.id===q.id))||n[1]; break; } }
+      S.characters=S.characters.filter(c=>c.player!=null||![X.id,Y.id,V.id].includes(c.location));
+      [X,Y,V].forEach(p=>{ p.characters=(p.characters||[]).filter(id=>S.characters.some(c=>c.id===id)); });
+      own(S,X,0); own(S,Y,1); own(S,V,1);
+      place(S,A,X); A.armies=army('Warg Riders',6,'Elite'); A.skills={...(A.skills||{}),spy:9};
+      place(S,B,Y); B.armies=army('Light Infantry',2,'Green'); B.skills={...(B.skills||{}),spy:0};
+      return {A,B,Y};
+    },orders:(S,c)=>({[c.A.id]:plan(order('encounter',c.B.id))})});   // the chase, as an Encounter order sets it
+    const {A,Y}=r2.extra;
+    const ph=r2.log.find(e=>/runs .* to ground .* forces battle/.test(e.text)); if(!ph) continue;
+    const won=r2.log.some(e=>e.phase===ph.phase&&/Battle at .*: .* forces defeat/.test(e.text)&&e.text.includes(A.name+"'s forces defeat"));
+    if(!won) continue;
+    fought++;
+    const taken=r2.S2.world.provinces[Y.id].owner===0;
+    const said=r2.log.some(e=>e.phase===ph.phase&&/carries the field at .* (remains contested|resumes next season)/.test(e.text));
+    ok(taken||said,`(2) the hunter who wins the chase battle in ${Y.name} takes it (owner now ${r2.S2.world.provinces[Y.id].owner}), or is told why it is still contested`);
+    ok(!taken||r2.log.some(e=>/claims .* for /.test(e.text)&&e.text.includes(Y.name)),'(2) …and his report says he claims it');
+  }
+  ok(fought>0,'(2) staged at least one chase battle won by the hunter');
 
   console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
   sc.errs.slice(0,3).forEach(e=>console.log('  ! '+e.split('\n').slice(0,2).join(' | ')));

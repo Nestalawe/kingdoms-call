@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0926'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0932'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -25449,6 +25449,34 @@ const BATTLE_ARMY_SPELLS={
         }
       }
       prov._hadBattleThisTurn=true;
+      // 2026-10-08 (Toby item 7): A CHASE BATTLE WON IS GROUND TAKEN. The battle report already said the
+      // hunter "seized" the province, but nothing here ever changed its owner — the hunter won and the
+      // province stayed the enemy's. Now it is taken exactly as after a Move: only when nothing armed
+      // and hostile is left standing in it. Survivors who held on, hulls left ashore, or the
+      // province's own garrison (which did not fight in the chase) keep it contested, and the fight
+      // for it resumes next phase.
+      if(battle&&battle.won&&c.alive&&c.location===prov.id&&!prov._battleUnresolved&&prov.owner!==c.player
+         &&(prov.owner==null||areEnemies(c.player,prov.owner))&&!(prov.owner==null&&(prov.neutralDefenders||[]).length)){
+        const _hostileLeft=(G.characters||[]).some(ch=>ch&&(ch.alive||ch._leaderlessHost)&&ch.location===prov.id&&(ch.armies||[]).length>0
+          &&ch.player!=null&&ch.player!==c.player&&areEnemies(c.player,ch.player));
+        const _hulls=navalHeldIn(prov,c.player);
+        const _garrison=prov.owner!=null&&(prov.garrisonArmies||[]).some(a=>a&&!a._died&&!a._disbanded&&a._navalHold==null);
+        if(_hostileLeft||_hulls.length||_garrison){
+          prov._battleUnresolved=true;
+          log('combat',_garrison&&!_hostileLeft&&!_hulls.length
+            ?`${c.name} carries the field at ${prov.name}, but its garrison still holds the province — the fight for it resumes next season.`
+            :`${c.name} carries the field at ${prov.name}, but enemy forces still hold their ground — the province remains contested.`,
+            {actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+          if(!_hostileLeft&&_hulls.length) log('combat',navalHoldLine(prov,_hulls,G.players[c.player]?.name||'the hunter'),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+        } else {
+          const _wp=G.players[c.player];
+          G.players.forEach((p,pi)=>{ if(pi!==c.player){ const i=(p.provinces||[]).indexOf(prov.id); if(i>-1) p.provinces.splice(i,1); } });
+          setProvinceOwner(prov,c.player,c,ph); if(_wp&&!_wp.provinces.includes(prov.id)) _wp.provinces.push(prov.id);
+          log('combat',`${c.name} claims ${prov.name} for ${_wp?_wp.name:'their realm'}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+          if(_wp) applyEvilConquest(c, prov, _wp);
+        }
+      }
+      clearNavalHold(prov);
     } else {
       // at least one side is travelling light — this is a PERSONAL duel, not a battle
       // (only the both-armed case above becomes a battle). A King answers a challenge only if he set
@@ -27785,6 +27813,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0926</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0932</div>
 </body>
 </html>
