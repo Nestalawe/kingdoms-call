@@ -4,6 +4,7 @@
 //   const r=await sc.turn({realms:2, prepare(S,W){…}, orders:{[charId]:[o0,o1,o2,o3,o4]}});
 //   r.S      the world as staged (before the turn)      r.S2   the world as saved after the turn
 //   r.log    the GM's full log for the turn ({type,text,actor,targets,charId,phase,…} entries)
+//   r.reports[playerIndex]   each human realm's turn report, as the player portal receives it
 //   r.text(charId?)   every log line (or one character's lines) as one string, for matching
 //
 // Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living
@@ -52,7 +53,8 @@ async function bootScenario(opts={}){
     const w=[...WRITES].reverse().find(x=>x.table==='games'&&x.val&&x.val.game_state);
     const lg=WRITES.find(x=>x.table==='turn_logs'&&x.val&&x.val.player_index===-1);
     const log=(lg&&lg.val.entries)||[];
-    return {S:before, S2:w?JSON.parse(w.val.game_state):null, log, extra,
+    const reports={}; WRITES.filter(x=>x.table==='turn_logs'&&x.val&&x.val.player_index>=0).forEach(x=>{ reports[x.val.player_index]=x.val.entries; });
+    return {S:before, S2:w?JSON.parse(w.val.game_state):null, log, reports, extra,
       text:(charId)=>log.filter(e=>charId==null||e.charId===charId||(e.charIds||[]).includes(charId)).map(e=>e.text).join('\n')};
   }
   return {W, errs, world, turn, rest};

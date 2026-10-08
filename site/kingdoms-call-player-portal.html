@@ -4838,7 +4838,7 @@ function computeOrderLedgerP(){
   const heroesAvail=Object.values(rep.provinceOrderData||{}).flatMap(pd=>pd.availableHeroes||[]);
   const hired=new Set(), mercsTaken=new Set();
   const hireHero=(hid)=>{ hid=String(hid); if(!/^\d+$/.test(hid)||hired.has(hid)) return; const h=heroesAvail.find(x=>String(x.id)===hid); if(!h) return;
-    const w=heroHireWagePP(k.alignment||'Neutral',h.alignment); if(w==null) return; hired.add(hid); cats.heroes.g+=w; cats.heroes.n++; cats.heroes.wage+=w; };
+    const w=heroHireWageOfP(h,rep); if(w==null) return; hired.add(hid); cats.heroes.g+=w; cats.heroes.n++; cats.heroes.wage+=w; };
   ((rep.characters)||[]).filter(c=>c&&c.alive!==false).forEach(c=>{
     for(let ph=0;ph<5;ph++){
       const act=document.getElementById(`po-action-${c.id}-${ph}`)?.value||''; if(!act) continue;
@@ -6213,7 +6213,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     // (best skill). The placeholder carries no levels, and _unknownSkills tells every order field
     // to offer the full choice (all base spells, every skill, no percentages), so a player cannot
     // read the hero's training off the dropdowns before they have joined.
-    skills:{}, _unknownSkills:true, armies:[], items:[], pay:heroData.pay,
+    skills:{}, _unknownSkills:true, armies:[], items:[], pay:(heroHireWageOfP(heroData)??heroData.pay), // item 12: the wage they will be hired at
     // A hero hired via Hire Hero stands in the SAME province as the hiring character (the hire
     // requires it), so the newly-hired hero acts from there. Without a real locationId every
     // province-dependent order option (Recruit Armies, Search Lair, …) came up empty.
@@ -7025,6 +7025,15 @@ function heroHireWagePP(kingdomAlign, heroAlign){
   const d=alignDistPP(kingdomAlign, heroAlign);
   if(d>=6) return null;               // Divine <-> Undead: will never serve
   return 2+Math.floor(d/2);
+}
+// 2026-10-08 (Toby item 12): the price of hiring THIS hero, as the engine will charge it. The report
+// now sends it with every hireable hero (hireWage: alignment distance + the hero's skill premium, null
+// for a hero who will not serve); the alignment-only estimate above is kept only for a report from an
+// older engine that does not send it. Every hire price the order form shows goes through here, so the
+// dropdown, the Broker list, the hired hero's card and the order ledger agree with the report.
+function heroHireWageOfP(h, report){
+  if(h&&Object.prototype.hasOwnProperty.call(h,'hireWage')) return h.hireWage;
+  return heroHireWagePP(((report||currentReport||{}).kingdom||{}).alignment||'Neutral', h&&h.alignment);
 }
 
 // Predict each character's item list at the given phase by replaying the Give Item orders of all
@@ -7956,7 +7965,7 @@ function buildTargetField(c, ph, saved){
       if(!c.isKing)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
       const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
-        const w=heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment);
+        const w=heroHireWageOfP(h,report);
         if(w==null) return '';
         return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
       }).filter(Boolean).join('');
@@ -8302,17 +8311,18 @@ function buildTargetField(c, ph, saved){
         // alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
         const kAlign=report.kingdom?.alignment||'Neutral';
-        const wage=heroHireWagePP(kAlign,h.alignment);
+        const wage=heroHireWageOfP(h,report);
         if(wage==null) return`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
         const d=alignDistPP(kAlign,h.alignment);
-        const costNote=d<=1?'(kindred outlook — base rate)':`(${d} steps from ${kAlign})`;
+        const _base=heroHireWagePP(kAlign,h.alignment), _prem=(_base!=null&&wage>_base)?wage-_base:0;
+        const costNote=(d<=1?'(kindred outlook':`(${d} steps from ${kAlign}`)+(_prem?`, +${_prem}g for proven skill)`:d<=1?' — base rate)':')');
         return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
       }).join('');
       // never let the browser silently pre-select the FIRST hero. If the saved target is not one of
       // the heroes listed here (e.g. an earlier-phase move was changed and this character's
       // predicted province — and its heroes — changed with it), show an explicit "choose"
       // placeholder so the player picks again rather than hiring someone they never chose.
-      const _hasPick=heroes.some(h=>String(h.id)===String(target)&&heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment)!=null);
+      const _hasPick=heroes.some(h=>String(h.id)===String(target)&&heroHireWageOfP(h,report)!=null);
       const _ph=`<option value="" ${_hasPick?'':'selected'}>— choose a hero to hire —</option>`;
       return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_ph}${opts}</select>`;}
 
@@ -10363,6 +10373,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-0914</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-0917</div>
 </body>
 </html>

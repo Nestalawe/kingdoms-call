@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0911'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0917'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -11927,7 +11927,7 @@ function buildTurnReport(gameState, playerIndex){
       // sd31 waiver, if the realm holds it, is applied at the real hire). Guards keep their beast
       // label; a defeated guard now wandering (player===null, not a guard) shows a proper race (see
       // runTurn normaliser).
-      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment, false, c);
+      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment, (player?.discoveries||[]).some(d=>d&&d.id==='sd31'), c); // 2026-10-08 item 12: sd31 waives the gulf, exactly as the hire does
       const _wHireTxt=c._isNeutralGuard?'':(_wWage!=null?` Available to hire for ${_wWage}g/turn.`:' Will not serve your crown — the alignment gulf is too wide.');
       heroSightings.push({
         type:c._isNeutralGuard?'neutral_guard':'wandering',
@@ -12209,6 +12209,12 @@ function buildTurnReport(gameState, playerIndex){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
         id:h.id, name:h.name, race:h.race, alignment:h.alignment, temper:h.temper,
         topSkill:topSkill(h), pay:h.pay||1, // 2026-09-24 (Toby item 8): fame only — the full skill list no longer ships, so the order form cannot leak it
+        // 2026-10-08 (Toby item 12): what hiring this hero will actually cost THIS realm — alignment
+        // distance AND the skill premium, with sd31's waiver — the same figure the Wandering Heroes
+        // report quotes and the hire charges. null: will not serve this crown. The order form used to
+        // work the price out from alignment alone, so it quoted less than the report for any hero
+        // who had grown while wandering.
+        hireWage:heroHireWage(player?.alignment||'Neutral', h.alignment, (player?.discoveries||[]).some(d=>d&&d.id==='sd31'), h),
         locationId:p.id, locationName:p.name,
       }));
     }
@@ -27673,6 +27679,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0911</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0917</div>
 </body>
 </html>
