@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.08-2150'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.08-2152'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -2520,6 +2520,10 @@ function seedUsedHeroNames(gameState){
 // a character's MAXIMUM HP that a single guardian attack may never exceed. Applied silently in
 // pcTakeHit to any hit a character takes in a lair fight.
 const GUARDIAN_HIT_CAP_FRAC=1/3;
+// 2026-10-08 (Toby item 2): a guardian's melee blow rolls a base that grows with its tier, then adds
+// ⌈Melee ÷ 2⌉ exactly as a hero's blow does (pcMeleeDamage). Heroes keep 1–3. A special's damage is
+// that same blow × the special's weight, so it grows with the tier too.
+const GUARDIAN_MELEE_BASE={Weak:[1,3],Moderate:[2,5],Powerful:[3,7],Legendary:[4,9]};
 // the mirror of the rule above, pointing the other way — A LEGENDARY CREATURE CANNOT BE FELLED BY
 // ONE BLOW. Measured on the 2026-09-15 build, the whole Legendary band collapsed from a 43% hero
 // win rate to 97% across a SINGLE rung of hero progression: the rung that first hands out tier-4
@@ -15824,7 +15828,8 @@ const BATTLE_ARMY_SPELLS={
   function pcHitSkill(cbt, which){
     const raw=(which==='archery')?cbt.archeryRaw:cbt.meleeRaw;
     const base=(which==='archery')?(cbt.archery||0):(cbt.melee||0);
-    return Math.max(0, Math.max(raw!=null?raw:0, base));
+    const down=(which==='archery')?0:((cbt.status&&cbt.status.meleeDown)||0); // "−1 melee for next round"
+    return Math.max(0, Math.max(raw!=null?raw:0, base)-down);
   }
   function pcSkillHitPct(lvl){
     return PC_MELEE_HIT_BASE+PC_MELEE_HIT_PER_LVL*Math.min(PC_HIT_SKILL_CAP,lvl)+PC_HIT_PER_LVL_ABOVE*Math.max(0,lvl-PC_HIT_SKILL_CAP);
@@ -15864,8 +15869,9 @@ const BATTLE_ARMY_SPELLS={
     // For characters the bonus reads the RAW skill level (1–9, `meleeRaw`) — combat hit-chance
     // stays on the 0–5 scale, but mastery past 5 lands heavier blows. Guardians use their melee
     // stat.
-    const _dsk=(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0));
-    let dmg=Math.max(1, rng(1,3)+Math.ceil(_dsk/2)+temperOf(attacker.temper).meleeDamage);
+    const _dsk=Math.max(0,(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0))-((attacker.status&&attacker.status.meleeDown)||0));
+    const _base=(attacker.kind==='monster'&&GUARDIAN_MELEE_BASE[attacker.power])||[1,3]; // a guardian's base grows with its tier
+    let dmg=Math.max(1, rng(_base[0],_base[1])+Math.ceil(_dsk/2)+temperOf(attacker.temper).meleeDamage);
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // 2026-09-12b: the defender's temper soak MOVED to pcTakeHit. It is a reduction like any other
     // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
@@ -16106,6 +16112,7 @@ const BATTLE_ARMY_SPELLS={
     // fighter for more than three rounds however deep the penalty was stacked.
     if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-pcPenaltyFade(cbt.status.hitPenalty));
     if(cbt.status.meleeHalvedRounds>0) cbt.status.meleeHalvedRounds--;
+    if(cbt.status.meleeDownRounds>0&&--cbt.status.meleeDownRounds===0) cbt.status.meleeDown=0; // a chill lasts one round
     if(cbt.status.silenceRounds>0) cbt.status.silenceRounds--;
     // 2026-09-26 (Toby item 3): a Powerful / Legendary guardian bound by Spiritwrack rolls to throw
     // the binding off at the start of every round after the first in which it held.
@@ -16320,7 +16327,7 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour?` "${sp.flavour}"`:''}`);
     const eff=String(sp.effect||'');
     let dealt=0;
-    // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — 1–3 + ⌈melee/2⌉)
+    // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — its tier's base + ⌈melee/2⌉)
     // × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy saved creatures
     // still carrying a dmg:[lo,hi] range roll that range instead.
     const _w=(sp.dmgW!=null)?sp.dmgW:((sp.dmg&&(sp.dmg[0]>0||sp.dmg[1]>0))?null:0);
@@ -16379,7 +16386,15 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     // ── Stat swings ──
-    if(/hero\s*[-−]1 melee/i.test(eff)){ foe.melee=Math.max(0,(foe.melee||0)-1); narrative.push(`  ${foe.name}'s guard is beaten down — Melee now ${foe.melee}.`); }
+    // 2026-10-08 (Toby item 2): "hero −1 melee for next round" used to lower `melee`, which neither
+    // to-hit (pcHitSkill) nor damage (meleeRaw) reads for a hero, so it did nothing. It is now a
+    // status both read, lasting one round: a rider on a landed blow bites from the next round.
+    if(/hero\s*[-−]1 melee/i.test(eff)){
+      const _chill=()=>{ foe.status.meleeDown=1; foe.status.meleeDownRounds=1; };
+      const _now=Math.max(0,pcHitSkill(foe,'melee')-1);
+      if(dealt>0&&pcDeferEffect(foe,_chill)) narrative.push(`  ${foe.name}'s guard is beaten down — Melee ${_now} next round.`);
+      else { _chill(); narrative.push(`  ${foe.name}'s guard is beaten down — Melee now ${_now}.`); }
+    }
     const bm=eff.match(/gains \+(\d+) melee/i);
     if(bm){ actor.melee=(actor.melee||0)+parseInt(bm[1]); narrative.push(`  The ${actor.name}'s Melee surges to ${actor.melee}!`); }
     // ── Lingering harm ──
@@ -16752,7 +16767,9 @@ const BATTLE_ARMY_SPELLS={
         if(/rest of the fight/i.test(it.desc||'')){ fs.hitPenaltyFixed=(fs.hitPenaltyFixed||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit for the rest of the fight).`); }
         else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit).`); }
         break; }
-      case 'weak':{ if(e.melee){ foe.melee=Math.max(0,(foe.melee||0)-e.melee); } if(e.archery){ foe.archery=Math.max(0,(foe.archery||0)-e.archery); } narrative.push(`  ${foe.name} is sapped — Melee ${foe.melee}${e.archery?`, Archery ${foe.archery}`:''} for the rest of the fight.`); break; }
+      // 2026-10-08 (item 2): a character's to-hit and damage read the RAW skill (meleeRaw /
+      // archeryRaw), so sap those too — lowering only `melee` did nothing to a hero.
+      case 'weak':{ if(e.melee){ foe.melee=Math.max(0,(foe.melee||0)-e.melee); if(foe.meleeRaw!=null) foe.meleeRaw=Math.max(0,foe.meleeRaw-e.melee); } if(e.archery){ foe.archery=Math.max(0,(foe.archery||0)-e.archery); if(foe.archeryRaw!=null) foe.archeryRaw=Math.max(0,foe.archeryRaw-e.archery); } narrative.push(`  ${foe.name} is sapped — Melee ${pcHitSkill(foe,'melee')}${e.archery?`, Archery ${pcHitSkill(foe,'archery')}`:''} for the rest of the fight.`); break; }
       case 'terror':{ if(!foe.neverFlees&&Math.random()<0.5){ state.fledBy=foe; narrative.push(`  ${foe.name} is overcome with dread and flees!`); } else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} holds their ground, badly shaken (−${e.hitPen||15}% to hit).`); } break; }
       case 'silence':{ fs.silenceRounds=(fs.silenceRounds||0)+(e.rounds||3); narrative.push(`  ${foe.name}'s magic and powers are bound for ${e.rounds||3} rounds.`); break; }
       case 'buff':{ if(e.melee) actor.melee=(actor.melee||0)+e.melee; if(e.archery) actor.archery=(actor.archery||0)+e.archery; narrative.push(`  ${who} surges with strength — Melee ${actor.melee}${e.archery?`, Archery ${actor.archery}`:''}.`); break; }
@@ -27583,6 +27600,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2150</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2152</div>
 </body>
 </html>
