@@ -36,6 +36,7 @@ const SUITE=[
   ['fuzz-advance-masking', 'tests/fuzz-advance-masking.test.js', FULL?[GM,'6','20','6','20000']:[GM,'3','10','5','4000']],
   ['chromium-boot',        'tests/chromium-boot.test.js'],
   ['gm-messaging-boot',    'tests/gm-messaging-boot.test.js'],
+  ['planted-failure',      'tests/planted-failure.test.js'],
 ];
 const QUARANTINED=fs.readdirSync(path.join(__dirname,'quarantine')).filter(f=>f.endsWith('.test.js')).sort()
   .map(f=>[f.replace('.test.js',''),'tests/quarantine/'+f]);
