@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.09.30-0038'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.08-2150'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1808,6 +1808,9 @@ const HOME_FLEET_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'D
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
 // wealthiest remaining province. Returns null only if the dynasty holds no land at all (extinct).
+// 2026-10-08 (Toby item 1): this is worked out ONCE, when the king dies (handleHeroDeath), and
+// stored on the grave. The body then stays there, even if that province is captured later; every
+// reader uses the stored `g.location`, so the map, the Resurrect list and the engine always agree.
 function monarchRestProvId(gs, playerIndex){
   const pl=(gs&&gs.players||[])[playerIndex]; if(!pl) return null;
   const owned=(pl.provinces||[]).map(id=>(gs.world&&gs.world.provinces||[])[id]).filter(Boolean);
@@ -8053,7 +8056,7 @@ function botRaiseTargets(G,pi){
   return (G.heroGraveyard||[]).filter(g=>{ if(!g) return false;
       if(g._monarch) return g.player===pi&&p._resurrectableMonarchId===g.id;
       return !g.isKing&&g.player===pi&&known.has(g.id)&&!graveServedOther(g,pi)&&!(G.characters||[]).some(c=>c&&c.id===g.id&&c.alive); })
-    .map(g=>({g,loc:g._monarch?(monarchRestProvId(G,pi)??g.location):g.location,val:(g._monarch?100:0)+Object.values(g.skills||{}).reduce((a,b)=>a+(b||0),0)}))
+    .map(g=>({g,loc:g.location,val:(g._monarch?100:0)+Object.values(g.skills||{}).reduce((a,b)=>a+(b||0),0)}))
     .filter(x=>x.loc!=null).sort((a,b)=>b.val-a.val);
 }
 function botResurrectErrands(G,pi,all,roles,assigned){
@@ -11848,8 +11851,7 @@ function buildTurnReport(gameState, playerIndex){
     .filter(g=>g && (g.player===playerIndex||knownEver.has(g.id)||seenThisTurn.has(g.id)
       ||(g.location!=null&&visibleProvIds.has(g.location))||_mapVisibleIds.has(g.id)))
     .map(g=>{
-      const restId=g._monarch?(monarchRestProvId(gameState,g.player)):null;
-      const locId=(restId!=null)?restId:g.location;
+      const locId=g.location; // a monarch's resting place is fixed at death (see monarchRestProvId)
       // Why this body may or may not be raised — mirrors the guards in `white_resurrect` exactly.
       let raisable=true, whyNot='';
       if(g._monarch){
@@ -12294,7 +12296,7 @@ function buildTurnReport(gameState, playerIndex){
       return Object.values(m); })(),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting Any dead hero
     // visible to this player can be resurrected — except (2026-09-23) a body that ever served another realm (graveServedOther)
-    deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const restId=g._monarch?monarchRestProvId(gameState,g.player):null;const locId=(restId!=null)?restId:g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
+    deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const locId=g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
     characters:charReports,ownedProvinces,intel,
     // the hero arrangement, so the player portal keeps it on a fresh turn even before any draft
     // exists (the orders payload is wiped after every run).
@@ -21728,11 +21730,8 @@ const BATTLE_ARMY_SPELLS={
           // place.)
           if(!G.heroGraveyard) G.heroGraveyard=[];
           if(!G._resurrectedThisTurn) G._resurrectedThisTurn=[];
-          // A fallen MONARCH's body is borne home — keep every monarch grave's resting place
-          // current
-          // (home while held, else wealthiest owned) so a mage knows where to stand and the match below
-          // works even if the old resting province has since been lost.
-          (G.heroGraveyard||[]).forEach(g=>{ if(g&&g._monarch&&g.player!=null){ const r=monarchRestProvId(G,g.player); if(r!=null) g.location=r; } });
+          // A fallen MONARCH's body was borne home when he died and stays there, even if that
+          // province has since been captured (2026-10-08, Toby item 1) — never move it here.
           const knownIds=new Set(G.players[c.player]?.knownDeadHeroIds||[]);
           // the body must lie in the CASTER'S OWN province for any of this to resolve — and a
           // caster standing over a corpse can plainly see it. Requiring a remembered death as well
@@ -27584,6 +27583,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.30-0038</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2150</div>
 </body>
 </html>

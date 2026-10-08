@@ -30,6 +30,7 @@ const SUITE=[
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
   ['concede',              'tests/concede.test.js'],
+  ['monarch-grave',        'tests/monarch-grave.test.js'],
   ['orders-group-by-location','tests/orders-group-by-location.test.js'],
   ['naval-retreat',        'tests/naval-retreat.test.js'],
   ['npc-parity',           'tests/npc-parity.test.js'],
