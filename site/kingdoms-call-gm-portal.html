@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0921'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0923'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -13133,11 +13133,34 @@ async function runTurn(opts){
   // hero or provoked a fight with him.
   const wanderingAtStart=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.player==null&&!c._isNeutralGuard).map(c=>c.id));
   function noteFieldBattle(atk,def,prov){
-    const ph=_currentPhase; if(ph==null||!prov) return;
+    const ph=_currentPhase, ids=[]; if(ph==null||!prov) return ids;
     const sides=new Set([atk&&atk.player,def&&def.player].filter(x=>x!=null));
-    [atk,def].forEach(x=>{ if(x&&x.id!=null) fieldBattlePhase[x.id]=ph; });
-    (G.characters||[]).forEach(ch=>{ if(ch&&ch.alive&&ch.location===prov.id&&sides.has(ch.player)&&(ch.armies||[]).length>0) fieldBattlePhase[ch.id]=ph; });
+    const add=id=>{ if(id==null) return; fieldBattlePhase[id]=ph; if(!ids.includes(id)) ids.push(id); };
+    [atk,def].forEach(x=>{ if(x) add(x.id); });
+    (G.characters||[]).forEach(ch=>{ if(ch&&ch.alive&&ch.location===prov.id&&sides.has(ch.player)&&(ch.armies||[]).length>0) add(ch.id); });
+    return ids;
   }
+  // 2026-10-08 (Toby item 15): A DEFEND ORDER IS DONE ONCE IT HAS BROUGHT ITS GENERAL TO BATTLE. Every
+  // character who stood in the battle with a watch set — the general who rode out, one whose own
+  // province was attacked, or one pooled in alongside — keeps no further watch, win or lose (a loss
+  // already broke it: noteBattleLoss). Only a Defend order given for a LATER phase sets a new one; the
+  // same phase's own Defend order, which resolves after the battle, must not re-arm it.
+  function completeDefendWatches(ids, narrative){
+    const ph=_currentPhase;
+    (ids||[]).forEach(id=>{
+      const real=(G.characters||[]).find(x=>x&&x.id===id);
+      if(!real||!real._defend) return;
+      const wasOn=!!real._defend.active;
+      real._defend.active=false;
+      real._defendSpent={turn:G.turn,ph};
+      if(wasOn&&real.alive!==false){
+        const msg=`🛡 ${real.name}'s Defend order is fulfilled — the threat has been met in battle, and they keep no further watch unless ordered to Defend again.`;
+        if(narrative) narrative.push(msg);
+        else log('move',msg,{actor:real.player,targets:[real.player],charId:real.id,provinceId:real.location??null});
+      }
+    });
+  }
+  const defendSpentThisPhase=(c,ph)=>!!(c&&c._defendSpent&&c._defendSpent.turn===G.turn&&c._defendSpent.ph===ph);
   // Current character context — set by processOrder so all log calls get charId/phase automatically
   let _logCtx={charId:null,phase:null};
   // the phase currently being resolved. _logCtx is cleared to null between characters and after
@@ -17448,7 +17471,7 @@ const BATTLE_ARMY_SPELLS={
     // nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
     // real commander's id, so the per-player report can file the battle under either player's hero.
     recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
-    noteFieldBattle(atk, def, prov); // one battle per phase, for both sides (item 7)
+    const _fieldIds=noteFieldBattle(atk, def, prov); // one battle per phase, for both sides (item 7)
     // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE per side which units fight a tier
     // higher this battle.
     [atk,def].forEach(_ld=>{ if(_ld&&Array.isArray(_ld.armies)){ const _tac=perkTier(_ld,'tactical')>0, _drum=activeItems(_ld).some(it=>it&&it.drumTierUp); _ld.armies.forEach(a=>{ if(a){ a._tacUp=_tac&&Math.random()<0.10; a._drumUp=_drum&&Math.random()<0.20; } }); } });
@@ -18215,6 +18238,7 @@ const BATTLE_ARMY_SPELLS={
     // AK [3.15]: "A character's Defend order is canceled if he loses a battle, to prevent further
     // needless defeats." atk/def are pooled copies, so resolve back to the real character by id.
     noteBattleLoss(won?def.id:atk.id, narrative);
+    completeDefendWatches(_fieldIds, narrative); // item 15: a watch that has fought is done, win or lose
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGainPvP){ trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative); trySkillGain(won?def:atk,'druid',SKILLGAIN_STD,narrative,0.5); } // Druid: winner full, loser half
@@ -21631,6 +21655,12 @@ const BATTLE_ARMY_SPELLS={
         // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
         // interlock already logged a much better line, so don't tack a bland one on top of it.
         if(o._pinned) break;
+        // item 15: this phase's Defend order has already been answered in battle (the watch was on
+        // from the top of the phase) — it does not set the watch again.
+        if(defendSpentThisPhase(c,ph)){
+          log('move',`🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          break;
+        }
         // Defend needs no target — it always guards the province the character stands in. The watch
         // covers that province plus its immediate neighbours (see inDefendZone), and he rides out
         // to meet any incursion into an adjacent province. Any target still supplied by an older
@@ -25178,6 +25208,7 @@ const BATTLE_ARMY_SPELLS={
       trySkillGain(c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
       c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
       c._defendReactedPhase=ph;
+      if(c.alive) completeDefendWatches([c.id]);               // item 15: the ambush was this watch's fight
       // NOTE: an ambush is a PERSONAL duel (no armies), not a field battle — it must NOT set
       // _hadBattleThisTurn. That flag drives the map's crossed-swords marker, which is for ARMY
       // battles only; a duel here was painting swords on provinces where no battle was fought.
@@ -25768,6 +25799,7 @@ const BATTLE_ARMY_SPELLS={
       if(it.cancelled||it.action!=='defend'||!it.order||it.order._pinned) return;
       const c=it.c; if(!c||!c.alive||c.player==null) return;
       if(c._pursuit&&c._pursuit.active) return;
+      if(defendSpentThisPhase(c,ph)) return; // item 15: already fought this phase (a resumed battle) — no new watch until a later Defend
       if(c._defend&&c._defend.active&&c._defend.setPhase===ph) return;
       const _carried=!!(c._defend&&c._defend.active); // a watch already kept from an earlier phase simply continues
       c._defend={centre:c.location,active:true,setPhase:ph,preActivated:true,carried:_carried};
@@ -27720,6 +27752,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0921</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0923</div>
 </body>
 </html>
