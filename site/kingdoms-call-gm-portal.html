@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0920'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0921'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -23226,6 +23226,20 @@ const BATTLE_ARMY_SPELLS={
     return true;
   }
 
+  // 2026-10-08 (Toby item 14): can this column step from `from` into `to`? canEnterTerrain judges only the
+  // ground it would stand on; the Move order also forbids a column leading ANY naval unit (fleet or
+  // sea-beast) to step from one land province to another — ships cannot cross land (see the move
+  // case: "cannot march overland while leading naval units"). The Defend ride-outs and the force-march
+  // reinforcement checked terrain alone, so a general with ships and troops in a coastal province rode
+  // out overland to a neighbour on Defend. Every path that marches a column without a Move order now
+  // asks this instead.
+  function canStepBetween(c, from, to, cap){
+    if(!to||!canEnterTerrain(c,to.terrain,cap)) return false;
+    const naval=(c.armies||[]).some(a=>a&&SEA_TYPES.has(a.type));
+    if(naval&&from&&from.terrain!=='sea'&&to.terrain!=='sea') return false;
+    return true;
+  }
+
   // March table: extra speed per level (AK 4.1.2 + level 5 extension)
   const MARCH_BONUS_SLOW=[0,0,1,1,2,3]; // for Speed 1-2 armies, indexed by March level
   const MARCH_BONUS_FAST=[0,1,1,2,2,2]; // for Speed 3+ armies
@@ -24848,7 +24862,7 @@ const BATTLE_ARMY_SPELLS={
         if(!P||P.owner!==c.player) return false;
         if(t.players.has(c.player)) return false;            // not our own troops moving about
         if(!inDefendZone(c,P)) return false;
-        if(!canEnterTerrain(c,P.terrain,sc)) return false;   // AK: a fleet can't march inland
+        if(!canStepBetween(c,here,P,sc)) return false;       // AK: a fleet can't march inland; ships never cross land (item 14)
         return true;
       });
       if(!cands.length) return;
@@ -24949,7 +24963,7 @@ const BATTLE_ARMY_SPELLS={
       if(!getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===prov.id)) return;
       if(defendBattleLocked(d,here)) return;
       const sc=seaCap[d.id]||'land';
-      if(!canEnterTerrain(d,prov.terrain,sc)) return;
+      if(!canStepBetween(d,here,prov,sc)) return;            // item 14: ships never cross land
       const bySea=(here.terrain==='sea'||prov.terrain==='sea');
       if(here.terrain==='sea' && !(seaMoveActive[d.id] && (seaMovePoints[d.id]??0)>0)) return; // stranded on drowned ground
       if(bySea){ if((seaMovePoints[d.id]??0)<=0) return; } else { if((movePoints[d.id]??0)<=0) return; }
@@ -25008,7 +25022,7 @@ const BATTLE_ARMY_SPELLS={
         const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(c.player,e.player)
           &&e.location===P.id&&(e.armies||[]).length>0);
         if(!foes.length) continue;
-        if(P.id!==c.location && !canEnterTerrain(c,P.terrain,sc)) continue; // a fleet can't march inland, etc.
+        if(P.id!==c.location && !canStepBetween(c,here,P,sc)) continue; // a fleet can't march inland; ships never cross land (item 14)
         const str=foes.reduce((s,e)=>s+armyTotalStr(e,P),0);
         if(!best||str>best.str) best={P,foes,str};
       }
@@ -25194,7 +25208,7 @@ const BATTLE_ARMY_SPELLS={
       if(racers.every(inv=>cmp(it.c,inv.c)<0)) return;      // he's faster than all of them anyway
       // Terrain and movement must still allow the march.
       const sc=seaCap[it.id]||'land';
-      if(!canEnterTerrain(it.c,P.terrain,sc)) return;
+      if(!canStepBetween(it.c,G.world.provinces[it.fromId],P,sc)) return; // item 14: ships never cross land
       const toSea=P.terrain==='sea';
       const pool=toSea?seaMovePoints:movePoints;
       if((pool[it.id]??0)<=0) return;
@@ -27706,6 +27720,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0920</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0921</div>
 </body>
 </html>

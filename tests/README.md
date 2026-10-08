@@ -70,6 +70,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `retreat-dry-ground` | new | 1 | ✅ pass | A beaten force falls back onto a Flooded province or sea laid dry by Part Sea only when no ordinary land is open to it (foot, flyers, and the naval split's march inland) |
 | `hire-price` | new | 4 | ✅ pass | A seasoned wanderer's hire price (alignment rate + skill premium) is the same in the report, the hire data, the Hire Hero dropdown, the Broker list and the order ledger |
 | `wanderer-orders` | new | 2 | ✅ pass | A Charm aimed at a wanderer whom another realm hires first is not worked (no seizure, no fight); an Encounter never names a wanderer, nor a hero who was one when the turn's orders were given |
+| `defend-naval-overland` | new | 2 | ✅ pass | A general on Defend whose column has ships never rides overland to a neighbouring land province, whether the enemy marches in or is already standing there |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
