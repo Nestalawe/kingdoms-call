@@ -361,7 +361,9 @@ section{display:none;}.section-active{display:block;}
   /* Orders: stack each phase row's fields full-width; 16px inputs stop iOS auto-zoom on focus. */
   .phase-order{grid-template-columns:1fr!important;gap:4px!important;}
   .phase-order select,.phase-order input{font-size:16px!important;padding:9px 8px!important;}
-  #orders-bottom{position:static!important;}   /* don't overlap the tab bar with a sticky footer */
+  /* 2026-10-08 (Toby item 11): Save Draft / Submit stay on screen while the orders are scrolled —
+     stuck just above the fixed tab bar (58px) rather than taken out of the sticky flow. */
+  #orders-bottom{position:sticky!important;bottom:58px!important;z-index:5;box-shadow:0 -3px 6px rgba(40,25,5,.18);}
   /* Fixed bottom tab bar */
   #mobile-tabbar{
     display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;height:58px;
@@ -380,7 +382,7 @@ section{display:none;}.section-active{display:block;}
    and 2% between. Panels are built by setupDeskLayout() (JS moves the existing map/report/orders
    elements into them, preserving all their event listeners). */
 @media (min-width:821px){
-  #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important;
+  #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important; min-height:0!important; /* the panels size themselves (fitDeskPanels) */
     margin-left:calc(-50vw + 50%)!important; margin-right:calc(-50vw + 50%)!important; }
   #rp-layout.desk > #rp-map-col, #rp-layout.desk > #rp-report-col, #rp-layout.desk > #rp-msg-col,
   #rp-layout.desk > #orders-column,
@@ -1372,6 +1374,26 @@ function setupDeskLayout(){
   }
   lay.classList.add('desk');
   applyDeskViews();
+  fitDeskPanels();
+}
+// 2026-10-08 (Toby item 11): the two panels end at the foot of the WINDOW. They were a fixed
+// calc(100vh - 120px) tall, but they start lower than 120px down the page (masthead + game bar ≈
+// 220px), so their last 100px sat below the fold until the page itself was scrolled — and with them
+// the orders column's sticky Save Draft / Submit bar. Measured from where the panels really start,
+// and re-measured whenever something above them (the game bar, the new-turn banner) changes size.
+let _deskFitObs=null;
+function fitDeskPanels(){
+  const l=document.getElementById('desk-left'), r=document.getElementById('desk-right');
+  if(!l||!r) return;
+  if(window.innerWidth<821){ l.style.height=''; r.style.height=''; return; }
+  const top=l.getBoundingClientRect().top+(window.scrollY||0);
+  const h=Math.max(360, Math.floor(window.innerHeight-top-8))+'px';
+  if(l.style.height!==h) l.style.height=h;
+  if(r.style.height!==h) r.style.height=h;
+  if(!_deskFitObs&&typeof ResizeObserver==='function'){
+    _deskFitObs=new ResizeObserver(()=>fitDeskPanels());
+    document.querySelectorAll('#sec-report > .detail-header, #new-turn-banner').forEach(el=>_deskFitObs.observe(el));
+  }
 }
 function teardownDeskLayout(){
   const lay=document.getElementById('rp-layout');
@@ -10341,6 +10363,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-0909</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-0914</div>
 </body>
 </html>
