@@ -32,6 +32,7 @@ const SUITE=[
   ['concede',              'tests/concede.test.js'],
   ['monarch-grave',        'tests/monarch-grave.test.js'],
   ['guardian-melee',       'tests/guardian-melee.test.js'],
+  ['guardian-traits',      'tests/guardian-traits.test.js'],
   ['overtures',            'tests/overtures.test.js'],
   ['orders-group-by-location','tests/orders-group-by-location.test.js'],
   ['naval-retreat',        'tests/naval-retreat.test.js'],
