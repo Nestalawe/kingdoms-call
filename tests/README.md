@@ -72,6 +72,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `wanderer-orders` | new | 2 | ✅ pass | A Charm aimed at a wanderer whom another realm hires first is not worked (no seizure, no fight); an Encounter never names a wanderer, nor a hero who was one when the turn's orders were given |
 | `defend-naval-overland` | new | 2 | ✅ pass | A general on Defend whose column has ships never rides overland to a neighbouring land province, whether the enemy marches in or is already standing there |
 | `defend-once` | new | 2 | ✅ pass | A Defend order is done once it has brought its general to battle (win or lose): no ride-out in a later season without a fresh Defend order, and the battle season's own Defend order does not re-arm it; a fresh Defend order for a later season does |
+| `hp-wound-gain` | new | 1 | ✅ pass | After a personal fight every wounded hero who lives rolls for maximum HP, the winner rolls once (the win award, not a wound roll too), and a winner's successful roll gains +1 |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
@@ -108,7 +109,7 @@ message. That means the hook needs updating, not that the game is broken.
 
 | Test | Anchor in `kingdoms-call-gm-portal.html` |
 |---|---|
-| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
+| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground`, `hp-wound-gain` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
 | `leaderboard-records`, `leaderboard-render` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |

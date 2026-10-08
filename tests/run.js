@@ -43,6 +43,7 @@ const SUITE=[
   ['wanderer-orders',      'tests/wanderer-orders.test.js'],
   ['defend-naval-overland','tests/defend-naval-overland.test.js'],
   ['defend-once',          'tests/defend-once.test.js'],
+  ['hp-wound-gain',        'tests/hp-wound-gain.test.js'],
   ['naval-retreat',        'tests/naval-retreat.test.js'],
   ['npc-parity',           'tests/npc-parity.test.js'],
   ['report-privacy',       'tests/report-privacy.test.js',       FULL?[GM,'6','20','6']:[GM,'3','10','5']],

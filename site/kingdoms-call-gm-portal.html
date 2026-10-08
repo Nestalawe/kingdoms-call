@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0923'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0926'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3658,7 +3658,13 @@ function rollHpGain(ch, players, why){
 }
 function hpGainLine(ch, r){
   if(!r) return '';
-  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
+  // 2026-10-08 (Toby item 16): a wounded hero rolls too (r.wound), and a winner's successful roll
+  // carries +1 for the victory (r.winBonus).
+  if(r.wound){
+    if(r.gain>0) return `💪 ${ch.name} is hardened by the wounds of the fight — maximum HP +${r.gain} → ${r.maxHp}.${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
+    return `${ch.name} carries the wounds of the fight, but no lasting hardening comes of them. [${r.chance}% roll ${r.roll}]`;
+  }
+  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}${r.winBonus?' (including +1 for the win)':''}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
   return `${ch.name} is battle-worn already — no further hardening from this victory. [${r.chance}% roll ${r.roll}]`;
 }
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
@@ -17113,7 +17119,10 @@ const BATTLE_ARMY_SPELLS={
     // Step marks for Beg-for-Mercy narration: any death not caused through pcTakeHit (lingering
     // harm, auras, thorns) is pinned to the START of the step that caused it.
     const _stepMark=()=>({n:narrative.length,a:A.hp,b:B.hp});
-    const _stepCheck=(m)=>{ [[A,m.a],[B,m.b]].forEach(([cb,h])=>{ if(h>0&&cb.hp<=0&&cb.kind==='character'){ const fm=cb._fatalMark; if(!(fm&&fm.arr===narrative&&fm.idx>=m.n)) cb._fatalMark={arr:narrative,idx:m.n,blow:null}; } }); };
+    // item 16: the lowest each side's HP has fallen, so a wound later healed in the fight still counts
+    A._hpStart=A.hp; B._hpStart=B.hp; A._hpLow=A.hp; B._hpLow=B.hp;
+    const _noteLow=()=>{ A._hpLow=Math.min(A._hpLow,A.hp); B._hpLow=Math.min(B._hpLow,B.hp); };
+    const _stepCheck=(m)=>{ _noteLow(); [[A,m.a],[B,m.b]].forEach(([cb,h])=>{ if(h>0&&cb.hp<=0&&cb.kind==='character'){ const fm=cb._fatalMark; if(!(fm&&fm.arr===narrative&&fm.idx>=m.n)) cb._fatalMark={arr:narrative,idx:m.n,blow:null}; } }); };
     A._fatalMark=null; B._fatalMark=null;
     for(let round=0; round<maxRounds; round++){
       if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
@@ -17313,6 +17322,23 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-29 (Toby): melee/archery experience is now rolled per successful hit as it lands
     // (pcCombatXP) — the old single end-of-fight roll for the victor is retired.
     if(state.stoleBy&&state.stoleBy.kind==='character'&&state.stoleBy.ref) trySkillGain(state.stoleBy.ref,'thief',SKILLGAIN_STD,narrative);
+    // ── 2026-10-08 (Toby item 16): WOUNDS HARDEN TOO ── every hero who took at least 1 HP of damage in
+    // the fight rolls for maximum HP at its end, as the winner always has. The winner is left to the
+    // win award (awardWinHp: kill, lair cleared, a duel's field held), which rolls once with +1 for the
+    // victory, so no hero rolls twice for one fight. A hero who has fallen does not roll; forecasts
+    // (simulated fights on copies) never do.
+    _noteLow();
+    if(!_pcSimulating){
+      const _winSide=winner||((opts.heldFieldWins&&state.fledBy)?(state.fledBy===A?B:A):null);
+      for(const X of [A,B]){
+        if(X===_winSide||X.kind!=='character'||!X.ref||X.hp<=0) continue;
+        if(!(X._hpLow<=(X._hpStart-1))) continue;
+        const real=(X.ref.id!=null)?(G.characters||[]).find(r=>r&&r.id===X.ref.id):null;
+        if(!real||real.alive===false) continue;
+        const r=awardHpRoll(X.ref, narrative, 'wound', false);
+        if(r&&r.gain>0){ X.hp+=r.gain; X.maxHp+=r.gain; }   // the rise heals into the new headroom, as on the real record
+      }
+    }
     return {winner, loser, fledBy:state.fledBy, parley:state.parley, stoleBy:state.stoleBy,
             aHp:Math.max(0,Math.round(A.hp)), bHp:Math.max(0,Math.round(B.hp)), narrative};
   }
@@ -17449,7 +17475,7 @@ const BATTLE_ARMY_SPELLS={
     if(_ia) narrative.push(_ia);
     if(_ib) narrative.push(_ib);
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
-    const res=resolvePersonalCombat(A, B, {maxRounds:20});
+    const res=resolvePersonalCombat(A, B, {maxRounds:20, heldFieldWins:true}); // a duel's field held is a win (preBattleDuel awards it)
     narrative.push(...res.narrative);
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
@@ -18579,11 +18605,18 @@ const BATTLE_ARMY_SPELLS={
   // ── EARNED HP ── one combat win = one rollHpGain on the REAL character. Wins that count: lair
   // guardian cleared, enemy character slain (any personal-combat path), pre-battle duel won
   // (kill or the loser breaking off). A fled Encounter/chase/thief fight and a pacified beast do NOT count.
-  function awardWinHp(ch, narrative, why){
+  function awardWinHp(ch, narrative, why){ return awardHpRoll(ch, narrative, why, true); }
+  // 2026-10-08 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin) or
+  // for a hero who was wounded in it (resolvePersonalCombat). A winner whose roll succeeds gains +1 on
+  // top for the victory. (Recommended reading of "+1 hp to the hp gain": the bonus rides on a
+  // successful roll, so the soft ceiling around 60 HP still holds; see the PR for the ruling.)
+  function awardHpRoll(ch, narrative, why, isWin){
     if(!ch||ch.alive===false) return null;
     const real=(ch.id!=null&&(G.characters||[]).find(r=>r&&r.id===ch.id))||ch;
     if(real.alive===false) return null;
     const r=rollHpGain(real, G.players, why);
+    if(isWin&&r.gain>0){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
+    r.wound=!isWin;
     if(r.gain>0&&real.isKing&&hasDisc(real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
       real.hpEarned+=r.gain; syncMaxHp(real,G.players); r.gain*=2; r.maxHp=real.maxHp; r.sd35=true; }
     // ── 2026-09-17 — THE HARDENING THAT UNDID ITSELF ────
@@ -27752,6 +27785,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0923</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0926</div>
 </body>
 </html>
