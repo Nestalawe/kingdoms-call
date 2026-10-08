@@ -1,0 +1,22 @@
+# Dangerous paths (decision D-07, amended 2026-10-09): a PR that changes any path matching a line below
+# gets a warning comment asking to talk it through with Theo before merging. It never blocks the merge.
+# Read by .github/workflows/dangerous-paths.yml.
+# One glob per line: "**" matches across folders, "*" within one folder; case is ignored. Lines starting
+# with "#" are comments. The warning always reads this file from the PR's base branch, so a change here
+# applies to the PRs after it, not to itself.
+
+# Database: migrations, access rules and their tests.
+supabase/**
+
+# CI, deploy and this warning.
+.github/**
+
+# Third-party code served with the site.
+site/vendor/**
+
+# The escaping helper. Uncomment when P0-19 creates it.
+# site/kc-safe.js
+
+# Dependencies. Uncomment from P1-17, when supabase-js becomes an npm dependency.
+# package.json
+# package-lock.json

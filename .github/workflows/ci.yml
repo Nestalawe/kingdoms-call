@@ -1,12 +1,10 @@
-# Runs npm test on every pull request and every push to main.
-# Branch protection on main requires the check named "ci".
-# deploy.yml also calls this workflow, so the site is only published after these tests pass.
+# Runs npm test on every pull request. Branch protection on main requires the check named "ci".
+# deploy.yml calls this workflow before every publish, so each commit that goes live is tested first,
+# and a merge runs the tests once (inside Deploy), not twice. That's why there's no push trigger here.
 name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_call:
 
 permissions:
