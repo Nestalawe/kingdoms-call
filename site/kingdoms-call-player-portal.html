@@ -3565,6 +3565,7 @@ function _renderDiplomacyInto(el, report, withControls){
         <strong style="color:${reportColour(k.color)||'#333'}">${k.name}</strong>
         <span style="font-size:.72rem;color:#332c20">${k.alignment||''}</span>
         ${(k.conceded||k.eliminated)?`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated&&!k.conceded?'\u2620 Extinguished':'\u{1F3F3} Conceded'}${(k.conceded&&k.concededTurn)?` (turn ${k.concededTurn})`:''}</span>`:relBadge(k.relation)}
+        ${(!k.conceded&&!k.eliminated&&k.offeredUs)?`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs==='peace'?'peace':'an alliance'} last turn</span>`:''}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
@@ -10340,6 +10341,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.08-2118</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.08-2156</div>
 </body>
 </html>

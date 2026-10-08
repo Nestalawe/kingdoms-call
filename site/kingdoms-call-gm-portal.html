@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.08-2152'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.08-2156'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -12343,6 +12343,9 @@ function buildTurnReport(gameState, playerIndex){
         // 2026-09-27 (Toby item 7): a realm that has quit the game is no longer a party anyone can
         // treat with. The portal shows the state and withdraws every diplomacy control against it.
         conceded:!!gameState.players[o]?.conceded,
+        // 2026-10-08 (Toby item 3c): 'peace' / 'alliance' when this realm sent us an overture last
+        // turn (see 6d in runTurn), so the card can show it beside the realm's name.
+        offeredUs:(((player._overturesIn||[]).find(x=>x&&x.from===o)||{}).kind)||null,
         concededTurn:gameState.players[o]?.concededTurn||null,
         eliminated:!!gameState.players[o]?._eliminated,
         relation:relOf(o)
@@ -26326,10 +26329,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // nothing.
   {
     const np=(G.players||[]).length;
+    // 2026-10-08 (Toby item 3c): the overtures each realm received THIS turn, for its Diplomacy card
+    // (buildTurnReport → diplomacy.known[].offeredUs). Rebuilt every turn, so it is always last turn's.
+    (G.players||[]).forEach(p=>{ if(p) p._overturesIn=[]; });
     const validDecl=(from,to)=>{
       const d=diploDeclarations[from]&&diploDeclarations[from][to];
       if(d!=='treat'&&d!=='enemy') return null;
       if(!((G.players[from]&&G.players[from]._encountered)||[]).includes(to)) return null; // must have met them
+      // 2026-10-08 (Toby item 3b): in a game of three realms or fewer no alliance can be forged, so
+      // a Treat between two NEUTRAL realms can achieve nothing. The portal never offers it; a bot's
+      // is dropped here, so nobody is asked to answer an offer that cannot be accepted.
+      if(d==='treat'&&np<=3&&(G.relations[relKeyOf(from,to)]||'neutral')==='neutral') return null;
       return d;
     };
     for(let a=0;a<np;a++){
@@ -26363,14 +26373,23 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // from the current relation.
         const _offerWord=(cur==='enemy'?'peace':'an alliance');
         const _mutual=(da==='treat'&&db==='treat');
-        const _tellOffered=(to,fromName)=>{
+        const _tellOffered=(to,from,fromName)=>{
+          // 2026-10-08 (Toby item 3a/3c): being courted counts as MEETING the realm that sent it, so
+          // the courted realm can answer (only met realms are on the Diplomacy card, and only met
+          // realms may be treated with). The offer is also kept for the Diplomacy card.
+          const _tp=G.players[to];
+          if(_tp){
+            if(!Array.isArray(_tp._encountered)) _tp._encountered=[];
+            if(!_tp._encountered.includes(from)) _tp._encountered.push(from);
+          }
           // When both sides treated and the relation actually moved, the pact announcement below
           // says it all — no need to also report the overture that produced it.
           if(_mutual&&next!==cur) return;
+          if(_tp&&!_mutual) (_tp._overturesIn=_tp._overturesIn||[]).push({from, kind:(cur==='enemy'?'peace':'alliance')}); // still awaiting an answer
           log('system',`🕊 ${fromName} has sent you an overture of ${_offerWord}.${_mutual?' You answered in kind.':` Declare a Treat toward ${fromName} with next turn's orders to answer it.`}`,{actor:null,targets:[to],system:true});
         };
-        if(da==='treat') _tellOffered(b,na);
-        if(db==='treat') _tellOffered(a,nb);
+        if(da==='treat') _tellOffered(b,a,na);
+        if(db==='treat') _tellOffered(a,b,nb);
         if(blockedAlliance){
           log('system',`${na} and ${nb} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[a],system:true});
           log('system',`${nb} and ${na} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[b],system:true});
@@ -27600,6 +27619,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2152</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2156</div>
 </body>
 </html>
