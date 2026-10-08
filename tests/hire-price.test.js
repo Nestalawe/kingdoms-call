@@ -40,9 +40,10 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   P.buildOrdersForm(P.eval('currentReport.characters'),false,null,rep.turn);
   const king=(rep.characters||[]).find(c=>c.isKing);
   const opt=html=>{ const m=String(html).match(/<option[^>]*value="(?:hire:)?\d+"[^>]*>[^<]*Wenna[^<]*<\/option>/); return m?m[0]:''; };
+  const plainText=html=>{ const el=P.document.createElement('div'); el.innerHTML=String(html); return (el.textContent||'').trim(); };
   const g=html=>{ const m=opt(html).match(/(\d+)g\/turn/); return m?+m[1]:null; };
   const hireHtml=P.buildTargetField(king,0,{action:'Hire Hero'});
-  ok(g(hireHtml)===price,`the Hire Hero dropdown quotes ${price}g (quotes ${g(hireHtml)}g: ${opt(hireHtml).replace(/<[^>]+>/g,'').trim()})`);
+  ok(g(hireHtml)===price,`the Hire Hero dropdown quotes ${price}g (quotes ${g(hireHtml)}g: ${plainText(opt(hireHtml))})`);
   // The Broker list (a Neutral king) reads the same figure.
   P.eval(`currentReport.kingdom.alignment='Neutral';`);
   const brokerHtml=P.buildTargetField(king,0,{action:'Broker'});
