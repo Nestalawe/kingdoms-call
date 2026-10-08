@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.08-2159'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.08-2202'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -2519,7 +2519,10 @@ function seedUsedHeroNames(gameState){
 // every guardian special's castChance raised +20 (was 30–55%, now 50–75%). 2026-09-15: the share of
 // a character's MAXIMUM HP that a single guardian attack may never exceed. Applied silently in
 // pcTakeHit to any hit a character takes in a lair fight.
-const GUARDIAN_HIT_CAP_FRAC=1/3;
+// 2026-10-08 (Toby item 4a): HALF, not a third, and for EVERY hit in personal combat — a guardian on
+// a hero, a hero on a guardian, a hero on a hero in a duel. A tighter cap the target already carries
+// (GUARDIAN_BODY_CAP_PCT, a cap ward) is applied first and still wins.
+const PC_HIT_CAP_FRAC=1/2;
 // 2026-10-08 (Toby item 2): a guardian's melee blow rolls a base that grows with its tier, then adds
 // ⌈Melee ÷ 2⌉ exactly as a hero's blow does (pcMeleeDamage). Heroes keep 1–3. A special's damage is
 // that same blow × the special's weight, so it grows with the tier too.
@@ -16059,17 +16062,18 @@ const BATTLE_ARMY_SPELLS={
     // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
     // rather than a reduction, so the floor is never allowed to lift a blow back over it.
     if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} will not let any single hit bite deeper than ${_capAt}.`); } }
-    // ── GUARDIAN DAMAGE CEILING ────
-    // No single blow, arrow or special from a LAIR GUARDIAN may take more than a third of a
-    // character's maximum HP. A hero can still be worn down and killed over a fight, but cannot be
+    // ── DAMAGE CEILING ────
+    // 2026-10-08 (Toby item 4a): no single blow, arrow, special or spell in personal combat may take
+    // more than HALF of the target's maximum HP, whoever strikes whom (PC_HIT_CAP_FRAC).
+    // History: until then it was a third, and only a LAIR GUARDIAN's attack on a character was
+    // capped. A hero can still be worn down and killed over a fight, but cannot be
     // deleted by one unlucky roll from a Legendary beast — which is what made sending a hero into a
     // high-tier lair a coin-flip rather than a calculated risk.
     //
     // DELIBERATELY SILENT, as asked: no narrative line is pushed, so the reduced figure is simply
-    // the damage the player sees. `_vsGuardian` is set only on the character's combatant in a lair
-    // fight, so this never touches the hero's own blows, a PvP duel, or a fight between characters.
-    if(target._vsGuardian && target.kind==='character' && d>0){
-      const _gCap=Math.max(1,Math.floor((target.maxHp||20)*GUARDIAN_HIT_CAP_FRAC));
+    // the damage the player sees.
+    if(d>0){
+      const _gCap=Math.max(1,Math.floor((target.maxHp||20)*PC_HIT_CAP_FRAC));
       if(d>_gCap) d=_gCap;
     }
     target.hp-=d;
@@ -18427,7 +18431,7 @@ const BATTLE_ARMY_SPELLS={
     const hero=pcCharCombatant(c);
     if(Array.isArray(tactics)&&tactics.length) hero.tactics=tactics.slice();
     // this fight is against a lair guardian, so every blow the creature lands on the character is
-    // held to GUARDIAN_HIT_CAP_FRAC of their maximum HP (see pcTakeHit). Set on the CHARACTER's
+    // held to PC_HIT_CAP_FRAC of their maximum HP (see pcTakeHit). Set on the CHARACTER's
     // combatant, so the cap can never apply to the hero's own blows, to a PvP duel, or to any fight
     // that has no guardian in it.
     hero._vsGuardian=true;
@@ -27629,6 +27633,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2159</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2202</div>
 </body>
 </html>
