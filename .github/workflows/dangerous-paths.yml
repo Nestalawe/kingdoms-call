@@ -1,0 +1,60 @@
+# Warns on pull requests that change a dangerous path (decision D-07, amended 2026-10-09): database
+# migrations and access rules, workflows, or third-party code served with the site. It posts one comment
+# (updated in place on later pushes) asking to talk the change through with Theo before merging.
+# It never blocks a merge: it isn't a required check, and the job succeeds even if it can't comment.
+#
+# It never checks out or runs the PR's code. The script and the paths list come from the PR's base commit;
+# the PR itself is only read through the API. It is kept out of ci.yml so that deploy.yml, which calls
+# ci.yml, doesn't need permission to comment.
+name: Dangerous paths
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# A newer push to the same PR replaces a run still going.
+concurrency:
+  group: dangerous-paths-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  dangerous-paths:
+    name: dangerous-paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            .nvmrc
+            .github/dangerous-paths
+            .github/scripts/dangerous-paths.js
+          sparse-checkout-cone-mode: false
+
+      # The PR that adds this warning has nothing on its base branch to run yet.
+      - name: Check the base branch has the warning
+        id: base
+        run: |
+          if [ -f .github/scripts/dangerous-paths.js ] && [ -f .github/dangerous-paths ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The base branch doesn't have the dangerous-paths warning yet, so there's nothing to run."
+          fi
+
+      - if: steps.base.outputs.ready == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - if: steps.base.outputs.ready == 'true'
+        name: Warn
+        run: node .github/scripts/dangerous-paths.js
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

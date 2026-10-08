@@ -28,8 +28,8 @@ then, a rule's background is in the code comments near it.
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js` |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
-| `.github/workflows/` | `ci.yml` (`npm test` on every PR and push to `main`), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `review-gate.yml` |
-| `.github/review-gate-paths`, `.github/scripts/review-gate.js` | The review gate's path list and logic (see below) |
+| `.github/workflows/` | `ci.yml` (`npm test` on every PR and push to `main`), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
+| `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
 | `docs/` | Architecture, traps and, later, rulings and history |
 
@@ -132,20 +132,19 @@ are SQL the GM portal shows in a set-up banner. Any PR that changes the database
 
 Once migrations exist: forward-only, never edit an applied one, every migration has pgTAP tests.
 
-## The review gate (Theo's approval)
+## Dangerous paths: talk it through with Theo
 
-The `review-gate` check (`.github/workflows/review-gate.yml`) fails until Theo approves when a PR:
-- changes any path matching `.github/review-gate-paths`: today `supabase/**`, `.github/**` and
-  `site/vendor/**` (the gate reads this list from the PR's base branch, so editing it affects later
-  PRs, not the current one); **or**
-- carries the label **`needs-theo`**. Add it to any PR that changes who can see or change data, any
-  plan step whose STATUS row has ✓ in the Theo column, and any step of a unit (e.g. the cutover). If
-  unsure, add it.
+Some changes get Theo's eye before Toby merges them (decision D-07). Toby and Theo talk them through;
+nothing on GitHub enforces it.
+- **Paths:** any PR that changes a path in `.github/dangerous-paths` (today `supabase/**`, `.github/**`
+  and `site/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
+  blocks the merge. The list is read from the PR's base branch, so editing it affects later PRs, not
+  the current one.
+- **Everything else that needs Theo:** a change to who can see or change data, a plan step whose
+  STATUS row has ✓ in the Theo column, or any step of a unit (e.g. the cutover). Say so in the first
+  line of the PR description. If unsure, say so.
 
-If Theo opened the PR, Toby's approval counts instead. **Only an approval of the PR's latest commit
-counts:** a new push needs a new approval, and "changes requested" or a dismissed review cancels it.
-
-Other labels: `staging` (ready for Toby to try), `refactor-only`.
+Labels: `staging` (ready for Toby to try), `refactor-only`.
 
 ## Opening the PR for review
 
