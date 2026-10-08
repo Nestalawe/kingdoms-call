@@ -28,7 +28,7 @@ then, a rule's background is in the code comments near it.
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js` |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
-| `.github/workflows/` | `ci.yml` (`npm test` on every PR and push to `main`), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
+| `.github/workflows/` | `ci.yml` (`npm test` on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
 | `docs/` | Architecture, traps and, later, rulings and history |
