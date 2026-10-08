@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0909'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0911'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -23031,11 +23031,20 @@ const BATTLE_ARMY_SPELLS={
     const sc=getSeaCapability(force, ch);
     const probe={_partSeaThisPhase:ch._partSeaThisPhase, armies:force};
     const from=G.world.provinces[ch._attackedFrom];
-    return getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>{
+    return preferDryGround(getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>{
       if(!p2||p2.id===prov.id||!canEnterTerrain(probe,p2.terrain,sc)) return false;
       if(isFriendlyProvFor(p2,ch.player)) return true;
       return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
-    });
+    }));
+  }
+  // 2026-10-08 (Toby item 10): a beaten force never falls back into a province that is only passable
+  // this turn by magic — one FLOODED into sea, or a sea province PARTED into dry ground — while a
+  // province of ordinary land is open to it. With no ordinary land among the choices the list is
+  // left as it is (open sea stays open to a fleet).
+  function isMagicGround(p){ return !!(p&&(p._flood||p._partSea)); }
+  function preferDryGround(list){
+    const dry=(list||[]).filter(p=>p&&p.terrain!=='sea'&&!isMagicGround(p));
+    return dry.length?(list||[]).filter(p=>!isMagicGround(p)):(list||[]);
   }
   // ── NAVAL RETREAT: THE FLEET MAKES FOR WATER (2026-09-27, Toby item 3) ─────────────────────
   // A beaten force that has SHIPS on a coastal shore no longer falls back as one body.
@@ -23117,7 +23126,7 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-23c ruling — a beaten landing falls back to its ships).
     const seaOk=noSea?[]:adj.filter(p2=>p2.terrain==='sea'&&!p2._flood&&(isFriendlyProvFor(p2,ch.player)
       ||(!!from&&p2.id===from.id&&p2.owner==null&&!(p2.neutralDefenders||[]).length)));
-    const landFriendly=adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(p2,ch.player));
+    const landFriendly=preferDryGround(adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(p2,ch.player))); // item 10: parted sea only when no ordinary land
     const landOwn=landFriendly.filter(p2=>p2.owner===ch.player);
     const move=(dest)=>{ prov.characters=(prov.characters||[]).filter(id=>id!==ch.id);
       dest.characters=dest.characters||[]; if(!dest.characters.includes(ch.id)) dest.characters.push(ch.id);
@@ -27664,6 +27673,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0909</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0911</div>
 </body>
 </html>

@@ -67,6 +67,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `move-points` | new | 2 | ✅ pass | Taking an undefended enemy province costs 1 movement point; pressing on with a battle against neutral defenders costs 1 a phase while points remain |
 | `overtures` | new | 2 | ✅ pass | An overture of peace or alliance makes the courted realm meet the sender and shows on its Diplomacy card; in a game of three realms or fewer an impossible alliance offer is not sent |
 | `pursuit-one-battle` | new | 2 | ✅ pass | A Warg Riders chase obeys one battle per phase: a hunter who has just fought (even as the defender) holds the chase over, stays where he is, and his report says why his Move order waited |
+| `retreat-dry-ground` | new | 1 | ✅ pass | A beaten force falls back onto a Flooded province or sea laid dry by Part Sea only when no ordinary land is open to it (foot, flyers, and the naval split's march inland) |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
@@ -102,7 +103,7 @@ message. That means the hook needs updating, not that the game is broken.
 
 | Test | Anchor in `kingdoms-call-gm-portal.html` |
 |---|---|
-| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
+| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
 | `leaderboard-records`, `leaderboard-render` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |

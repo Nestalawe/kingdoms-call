@@ -38,6 +38,7 @@ const SUITE=[
   ['overtures',            'tests/overtures.test.js'],
   ['orders-group-by-location','tests/orders-group-by-location.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
+  ['retreat-dry-ground',   'tests/retreat-dry-ground.test.js'],
   ['naval-retreat',        'tests/naval-retreat.test.js'],
   ['npc-parity',           'tests/npc-parity.test.js'],
   ['report-privacy',       'tests/report-privacy.test.js',       FULL?[GM,'6','20','6']:[GM,'3','10','5']],
