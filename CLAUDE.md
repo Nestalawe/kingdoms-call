@@ -153,6 +153,12 @@ Use the template in `.github/pull_request_template.md`. Write the top half for T
 keep engineering detail in the lower sections for Theo. "What to try on staging" is a numbered
 checklist he can follow without reading code.
 
+**Playtester notes, every time.** Any PR that changes something players can notice starts its
+description with a `## For playtesters` section: one short, friendly paragraph per change, written for
+players (what's new or fixed and how it affects their game, with no code, numbers only where they help)
+and ready for Toby to paste. Once the change is merged and deployed, give Toby the same notes in the
+session.
+
 ## Talking to Toby
 
 Write in game terms. Offer options with a recommendation. Use short examples from inside the game
