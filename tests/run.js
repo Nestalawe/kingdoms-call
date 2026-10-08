@@ -34,6 +34,7 @@ const SUITE=[
   ['guardian-melee',       'tests/guardian-melee.test.js'],
   ['guardian-traits',      'tests/guardian-traits.test.js'],
   ['hit-cap',              'tests/hit-cap.test.js'],
+  ['move-points',          'tests/move-points.test.js'],
   ['overtures',            'tests/overtures.test.js'],
   ['orders-group-by-location','tests/orders-group-by-location.test.js'],
   ['naval-retreat',        'tests/naval-retreat.test.js'],

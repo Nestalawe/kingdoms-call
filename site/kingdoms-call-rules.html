@@ -1173,13 +1173,31 @@ p.more{font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em; color
   <h3>Movement in battle &amp; conquest</h3>
   <p>Moving is how you fight and how you conquer, and it all draws on the same pools:</p>
   <ul>
-    <li><strong>Attacking costs a move.</strong> Marching into a defended enemy or neutral province is a Move like any other — it spends <strong>one point</strong> and triggers the battle on arrival. A lone hero (no army) can walk into an <em>empty</em> province and take it, but <strong>cannot conquer a defended one</strong> — conquest needs armies.</li>
-    <li><strong>A contested province can take more than one phase.</strong> Beaten defenders don't always vanish; a fight can carry on into later phases, and each carry-on round it grows bloodier for both sides (up to ×2.5 the casualty rate). Each phase you press the assault spends another movement point <em>if you have one</em> — but a carry-on battle is fought whether or not points remain, so an attacker who has run dry still finishes what they started.</li>
+    <li><strong>Attacking costs a move, and winning costs one more.</strong> Marching into a defended enemy or neutral province is a Move like any other — it spends <strong>one point</strong> and triggers the battle on arrival. <strong>Win, and the victory spends a second point</strong> (from your sea points if the fight was at sea or on a coastal landing). Lose, and nothing more is spent: the rest of your points stay for later phases.</li>
+    <li><strong>Taking ground with no battle costs just the step.</strong> Marching an army into empty unclaimed land, or into an enemy province that nobody defends, takes it for <strong>one point</strong>.</li>
+    <li><strong>Conquest needs armies.</strong> A lone hero with no army can walk into any province to look around, but cannot claim or conquer it, empty or not.</li>
+    <li><strong>A contested province can take more than one phase.</strong> Beaten defenders don't always vanish; a fight can carry on into later phases, and each carry-on round it grows bloodier for both sides (up to ×2.5 the casualty rate). Each phase you press the assault spends another movement point <em>if you have one</em>, whether the defenders are another realm's or neutral — but a carry-on battle is fought whether or not points remain, so an attacker who has run dry still finishes what they started.</li>
     <li><strong>A standing <em>Defend</em> can march to a neighbour.</strong> A general on Defend who answers a threat to an adjacent province of yours <strong>spends a movement point</strong> (a sea point if the march touches water) to get there, and with none left he cannot ride out. The watch begins in the phase the Defend order is given (so a phase-2 Defend meets a phase-2 invasion), and it answers an enemy host <em>raised or summoned inside</em> a neighbouring province of yours just as it answers one that marches in — in both cases the general arrives <strong>before</strong> the enemy can take the ground and fights as its defender. A defeat ends the watch for the rest of the turn. Full rule and examples: <a href="#defend">The Defend order in full</a>.</li>
     <li><strong>Chasing spends points too.</strong> An <em>Encounter</em> order runs a quarry down one province per phase at <strong>one point per step</strong>, and stalls when the pool hits zero.</li>
     <li><strong>Picking up slow troops slows you.</strong> Take command of a plodding garrison mid-turn (<em>Pick Up Army</em>) and your column immediately moves at that slower unit's pace for the rest of the turn; drop a slow unit and you speed back up. Points already spent are never refunded or double-charged.</li>
   </ul>
-  <div class="note tip"><span class="lbl">Reading your reach</span>Your order forms show each character's remaining land and sea points as you plan. The practical takeaways: a slow garrison stack reaches only an <em>adjacent</em> province per turn (fine for a one-hop assault); a March-trained field army can string several conquests together across the phases; and flyers or a light-travelling hero can cross the map's width in a single season.</div>
+  <div class="wrap"><table class="tbl">
+    <caption>What each action costs in movement points</caption>
+    <tr><th>What you do</th><th>Movement points</th></tr>
+    <tr><td>Move one province (any terrain)</td><td class="num">1</td></tr>
+    <tr><td>Sail into the sea, or land on a coast</td><td class="num">1 sea point</td></tr>
+    <tr><td>March into empty, unclaimed land (and claim it)</td><td class="num">1</td></tr>
+    <tr><td>March into an enemy province nobody defends (and take it)</td><td class="num">1</td></tr>
+    <tr><td>Attack and <strong>win</strong></td><td class="num">2 (1 to step in, 1 for the victory)</td></tr>
+    <tr><td>Attack and <strong>lose</strong></td><td class="num">1</td></tr>
+    <tr><td>Press on with an unfinished battle next phase (against a realm or neutral guards)</td><td class="num">1 if you have one (fought anyway if not)</td></tr>
+    <tr><td>Defend: ride out to help or reinforce a neighbour</td><td class="num">1</td></tr>
+    <tr><td>Encounter: each step of a chase</td><td class="num">1</td></tr>
+    <tr><td>Search a lair, fight its guardian, Explore</td><td class="num">0</td></tr>
+    <tr><td>Retreat after a loss</td><td class="num">0</td></tr>
+  </table></div>
+  <p>There are five phases with one order each, so nothing travels more than five provinces in a turn. Points beyond five still matter: they pay for victories.</p>
+  <div class="note tip"><span class="lbl">Reading your reach</span>Each character's order card shows their land and sea points for the turn. The practical takeaways: a slow garrison stack reaches only an <em>adjacent</em> province per turn (fine for a one-hop assault); a March-trained field army can string several conquests together across the phases; and flyers or a light-travelling hero can cross the map's width in a single season.</div>
   <a class="totop" href="#overview">↑ top</a>
 </section>
 
@@ -1626,7 +1644,7 @@ p.more{font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.04em; color
 
 <footer class="book">
   Kingdoms Call · The Comprehensive Rulebook · <a href="kingdoms-call-rules-intro.html" style="color:var(--gold-light)">Introductory Rules</a><br>
-  <span class="v" id="stamp">Rulebook (Comprehensive) v2026.10.08-2202</span> · Adventurer Kings ruleset
+  <span class="v" id="stamp">Rulebook (Comprehensive) v2026.10.08-2207</span> · Adventurer Kings ruleset
 </footer>
 
 <script>
