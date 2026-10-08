@@ -401,7 +401,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.09.29-2329';
+const KC_DATA_MIN='2026.10.08-2159';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.09.30-0038'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.08-2207'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1808,6 +1808,9 @@ const HOME_FLEET_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'D
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
 // wealthiest remaining province. Returns null only if the dynasty holds no land at all (extinct).
+// 2026-10-08 (Toby item 1): this is worked out ONCE, when the king dies (handleHeroDeath), and
+// stored on the grave. The body then stays there, even if that province is captured later; every
+// reader uses the stored `g.location`, so the map, the Resurrect list and the engine always agree.
 function monarchRestProvId(gs, playerIndex){
   const pl=(gs&&gs.players||[])[playerIndex]; if(!pl) return null;
   const owned=(pl.provinces||[]).map(id=>(gs.world&&gs.world.provinces||[])[id]).filter(Boolean);
@@ -2516,7 +2519,14 @@ function seedUsedHeroNames(gameState){
 // every guardian special's castChance raised +20 (was 30–55%, now 50–75%). 2026-09-15: the share of
 // a character's MAXIMUM HP that a single guardian attack may never exceed. Applied silently in
 // pcTakeHit to any hit a character takes in a lair fight.
-const GUARDIAN_HIT_CAP_FRAC=1/3;
+// 2026-10-08 (Toby item 4a): HALF, not a third, and for EVERY hit in personal combat — a guardian on
+// a hero, a hero on a guardian, a hero on a hero in a duel. A tighter cap the target already carries
+// (GUARDIAN_BODY_CAP_PCT, a cap ward) is applied first and still wins.
+const PC_HIT_CAP_FRAC=1/2;
+// 2026-10-08 (Toby item 2): a guardian's melee blow rolls a base that grows with its tier, then adds
+// ⌈Melee ÷ 2⌉ exactly as a hero's blow does (pcMeleeDamage). Heroes keep 1–3. A special's damage is
+// that same blow × the special's weight, so it grows with the tier too.
+const GUARDIAN_MELEE_BASE={Weak:[1,3],Moderate:[2,5],Powerful:[3,7],Legendary:[4,9]};
 // the mirror of the rule above, pointing the other way — A LEGENDARY CREATURE CANNOT BE FELLED BY
 // ONE BLOW. Measured on the 2026-09-15 build, the whole Legendary band collapsed from a 43% hero
 // win rate to 97% across a SINGLE rung of hero progression: the rung that first hands out tier-4
@@ -3711,7 +3721,7 @@ function migrateMaxHpV2(gs){
 }
 // guardian HP rescaled. Uncleared lairs in older saves adopt the current table stats for their
 // creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=17; // 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+const GUARDIAN_TABLE_VER=18; // 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -8053,7 +8063,7 @@ function botRaiseTargets(G,pi){
   return (G.heroGraveyard||[]).filter(g=>{ if(!g) return false;
       if(g._monarch) return g.player===pi&&p._resurrectableMonarchId===g.id;
       return !g.isKing&&g.player===pi&&known.has(g.id)&&!graveServedOther(g,pi)&&!(G.characters||[]).some(c=>c&&c.id===g.id&&c.alive); })
-    .map(g=>({g,loc:g._monarch?(monarchRestProvId(G,pi)??g.location):g.location,val:(g._monarch?100:0)+Object.values(g.skills||{}).reduce((a,b)=>a+(b||0),0)}))
+    .map(g=>({g,loc:g.location,val:(g._monarch?100:0)+Object.values(g.skills||{}).reduce((a,b)=>a+(b||0),0)}))
     .filter(x=>x.loc!=null).sort((a,b)=>b.val-a.val);
 }
 function botResurrectErrands(G,pi,all,roles,assigned){
@@ -11848,8 +11858,7 @@ function buildTurnReport(gameState, playerIndex){
     .filter(g=>g && (g.player===playerIndex||knownEver.has(g.id)||seenThisTurn.has(g.id)
       ||(g.location!=null&&visibleProvIds.has(g.location))||_mapVisibleIds.has(g.id)))
     .map(g=>{
-      const restId=g._monarch?(monarchRestProvId(gameState,g.player)):null;
-      const locId=(restId!=null)?restId:g.location;
+      const locId=g.location; // a monarch's resting place is fixed at death (see monarchRestProvId)
       // Why this body may or may not be raised — mirrors the guards in `white_resurrect` exactly.
       let raisable=true, whyNot='';
       if(g._monarch){
@@ -12294,7 +12303,7 @@ function buildTurnReport(gameState, playerIndex){
       return Object.values(m); })(),
     // Dead heroes — from persistent graveyard (any turn) for Resurrect targeting Any dead hero
     // visible to this player can be resurrected — except (2026-09-23) a body that ever served another realm (graveServedOther)
-    deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const restId=g._monarch?monarchRestProvId(gameState,g.player):null;const locId=(restId!=null)?restId:g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
+    deadHeroes:(gameState.heroGraveyard||[]).filter(g=>g.player===playerIndex||(visibleProvIds.has(g.location)&&!g._monarch)).map(g=>{const locId=g.location;return{id:g.id,name:g.name,killedOnTurn:g.killedOnTurn,locationId:locId,isMonarch:g._monarch===true,wasOwnHero:g.player===playerIndex};}),
     characters:charReports,ownedProvinces,intel,
     // the hero arrangement, so the player portal keeps it on a fresh turn even before any draft
     // exists (the orders payload is wiped after every run).
@@ -12337,6 +12346,9 @@ function buildTurnReport(gameState, playerIndex){
         // 2026-09-27 (Toby item 7): a realm that has quit the game is no longer a party anyone can
         // treat with. The portal shows the state and withdraws every diplomacy control against it.
         conceded:!!gameState.players[o]?.conceded,
+        // 2026-10-08 (Toby item 3c): 'peace' / 'alliance' when this realm sent us an overture last
+        // turn (see 6d in runTurn), so the card can show it beside the realm's name.
+        offeredUs:(((player._overturesIn||[]).find(x=>x&&x.from===o)||{}).kind)||null,
         concededTurn:gameState.players[o]?.concededTurn||null,
         eliminated:!!gameState.players[o]?._eliminated,
         relation:relOf(o)
@@ -15822,7 +15834,8 @@ const BATTLE_ARMY_SPELLS={
   function pcHitSkill(cbt, which){
     const raw=(which==='archery')?cbt.archeryRaw:cbt.meleeRaw;
     const base=(which==='archery')?(cbt.archery||0):(cbt.melee||0);
-    return Math.max(0, Math.max(raw!=null?raw:0, base));
+    const down=(which==='archery')?0:((cbt.status&&cbt.status.meleeDown)||0); // "−1 melee for next round"
+    return Math.max(0, Math.max(raw!=null?raw:0, base)-down);
   }
   function pcSkillHitPct(lvl){
     return PC_MELEE_HIT_BASE+PC_MELEE_HIT_PER_LVL*Math.min(PC_HIT_SKILL_CAP,lvl)+PC_HIT_PER_LVL_ABOVE*Math.max(0,lvl-PC_HIT_SKILL_CAP);
@@ -15862,8 +15875,9 @@ const BATTLE_ARMY_SPELLS={
     // For characters the bonus reads the RAW skill level (1–9, `meleeRaw`) — combat hit-chance
     // stays on the 0–5 scale, but mastery past 5 lands heavier blows. Guardians use their melee
     // stat.
-    const _dsk=(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0));
-    let dmg=Math.max(1, rng(1,3)+Math.ceil(_dsk/2)+temperOf(attacker.temper).meleeDamage);
+    const _dsk=Math.max(0,(attacker.meleeRaw!=null?attacker.meleeRaw:(attacker.melee||0))-((attacker.status&&attacker.status.meleeDown)||0));
+    const _base=(attacker.kind==='monster'&&GUARDIAN_MELEE_BASE[attacker.power])||[1,3]; // a guardian's base grows with its tier
+    let dmg=Math.max(1, rng(_base[0],_base[1])+Math.ceil(_dsk/2)+temperOf(attacker.temper).meleeDamage);
     if(attacker.status && attacker.status.meleeHalvedRounds>0) dmg=Math.max(1,Math.floor(dmg/2));
     // 2026-09-12b: the defender's temper soak MOVED to pcTakeHit. It is a reduction like any other
     // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
@@ -16048,17 +16062,18 @@ const BATTLE_ARMY_SPELLS={
     // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
     // rather than a reduction, so the floor is never allowed to lift a blow back over it.
     if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} will not let any single hit bite deeper than ${_capAt}.`); } }
-    // ── GUARDIAN DAMAGE CEILING ────
-    // No single blow, arrow or special from a LAIR GUARDIAN may take more than a third of a
-    // character's maximum HP. A hero can still be worn down and killed over a fight, but cannot be
+    // ── DAMAGE CEILING ────
+    // 2026-10-08 (Toby item 4a): no single blow, arrow, special or spell in personal combat may take
+    // more than HALF of the target's maximum HP, whoever strikes whom (PC_HIT_CAP_FRAC).
+    // History: until then it was a third, and only a LAIR GUARDIAN's attack on a character was
+    // capped. A hero can still be worn down and killed over a fight, but cannot be
     // deleted by one unlucky roll from a Legendary beast — which is what made sending a hero into a
     // high-tier lair a coin-flip rather than a calculated risk.
     //
     // DELIBERATELY SILENT, as asked: no narrative line is pushed, so the reduced figure is simply
-    // the damage the player sees. `_vsGuardian` is set only on the character's combatant in a lair
-    // fight, so this never touches the hero's own blows, a PvP duel, or a fight between characters.
-    if(target._vsGuardian && target.kind==='character' && d>0){
-      const _gCap=Math.max(1,Math.floor((target.maxHp||20)*GUARDIAN_HIT_CAP_FRAC));
+    // the damage the player sees.
+    if(d>0){
+      const _gCap=Math.max(1,Math.floor((target.maxHp||20)*PC_HIT_CAP_FRAC));
       if(d>_gCap) d=_gCap;
     }
     target.hp-=d;
@@ -16104,6 +16119,7 @@ const BATTLE_ARMY_SPELLS={
     // fighter for more than three rounds however deep the penalty was stacked.
     if(cbt.status.hitPenalty>0) cbt.status.hitPenalty=Math.max(0,cbt.status.hitPenalty-pcPenaltyFade(cbt.status.hitPenalty));
     if(cbt.status.meleeHalvedRounds>0) cbt.status.meleeHalvedRounds--;
+    if(cbt.status.meleeDownRounds>0&&--cbt.status.meleeDownRounds===0) cbt.status.meleeDown=0; // a chill lasts one round
     if(cbt.status.silenceRounds>0) cbt.status.silenceRounds--;
     // 2026-09-26 (Toby item 3): a Powerful / Legendary guardian bound by Spiritwrack rolls to throw
     // the binding off at the start of every round after the first in which it held.
@@ -16318,7 +16334,7 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  ✨ ${actor.name} uses **${sp.name}**!${sp.flavour?` "${sp.flavour}"`:''}`);
     const eff=String(sp.effect||'');
     let dealt=0;
-    // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — 1–3 + ⌈melee/2⌉)
+    // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — its tier's base + ⌈melee/2⌉)
     // × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy saved creatures
     // still carrying a dmg:[lo,hi] range roll that range instead.
     const _w=(sp.dmgW!=null)?sp.dmgW:((sp.dmg&&(sp.dmg[0]>0||sp.dmg[1]>0))?null:0);
@@ -16377,7 +16393,15 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     // ── Stat swings ──
-    if(/hero\s*[-−]1 melee/i.test(eff)){ foe.melee=Math.max(0,(foe.melee||0)-1); narrative.push(`  ${foe.name}'s guard is beaten down — Melee now ${foe.melee}.`); }
+    // 2026-10-08 (Toby item 2): "hero −1 melee for next round" used to lower `melee`, which neither
+    // to-hit (pcHitSkill) nor damage (meleeRaw) reads for a hero, so it did nothing. It is now a
+    // status both read, lasting one round: a rider on a landed blow bites from the next round.
+    if(/hero\s*[-−]1 melee/i.test(eff)){
+      const _chill=()=>{ foe.status.meleeDown=1; foe.status.meleeDownRounds=1; };
+      const _now=Math.max(0,pcHitSkill(foe,'melee')-1);
+      if(dealt>0&&pcDeferEffect(foe,_chill)) narrative.push(`  ${foe.name}'s guard is beaten down — Melee ${_now} next round.`);
+      else { _chill(); narrative.push(`  ${foe.name}'s guard is beaten down — Melee now ${_now}.`); }
+    }
     const bm=eff.match(/gains \+(\d+) melee/i);
     if(bm){ actor.melee=(actor.melee||0)+parseInt(bm[1]); narrative.push(`  The ${actor.name}'s Melee surges to ${actor.melee}!`); }
     // ── Lingering harm ──
@@ -16750,7 +16774,9 @@ const BATTLE_ARMY_SPELLS={
         if(/rest of the fight/i.test(it.desc||'')){ fs.hitPenaltyFixed=(fs.hitPenaltyFixed||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit for the rest of the fight).`); }
         else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit).`); }
         break; }
-      case 'weak':{ if(e.melee){ foe.melee=Math.max(0,(foe.melee||0)-e.melee); } if(e.archery){ foe.archery=Math.max(0,(foe.archery||0)-e.archery); } narrative.push(`  ${foe.name} is sapped — Melee ${foe.melee}${e.archery?`, Archery ${foe.archery}`:''} for the rest of the fight.`); break; }
+      // 2026-10-08 (item 2): a character's to-hit and damage read the RAW skill (meleeRaw /
+      // archeryRaw), so sap those too — lowering only `melee` did nothing to a hero.
+      case 'weak':{ if(e.melee){ foe.melee=Math.max(0,(foe.melee||0)-e.melee); if(foe.meleeRaw!=null) foe.meleeRaw=Math.max(0,foe.meleeRaw-e.melee); } if(e.archery){ foe.archery=Math.max(0,(foe.archery||0)-e.archery); if(foe.archeryRaw!=null) foe.archeryRaw=Math.max(0,foe.archeryRaw-e.archery); } narrative.push(`  ${foe.name} is sapped — Melee ${pcHitSkill(foe,'melee')}${e.archery?`, Archery ${pcHitSkill(foe,'archery')}`:''} for the rest of the fight.`); break; }
       case 'terror':{ if(!foe.neverFlees&&Math.random()<0.5){ state.fledBy=foe; narrative.push(`  ${foe.name} is overcome with dread and flees!`); } else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} holds their ground, badly shaken (−${e.hitPen||15}% to hit).`); } break; }
       case 'silence':{ fs.silenceRounds=(fs.silenceRounds||0)+(e.rounds||3); narrative.push(`  ${foe.name}'s magic and powers are bound for ${e.rounds||3} rounds.`); break; }
       case 'buff':{ if(e.melee) actor.melee=(actor.melee||0)+e.melee; if(e.archery) actor.archery=(actor.archery||0)+e.archery; narrative.push(`  ${who} surges with strength — Melee ${actor.melee}${e.archery?`, Archery ${actor.archery}`:''}.`); break; }
@@ -18258,6 +18284,16 @@ const BATTLE_ARMY_SPELLS={
     if(flyer){ mods.archery+=0.4; }                        // shot out of the sky
     if(armoured){ mods.melee-=0.2; mods.spell+=0.3; }      // blades turn aside; magic ignores armour
     if(beast&&!undead){ mods.melee+=0.1; }                 // soft-bodied, blades bite
+    // 2026-10-08 (Toby item 4): A GUARDIAN NEVER RESISTS AND IS WEAK TO THE SAME THING, and what is
+    // on its card wins. These hidden multipliers are never shown to a player, so where one pushes
+    // against the creature's passive (its hide turns blows, it shrugs off arrows or spells) or
+    // against its weakness (arrows, a school of magic), the hidden one is dropped.
+    { const fx=(m.passive&&m.passive.fx)||{}, w=m.weak||{};
+      if(fx.ward==='meleeDR'||fx.meleeDR) mods.melee=Math.min(1,mods.melee);
+      if(fx.ward==='arrowDR'||fx.arrowDR) mods.archery=Math.min(1,mods.archery);
+      if(fx.ward==='spellPct'||fx.spellPct) mods.spell=Math.min(1,mods.spell);
+      if(w.kind==='archery') mods.archery=Math.max(1,mods.archery);
+      if(w.kind==='school') mods.spell=Math.max(1,mods.spell); }
     for(const k in mods) mods[k]=Math.max(0.4, Math.min(1.8, mods[k]));
     const pacifiable=beast&&!undead&&!demon;
     const closeRounds={fast:2, medium:3, slow:4}[m.speed||'medium']||3;
@@ -18395,7 +18431,7 @@ const BATTLE_ARMY_SPELLS={
     const hero=pcCharCombatant(c);
     if(Array.isArray(tactics)&&tactics.length) hero.tactics=tactics.slice();
     // this fight is against a lair guardian, so every blow the creature lands on the character is
-    // held to GUARDIAN_HIT_CAP_FRAC of their maximum HP (see pcTakeHit). Set on the CHARACTER's
+    // held to PC_HIT_CAP_FRAC of their maximum HP (see pcTakeHit). Set on the CHARACTER's
     // combatant, so the cap can never apply to the hero's own blows, to a PvP duel, or to any fight
     // that has no guardian in it.
     hero._vsGuardian=true;
@@ -19157,6 +19193,10 @@ const BATTLE_ARMY_SPELLS={
         // Coastal landing: moving from sea province to adjacent land province costs from the sea
         // pool (not land pool) since the journey is naval
         const coastalLanding=leavingSea&&!enteringSea;
+        // 2026-10-08 (Toby item 6): WINNING a battle costs one more point, from the SAME pool the step
+        // in was paid from — sea points for a fight at sea or a coastal landing. Every win path used
+        // to take it from the land pool, so a fleet with no land points won sea battles for free.
+        const _payWinPoint=()=>{ if(enteringSea||coastalLanding) seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1); else movePoints[c.id]=Math.max(0,(movePoints[c.id]??0)-1); };
 
         // Coastal hop REMOVED: a force containing naval units may no longer sail directly from one
         // coastal land province to an adjacent coastal land province. A naval force sitting on land
@@ -19474,7 +19514,7 @@ const BATTLE_ARMY_SPELLS={
           if(battle.won) markOrcAttackWin(c, G, battle); // orc war-spoils — this attacking force won (line appended to the report)
           emitBattle(battle, toProv, ph, [c.player], {actor:c.player}); // item 5
           if(battle.won){
-            if(enteringSea||coastalLanding){seaMovePoints[c.id]=Math.max(0,(seaMovePoints[c.id]??0)-1);}else{movePoints[c.id]=Math.max(0,movePoints[c.id]-1);}
+            _payWinPoint();
             // ── Fate of the guard's SURVIVORS ── combatVsNPC has already applied the casualty
             // rolls — identical to a beaten player, plus the extra no-escape roll, since neutrals
             // cannot retreat. Whatever is left here LIVED. erodeGuardSurvivors then flees / demotes
@@ -19760,7 +19800,7 @@ const BATTLE_ARMY_SPELLS={
               // …and hulls the beaten defender left ashore are an armed enemy force standing on the
               // ground too, commander or no commander (2026-09-27, Toby).
               const _navalBlock=navalHeldIn(toProv, c.player);
-              movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+              _payWinPoint();
               if(_hostileLeft||_navalBlock.length>0){
                 toProv._battleUnresolved=true;
                 log('combat',`${c.alive===false?`${c.name}'s leaderless host`:c.name} carries the field at ${toProv.name}, but enemy forces still hold their ground — the province remains contested.`,{actor:c.player,targets,provinceId:toProv.id,public:true});
@@ -19853,7 +19893,7 @@ const BATTLE_ARMY_SPELLS={
               if(garBattle.won) markOrcAttackWin(c, G, garBattle); // orc war-spoils — this attacking force won (line appended to the report)
               emitBattle(garBattle, toProv, ph, [c.player,toProv.owner].filter(x=>x!==null), {actor:c.player}); // item 5
               if(garBattle.won){
-                movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+                _payWinPoint();
                 if(garSurvivors.length>0){
                   // a beaten garrison RETREATS if it has somewhere to go — an adjacent land
                   // province still held by its own crown. With no commander to lead them elsewhere
@@ -19901,7 +19941,7 @@ const BATTLE_ARMY_SPELLS={
               const _prevOwnerName=_prevOwnerIdx!=null?(G.players[_prevOwnerIdx]?.name||null):null;
               G.players.forEach((p,pi)=>{if(pi!==c.player){const i=p.provinces.indexOf(toProv.id);if(i>-1)p.provinces.splice(i,1);}});
               setProvinceOwner(toProv,c.player,c,ph);if(!player.provinces.includes(toProv.id))player.provinces.push(toProv.id);
-              movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+              // 2026-10-08 (Toby item 6): no battle, so no second point — the step in was the cost.
               log('move',`${c.name} seizes the undefended province of ${toProv.name}${_prevOwnerName?` from ${_prevOwnerName}`:''} for ${player.name}!`,{actor:c.player,targets:_prevOwnerIdx!=null?[_prevOwnerIdx]:[],provinceId:toProv.id,public:true});
               applyEvilConquest(c, toProv, player);
             }
@@ -19921,7 +19961,7 @@ const BATTLE_ARMY_SPELLS={
             c.armies=(c.armies||[]).filter(a=>!a._died&&!a._disbanded);
             toProv._hadBattleThisTurn=true;
             if(llBattle.won){
-              movePoints[c.id]=Math.max(0,movePoints[c.id]-1);
+              _payWinPoint();
               const llSurv=erodeGuardSurvivors(null, toProv, toProv.neutralDefenders||[],
                 line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}));
               toProv.neutralDefenders=llSurv; toProv.npcArmies=llSurv.length;
@@ -21728,11 +21768,8 @@ const BATTLE_ARMY_SPELLS={
           // place.)
           if(!G.heroGraveyard) G.heroGraveyard=[];
           if(!G._resurrectedThisTurn) G._resurrectedThisTurn=[];
-          // A fallen MONARCH's body is borne home — keep every monarch grave's resting place
-          // current
-          // (home while held, else wealthiest owned) so a mage knows where to stand and the match below
-          // works even if the old resting province has since been lost.
-          (G.heroGraveyard||[]).forEach(g=>{ if(g&&g._monarch&&g.player!=null){ const r=monarchRestProvId(G,g.player); if(r!=null) g.location=r; } });
+          // A fallen MONARCH's body was borne home when he died and stays there, even if that
+          // province has since been captured (2026-10-08, Toby item 1) — never move it here.
           const knownIds=new Set(G.players[c.player]?.knownDeadHeroIds||[]);
           // the body must lie in the CASTER'S OWN province for any of this to resolve — and a
           // caster standing over a corpse can plainly see it. Requiring a remembered death as well
@@ -23637,6 +23674,11 @@ const BATTLE_ARMY_SPELLS={
       if((guard||_leaderless)&&prov.owner===null){
         const attacker=[...playerForces].sort(_rankForce)[0];
         log('combat',`⚔ The unfinished battle for ${prov.name} resumes — ${forceLabel(attacker)} presses the attack on ${guard?guard.name.replace(' (wandering)',''):'the leaderless garrison'}.`,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[attacker.player],provinceId:prov.id,public:true});
+        // 2026-10-08 (Toby item 6): pressing on against neutral defenders spends a movement point when
+        // one is left, exactly as a carry-on battle against another realm does (below); with none
+        // left it is fought anyway.
+        { const _pool=(prov.terrain==='sea')?seaMovePoints:movePoints;
+          if((_pool[attacker.id]??0)>0) _pool[attacker.id]=Math.max(0,(_pool[attacker.id]??0)-1); }
         const atkCopy={...attacker,armies:[...(attacker.armies||[])]};
         let savedIntel=null;
         if(guard){ savedIntel=prov.neutralDefenders; prov.neutralDefenders=[...(guard.armies||[])]; }
@@ -26310,10 +26352,17 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // nothing.
   {
     const np=(G.players||[]).length;
+    // 2026-10-08 (Toby item 3c): the overtures each realm received THIS turn, for its Diplomacy card
+    // (buildTurnReport → diplomacy.known[].offeredUs). Rebuilt every turn, so it is always last turn's.
+    (G.players||[]).forEach(p=>{ if(p) p._overturesIn=[]; });
     const validDecl=(from,to)=>{
       const d=diploDeclarations[from]&&diploDeclarations[from][to];
       if(d!=='treat'&&d!=='enemy') return null;
       if(!((G.players[from]&&G.players[from]._encountered)||[]).includes(to)) return null; // must have met them
+      // 2026-10-08 (Toby item 3b): in a game of three realms or fewer no alliance can be forged, so
+      // a Treat between two NEUTRAL realms can achieve nothing. The portal never offers it; a bot's
+      // is dropped here, so nobody is asked to answer an offer that cannot be accepted.
+      if(d==='treat'&&np<=3&&(G.relations[relKeyOf(from,to)]||'neutral')==='neutral') return null;
       return d;
     };
     for(let a=0;a<np;a++){
@@ -26347,14 +26396,23 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         // from the current relation.
         const _offerWord=(cur==='enemy'?'peace':'an alliance');
         const _mutual=(da==='treat'&&db==='treat');
-        const _tellOffered=(to,fromName)=>{
+        const _tellOffered=(to,from,fromName)=>{
+          // 2026-10-08 (Toby item 3a/3c): being courted counts as MEETING the realm that sent it, so
+          // the courted realm can answer (only met realms are on the Diplomacy card, and only met
+          // realms may be treated with). The offer is also kept for the Diplomacy card.
+          const _tp=G.players[to];
+          if(_tp){
+            if(!Array.isArray(_tp._encountered)) _tp._encountered=[];
+            if(!_tp._encountered.includes(from)) _tp._encountered.push(from);
+          }
           // When both sides treated and the relation actually moved, the pact announcement below
           // says it all — no need to also report the overture that produced it.
           if(_mutual&&next!==cur) return;
+          if(_tp&&!_mutual) (_tp._overturesIn=_tp._overturesIn||[]).push({from, kind:(cur==='enemy'?'peace':'alliance')}); // still awaiting an answer
           log('system',`🕊 ${fromName} has sent you an overture of ${_offerWord}.${_mutual?' You answered in kind.':` Declare a Treat toward ${fromName} with next turn's orders to answer it.`}`,{actor:null,targets:[to],system:true});
         };
-        if(da==='treat') _tellOffered(b,na);
-        if(db==='treat') _tellOffered(a,nb);
+        if(da==='treat') _tellOffered(b,a,na);
+        if(db==='treat') _tellOffered(a,b,nb);
         if(blockedAlliance){
           log('system',`${na} and ${nb} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[a],system:true});
           log('system',`${nb} and ${na} both sought an alliance, but no alliances may be forged in a realm of so few kings — the pact cannot be sealed.`,{actor:null,targets:[b],system:true});
@@ -27584,6 +27642,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.09.30-0038</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2207</div>
 </body>
 </html>

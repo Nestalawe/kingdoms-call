@@ -810,7 +810,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.09.29-2329';
+const KC_DATA_MIN_P='2026.10.08-2159';
 (function(){
   const need=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -3565,6 +3565,7 @@ function _renderDiplomacyInto(el, report, withControls){
         <strong style="color:${reportColour(k.color)||'#333'}">${k.name}</strong>
         <span style="font-size:.72rem;color:#332c20">${k.alignment||''}</span>
         ${(k.conceded||k.eliminated)?`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated&&!k.conceded?'\u2620 Extinguished':'\u{1F3F3} Conceded'}${(k.conceded&&k.concededTurn)?` (turn ${k.concededTurn})`:''}</span>`:relBadge(k.relation)}
+        ${(!k.conceded&&!k.eliminated&&k.offeredUs)?`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs==='peace'?'peace':'an alliance'} last turn</span>`:''}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
@@ -10340,6 +10341,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.08-2118</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.08-2156</div>
 </body>
 </html>
