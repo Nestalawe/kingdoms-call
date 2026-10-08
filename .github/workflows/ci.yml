@@ -1,0 +1,35 @@
+# Runs npm test on every pull request and every push to main.
+# Branch protection on main requires the check named "ci".
+# deploy.yml also calls this workflow, so the site is only published after these tests pass.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Only Chromium is used by the tests.
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm test
