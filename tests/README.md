@@ -57,6 +57,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input |
 | `leaderboard-render` | `claude_lb_render_0927.js` | 4 | ✅ pass | The Hall of Fame renders every tab, filter and GM control from real built rows |
 | `concede` | `claude_concede_0927.js` | 2 | ✅ pass | A conceded realm in the Diplomacy card; the Reckoning when all rivals but one have quit |
+| `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
 | `report-privacy` | `claude_reportleak_0927.js` | 3 | ✅ pass | No realm's private report line reaches a second realm, over all-bot games |

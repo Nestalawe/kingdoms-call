@@ -756,9 +756,10 @@ section{display:none;}.section-active{display:block;}
         <div class="card" id="orders-card" style="margin:0;border-radius:0;border:none;flex:1;display:flex;flex-direction:column">
           <div id="orders-sticky-top" style="position:sticky;top:0;background:var(--parchment);z-index:4;border-bottom:1px solid var(--parchment-dark)">
           <h2 style="background:var(--parchment);margin:0;padding:8px 0;display:flex;align-items:center;gap:8px">⚜ Orders — Turn <span id="orders-turn-num"></span>
-            <span style="margin-left:auto;display:flex;gap:4px">
-              <button class="secall-btn" onclick="collapseAllSections('#orders-column',true)" title="Minimise every hero">&#9656; all</button>
-              <button class="secall-btn" onclick="collapseAllSections('#orders-column',false)" title="Expand every hero">&#9662; all</button>
+            <span style="margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px">
+              <button class="secall-btn" onclick="groupHeroesByLocation()" title="Put heroes standing in the same province next to each other">&#128205; Group by location</button>
+              <button class="secall-btn" onclick="collapseAllSections('#orders-column',true)" title="Minimise every hero">&#9656; Collapse all</button>
+              <button class="secall-btn" onclick="collapseAllSections('#orders-column',false)" title="Expand every hero">&#9662; Expand all</button>
             </span>
           </h2>
           <div id="orders-ledger" style="display:none"></div>
@@ -4740,6 +4741,26 @@ function moveHeroBlock(charId, dir){
   _heroOrder=heroBlocksP().map(b=>b.getAttribute('data-hero'));
   refreshHeroMoveButtonsP();
   try{ blocks[i].scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){} // not every environment has it
+  persistHeroOrder();
+}
+// 2026-10-08 (Toby item 5): "Group by location" puts heroes standing in the same province next to
+// each other. Provinces come in the order their first hero already appears (so the king's stays on
+// top), and heroes keep their old order inside each province. Each hero moves with the cards parked
+// under it, and the result is remembered exactly like a ▲▼ reorder.
+function groupHeroesByLocation(){
+  const blocks=heroBlocksP(); if(blocks.length<2) return;
+  const chars=(currentReport&&currentReport.characters)||[];
+  const locOf=id=>{ const c=chars.find(x=>String(x.id)===String(id)); return c?String(c.locationId!=null?c.locationId:(c.locationName||'?')):'?'; };
+  const firstSeen=new Map();
+  blocks.forEach(b=>{ const k=locOf(b.getAttribute('data-hero')); if(!firstSeen.has(k)) firstSeen.set(k,firstSeen.size); });
+  const sorted=blocks.map((b,i)=>({b,i,k:firstSeen.get(locOf(b.getAttribute('data-hero')))})).sort((x,y)=>x.k-y.k||x.i-y.i);
+  if(sorted.every((s,i)=>s.i===i)) return;   // already grouped
+  // The last hero's group runs to the end of the form, so re-appending every group in the new order
+  // leaves the blocks above the heroes (realm, discoveries, heir) where they are.
+  const parent=blocks[0].parentNode;
+  sorted.map(s=>heroGroupP(s.b)).flat().forEach(n=>parent.appendChild(n));
+  _heroOrder=heroBlocksP().map(b=>b.getAttribute('data-hero'));
+  refreshHeroMoveButtonsP();
   persistHeroOrder();
 }
 // Re-disable the first ▲ and the last ▼ after every move.
@@ -10319,6 +10340,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.09.30-0038</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.08-2118</div>
 </body>
 </html>
