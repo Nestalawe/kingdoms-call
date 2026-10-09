@@ -398,6 +398,9 @@ section{display:none;}.section-active{display:block;}
     position:static!important; width:100%!important; max-width:100%!important; height:100%!important;
     min-width:0!important; border-right:none!important; flex:1 1 auto; overflow:auto; box-sizing:border-box; }
   .desk-body > #rp-map-col{ overflow:hidden; }
+  /* 2026-10-09 (Toby item 4): on a short window the full legend (~250px) left the map a thin strip.
+     It takes at most a third of the panel and scrolls inside itself; the map keeps the rest. */
+  .desk-body > #rp-map-col > #map-legend{ flex:0 1 auto; max-height:33%; overflow-y:auto; box-sizing:border-box; }
   /* The messages column owns its own inner scroller (the thread), so the column itself must NOT
      scroll — otherwise the composer pinned to its foot scrolls away with the thread. */
   /* NO `display` here: applyDeskViews() sets it inline ('flex' / 'none'), and a `display:flex!important`
@@ -592,7 +595,7 @@ section{display:none;}.section-active{display:block;}
           </div>
         </div>
         <!-- Map legend -->
-        <div style="padding:10px 14px;background:#1a1208;border-top:1px solid #333;display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;color:#bbb;align-items:center">
+        <div id="map-legend" style="padding:10px 14px;background:#1a1208;border-top:1px solid #333;display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;color:#bbb;align-items:center">
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:#4a7a3a;border-radius:2px"></span> Terrain colour</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:transparent;border:2px solid #c8922a;border-radius:2px"></span> Your province</span>
           <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:18px;height:12px;background:transparent;border:2px solid #eee;border-radius:2px"></span> Enemy province</span>
@@ -1439,7 +1442,9 @@ function applyDeskViews(){
   else if(rep.parentNode!==rb) rb.appendChild(rep);
   if(msg&&msg.parentNode!==lb) lb.appendChild(msg);
   const mt=document.getElementById('desk-msg-tab'); if(mt) mt.style.display=_msgEnabled?'':'none';
-  map.style.display=(_deskLeftView==='map')?'':'none';
+  // 'flex', not '': clearing the inline value also dropped the column's inline display:flex, so the
+  // map column fell back to a block, the map grew past the panel's foot (cut off, nothing to scroll).
+  map.style.display=(_deskLeftView==='map')?'flex':'none';
   if(msg) msg.style.display=(_deskLeftView==='messages')?'flex':'none';
   ord.style.display=((repLeft||_deskRightView==='orders')&&_ordersAvailable)?'':'none';
   rep.style.display=(repLeft||_deskRightView==='report'||(_deskRightView==='orders'&&!_ordersAvailable))?'':'none';
@@ -10375,6 +10380,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-1751</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-1800</div>
 </body>
 </html>

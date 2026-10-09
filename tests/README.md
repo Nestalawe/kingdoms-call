@@ -84,6 +84,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `fuzz-advance-masking` | `claude_fuzz_0927d.js` | 3 | ✅ pass | Advance-and-strike combat, masking of unmet realms, archive round-trip |
 | `chromium-boot` | `claude_lb_chromium_0927.js` | 4 | ✅ pass | GM portal, player portal and Hall of Fame boot in real Chromium; links and footers present |
 | `orders-buttons-visible` | new | 4 | ✅ pass | In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone |
+| `map-fits-panel` | new | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
 | `gm-messaging-boot` | `claude_msg_gm_boot_0927.js` | 4 | ✅ pass | GM portal boots; the dispatches set-up banner appears and goes; deleting a game clears its dispatches first |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
