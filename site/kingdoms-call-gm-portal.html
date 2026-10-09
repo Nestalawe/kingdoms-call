@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1739'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1701'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -13137,13 +13137,6 @@ async function runTurn(opts){
   // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
   // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
   const fieldBattlePhase={};
-  // 2026-10-08 (Toby item 13): the heroes who served no crown when this turn's orders were given. An
-  // order written against one of them was written against a WANDERER — a Charm meant to win them, or
-  // nothing at all for an Encounter (only a rival realm's heroes may be hunted). If a realm hires them
-  // first, that order must not turn into an attack on the realm's new hero: bots planned "seek the
-  // wanderer and charm him", the player hired him first, and the bot's Charm then seized the player's
-  // hero or provoked a fight with him.
-  const wanderingAtStart=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.player==null&&!c._isNeutralGuard).map(c=>c.id));
   function noteFieldBattle(atk,def,prov){
     const ph=_currentPhase, ids=[]; if(ph==null||!prov) return ids;
     const sides=new Set([atk&&atk.player,def&&def.player].filter(x=>x!=null));
@@ -21580,13 +21573,6 @@ const BATTLE_ARMY_SPELLS={
         if(quarry.id===c.id){
           log('system',`${c.name} cannot set out to encounter themself.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
-        // 2026-10-08 (Toby item 13): an Encounter hunts a rival REALM's hero — the order form never
-        // offers a wanderer, and the engine now holds every order (a bot's included) to the same rule.
-        // A hero who was a masterless wanderer when the orders were given stays off limits for the
-        // turn even once a realm has hired them.
-        if(quarry.player==null||(wanderingAtStart.has(quarry.id)&&quarry.player!==c.player)){
-          log('system',`${c.name} will not hunt ${quarry.name.replace(' (wandering)','')} — an Encounter is for a rival realm's heroes, and ${quarry.name.replace(' (wandering)','')} answered to no crown when the orders were given.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
         // a seized ENEMY hero will not raise a hand against their own lord's people — no Encounter
         // against a character of the original owner. Any other realm's heroes are fair game as
         // usual.
@@ -21811,19 +21797,6 @@ const BATTLE_ARMY_SPELLS={
         // neither the cast nor the turn's casting slot. This is what a caster meets when the hero
         // they aimed at has left the province — most often a general on Defend who rode out to a
         // threatened neighbour at the top of the phase, before any order resolved.
-        // ── A CHARM MEANT FOR A WANDERER (item 13) ── the hero has sworn to another crown since the
-        // orders were given. Refused before the roll: nothing is worked, no slot is spent, and the
-        // hero (who never knew they were the target) does not turn on the caster.
-        if(spellDef.fn==='psychic_charm'){
-          const _tid=parseInt(extra);
-          const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
-          if(_t&&wanderingAtStart.has(_t.id)&&_t.player!=null&&_t.player!==c.player){
-            o._castNotWorked=true;
-            log('system',`${c.name} comes to Charm ${_t.name}, but ${_t.name} has taken service with ${G.players[_t.player]?.name||'another realm'} since the orders were given — the spell meant to win a masterless wanderer is never worked.`,
-              {actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id,phase:ph});
-            break;
-          }
-        }
         if(SPELL_FNS_NEED_COLOCATED_TARGET.has(spellDef.fn)){
           const _tid=parseInt(extra);
           const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
@@ -27819,6 +27792,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1739</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1701</div>
 </body>
 </html>
