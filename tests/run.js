@@ -57,6 +57,7 @@ const SUITE=[
   ['chromium-boot',        'tests/chromium-boot.test.js'],
   ['orders-buttons-visible','tests/orders-buttons-visible.test.js'],
   ['map-fits-panel',       'tests/map-fits-panel.test.js'],
+  ['dispatches-badge',     'tests/dispatches-badge.test.js'],
   ['gm-messaging-boot',    'tests/gm-messaging-boot.test.js'],
 ];
 const QUARANTINED=fs.readdirSync(path.join(__dirname,'quarantine')).filter(f=>f.endsWith('.test.js')).sort()

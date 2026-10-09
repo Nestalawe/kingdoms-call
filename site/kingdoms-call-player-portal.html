@@ -1323,6 +1323,7 @@ function setMobileView(view){
   document.querySelectorAll('#mobile-tabbar button').forEach(b=>b.classList.toggle('active',b.getAttribute('data-mv')===view));
   if(view==='map'){ try{ applyMapZoom(); }catch(e){} } // map fix: re-fit the SVG height now the column is visible
   if(view==='messages'){ try{ onMessagesShown(); }catch(e){} }
+  else refreshMsgBadgeSoon();
   try{ window.scrollTo(0,0); }catch(e){}   // start each view at its head
 }
 
@@ -1427,6 +1428,7 @@ function setDeskView(side,view){
   }
   applyDeskViews();
   if(side==='left'&&view==='messages'){ try{ onMessagesShown(); }catch(e){} }
+  else refreshMsgBadgeSoon();
 }
 function applyDeskViews(){
   const map=document.getElementById('rp-map-col'), rep=document.getElementById('rp-report-col'),
@@ -10089,6 +10091,15 @@ function startMessagePolling(){
     refreshMessages(false);
   }, MSG_POLL_MS);
 }
+// 2026-10-09 (Toby item 2): the unread count on the ✉ Dispatches tab. Off the Dispatches view the poll
+// runs only one tick in four (≈32s), so a dispatch that arrived while the player read the report or
+// the map could take half a minute to show — long enough to look like no count at all. Any switch of
+// view, and coming back to the browser tab, now asks for new dispatches at once (one small query for
+// ids above the newest held). try/catch: a view switch can run before the tail of the script has
+// declared the messaging state (see _msgEnabled above).
+function refreshMsgBadgeSoon(){
+  try{ if(_msgEnabled&&_msgGameId&&_activeSectionId()==='sec-report') refreshMessages(false); }catch(e){}
+}
 function stopMessagePolling(){ if(_msgTimer){ clearInterval(_msgTimer); _msgTimer=null; } }
 function _msgViewVisible(){
   if(_activeSectionId()!=='sec-report') return false;
@@ -10372,6 +10383,7 @@ window.addEventListener('pagehide',()=>{ try{ saveMessageReads(); }catch(e){} })
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ try{ saveMessageReads(); }catch(e){} }
   else if(_msgEnabled&&_msgViewVisible()){ try{ refreshMessages(true); }catch(e){} }
+  else refreshMsgBadgeSoon(); // the unread count on the Dispatches tab, too
 });
 
 // ── BOOT ────
@@ -10380,6 +10392,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-1800</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-1830</div>
 </body>
 </html>
