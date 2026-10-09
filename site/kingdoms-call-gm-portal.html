@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1704'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1705'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -23109,14 +23109,13 @@ const BATTLE_ARMY_SPELLS={
       return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
     }));
   }
-  // 2026-10-08 (Toby item 10): a beaten force never falls back into a province that is only passable
-  // this turn by magic — one FLOODED into sea, or a sea province PARTED into dry ground — while a
-  // province of ordinary land is open to it. With no ordinary land among the choices the list is
-  // left as it is (open sea stays open to a fleet).
-  function isMagicGround(p){ return !!(p&&(p._flood||p._partSea)); }
+  // 2026-10-09 (Toby item 10): a beaten force NEVER falls back into a FLOODED province. It may fall
+  // back onto a sea province PARTED into dry ground, but only when no province of ordinary land is open
+  // to it. (Open sea stays open to a fleet: that is not magic ground.)
   function preferDryGround(list){
-    const dry=(list||[]).filter(p=>p&&p.terrain!=='sea'&&!isMagicGround(p));
-    return dry.length?(list||[]).filter(p=>!isMagicGround(p)):(list||[]);
+    const open=(list||[]).filter(p=>p&&!p._flood);
+    const ordinary=open.filter(p=>p.terrain!=='sea'&&!p._partSea);
+    return ordinary.length?open.filter(p=>!p._partSea):open;
   }
   // ── NAVAL RETREAT: THE FLEET MAKES FOR WATER (2026-09-27, Toby item 3) ─────────────────────
   // A beaten force that has SHIPS on a coastal shore no longer falls back as one body.
@@ -27782,6 +27781,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1704</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1705</div>
 </body>
 </html>

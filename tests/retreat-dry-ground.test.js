@@ -1,5 +1,5 @@
-// 2026-10-08 (item 10) — a beaten force does not fall back onto ground that only magic has opened
-// this turn (a Flooded province, or sea laid dry by Part Sea) while ordinary land is open to it.
+// 2026-10-08 (item 10; Toby's ruling 2026-10-09) — a beaten force NEVER falls back into a Flooded
+// province, and onto sea laid dry by Part Sea only when no ordinary land is open to it.
 // The retreat choosers are nested inside runTurn; the hook at "  // 4. Run all 5 phases" hands them
 // back after one real turn, and each case is then staged on that world.
 const {bootScenario}=require('./lib/scenario');
@@ -44,6 +44,11 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   { const ch=stage([unit('Shieldwall Levies')]); P1.owner=null; part(P2);
     const {o}=pick(ch);
     ok(o.some(p=>p.id===P2.id),'(3) parted sea is still a retreat when nothing else is open'); }
+  // 3b. …but a Flooded province is never a way out, even when nothing else is open (flyers can cross water).
+  { const ch=stage([unit('Noble Griffons')]); P1.owner=null; flood(P2);
+    const {o}=pick(ch);
+    ok(!o.some(p=>p.id===P2.id),'(3b) a flooded province is never a retreat, even with nothing else open');
+    unflood(P2); }
   // 4. The naval split: ships with no friendly water march their troops inland — to ordinary land.
   { const ch=stage([unit('Galleon Fleet'),unit('Shieldwall Levies')]); part(P2);
     nb(site).filter(n=>n.terrain==='sea').forEach(n=>{ n.owner=null; });
