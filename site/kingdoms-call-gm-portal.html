@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1739'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1751'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -810,6 +810,10 @@ function navalSpeedBonus(baseSpeed,navalLevel){
 // HUMAN — Ride Them Down only works in open country. Light horse need room to run a broken enemy
 // down; in woods, jungle or mountains the survivors simply scatter into cover.
 const OPEN_COUNTRY=new Set(['plain','desert']);
+// ORC — Run Them Down (2026-10-09, Toby item 7): added to each beaten unit's destruction chance when at
+// least half the winning force are Warg Riders. Any terrain. (Ride Them Down, for comparison, gives
+// +6% per Free Lances unit up to +18%, open country only.)
+const RUN_THEM_DOWN_PCT=0.15;
 function rideThemDownBonus(force, terrain, cmdr){
   if(countType(force,'Free Lances')===0) return 0;
   // War-Horn of the Plains: the commander's Free Lances always pursue — any terrain, full bonus.
@@ -3611,12 +3615,12 @@ function dedupeItemsByName(items){
 }
 // ── MAXIMUM HP ── a character's maximum HP is an earned pool again.
 // max HP = start (15; 18 for an Orcish character of an Orcish realm) + hpEarned + item bonuses + ro08.
-// hpEarned grows ONLY through combat wins (lair guardian cleared, enemy character slain, pre-battle
-// duel won) — see rollHpGain. Each win: +1–3 while the earned base is under the first shoulder, then a
-// shrinking chance of a smaller gain, so the pool stalls around 60 (65 Orc) with no hard cap.
-// Shoulders: 40 / 50 / 60 (+5 for the Orcish edge). Skills no longer drive HP.
+// hpEarned grows ONLY through personal combat — see rollHpGain. 2026-10-09 (Toby item 16): every roll
+// GAINS; the roll only sets how much: 1–3 while the earned base is under 40, 1–2 from 40, 1 from 50
+// (+5 on each shoulder for the Orcish edge). The old shrinking chance of any gain at all is gone.
+// A winner adds +1 (awardHpRoll). Skills no longer drive HP.
 const HPGAIN_START=15, HPGAIN_START_ORC=18, HPGAIN_ORC_SHIFT=5, HPGAIN_MIGRATE_CLAMP=60;
-const HPGAIN_S1=40, HPGAIN_S2=50, HPGAIN_S3=60, HPGAIN_FLOOR_PCT=5;
+const HPGAIN_S1=40, HPGAIN_S2=50;
 let _MAXHP_PLAYERS=null; // set by runTurn / generateNewGame so module-level callers can see the realm races
 function maxHpIsOrc(ch, players){
   const pl=players||_MAXHP_PLAYERS||[];
@@ -3638,36 +3642,30 @@ function computeMaxHp(ch, players){
   const _discHp=_plHp?discMaxHpFor(_plHp,ch):0;
   return hpEarnedBase(ch,players)+itemMaxHpBonus(ch)+_discHp;
 }
-// The gain curve. Returns {chance, lo, hi} for the NEXT win given the current earned base.
+// The gain curve. Returns {lo, hi}: how much the NEXT roll gains, given the current earned base.
 function hpGainBand(ch, players){
   const base=hpEarnedBase(ch,players), sh=maxHpIsOrc(ch,players)?HPGAIN_ORC_SHIFT:0;
-  if(base<HPGAIN_S1+sh) return {chance:100, lo:1, hi:3};
-  if(base<HPGAIN_S2+sh) return {chance:100-4*(base-(HPGAIN_S1+sh)), lo:1, hi:2};
-  if(base<HPGAIN_S3+sh) return {chance:60-4*(base-(HPGAIN_S2+sh)), lo:1, hi:1};
-  return {chance:Math.max(HPGAIN_FLOOR_PCT, 20-4*(base-(HPGAIN_S3+sh))), lo:1, hi:1};
+  if(base<HPGAIN_S1+sh) return {lo:1, hi:3};
+  if(base<HPGAIN_S2+sh) return {lo:1, hi:2};
+  return {lo:1, hi:1};
 }
-// Roll a combat-win HP gain for a REAL character and apply it (the rise heals into the new
-// headroom). Returns {gain, chance, roll, maxHp}; gain 0 when the roll fails. `why` is only used
+// Roll a maximum-HP gain for a REAL character and apply it (the rise heals into the new headroom).
+// Every roll gains (item 16); the roll is only the amount. Returns {gain, maxHp}. `why` is only used
 // for the note.
 function rollHpGain(ch, players, why){
-  if(!ch||ch.alive===false) return {gain:0,chance:0,roll:0,maxHp:ch?ch.maxHp:0};
+  if(!ch||ch.alive===false) return {gain:0,maxHp:ch?ch.maxHp:0};
   const band=hpGainBand(ch,players);
-  const roll=Math.floor(Math.random()*100)+1;
-  let gain=0;
-  if(roll<=band.chance) gain=Math.floor(Math.random()*(band.hi-band.lo+1))+band.lo;
-  if(gain>0){ ch.hpEarned=Math.max(0,Math.round(ch.hpEarned||0))+gain; syncMaxHp(ch,players); }
-  return {gain, chance:band.chance, roll, maxHp:ch.maxHp, why:why||''};
+  const gain=Math.floor(Math.random()*(band.hi-band.lo+1))+band.lo;
+  ch.hpEarned=Math.max(0,Math.round(ch.hpEarned||0))+gain; syncMaxHp(ch,players);
+  return {gain, maxHp:ch.maxHp, why:why||''};
 }
 function hpGainLine(ch, r){
   if(!r) return '';
-  // 2026-10-08 (Toby item 16): a wounded hero rolls too (r.wound), and a winner's successful roll
-  // carries +1 for the victory (r.winBonus).
-  if(r.wound){
-    if(r.gain>0) return `💪 ${ch.name} is hardened by the wounds of the fight — maximum HP +${r.gain} → ${r.maxHp}.${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
-    return `${ch.name} carries the wounds of the fight, but no lasting hardening comes of them. [${r.chance}% roll ${r.roll}]`;
-  }
-  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}${r.winBonus?' (including +1 for the win)':''}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
-  return `${ch.name} is battle-worn already — no further hardening from this victory. [${r.chance}% roll ${r.roll}]`;
+  // 2026-10-08/09 (Toby item 16): a wounded hero rolls too (r.wound); a winner gets +1 on the roll
+  // (r.winBonus). Every roll gains — there is no longer a chance of nothing.
+  if(!(r.gain>0)) return '';
+  if(r.wound) return `💪 ${ch.name} is hardened by the wounds of the fight — maximum HP +${r.gain} → ${r.maxHp}.`;
+  return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}${r.winBonus?' (including +1 for the win)':''}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}`;
 }
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
 // filled); a fall clamps current HP to the new maximum (never below 1 for a living character).
@@ -13137,13 +13135,6 @@ async function runTurn(opts){
   // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
   // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
   const fieldBattlePhase={};
-  // 2026-10-08 (Toby item 13): the heroes who served no crown when this turn's orders were given. An
-  // order written against one of them was written against a WANDERER — a Charm meant to win them, or
-  // nothing at all for an Encounter (only a rival realm's heroes may be hunted). If a realm hires them
-  // first, that order must not turn into an attack on the realm's new hero: bots planned "seek the
-  // wanderer and charm him", the player hired him first, and the bot's Charm then seized the player's
-  // hero or provoked a fight with him.
-  const wanderingAtStart=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.player==null&&!c._isNeutralGuard).map(c=>c.id));
   function noteFieldBattle(atk,def,prov){
     const ph=_currentPhase, ids=[]; if(ph==null||!prov) return ids;
     const sides=new Set([atk&&atk.player,def&&def.player].filter(x=>x!=null));
@@ -18000,7 +17991,12 @@ const BATTLE_ARMY_SPELLS={
     // force no longer chains itself to a lost field.
     const _sfAtk=isHalfOrMore(atkArmies,'Dwarven Guard');
     const _sfDef=isHalfOrMore(defArmies,'Dwarven Guard');
-    // ORC — Run Them Down: a warg-heavy victor takes up the chase automatically.
+    // ORC — Run Them Down (2026-10-09, Toby item 7): a warg-heavy victor runs the beaten army down ON
+    // THE FIELD. When at least half the winning force are Warg Riders, every beaten unit's chance of
+    // being destroyed in the rout rises by RUN_THEM_DOWN_PCT, on any ground — instead of the old
+    // automatic chase after the beaten commander, which marched the victor off in later phases on
+    // orders nobody gave. There is no follow-up move or pursuit now. A Shield Fort withdrawal is
+    // immune, exactly as it is to Ride Them Down.
     const _wargAtk=isHalfOrMore(atkArmies,'Warg Riders');
     const _wargDef=isHalfOrMore(defArmies,'Warg Riders');
     // ELF — Skyward Retreat: eagles simply fly out of a trap.
@@ -18070,9 +18066,10 @@ const BATTLE_ARMY_SPELLS={
       });
       survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
-      const _rideAtkEff=_sfDef?0:_rideAtk;
+      const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0));
       if(_rideAtk>0&&_sfDef) narrative.push(`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideAtk>0) narrative.push(`🐎 ${atkName}'s Free Lances ride down the broken companies (+${dispFloor(_rideAtk*100)}% losses to ${defName}).`);
+      if(_wargAtk) narrative.push(_sfDef?`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Warg Riders find no broken backs to run down.`:`🐺 ${atkName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${defName}).`);
       // Losing defender
       const _cas1=narrative.length;
       defArmies.forEach(a=>{
@@ -18159,9 +18156,10 @@ const BATTLE_ARMY_SPELLS={
       const _headIdx=narrative.length;
       narrative.push(`${atkName}'s assault is repelled! After ${aAn(severity)} ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`);
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Losing attacker
-      const _rideDefEff=_sfAtk?0:_rideDef;
+      const _rideDefEff=_sfAtk?0:(_rideDef+(_wargDef?RUN_THEM_DOWN_PCT:0));
       if(_rideDef>0&&_sfAtk) narrative.push(`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef*100)}% losses to ${atkName}).`);
+      if(_wargDef) narrative.push(_sfAtk?`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Warg Riders find no broken backs to run down.`:`🐺 ${defName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${atkName}).`);
       const _cas2=narrative.length;
       atkArmies.forEach(a=>{
         const i=tiers.indexOf(a.quality);
@@ -18252,20 +18250,6 @@ const BATTLE_ARMY_SPELLS={
     // Battle-magic strength reductions last only for this battle — units recover afterward.
     [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;delete a._flakTargeted;});
     clearPhantomCopies(atk, !won, realCharOf(atk)); clearPhantomCopies(def, won, realCharOf(def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
-    // ORC — Run Them Down: a warg-heavy victor takes up the chase without being told to.
-    (function(){
-      const winnerArmed=won?atkArmies:defArmies;
-      const wargs=won?_wargAtk:_wargDef;
-      if(!wargs) return;
-      const winner=won?atk:def, loser=won?def:atk;
-      const rw=(G.characters||[]).find(x=>x&&x.id===winner.id);
-      const rl=(G.characters||[]).find(x=>x&&x.id===loser.id);
-      if(!rw||!rl||!rl.alive||rw.player===rl.player) return;
-      if(rw._pursuit&&rw._pursuit.active) return;
-      rw._pursuit={targetId:rl.id,active:true,setPhase:-1};
-      delete rw._defend;
-      narrative.push(`🐺 ${winner.name}'s Warg Riders need no order — the pack is already away after ${loser.name}.`);
-    })();
 
     // AK [3.15]: "A character's Defend order is canceled if he loses a battle, to prevent further
     // needless defeats." atk/def are pooled copies, so resolve back to the real character by id.
@@ -18612,16 +18596,15 @@ const BATTLE_ARMY_SPELLS={
   // guardian cleared, enemy character slain (any personal-combat path), pre-battle duel won
   // (kill or the loser breaking off). A fled Encounter/chase/thief fight and a pacified beast do NOT count.
   function awardWinHp(ch, narrative, why){ return awardHpRoll(ch, narrative, why, true); }
-  // 2026-10-08 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin) or
-  // for a hero who was wounded in it (resolvePersonalCombat). A winner whose roll succeeds gains +1 on
-  // top for the victory. (Recommended reading of "+1 hp to the hp gain": the bonus rides on a
-  // successful roll, so the soft ceiling around 60 HP still holds; see the PR for the ruling.)
+  // 2026-10-08/09 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin)
+  // or for a hero who was wounded in it (resolvePersonalCombat). The roll sets the amount; a winner
+  // gains the roll +1.
   function awardHpRoll(ch, narrative, why, isWin){
     if(!ch||ch.alive===false) return null;
     const real=(ch.id!=null&&(G.characters||[]).find(r=>r&&r.id===ch.id))||ch;
     if(real.alive===false) return null;
     const r=rollHpGain(real, G.players, why);
-    if(isWin&&r.gain>0){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
+    if(isWin){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
     r.wound=!isWin;
     if(r.gain>0&&real.isKing&&hasDisc(real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
       real.hpEarned+=r.gain; syncMaxHp(real,G.players); r.gain*=2; r.maxHp=real.maxHp; r.sd35=true; }
@@ -18637,7 +18620,8 @@ const BATTLE_ARMY_SPELLS={
     // mechanism).
     if(ch!==real){ ch.hpEarned=real.hpEarned; ch.maxHp=real.maxHp; ch.pay=real.pay; if(r.gain>0&&ch.hp!=null) ch.hp=Math.min(real.maxHp, ch.hp+r.gain); }
     const line=hpGainLine(real, r);
-    if(Array.isArray(narrative)) narrative.push(line);
+    if(!line){ /* nothing gained — nothing to say */ }
+    else if(Array.isArray(narrative)) narrative.push(line);
     else { const prov=(real.location!=null)?G.world.provinces[real.location]:null;
       log('combat', line, {actor:real.player!=null?real.player:-1, targets:real.player!=null?[real.player]:[], charId:real.id, provinceId:prov?prov.id:undefined}); }
     return r;
@@ -21580,13 +21564,6 @@ const BATTLE_ARMY_SPELLS={
         if(quarry.id===c.id){
           log('system',`${c.name} cannot set out to encounter themself.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
-        // 2026-10-08 (Toby item 13): an Encounter hunts a rival REALM's hero — the order form never
-        // offers a wanderer, and the engine now holds every order (a bot's included) to the same rule.
-        // A hero who was a masterless wanderer when the orders were given stays off limits for the
-        // turn even once a realm has hired them.
-        if(quarry.player==null||(wanderingAtStart.has(quarry.id)&&quarry.player!==c.player)){
-          log('system',`${c.name} will not hunt ${quarry.name.replace(' (wandering)','')} — an Encounter is for a rival realm's heroes, and ${quarry.name.replace(' (wandering)','')} answered to no crown when the orders were given.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
-        }
         // a seized ENEMY hero will not raise a hand against their own lord's people — no Encounter
         // against a character of the original owner. Any other realm's heroes are fair game as
         // usual.
@@ -21811,19 +21788,6 @@ const BATTLE_ARMY_SPELLS={
         // neither the cast nor the turn's casting slot. This is what a caster meets when the hero
         // they aimed at has left the province — most often a general on Defend who rode out to a
         // threatened neighbour at the top of the phase, before any order resolved.
-        // ── A CHARM MEANT FOR A WANDERER (item 13) ── the hero has sworn to another crown since the
-        // orders were given. Refused before the roll: nothing is worked, no slot is spent, and the
-        // hero (who never knew they were the target) does not turn on the caster.
-        if(spellDef.fn==='psychic_charm'){
-          const _tid=parseInt(extra);
-          const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
-          if(_t&&wanderingAtStart.has(_t.id)&&_t.player!=null&&_t.player!==c.player){
-            o._castNotWorked=true;
-            log('system',`${c.name} comes to Charm ${_t.name}, but ${_t.name} has taken service with ${G.players[_t.player]?.name||'another realm'} since the orders were given — the spell meant to win a masterless wanderer is never worked.`,
-              {actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id,phase:ph});
-            break;
-          }
-        }
         if(SPELL_FNS_NEED_COLOCATED_TARGET.has(spellDef.fn)){
           const _tid=parseInt(extra);
           const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
@@ -23139,14 +23103,13 @@ const BATTLE_ARMY_SPELLS={
       return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
     }));
   }
-  // 2026-10-08 (Toby item 10): a beaten force never falls back into a province that is only passable
-  // this turn by magic — one FLOODED into sea, or a sea province PARTED into dry ground — while a
-  // province of ordinary land is open to it. With no ordinary land among the choices the list is
-  // left as it is (open sea stays open to a fleet).
-  function isMagicGround(p){ return !!(p&&(p._flood||p._partSea)); }
+  // 2026-10-09 (Toby item 10): a beaten force NEVER falls back into a FLOODED province. It may fall
+  // back onto a sea province PARTED into dry ground, but only when no province of ordinary land is open
+  // to it. (Open sea stays open to a fleet: that is not magic ground.)
   function preferDryGround(list){
-    const dry=(list||[]).filter(p=>p&&p.terrain!=='sea'&&!isMagicGround(p));
-    return dry.length?(list||[]).filter(p=>!isMagicGround(p)):(list||[]);
+    const open=(list||[]).filter(p=>p&&!p._flood);
+    const ordinary=open.filter(p=>p.terrain!=='sea'&&!p._partSea);
+    return ordinary.length?open.filter(p=>!p._partSea):open;
   }
   // ── NAVAL RETREAT: THE FLEET MAKES FOR WATER (2026-09-27, Toby item 3) ─────────────────────
   // A beaten force that has SHIPS on a coastal shore no longer falls back as one body.
@@ -25915,13 +25878,6 @@ const BATTLE_ARMY_SPELLS={
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
         _logCtx={charId:c.id,phase:ph};
-        // 2026-10-08 (Toby item 7): a chase the Warg Riders took up on their own (setPhase −1) sets
-        // aside whatever the player ordered for this phase. Say so, or a Move order seems to have
-        // turned into a pursuit nobody asked for.
-        { const _own=(G.turnOrders[c.id]||[])[ph], _oa=normaliseAction(_own);
-          const _q=(G.characters||[]).find(x=>x&&x.id===c._pursuit.targetId);
-          if(c._pursuit.setPhase===-1&&_own&&!_own._pinned&&_oa&&_oa!=='defend')
-            log('move',`🐺 ${c.name}'s Warg Riders are still on the trail of ${_q?_q.name:'their quarry'} — the pack will not be called off, so ${c.name}'s own orders for this season wait until the chase is done.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph}); }
         advancePursuit(c,ph);
         _logCtx={charId:null,phase:null};
         settleStrandedAtSea(ph); // a chase that ended in a sea battle
@@ -27819,6 +27775,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1739</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1751</div>
 </body>
 </html>
