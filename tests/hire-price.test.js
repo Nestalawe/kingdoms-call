@@ -7,7 +7,7 @@ const {bootScenario}=require('./lib/scenario');
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
-  const sc=await bootScenario();
+  const sc=await bootScenario(); const W=sc.W;
   const r=await sc.turn({prepare(S){
     const king=S.characters.find(c=>c.alive&&c.player===0&&c.isKing);
     const home=S.world.provinces[king.location];
@@ -17,6 +17,11 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     S.characters.push({id,name:'Wenna the Seasoned (wandering)',player:null,alive:true,race:'Human',alignment:S.players[0].alignment,
       temper:'Brave',hp:20,maxHp:20,skills:{melee:6,tactical:5,march:4},items:[],armies:[],location:home.id,locationName:home.name,pay:1});
     home.characters=[...(home.characters||[]),id];
+    // Wanderers drift to a neighbouring province at the end of a turn (35%). Realm 0 holds every land
+    // province around the capital, so wherever she ends up she is in sight and for hire — the report
+    // is the same whichever way the drift falls, not a matter of luck.
+    W.getNeighborsP(home,S.world.cols,S.world.rows,S.world.provinces).filter(p=>p&&p.terrain!=='sea').forEach(p=>{
+      S.players.forEach(pl=>{ pl.provinces=(pl.provinces||[]).filter(x=>x!==p.id); }); p.owner=0; S.players[0].provinces.push(p.id); });
     return {id,king};
   }});
   const {id}=r.extra;
@@ -42,7 +47,12 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const opt=html=>{ const m=String(html).match(/<option[^>]*value="(?:hire:)?\d+"[^>]*>[^<]*Wenna[^<]*<\/option>/); return m?m[0]:''; };
   const plainText=html=>{ const el=P.document.createElement('div'); el.innerHTML=String(html); return (el.textContent||'').trim(); };
   const g=html=>{ const m=opt(html).match(/(\d+)g\/turn/); return m?+m[1]:null; };
-  const hireHtml=P.buildTargetField(king,0,{action:'Hire Hero'});
+  // Hire Hero lists the heroes in the hirer's own province: ask for a stand-in hirer standing where
+  // she is (she may have drifted out of the capital at the end of the turn).
+  const standIn={...king,id:'stand-in',isKing:false,locationId:avail.locationId,locationName:avail.locationName};
+  P.__si=standIn; P.eval('currentReport.characters.push(__si)');
+  const hireHtml=P.buildTargetField(standIn,0,{action:'Hire Hero'});
+  P.eval("currentReport.characters=currentReport.characters.filter(c=>c.id!=='stand-in')");
   ok(g(hireHtml)===price,`the Hire Hero dropdown quotes ${price}g (quotes ${g(hireHtml)}g: ${plainText(opt(hireHtml))})`);
   // The Broker list (a Neutral king) reads the same figure.
   P.eval(`currentReport.kingdom.alignment='Neutral';`);
