@@ -77,6 +77,10 @@ deploys (plan step P0-13), "What to try on staging" says what Toby will try once
   PR `refactor-only`; then new tests must pass both before and after.
 - **When something slips through** to a simulation, staging or live play: first add a test at the
   lowest level that would have caught it, show it fails, then fix.
+- **A test's outcome must not depend on luck.** A fixed seed doesn't fix the world: any change that
+  adds or removes a random draw shifts every draw after it. If a test passes only on some seeds,
+  restructure it into clear determinism (stage the state directly, or make the odds overwhelming).
+  Never fix it with retries, loops, re-runs, re-seeding or a seed that happens to pass.
 - **Never "fix" a test to make it pass**, and never edit a quarantined test to pass. If a test fails
   on the current build for a reason outside your change, quarantine it in its own commit: move it to
   `tests/quarantine/`, take it out of `SUITE` in `tests/run.js`, and give the one-line reason as the
