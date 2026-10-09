@@ -117,10 +117,16 @@ for(let i=0;i<N;i++){
   if(m){ bad++; if(bad<6) console.log('BAD VALUE at '+i+': …'+m[0]+'…'); }
   if(!Array.isArray(row.standings)||!row.standings.length){ bad++; console.log('NO STANDINGS at '+i); }
   if(row.turns==null||!isFinite(row.turns)){ bad++; console.log('BAD TURNS at '+i); }
-  Object.entries(row.records).forEach(([k,r])=>{
+  // 2026-10-09 (Toby item 5, confirmed): each key holds a list — every realm's best — not one entry.
+  Object.entries(row.records).forEach(([k,list])=>{
     keySeen.add(k);
-    if(r.v==null||!isFinite(r.v)){ bad++; console.log('BAD RECORD '+k+' at '+i); }
-    if(r.d!=='min'&&r.d!=='max'){ bad++; console.log('BAD DIR '+k+' at '+i); }
+    if(!Array.isArray(list)||!list.length){ bad++; console.log('BAD RECORD LIST '+k+' at '+i); return; }
+    const pis=list.map(r=>r&&r.pi);
+    if(new Set(pis).size!==pis.length){ bad++; console.log('TWO ENTRIES FOR ONE REALM '+k+' at '+i); }
+    list.forEach(r=>{
+      if(!r||r.v==null||!isFinite(r.v)){ bad++; console.log('BAD RECORD '+k+' at '+i); return; }
+      if(r.d!=='min'&&r.d!=='max'){ bad++; console.log('BAD DIR '+k+' at '+i); }
+    });
   });
 }
 // empty-input guards

@@ -60,8 +60,11 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
 | `home-placement` | `claude_homeplacement_0927.js` | 1 | ✅ pass | Capitals are at least 4 hexes apart on every map size |
 | `druid-and-war-spoils` | `claude_fuzz_0927b.js` | 1 | ✅ pass | Unit classes, the Druid ladder, and the Orc war-spoils halving |
-| `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input |
+| `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input (since 2026-10-09 each record is a list with one entry per realm, as Toby confirmed) |
 | `leaderboard-render` | `claude_lb_render_0927.js` | 4 | ✅ pass | The Hall of Fame renders every tab, filter and GM control from real built rows |
+| `leaderboard-events-paging` | new | 1 | ✅ pass | A game's Hall-of-Fame record is built from every one of its turn rows, read in pages in a fixed order (none skipped or read twice); a page that fails stops the build, saves nothing and shows the error |
+| `leaderboard-realm-bests` | new | 1 + 4 | ✅ pass | Every realm's own best for each record is kept (not only the game's best), best first; a hero who fell that turn still counts for his peaks; a title held and then lost is recorded; on the board (jsdom), searching a realm shows only that realm's entries |
+| `battle-spells-recorded` | new | 2 | ✅ pass | A spell worked in a battle reaches the turn's spell statistics; a hero who fell this turn is in his realm's end-of-turn snapshot, not among the living; every title holder's snapshot carries the title |
 | `concede` | `claude_concede_0927.js` | 2 | ✅ pass | A conceded realm in the Diplomacy card; the Reckoning when all rivals but one have quit |
 | `monarch-grave` | new | 1 | ✅ pass | A fallen king's body stays where it was laid at death, even after that province is captured: the Resurrect list, the older body list and the bots' raise planner all put it there |
 | `guardian-melee` | new | 2 | ✅ pass | Every guardian's melee blow rolls its grade's base (Weak 1–3, Moderate 2–5, Powerful 3–7, Legendary 4–9) + ⌈Melee÷2⌉, a hero's stays 1–3 + ⌈Melee÷2⌉; a "−1 melee for next round" special lowers the hero's Melee for exactly one round |
@@ -76,6 +79,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `defend-naval-overland` | new | 2 | ✅ pass | A general on Defend whose column has ships never rides overland to a neighbouring land province, whether the enemy marches in or is already standing there |
 | `defend-once` | new | 2 | ✅ pass | A Defend order is done once it has brought its general to battle (win or lose): no ride-out in a later season without a fresh Defend order, and the battle season's own Defend order does not re-arm it; a fresh Defend order for a later season does |
 | `hp-wound-gain` | new | 1 | ✅ pass | After a personal fight every wounded hero who lives rolls for maximum HP, the winner rolls once (the win award, not a wound roll too) and gains the roll +1, and every roll gains (even past 50 HP) |
+| `hero-every-phase` | new | 2 | ✅ pass | A hero pulled into a friendly hero's Fall assault on a neutral-guarded province (Contingent unify) has a Fall line of his own pointing at the battle; every living hero has at least one line in every season of his realm's report |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
@@ -84,6 +88,8 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `fuzz-advance-masking` | `claude_fuzz_0927d.js` | 3 | ✅ pass | Advance-and-strike combat, masking of unmet realms, archive round-trip |
 | `chromium-boot` | `claude_lb_chromium_0927.js` | 4 | ✅ pass | GM portal, player portal and Hall of Fame boot in real Chromium; links and footers present |
 | `orders-buttons-visible` | new | 4 | ✅ pass | In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone |
+| `map-fits-panel` | new | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
+| `dispatches-badge` | new | 4 | ✅ pass | In real Chromium, the unread count on the left panel's ✉ Dispatches tab appears as soon as the player switches view (Map → Report) or comes back to the browser tab, and clears once Dispatches is opened |
 | `gm-messaging-boot` | `claude_msg_gm_boot_0927.js` | 4 | ✅ pass | GM portal boots; the dispatches set-up banner appears and goes; deleting a game clears its dispatches first |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
@@ -116,6 +122,7 @@ message. That means the hook needs updating, not that the game is broken.
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `pursuit-one-battle` | `    const chance=pursuitCatchChance(c,quarry);` (stages a certain catch) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
-| `leaderboard-records`, `leaderboard-render` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |
+| `battle-spells-recorded` | `  const _tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};` (exposes the turn's statistics collector) |
+| `leaderboard-records`, `leaderboard-render`, `leaderboard-realm-bests` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |
 | `home-placement` | `  const cellIdRC=(r,c)=>r*cols+c;`, `  const eligibleCells=[];` and their end lines |
 | `druid-and-war-spoils` | the start and end of nine tables and functions (see the `slice(` calls) |

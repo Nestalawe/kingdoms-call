@@ -32,6 +32,9 @@ const SUITE=[
   ['druid-and-war-spoils', 'tests/druid-and-war-spoils.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
+  ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],
+  ['leaderboard-realm-bests','tests/leaderboard-realm-bests.test.js'],
+  ['battle-spells-recorded','tests/battle-spells-recorded.test.js'],
   ['concede',              'tests/concede.test.js'],
   ['monarch-grave',        'tests/monarch-grave.test.js'],
   ['guardian-melee',       'tests/guardian-melee.test.js'],
@@ -47,6 +50,7 @@ const SUITE=[
   ['defend-naval-overland','tests/defend-naval-overland.test.js'],
   ['defend-once',          'tests/defend-once.test.js'],
   ['hp-wound-gain',        'tests/hp-wound-gain.test.js'],
+  ['hero-every-phase',     'tests/hero-every-phase.test.js'],
   ['naval-retreat',        'tests/naval-retreat.test.js'],
   ['npc-parity',           'tests/npc-parity.test.js'],
   ['report-privacy',       'tests/report-privacy.test.js',       FULL?[GM,'6','20','6']:[GM,'3','10','5']],
@@ -54,6 +58,8 @@ const SUITE=[
   ['fuzz-advance-masking', 'tests/fuzz-advance-masking.test.js', FULL?[GM,'6','20','6','20000']:[GM,'3','10','5','4000']],
   ['chromium-boot',        'tests/chromium-boot.test.js'],
   ['orders-buttons-visible','tests/orders-buttons-visible.test.js'],
+  ['map-fits-panel',       'tests/map-fits-panel.test.js'],
+  ['dispatches-badge',     'tests/dispatches-badge.test.js'],
   ['gm-messaging-boot',    'tests/gm-messaging-boot.test.js'],
 ];
 const QUARANTINED=fs.readdirSync(path.join(__dirname,'quarantine')).filter(f=>f.endsWith('.test.js')).sort()

@@ -136,6 +136,9 @@ The leaderboard page reads only `game_records`. The rows are built in the GM por
 runs at game over (inside its own `try/catch`) and on demand from the Stats tab. The builder emits
 record **keys**; the leaderboard's `KC_ACH` catalogue gives them labels, and an unknown key still
 renders under "Other records", so a new record can't be lost.
+Each key holds a list: the best entry of every realm in that game, best first (rows built before
+Oct 2026 hold one entry, the game's best; the page reads both). Searching for a realm or player on
+the page narrows the lists to their own entries.
 
 ## Dispatches (player messaging)
 
