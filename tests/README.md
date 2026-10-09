@@ -51,6 +51,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 |---|---|---|---|---|
 | `syntax` | new | 0 | ✅ pass | Every inline script in every page, and `kingdoms-call-data.js`, parses |
 | `docs` | new | 0 | ✅ pass | Every relative link and heading anchor in `CLAUDE.md`, `README.md`, `docs/`, this file and the PR template resolves; every `site/`, `tests/`, `tools/` or `.github/` path they name exists; `CLAUDE.md` stays under 200 lines |
+| `stamps` | new | 0 | ✅ pass | The stamps written twice agree: the data file's `// Data file v…` comment and `KC_DATA_STAMP`; the GM portal's footer and `KC_BUILD_STAMP`, with no other `GM Portal v…` above the footer |
 | `dangerous-paths` | new | 1 | ✅ pass | Which changed files count as dangerous (globs, case ignored, renames by their old name too) and what the warning comment says |
 | `landing-footer` | new | 0 | ✅ pass | The landing page's footer reads "Kingdoms Call · A Strategy Game of Simultaneous Turns" |
 | `boot-pages` | new | 4 | ✅ pass | Every page boots in jsdom with no error, rejection or `console.error` |
