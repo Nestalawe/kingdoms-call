@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1751'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1800'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -13266,6 +13266,32 @@ async function runTurn(opts){
       charId:targetChar.id, phase:_ph, provinceId:(targetChar.location!=null?targetChar.location:null)});
   }
 
+  // ── NO SILENT SEASON (2026-10-09, Toby item 1) ────
+  // Every hero of a realm has at least one line in every season of his Chronicle. A hero can still
+  // be moved or swept into a fight by code that files its lines under someone else (a veiled march,
+  // a pooled host, a stalled battle resumed by the strongest force); his season then read as if he
+  // did nothing. Run at the end of each phase: a living realm hero with no line of his own for the
+  // phase — by charId, by charIds, or as a commander of one of its battles (the same tests the report
+  // uses to file a line under him) — gets a plain line saying where the season leaves him.
+  function noteSilentHeroes(ph, startLoc){
+    const heard=new Set();
+    turnLog.forEach(e=>{
+      if(e.phase!==ph) return;
+      if(e.charId!=null) heard.add(e.charId);
+      if(Array.isArray(e.charIds)) e.charIds.forEach(id=>heard.add(id));
+    });
+    Object.keys(battleCommanders).forEach(k=>{ if(k.endsWith('@'+ph)) (battleCommanders[k]||[]).forEach(id=>heard.add(id)); });
+    const pname=id=>{ const p=(id!=null)?G.world.provinces[id]:null; return (p&&p.name)||'the field'; };
+    (G.characters||[]).forEach(c=>{
+      if(!c||!c.alive||c.player==null||heard.has(c.id)) return;
+      const from=startLoc?startLoc[c.id]:undefined;
+      const text=(from!=null&&from!==c.location)
+        ? `${c.name} leaves ${pname(from)} and ends the season in ${pname(c.location)}.`
+        : `${c.name} remains in ${pname(c.location)} this season.`;
+      log('move',text,{actor:c.player,targets:[c.player],charId:c.id,phase:ph,provinceId:(c.location!=null?c.location:null)});
+    });
+  }
+
   // ── Task 9(b): PROVINCE / KINGDOM NOTIFICATIONS ────
   // When something is done TO one of a player's PROVINCES that they'd learn of — an enemy Flood,
   // Earthquake, Plague, Cataclysm, Part Sea, etc. — file a line in that owner's KINGDOM EVENTS feed
@@ -18983,7 +19009,8 @@ const BATTLE_ARMY_SPELLS={
     if(!c||!c.alive||!o) return;
     // If this hero was unified into another's battle this phase, their own order is superseded
     if(o._unifiedWith!=null){
-      log('move',`${c.name}'s order superseded — they unified with ${G.characters.find(x=>x.id===o._unifiedWith)?.name||'another hero'}'s forces this phase.`,{actor:c.player,targets:[c.player]});
+      // filed under the hero himself (2026-10-09, Toby item 1): with no charId it fell into Realm Events
+      log('move',`${c.name}'s order superseded — they unified with ${G.characters.find(x=>x.id===o._unifiedWith)?.name||'another hero'}'s forces this phase.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
       _logCtx={charId:null,phase:null};return;
     }
     _logCtx={charId:c.id,phase:ph}; // all log() calls inside here will inherit this
@@ -19585,6 +19612,10 @@ const BATTLE_ARMY_SPELLS={
           }
           if(battle.won) markOrcAttackWin(c, G, battle); // orc war-spoils — this attacking force won (line appended to the report)
           emitBattle(battle, toProv, ph, [c.player], {actor:c.player}); // item 5
+          // 2026-10-09 (Toby item 1): a hero pulled into this assault marched and fought, but every
+          // line above is filed under the mover, so his own season was blank. Point him at it, as the
+          // realm-vs-realm assault below does.
+          friendlyReinforcements.forEach(r=>notifyTarget(r,r.alive===false?`⚔ ${r.name} marched in ${c.name}'s host against ${toProv.name}, and fell there — the full account is under ${c.name}.`:`⚔ ${r.name} marches in ${c.name}'s host against ${toProv.name} — the full account is under ${c.name}.`,ph,'combat'));
           if(battle.won){
             _payWinPoint();
             // ── Fate of the guard's SURVIVORS ── combatVsNPC has already applied the casualty
@@ -25721,6 +25752,7 @@ const BATTLE_ARMY_SPELLS={
   }
   for(let ph=0;ph<5;ph++){
     _currentPhase=ph; // reliable phase for skill-rises earned outside processOrder
+    const _phaseStartLoc={}; (G.characters||[]).forEach(c=>{ if(c&&c.alive) _phaseStartLoc[c.id]=c.location; }); // for noteSilentHeroes
     log('system',`— ${SEASONS[ph]} —`);
     // sd29 Herbal Lore: a character who took wounds in the PREVIOUS phase has them dressed at the
     // start of this one, recovering 40% of the damage that fight cost them
@@ -25951,6 +25983,7 @@ const BATTLE_ARMY_SPELLS={
     // province.characters is derived from character.location — rebuild it before anything reads it,
     // so a battle that moved someone on a copy cannot leave the map out of step.
     reconcileProvinceCharacters();
+    noteSilentHeroes(ph,_phaseStartLoc);
     // snapshot each player's observable view of the world at the end of this phase.
     updateProvinceMemory(ph);
     enteredThisPhase={}; // consumed by the snapshot above — start the next phase clean
@@ -27775,6 +27808,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1751</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1800</div>
 </body>
 </html>
