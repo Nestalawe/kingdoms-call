@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1701'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1704'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -810,6 +810,10 @@ function navalSpeedBonus(baseSpeed,navalLevel){
 // HUMAN — Ride Them Down only works in open country. Light horse need room to run a broken enemy
 // down; in woods, jungle or mountains the survivors simply scatter into cover.
 const OPEN_COUNTRY=new Set(['plain','desert']);
+// ORC — Run Them Down (2026-10-09, Toby item 7): added to each beaten unit's destruction chance when at
+// least half the winning force are Warg Riders. Any terrain. (Ride Them Down, for comparison, gives
+// +6% per Free Lances unit up to +18%, open country only.)
+const RUN_THEM_DOWN_PCT=0.15;
 function rideThemDownBonus(force, terrain, cmdr){
   if(countType(force,'Free Lances')===0) return 0;
   // War-Horn of the Plains: the commander's Free Lances always pursue — any terrain, full bonus.
@@ -17993,7 +17997,12 @@ const BATTLE_ARMY_SPELLS={
     // force no longer chains itself to a lost field.
     const _sfAtk=isHalfOrMore(atkArmies,'Dwarven Guard');
     const _sfDef=isHalfOrMore(defArmies,'Dwarven Guard');
-    // ORC — Run Them Down: a warg-heavy victor takes up the chase automatically.
+    // ORC — Run Them Down (2026-10-09, Toby item 7): a warg-heavy victor runs the beaten army down ON
+    // THE FIELD. When at least half the winning force are Warg Riders, every beaten unit's chance of
+    // being destroyed in the rout rises by RUN_THEM_DOWN_PCT, on any ground — instead of the old
+    // automatic chase after the beaten commander, which marched the victor off in later phases on
+    // orders nobody gave. There is no follow-up move or pursuit now. A Shield Fort withdrawal is
+    // immune, exactly as it is to Ride Them Down.
     const _wargAtk=isHalfOrMore(atkArmies,'Warg Riders');
     const _wargDef=isHalfOrMore(defArmies,'Warg Riders');
     // ELF — Skyward Retreat: eagles simply fly out of a trap.
@@ -18063,9 +18072,10 @@ const BATTLE_ARMY_SPELLS={
       });
       survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
-      const _rideAtkEff=_sfDef?0:_rideAtk;
+      const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0));
       if(_rideAtk>0&&_sfDef) narrative.push(`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideAtk>0) narrative.push(`🐎 ${atkName}'s Free Lances ride down the broken companies (+${dispFloor(_rideAtk*100)}% losses to ${defName}).`);
+      if(_wargAtk) narrative.push(_sfDef?`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Warg Riders find no broken backs to run down.`:`🐺 ${atkName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${defName}).`);
       // Losing defender
       const _cas1=narrative.length;
       defArmies.forEach(a=>{
@@ -18152,9 +18162,10 @@ const BATTLE_ARMY_SPELLS={
       const _headIdx=narrative.length;
       narrative.push(`${atkName}'s assault is repelled! After ${aAn(severity)} ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`);
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Losing attacker
-      const _rideDefEff=_sfAtk?0:_rideDef;
+      const _rideDefEff=_sfAtk?0:(_rideDef+(_wargDef?RUN_THEM_DOWN_PCT:0));
       if(_rideDef>0&&_sfAtk) narrative.push(`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef*100)}% losses to ${atkName}).`);
+      if(_wargDef) narrative.push(_sfAtk?`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Warg Riders find no broken backs to run down.`:`🐺 ${defName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${atkName}).`);
       const _cas2=narrative.length;
       atkArmies.forEach(a=>{
         const i=tiers.indexOf(a.quality);
@@ -18245,20 +18256,6 @@ const BATTLE_ARMY_SPELLS={
     // Battle-magic strength reductions last only for this battle — units recover afterward.
     [...(atk.armies||[]),...(def.armies||[])].forEach(a=>{delete a._tempStrReduction;delete a._terrorMult;delete a._archeryRed;delete a._tacUp;delete a._drumUp;delete a._laNoTerrain;delete a._flakTargeted;});
     clearPhantomCopies(atk, !won, realCharOf(atk)); clearPhantomCopies(def, won, realCharOf(def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
-    // ORC — Run Them Down: a warg-heavy victor takes up the chase without being told to.
-    (function(){
-      const winnerArmed=won?atkArmies:defArmies;
-      const wargs=won?_wargAtk:_wargDef;
-      if(!wargs) return;
-      const winner=won?atk:def, loser=won?def:atk;
-      const rw=(G.characters||[]).find(x=>x&&x.id===winner.id);
-      const rl=(G.characters||[]).find(x=>x&&x.id===loser.id);
-      if(!rw||!rl||!rl.alive||rw.player===rl.player) return;
-      if(rw._pursuit&&rw._pursuit.active) return;
-      rw._pursuit={targetId:rl.id,active:true,setPhase:-1};
-      delete rw._defend;
-      narrative.push(`🐺 ${winner.name}'s Warg Riders need no order — the pack is already away after ${loser.name}.`);
-    })();
 
     // AK [3.15]: "A character's Defend order is canceled if he loses a battle, to prevent further
     // needless defeats." atk/def are pooled copies, so resolve back to the real character by id.
@@ -25888,13 +25885,6 @@ const BATTLE_ARMY_SPELLS={
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
         _logCtx={charId:c.id,phase:ph};
-        // 2026-10-08 (Toby item 7): a chase the Warg Riders took up on their own (setPhase −1) sets
-        // aside whatever the player ordered for this phase. Say so, or a Move order seems to have
-        // turned into a pursuit nobody asked for.
-        { const _own=(G.turnOrders[c.id]||[])[ph], _oa=normaliseAction(_own);
-          const _q=(G.characters||[]).find(x=>x&&x.id===c._pursuit.targetId);
-          if(c._pursuit.setPhase===-1&&_own&&!_own._pinned&&_oa&&_oa!=='defend')
-            log('move',`🐺 ${c.name}'s Warg Riders are still on the trail of ${_q?_q.name:'their quarry'} — the pack will not be called off, so ${c.name}'s own orders for this season wait until the chase is done.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph}); }
         advancePursuit(c,ph);
         _logCtx={charId:null,phase:null};
         settleStrandedAtSea(ph); // a chase that ended in a sea battle
@@ -27792,6 +27782,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1701</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1704</div>
 </body>
 </html>

@@ -41,6 +41,7 @@ const SUITE=[
   ['overtures',            'tests/overtures.test.js'],
   ['orders-group-by-location','tests/orders-group-by-location.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
+  ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['retreat-dry-ground',   'tests/retreat-dry-ground.test.js'],
   ['hire-price',           'tests/hire-price.test.js'],
   ['defend-naval-overland','tests/defend-naval-overland.test.js'],

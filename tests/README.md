@@ -69,7 +69,8 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `hit-cap` | new | 2 | ✅ pass | No single hit in personal combat takes more than half the target's maximum HP: guardian on hero, hero on guardian, hero on hero; a Legendary's tighter 20% cap still wins |
 | `move-points` | new | 2 | ✅ pass | Taking an undefended enemy province costs 1 movement point; pressing on with a battle against neutral defenders costs 1 a phase while points remain |
 | `overtures` | new | 2 | ✅ pass | An overture of peace or alliance makes the courted realm meet the sender and shows on its Diplomacy card; in a game of three realms or fewer an impossible alliance offer is not sent |
-| `pursuit-one-battle` | new | 2 | ✅ pass | A Warg Riders chase obeys one battle per phase: a hunter who has just fought (even as the defender) holds the chase over, stays where he is, and his report says why his Move order waited. A chase battle the hunter wins takes the province (or says why it is still contested) |
+| `pursuit-one-battle` | new | 2 | ✅ pass | A chase (Encounter) obeys one battle per phase: a hunter attacked by his quarry first holds the chase over and stays where he is. A chase battle the hunter wins takes the province (or says why it is still contested) |
+| `warg-run-down` | new | 2 | ✅ pass | Warg Riders' Run Them Down: a warg-heavy victor's beaten foe takes +15% rout losses, no chase follows, and the general obeys his own next order |
 | `retreat-dry-ground` | new | 1 | ✅ pass | A beaten force falls back onto a Flooded province or sea laid dry by Part Sea only when no ordinary land is open to it (foot, flyers, and the naval split's march inland) |
 | `hire-price` | new | 4 | ✅ pass | A seasoned wanderer's hire price (alignment rate + skill premium) is the same in the report, the hire data, the Hire Hero dropdown, the Broker list and the order ledger |
 | `defend-naval-overland` | new | 2 | ✅ pass | A general on Defend whose column has ships never rides overland to a neighbouring land province, whether the enemy marches in or is already standing there |
@@ -113,6 +114,7 @@ message. That means the hook needs updating, not that the game is broken.
 |---|---|
 | `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground`, `hp-wound-gain` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
+| `pursuit-one-battle` | `    const chance=pursuitCatchChance(c,quarry);` (stages a certain catch) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
 | `leaderboard-records`, `leaderboard-render` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |
 | `home-placement` | `  const cellIdRC=(r,c)=>r*cols+c;`, `  const eligibleCells=[];` and their end lines |
