@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.08-2207'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-0932'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3658,7 +3658,13 @@ function rollHpGain(ch, players, why){
 }
 function hpGainLine(ch, r){
   if(!r) return '';
-  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
+  // 2026-10-08 (Toby item 16): a wounded hero rolls too (r.wound), and a winner's successful roll
+  // carries +1 for the victory (r.winBonus).
+  if(r.wound){
+    if(r.gain>0) return `💪 ${ch.name} is hardened by the wounds of the fight — maximum HP +${r.gain} → ${r.maxHp}.${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
+    return `${ch.name} carries the wounds of the fight, but no lasting hardening comes of them. [${r.chance}% roll ${r.roll}]`;
+  }
+  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}${r.winBonus?' (including +1 for the win)':''}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
   return `${ch.name} is battle-worn already — no further hardening from this victory. [${r.chance}% roll ${r.roll}]`;
 }
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
@@ -11927,7 +11933,7 @@ function buildTurnReport(gameState, playerIndex){
       // sd31 waiver, if the realm holds it, is applied at the real hire). Guards keep their beast
       // label; a defeated guard now wandering (player===null, not a guard) shows a proper race (see
       // runTurn normaliser).
-      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment, false, c);
+      const _wWage=c._isNeutralGuard?null:heroHireWage(player?.alignment||'Neutral', c.alignment, (player?.discoveries||[]).some(d=>d&&d.id==='sd31'), c); // 2026-10-08 item 12: sd31 waives the gulf, exactly as the hire does
       const _wHireTxt=c._isNeutralGuard?'':(_wWage!=null?` Available to hire for ${_wWage}g/turn.`:' Will not serve your crown — the alignment gulf is too wide.');
       heroSightings.push({
         type:c._isNeutralGuard?'neutral_guard':'wandering',
@@ -12209,6 +12215,12 @@ function buildTurnReport(gameState, playerIndex){
       availableHeroesByProv[p.id]=provHeroes.map(h=>({
         id:h.id, name:h.name, race:h.race, alignment:h.alignment, temper:h.temper,
         topSkill:topSkill(h), pay:h.pay||1, // 2026-09-24 (Toby item 8): fame only — the full skill list no longer ships, so the order form cannot leak it
+        // 2026-10-08 (Toby item 12): what hiring this hero will actually cost THIS realm — alignment
+        // distance AND the skill premium, with sd31's waiver — the same figure the Wandering Heroes
+        // report quotes and the hire charges. null: will not serve this crown. The order form used to
+        // work the price out from alignment alone, so it quoted less than the report for any hero
+        // who had grown while wandering.
+        hireWage:heroHireWage(player?.alignment||'Neutral', h.alignment, (player?.discoveries||[]).some(d=>d&&d.id==='sd31'), h),
         locationId:p.id, locationName:p.name,
       }));
     }
@@ -13114,6 +13126,47 @@ async function runTurn(opts){
     const arr=battleCommanders[k]||(battleCommanders[k]=[]);
     ids.forEach(id=>{ if(id!=null&&!arr.includes(id)) arr.push(id); });
   };
+  // 2026-10-08 (Toby item 7): every character who stood in a field battle, by id → the phase it was
+  // fought in. That is both leaders AND every armed character of either side standing on the ground,
+  // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
+  // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
+  const fieldBattlePhase={};
+  // 2026-10-08 (Toby item 13): the heroes who served no crown when this turn's orders were given. An
+  // order written against one of them was written against a WANDERER — a Charm meant to win them, or
+  // nothing at all for an Encounter (only a rival realm's heroes may be hunted). If a realm hires them
+  // first, that order must not turn into an attack on the realm's new hero: bots planned "seek the
+  // wanderer and charm him", the player hired him first, and the bot's Charm then seized the player's
+  // hero or provoked a fight with him.
+  const wanderingAtStart=new Set((G.characters||[]).filter(c=>c&&c.alive&&c.player==null&&!c._isNeutralGuard).map(c=>c.id));
+  function noteFieldBattle(atk,def,prov){
+    const ph=_currentPhase, ids=[]; if(ph==null||!prov) return ids;
+    const sides=new Set([atk&&atk.player,def&&def.player].filter(x=>x!=null));
+    const add=id=>{ if(id==null) return; fieldBattlePhase[id]=ph; if(!ids.includes(id)) ids.push(id); };
+    [atk,def].forEach(x=>{ if(x) add(x.id); });
+    (G.characters||[]).forEach(ch=>{ if(ch&&ch.alive&&ch.location===prov.id&&sides.has(ch.player)&&(ch.armies||[]).length>0) add(ch.id); });
+    return ids;
+  }
+  // 2026-10-08 (Toby item 15): A DEFEND ORDER IS DONE ONCE IT HAS BROUGHT ITS GENERAL TO BATTLE. Every
+  // character who stood in the battle with a watch set — the general who rode out, one whose own
+  // province was attacked, or one pooled in alongside — keeps no further watch, win or lose (a loss
+  // already broke it: noteBattleLoss). Only a Defend order given for a LATER phase sets a new one; the
+  // same phase's own Defend order, which resolves after the battle, must not re-arm it.
+  function completeDefendWatches(ids, narrative){
+    const ph=_currentPhase;
+    (ids||[]).forEach(id=>{
+      const real=(G.characters||[]).find(x=>x&&x.id===id);
+      if(!real||!real._defend) return;
+      const wasOn=!!real._defend.active;
+      real._defend.active=false;
+      real._defendSpent={turn:G.turn,ph};
+      if(wasOn&&real.alive!==false){
+        const msg=`🛡 ${real.name}'s Defend order is fulfilled — the threat has been met in battle, and they keep no further watch unless ordered to Defend again.`;
+        if(narrative) narrative.push(msg);
+        else log('move',msg,{actor:real.player,targets:[real.player],charId:real.id,provinceId:real.location??null});
+      }
+    });
+  }
+  const defendSpentThisPhase=(c,ph)=>!!(c&&c._defendSpent&&c._defendSpent.turn===G.turn&&c._defendSpent.ph===ph);
   // Current character context — set by processOrder so all log calls get charId/phase automatically
   let _logCtx={charId:null,phase:null};
   // the phase currently being resolved. _logCtx is cleared to null between characters and after
@@ -17066,7 +17119,10 @@ const BATTLE_ARMY_SPELLS={
     // Step marks for Beg-for-Mercy narration: any death not caused through pcTakeHit (lingering
     // harm, auras, thorns) is pinned to the START of the step that caused it.
     const _stepMark=()=>({n:narrative.length,a:A.hp,b:B.hp});
-    const _stepCheck=(m)=>{ [[A,m.a],[B,m.b]].forEach(([cb,h])=>{ if(h>0&&cb.hp<=0&&cb.kind==='character'){ const fm=cb._fatalMark; if(!(fm&&fm.arr===narrative&&fm.idx>=m.n)) cb._fatalMark={arr:narrative,idx:m.n,blow:null}; } }); };
+    // item 16: the lowest each side's HP has fallen, so a wound later healed in the fight still counts
+    A._hpStart=A.hp; B._hpStart=B.hp; A._hpLow=A.hp; B._hpLow=B.hp;
+    const _noteLow=()=>{ A._hpLow=Math.min(A._hpLow,A.hp); B._hpLow=Math.min(B._hpLow,B.hp); };
+    const _stepCheck=(m)=>{ _noteLow(); [[A,m.a],[B,m.b]].forEach(([cb,h])=>{ if(h>0&&cb.hp<=0&&cb.kind==='character'){ const fm=cb._fatalMark; if(!(fm&&fm.arr===narrative&&fm.idx>=m.n)) cb._fatalMark={arr:narrative,idx:m.n,blow:null}; } }); };
     A._fatalMark=null; B._fatalMark=null;
     for(let round=0; round<maxRounds; round++){
       if(A.hp<=0||B.hp<=0||state.fledBy||state.parley||state.stoleBy) break;
@@ -17266,6 +17322,23 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-29 (Toby): melee/archery experience is now rolled per successful hit as it lands
     // (pcCombatXP) — the old single end-of-fight roll for the victor is retired.
     if(state.stoleBy&&state.stoleBy.kind==='character'&&state.stoleBy.ref) trySkillGain(state.stoleBy.ref,'thief',SKILLGAIN_STD,narrative);
+    // ── 2026-10-08 (Toby item 16): WOUNDS HARDEN TOO ── every hero who took at least 1 HP of damage in
+    // the fight rolls for maximum HP at its end, as the winner always has. The winner is left to the
+    // win award (awardWinHp: kill, lair cleared, a duel's field held), which rolls once with +1 for the
+    // victory, so no hero rolls twice for one fight. A hero who has fallen does not roll; forecasts
+    // (simulated fights on copies) never do.
+    _noteLow();
+    if(!_pcSimulating){
+      const _winSide=winner||((opts.heldFieldWins&&state.fledBy)?(state.fledBy===A?B:A):null);
+      for(const X of [A,B]){
+        if(X===_winSide||X.kind!=='character'||!X.ref||X.hp<=0) continue;
+        if(!(X._hpLow<=(X._hpStart-1))) continue;
+        const real=(X.ref.id!=null)?(G.characters||[]).find(r=>r&&r.id===X.ref.id):null;
+        if(!real||real.alive===false) continue;
+        const r=awardHpRoll(X.ref, narrative, 'wound', false);
+        if(r&&r.gain>0){ X.hp+=r.gain; X.maxHp+=r.gain; }   // the rise heals into the new headroom, as on the real record
+      }
+    }
     return {winner, loser, fledBy:state.fledBy, parley:state.parley, stoleBy:state.stoleBy,
             aHp:Math.max(0,Math.round(A.hp)), bHp:Math.max(0,Math.round(B.hp)), narrative};
   }
@@ -17402,7 +17475,7 @@ const BATTLE_ARMY_SPELLS={
     if(_ia) narrative.push(_ia);
     if(_ib) narrative.push(_ib);
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
-    const res=resolvePersonalCombat(A, B, {maxRounds:20});
+    const res=resolvePersonalCombat(A, B, {maxRounds:20, heldFieldWins:true}); // a duel's field held is a win (preBattleDuel awards it)
     narrative.push(...res.narrative);
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
@@ -17424,6 +17497,7 @@ const BATTLE_ARMY_SPELLS={
     // nested processOrder can clobber _logCtx mid-battle). atk/def are pooled copies but keep the
     // real commander's id, so the per-player report can file the battle under either player's hero.
     recordBattleCmdrs(prov&&prov.id, _logCtx&&_logCtx.phase, [atk&&atk.id, def&&def.id]);
+    const _fieldIds=noteFieldBattle(atk, def, prov); // one battle per phase, for both sides (item 7)
     // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE per side which units fight a tier
     // higher this battle.
     [atk,def].forEach(_ld=>{ if(_ld&&Array.isArray(_ld.armies)){ const _tac=perkTier(_ld,'tactical')>0, _drum=activeItems(_ld).some(it=>it&&it.drumTierUp); _ld.armies.forEach(a=>{ if(a){ a._tacUp=_tac&&Math.random()<0.10; a._drumUp=_drum&&Math.random()<0.20; } }); } });
@@ -18190,6 +18264,7 @@ const BATTLE_ARMY_SPELLS={
     // AK [3.15]: "A character's Defend order is canceled if he loses a battle, to prevent further
     // needless defeats." atk/def are pooled copies, so resolve back to the real character by id.
     noteBattleLoss(won?def.id:atk.id, narrative);
+    completeDefendWatches(_fieldIds, narrative); // item 15: a watch that has fought is done, win or lose
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGainPvP){ trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative); trySkillGain(won?def:atk,'druid',SKILLGAIN_STD,narrative,0.5); } // Druid: winner full, loser half
@@ -18530,11 +18605,18 @@ const BATTLE_ARMY_SPELLS={
   // ── EARNED HP ── one combat win = one rollHpGain on the REAL character. Wins that count: lair
   // guardian cleared, enemy character slain (any personal-combat path), pre-battle duel won
   // (kill or the loser breaking off). A fled Encounter/chase/thief fight and a pacified beast do NOT count.
-  function awardWinHp(ch, narrative, why){
+  function awardWinHp(ch, narrative, why){ return awardHpRoll(ch, narrative, why, true); }
+  // 2026-10-08 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin) or
+  // for a hero who was wounded in it (resolvePersonalCombat). A winner whose roll succeeds gains +1 on
+  // top for the victory. (Recommended reading of "+1 hp to the hp gain": the bonus rides on a
+  // successful roll, so the soft ceiling around 60 HP still holds; see the PR for the ruling.)
+  function awardHpRoll(ch, narrative, why, isWin){
     if(!ch||ch.alive===false) return null;
     const real=(ch.id!=null&&(G.characters||[]).find(r=>r&&r.id===ch.id))||ch;
     if(real.alive===false) return null;
     const r=rollHpGain(real, G.players, why);
+    if(isWin&&r.gain>0){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
+    r.wound=!isWin;
     if(r.gain>0&&real.isKing&&hasDisc(real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
       real.hpEarned+=r.gain; syncMaxHp(real,G.players); r.gain*=2; r.maxHp=real.maxHp; r.sd35=true; }
     // ── 2026-09-17 — THE HARDENING THAT UNDID ITSELF ────
@@ -21492,6 +21574,13 @@ const BATTLE_ARMY_SPELLS={
         if(quarry.id===c.id){
           log('system',`${c.name} cannot set out to encounter themself.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
         }
+        // 2026-10-08 (Toby item 13): an Encounter hunts a rival REALM's hero — the order form never
+        // offers a wanderer, and the engine now holds every order (a bot's included) to the same rule.
+        // A hero who was a masterless wanderer when the orders were given stays off limits for the
+        // turn even once a realm has hired them.
+        if(quarry.player==null||(wanderingAtStart.has(quarry.id)&&quarry.player!==c.player)){
+          log('system',`${c.name} will not hunt ${quarry.name.replace(' (wandering)','')} — an Encounter is for a rival realm's heroes, and ${quarry.name.replace(' (wandering)','')} answered to no crown when the orders were given.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;
+        }
         // a seized ENEMY hero will not raise a hand against their own lord's people — no Encounter
         // against a character of the original owner. Any other realm's heroes are fair game as
         // usual.
@@ -21599,6 +21688,12 @@ const BATTLE_ARMY_SPELLS={
         // A move that was cancelled by the invasion interlock is rewritten to a Defend order; the
         // interlock already logged a much better line, so don't tack a bland one on top of it.
         if(o._pinned) break;
+        // item 15: this phase's Defend order has already been answered in battle (the watch was on
+        // from the top of the phase) — it does not set the watch again.
+        if(defendSpentThisPhase(c,ph)){
+          log('move',`🛡 ${c.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          break;
+        }
         // Defend needs no target — it always guards the province the character stands in. The watch
         // covers that province plus its immediate neighbours (see inDefendZone), and he rides out
         // to meet any incursion into an adjacent province. Any target still supplied by an older
@@ -21710,6 +21805,19 @@ const BATTLE_ARMY_SPELLS={
         // neither the cast nor the turn's casting slot. This is what a caster meets when the hero
         // they aimed at has left the province — most often a general on Defend who rode out to a
         // threatened neighbour at the top of the phase, before any order resolved.
+        // ── A CHARM MEANT FOR A WANDERER (item 13) ── the hero has sworn to another crown since the
+        // orders were given. Refused before the roll: nothing is worked, no slot is spent, and the
+        // hero (who never knew they were the target) does not turn on the caster.
+        if(spellDef.fn==='psychic_charm'){
+          const _tid=parseInt(extra);
+          const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
+          if(_t&&wanderingAtStart.has(_t.id)&&_t.player!=null&&_t.player!==c.player){
+            o._castNotWorked=true;
+            log('system',`${c.name} comes to Charm ${_t.name}, but ${_t.name} has taken service with ${G.players[_t.player]?.name||'another realm'} since the orders were given — the spell meant to win a masterless wanderer is never worked.`,
+              {actor:c.player,targets:[c.player],provinceId:prov.id,charId:c.id,phase:ph});
+            break;
+          }
+        }
         if(SPELL_FNS_NEED_COLOCATED_TARGET.has(spellDef.fn)){
           const _tid=parseInt(extra);
           const _t=Number.isInteger(_tid)?(G.characters||[]).find(ch=>ch&&ch.alive&&ch.id===_tid):null;
@@ -23019,11 +23127,20 @@ const BATTLE_ARMY_SPELLS={
     const sc=getSeaCapability(force, ch);
     const probe={_partSeaThisPhase:ch._partSeaThisPhase, armies:force};
     const from=G.world.provinces[ch._attackedFrom];
-    return getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>{
+    return preferDryGround(getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces).filter(p2=>{
       if(!p2||p2.id===prov.id||!canEnterTerrain(probe,p2.terrain,sc)) return false;
       if(isFriendlyProvFor(p2,ch.player)) return true;
       return !!from&&p2.id===from.id&&p2.terrain==='sea'&&p2.owner==null&&!(p2.neutralDefenders||[]).length;
-    });
+    }));
+  }
+  // 2026-10-08 (Toby item 10): a beaten force never falls back into a province that is only passable
+  // this turn by magic — one FLOODED into sea, or a sea province PARTED into dry ground — while a
+  // province of ordinary land is open to it. With no ordinary land among the choices the list is
+  // left as it is (open sea stays open to a fleet).
+  function isMagicGround(p){ return !!(p&&(p._flood||p._partSea)); }
+  function preferDryGround(list){
+    const dry=(list||[]).filter(p=>p&&p.terrain!=='sea'&&!isMagicGround(p));
+    return dry.length?(list||[]).filter(p=>!isMagicGround(p)):(list||[]);
   }
   // ── NAVAL RETREAT: THE FLEET MAKES FOR WATER (2026-09-27, Toby item 3) ─────────────────────
   // A beaten force that has SHIPS on a coastal shore no longer falls back as one body.
@@ -23105,7 +23222,7 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-23c ruling — a beaten landing falls back to its ships).
     const seaOk=noSea?[]:adj.filter(p2=>p2.terrain==='sea'&&!p2._flood&&(isFriendlyProvFor(p2,ch.player)
       ||(!!from&&p2.id===from.id&&p2.owner==null&&!(p2.neutralDefenders||[]).length)));
-    const landFriendly=adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(p2,ch.player));
+    const landFriendly=preferDryGround(adj.filter(p2=>p2.terrain!=='sea'&&isFriendlyProvFor(p2,ch.player))); // item 10: parted sea only when no ordinary land
     const landOwn=landFriendly.filter(p2=>p2.owner===ch.player);
     const move=(dest)=>{ prov.characters=(prov.characters||[]).filter(id=>id!==ch.id);
       dest.characters=dest.characters||[]; if(!dest.characters.includes(ch.id)) dest.characters.push(ch.id);
@@ -23169,6 +23286,20 @@ const BATTLE_ARMY_SPELLS={
     // For simplicity we allow land movement unless they have ONLY sea armies (no land/flying)
     const armies=c.armies||[];
     if(armies.length>0&&armies.every(a=>SEA_TYPES.has(a.type))) return false;
+    return true;
+  }
+
+  // 2026-10-08 (Toby item 14): can this column step from `from` into `to`? canEnterTerrain judges only the
+  // ground it would stand on; the Move order also forbids a column leading ANY naval unit (fleet or
+  // sea-beast) to step from one land province to another — ships cannot cross land (see the move
+  // case: "cannot march overland while leading naval units"). The Defend ride-outs and the force-march
+  // reinforcement checked terrain alone, so a general with ships and troops in a coastal province rode
+  // out overland to a neighbour on Defend. Every path that marches a column without a Move order now
+  // asks this instead.
+  function canStepBetween(c, from, to, cap){
+    if(!to||!canEnterTerrain(c,to.terrain,cap)) return false;
+    const naval=(c.armies||[]).some(a=>a&&SEA_TYPES.has(a.type));
+    if(naval&&from&&from.terrain!=='sea'&&to.terrain!=='sea') return false;
     return true;
   }
 
@@ -24794,7 +24925,7 @@ const BATTLE_ARMY_SPELLS={
         if(!P||P.owner!==c.player) return false;
         if(t.players.has(c.player)) return false;            // not our own troops moving about
         if(!inDefendZone(c,P)) return false;
-        if(!canEnterTerrain(c,P.terrain,sc)) return false;   // AK: a fleet can't march inland
+        if(!canStepBetween(c,here,P,sc)) return false;       // AK: a fleet can't march inland; ships never cross land (item 14)
         return true;
       });
       if(!cands.length) return;
@@ -24895,7 +25026,7 @@ const BATTLE_ARMY_SPELLS={
       if(!getNeighborsP(here,G.world.cols,G.world.rows,G.world.provinces).some(n=>n&&n.id===prov.id)) return;
       if(defendBattleLocked(d,here)) return;
       const sc=seaCap[d.id]||'land';
-      if(!canEnterTerrain(d,prov.terrain,sc)) return;
+      if(!canStepBetween(d,here,prov,sc)) return;            // item 14: ships never cross land
       const bySea=(here.terrain==='sea'||prov.terrain==='sea');
       if(here.terrain==='sea' && !(seaMoveActive[d.id] && (seaMovePoints[d.id]??0)>0)) return; // stranded on drowned ground
       if(bySea){ if((seaMovePoints[d.id]??0)<=0) return; } else { if((movePoints[d.id]??0)<=0) return; }
@@ -24954,7 +25085,7 @@ const BATTLE_ARMY_SPELLS={
         const foes=(G.characters||[]).filter(e=>e&&e.alive&&e.player!=null&&areEnemies(c.player,e.player)
           &&e.location===P.id&&(e.armies||[]).length>0);
         if(!foes.length) continue;
-        if(P.id!==c.location && !canEnterTerrain(c,P.terrain,sc)) continue; // a fleet can't march inland, etc.
+        if(P.id!==c.location && !canStepBetween(c,here,P,sc)) continue; // a fleet can't march inland; ships never cross land (item 14)
         const str=foes.reduce((s,e)=>s+armyTotalStr(e,P),0);
         if(!best||str>best.str) best={P,foes,str};
       }
@@ -25110,6 +25241,7 @@ const BATTLE_ARMY_SPELLS={
       trySkillGain(c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
       c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
       c._defendReactedPhase=ph;
+      if(c.alive) completeDefendWatches([c.id]);               // item 15: the ambush was this watch's fight
       // NOTE: an ambush is a PERSONAL duel (no armies), not a field battle — it must NOT set
       // _hadBattleThisTurn. That flag drives the map's crossed-swords marker, which is for ARMY
       // battles only; a duel here was painting swords on provinces where no battle was fought.
@@ -25140,7 +25272,7 @@ const BATTLE_ARMY_SPELLS={
       if(racers.every(inv=>cmp(it.c,inv.c)<0)) return;      // he's faster than all of them anyway
       // Terrain and movement must still allow the march.
       const sc=seaCap[it.id]||'land';
-      if(!canEnterTerrain(it.c,P.terrain,sc)) return;
+      if(!canStepBetween(it.c,G.world.provinces[it.fromId],P,sc)) return; // item 14: ships never cross land
       const toSea=P.terrain==='sea';
       const pool=toSea?seaMovePoints:movePoints;
       if((pool[it.id]??0)<=0) return;
@@ -25213,7 +25345,10 @@ const BATTLE_ARMY_SPELLS={
     // the top of the phase could "run his quarry to ground" and fight a second battle in the same
     // phase. An army-leading pursuer who has already fought this phase, or who is still locked in an
     // unresolved battle where he stands, holds the chase over to the next phase (it stays live).
-    if(meArmed && (c._foughtStalledBattlePhase===ph || (here&&here._battleUnresolved))){
+    // 2026-10-08 (Toby item 7): …or who has fought ANY battle this phase. A chaser whose quarry turned
+    // and attacked him first (the quarry acts before his hunter) had defended a province, won, and
+    // then rode straight after the beaten foe into a second battle in the same phase.
+    if(meArmed && (c._foughtStalledBattlePhase===ph || fieldBattlePhase[c.id]===ph || (here&&here._battleUnresolved))){
       log('move',`${c.name} has a battle on their hands in ${here?here.name:'the field'} this season — the chase after ${quarry.name} must wait.`,{actor:c.player,targets:[c.player],provinceId:here?here.id:null});
       return;
     }
@@ -25314,6 +25449,34 @@ const BATTLE_ARMY_SPELLS={
         }
       }
       prov._hadBattleThisTurn=true;
+      // 2026-10-08 (Toby item 7): A CHASE BATTLE WON IS GROUND TAKEN. The battle report already said the
+      // hunter "seized" the province, but nothing here ever changed its owner — the hunter won and the
+      // province stayed the enemy's. Now it is taken exactly as after a Move: only when nothing armed
+      // and hostile is left standing in it. Survivors who held on, hulls left ashore, or the
+      // province's own garrison (which did not fight in the chase) keep it contested, and the fight
+      // for it resumes next phase.
+      if(battle&&battle.won&&c.alive&&c.location===prov.id&&!prov._battleUnresolved&&prov.owner!==c.player
+         &&(prov.owner==null||areEnemies(c.player,prov.owner))&&!(prov.owner==null&&(prov.neutralDefenders||[]).length)){
+        const _hostileLeft=(G.characters||[]).some(ch=>ch&&(ch.alive||ch._leaderlessHost)&&ch.location===prov.id&&(ch.armies||[]).length>0
+          &&ch.player!=null&&ch.player!==c.player&&areEnemies(c.player,ch.player));
+        const _hulls=navalHeldIn(prov,c.player);
+        const _garrison=prov.owner!=null&&(prov.garrisonArmies||[]).some(a=>a&&!a._died&&!a._disbanded&&a._navalHold==null);
+        if(_hostileLeft||_hulls.length||_garrison){
+          prov._battleUnresolved=true;
+          log('combat',_garrison&&!_hostileLeft&&!_hulls.length
+            ?`${c.name} carries the field at ${prov.name}, but its garrison still holds the province — the fight for it resumes next season.`
+            :`${c.name} carries the field at ${prov.name}, but enemy forces still hold their ground — the province remains contested.`,
+            {actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+          if(!_hostileLeft&&_hulls.length) log('combat',navalHoldLine(prov,_hulls,G.players[c.player]?.name||'the hunter'),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+        } else {
+          const _wp=G.players[c.player];
+          G.players.forEach((p,pi)=>{ if(pi!==c.player){ const i=(p.provinces||[]).indexOf(prov.id); if(i>-1) p.provinces.splice(i,1); } });
+          setProvinceOwner(prov,c.player,c,ph); if(_wp&&!_wp.provinces.includes(prov.id)) _wp.provinces.push(prov.id);
+          log('combat',`${c.name} claims ${prov.name} for ${_wp?_wp.name:'their realm'}!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true});
+          if(_wp) applyEvilConquest(c, prov, _wp);
+        }
+      }
+      clearNavalHold(prov);
     } else {
       // at least one side is travelling light — this is a PERSONAL duel, not a battle
       // (only the both-armed case above becomes a battle). A King answers a challenge only if he set
@@ -25697,6 +25860,7 @@ const BATTLE_ARMY_SPELLS={
       if(it.cancelled||it.action!=='defend'||!it.order||it.order._pinned) return;
       const c=it.c; if(!c||!c.alive||c.player==null) return;
       if(c._pursuit&&c._pursuit.active) return;
+      if(defendSpentThisPhase(c,ph)) return; // item 15: already fought this phase (a resumed battle) — no new watch until a later Defend
       if(c._defend&&c._defend.active&&c._defend.setPhase===ph) return;
       const _carried=!!(c._defend&&c._defend.active); // a watch already kept from an earlier phase simply continues
       c._defend={centre:c.location,active:true,setPhase:ph,preActivated:true,carried:_carried};
@@ -25745,6 +25909,13 @@ const BATTLE_ARMY_SPELLS={
       // A live pursuit suspends this character's other orders until the chase resolves.
       if(c.alive&&c._pursuit&&c._pursuit.active&&c._pursuit.setPhase!==ph){
         _logCtx={charId:c.id,phase:ph};
+        // 2026-10-08 (Toby item 7): a chase the Warg Riders took up on their own (setPhase −1) sets
+        // aside whatever the player ordered for this phase. Say so, or a Move order seems to have
+        // turned into a pursuit nobody asked for.
+        { const _own=(G.turnOrders[c.id]||[])[ph], _oa=normaliseAction(_own);
+          const _q=(G.characters||[]).find(x=>x&&x.id===c._pursuit.targetId);
+          if(c._pursuit.setPhase===-1&&_own&&!_own._pinned&&_oa&&_oa!=='defend')
+            log('move',`🐺 ${c.name}'s Warg Riders are still on the trail of ${_q?_q.name:'their quarry'} — the pack will not be called off, so ${c.name}'s own orders for this season wait until the chase is done.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph}); }
         advancePursuit(c,ph);
         _logCtx={charId:null,phase:null};
         settleStrandedAtSea(ph); // a chase that ended in a sea battle
@@ -27642,6 +27813,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.08-2207</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0932</div>
 </body>
 </html>

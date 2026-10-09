@@ -361,7 +361,9 @@ section{display:none;}.section-active{display:block;}
   /* Orders: stack each phase row's fields full-width; 16px inputs stop iOS auto-zoom on focus. */
   .phase-order{grid-template-columns:1fr!important;gap:4px!important;}
   .phase-order select,.phase-order input{font-size:16px!important;padding:9px 8px!important;}
-  #orders-bottom{position:static!important;}   /* don't overlap the tab bar with a sticky footer */
+  /* 2026-10-08 (Toby item 11): Save Draft / Submit stay on screen while the orders are scrolled —
+     stuck just above the fixed tab bar (58px) rather than taken out of the sticky flow. */
+  #orders-bottom{position:sticky!important;bottom:58px!important;z-index:5;box-shadow:0 -3px 6px rgba(40,25,5,.18);}
   /* Fixed bottom tab bar */
   #mobile-tabbar{
     display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;height:58px;
@@ -380,7 +382,7 @@ section{display:none;}.section-active{display:block;}
    and 2% between. Panels are built by setupDeskLayout() (JS moves the existing map/report/orders
    elements into them, preserving all their event listeners). */
 @media (min-width:821px){
-  #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important;
+  #rp-layout.desk{ padding:0 2%!important; gap:2%!important; width:100vw!important; box-sizing:border-box!important; min-height:0!important; /* the panels size themselves (fitDeskPanels) */
     margin-left:calc(-50vw + 50%)!important; margin-right:calc(-50vw + 50%)!important; }
   #rp-layout.desk > #rp-map-col, #rp-layout.desk > #rp-report-col, #rp-layout.desk > #rp-msg-col,
   #rp-layout.desk > #orders-column,
@@ -1372,6 +1374,26 @@ function setupDeskLayout(){
   }
   lay.classList.add('desk');
   applyDeskViews();
+  fitDeskPanels();
+}
+// 2026-10-08 (Toby item 11): the two panels end at the foot of the WINDOW. They were a fixed
+// calc(100vh - 120px) tall, but they start lower than 120px down the page (masthead + game bar ≈
+// 220px), so their last 100px sat below the fold until the page itself was scrolled — and with them
+// the orders column's sticky Save Draft / Submit bar. Measured from where the panels really start,
+// and re-measured whenever something above them (the game bar, the new-turn banner) changes size.
+let _deskFitObs=null;
+function fitDeskPanels(){
+  const l=document.getElementById('desk-left'), r=document.getElementById('desk-right');
+  if(!l||!r) return;
+  if(window.innerWidth<821){ l.style.height=''; r.style.height=''; return; }
+  const top=l.getBoundingClientRect().top+(window.scrollY||0);
+  const h=Math.max(360, Math.floor(window.innerHeight-top-8))+'px';
+  if(l.style.height!==h) l.style.height=h;
+  if(r.style.height!==h) r.style.height=h;
+  if(!_deskFitObs&&typeof ResizeObserver==='function'){
+    _deskFitObs=new ResizeObserver(()=>fitDeskPanels());
+    document.querySelectorAll('#sec-report > .detail-header, #new-turn-banner').forEach(el=>_deskFitObs.observe(el));
+  }
 }
 function teardownDeskLayout(){
   const lay=document.getElementById('rp-layout');
@@ -4178,7 +4200,7 @@ const SPELL_HINTS={
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Action: no target \u2014 cleanses the province you stand in of ALL its battlefield dead. Every grave there is laid to rest and can never be raised by a necromancer. Combat: enemy \u22128%/level to hit (doubled vs undead/demons). Battle: enemy undead units fight at 75% strength.',
   'Spiritwrack':'Combat: silences the target for 1 round + 1 per two White levels (max 4) \u2014 it can\u2019t cast or use archery and its melee is halved. Against a guardian weak to White Magic it takes at 95% and lasts 1 round longer (max 5); Powerful and Legendary guardians may shrug it off each round after the first. Battle: all missile units fight at half strength.',
-  'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord (and will not attack their own lord\'s heroes). On success you learn their skills and magic items. Kings and army-leaders are immune; each past Charm gives a hero +30% resistance (cumulative). A Charm that fails may provoke a personal encounter with the target — unless either leads their encounter plan with Flee. Combat: doubles a later Flee attempt.',
+  'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep) — unless another realm hires them first that turn, when the spell is simply not worked; enemy comes under your command until end of turn, then returns to their lord (and will not attack their own lord\'s heroes). On success you learn their skills and magic items. Kings and army-leaders are immune; each past Charm gives a hero +30% resistance (cumulative). A Charm that fails may provoke a personal encounter with the target — unless either leads their encounter plan with Flee. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
   'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose TWO skill levels, each taken from a randomly chosen skill they hold (both picks can land on the same skill, dropping it by 2). Combat: they can do nothing at all for 1 round + 1 per two Psychic levels (3 at Psychic 5; Dreamstone +1). Battle: negates the enemy commander\u2019s Druid.',
@@ -4816,7 +4838,7 @@ function computeOrderLedgerP(){
   const heroesAvail=Object.values(rep.provinceOrderData||{}).flatMap(pd=>pd.availableHeroes||[]);
   const hired=new Set(), mercsTaken=new Set();
   const hireHero=(hid)=>{ hid=String(hid); if(!/^\d+$/.test(hid)||hired.has(hid)) return; const h=heroesAvail.find(x=>String(x.id)===hid); if(!h) return;
-    const w=heroHireWagePP(k.alignment||'Neutral',h.alignment); if(w==null) return; hired.add(hid); cats.heroes.g+=w; cats.heroes.n++; cats.heroes.wage+=w; };
+    const w=heroHireWageOfP(h,rep); if(w==null) return; hired.add(hid); cats.heroes.g+=w; cats.heroes.n++; cats.heroes.wage+=w; };
   ((rep.characters)||[]).filter(c=>c&&c.alive!==false).forEach(c=>{
     for(let ph=0;ph<5;ph++){
       const act=document.getElementById(`po-action-${c.id}-${ph}`)?.value||''; if(!act) continue;
@@ -6191,7 +6213,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
     // (best skill). The placeholder carries no levels, and _unknownSkills tells every order field
     // to offer the full choice (all base spells, every skill, no percentages), so a player cannot
     // read the hero's training off the dropdowns before they have joined.
-    skills:{}, _unknownSkills:true, armies:[], items:[], pay:heroData.pay,
+    skills:{}, _unknownSkills:true, armies:[], items:[], pay:(heroHireWageOfP(heroData)??heroData.pay), // item 12: the wage they will be hired at
     // A hero hired via Hire Hero stands in the SAME province as the hiring character (the hire
     // requires it), so the newly-hired hero acts from there. Without a real locationId every
     // province-dependent order option (Recruit Armies, Search Lair, …) came up empty.
@@ -6487,7 +6509,7 @@ const UNIT_ABILITIES={
   'Mountain Guns':'Bombardment — fire before all other missile units, and +50% damage against garrisons.',
   'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
   'Dwarf Ironclads':'Armoured Hulls — immune to pre-battle missile damage.',
-  'Warg Riders':'Run Them Down — if at least half your winning force are Wargs, you pursue the beaten commander automatically. Against neutral guards, who cannot be pursued, they end the fight fast instead: half casualties for you on a win.',
+  'Warg Riders':'Run Them Down — if at least half your winning force are Wargs, you pursue the beaten commander automatically. The chase takes the place of that commander\'s own orders until it ends, and like any army it fights at most one battle a season. Against neutral guards, who cannot be pursued, they end the fight fast instead: half casualties for you on a win.',
   'Orc Berserkers':'Outnumbered and Uncaring — +10% strength for every 25% the enemy outnumbers you (max +30%).',
   'Goblin Horde':'Sheer Numbers — +10% strength per other Goblin Horde in the force (max +30%).',
   'Wyvern Riders':'Terror From Above — enemy fanaticism chance reduced by 15%. Against neutral guards, who have no fanaticism, they cut the defenders’ bonus by 10% instead. Acid Spit Volley: a pre-battle strike on one enemy unit (2–5).',
@@ -7003,6 +7025,15 @@ function heroHireWagePP(kingdomAlign, heroAlign){
   const d=alignDistPP(kingdomAlign, heroAlign);
   if(d>=6) return null;               // Divine <-> Undead: will never serve
   return 2+Math.floor(d/2);
+}
+// 2026-10-08 (Toby item 12): the price of hiring THIS hero, as the engine will charge it. The report
+// now sends it with every hireable hero (hireWage: alignment distance + the hero's skill premium, null
+// for a hero who will not serve); the alignment-only estimate above is kept only for a report from an
+// older engine that does not send it. Every hire price the order form shows goes through here, so the
+// dropdown, the Broker list, the hired hero's card and the order ledger agree with the report.
+function heroHireWageOfP(h, report){
+  if(h&&Object.prototype.hasOwnProperty.call(h,'hireWage')) return h.hireWage;
+  return heroHireWagePP(((report||currentReport||{}).kingdom||{}).alignment||'Neutral', h&&h.alignment);
 }
 
 // Predict each character's item list at the given phase by replaying the Give Item orders of all
@@ -7736,13 +7767,13 @@ function buildTargetField(c, ph, saved){
       if((c.armies||[]).length===0){
         return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
           <div style="font-size:.72rem;color:var(--forest)">🗡 Lies in wait around ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
-          <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at their back they cannot bar a road, but they will try to <em>ambush</em> any enemy character who marches into their province or one adjacent — springing a personal battle. Their <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is also a king. Cancelled by a later Move or Encounter order.</div>`;
+          <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at their back they cannot bar a road, but they will try to <em>ambush</em> any enemy character who marches into their province or one adjacent — springing a personal battle. Their <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is also a king. Done once an ambush is sprung (a Defend order in a later season sets a new watch); cancelled by a later Move or Encounter order.</div>`;
       }
       // Defend no longer takes a target — it always guards the province the character stands in.
       // The engine reads no target for Defend; a hidden field keeps the order shape consistent.
       return`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
         <div style="font-size:.72rem;color:var(--forest)">🛡 Guards ${curProv_?curProv_.name:'the province they stand in'} and its neighbours.</div>
-        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn, starting this phase. If an enemy army marches into a neighbouring province <em>of yours</em> — or an enemy hero <strong>raises, summons or seizes troops</strong> inside one — they march there at once (1 movement point) and are in the line <em>before</em> the enemy can take it, fighting as the <strong>defender</strong> with the garrison at their side, however strong the foe. One ride-out per phase; if their own province is attacked they hold it instead. The watch then carries on from wherever they stand. Ended by a later Move or Encounter order, or by losing a battle.</div>
+        <div style="font-size:.7rem;color:var(--stone);margin-top:3px">Keeps watch for the rest of the turn, starting this phase. If an enemy army marches into a neighbouring province <em>of yours</em> — or an enemy hero <strong>raises, summons or seizes troops</strong> inside one — they march there at once (1 movement point) and are in the line <em>before</em> the enemy can take it, fighting as the <strong>defender</strong> with the garrison at their side, however strong the foe. A column with ships or sea-beasts in it can only answer by sea — it never rides overland from one land province to another. One ride-out per phase; if their own province is attacked they hold it instead. The watch then carries on from wherever they stand — until it brings them to a battle: win or lose, the Defend order is then done, and only a Defend order in a <em>later</em> season sets a new watch. Also ended by a later Move or Encounter order.</div>
         <div style="font-size:.7rem;color:var(--stone);margin-top:3px">They ride out only <em>after</em> every non-moving order of the phase has resolved — so a spell cast on them, a column handed over or an item passed to them <strong>in the same phase</strong> reaches them first, and they still arrive before any invader marches in. Only support ordered for a phase <em>after</em> they have gone misses them: a spell on them is then never worked (no casting slot lost), a transfer is refused with the troops kept, and a Send Item follows by courier.</div>`;
     }
 
@@ -7934,7 +7965,7 @@ function buildTargetField(c, ph, saved){
       if(!c.isKing)
         return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
       const hireOpts=Object.values(provOrderData||{}).flatMap(pd=>(pd.availableHeroes||[])).map(h=>{
-        const w=heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment);
+        const w=heroHireWageOfP(h,report);
         if(w==null) return '';
         return`<option value="hire:${h.id}" ${target==='hire:'+h.id?'selected':''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
       }).filter(Boolean).join('');
@@ -8280,17 +8311,18 @@ function buildTargetField(c, ph, saved){
         // alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
         const kAlign=report.kingdom?.alignment||'Neutral';
-        const wage=heroHireWagePP(kAlign,h.alignment);
+        const wage=heroHireWageOfP(h,report);
         if(wage==null) return`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
         const d=alignDistPP(kAlign,h.alignment);
-        const costNote=d<=1?'(kindred outlook — base rate)':`(${d} steps from ${kAlign})`;
+        const _base=heroHireWagePP(kAlign,h.alignment), _prem=(_base!=null&&wage>_base)?wage-_base:0;
+        const costNote=(d<=1?'(kindred outlook':`(${d} steps from ${kAlign}`)+(_prem?`, +${_prem}g for proven skill)`:d<=1?' — base rate)':')');
         return`<option value="${h.id}" ${target==h.id?'selected':''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
       }).join('');
       // never let the browser silently pre-select the FIRST hero. If the saved target is not one of
       // the heroes listed here (e.g. an earlier-phase move was changed and this character's
       // predicted province — and its heroes — changed with it), show an explicit "choose"
       // placeholder so the player picks again rather than hiring someone they never chose.
-      const _hasPick=heroes.some(h=>String(h.id)===String(target)&&heroHireWagePP(report.kingdom?.alignment||'Neutral',h.alignment)!=null);
+      const _hasPick=heroes.some(h=>String(h.id)===String(target)&&heroHireWageOfP(h,report)!=null);
       const _ph=`<option value="" ${_hasPick?'':'selected'}>— choose a hero to hire —</option>`;
       return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_ph}${opts}</select>`;}
 
@@ -10341,6 +10373,6 @@ init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 });
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.08-2156</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.09-0923</div>
 </body>
 </html>

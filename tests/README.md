@@ -20,6 +20,9 @@ it prints the end of that test's output and the seed to repeat it with.
   - `bootJsdom` boots it in jsdom;
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
     folder, as deployed; the CDN gets a stub and the fonts get nothing.
+- **`lib/scenario.js`** stages one real turn on a small world for scenario tests: it boots the GM
+  portal (with any code-anchor hooks), lets the test edit a fresh world, gives every human-held
+  character its orders (Rest by default), runs `runTurn` and returns the saved world and the GM's log.
 - **`lib/stub-db.js`** holds every Supabase stand-in the tests use. Nothing connects to a real
   database. The harnesses were written with five different stubs; each is kept exactly as it
   behaved, so moving a harness onto the shared file didn't change what it sees.
@@ -63,6 +66,13 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `hit-cap` | new | 2 | ✅ pass | No single hit in personal combat takes more than half the target's maximum HP: guardian on hero, hero on guardian, hero on hero; a Legendary's tighter 20% cap still wins |
 | `move-points` | new | 2 | ✅ pass | Taking an undefended enemy province costs 1 movement point; pressing on with a battle against neutral defenders costs 1 a phase while points remain |
 | `overtures` | new | 2 | ✅ pass | An overture of peace or alliance makes the courted realm meet the sender and shows on its Diplomacy card; in a game of three realms or fewer an impossible alliance offer is not sent |
+| `pursuit-one-battle` | new | 2 | ✅ pass | A Warg Riders chase obeys one battle per phase: a hunter who has just fought (even as the defender) holds the chase over, stays where he is, and his report says why his Move order waited. A chase battle the hunter wins takes the province (or says why it is still contested) |
+| `retreat-dry-ground` | new | 1 | ✅ pass | A beaten force falls back onto a Flooded province or sea laid dry by Part Sea only when no ordinary land is open to it (foot, flyers, and the naval split's march inland) |
+| `hire-price` | new | 4 | ✅ pass | A seasoned wanderer's hire price (alignment rate + skill premium) is the same in the report, the hire data, the Hire Hero dropdown, the Broker list and the order ledger |
+| `wanderer-orders` | new | 2 | ✅ pass | A Charm aimed at a wanderer whom another realm hires first is not worked (no seizure, no fight); an Encounter never names a wanderer, nor a hero who was one when the turn's orders were given |
+| `defend-naval-overland` | new | 2 | ✅ pass | A general on Defend whose column has ships never rides overland to a neighbouring land province, whether the enemy marches in or is already standing there |
+| `defend-once` | new | 2 | ✅ pass | A Defend order is done once it has brought its general to battle (win or lose): no ride-out in a later season without a fresh Defend order, and the battle season's own Defend order does not re-arm it; a fresh Defend order for a later season does |
+| `hp-wound-gain` | new | 1 | ✅ pass | After a personal fight every wounded hero who lives rolls for maximum HP, the winner rolls once (the win award, not a wound roll too), and a winner's successful roll gains +1 |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
@@ -70,6 +80,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `fuzz-wages-combat` | `claude_fuzz_0927c.js` | 3 | ✅ pass | All-bot turns and personal combat: no crash, no NaN/undefined in the narrative; Orc wage discount stays a whole, non-negative number |
 | `fuzz-advance-masking` | `claude_fuzz_0927d.js` | 3 | ✅ pass | Advance-and-strike combat, masking of unmet realms, archive round-trip |
 | `chromium-boot` | `claude_lb_chromium_0927.js` | 4 | ✅ pass | GM portal, player portal and Hall of Fame boot in real Chromium; links and footers present |
+| `orders-buttons-visible` | new | 4 | ✅ pass | In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone |
 | `gm-messaging-boot` | `claude_msg_gm_boot_0927.js` | 4 | ✅ pass | GM portal boots; the dispatches set-up banner appears and goes; deleting a game clears its dispatches first |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
@@ -98,7 +109,7 @@ message. That means the hook needs updating, not that the game is broken.
 
 | Test | Anchor in `kingdoms-call-gm-portal.html` |
 |---|---|
-| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
+| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground`, `hp-wound-gain` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
 | `leaderboard-records`, `leaderboard-render` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |
