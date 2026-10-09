@@ -415,7 +415,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-0932'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1707'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -2229,7 +2229,7 @@ function buildHumanoidPool(terrain, race, count, rnd){
   const full=(PROVINCE_ARMIES_P[terrain]||{})[race]||['Shieldwall Levies'];
   const garrison=full.filter(t=>t.toLowerCase().includes('garrison'));
   const local=full.filter(t=>!t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t));
-  const shuffled=[...local].sort(()=>rnd()-0.5);
+  const shuffled=shuffleP(local, rnd);
   const types=shuffled.slice(0,count);
   // Ground units this province could offer instead of a flyer: its own terrain first (terrain stays
   // meaningful), and only if the terrain has none to spare — several race/terrain cells hold
@@ -2451,11 +2451,11 @@ function fortuneNarrative(atkLabel, defLabel, atkBase, defBase, fort){
   } else outcome=` and overturned it — ${winner} finishes ${fortuneEdgeNum(r1)} ahead and **wins**.`;
   return `${edge}. ${luck}${outcome}`;
 }
-// unbiased Fisher-Yates shuffle (returns a NEW array). Every former
+// unbiased Fisher-Yates shuffle (returns a NEW array; rnd defaults to Math.random). Every former
 // `.sort(()=>Math.random()-0.5)` now goes through here — that comparator is not a fair shuffle
 // (engine-dependent, and it leaves elements near their original positions far more often than
 // chance), which skewed "pick n at random" draws toward the front of the list.
-function shuffleP(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function shuffleP(arr, rnd=Math.random){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 const ABILITIES_P=KC_SKILLS.slice();
 // ── UNIQUE-NAME OVERFLOW POOLS (KC item: no two characters share a given name OR a descriptor) ──
 // A game names up to ~184 neutral heroes on the largest map, plus kings and heirs (~210 names).
@@ -11055,7 +11055,11 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   near.forEach((L,i)=>{ L.grade = i<kW?'Weak' : i<kW+kM?'Moderate' : 'Powerful'; });
   // (b) the far country gets whatever the home band left, spread by jittered distance rank.
   const remW=Math.max(0, nW-kW), remM=Math.max(0, nM-kM);
-  far.sort((a,b)=>(a.dHome-b.dHome)||(Math.random()-0.5));
+  // Shuffle first, then sort by distance alone: the sort is stable, so lairs at the same distance keep
+  // their shuffled order. (A random tie-break inside the comparator made the result, and the number of
+  // random draws, depend on the browser's sort algorithm.)
+  const farKey=L=>Number.isFinite(L.dHome)?L.dHome:Infinity;
+  far.splice(0, far.length, ...shuffleP(far).sort((a,b)=>{ const x=farKey(a), y=farKey(b); return x<y?-1:x>y?1:0; }));
   // The jitter is what turns a hard cut into a gradient. At ~35% of the far pool, measured over 400
   // generated worlds (session_harness_0914e.js), the WEAK share falls 60% → 60% → 16% → 4% across
   // the home band, the near marches (d2-3), the far marches (d4-5) and the deep wilds (d6+), and
@@ -27813,6 +27817,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-0932</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1707</div>
 </body>
 </html>

@@ -22,6 +22,7 @@ const SUITE=[
   ['syntax',               'tests/syntax.test.js'],
   ['docs',                 'tests/docs.test.js'],
   ['stamps',               'tests/stamps.test.js'],
+  ['sort-comparators',     'tests/sort-comparators.test.js'],
   ['dangerous-paths',      'tests/dangerous-paths.test.js'],
   ['landing-footer',       'tests/landing-footer.test.js'],
   ['boot-pages',           'tests/boot-pages.test.js'],

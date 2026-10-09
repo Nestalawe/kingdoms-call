@@ -161,6 +161,19 @@ rulebooks.
   collapse them into the shared table.
 - Never reorder a character's `items` array. Send Item addresses items by index.
 
+## A sort comparator must give the same answer every time
+
+`.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is
+not a shuffle. How often the engine calls the comparator, and so the order it produces and how many
+random numbers it uses, is up to the JavaScript engine. So the same seed gives a different world on a
+newer Node or Chrome. In Oct 2026 world generation came out different on Node 26 than on Node 24,
+because of two such sorts.
+
+- To shuffle, use `shuffleP(arr, rnd)` (Fisher-Yates; `rnd` defaults to `Math.random`).
+- To order randomly within ties, shuffle first, then sort by the real key alone: the sort is stable, so
+  ties keep their shuffled order.
+- `npm test`'s `sort-comparators` check fails on a random or argument-less comparator.
+
 ## Retired discovery ids are never reused
 
 `RETIRED_DISCOVERY_IDS` lists Sage discoveries that have been removed. `retireDiscoveries(G)` strips them
