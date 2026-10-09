@@ -25,6 +25,7 @@ const SUITE=[
   ['config',               'tests/config.test.js'],
   ['sort-comparators',     'tests/sort-comparators.test.js'],
   ['dangerous-paths',      'tests/dangerous-paths.test.js'],
+  ['staging',              'tests/staging.test.js'],
   ['landing-footer',       'tests/landing-footer.test.js'],
   ['boot-pages',           'tests/boot-pages.test.js'],
   ['turn-fuzz',            'tests/turn-fuzz.test.js',            FULL?['16','12']:['4','6']],

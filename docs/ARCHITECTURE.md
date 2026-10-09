@@ -153,6 +153,13 @@ but the stamps still drive the data-file guard and the GM tab's auto-reload, so 
 copies each time ([traps.md](traps.md#the-gm-portals-two-build-stamps),
 [traps.md](traps.md#the-data-file-stamp-guard)).
 
+## Staging
+
+A second copy of the site at <https://kingdoms-call-staging.github.io/>, with its own Supabase project and
+no real players. A pull request labelled `staging` is tested, then published there with a `kc-config.js`
+pointing at the staging database (`.github/workflows/staging.yml`). One pull request is on staging at a
+time, and its PR comment says so.
+
 ## Tests
 
 `npm test` boots the real pages in jsdom (and Chromium where needed) against an in-memory Supabase

@@ -1,0 +1,91 @@
+# Puts a pull request on the staging site (https://kingdoms-call-staging.github.io/), talking to the
+# staging database, when it carries the label "staging" (P0-13). New commits on a labelled PR go up too.
+# One PR is on staging at a time: the newest one deployed. Its PR gets an "On staging" comment, and the
+# PR it replaced is told so.
+#
+# Only for PRs from this repo (a fork gets no secrets). The tests run first; nothing is published if they
+# fail. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
+# kc-config.js pointing at the staging database (variables STAGING_SUPABASE_URL, STAGING_SUPABASE_KEY),
+# all in the "staging" environment.
+name: Staging
+
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# One deploy at a time, in order; never cut off a push that has started.
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: staging
+    if: contains(github.event.pull_request.labels.*.name, 'staging') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment:
+      name: staging
+      url: https://kingdoms-call-staging.github.io/
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm test
+
+      - name: Write the staging config
+        run: node .github/scripts/staging.js config > site/kc-config.js
+        env:
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
+
+      - name: Publish site/ to the staging repo
+        id: publish
+        env:
+          DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_KEY" ]; then echo "::error title=staging::The staging environment has no STAGING_DEPLOY_KEY secret."; exit 1; fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/staging_key && chmod 600 ~/.ssh/staging_key
+          # GitHub's SSH host keys, from its own published list (over HTTPS), not trusted on first use.
+          curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' > ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/staging_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          git clone --depth 1 git@github.com:Kingdoms-Call-Staging/kingdoms-call-staging.github.io.git staging-repo
+          prev=$(jq -r '.pr // empty' staging-repo/staging.json 2>/dev/null || true)
+          find staging-repo -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -R site/. staging-repo/
+          touch staging-repo/.nojekyll
+          printf 'User-agent: *\nDisallow: /\n' > staging-repo/robots.txt
+          jq -n --argjson pr "$PR_NUMBER" --arg sha "$PR_SHA" --arg at "$(date -u +%FT%TZ)" '{pr:$pr,sha:$sha,at:$at}' > staging-repo/staging.json
+          cd staging-repo
+          git config user.name "kingdoms-call staging"
+          git config user.email "staging@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Staging: PR #$PR_NUMBER (${PR_SHA:0:7})"
+          git push -q origin HEAD:main
+          echo "previous=$prev" >> "$GITHUB_OUTPUT"
+          rm -f ~/.ssh/staging_key
+
+      - name: Comment on the pull requests
+        run: node .github/scripts/staging.js comment "${{ steps.publish.outputs.previous }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
