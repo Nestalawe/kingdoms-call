@@ -1,8 +1,8 @@
 // tests/lib/boot.js: the one way tests load the pages in site/.
 //
 //   SITE, sitePath(name)        where the deployable files live (site/, or $KC_SITE)
-//   readPage(nameOrPath)        page HTML with kingdoms-call-data.js inlined and the Supabase CDN
-//                               <script> removed, ready for jsdom
+//   readPage(nameOrPath)        page HTML with its local scripts (kingdoms-call-data.js, kc-config.js)
+//                               inlined and the Supabase CDN <script> removed, ready for jsdom
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
 //   routeExternal(target, cdn)  answers the CDN with a stub and fonts with nothing (Playwright page/context)
@@ -16,16 +16,19 @@ const fs=require('fs'), path=require('path'), http=require('http');
 const SITE=path.resolve(process.env.KC_SITE||path.join(__dirname,'..','..','site'));
 const sitePath=name=>path.join(SITE,name);
 
-const DATA_TAG='<script src="kingdoms-call-data.js"></script>';
+// A <script src="…"> naming a plain file beside the page (no "/" or ":"), e.g. kingdoms-call-data.js or kc-config.js.
+const LOCAL_TAG=/<script src="([A-Za-z0-9._-]+\.js)"><\/script>/g;
 const CDN_TAG=/<script src="https:\/\/cdn\.jsdelivr[^"]*"><\/script>/g;
 
-// A name ('kingdoms-call-gm-portal.html') is looked up in site/; a path is used as given. The data
-// file is the one beside the page, as when deployed.
+// A name ('kingdoms-call-gm-portal.html') is looked up in site/; a path is used as given. Local scripts are
+// the ones beside the page, as when deployed (jsdom doesn't fetch them itself).
 function readPage(nameOrPath){
   const file=/[\\/]/.test(nameOrPath)?nameOrPath:sitePath(nameOrPath);
   let html=fs.readFileSync(file,'utf8');
-  const data=path.join(path.dirname(file),'kingdoms-call-data.js');
-  if(html.includes(DATA_TAG)) html=html.replace(DATA_TAG,()=>'<script>'+fs.readFileSync(data,'utf8')+'</script>');
+  html=html.replace(LOCAL_TAG,(tag,src)=>{
+    const local=path.join(path.dirname(file),src);
+    return fs.existsSync(local)?'<script>'+fs.readFileSync(local,'utf8')+'</script>':tag;
+  });
   return html.replace(CDN_TAG,'');
 }
 

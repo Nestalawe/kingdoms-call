@@ -3,7 +3,7 @@
 // leaderboard page through a stub Supabase client in JSDOM, then renders every tab and checks the
 // output for exceptions, empty boards, and undefined/NaN leaking into the HTML. Also exercises GM
 // mode (?gm=1) and the edit / hide / delete controls.
-const fs=require('fs'), vm=require('vm'); const {sitePath,bootJsdom}=require('./lib/boot'); const {leaderboardStub}=require('./lib/stub-db');
+const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {leaderboardStub}=require('./lib/stub-db');
 const GM_FILE=process.argv[2]||sitePath('kingdoms-call-gm-portal.html');
 const LB_FILE=process.argv[3]||sitePath('kingdoms-call-leaderboard.html');
 
@@ -96,7 +96,7 @@ function check(cond,msg){ if(!cond){ fails++; console.log('FAIL: '+msg); } }
 
 async function run(gmMode){
   const errs=[];
-  const dom=bootJsdom(fs.readFileSync(LB_FILE,'utf8'),{
+  const dom=bootJsdom(readPage(LB_FILE),{
     pretendToBeVisual:false, url:'https://example.test/kingdoms-call-leaderboard.html'+(gmMode?'?gm=1':''),
     supabase:{createClient:()=>makeSb(gmMode,gmMode)},
     setup(w){

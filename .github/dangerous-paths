@@ -14,6 +14,9 @@ supabase/**
 # Third-party code served with the site.
 site/vendor/**
 
+# Which database the site talks to.
+site/kc-config.js
+
 # The escaping helper. Uncomment when P0-19 creates it.
 # site/kc-safe.js
 
