@@ -12,6 +12,9 @@
 //   leaderboardStub(o)    serves Hall-of-Fame rows and records edits (from claude_lb_render_0927.js).
 //   messagingStubInstall  in-memory database for the dispatch tests in Chromium, including a
 //                         mirror of the player-side read and insert rules (from stub_supabase_0927.js).
+//   pagedEventsStub(o)    serves one game's turn_events in pages the way Postgres may: rows that tie
+//                         on every ORDER BY key come back in a different order on each query
+//                         (leaderboard-events-paging, 2026-10-09).
 //
 // For Chromium, `browserSource.*` gives each browser-side stub as script text, served in place of
 // the Supabase CDN bundle.
@@ -300,9 +303,46 @@ function messagingStubInstall(window){
   };
 }
 
+// events: the turn_events rows; results: the game_results rows; errorFrom: a range start from which
+// turn_events answers with an error; calls: array, every write is pushed as {table,op,payload}.
+// Ties on the ORDER BY keys are broken by a scramble that changes with every query (fixed, not
+// random), as separate queries against a real database are free to do.
+function pagedEventsStub({events,results,errorFrom,calls}){
+  let queryNo=0;
+  const q=(table)=>{
+    const st={table,op:'select',order:[],range:null,single:false};
+    const res=()=>{
+      if(st.op!=='select'){ calls.push({table,op:st.op,payload:st.payload}); return {data:null,error:null}; }
+      if(table==='game_results') return {data:results.slice(),error:null};
+      if(table==='turn_events'){
+        if(errorFrom!=null&&st.range&&st.range[0]>=errorFrom) return {data:null,error:{message:'canceling statement due to statement timeout'}};
+        const n=++queryNo;
+        const tie=r=>((events.indexOf(r)+1)*7919+n*104729)%1009;
+        const r=events.slice().sort((a,b)=>{ for(const k of st.order){ if(a[k]!==b[k]) return a[k]<b[k]?-1:1; } return tie(a)-tie(b); });
+        return {data:st.range?r.slice(st.range[0],st.range[1]+1):r,error:null};
+      }
+      return {data:st.single?null:[],error:null};
+    };
+    const api={
+      select(){ return api; }, eq(){ return api; }, limit(){ return api; },
+      order(k){ st.order.push(k); return api; },
+      range(a,b){ st.range=[a,b]; return api; },
+      upsert(p){ st.op='upsert'; st.payload=p; return api; },
+      update(p){ st.op='update'; st.payload=p; return api; },
+      maybeSingle(){ st.single=true; return Promise.resolve(res()); },
+      single(){ st.single=true; return Promise.resolve(res()); },
+      then(r,j){ return Promise.resolve(res()).then(r,j); },
+    };
+    return api;
+  };
+  return {from:q, rpc:async()=>({data:null,error:null}),
+    auth:{getSession:async()=>({data:{session:null}}),getUser:async()=>({data:{user:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
+    channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}),removeChannel(){}};
+}
+
 const browserSource={
   messaging:`(${messagingStubInstall.toString()})(window);`,
   null:`window.supabase={createClient:${nullStub.toString()}};`,
 };
 
-module.exports={makeStub,cannedStub,nullStub,leaderboardStub,messagingStubInstall,browserSource};
+module.exports={makeStub,cannedStub,nullStub,leaderboardStub,messagingStubInstall,pagedEventsStub,browserSource};

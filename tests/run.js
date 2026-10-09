@@ -32,6 +32,7 @@ const SUITE=[
   ['druid-and-war-spoils', 'tests/druid-and-war-spoils.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
+  ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],
   ['concede',              'tests/concede.test.js'],
   ['monarch-grave',        'tests/monarch-grave.test.js'],
   ['guardian-melee',       'tests/guardian-melee.test.js'],

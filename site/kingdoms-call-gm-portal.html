@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1800'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1810'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -5137,11 +5137,15 @@ async function writeGameRecord(gameId, opts){
     const gid=String(gameId);
     const {data:results,error:rErr}=await sb.from('game_results').select('*').eq('game_id',gid);
     if(rErr||!results||!results.length) return false;
+    // 2026-10-09 (Toby item 5): ordered by turn AND realm. There is one row per realm per turn, so
+    // ordering by turn alone left the order within a turn to the database, which may differ from one
+    // page query to the next: rows at a page edge were skipped or read twice. A page that fails now
+    // stops the build, rather than saving a record from part of the game over a complete one.
     const events=[];
     for(let from=0;;from+=500){
       const {data,error}=await sb.from('turn_events').select('turn,player_index,is_bot,realm,race,alignment,post,outcomes')
-        .eq('game_id',gid).order('turn').range(from,from+499);
-      if(error) break;
+        .eq('game_id',gid).order('turn').order('player_index').range(from,from+499);
+      if(error){ _kcLbLastErr='Could not read the turn history of game '+gid+': '+error.message; renderLeaderboardBanner(); return false; }
       events.push(...(data||[]));
       if(!data||data.length<500) break;
     }
@@ -27808,6 +27812,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1800</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1810</div>
 </body>
 </html>
