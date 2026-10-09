@@ -21,6 +21,7 @@ const GM='kingdoms-call-gm-portal.html';
 const SUITE=[
   ['syntax',               'tests/syntax.test.js'],
   ['docs',                 'tests/docs.test.js'],
+  ['stamps',               'tests/stamps.test.js'],
   ['dangerous-paths',      'tests/dangerous-paths.test.js'],
   ['landing-footer',       'tests/landing-footer.test.js'],
   ['boot-pages',           'tests/boot-pages.test.js'],

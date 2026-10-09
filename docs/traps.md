@@ -34,9 +34,7 @@ Both portals refuse to start on a data file older than the one they were cut aga
   `ReferenceError`.
 - **The two stamp lines do different jobs.** The guard reads `KC_DATA_STAMP`. The GM tab's auto-reload
   before a due turn (`refreshIfNewerBuild`) reads the `// Data file v…` comment. If only one is bumped,
-  one of the two silently misses the change. At the cutover build they differ (comment
-  `2026.09.27-1839`, stamp `2026.09.29-2329`); that gets fixed in its own PR, not alongside other
-  work.
+  one of the two silently misses the change. `npm test`'s `stamps` check fails if they differ.
 - A portal-only change leaves `KC_DATA_MIN` alone.
 
 ## The GM portal's two build stamps
@@ -51,6 +49,7 @@ Bump both together. If only `KC_BUILD_STAMP` changes, a pinned GM tab doesn't re
 engine. If only the footer changes, statistics are filed under the previous build. That has happened
 once: in Sept 2026 a whole build's telemetry claimed to be the build before it. Don't write
 `GM Portal v` followed by a stamp anywhere above the footer, or the auto-reload reads that instead.
+`npm test`'s `stamps` check fails on either mistake.
 
 ## `select('*')` on big tables
 
