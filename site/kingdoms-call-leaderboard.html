@@ -476,7 +476,7 @@ function render(){
   else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
   else el.innerHTML=renderGames(G);
   const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
-  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.09-1739 · most recent game recorded '+dstr(last);
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.09-1830 · most recent game recorded '+dstr(last);
 }
 
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
@@ -575,18 +575,32 @@ function renderChampions(G){
 }
 
 // —— ACHIEVEMENTS ——————————————————————————————————————————————————————————————————————————————
+// 2026-10-09 (Toby item 5): a game row holds every realm's best for each record ({key: [entries]};
+// rows built before lb3 hold one {entry}: the game's best — both are read). When the search box names
+// a realm or a player, each game that has them contributes only THEIR entries, so a player can find
+// every feat of theirs, not only the ones that make the top eight.
 function renderAchievements(G){
+  const q=(($('f-q')&&$('f-q').value)||'').trim().toLowerCase();
+  const whoMatch=st=>!!q&&[st.realm,st.player,personName(st)].filter(Boolean).join(' ').toLowerCase().indexOf(q)>=0;
   const byKey={};
+  let narrowed=false;
   G.forEach(g=>{
+    const mine=new Set((g.standings||[]).filter(st=>st&&whoMatch(st)).map(st=>st.pi));
+    if(mine.size) narrowed=true;
     Object.entries(g.records||{}).forEach(([k,r])=>{
-      if(!r||r.v==null) return;
-      (byKey[k]=byKey[k]||[]).push({...r,g});
+      (Array.isArray(r)?r:[r]).forEach(e=>{
+        if(!e||e.v==null) return;
+        if(mine.size&&!mine.has(e.pi)) return;
+        (byKey[k]=byKey[k]||[]).push({...e,g});
+      });
     });
   });
   const cats={};
   Object.keys(byKey).forEach(k=>{ const d=achDef(k); (cats[d.c]=cats[d.c]||[]).push(k); });
   let html='';
-  html+='<div class="card"><h2>🎖 Achievements</h2><div class="muted">Every record below is the best that has ever been recorded in a game matching your filters. Each game contributes its own best, so one runaway campaign cannot fill a whole list.</div></div>';
+  html+='<div class="card"><h2>🎖 Achievements</h2><div class="muted">'+(narrowed
+    ?'Showing only the realms and players matching your search — every one of their bests, in every game that matches your filters.'
+    :'Every record below is among the best ever recorded in a game matching your filters. Each realm\'s best in each game counts. Type a realm or player into Search to see all of their own records.')+'</div></div>';
   KC_CAT.forEach(([cat,title])=>{
     const keys=(cats[cat]||[]).sort((a,b)=>achLabel(a,byKey[a][0]).localeCompare(achLabel(b,byKey[b][0])));
     if(!keys.length) return;
@@ -774,6 +788,6 @@ async function deleteRecord(id,purge){
 
 loadAll();
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.09-1739</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.09-1830</div>
 </body>
 </html>

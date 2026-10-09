@@ -60,9 +60,11 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
 | `home-placement` | `claude_homeplacement_0927.js` | 1 | ✅ pass | Capitals are at least 4 hexes apart on every map size |
 | `druid-and-war-spoils` | `claude_fuzz_0927b.js` | 1 | ✅ pass | Unit classes, the Druid ladder, and the Orc war-spoils halving |
-| `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input |
+| `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input (since 2026-10-09 each record is a list with one entry per realm, as Toby confirmed) |
 | `leaderboard-render` | `claude_lb_render_0927.js` | 4 | ✅ pass | The Hall of Fame renders every tab, filter and GM control from real built rows |
 | `leaderboard-events-paging` | new | 1 | ✅ pass | A game's Hall-of-Fame record is built from every one of its turn rows, read in pages in a fixed order (none skipped or read twice); a page that fails stops the build, saves nothing and shows the error |
+| `leaderboard-realm-bests` | new | 1 + 4 | ✅ pass | Every realm's own best for each record is kept (not only the game's best), best first; a hero who fell that turn still counts for his peaks; a title held and then lost is recorded; on the board (jsdom), searching a realm shows only that realm's entries |
+| `battle-spells-recorded` | new | 2 | ✅ pass | A spell worked in a battle reaches the turn's spell statistics; a hero who fell this turn is in his realm's end-of-turn snapshot, not among the living; every title holder's snapshot carries the title |
 | `concede` | `claude_concede_0927.js` | 2 | ✅ pass | A conceded realm in the Diplomacy card; the Reckoning when all rivals but one have quit |
 | `monarch-grave` | new | 1 | ✅ pass | A fallen king's body stays where it was laid at death, even after that province is captured: the Resurrect list, the older body list and the bots' raise planner all put it there |
 | `guardian-melee` | new | 2 | ✅ pass | Every guardian's melee blow rolls its grade's base (Weak 1–3, Moderate 2–5, Powerful 3–7, Legendary 4–9) + ⌈Melee÷2⌉, a hero's stays 1–3 + ⌈Melee÷2⌉; a "−1 melee for next round" special lowers the hero's Melee for exactly one round |
@@ -120,6 +122,7 @@ message. That means the hook needs updating, not that the game is broken.
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `pursuit-one-battle` | `    const chance=pursuitCatchChance(c,quarry);` (stages a certain catch) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |
-| `leaderboard-records`, `leaderboard-render` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |
+| `battle-spells-recorded` | `  const _tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};` (exposes the turn's statistics collector) |
+| `leaderboard-records`, `leaderboard-render`, `leaderboard-realm-bests` | `const _LB_SEA=new Set(` … `// Fetch this game's turn_events` |
 | `home-placement` | `  const cellIdRC=(r,c)=>r*cols+c;`, `  const eligibleCells=[];` and their end lines |
 | `druid-and-war-spoils` | the start and end of nine tables and functions (see the `slice(` calls) |

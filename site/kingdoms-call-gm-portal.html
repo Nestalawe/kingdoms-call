@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1810'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1830'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -4428,6 +4428,13 @@ function telRealmSnapshot(gs, pi){
       hp:c.hp, maxHp:c.maxHp, skills, units:units.map(unitRec), items:(c.items||[]).map(it=>it&&it.name).filter(Boolean)};
   });
   owned.forEach(p=>(p.garrisonArmies||[]).forEach(a=>{ if(a){ garUnits++; garStr+=unitBaseStrength(a); } }));
+  // heroes who fell THIS turn, as they were at death (the Hall of Fame counts their peaks; no totals
+  // above include them). Units and items are what death left on them, usually nothing.
+  const fallen=(gs.characters||[]).filter(c=>c&&c.player===pi&&!c.alive&&c.killedThisTurn).map(c=>{
+    const skills={}; Object.entries(c.skills||{}).forEach(([k,v])=>{ if(v>0) skills[k]=v; });
+    return {id:c.id, name:c.name, king:!!c.isKing, fell:1, hp:0, maxHp:c.maxHp, skills,
+      units:(c.armies||[]).filter(a=>a&&!a._phantom).map(unitRec), items:(c.items||[]).map(it=>it&&it.name).filter(Boolean)};
+  });
   const tax=owned.reduce((s,p)=>s+(p.tax||0),0);
   const worldTax=provs.reduce((s,p)=>s+((p&&p.tax)||0),0);
   const rel={enemies:[],allies:[]};
@@ -4442,6 +4449,7 @@ function telRealmSnapshot(gs, pi){
     ledUnits, ledStr:Math.round(ledStr), garUnits, garStr:Math.round(garStr), units:ledUnits+garUnits, str:Math.round(ledStr+garStr),
     items, relics, discoveries:(pl.discoveries||[]).length, consecrated:consecratedIds(pl).length,
     explored, conceded:!!pl.conceded, eliminated:!!pl._eliminated, rel, characters,
+    ...(fallen.length?{fallen}:{}),
   };
 }
 // The orders a realm gave this turn, as resolved by runTurn's ingestion (humans' submitted orders,
@@ -4556,6 +4564,13 @@ async function writeTurnTelemetry(gs, gameRow, players, tel, turn){
   gs.players.forEach((pl,pi)=>{
     if(!pl) return;
     const post=telRealmSnapshot(gs,pi); if(post) post._score=(standings.standings[pi]||{}).score||0;
+    // the Imperial Titles this realm holds now (2026-10-09, Toby item 5) — the Hall of Fame keeps the
+    // highest rating each holder reached, not only the holders at the end of the game
+    if(post){ const held=[]; (TITLE_DEFS||[]).forEach(t=>{ const h=(standings.titles||{})[t.key];
+      if(!h||h.playerIndex!==pi||!(h.merit>0)) return;
+      const ch=h.charId!=null?(gs.characters||[]).find(c=>c&&c.id===h.charId):null;
+      held.push({key:t.key, merit:Math.round(h.merit*100)/100, who:ch?ch.name:null}); });
+      if(held.length) post.titles=held; }
     const pre=(tel.pre||{})[pi]||null;
     rows.push({ game_id:String(gameRow.id), turn, player_index:pi,
       is_bot:bots.has(pi), bot_difficulty:bots.has(pi)?telBotDifficultyOf(gs):null,
@@ -4802,8 +4817,9 @@ async function forgetDeletedGames(){
 // game is read instead, and the sweep over turn_events happens once, in the GM's tab, when a game
 // ends (or when the GM presses Rebuild).
 //
-// RECORD KEYS. `records` is {key: {v, d, …context}} — the single best entry in THIS game for that
-// key; the board merges the per-game bests across games and ranks them. The catalogue of labels and
+// RECORD KEYS. `records` is {key: [{v, d, pi, …context}, …]} — the best entry of EACH REALM in THIS
+// game for that key, best first (rows built before lb3 hold one {v, d, …} per key: the game's best);
+// the board merges them across games and ranks them. The catalogue of labels and
 // categories lives in kingdoms-call-leaderboard.html (KC_ACH). A key emitted here that the board
 // does not know is still shown, under "Other records", with the key prettified — so adding a record
 // here can never break the board, it only loses a nice label until the catalogue catches up.
@@ -4830,7 +4846,7 @@ create policy "gm write game_records" on public.game_records
   for all to authenticated
   using (exists (select 1 from public.games g where g.gm_user_id = auth.uid()))
   with check (exists (select 1 from public.games g where g.gm_user_id = auth.uid()));`;
-const KC_LB_V=2;                    // bump when the row shape changes (rows carry it in build)
+const KC_LB_V=3;                    // bump when the row shape changes (rows carry it in build) · 3: records hold every realm's best
 let _kcHasLb=false, _kcLbLastErr=null;
 async function probeLeaderboard(){
   try{
@@ -4866,14 +4882,26 @@ function lbUnitStr(u){ return (u&&typeof u==='object')?((UNIT_BASE_STR[u.t]||4)*
 function lbSumStr(units,pred){ return _lbArr(units).reduce((s,u)=>s+((!pred||pred(u))?lbUnitStr(u):0),0); }
 
 // ── the record accumulator ───────────────────────────────────────────────────────────────────────
-// put(key, value, ctx, dir): keeps the single best value in this game. dir 'min' for records where
-// small wins (an upset, an early elimination, a long-shot spell).
+// put(key, value, ctx, dir): keeps the best value of EACH REALM in this game (ctx.pi; the whole-game
+// records, pi null, keep one). dir 'min' for records where small wins (an upset, an early
+// elimination, a long-shot spell). 2026-10-09 (Toby item 5): it kept only the game's single best, so
+// a realm whose best battle was beaten by another realm in the same game had nothing on the board.
+// A "most" record of zero is no feat and is not kept. finish() returns {key: [entries, best first]}.
 function lbRecorder(){
   const R={};
   return {R, put(key,v,ctx,dir){
     if(v==null) return; v=Number(v); if(!isFinite(v)) return;
-    const cur=R[key], better=!cur||(dir==='min'?v<cur.v:v>cur.v);
-    if(better) R[key]=Object.assign({v:Math.round(v*100)/100,d:(dir==='min'?'min':'max')},ctx||{});
+    const d=(dir==='min'?'min':'max');
+    if(d==='max'&&!(v>0)) return;
+    const pi=(ctx&&ctx.pi!=null)?ctx.pi:null;
+    const list=R[key]=R[key]||[];
+    const i=list.findIndex(e=>e.pi===pi);
+    if(i>=0&&!(d==='min'?v<list[i].v:v>list[i].v)) return;
+    const e=Object.assign({v:Math.round(v*100)/100,d},ctx||{});
+    if(i<0) list.push(e); else list[i]=e;
+  }, finish(){
+    Object.values(R).forEach(l=>l.sort((a,b)=>(a.d==='min'?a.v-b.v:b.v-a.v)||((a.pi==null?-1:a.pi)-(b.pi==null?-1:b.pi))));
+    return R;
   }};
 }
 // A record points at a realm by its INDEX and says when it happened — nothing else. The realm's
@@ -4977,8 +5005,9 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs, profNam
     if((post.provinces||0)>=10&&seenTen[pi]==null){ seenTen[pi]=t; put('fastest_ten',t,C({det:'10 provinces'}),'min'); }
     const dl=_lbObj(out.delta); put('gold_gain_turn',dl.gold,C()); put('str_gain_turn',dl.str,C());
 
-    // characters — the per-hero hosts, skills, baggage
-    _lbArr(post.characters).forEach(c=>{
+    // characters — the per-hero hosts, skills, baggage. A hero who fell this turn is counted too
+    // (post.fallen, 2026-10-09): a peak reached in the turn he died used to be lost with him.
+    _lbArr(post.characters).concat(_lbArr(post.fallen)).forEach(c=>{
       if(!c||typeof c!=='object') return;
       const who=c.name||null, units=_lbArr(c.units);
       const ctx=x=>C(Object.assign({who},x||{}));
@@ -4995,6 +5024,15 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs, profNam
       const sk=_lbObj(c.skills), tot=Object.values(sk).reduce((s,v)=>s+(Number(v)||0),0);
       put('greatest_hero',tot,ctx({det:`${Object.keys(sk).length} skills`}));
       Object.entries(sk).forEach(([k,v])=>{ const lv=_lbN(v); put('sk_'+k,lv,ctx({lbl:'Highest '+(SKILL_LABELS[k]||k),det:(SKILL_LABELS[k]||k)+' '+lv})); });
+    });
+
+    // the Imperial Titles this realm held at the end of this turn (post.titles, 2026-10-09): a title
+    // held for a while and lost before the end of the game is still on its record.
+    _lbArr(post.titles).forEach(h=>{
+      if(!h||typeof h.key!=='string') return;
+      const def=(typeof TITLE_DEFS!=='undefined'?TITLE_DEFS:[]).find(x=>x.key===h.key);
+      const nm=(def&&def.name)||h.key;
+      put('title_'+h.key,h.merit,C({who:(typeof h.who==='string'&&h.who)||null,lbl:nm+' — highest rating',det:nm}));
     });
 
     // battles
@@ -5122,7 +5160,7 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs, profNam
     winner_player:win?(win.is_bot?null:personOf(win.player_index)):null,
     winner_is_bot:win?!!win.is_bot:null,
     victory:any.victory||null,
-    setup, standings, records:rk.R,
+    setup, standings, records:rk.finish(),
     totals:{battles:gameBattles, casualties:gameCasualties, spells:gameSpells, captures:gameCaps, deaths:gameDeaths, lairs:gameLairs, events:events.length},
     build:`GM ${KC_BUILD_STAMP} lb${KC_LB_V}`,
   };
@@ -5201,8 +5239,15 @@ async function backfillGameRecords(force){
   const say=t=>{ const el=document.getElementById('lb-build-msg'); if(el) el.textContent=t; };
   try{
     const {data:games}=await sb.from('games').select('id,name,gm_user_id,created_at,max_turns,meta').eq('gm_user_id',currentUser.id).eq('status','complete');
-    const {data:res}=await sb.from('game_results').select('game_id');
-    const withResults=new Set((res||[]).map(r=>r.game_id));
+    // paged (2026-10-09): one row per realm per game passes the database's 1000-row answer limit
+    // after a hundred or so games, and the games past it were never offered for a record
+    const res=[];
+    for(let from=0;;from+=1000){
+      const {data,error}=await sb.from('game_results').select('game_id').order('game_id').order('player_index').range(from,from+999);
+      if(error){ say('Could not read the finished games: '+error.message); return 0; }
+      res.push(...(data||[])); if(!data||data.length<1000) break;
+    }
+    const withResults=new Set(res.map(r=>r.game_id));
     const {data:have}=await sb.from('game_records').select('game_id');
     const done=new Set((have||[]).map(r=>r.game_id));
     // every game that HAS results — this GM's finished games, plus recorded games since deleted
@@ -13176,6 +13221,9 @@ async function runTurn(opts){
   // otherwise be deferred with phase null and land under END OF TURN. This is the reliable
   // fallback.
   let _currentPhase=null;
+  // A spell worked inside a battle or a duel (2026-10-09, Toby item 5): only the Cast order logged its
+  // casts, so pre-battle, defender and duel magic never reached the spell records. ctx says where.
+  const telSpell=(ch,spell,school,lvl,chance,roll,ctx)=>{ try{ if(ch&&ch.player!=null) _tel.spells.push({ph:(_logCtx.phase??_currentPhase), pi:ch.player, charId:ch.id, spell, school, lvl, chance, ok:roll<=chance, ctx}); }catch(_te){} };
   // once the phase loop has finished, EVERY remaining line of the turn is an end-of-turn line (Mass
   // Healing, couriers, wages, de-consecration, max-HP sync …). _logCtx and _currentPhase are both
   // null by then, and a null phase was being filed under SPRING in the character sections of both
@@ -14819,6 +14867,7 @@ const BATTLE_ARMY_SPELLS={
       if(spellLvl>=1){
         const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(c)+discSum(c.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
         const castRoll=d100();
+        telSpell(c,spellName,school,spellLvl,castChance,castRoll,'battle');
         narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
           // pre-battle magic no longer trains the school. Casting into a battle is not the same
@@ -15002,6 +15051,7 @@ const BATTLE_ARMY_SPELLS={
         if(defSpellLvl>0){
           const castChance=Math.min(90,30+defSpellLvl*15);
           const castRoll=d100();
+          telSpell(defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
           if(castRoll<=castChance){
             // no school gain from pre-battle magic — see the attacker's cast above.
@@ -16265,6 +16315,7 @@ const BATTLE_ARMY_SPELLS={
     // 2026-09-10 item 1: use the canonical d100 (1–100, success on roll<=chance) so a roll equal to
     // the chance succeeds, matching every other percentage check in the engine.
     const _castRoll=d100();
+    telSpell(caster.ref,spellName,school,lvl,castChance,_castRoll,'duel');
     narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully) [roll ${_castRoll} ${_castRoll<=castChance?'✓':'✗'}].`);
     if(_castRoll>castChance){ narrative.push(`  …but the spell guts and fizzles, coming to nothing.`); return false; }
     caster.castSpells.push(spellName); caster.castSchool[school]=(caster.castSchool[school]||0)+1;
@@ -17738,6 +17789,7 @@ const BATTLE_ARMY_SPELLS={
       if(spellLvl<1) return;
       const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(caster)+discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
       const castRoll=d100();
+      telSpell(caster,spellName,school,spellLvl,castChance,castRoll,'battle');
       narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
       // no school gain from pre-battle magic — see resolveBattle's cast.
@@ -27812,6 +27864,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1810</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1830</div>
 </body>
 </html>

@@ -33,6 +33,8 @@ const SUITE=[
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
   ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],
+  ['leaderboard-realm-bests','tests/leaderboard-realm-bests.test.js'],
+  ['battle-spells-recorded','tests/battle-spells-recorded.test.js'],
   ['concede',              'tests/concede.test.js'],
   ['monarch-grave',        'tests/monarch-grave.test.js'],
   ['guardian-melee',       'tests/guardian-melee.test.js'],

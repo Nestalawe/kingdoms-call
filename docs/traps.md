@@ -63,8 +63,9 @@ down to ~1 KB after the fix).
 - Load the full world only when it's really needed (resolving a turn, opening one game), once.
 - Before adding a big column or a new poller, grep every `.select('*')` on that table. The poller is
   the multiplier.
-- The leaderboard reads `game_records` with `*` (~16 KB a row). Fine for now; if it gets slow, give
-  the list tabs a lighter select.
+- The leaderboard reads `game_records` with `*`. Since Oct 2026 a row keeps every realm's best for each
+  record, not just the game's: roughly 10–40 KB a row, growing with the number of realms. Fine for now;
+  if it gets slow, give the list tabs a lighter select.
 
 ## A new column must be optional at the write site
 
