@@ -1,0 +1,68 @@
+# Reads the live database's STRUCTURE (never its data) for the baseline migration (P0-15).
+# Manual only, from main, in the "production" environment: Toby approves every run, and the connection
+# string stays in that environment's secret SUPABASE_DB_URL.
+#
+# Output (a run artifact, kept 3 days):
+#   baseline.sql          `supabase db dump`: tables, functions, access rules; skips Supabase's own schemas
+#   schemas/              `supabase db schema declarative generate`: the same, one file per object
+#   generate.log          what the declarative export said, including anything it can't manage
+#   auth-triggers.sql     triggers on auth.users (the dump skips the auth schema, so they're listed here)
+#   postgres-version.txt  the live Postgres version (supabase/config.toml's major_version must match)
+# The run refuses to finish if any data (COPY / INSERT) appears in the output.
+name: Schema pull
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-pull
+  cancel-in-progress: false
+
+jobs:
+  schema-pull:
+    name: schema-pull
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      - name: Pull the structure
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "::error title=schema-pull::The production environment has no SUPABASE_DB_URL secret."; exit 1; fi
+          command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+          mkdir -p out
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f out/baseline.sql
+          supabase db schema declarative generate --db-url "$SUPABASE_DB_URL" --output-dir out/schemas --yes --experimental 2>&1 | tee out/generate.log
+          psql "$SUPABASE_DB_URL" -X -At -v ON_ERROR_STOP=1 -c "select version()" > out/postgres-version.txt
+          psql "$SUPABASE_DB_URL" -X -At -v ON_ERROR_STOP=1 -c "select pg_get_triggerdef(t.oid, true) || ';' from pg_trigger t where t.tgrelid = 'auth.users'::regclass and not t.tgisinternal order by t.tgname" > out/auth-triggers.sql
+          echo "Postgres: $(cat out/postgres-version.txt)"
+          echo "Files: $(find out -type f | wc -l); auth.users triggers: $(grep -c . out/auth-triggers.sql || true)"
+
+      # Structure only: a data row in the output would publish player data.
+      - name: Refuse any data
+        run: |
+          if grep -RInE '^(COPY [^ ]+ .*FROM stdin|INSERT INTO )' out; then
+            echo "::error title=schema-pull::Data rows found in the output; nothing is uploaded."
+            exit 1
+          fi
+          echo "No data rows in the output."
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: schema
+          path: out/
+          retention-days: 3
