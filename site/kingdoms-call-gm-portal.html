@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1705'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1751'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3615,12 +3615,12 @@ function dedupeItemsByName(items){
 }
 // ── MAXIMUM HP ── a character's maximum HP is an earned pool again.
 // max HP = start (15; 18 for an Orcish character of an Orcish realm) + hpEarned + item bonuses + ro08.
-// hpEarned grows ONLY through combat wins (lair guardian cleared, enemy character slain, pre-battle
-// duel won) — see rollHpGain. Each win: +1–3 while the earned base is under the first shoulder, then a
-// shrinking chance of a smaller gain, so the pool stalls around 60 (65 Orc) with no hard cap.
-// Shoulders: 40 / 50 / 60 (+5 for the Orcish edge). Skills no longer drive HP.
+// hpEarned grows ONLY through personal combat — see rollHpGain. 2026-10-09 (Toby item 16): every roll
+// GAINS; the roll only sets how much: 1–3 while the earned base is under 40, 1–2 from 40, 1 from 50
+// (+5 on each shoulder for the Orcish edge). The old shrinking chance of any gain at all is gone.
+// A winner adds +1 (awardHpRoll). Skills no longer drive HP.
 const HPGAIN_START=15, HPGAIN_START_ORC=18, HPGAIN_ORC_SHIFT=5, HPGAIN_MIGRATE_CLAMP=60;
-const HPGAIN_S1=40, HPGAIN_S2=50, HPGAIN_S3=60, HPGAIN_FLOOR_PCT=5;
+const HPGAIN_S1=40, HPGAIN_S2=50;
 let _MAXHP_PLAYERS=null; // set by runTurn / generateNewGame so module-level callers can see the realm races
 function maxHpIsOrc(ch, players){
   const pl=players||_MAXHP_PLAYERS||[];
@@ -3642,36 +3642,30 @@ function computeMaxHp(ch, players){
   const _discHp=_plHp?discMaxHpFor(_plHp,ch):0;
   return hpEarnedBase(ch,players)+itemMaxHpBonus(ch)+_discHp;
 }
-// The gain curve. Returns {chance, lo, hi} for the NEXT win given the current earned base.
+// The gain curve. Returns {lo, hi}: how much the NEXT roll gains, given the current earned base.
 function hpGainBand(ch, players){
   const base=hpEarnedBase(ch,players), sh=maxHpIsOrc(ch,players)?HPGAIN_ORC_SHIFT:0;
-  if(base<HPGAIN_S1+sh) return {chance:100, lo:1, hi:3};
-  if(base<HPGAIN_S2+sh) return {chance:100-4*(base-(HPGAIN_S1+sh)), lo:1, hi:2};
-  if(base<HPGAIN_S3+sh) return {chance:60-4*(base-(HPGAIN_S2+sh)), lo:1, hi:1};
-  return {chance:Math.max(HPGAIN_FLOOR_PCT, 20-4*(base-(HPGAIN_S3+sh))), lo:1, hi:1};
+  if(base<HPGAIN_S1+sh) return {lo:1, hi:3};
+  if(base<HPGAIN_S2+sh) return {lo:1, hi:2};
+  return {lo:1, hi:1};
 }
-// Roll a combat-win HP gain for a REAL character and apply it (the rise heals into the new
-// headroom). Returns {gain, chance, roll, maxHp}; gain 0 when the roll fails. `why` is only used
+// Roll a maximum-HP gain for a REAL character and apply it (the rise heals into the new headroom).
+// Every roll gains (item 16); the roll is only the amount. Returns {gain, maxHp}. `why` is only used
 // for the note.
 function rollHpGain(ch, players, why){
-  if(!ch||ch.alive===false) return {gain:0,chance:0,roll:0,maxHp:ch?ch.maxHp:0};
+  if(!ch||ch.alive===false) return {gain:0,maxHp:ch?ch.maxHp:0};
   const band=hpGainBand(ch,players);
-  const roll=Math.floor(Math.random()*100)+1;
-  let gain=0;
-  if(roll<=band.chance) gain=Math.floor(Math.random()*(band.hi-band.lo+1))+band.lo;
-  if(gain>0){ ch.hpEarned=Math.max(0,Math.round(ch.hpEarned||0))+gain; syncMaxHp(ch,players); }
-  return {gain, chance:band.chance, roll, maxHp:ch.maxHp, why:why||''};
+  const gain=Math.floor(Math.random()*(band.hi-band.lo+1))+band.lo;
+  ch.hpEarned=Math.max(0,Math.round(ch.hpEarned||0))+gain; syncMaxHp(ch,players);
+  return {gain, maxHp:ch.maxHp, why:why||''};
 }
 function hpGainLine(ch, r){
   if(!r) return '';
-  // 2026-10-08 (Toby item 16): a wounded hero rolls too (r.wound), and a winner's successful roll
-  // carries +1 for the victory (r.winBonus).
-  if(r.wound){
-    if(r.gain>0) return `💪 ${ch.name} is hardened by the wounds of the fight — maximum HP +${r.gain} → ${r.maxHp}.${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
-    return `${ch.name} carries the wounds of the fight, but no lasting hardening comes of them. [${r.chance}% roll ${r.roll}]`;
-  }
-  if(r.gain>0) return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}${r.winBonus?' (including +1 for the win)':''}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}${r.chance<100?` [${r.chance}% roll ${r.roll}]`:''}`;
-  return `${ch.name} is battle-worn already — no further hardening from this victory. [${r.chance}% roll ${r.roll}]`;
+  // 2026-10-08/09 (Toby item 16): a wounded hero rolls too (r.wound); a winner gets +1 on the roll
+  // (r.winBonus). Every roll gains — there is no longer a chance of nothing.
+  if(!(r.gain>0)) return '';
+  if(r.wound) return `💪 ${ch.name} is hardened by the wounds of the fight — maximum HP +${r.gain} → ${r.maxHp}.`;
+  return `💪 ${ch.name} is hardened by the victory — maximum HP +${r.gain} → ${r.maxHp}${r.winBonus?' (including +1 for the win)':''}.${r.sd35?' (Order of the Golden Shield: doubled.)':''}`;
 }
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
 // filled); a fall clamps current HP to the new maximum (never below 1 for a living character).
@@ -18602,16 +18596,15 @@ const BATTLE_ARMY_SPELLS={
   // guardian cleared, enemy character slain (any personal-combat path), pre-battle duel won
   // (kill or the loser breaking off). A fled Encounter/chase/thief fight and a pacified beast do NOT count.
   function awardWinHp(ch, narrative, why){ return awardHpRoll(ch, narrative, why, true); }
-  // 2026-10-08 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin) or
-  // for a hero who was wounded in it (resolvePersonalCombat). A winner whose roll succeeds gains +1 on
-  // top for the victory. (Recommended reading of "+1 hp to the hp gain": the bonus rides on a
-  // successful roll, so the soft ceiling around 60 HP still holds; see the PR for the ruling.)
+  // 2026-10-08/09 (Toby item 16): one maximum-HP roll for a hero after a fight — for the WINNER (isWin)
+  // or for a hero who was wounded in it (resolvePersonalCombat). The roll sets the amount; a winner
+  // gains the roll +1.
   function awardHpRoll(ch, narrative, why, isWin){
     if(!ch||ch.alive===false) return null;
     const real=(ch.id!=null&&(G.characters||[]).find(r=>r&&r.id===ch.id))||ch;
     if(real.alive===false) return null;
     const r=rollHpGain(real, G.players, why);
-    if(isWin&&r.gain>0){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
+    if(isWin){ real.hpEarned=Math.max(0,Math.round(real.hpEarned||0))+1; syncMaxHp(real,G.players); r.gain+=1; r.maxHp=real.maxHp; r.winBonus=1; }
     r.wound=!isWin;
     if(r.gain>0&&real.isKing&&hasDisc(real.player,'sd35')){ // sd35 Order of the Golden Shield: the king's hardening is doubled
       real.hpEarned+=r.gain; syncMaxHp(real,G.players); r.gain*=2; r.maxHp=real.maxHp; r.sd35=true; }
@@ -18627,7 +18620,8 @@ const BATTLE_ARMY_SPELLS={
     // mechanism).
     if(ch!==real){ ch.hpEarned=real.hpEarned; ch.maxHp=real.maxHp; ch.pay=real.pay; if(r.gain>0&&ch.hp!=null) ch.hp=Math.min(real.maxHp, ch.hp+r.gain); }
     const line=hpGainLine(real, r);
-    if(Array.isArray(narrative)) narrative.push(line);
+    if(!line){ /* nothing gained — nothing to say */ }
+    else if(Array.isArray(narrative)) narrative.push(line);
     else { const prov=(real.location!=null)?G.world.provinces[real.location]:null;
       log('combat', line, {actor:real.player!=null?real.player:-1, targets:real.player!=null?[real.player]:[], charId:real.id, provinceId:prov?prov.id:undefined}); }
     return r;
@@ -27781,6 +27775,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1705</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1751</div>
 </body>
 </html>
