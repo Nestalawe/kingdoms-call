@@ -390,6 +390,7 @@ section{display:none;}.section-active{display:block;}
   </section>
 </div>
 
+<script src="kc-config.js"></script>
 <script src="kingdoms-call-data.js"></script>
 <script>
 // ── DATA FILE GUARD ── the content tables (items, monsters, names, spells, titles, discoveries)
@@ -415,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1707'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.09-1739'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -990,8 +991,9 @@ function applyFlakScreen(myForce, enemyForce, myName, narr){
 }
 
 // ── CONFIG ────
-const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
+if(typeof KC_CONFIG==='undefined') throw new Error('kc-config.js did not load: reload the page.');
+const SUPABASE_URL = KC_CONFIG.supabaseUrl;
+const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const SEASONS = KC_SEASONS.slice();
 
@@ -27817,6 +27819,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1707</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1739</div>
 </body>
 </html>

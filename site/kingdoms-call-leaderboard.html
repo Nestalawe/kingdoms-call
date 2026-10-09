@@ -169,6 +169,7 @@ table.kc td.num,table.kc th.num{text-align:right;font-variant-numeric:tabular-nu
   </div>
 </div>
 
+<script src="kc-config.js"></script>
 <script>
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — HALL OF FAME
@@ -182,8 +183,9 @@ table.kc td.num,table.kc th.num{text-align:right;font-variant-numeric:tabular-nu
 // GM MODE. Opened from the GM portal the link carries ?gm=1. Edit controls appear only if the
 // signed-in account is a real GM (it owns at least one row in `games`), and the table's own policy
 // enforces the same thing server-side, so ?gm=1 by itself grants nothing.
-const SUPABASE_URL = 'https://yymsnsrpggpgmzgcfrys.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5bXNuc3JwZ2dwZ216Z2NmcnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTQ0ODMsImV4cCI6MjA5ODQ3MDQ4M30.fxEG8Gg9s-c9H6KaOP2njjLA87GC3ZqIIXORHNQ2HdY';
+if(typeof KC_CONFIG==='undefined') throw new Error('kc-config.js did not load: reload the page.');
+const SUPABASE_URL = KC_CONFIG.supabaseUrl;
+const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let GAMES=[], TAB='champions', GM=false, ME=null, PEOPLE={};
@@ -474,7 +476,7 @@ function render(){
   else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
   else el.innerHTML=renderGames(G);
   const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
-  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.09.27-1958 · most recent game recorded '+dstr(last);
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.09-1739 · most recent game recorded '+dstr(last);
 }
 
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
@@ -772,6 +774,6 @@ async function deleteRecord(id,purge){
 
 loadAll();
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.09.27-1958</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.09-1739</div>
 </body>
 </html>

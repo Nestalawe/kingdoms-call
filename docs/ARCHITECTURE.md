@@ -35,8 +35,10 @@ Order inside each portal's `<head>` and body, and why it matters:
    Reload button. Without it, any top-level throw looks like "Loading…" for ever.
 2. **supabase-js v2** from a CDN, with a second CDN as a fallback (`document.write`, so load order is
    kept).
-3. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
-4. **The main script.** It checks the data file before anything else (below), creates the Supabase
+3. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
+   key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
+4. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
+5. **The main script.** It checks the data file before anything else (below), creates the Supabase
    client, and calls `init()`, which hides the spinner.
 
 Everything is a classic script, so **top-level `const`/`let` from every script share one global
