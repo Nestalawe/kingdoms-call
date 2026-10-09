@@ -148,7 +148,7 @@ nothing on GitHub enforces it.
   STATUS row has ✓ in the Theo column, or any step of a unit (e.g. the cutover). Say so in the first
   line of the PR description. If unsure, say so.
 
-Labels: `staging` (ready for Toby to try), `refactor-only`.
+Labels: `staging` (ready for Toby to try: it puts the PR on the staging site, with its own database, and comments with the link; `.github/workflows/staging.yml`), `refactor-only`.
 
 ## Opening the PR for review
 

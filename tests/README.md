@@ -55,6 +55,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `config` | new | 0 | ✅ pass | The database address and public key live only in `site/kc-config.js`; no page types them in, and every page that creates the database client loads `kc-config.js` first |
 | `sort-comparators` | new | 0 | ✅ pass | No `.sort(...)` in the site uses a random or argument-less comparator (its result, and how many random numbers it uses, would depend on the browser's JavaScript engine); shuffles go through `shuffleP` |
 | `dangerous-paths` | new | 1 | ✅ pass | Which changed files count as dangerous (globs, case ignored, renames by their old name too) and what the warning comment says |
+| `staging` | new | 1 | ✅ pass | The staging deploy's logic: the `kc-config.js` it writes (staging address only, never the live one, no stray characters) and its "on staging" / "replaced by" comments |
 | `landing-footer` | new | 0 | ✅ pass | The landing page's footer reads "Kingdoms Call · A Strategy Game of Simultaneous Turns" |
 | `boot-pages` | new | 4 | ✅ pass | Every page boots in jsdom with no error, rejection or `console.error` |
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
