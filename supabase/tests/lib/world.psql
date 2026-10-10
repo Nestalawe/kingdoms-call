@@ -1,0 +1,161 @@
+-- The shared test world for the access-rule tests. Included by every file in tests/database/ with
+--   \ir ../lib/world.psql
+-- inside that file's transaction, so it's rolled back with the file. Made-up names and ids only.
+--
+-- The points of view (pg_temp.kc_as(who)):
+--   gm        the Game Master of Marchwood, Open Vale, Hidden Glen and Ashen Reach
+--   gm2       another Game Master (of Fenmoor only)
+--   p1        a player in Marchwood (realm 0); also played Ashen Reach
+--   p2        a rival player in Marchwood (realm 1)
+--   p4        a third player in Marchwood (realm 3), addressed by nobody's private dispatch
+--   p3        a player in another game (Fenmoor, realm 0)
+--   invitee   invited to Hidden Glen; in no game yet
+--   stranger  signed in, in no game
+--   anon      signed out
+--   postgres  the test runner itself (bypasses the rules; used to stage and check data)
+--
+-- The games (pg_temp.kc_game(key)):
+--   A  Marchwood    active, turn 3, GM gm: realms p1 (0), p2 (1), a bot (2), p4 (3)
+--   B  Fenmoor      active, turn 2, GM gm2: realm p3 (0)
+--   S  Open Vale    setup, public, GM gm
+--   P  Hidden Glen  setup, private, GM gm, invites invitee
+--   C  Ashen Reach  complete, GM gm: realm p1 (0); has a Hall of Fame record
+
+set local client_min_messages = warning;
+create extension if not exists pgtap with schema extensions;
+
+create function pg_temp.kc_uid(who text) returns uuid language sql immutable as $$
+  select (case who
+    when 'gm'       then '00000000-0000-4000-a000-000000000001'
+    when 'gm2'      then '00000000-0000-4000-a000-000000000002'
+    when 'p1'       then '00000000-0000-4000-a000-000000000011'
+    when 'p2'       then '00000000-0000-4000-a000-000000000012'
+    when 'p3'       then '00000000-0000-4000-a000-000000000013'
+    when 'p4'       then '00000000-0000-4000-a000-000000000014'
+    when 'invitee'  then '00000000-0000-4000-a000-000000000021'
+    when 'stranger' then '00000000-0000-4000-a000-000000000022'
+  end)::uuid
+$$;
+
+create function pg_temp.kc_game(k text) returns uuid language sql immutable as $$
+  select (case k
+    when 'A' then '00000000-0000-4000-b000-00000000000a'
+    when 'B' then '00000000-0000-4000-b000-00000000000b'
+    when 'S' then '00000000-0000-4000-b000-000000000005'
+    when 'P' then '00000000-0000-4000-b000-000000000006'
+    when 'C' then '00000000-0000-4000-b000-00000000000c'
+  end)::uuid
+$$;
+
+-- Act as one point of view, the way PostgREST does: a database role plus the request's JWT claims,
+-- which auth.uid() reads.
+create function pg_temp.kc_as(who text) returns void language plpgsql as $$
+begin
+  if who = 'postgres' then
+    perform set_config('request.jwt.claims', '', true);
+    perform set_config('role', 'none', true);
+  elsif who = 'anon' then
+    perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+    perform set_config('role', 'anon', true);
+  else
+    if pg_temp.kc_uid(who) is null then raise exception 'kc_as: unknown point of view %', who; end if;
+    perform set_config('request.jwt.claims',
+      json_build_object('sub', pg_temp.kc_uid(who), 'role', 'authenticated')::text, true);
+    perform set_config('role', 'authenticated', true);
+  end if;
+end $$;
+
+-- How many rows a write would change, as the current point of view. The write is always undone, so
+-- probes never disturb the world for the tests after them. A refusal (a rule or a missing privilege,
+-- SQLSTATE 42501) counts as 0 rows. Any other error is a real failure and propagates.
+create function pg_temp.kc_writes(q text) returns int language plpgsql as $$
+declare n int;
+begin
+  begin
+    execute q;
+    get diagnostics n = row_count;
+    raise exception using errcode = 'KCUND', message = n::text;
+  exception
+    when insufficient_privilege then return 0;
+    when sqlstate 'KCUND' then return sqlerrm::int;
+  end;
+end $$;
+
+-- How many rows a query returns, as the current point of view. A refusal (SQLSTATE 42501, e.g. a
+-- column the reader may not select) counts as 0 rows.
+create function pg_temp.kc_count(q text) returns int language plpgsql as $$
+declare n int;
+begin
+  execute 'select count(*) from (' || q || ') kc_q' into n;
+  return n;
+exception when insufficient_privilege then return 0;
+end $$;
+
+-- What a call does, reduced to "ok:<result>" or "error:<SQLSTATE>", so two calls can be compared.
+create function pg_temp.kc_outcome(q text) returns text language plpgsql as $$
+declare r text;
+begin
+  execute q into r;
+  return 'ok:' || coalesce(r, 'null');
+exception when others then return 'error:' || sqlstate;
+end $$;
+
+-- ── the world (staged as postgres, which owns the tables and so isn't held by their rules) ───────
+
+insert into auth.users (id, email, aud, role, raw_user_meta_data) values
+  (pg_temp.kc_uid('gm'),       'gm@example.test',       'authenticated', 'authenticated', '{"display_name":"Warden Oake"}'),
+  (pg_temp.kc_uid('gm2'),      'gm2@example.test',      'authenticated', 'authenticated', '{"display_name":"Warden Pell"}'),
+  (pg_temp.kc_uid('p1'),       'p1@example.test',       'authenticated', 'authenticated', '{"display_name":"Ada Thorn"}'),
+  (pg_temp.kc_uid('p2'),       'p2@example.test',       'authenticated', 'authenticated', '{"display_name":"Bram Vey"}'),
+  (pg_temp.kc_uid('p3'),       'p3@example.test',       'authenticated', 'authenticated', '{"display_name":"Cass Morrow"}'),
+  (pg_temp.kc_uid('p4'),       'p4@example.test',       'authenticated', 'authenticated', '{"display_name":"Dell Harrow"}'),
+  (pg_temp.kc_uid('invitee'),  'invitee@example.test',  'authenticated', 'authenticated', '{"display_name":"Edda Lune"}'),
+  (pg_temp.kc_uid('stranger'), 'stranger@example.test', 'authenticated', 'authenticated', '{"display_name":"Finn Ashby"}');
+-- (the sign-up trigger gives each of them a profile)
+
+insert into public.games (id, name, gm_user_id, status, turn, max_players, game_state, meta) values
+  (pg_temp.kc_game('A'), 'Marchwood',   pg_temp.kc_uid('gm'),  'active',   3, 4,
+     '{"world":"Marchwood hidden world"}', '{"turnMode":{"mode":"manual"}}'),
+  (pg_temp.kc_game('B'), 'Fenmoor',     pg_temp.kc_uid('gm2'), 'active',   2, 4,
+     '{"world":"Fenmoor hidden world"}', '{"turnMode":{"mode":"manual"}}'),
+  (pg_temp.kc_game('S'), 'Open Vale',   pg_temp.kc_uid('gm'),  'setup',    0, 4,
+     '{"mapSize":"p4","seaPct":35}', null),
+  (pg_temp.kc_game('P'), 'Hidden Glen', pg_temp.kc_uid('gm'),  'setup',    0, 4,
+     jsonb_build_object('mapSize', 'p4', 'visibility', 'private',
+                        'invited', jsonb_build_array(pg_temp.kc_uid('invitee'))), null),
+  (pg_temp.kc_game('C'), 'Ashen Reach', pg_temp.kc_uid('gm'),  'complete', 9, 4,
+     '{"world":"Ashen Reach final world"}', null);
+
+insert into public.game_players (game_id, user_id, player_index, display_name, orders, orders_submitted, turn_report) values
+  (pg_temp.kc_game('A'), pg_temp.kc_uid('p1'), 0, 'Thornmere', '{"orders":"p1 marches on the ford"}', true,  '{"report":"p1 sees the ford"}'),
+  (pg_temp.kc_game('A'), pg_temp.kc_uid('p2'), 1, 'Veyholt',   '{"orders":"p2 fortifies"}',           false, '{"report":"p2 sees the hills"}'),
+  (pg_temp.kc_game('A'), null,                 2, 'Grimfast',  null,                                  false, '{"isBot":true}'),
+  (pg_temp.kc_game('A'), pg_temp.kc_uid('p4'), 3, 'Harrowdale', null,                                 false, '{"report":"p4 sees the coast"}'),
+  (pg_temp.kc_game('B'), pg_temp.kc_uid('p3'), 0, 'Morrowgate', '{"orders":"p3 explores"}',           false, '{"report":"p3 sees the fen"}'),
+  (pg_temp.kc_game('C'), pg_temp.kc_uid('p1'), 0, 'Thornmere', null,                                  false, '{"report":"p1 won"}');
+
+insert into public.turn_logs (game_id, player_index, turn, entries) values
+  (pg_temp.kc_game('A'),  0, 2, '[{"text":"p1 snapshot"}]'),
+  (pg_temp.kc_game('A'),  1, 2, '[{"text":"p2 snapshot"}]'),
+  (pg_temp.kc_game('A'), -1, 2, '[{"text":"the GM full log"}]');
+
+insert into public.turn_events (game_id, turn, player_index, realm, orders) values
+  (pg_temp.kc_game('A')::text, 2, 0, 'Thornmere', '{"orders":"p1 turn 2"}'),
+  (pg_temp.kc_game('A')::text, 2, 1, 'Veyholt',   '{"orders":"p2 turn 2"}');
+
+insert into public.game_results (game_id, game_name, player_index, realm, rank, winner) values
+  (pg_temp.kc_game('C')::text, 'Ashen Reach', 0, 'Thornmere', 1, true);
+
+insert into public.game_records (game_id, game_name, gm_user_id, winner_realm) values
+  (pg_temp.kc_game('C')::text, 'Ashen Reach', pg_temp.kc_uid('gm'), 'Thornmere');
+
+insert into public.game_messages (game_id, turn, from_index, from_user_id, to_indexes, scope, body) values
+  (pg_temp.kc_game('A')::text, 3, 0, pg_temp.kc_uid('p1'), '{}',  'public',  'Peace on the river.'),
+  (pg_temp.kc_game('A')::text, 3, 0, pg_temp.kc_uid('p1'), '{1}', 'private', 'Thornmere to Veyholt only.'),
+  (pg_temp.kc_game('A')::text, 3, 1, pg_temp.kc_uid('p2'), '{0}', 'private', 'Veyholt to Thornmere only.'),
+  (pg_temp.kc_game('B')::text, 2, 0, pg_temp.kc_uid('p3'), '{}',  'public',  'Fenmoor public.');
+
+insert into public.game_message_reads (game_id, player_index, user_id, reads) values
+  (pg_temp.kc_game('A')::text, 0, pg_temp.kc_uid('p1'), '{"public":1}');
+
+-- Nothing is granted here: the tests act through the same roles and privileges the site's API uses.

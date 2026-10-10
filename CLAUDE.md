@@ -26,10 +26,10 @@ then, a rule's background is in the code comments near it.
 | Path | What |
 |---|---|
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to) |
-| `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`. How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
+| `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
-| `.github/workflows/` | `ci.yml` (`npm test` on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
+| `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
 | `docs/` | Architecture, traps and, later, rulings and history |
@@ -48,9 +48,10 @@ npm test -- --seed 123                      # another fixed seed; a failing run 
 npm test -- --only turn-fuzz --seed 123     # reproduce one failure: same test, same seed, same sizes
 node tests/<name>.test.js                   # one test on its own: unseeded, its own default sizes
 KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs)
+npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
 
-Run `npm test` before every push. It must be green.
+Run `npm test` before every push, and the access-rule tests too when `supabase/` changes. Both must be green.
 
 ## How work arrives
 
