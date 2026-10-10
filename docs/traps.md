@@ -69,8 +69,9 @@ down to ~1 KB after the fix).
 
 ## A new column must be optional at the write site
 
-Schema changes are applied by hand, so for a while the code runs against a database without the new
-column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
+Since P0-17 the live site deploys only after its migration, but a pull request on staging runs against the
+staging database before its migration is applied there (that happens on merge), and old copies of the
+site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
 prefer the new column and fall back to the old source.
 
@@ -203,3 +204,16 @@ games.
 - **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
   awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
   design decision for Toby: raise it as a ruling, don't decide it in code.
+
+## A migration waiting for approval holds every deploy
+
+A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys
+only after that ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). Deploys run one at a
+time, so **every later merge waits behind it**, site-only fixes included, and ships with it once approved.
+- Merge a migration when Toby can approve it soon (just after the daily backup, about 19:35 UTC), not
+  ahead of an urgent site fix.
+- If he rejects it, the run fails and nothing deploys; the next push to `main` asks again, because the
+  migration is still new compared with the live site. To ship the site without it, revert the migration's
+  pull request (CI allows deleting a migration file, with a warning), and undo it on staging by hand
+  ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)).
+- Approval requests expire after 30 days.

@@ -1,7 +1,14 @@
-# Publishes site/ to GitHub Pages, exactly as it is (no build step, no Jekyll).
-# Runs only for main: on a push to main, or by hand. It runs the tests first (ci.yml),
-# and the deploy job refuses any other branch, so a manual run from a branch only tests.
-# Needs Settings → Pages → Source set to "GitHub Actions".
+# On main: test, then bring the databases up to date, then publish site/ to GitHub Pages (no build step,
+# no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse any other branch, so a
+# manual run from a branch only tests. Needs Settings → Pages → Source set to "GitHub Actions".
+#
+# The order (P0-17): test → migrate staging → migrate production → deploy site.
+# - "migrations" lists the migrations added since the commit that's live on the site, with their SQL, in its
+#   job summary. With none, both migrate jobs are skipped and the site deploys after the tests.
+# - "migrate-production" runs in the "production" environment: it waits for Toby's approval (Review
+#   deployments), soon after the daily backup. If he rejects it, or any step fails, the site doesn't deploy.
+# - Both migrate jobs apply only what "migrations" listed, and refuse anything else
+#   (.github/scripts/migrations.js). Secrets: STAGING_DB_URL ("staging"), SUPABASE_DB_URL ("production").
 name: Deploy
 
 on:
@@ -11,7 +18,8 @@ on:
 
 permissions: {}
 
-# One deploy at a time, in order; never cut off a deploy that has started.
+# One deploy at a time, in order; never cut off a deploy that has started. A run waiting for Toby's approval
+# holds the queue: later pushes wait behind it (only the newest waiting run is kept, and it includes theirs).
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -22,9 +30,90 @@ jobs:
     permissions:
       contents: read
 
+  migrations:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+      pull-requests: read
+    outputs:
+      changed: ${{ steps.plan.outputs.changed }}
+      expected: ${{ steps.plan.outputs.expected }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - id: plan
+        run: node .github/scripts/migrations.js plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  migrate-staging:
+    needs: [ci, migrations]
+    if: needs.migrations.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    environment: staging
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      - run: node .github/scripts/migrations.js apply staging
+        env:
+          DB_URL: ${{ secrets.STAGING_DB_URL }}
+          EXPECTED: ${{ needs.migrations.outputs.expected }}
+
+  migrate-production:
+    needs: [migrations, migrate-staging]
+    if: needs.migrations.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      - run: node .github/scripts/migrations.js apply production
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          EXPECTED: ${{ needs.migrations.outputs.expected }}
+
+  # Runs after the tests, and after production is migrated whenever there was something to migrate.
   deploy:
-    needs: ci
-    if: github.ref == 'refs/heads/main'
+    needs: [ci, migrations, migrate-staging, migrate-production]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main'
+      && needs.ci.result == 'success' && needs.migrations.result == 'success'
+      && (needs.migrations.outputs.changed != 'true' || needs.migrate-production.result == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

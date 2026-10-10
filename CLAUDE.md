@@ -29,7 +29,7 @@ then, a rule's background is in the code comments near it.
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
-| `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
+| `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate staging, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
 | `docs/` | Architecture, traps and, later, rulings and history |
@@ -130,14 +130,16 @@ deploys (plan step P0-13), "What to try on staging" says what Toby will try once
 ## Database changes
 
 The structure is in `supabase/` ([supabase/README.md](supabase/README.md)): edit `supabase/schemas/`,
-generate the migration, review it. Until plan step P0-17 automates applying migrations, never apply one
-to the live database yourself; Toby and Theo do. Any PR that changes the database must:
+generate the migration, review it. Merging applies it: staging, then production once Toby approves, then
+the site ([supabase/README.md](supabase/README.md#how-a-migration-goes-live)). Never apply one to the live
+database yourself, and never ask Toby to paste SQL. Any PR that changes the database must:
 - make the code work both before and after the SQL has run
   ([traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site));
 - include the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving;
 - expand before contract: add first, remove only in a later PR.
 
-Once migrations exist: forward-only, never edit an applied one, every migration has pgTAP tests.
+Migrations are forward-only (a rollback is a new migration); a merged one is never edited (CI's `db` check
+refuses it); every migration has pgTAP tests.
 
 ## Dangerous paths: talk it through with Theo
 
