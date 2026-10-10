@@ -416,7 +416,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.09-1830'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.11-1200'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1172,7 +1172,7 @@ async function onSignedIn(){
   await probeGameMeta();      // Disk-IO fix (2026-09-25): is the light `games.meta` column there?
   probeTelemetry().then(ok=>{ if(ok) backfillGameResults(); }); // telemetry tables (2026-09-25) — never blocks sign-in
   probeLeaderboard();                                                 // Hall-of-Fame table (2026-09-27); records are built on game-over or by button, never at sign-in
-  probeMessaging();                                                   // player-messaging tables (2026-09-27); the GM portal only reports whether the SQL has been run
+  probeMessaging();                                                   // player-messaging tables (2026-09-27); the GM portal only reports whether they exist
   loadGames();
   startAutoTurnWatcher(); // automatic turn modes only fire while a signed-in GM tab is open
   backfillGameMeta();     // one-off: stamp meta on any game that predates the column (no-op after)
@@ -4132,12 +4132,17 @@ function normalizeTurnMode(tm){
 // game_state: {v, turnMode, exempt:[player indices], realms, seaPct, mapSize, maxPlayers,
 // botCount, allBot, botDifficulty, visibility, invited}. Readers prefer meta and fall back to
 // parsing game_state, so a row that predates the column still works; backfillGameMeta stamps
-// those once. The column is added with ONE statement in Supabase → SQL editor (KC_META_SQL);
-// until it exists, probeGameMeta() leaves _kcHasMeta=false, no write mentions the column (an
-// unknown column would fail the whole turn save) and the heavy selects are used as before, with a
-// banner on the game list saying what to run.
-const KC_META_SQL='alter table public.games add column if not exists meta jsonb;';
+// those once. The column is in the database's migrations (supabase/); if it's ever missing,
+// probeGameMeta() leaves _kcHasMeta=false, no write mentions the column (an unknown column would
+// fail the whole turn save) and the heavy selects are used as before, with a message on the game list.
 let _kcHasMeta=false;
+// The plain "missing from the database" message every probe below shows. Since P0-17 the database changes
+// only through migrations, applied by the deploy before the site goes live, so there is no SQL to paste:
+// seeing this means the database is behind this copy of the site.
+function kcMissingMsg(title,what,effect){
+  return `<div class="msg-error"><strong>${title}</strong> — the database has no ${what}, so ${effect}. `
+    +`The deploy adds it to the database before the site goes live, so this copy of the site is ahead of its database: tell Theo.</div>`;
+}
 async function probeGameMeta(){
   try{
     const {error}=await sb.from('games').select('id,meta').limit(1);
@@ -4145,7 +4150,7 @@ async function probeGameMeta(){
     if(error) console.warn('games.meta probe:',error.message);
   }catch(e){ _kcHasMeta=false; }
   const el=document.getElementById('msg-games');
-  if(el) el.innerHTML=_kcHasMeta?'':`<div class="msg-error"><strong>Disk-IO fix not active</strong> — the <code>games.meta</code> column is missing, so this tab is still pulling every game's full world and reports once a minute. In Supabase → SQL Editor run:<br><code>${KC_META_SQL}</code><br>then reload this page.</div>`;
+  if(el) el.innerHTML=_kcHasMeta?'':kcMissingMsg('Disk-IO fix not active','<code>games.meta</code> column','this tab is still pulling every game\'s full world and reports once a minute');
   return _kcHasMeta;
 }
 function gameMetaOf(game){
@@ -4256,46 +4261,11 @@ async function backfillGameMeta(){
 // so the same rows can be used as (situation → orders → outcome) examples to tune the bots.
 // Neither table is ever read on the turn path, and a failed write never blocks a turn: the write is
 // best-effort, the error is kept in _kcTelLastErr and shown on the game list.
-// The tables are created with ONE paste in Supabase → SQL Editor (KC_TEL_SQL). Until they exist
-// probeTelemetry() leaves _kcHasTel=false, nothing is written, and the game list says what to run.
+// The tables are in the database's migrations (supabase/). If they're ever missing, probeTelemetry()
+// leaves _kcHasTel=false, nothing is written, and the game list says so.
 // game_id is TEXT (not a foreign key) so the rows survive a game being deleted — finished test games
 // are usually deleted to tidy the list, and their data is the whole point. The Stats tab has a
 // "forget deleted games" button for when that is NOT wanted.
-const KC_TEL_SQL=`create table if not exists public.turn_events (
-  id bigserial primary key,
-  game_id text not null,
-  turn integer not null,
-  player_index integer not null,
-  is_bot boolean not null default false,
-  bot_difficulty text,
-  realm text, race text, alignment text,
-  orders jsonb, pre jsonb, post jsonb, outcomes jsonb,
-  build text,
-  created_at timestamptz not null default now(),
-  unique (game_id, turn, player_index)
-);
-create index if not exists turn_events_game_idx on public.turn_events (game_id, turn);
-create table if not exists public.game_results (
-  id bigserial primary key,
-  game_id text not null,
-  game_name text,
-  player_index integer not null,
-  is_bot boolean not null default false,
-  bot_difficulty text,
-  realm text, race text, alignment text,
-  rank integer, score integer, winner boolean not null default false,
-  victory text, turns integer, out_turn integer, out_how text,
-  setup jsonb, final jsonb,
-  build text,
-  created_at timestamptz not null default now(),
-  unique (game_id, player_index)
-);
-alter table public.turn_events enable row level security;
-alter table public.game_results enable row level security;
-drop policy if exists "gm rw turn_events" on public.turn_events;
-create policy "gm rw turn_events" on public.turn_events for all to authenticated using (true) with check (true);
-drop policy if exists "gm rw game_results" on public.game_results;
-create policy "gm rw game_results" on public.game_results for all to authenticated using (true) with check (true);`;
 const KC_TEL_V=1;                 // bump when the row shape changes (rows carry it in build)
 let _kcHasTel=false, _kcTelLastErr=null;
 async function probeTelemetry(){
@@ -4312,8 +4282,7 @@ async function probeTelemetry(){
 function renderTelemetryBanner(){
   const el=document.getElementById('msg-telemetry'); if(!el) return;
   if(!_kcHasTel){
-    el.innerHTML=`<div class="msg-info"><strong>📈 Game telemetry not active</strong> — the <code>turn_events</code> / <code>game_results</code> tables are missing, so nothing is being recorded for the Stats tab or for bot training. In Supabase → SQL Editor paste and run the statement below, then reload this page.<br>
-      <textarea readonly onclick="this.select()" style="width:100%;height:110px;font-family:monospace;font-size:.7rem;margin:6px 0 0;background:#fdf8ee">${KC_TEL_SQL.replace(/</g,'&lt;')}</textarea></div>`;
+    el.innerHTML=kcMissingMsg('📈 Game telemetry not active','<code>turn_events</code> / <code>game_results</code> tables','nothing is being recorded for the Stats tab or for bot training');
   } else if(_kcTelLastErr){
     el.innerHTML=`<div class="msg-error"><strong>📈 Telemetry write failed</strong> on the last turn run: ${String(_kcTelLastErr).replace(/</g,'&lt;')}. The turn itself was saved; only the statistics row was lost.</div>`;
   } else el.innerHTML='';
@@ -4322,75 +4291,25 @@ function renderTelemetryBanner(){
 // DISPATCHES — the player-to-player messaging tables (2026-09-27)
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 // The messaging UI lives entirely in the PLAYER portal (it replaced the duplicate Report tab beside
-// the map). The GM portal carries only this: the one-off SQL paste, a probe so the game list can say
-// when it has not been run, and the two deletes that keep a removed game from leaving dispatches
-// behind. No turn-path code touches these tables, so a messaging fault can never cost a turn.
+// the map). The GM portal carries only this: a probe so the game list can say when the tables are
+// missing, and the two deletes that keep a removed game from leaving dispatches behind. No turn-path
+// code touches these tables, so a messaging fault can never cost a turn.
 //
 // WHAT THE POLICIES GUARANTEE, and what they do not:
 //  * A dispatch can only be INSERTED with from_index = the realm the signed-in account actually holds
 //    in that game, and from_user_id = auth.uid(). A player cannot write in another realm's name.
 //  * A dispatch can only be READ by its sender, its addressees, or anybody in the game if it is
 //    public — plus the GM of that game. THE GM CAN THEREFORE READ PRIVATE DIPLOMACY. That is a
-//    referee power, deliberate and easy to revoke: delete the second `or exists (…games…)` branch of
-//    the read policy and re-run it.
+//    referee power, deliberate and easy to revoke: a migration that drops the second
+//    `or exists (…games…)` branch of the read policy.
 //  * "You may only write to a realm you have MET" is enforced in the player portal's UI only — the
-//    encountered list lives inside game_state, which SQL here cannot read. Bypassing it would let a
+//    encountered list lives inside game_state, which the access rules cannot read. Bypassing it would let a
 //    player write to a stranger; it would NOT let them read anything more.
 //  * Nobody can UPDATE a dispatch and only the game's GM can DELETE one, so a message cannot be
 //    edited or withdrawn after it is sent — which is what "messages don't get lost" has to mean.
 // game_id is TEXT and casts the other side (gp.game_id::text) so it does not matter whether the games
-// table's key is uuid or text, and the rows outlive the game row itself.
-const KC_MSG_SQL=`create table if not exists public.game_messages (
-  id bigserial primary key,
-  game_id text not null,
-  turn integer,
-  from_index integer not null,
-  from_user_id uuid not null default auth.uid(),
-  to_indexes integer[] not null default '{}',
-  scope text not null default 'private',
-  body text not null,
-  created_at timestamptz not null default now(),
-  constraint game_messages_scope_ck check (scope in ('public','private')),
-  constraint game_messages_to_ck check (scope = 'public' or coalesce(array_length(to_indexes,1),0) >= 1)
-);
-create index if not exists game_messages_game_idx on public.game_messages (game_id, id);
-create table if not exists public.game_message_reads (
-  game_id text not null,
-  player_index integer not null,
-  user_id uuid not null,
-  reads jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now(),
-  primary key (game_id, player_index)
-);
-alter table public.game_messages enable row level security;
-alter table public.game_message_reads enable row level security;
-drop policy if exists "read game_messages" on public.game_messages;
-create policy "read game_messages" on public.game_messages for select to authenticated using (
-  exists (select 1 from public.game_players gp
-          where gp.game_id::text = game_messages.game_id
-            and gp.user_id = auth.uid()
-            and ( game_messages.scope = 'public'
-                  or gp.player_index = game_messages.from_index
-                  or gp.player_index = any (game_messages.to_indexes) ))
-  or exists (select 1 from public.games g
-             where g.id::text = game_messages.game_id and g.gm_user_id = auth.uid())
-);
-drop policy if exists "send game_messages" on public.game_messages;
-create policy "send game_messages" on public.game_messages for insert to authenticated with check (
-  from_user_id = auth.uid()
-  and exists (select 1 from public.game_players gp
-              where gp.game_id::text = game_messages.game_id
-                and gp.user_id = auth.uid()
-                and gp.player_index = game_messages.from_index)
-);
-drop policy if exists "gm tidy game_messages" on public.game_messages;
-create policy "gm tidy game_messages" on public.game_messages for delete to authenticated using (
-  exists (select 1 from public.games g
-          where g.id::text = game_messages.game_id and g.gm_user_id = auth.uid())
-);
-drop policy if exists "own game_message_reads" on public.game_message_reads;
-create policy "own game_message_reads" on public.game_message_reads for all to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());`;
+// table's key is uuid or text, and the rows outlive the game row itself. The tables and their policies
+// are in supabase/schemas/, with their tests in supabase/tests/.
 let _kcHasMsg=false;
 async function probeMessaging(){
   try{
@@ -4405,8 +4324,7 @@ async function probeMessaging(){
 }
 function renderMessagingBanner(){
   const el=document.getElementById('msg-messaging'); if(!el) return;
-  el.innerHTML=_kcHasMsg?'':`<div class="msg-info"><strong>✉ Player messaging not active</strong> — the <code>game_messages</code> / <code>game_message_reads</code> tables are missing, so the Dispatches panel in the player portal cannot send or receive. In Supabase → SQL Editor paste and run the statement below, then reload this page.<br>
-      <textarea readonly onclick="this.select()" style="width:100%;height:110px;font-family:monospace;font-size:.7rem;margin:6px 0 0;background:#fdf8ee">${KC_MSG_SQL.replace(/</g,'&lt;')}</textarea></div>`;
+  el.innerHTML=_kcHasMsg?'':kcMissingMsg('✉ Player messaging not active','<code>game_messages</code> / <code>game_message_reads</code> tables','the Dispatches panel in the player portal cannot send or receive');
 }
 // ── SNAPSHOT of one realm's situation, from a parsed game state. Module level: uses only module-level
 // helpers (unitBaseStrength, relOfReport, consecratedIds), so buildGameResultRows can call it on any
@@ -4600,7 +4518,7 @@ const STATS_COL={crimson:'#7a1c1c',forest:'#2d4a1e',gold:'#c8922a',blue:'#2f5f8f
 async function openStats(force){
   show('sec-stats');
   const msg=document.getElementById('stats-msg'), body=document.getElementById('stats-body');
-  if(!_kcHasTel){ msg.innerHTML=`<div class="msg-info">Telemetry is not active yet — run the SQL shown on the game list first (it creates the two tables). Nothing has been recorded until then.</div>`; body.innerHTML=''; return; }
+  if(!_kcHasTel){ msg.innerHTML=`<div class="msg-info">Telemetry is not active: the database has no telemetry tables (see the message on the game list). Nothing has been recorded.</div>`; body.innerHTML=''; return; }
   if(force||!_stats.rows||Date.now()-_stats.loadedAt>120000){
     msg.innerHTML='<div class="msg-info">⏳ Loading recorded turns…</div>'; body.innerHTML='';
     try{
@@ -4823,29 +4741,6 @@ async function forgetDeletedGames(){
 // categories lives in kingdoms-call-leaderboard.html (KC_ACH). A key emitted here that the board
 // does not know is still shown, under "Other records", with the key prettified — so adding a record
 // here can never break the board, it only loses a nice label until the catalogue catches up.
-const KC_LB_SQL=`create table if not exists public.game_records (
-  game_id text primary key,
-  game_name text,
-  gm_user_id uuid,
-  started_at timestamptz,
-  finished_at timestamptz,
-  turns integer,
-  winner_realm text, winner_player text, winner_is_bot boolean, victory text,
-  setup jsonb, standings jsonb, records jsonb, totals jsonb,
-  note text,
-  hidden boolean not null default false,
-  build text,
-  created_at timestamptz not null default now()
-);
-alter table public.game_records enable row level security;
-drop policy if exists "read game_records" on public.game_records;
-create policy "read game_records" on public.game_records
-  for select to anon, authenticated using (true);
-drop policy if exists "gm write game_records" on public.game_records;
-create policy "gm write game_records" on public.game_records
-  for all to authenticated
-  using (exists (select 1 from public.games g where g.gm_user_id = auth.uid()))
-  with check (exists (select 1 from public.games g where g.gm_user_id = auth.uid()));`;
 const KC_LB_V=3;                    // bump when the row shape changes (rows carry it in build) · 3: records hold every realm's best
 let _kcHasLb=false, _kcLbLastErr=null;
 async function probeLeaderboard(){
@@ -4860,8 +4755,7 @@ async function probeLeaderboard(){
 function renderLeaderboardBanner(){
   const el=document.getElementById('msg-leaderboard'); if(!el) return;
   if(!_kcHasLb){
-    el.innerHTML=`<div class="msg-info"><strong>🏆 Leaderboard not active</strong> — the <code>game_records</code> table is missing, so finished games are not being added to the Hall of Fame. In Supabase → SQL Editor paste and run the statement below, then reload this page.<br>
-      <textarea readonly onclick="this.select()" style="width:100%;height:110px;font-family:monospace;font-size:.7rem;margin:6px 0 0;background:#fdf8ee">${KC_LB_SQL.replace(/</g,'&lt;')}</textarea></div>`;
+    el.innerHTML=kcMissingMsg('🏆 Leaderboard not active','<code>game_records</code> table','finished games are not being added to the Hall of Fame');
   } else if(_kcLbLastErr){
     el.innerHTML=`<div class="msg-error"><strong>🏆 Leaderboard write failed</strong>: ${String(_kcLbLastErr).replace(/</g,'&lt;')}. The turn and its statistics were saved; only the Hall-of-Fame row was lost. Use ↻ Rebuild on the Stats tab.</div>`;
   } else el.innerHTML='';
@@ -27864,6 +27758,6 @@ init();
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.09-1830</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-1200</div>
 </body>
 </html>

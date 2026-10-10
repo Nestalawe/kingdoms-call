@@ -17,7 +17,7 @@ submit orders and read what they're given.
 | File | Size | What it is |
 |---|---|---|
 | `index.html` | small | Landing page; links the player portal and both rulebooks |
-| `kingdoms-call-gm-portal.html` | ~27,600 lines, ~2.1 MB | GM UI, world generation, the whole turn engine (`runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, database set-up banners |
+| `kingdoms-call-gm-portal.html` | ~27,600 lines, ~2.1 MB | GM UI, world generation, the whole turn engine (`runTurn`), bot AI, turn reports, telemetry, Stats tab, Hall-of-Fame builder, "missing from the database" messages |
 | `kingdoms-call-player-portal.html` | ~10,300 lines, ~760 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-data.js` | ~410 KB | Content tables (items, monsters, lairs, discoveries, hero names, …) and the **shared rule tables** both portals read |
 | `kingdoms-call-leaderboard.html` | ~780 lines | Hall of Fame: leaderboard and achievement records over finished games |
@@ -105,10 +105,9 @@ The structure is in `supabase/` (since P0-15): `supabase/schemas/` is the desire
 table with its access rules, and `supabase/migrations/` the changes that build it
 ([supabase/README.md](../supabase/README.md)). Merging a migration to `main` applies it to staging, then to
 production once Toby approves, and only then deploys the site
-([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). Older features also ship their SQL
-in a set-up banner on the GM portal's game list (`KC_META_SQL`, `KC_TEL_SQL`, `KC_LB_SQL`, `KC_MSG_SQL`);
-those banners go in plan step P0-17's second part. Each feature probes for its table or column first and
-degrades quietly while it's missing.
+([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). The GM portal carries no SQL (its
+set-up banners went in plan step P0-17). Each feature probes for its table or column first, degrades
+quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 
 | Table | Holds |
 |---|---|

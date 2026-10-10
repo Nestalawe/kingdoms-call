@@ -23,6 +23,7 @@ const SUITE=[
   ['docs',                 'tests/docs.test.js'],
   ['stamps',               'tests/stamps.test.js'],
   ['config',               'tests/config.test.js'],
+  ['sql-banners',          'tests/sql-banners.test.js'],
   ['sort-comparators',     'tests/sort-comparators.test.js'],
   ['dangerous-paths',      'tests/dangerous-paths.test.js'],
   ['staging',              'tests/staging.test.js'],

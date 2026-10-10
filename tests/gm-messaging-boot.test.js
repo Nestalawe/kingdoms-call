@@ -1,7 +1,8 @@
 // claude_msg_gm_boot_0927.js — the GM portal's half of the messaging change. The GM portal gained
-// only KC_MSG_SQL, probeMessaging(), renderMessagingBanner() and two deletes on the game-delete path,
-// so this is a boot-and-banner check rather than an engine test: the page must start with 0 page
-// errors, the SQL paste box must appear while the tables are missing and vanish once they exist, and
+// only probeMessaging(), renderMessagingBanner() and two deletes on the game-delete path, so this is a
+// boot-and-banner check rather than an engine test: the page must start with 0 page errors, a plain
+// "tables missing" message must appear while they are missing (since P0-17 it carries no SQL to paste:
+// migrations are applied by the deploy) and vanish once they exist, and
 // deleteGame must clear a game's dispatches BEFORE it removes the games row (after which the delete
 // policy would no longer let anyone touch them).
 const {chromium}=require('playwright');
@@ -31,7 +32,7 @@ const check=(c,m)=>{checks++; if(!c){fails++;console.log('FAIL: '+m);}};
   if(EXPECT_STAMP) check(stamp&&stamp.includes(EXPECT_STAMP),'GM footer stamp is not '+EXPECT_STAMP+' (got '+stamp+')');
   for(const n of ['probeMessaging','renderMessagingBanner','deleteGame'])
     check(await page.evaluate(x=>typeof window[x]==='function',n),'missing function '+n);
-  check(await page.evaluate(()=>typeof KC_MSG_SQL==='string'&&KC_MSG_SQL.length>800),'KC_MSG_SQL missing or too short');
+  check(await page.evaluate(()=>typeof KC_MSG_SQL==='undefined'),'KC_MSG_SQL is still defined (P0-17 retired the SQL banners)');
   check(await page.evaluate(()=>document.getElementById('msg-messaging')!==null),'the #msg-messaging banner slot is missing');
 
   // tables present → no banner
@@ -41,14 +42,14 @@ const check=(c,m)=>{checks++; if(!c){fails++;console.log('FAIL: '+m);}};
   check(await page.evaluate(()=>document.getElementById('msg-messaging').innerHTML===''),'the banner is shown even though the tables exist');
   check(await page.evaluate(()=>_kcHasMsg===true),'_kcHasMsg is not true with the tables present');
 
-  // tables missing → the SQL paste box, containing the real statement
+  // tables missing → a plain error message naming them, with no SQL to paste
   await page.evaluate(()=>{ window.__DB.hide('game_messages'); });
   await page.evaluate(()=>probeMessaging());
   await page.waitForTimeout(150);
   const html=await page.evaluate(()=>document.getElementById('msg-messaging').innerHTML);
-  check(/Player messaging not active/.test(html),'the missing-table banner did not appear');
-  check(/create table if not exists public\.game_messages/.test(html),'the banner does not carry the CREATE TABLE statement');
-  check(/create policy &quot;send game_messages&quot;|create policy "send game_messages"/.test(html),'the banner does not carry the insert policy');
+  check(/Player messaging not active/.test(html),'the missing-table message did not appear');
+  check(/msg-error/.test(html)&&/game_messages/.test(html),'the message is not a plain error naming the missing table');
+  check(!/create table|create policy|SQL Editor|<textarea/i.test(html),'the message still carries SQL to paste');
   check(await page.evaluate(()=>_kcHasMsg===false),'_kcHasMsg is not false with a table missing');
   await page.evaluate(()=>{ window.__DB.show('game_messages'); return probeMessaging(); });
 
