@@ -43,8 +43,12 @@ change (on main, or against a copy via KC_SITE). Or say "refactor-only": new tes
 
 ## Database
 
-<!-- None, or: the exact SQL; its rollback SQL; whether the code works both before and after it runs;
-and, in plain words, what Toby is approving. -->
+<!-- None, or: the exact SQL; its rollback SQL; and, in plain words, what Toby is approving.
+A PR changes the database OR the site, never both (supabase/README.md, "Database and site changes go
+separately"). Answer whichever applies:
+- Migration PR: does the live site work with it applied? (No access-rule test of what the game needs was
+  loosened or removed.)
+- Site PR using a new table or column: does it cope while that's missing? Name the test that hides it. -->
 
 None.
 

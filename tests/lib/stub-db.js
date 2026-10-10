@@ -4,7 +4,9 @@
 // exactly as it behaved in its harness (merging them would change what those tests see):
 //
 //   makeStub()            in-memory database rich enough for the GM portal's runTurn
-//                         (from claude_stub_db_0927.js). Used by the turn fuzz.
+//                         (from claude_stub_db_0927.js). Used by the turn fuzz. MISSING_COLS (since
+//                         P0-17) hides single columns, "table.column", the way the real database
+//                         answers before a migration has run: for site code that must cope without it.
 //   cannedStub(o)         answers every read with fixed rows and records every write
 //                         (the `sbStub` pasted into six engine harnesses).
 //   nullStub()            every read is empty; enough for a page to boot
@@ -23,6 +25,7 @@ function makeStub(){
   const DB={ profiles:[{id:'gm1',name:'Test GM'}], games:[], game_players:[], turn_logs:[],
              turn_events:[], game_results:[], game_records:[], game_messages:[], game_message_reads:[] };
   const MISSING=new Set();
+  const MISSING_COLS=new Set();     // "table.column": answered as the real database does for an unknown column
   let SESSION={user:{id:'gm1'}};
   let NEXT=1;
   const CALLS=[];
@@ -59,9 +62,22 @@ function makeStub(){
         return {...clone(g), game_players:slim};
       });
     }
+    // The first hidden column this query names (selected, filtered, ordered or written), or null.
+    function hiddenColumn(){
+      const gone=[...MISSING_COLS].filter(k=>k.startsWith(table+'.')).map(k=>k.slice(table.length+1));
+      if(!gone.length) return null;
+      const top=(st.selectStr||'').replace(/\([^)]*\)/g,'').split(',').map(s=>s.trim().split(/[:\s]/)[0]);
+      const named=[...(st.op==='select'?top:[]),...st.filters.map(f=>f[1]),...(st.order?[st.order[0]]:[]),
+        ...(st.payload?[].concat(st.payload).flatMap(p=>Object.keys(p||{})):[])];
+      return gone.find(c=>named.includes(c))||null;
+    }
     function run(){
       CALLS.push(st.table+'.'+st.op);
       if(MISSING.has(table)) return {data:null,error:{message:`relation "public.${table}" does not exist`,code:'42P01'}};
+      const hidden=hiddenColumn();
+      if(hidden) return st.payload
+        ?{data:null,error:{message:`Could not find the '${hidden}' column of '${table}' in the schema cache`,code:'PGRST204'}}
+        :{data:null,error:{message:`column ${table}.${hidden} does not exist`,code:'42703'}};
       if(st.op==='select'){
         const r=project(rows());
         if(st.single) return r.length===1?{data:r[0],error:null}:{data:null,error:{message:'no rows / many rows'}};
@@ -125,7 +141,7 @@ function makeStub(){
            signOut:async()=>({error:null}), signInWithPassword:async()=>({data:{},error:null}) },
     channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}), removeChannel(){},
     storage:{from:()=>({upload:async()=>({data:null,error:null}),download:async()=>({data:null,error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})} };
-  return { supabase:{createClient:()=>client}, DB, MISSING, CALLS,
+  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, CALLS,
            setUser(id){ SESSION=id?{user:{id}}:null; } };
 }
 

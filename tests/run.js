@@ -30,6 +30,7 @@ const SUITE=[
   ['migrations',           'tests/migrations.test.js'],
   ['landing-footer',       'tests/landing-footer.test.js'],
   ['boot-pages',           'tests/boot-pages.test.js'],
+  ['meta-missing-turn',    'tests/meta-missing-turn.test.js'],
   ['turn-fuzz',            'tests/turn-fuzz.test.js',            FULL?['16','12']:['4','6']],
   ['home-placement',       'tests/home-placement.test.js',       [], {RUNS:FULL?'1000':'200'}],
   ['druid-and-war-spoils', 'tests/druid-and-war-spoils.test.js'],

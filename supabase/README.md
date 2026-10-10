@@ -32,8 +32,45 @@ The live game's database structure, under version control since plan step P0-15 
   all, the deploy refuses until it's back).
 - **A new migration sorts after every merged one.** If another one merged first with a later timestamp,
   rename yours with a fresh one before merging.
-- The code works both before and after the migration has run (the site deploys only after it, but a player's
-  open tab is older).
+- A pull request changes the database or the site, never both (next section).
+
+## Database and site changes go separately
+
+**In short:** a change that needs both a database change and a site change is done as two pull requests:
+the database change first, then the site change. Each one has to work without the other. CI's `db` check
+refuses a pull request that changes both.
+
+**Why.** The database and the site go live at different moments, and old copies of the site stay around:
+- the database changes when Toby approves it, which may be hours after the merge (just after the daily
+  backup);
+- the site changes straight after each merge;
+- a player who opened the game yesterday still has yesterday's page in their tab, and a GM's tab keeps
+  running turns with the page it loaded;
+- a pull request on staging runs against the staging database, which only gets a change once it's merged.
+
+So for a while, new pages meet the old database, or old pages meet the new one. If either needs the other,
+something breaks in that window. Usually it's quiet (a list that doesn't load), but it can be a turn that
+fails to save.
+
+**An example.** Say Toby wants each realm to fly a **war banner** that the GM sets, kept in a new `banner`
+column of `game_players`:
+1. **The database pull request** adds the empty column, plus the tests that say who can set it. Nothing on
+   the site uses it yet, so it can go live whenever Toby approves, and nobody notices.
+2. **The site pull request** shows and sets the banner. It checks the column is there first; if it isn't,
+   the banner simply doesn't appear. Because the database change is already merged, staging has the column,
+   so Toby tries the real thing there before it's merged.
+3. **Removing something** (an old column, an old access rule) goes **last**, in its own pull request, once
+   no page in use reads it any more. That's expand, then contract.
+
+**How each side is kept safe:**
+- **A migration must work with the site that's live now.** It only adds things, or tightens something the
+  site doesn't rely on. The access-rule tests in `tests/` say what the game needs, so a migration that
+  takes away something the site uses turns `db` red. A migration's pull request may add to those tests, but
+  never loosens or removes one.
+- **Site code must cope while its database change is missing.** It checks first and switches the feature
+  off quietly ([traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), and its pull
+  request has a page test where the stand-in database hides the new table or column (`__DB.hide(...)`, as
+  `tests/gm-messaging-boot.test.js` does).
 
 ## How a migration goes live
 
