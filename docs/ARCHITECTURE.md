@@ -101,11 +101,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
 
 ## The database (Supabase)
 
-The schema isn't in this repo yet. Until it is, schema changes ship as SQL that the GM portal shows in
-a set-up banner on the game list, which the owner runs once in the Supabase SQL Editor (`KC_META_SQL`,
-`KC_TEL_SQL`, `KC_LB_SQL`, `KC_MSG_SQL`). Each feature probes for its table or column first and degrades
-quietly while it's missing. Plan steps P0-15 to P0-17 bring the schema under version control as
-migrations with tests.
+The structure is in `supabase/` (since P0-15): `supabase/schemas/` is the desired state, one file per
+table with its access rules, and `supabase/migrations/` the changes that build it
+([supabase/README.md](../supabase/README.md)). Older features also ship their SQL in a set-up banner on
+the GM portal's game list (`KC_META_SQL`, `KC_TEL_SQL`, `KC_LB_SQL`, `KC_MSG_SQL`); those banners go
+with plan step P0-17, which also applies migrations automatically. Each feature probes for its table or
+column first and degrades quietly while it's missing.
 
 | Table | Holds |
 |---|---|
