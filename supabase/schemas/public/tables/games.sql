@@ -26,18 +26,8 @@ CREATE POLICY "read games (gm, public, or invited to private setup)" ON "public"
     (((gm_user_id = auth.uid()) OR (status <> 'setup'::text) OR (COALESCE((game_state ->> 'visibility'::text), 'public'::text) <> 'private'::text) OR ((game_state ->
     'invited'::text) ? (auth.uid())::text)));
 
-CREATE POLICY "allow_insert_games" ON "public"."games"
-  FOR INSERT
-  TO "anon", "authenticated"
-  WITH CHECK (true);
-
 CREATE POLICY "allow_read_games" ON "public"."games"
   FOR SELECT
-  TO "anon", "authenticated"
-  USING (true);
-
-CREATE POLICY "allow_update_games" ON "public"."games"
-  FOR UPDATE
   TO "anon", "authenticated"
   USING (true);
 
@@ -59,16 +49,6 @@ CREATE POLICY "g2" ON "public"."games"
 CREATE POLICY "g3" ON "public"."games"
   FOR SELECT
   TO PUBLIC
-  USING (true);
-
-CREATE POLICY "gm_can_insert_games" ON "public"."games"
-  FOR INSERT
-  TO "anon", "authenticated"
-  WITH CHECK (true);
-
-CREATE POLICY "gm_can_update_own_games" ON "public"."games"
-  FOR UPDATE
-  TO "anon", "authenticated"
   USING (true);
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."games" TO "anon", "authenticated";

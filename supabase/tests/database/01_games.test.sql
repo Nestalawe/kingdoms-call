@@ -4,10 +4,11 @@
 --   the GM creates, reads, saves (the conditional turn save), archives and deletes their own games;
 --   a player reads the games they're in (name, turn, status, meta: My Games and the report screen);
 --   any signed-in account lists open public games, and an invited one sees a private game in setup.
--- Also checked: nobody but the game's GM deletes it.
+-- Also checked: nobody but the game's GM changes or deletes it, a game is created only in its creator's
+-- own name, and a game is never handed to another account by editing it.
 begin;
 \ir ../lib/world.psql
-select plan(11);
+select plan(19);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,34 @@ select is(pg_temp.kc_count($$select id, name, max_players from public.games
 select pg_temp.kc_as('invitee');
 select is(pg_temp.kc_count($$select id, name from public.games where id = pg_temp.kc_game('P')$$), 1,
   'an invited account sees the private game it''s invited to');
+
+-- ── nobody else changes a game ───────────────────────────────────────────────────────────────
+
+select pg_temp.kc_as('p1');
+select is(pg_temp.kc_writes($$update public.games set turn = 99 where id = pg_temp.kc_game('A')$$), 0,
+  'a player can''t change their game');
+select is(pg_temp.kc_writes($$update public.games set gm_user_id = auth.uid() where id = pg_temp.kc_game('A')$$), 0,
+  'a player can''t make themselves GM of their game');
+
+select pg_temp.kc_as('gm2');
+select is(pg_temp.kc_writes($$update public.games set name = 'Renamed' where id = pg_temp.kc_game('A')$$), 0,
+  'another GM can''t change the game');
+
+select pg_temp.kc_as('stranger');
+select is(pg_temp.kc_writes($$update public.games set status = 'complete'$$), 0,
+  'an account in no game can''t change any game');
+select is(pg_temp.kc_writes($$insert into public.games (name, gm_user_id) values ('Forged', pg_temp.kc_uid('gm'))$$), 0,
+  'an account can''t create a game in another account''s name');
+
+select pg_temp.kc_as('anon');
+select is(pg_temp.kc_writes($$update public.games set status = 'complete'$$), 0,
+  'a signed-out visitor can''t change any game');
+select is(pg_temp.kc_writes($$insert into public.games (name) values ('Nobody''s game')$$), 0,
+  'a signed-out visitor can''t create a game');
+
+select pg_temp.kc_as('gm');
+select is(pg_temp.kc_writes($$update public.games set gm_user_id = pg_temp.kc_uid('gm2') where id = pg_temp.kc_game('A')$$), 0,
+  'the GM can''t hand their game to another account by editing it');
 
 -- ── nobody else deletes a game ───────────────────────────────────────────────────────────────
 
