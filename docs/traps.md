@@ -215,7 +215,8 @@ time, so **every later merge waits behind it**, site-only fixes included, and sh
 - Merge a migration when Toby can approve it soon (just after the daily backup, about 19:35 UTC), not
   ahead of an urgent site fix.
 - If he rejects it, the run fails and nothing deploys; the next push to `main` asks again, because the
-  migration is still new compared with the live site. To ship the site without it, revert the migration's
-  pull request (CI allows deleting a migration file, with a warning), and undo it on staging by hand
-  ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)).
+  migration is still new compared with the live site. So follow a rejection quickly with a pull request
+  whose migration undoes it: production then gets both in order and ends up unchanged
+  ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). (Deleting the rejected migration's
+  file also works, and CI allows it with a warning, but staging then has to be undone by hand.)
 - Approval requests expire after 30 days.

@@ -19,6 +19,8 @@ GitHub Pages (`.github/workflows/deploy.yml`). If the merge brings a database ch
 staging database and then, once Toby approves, to the live one, before the site is published
 ([supabase/README.md](supabase/README.md#how-a-migration-goes-live)).
 
+**Trying a change before players see it:** [docs/staging.md](docs/staging.md).
+
 A PR that changes the database, the workflows or third-party code (the paths in `.github/dangerous-paths`)
 gets a warning comment asking to talk it through with Theo before merging
 (`.github/workflows/dangerous-paths.yml`). It never blocks the merge.
