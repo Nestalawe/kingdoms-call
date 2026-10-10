@@ -132,11 +132,18 @@ deploys (plan step P0-13), "What to try on staging" says what Toby will try once
 The structure is in `supabase/` ([supabase/README.md](supabase/README.md)): edit `supabase/schemas/`,
 generate the migration, review it. Merging applies it: staging, then production once Toby approves, then
 the site ([supabase/README.md](supabase/README.md#how-a-migration-goes-live)). Never apply one to the live
-database yourself, and never ask Toby to paste SQL. Any PR that changes the database must:
-- make the code work both before and after the SQL has run
-  ([traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site));
-- include the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving;
-- expand before contract: add first, remove only in a later PR.
+database yourself, and never ask Toby to paste SQL.
+
+**Database and site changes go in separate PRs**, and each must work without the other: they go live at
+different moments, and old pages stay open
+([why, with an example](supabase/README.md#database-and-site-changes-go-separately)). CI's `db` check refuses
+a PR that changes both. Database first, then site, then any removal (expand, then contract).
+- **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test
+  of what the game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of
+  what Toby is approving.
+- **A site PR** that uses a new table or column copes while it's missing (probe and fall back:
+  [traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
+  (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`).
 
 Migrations are forward-only (a rollback is a new migration); a merged one is never edited (CI's `db` check
 refuses it); every migration has pgTAP tests.

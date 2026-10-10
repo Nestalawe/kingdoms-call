@@ -6,7 +6,8 @@
 //   node .github/scripts/migrations.js apply <target>   brings the database at DB_URL (staging or production) up to
 //                                                       date, refusing any migration that isn't in EXPECTED
 //   node .github/scripts/migrations.js pr-check         on a pull request (HEAD is GitHub's merge commit): no merged
-//                                                       migration is changed, and new ones are named and ordered
+//                                                       migration is changed, new ones are named and ordered, and
+//                                                       the database and the site aren't changed together
 //
 // The site never deploys before the migrations it needs: "plan" compares with the commit that's live, not with
 // the previous push, so a migration whose production run was rejected is still pending on the next push.
@@ -54,6 +55,19 @@ function classify(changes,existing=[],{allowDelete=false}={}){
     added.push(c.file);
   }
   return {added:added.sort(),removed,problems};
+}
+
+// A pull request changes the database or the site, never both. They go live at different moments (the
+// database when Toby approves it, the site straight after), and players keep old pages open, so each must
+// work without the other; separate pull requests make that the shape of the work. The why, for Toby:
+// supabase/README.md, "Database and site changes go separately".
+const WHY='https://github.com/Nestalawe/kingdoms-call/blob/main/supabase/README.md#database-and-site-changes-go-separately';
+function mixedChange(files){
+  const db=files.filter(f=>f.startsWith(`${DIR}/`)), site=files.filter(f=>f.startsWith('site/'));
+  if(!db.length||!site.length) return null;
+  return `This pull request changes both the database (${db.length} migration file${db.length>1?'s':''}) and the site `
+    +`(${site.length} file${site.length>1?'s':''}). Split it in two: first the database change, which must work with `
+    +`the site that's live now; then the site change, which must cope until the database change is there. Why: ${WHY}`;
 }
 
 // What to do to one database. `list` is `supabase migration list --output-format json`'s migrations;
@@ -226,6 +240,8 @@ function prCheck(){
   const existing=git('ls-tree','--name-only',`${base}:${DIR}`).split('\n').filter(Boolean);
   const {added,removed,problems}=classify(parseNameStatus(git('diff','--name-status','-M',base,'HEAD','--',DIR)),existing,{allowDelete:true});
   for(const f of removed) console.log(`::warning title=migrations::${f} is deleted. Only for a migration that never reached production: if it did, the deploy will refuse until it's back.`);
+  const mixed=mixedChange(git('diff','--name-only','--no-renames',base,'HEAD').split('\n').filter(Boolean));
+  if(mixed) problems.push(mixed);
   for(const p of problems) console.log(`::error title=migrations::${p}`);
   if(problems.length) process.exit(1);
   console.log(added.length?`New migrations: ${added.join(', ')}`:'No new migrations.');
@@ -242,4 +258,4 @@ if(require.main===module){
   });
 }
 
-module.exports={parseNameStatus,classify,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE};
+module.exports={parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE};

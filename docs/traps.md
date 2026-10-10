@@ -73,7 +73,9 @@ Since P0-17 the live site deploys only after its migration, but a pull request o
 staging database before its migration is applied there (that happens on merge), and old copies of the
 site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
-prefer the new column and fall back to the old source.
+prefer the new column and fall back to the old source. Prove it with a test that hides the column
+(`MISSING_COLS` in `tests/lib/stub-db.js`), as `tests/meta-missing-turn.test.js` does. This is why database
+and site changes go in separate PRs ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)).
 
 ## String-anchor harness hooks
 

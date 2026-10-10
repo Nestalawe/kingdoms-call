@@ -3,7 +3,7 @@
 // before approving production.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {parseNameStatus,classify,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE}=require('../.github/scripts/migrations.js');
+const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE}=require('../.github/scripts/migrations.js');
 
 const D='supabase/migrations/';
 const BASE='20261010054853', NEXT='20261012000000', LATER='20261013000000';
@@ -113,4 +113,15 @@ test('a failed CLI call is reported by its own message, never with the database 
   assert.match(msg,/failed to connect/);
   assert.doesNotMatch(msg,/p@ss|p%40ss|pooler/);
   assert.equal(cliError('not json'),'no message');
+});
+
+test('a pull request changes the database or the site, never both',()=>{
+  const mig=`${D}${NEXT}_banners.sql`;
+  assert.equal(mixedChange([mig,'supabase/schemas/public/tables/games.sql','supabase/tests/database/01_games.test.sql']),null);
+  assert.equal(mixedChange(['site/kingdoms-call-gm-portal.html','tests/gm-messaging-boot.test.js']),null);
+  assert.equal(mixedChange(['supabase/README.md','site/kingdoms-call-gm-portal.html']),null,'docs about the database are fine');
+  const msg=mixedChange([mig,'site/kingdoms-call-gm-portal.html','site/kingdoms-call-player-portal.html']);
+  assert.match(msg,/1 migration file\) and the site \(2 files\)/);
+  assert.match(msg,/Split it in two: first the database change/);
+  assert.match(msg,/supabase\/README\.md#database-and-site-changes-go-separately/);
 });
