@@ -32,7 +32,7 @@ then, a rule's background is in the code comments near it.
 | `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate staging, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
-| `docs/` | Architecture, traps and, later, rulings and history |
+| `docs/` | Architecture, traps, how to try a change on staging (`staging.md`) and, later, rulings and history |
 
 ## Commands
 
@@ -64,8 +64,9 @@ Run `npm test` before every push, and the access-rule tests too when `supabase/`
   phases; a **unit** is a set of steps done together in one sitting (e.g. the cutover).
 - Open a **draft PR early**, and fill in the template as you go.
 
-**Staging** is a separate test site with its own database and no real players. Until it receives
-deploys (plan step P0-13), "What to try on staging" says what Toby will try once it can.
+**Staging** is a separate test site with its own database and no real players. How a change is tried
+there: **[docs/staging.md](docs/staging.md)**. A site PR goes on staging before merging (label `staging`); a
+database PR is tried after merging, while its production approval waits. Nothing is applied by hand.
 
 ## Rules
 

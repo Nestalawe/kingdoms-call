@@ -80,8 +80,9 @@ deploy the site** (plan step P0-17).
    their pull requests, in the run's summary. With none, the site deploys straight after the tests.
 2. **`migrate-staging`** applies them to the staging database.
 3. **`migrate-production`** waits for **Toby's approval** (the run page's **Review deployments** button,
-   in the `production` environment). He approves soon after the daily backup (about 19:35 UTC), once
-   it's listed in Supabase → Database → Backups.
+   in the `production` environment). **This wait is when the change is tried on staging** (below). He
+   approves soon after the daily backup (about 19:35 UTC), once it's listed in Supabase → Database →
+   Backups.
 4. **`deploy`** publishes the site, only if production was migrated. If Toby rejects it, or anything fails,
    the site doesn't deploy, and the next push to `main` (or a manual run of Deploy) asks again.
 
@@ -96,11 +97,9 @@ live database, and nobody pastes SQL into its SQL Editor.
 records the baseline as applied without running it: the live structure is the baseline (P0-15). A database
 with no history and no game tables is refused: the pipeline never builds one from nothing.
 
-**Trying a migration on staging before merging** (Theo, from his own terminal, never in an agent session):
-`npx supabase@2.120.0 db push --db-url "$STAGING_DB_URL"`. The merge then finds it already applied there.
-If that pull request is abandoned or its migration renamed, undo the change on staging by hand and run
-`npx supabase@2.120.0 migration repair <version> --status reverted --db-url "$STAGING_DB_URL"`, or the
-next deploy refuses staging.
+**Trying a migration on staging** happens in that wait: the staging database already has it, the live one
+doesn't yet. The steps, for Toby and agents alike, are in [docs/staging.md](../docs/staging.md#a-database-change-tables-columns-access-rules).
+Nobody applies a migration by hand.
 
 ## The access-rule tests
 
