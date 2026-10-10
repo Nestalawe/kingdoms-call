@@ -41,7 +41,7 @@ const STUB=browserSource.null;
         .map(n=>{ try{ return typeof eval(n); }catch(e){ return 'missing'; } }));
       say(fns.every(t=>t==='function'),'GM portal: leaderboard functions not defined ('+fns.join(',')+')');
       const tbl=await p.evaluate(()=>({sql:typeof KC_LB_SQL, sea:(typeof _LB_SEA!=='undefined')&&_LB_SEA.size>0, banner:!!document.getElementById('msg-leaderboard')}));
-      say(tbl.sql==='string'&&tbl.sea&&tbl.banner,'GM portal: leaderboard constants / banner slot missing');
+      say(tbl.sql==='undefined'&&tbl.sea&&tbl.banner,'GM portal: leaderboard constants / banner slot missing, or KC_LB_SQL still defined');
     }
     if(page==='kingdoms-call-leaderboard.html'){
       const tabs=await p.evaluate(()=>[...document.querySelectorAll('.tab-bar button')].map(b=>b.id));
