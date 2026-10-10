@@ -26,7 +26,7 @@ then, a rule's background is in the code comments near it.
 | Path | What |
 |---|---|
 | `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to) |
-| `supabase/` | The database: `config.toml` (for a local copy in Docker). The schema files (`schemas/`) and migrations (`migrations/`) arrive with plan step P0-15; `.github/workflows/schema-pull.yml` reads the live structure for them |
+| `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`. How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
 | `.github/workflows/` | `ci.yml` (`npm test` on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
@@ -128,8 +128,9 @@ deploys (plan step P0-13), "What to try on staging" says what Toby will try once
 
 ## Database changes
 
-The schema isn't in this repo yet (it arrives with plan steps P0-15 to P0-17); for now, schema changes
-are SQL the GM portal shows in a set-up banner. Any PR that changes the database must:
+The structure is in `supabase/` ([supabase/README.md](supabase/README.md)): edit `supabase/schemas/`,
+generate the migration, review it. Until plan step P0-17 automates applying migrations, never apply one
+to the live database yourself; Toby and Theo do. Any PR that changes the database must:
 - make the code work both before and after the SQL has run
   ([traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site));
 - include the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving;
