@@ -38,6 +38,9 @@ it prints the end of that test's output and the seed to repeat it with.
 Level is from the testing strategy: 0 static, 1 unit, 1d database unit (pgTAP, from P0-16), 2 scenario,
 3 simulation, 4 page.
 
+The level-1d tests aren't in this folder or in `run.js`: they're in `supabase/tests/`, one file per
+table, and run in CI's `db` job ([supabase/README.md](../supabase/README.md#the-access-rule-tests)).
+
 The original files are the harnesses kept in the claude.ai Project on 27 Sept 2026. When they moved
 here, only their plumbing changed:
 - file paths now point at `site/`;

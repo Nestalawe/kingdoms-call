@@ -8,6 +8,7 @@ The live game's database structure, under version control since plan step P0-15 
 | `schemas/` | **The source of truth:** the desired structure, one file per table, function or sequence. A table's file holds its columns, its row-level security and its policies together. |
 | `migrations/` | The changes that build it, in order. Generated from `schemas/`, then reviewed. Never edit one that has been applied. |
 | `config.toml` | Settings for a local copy in Docker (`supabase start`). `major_version` must match the live Postgres major version. |
+| `tests/` | The access-rule tests (pgTAP): `database/` has one file per table, `lib/world.psql` the made-up world they share. |
 
 ## Changing the structure
 
@@ -24,6 +25,24 @@ The live game's database structure, under version control since plan step P0-15 
 
 The migrations are applied to staging, then (with Toby's approval) to the live database. Until plan step
 P0-17 automates that, staging is updated by hand and the live database is never touched from a laptop.
+
+## The access-rule tests
+
+Each file in `tests/database/` says, for one table, what the game needs (who reads and writes which
+rows) and checks it from every point of view: a player in the game, a rival, a player in another game,
+the game's GM, another GM, an account in no game, and a signed-out visitor. They act through the same
+roles the site's API uses.
+
+```sh
+npx supabase@2.120.0 start                      # once; the local copy, built from migrations/
+npx supabase@2.120.0 test db --local supabase/tests
+```
+
+Pass the whole `supabase/tests` folder: each file includes `lib/world.psql`, and the CLI only hands the
+database the paths it's given. Every file runs in one transaction and rolls back, so the local copy is
+left as it was. CI runs the same on every pull request (the `db` job in `.github/workflows/ci.yml`).
+
+A change to an access rule comes with its tests here, in the same pull request.
 
 ## Supabase's own defaults are left out on purpose
 

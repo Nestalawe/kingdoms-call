@@ -1,4 +1,5 @@
-# Runs npm test on every pull request. Branch protection on main requires the check named "ci".
+# Runs npm test (job "ci") and the database's access-rule tests (job "db") on every pull request.
+# Branch protection on main requires the check named "ci".
 # deploy.yml calls this workflow before every publish, so each commit that goes live is tested first,
 # and a merge runs the tests once (inside Deploy), not twice. That's why there's no push trigger here.
 name: CI
@@ -31,3 +32,22 @@ jobs:
       - run: npx playwright install --with-deps chromium
 
       - run: npm test
+
+  # pgTAP against a throwaway local database built from supabase/migrations/ (no other Supabase
+  # services, no secrets, never the live or staging database). See supabase/README.md.
+  db:
+    name: db
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      - run: supabase db start
+
+      - run: supabase test db --local supabase/tests
