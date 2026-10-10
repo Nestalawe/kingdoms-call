@@ -21,10 +21,49 @@ The live game's database structure, under version control since plan step P0-15 
    - view ownership, security-invoker settings and column-level privileges, which aren't always kept;
    - casts, operators and similar rarely-used object types.
 4. `npx supabase@2.120.0 db reset --local` rebuilds the local copy from the migrations; check it.
-5. The PR states the rollback, and what Toby is approving, in plain words (see `CLAUDE.md`).
+5. Add or change the access-rule tests in `tests/` (every migration has them), in the same pull request.
+6. The PR states the rollback, and what Toby is approving, in plain words (see `CLAUDE.md`).
 
-The migrations are applied to staging, then (with Toby's approval) to the live database. Until plan step
-P0-17 automates that, staging is updated by hand and the live database is never touched from a laptop.
+**Rules for `migrations/`.** CI's `db` job refuses a pull request that breaks the first two
+(`.github/scripts/migrations.js pr-check`):
+- **A migration never changes once it's merged:** no edits or renames. It may already be applied. To change
+  or undo it, write a new migration. That's also how a rollback is applied: forward. The one exception:
+  withdrawing a migration that production rejected, by deleting its file (CI warns; if it was applied after
+  all, the deploy refuses until it's back).
+- **A new migration sorts after every merged one.** If another one merged first with a later timestamp,
+  rename yours with a fresh one before merging.
+- The code works both before and after the migration has run (the site deploys only after it, but a player's
+  open tab is older).
+
+## How a migration goes live
+
+Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate staging → migrate production →
+deploy the site** (plan step P0-17).
+1. **`migrations`** lists the migrations added since the commit that's live on the site, with their SQL and
+   their pull requests, in the run's summary. With none, the site deploys straight after the tests.
+2. **`migrate-staging`** applies them to the staging database.
+3. **`migrate-production`** waits for **Toby's approval** (the run page's **Review deployments** button,
+   in the `production` environment). He approves soon after the daily backup (about 19:35 UTC), once
+   it's listed in Supabase → Database → Backups.
+4. **`deploy`** publishes the site, only if production was migrated. If Toby rejects it, or anything fails,
+   the site doesn't deploy, and the next push to `main` (or a manual run of Deploy) asks again.
+
+Both migrate jobs apply only the migrations listed in step 1, and refuse to touch a database that has
+migrations the repo doesn't, or that is missing older ones. Nobody applies a migration from a laptop to the
+live database, and nobody pastes SQL into its SQL Editor.
+
+**While a run waits for Toby, every later deploy waits behind it**, including site-only fixes
+([traps.md](../docs/traps.md#a-migration-waiting-for-approval-holds-every-deploy)).
+
+**The first run on a database** that predates the pipeline (the live one, which has no migration history)
+records the baseline as applied without running it: the live structure is the baseline (P0-15). A database
+with no history and no game tables is refused: the pipeline never builds one from nothing.
+
+**Trying a migration on staging before merging** (Theo, from his own terminal, never in an agent session):
+`npx supabase@2.120.0 db push --db-url "$STAGING_DB_URL"`. The merge then finds it already applied there.
+If that pull request is abandoned or its migration renamed, undo the change on staging by hand and run
+`npx supabase@2.120.0 migration repair <version> --status reverted --db-url "$STAGING_DB_URL"`, or the
+next deploy refuses staging.
 
 ## The access-rule tests
 

@@ -13,8 +13,11 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 
 Only `site/` is published, so page addresses don't change.
 
-Every pull request runs `npm test` in GitHub Actions (`.github/workflows/ci.yml`). Merging to `main`
-runs the tests again and, if they pass, publishes `site/` to GitHub Pages (`.github/workflows/deploy.yml`).
+Every pull request runs `npm test` and the database's access-rule tests in GitHub Actions
+(`.github/workflows/ci.yml`). Merging to `main` runs the tests again and, if they pass, publishes `site/` to
+GitHub Pages (`.github/workflows/deploy.yml`). If the merge brings a database change, it's applied to the
+staging database and then, once Toby approves, to the live one, before the site is published
+([supabase/README.md](supabase/README.md#how-a-migration-goes-live)).
 
 A PR that changes the database, the workflows or third-party code (the paths in `.github/dangerous-paths`)
 gets a warning comment asking to talk it through with Theo before merging

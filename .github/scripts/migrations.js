@@ -1,0 +1,245 @@
+// The migration pipeline's logic (P0-17), run by .github/workflows/deploy.yml and ci.yml.
+//   node .github/scripts/migrations.js plan             which migrations this deploy brings: those added since the
+//                                                       commit that's live on the site. Writes the outputs `changed`
+//                                                       and `expected`, and the job summary (each migration's SQL and
+//                                                       its pull request) that Toby reads before approving production
+//   node .github/scripts/migrations.js apply <target>   brings the database at DB_URL (staging or production) up to
+//                                                       date, refusing any migration that isn't in EXPECTED
+//   node .github/scripts/migrations.js pr-check         on a pull request (HEAD is GitHub's merge commit): no merged
+//                                                       migration is changed, and new ones are named and ordered
+//
+// The site never deploys before the migrations it needs: "plan" compares with the commit that's live, not with
+// the previous push, so a migration whose production run was rejected is still pending on the next push.
+//
+// Everything except main() is pure and unit-tested in tests/migrations.test.js. main() runs git, the GitHub API
+// (read-only) and the Supabase CLI (SUPABASE_CLI, default "supabase"), whose JSON output it reads.
+const fs=require('fs'), path=require('path'), {execFileSync,spawnSync}=require('child_process');
+
+const DIR='supabase/migrations';
+const NAME=/^(\d{14})_([a-z0-9_]+)\.sql$/;
+const MAX_SQL_LINES=400; // per migration, in the job summary
+const BACKUP_NOTE='**Approve soon after the daily backup** (about 19:35 UTC, 08:35 in New Zealand), once today\'s '
+  +'backup is listed in Supabase → Database → Backups.';
+
+const version=file=>(NAME.exec(path.basename(file))||[])[1];
+
+// `git diff --name-status -M` output → [{status:'A'|'M'|'D'|'R'|…, file, from}]
+function parseNameStatus(text){
+  return text.split('\n').filter(Boolean).map(line=>{
+    const [s,a,b]=line.split('\t');
+    return b?{status:s[0],from:a,file:b}:{status:s[0],file:a};
+  });
+}
+
+// What a change to supabase/migrations/ does. A migration that's merged may already be applied somewhere, so
+// editing or renaming one is refused; a new one must be named <14-digit version>_<name>.sql, and sort after
+// every migration already there (the CLI won't apply one that sorts before the newest applied).
+// Deleting one is refused too, except on a pull request (allowDelete): withdrawing a migration that production
+// rejected is legitimate, and if it was applied after all, the deploy refuses that database (decide()).
+function classify(changes,existing=[],{allowDelete=false}={}){
+  const added=[], removed=[], problems=[];
+  const newest=existing.map(version).filter(Boolean).sort().pop()||'';
+  const seen=new Set(existing.map(version).filter(Boolean));
+  for(const c of changes){
+    if(c.status==='D'&&allowDelete){ removed.push(c.file); continue; }
+    if(c.status!=='A'){
+      problems.push(`${c.from||c.file}: a migration that's merged must never change (${c.status==='D'?'deleted':c.status==='R'?'renamed':'edited'}). Write a new migration instead.`);
+      continue;
+    }
+    const v=version(c.file);
+    if(!v){ problems.push(`${c.file}: name it <14-digit timestamp>_<lowercase_name>.sql (as \`supabase migration new\` does).`); continue; }
+    if(seen.has(v)) problems.push(`${c.file}: version ${v} is already used.`);
+    else if(v<=newest) problems.push(`${c.file}: sorts before ${newest}, the newest migration already merged. Give it a newer timestamp.`);
+    seen.add(v);
+    added.push(c.file);
+  }
+  return {added:added.sort(),removed,problems};
+}
+
+// What to do to one database. `list` is `supabase migration list --output-format json`'s migrations;
+// `expected` the versions Toby was shown; `hasGames` whether the game's tables exist (asked only when the
+// database has no migration history at all).
+//   refuse     stop, change nothing (reason says why)
+//   bootstrap  the database predates the pipeline: record the first migration (the baseline, P0-15) as applied,
+//              without running it, then decide again
+//   nothing    already up to date
+//   apply      push `pending`
+function decide({list,expected,hasGames,bootstrapped=false}){
+  const local=list.filter(m=>m.local).map(m=>m.local);
+  const remote=list.filter(m=>m.remote).map(m=>m.remote);
+  const unknown=list.filter(m=>m.remote&&!m.local).map(m=>m.remote);
+  if(unknown.length)
+    return {action:'refuse',reason:`the database has migrations the repo doesn't: ${unknown.join(', ')}. Someone applied them by hand, or a pull request that was tried on this database never merged. Repair its history before deploying.`};
+  if(!remote.length){
+    if(bootstrapped) return {action:'refuse',reason:'recording the baseline as applied didn\'t show up in the migration history.'};
+    if(hasGames!==true) return {action:'refuse',reason:'the database has no migration history and no game tables. The pipeline never builds a database from nothing; set it up by hand (supabase/README.md).'};
+    return {action:'bootstrap',version:[...local].sort()[0]};
+  }
+  const pending=list.filter(m=>m.local&&!m.remote).map(m=>m.local).sort();
+  const want=new Set(expected);
+  const surprise=pending.filter(v=>!want.has(v));
+  if(surprise.length)
+    return {action:'refuse',reason:`these migrations are pending here but weren't in the list shown before approval: ${surprise.join(', ')}. The database is out of step with the live site.`};
+  return pending.length?{action:'apply',pending}:{action:'nothing'};
+}
+
+function planSummary({migrations,live,head}){
+  const lines=['## Database changes in this deploy',''];
+  if(!live) lines.push('_The commit live on the site couldn\'t be found, so every migration counts as new; the jobs below apply only those each database is missing._','');
+  else lines.push(`Compared with the commit live on the site, \`${live.slice(0,7)}\`, this deploy (\`${head.slice(0,7)}\`) brings:`,'');
+  if(!migrations.length){ lines.push('No database changes. The site deploys straight after the tests.'); return lines.join('\n')+'\n'; }
+  for(const m of migrations) lines.push(`- \`${path.basename(m.file)}\`${m.pr?` from #${m.pr} (what it changes, in plain words, and its rollback are in that pull request)`:''}`);
+  lines.push('','**Order:** staging first, then production once Toby approves it, then the site. If production is '
+    +'rejected, the site doesn\'t deploy, and the next push to `main` asks again.','',BACKUP_NOTE,'');
+  for(const m of migrations){
+    const sql=m.sql.replace(/\n$/,'').split('\n');
+    const shown=sql.slice(0,MAX_SQL_LINES).join('\n').replace(/```/g,'` ` `');
+    lines.push(`<details><summary><code>${path.basename(m.file)}</code> (${sql.length} lines)</summary>`,'','```sql',shown,
+      sql.length>MAX_SQL_LINES?`-- … ${sql.length-MAX_SQL_LINES} more lines: see the file in the repo`:'','```','</details>','');
+  }
+  return lines.join('\n')+'\n';
+}
+
+function applySummary({target,decision,applied=[],bootstrapped}){
+  const lines=[`## ${target[0].toUpperCase()+target.slice(1)} database`,''];
+  if(bootstrapped) lines.push(`First run on this database: its structure predates the pipeline and is the baseline (P0-15), so \`${bootstrapped}\` was recorded as applied, not run.`,'');
+  if(decision.action==='refuse') lines.push(`❌ **Nothing applied:** ${decision.reason}`);
+  else if(decision.action==='nothing') lines.push('Already up to date: nothing to apply.');
+  else lines.push('✅ Applied:','',...applied.map(v=>`- \`${v}\``));
+  if(decision.action==='refuse'&&applied.length) lines.push('','Applied before it stopped:','',...applied.map(v=>`- \`${v}\``));
+  return lines.join('\n')+'\n';
+}
+
+// ---- I/O ----
+
+const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
+const summary=text=>process.env.GITHUB_STEP_SUMMARY?fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,text):process.stdout.write(text);
+const output=(k,v)=>process.env.GITHUB_OUTPUT?fs.appendFileSync(process.env.GITHUB_OUTPUT,`${k}=${v}\n`):console.log(`${k}=${v}`);
+
+async function api(url,token){
+  const res=await fetch(url,{headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',
+    ...(token?{Authorization:`Bearer ${token}`}:{})}});
+  if(!res.ok) throw new Error(`GitHub API ${res.status} for GET ${url}`);
+  return res.json();
+}
+
+// The commit the live site was last deployed from: the newest github-pages deployment whose latest status
+// is "success". Null if there's none, or it isn't in this checkout's history.
+async function liveCommit(root,token){
+  const deployments=await api(`${root}/deployments?environment=github-pages&per_page=30`,token);
+  for(const d of deployments){
+    const [latest]=await api(`${root}/deployments/${d.id}/statuses?per_page=1`,token);
+    if(latest&&latest.state==='success'){
+      try{ git('cat-file','-e',`${d.sha}^{commit}`); return d.sha; }catch{ return null; }
+    }
+  }
+  return null;
+}
+
+async function plan(){
+  const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo}=process.env;
+  if(!repo) throw new Error('GITHUB_REPOSITORY must be set');
+  const root=`${process.env.GITHUB_API_URL||'https://api.github.com'}/repos/${repo}`;
+  const head=git('rev-parse','HEAD');
+  const live=await liveCommit(root,token);
+  let added, problems=[];
+  if(live){
+    const existing=git('ls-tree','--name-only',`${live}:${DIR}`).split('\n').filter(Boolean);
+    ({added,problems}=classify(parseNameStatus(git('diff','--name-status','-M',live,head,'--',DIR)),existing));
+  }else added=fs.readdirSync(DIR).filter(f=>f.endsWith('.sql')).map(f=>`${DIR}/${f}`).sort();
+  if(problems.length){
+    for(const p of problems) console.log(`::error title=migrations::${p}`);
+    summary(`## Database changes in this deploy\n\n❌ Refused, nothing deployed:\n\n${problems.map(p=>`- ${p}`).join('\n')}\n`);
+    process.exit(1);
+  }
+  const migrations=[];
+  for(const file of added){
+    const sha=git('log','--diff-filter=A','--format=%H','-1','--',file);
+    let pr=null;
+    try{ pr=sha&&(await api(`${root}/commits/${sha}/pulls`,token)).map(p=>p.number).sort((a,b)=>a-b)[0]||null; }catch{}
+    migrations.push({file,pr,sql:fs.readFileSync(file,'utf8')});
+  }
+  summary(planSummary({migrations,live,head}));
+  output('changed',migrations.length?'true':'false');
+  output('expected',migrations.map(m=>version(m.file)).join(' '));
+  console.log(migrations.length?`Migrations to apply: ${added.join(', ')}`:'No database changes.');
+}
+
+// The connection string is an argument, so a failure is reported by the subcommand's name only: never the
+// command line, which would print the database password.
+function cli(args){
+  const bin=process.env.SUPABASE_CLI||'supabase';
+  const r=spawnSync(bin,[...args,'--db-url',process.env.DB_URL,'--agent','no','--output-format','json'],
+    {encoding:'utf8',stdio:['ignore','pipe','inherit']});
+  if(r.error||r.status!==0)
+    throw new Error(`supabase ${args.slice(0,2).join(' ')} failed (exit ${r.status}): ${scrub(cliError(r.stdout),process.env.DB_URL)}`);
+  return JSON.parse(r.stdout);
+}
+// The CLI reports an error as JSON on stdout: {"_tag":"Error","error":{"message":…}}.
+function cliError(stdout){
+  try{ const e=JSON.parse(stdout).error||{}; return [e.message,e.suggestion].filter(Boolean).join(' ').trim()||'no message'; }
+  catch{ return 'no message'; }
+}
+// Removes a connection string, and its password on its own, from a message.
+function scrub(text,url){
+  let pw='';
+  try{ pw=decodeURIComponent(new URL(url).password); }catch{}
+  for(const s of [url,pw,pw&&encodeURIComponent(pw)]) if(s) text=text.split(s).join('***');
+  return text;
+}
+const migrationList=()=>cli(['migration','list']).migrations||[];
+
+function apply(target){
+  if(!['staging','production'].includes(target)) throw new Error('apply needs a target: staging or production');
+  if(!process.env.DB_URL) throw new Error(`No database address: the ${target} environment's secret is missing.`);
+  const expected=(process.env.EXPECTED||'').split(/\s+/).filter(Boolean);
+  let list=migrationList(), bootstrapped=null;
+  let hasGames=list.some(m=>m.remote)?undefined
+    :cli(['db','query',"select to_regclass('public.games') is not null as has_games"])[0]?.has_games;
+  let d=decide({list,expected,hasGames});
+  if(d.action==='bootstrap'){
+    cli(['migration','repair',d.version,'--status','applied']);
+    bootstrapped=d.version;
+    list=migrationList();
+    d=decide({list,expected,hasGames,bootstrapped:true});
+  }
+  let applied=[];
+  if(d.action==='apply'){
+    const dry=cli(['db','push','--dry-run']).migrations.map(version);
+    if(dry.join(' ')!==d.pending.join(' '))
+      d={action:'refuse',reason:`the CLI would push ${dry.join(', ')||'nothing'}, not ${d.pending.join(', ')}.`};
+    else{
+      cli(['db','push','--yes']);
+      const left=migrationList().filter(m=>m.local&&!m.remote).map(m=>m.local);
+      applied=d.pending.filter(v=>!left.includes(v));
+      if(left.length) d={action:'refuse',reason:`after the push, still pending: ${left.join(', ')}.`};
+    }
+  }
+  summary(applySummary({target,decision:d,applied,bootstrapped}));
+  if(d.action==='refuse'){ console.log(`::error title=migrations (${target})::${d.reason}`); process.exit(1); }
+  console.log(d.action==='nothing'?`${target}: already up to date.`:`${target}: applied ${applied.join(', ')}.`);
+}
+
+function prCheck(){
+  // On a pull request, actions/checkout gives GitHub's merge commit: its first parent is the base branch.
+  const base='HEAD^1';
+  const existing=git('ls-tree','--name-only',`${base}:${DIR}`).split('\n').filter(Boolean);
+  const {added,removed,problems}=classify(parseNameStatus(git('diff','--name-status','-M',base,'HEAD','--',DIR)),existing,{allowDelete:true});
+  for(const f of removed) console.log(`::warning title=migrations::${f} is deleted. Only for a migration that never reached production: if it did, the deploy will refuse until it's back.`);
+  for(const p of problems) console.log(`::error title=migrations::${p}`);
+  if(problems.length) process.exit(1);
+  console.log(added.length?`New migrations: ${added.join(', ')}`:'No new migrations.');
+}
+
+if(require.main===module){
+  const [cmd,arg]=process.argv.slice(2);
+  const run={plan,apply:()=>apply(arg),'pr-check':prCheck}[cmd];
+  if(!run){ console.error('usage: migrations.js plan | apply <staging|production> | pr-check'); process.exit(2); }
+  Promise.resolve().then(run).catch(e=>{
+    console.log(`::error title=migrations::${e.message}`);
+    summary(`\n❌ **Stopped:** ${e.message}\n`);
+    process.exit(1);
+  });
+}
+
+module.exports={parseNameStatus,classify,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE};

@@ -103,10 +103,12 @@ message. **When the data file changes, bump its stamps and both portals' minimum
 
 The structure is in `supabase/` (since P0-15): `supabase/schemas/` is the desired state, one file per
 table with its access rules, and `supabase/migrations/` the changes that build it
-([supabase/README.md](../supabase/README.md)). Older features also ship their SQL in a set-up banner on
-the GM portal's game list (`KC_META_SQL`, `KC_TEL_SQL`, `KC_LB_SQL`, `KC_MSG_SQL`); those banners go
-with plan step P0-17, which also applies migrations automatically. Each feature probes for its table or
-column first and degrades quietly while it's missing.
+([supabase/README.md](../supabase/README.md)). Merging a migration to `main` applies it to staging, then to
+production once Toby approves, and only then deploys the site
+([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). Older features also ship their SQL
+in a set-up banner on the GM portal's game list (`KC_META_SQL`, `KC_TEL_SQL`, `KC_LB_SQL`, `KC_MSG_SQL`);
+those banners go in plan step P0-17's second part. Each feature probes for its table or column first and
+degrades quietly while it's missing.
 
 | Table | Holds |
 |---|---|

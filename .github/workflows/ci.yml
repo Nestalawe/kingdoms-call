@@ -1,5 +1,5 @@
 # Runs npm test (job "ci") and the database's access-rule tests (job "db") on every pull request.
-# Branch protection on main requires the check named "ci".
+# Branch protection on main requires both checks, "ci" and "db".
 # deploy.yml calls this workflow before every publish, so each commit that goes live is tested first,
 # and a merge runs the tests once (inside Deploy), not twice. That's why there's no push trigger here.
 name: CI
@@ -43,6 +43,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          fetch-depth: 2
+
+      # A merged migration may already be applied, so it never changes; a new one must sort after the rest
+      # (.github/scripts/migrations.js). Pull requests only: HEAD is GitHub's merge commit with the base.
+      - if: github.event_name == 'pull_request'
+        run: node .github/scripts/migrations.js pr-check
 
       - uses: supabase/setup-cli@v3
         with:
