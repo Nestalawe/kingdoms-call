@@ -206,6 +206,27 @@ Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and 
 then list every table and sentence that is still missing it. Running games' capitals pick a new unit up on their next
 turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
 
+## A unit ability is written in four places
+
+Every humanoid land unit has two abilities: a matchup and one more. Each lives in the engine, in the
+player portal's blurb, in the rulebook's roster row, and in the battle report's `why` text, and the
+engine itself keeps them in several places by kind:
+
+- a matchup on the battle grid: `abilityFront` (front line) and `abilityBack` (the second line shooting),
+  with the cases that need the whole line (side hits, Shieldwall, Sergeants, Marksmen, Terror From Above,
+  Dive on the Bowmen, Flak Gunners, Battering Horns) inside `battleFaceSide`;
+- who takes a flank or shoots: `battleGrid` (`abilityFlanksRough`, Eagle Riders on an open flank, Black Arrows
+  in front) and `abilityMissileUnits`;
+- the pre-battle volley: `missileDamageMult`, `abilityVolleys`, `missileTargetPool`, `archeryBlockedBy`;
+- force-wide strength: `unitAbilityMult`; fates: `rollUnitFates` (Knightly Example) and `shieldFortHolds`;
+- turn hooks inside `runTurn`: Prepared Ground's second volley, Raiders' Muster at turn's end.
+
+`tests/abilities-words.test.js` holds the table of names and checks both books; the four race tests
+(`tests/abilities-human.test.js` and its elven, dwarven and orcish siblings) check the numbers, and
+`tests/abilities-turn.test.js` the turn hooks. Add a new ability to the words table first. In the player portal's
+`UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
+replaces the first (the words test checks).
+
 ## A sort comparator must give the same answer every time
 
 `.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is

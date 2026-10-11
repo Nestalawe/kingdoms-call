@@ -111,7 +111,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   to the defender) take the roll or one either side and line up second, then gives each commander one swap
   per Tactical level (`battleBestSwap`, every swap judged with both sides faced); `battleFacing` reads the two
   grids against each other (matchups by unit type, wrapping, flank duels and guards, a turned flank) and its
-  totals are the strengths the dice see. Both battle paths score through deploy and facing, the stay-or-retreat
+  totals are the strengths the dice see. The units' own abilities sit on the same grid: `abilityFront` and
+  `abilityBack` adjust one matchup, `battleFaceSide` the cases that read the whole line, `battleGrid` who may
+  take a flank; the volley helpers (`missileDamageMult`, `abilityVolleys`, `missileTargetPool`,
+  `archeryBlockedBy`) and `unitAbilityMult` carry the rest ([traps.md](traps.md#a-unit-ability-is-written-in-four-places)). Both battle paths score through deploy and facing, the stay-or-retreat
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
   monospace, and the ladder names every place and matchup.

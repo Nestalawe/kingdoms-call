@@ -70,7 +70,10 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   // winged riders: capped at the enemy's units in line and in the air, never below 2
   const eagles=rows([['Eagle Riders',6,12]]);
   g=G(eagles,6,'plain',{enemy:rows([['Shieldwall Levies',2]])});
-  ok(g.cap===2&&near(g.total,48),`6 Eagles against 2 Levies: cap 2, two at ×1 and four at ×0.5 → 48, got ${g.total} (cap ${g.cap})`);
+  // 2026-10-11 (Toby, the unit abilities — Stoop on the Horses): on open ground an Eagle holds a flank slot no
+  // rider fills, at ×1 and outside the cap; the cap still counts the enemy's units in line and in the air.
+  ok(g.cap===2&&g.flanks.length===1&&g.flanks[0].role==='fly'&&near(g.total,54),`6 Eagles against 2 Levies: one on the open flank at ×1, cap 2 for the five in the air (two at ×1, three at ×0.5) → 12 + 24 + 18 = 54, got ${g.total} (cap ${g.cap}, ${g.flanks.length} on the flank)`);
+  ok(G(eagles,6,'forest',{enemy:rows([['Shieldwall Levies',2]])}).flanks.length===0&&near(G(eagles,6,'forest',{enemy:rows([['Shieldwall Levies',2]])}).total,48),'in forest no Eagle takes a flank: cap 2, two at ×1 and four at ×0.5 → 48');
   g=G(eagles,6,'plain',{enemy:rows([['Shieldwall Levies',1]])});
   ok(g.cap===2,'the cap is never below 2');
   g=G(eagles,6,'plain',{enemy:rows([['Eagle Riders',6,12]])});

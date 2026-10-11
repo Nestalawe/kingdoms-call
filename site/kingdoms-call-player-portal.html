@@ -6510,36 +6510,47 @@ function updateAlignmentDesc(){
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
 
-// Every humanoid unit has one always-on ability. Kept in step with unitAbilityMult /
-// missileDamageMult / the casualty block in the GM portal.
+// Every humanoid land unit has a MATCHUP ability (what it does to the unit it meets in the battle line,
+// or shoots over its fighter at) and ONE more; the fleets keep theirs. 2026-10-11 (Toby, the unit
+// abilities). Kept in step with battleFaceSide / abilityFront / abilityBack, the volley helpers and
+// rollUnitFates in the GM portal; tests/abilities-words holds the names to the rulebook's roster.
 const UNIT_ABILITIES={
-  'Shieldwall Levies':'Shieldwall — +25% strength when at least two are in the same force.',
-  'Free Lances':'Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
-  'Yeoman Longbows':'Massed Volley — +10% volley damage per other ranged unit in the force (max +30%).',
-  'Gilded Lances':'Shock of the Charge — +40% strength when attacking. No bonus defending.',
+  'Shieldwall Levies':'Spear Hedge — cavalry facing them in the line fights at no better than ×0.75. Shieldwall — ×1.25 when an archer stands in the second line behind them.',
+  'Men-at-Arms':'Halberds — ×1.25 facing cavalry. Sergeants — Levies beside them in the front line fight ×1.1.',
+  'Free Lances':'Harriers — ×1.15 in a flank duel. Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
+  'Yeoman Longbows':'Bodkin Points — no penalty shooting cavalry from the second line (other archers fire at ×0.75). Prepared Ground — defending, they loose two pre-battle volleys.',
+  'Gilded Lances':'Lance Charge — ×1.15 facing foot, where cavalry is usually ×0.85 (a Spear Hedge still stops it). Knightly Example — while a Gilded Lances unit is in the army, your Levies and Men-at-Arms never lose a tier in defeat.',
+  'Noble Griffons':'Dive on the Bowmen — the enemy’s strongest second-line archer fights ×0.75. Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4), one chance in two whatever the commander’s Druid.',
+  'Human Garrison':'Hold the Gate — defending, never hit from the side when the enemy line wraps its end. Town Watch — counts as Levies for Shieldwall and for anchoring the line.',
   'Galleon Fleet':'Broadside — fires in the pre-battle archery phase during sea battles.',
   'Corsair Fleet':'Cut the Line — if at least half your winning force are Corsairs, the enemy cannot retreat by sea. Against neutral guards they instead keep your own line of escape to the ships open.',
-  'Elven Bowmen':'Woodland Volley — double volley damage in forest and jungle.',
-  'Forest Wardens':'Ambush — in forest or jungle, the side facing them gets no archery phase at all. Works attacking or defending, and against province defenders as well as another realm.', // 2026-09-27: was "when Wardens DEFEND" — Ambush has always fired on attack too in PvP, and now does against neutral defenders as well.
-  'Shadow Archers':'Loosed From Cover — cannot be targeted by enemy volleys.',
-  'Eagle Riders':'Skyward Retreat — never suffer the extra casualties of being trapped with no retreat.',
+  'Forest Wardens':'Woodland Skirmish — ×1.15 in forest and jungle, whatever they face. Ambush — in forest or jungle, the side facing them gets no archery phase at all (unless Eagle Riders fly with it). Works attacking or defending, and against province defenders as well as another realm.',
+  'Elven Bowmen':'Volley at the Charge — ×1.25 shooting cavalry from the second line. Woodland Volley — double volley damage in forest and jungle.',
+  'Shadow Archers':'Marksmen — ×1.25 shooting archers from the second line, and they pick the best target anywhere along the enemy front. Loosed From Cover — cannot be targeted by enemy volleys (unless Eagle Riders fly with the shooters).',
+  'Stag Riders':'Through the Trees — the one cavalry that takes a flank in forest and jungle. Forest Runners — ×1.1 in forest and no penalty in jungle (see the roster).',
+  'Eagle Riders':'Stoop on the Horses — on open ground they may hold a flank slot no rider fills, and fight cavalry at ×1.25. Eyes of the Forest — while they fly with your shooters, an enemy Ambush is spoiled and Shadow Archers can be shot at.',
+  'Elven Garrison':'Thorn Hedge — cavalry facing it in forest or jungle ×0.85. Tree Watch — in forest or jungle it shoots in the archery step like an archer unit.',
   'Elven Galleys':'Sea Archers — your ranged units ignore the land-unit penalty at sea.',
-  'Dwarven Guard':'Shield Fort — if at least half the force are Guard, a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and to demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties. Both halves work in every battle, and a province\'s own Guard defenders get the same protection when they lose.', // 2026-09-27: the good-order half used to be wired for player-vs-player battles only.
-  'Ironwood Crossbows':'Punch Through — can soften a target to 55% instead of the usual 40% limit (90% instead of 80% against a winged rider).', // 2026-09-27: was "45% / 30%" — the engine moved to 55/40 (and 90/80 winged) on 2026-09-24 and this blurb never followed. Kept in step with missileCap / _MISSILE_CAP_FRAC.
-  'Mountain Guns':'Bombardment — fire before all other ranged units, and +50% damage against garrisons.',
-  'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
+  'Dwarven Guard':'Unbreakable — foot facing them in the line ×0.85, and they are never hit from the side. Shield Fort — when at least half the front line is Guard (a Dwarf Garrison counts), a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and to demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties. In every battle, and for a province\'s own Guard defenders too.',
+  'Ironwood Crossbows':'Armour-Piercing — ×1.25 shooting a unit of base strength 6 or more from the second line. Punch Through — can soften a target to 55% instead of the usual 40% limit (90% instead of 80% against a winged rider).',
+  'Mountain Guns':'Bombard — ×1.15 from the second line, whatever they shoot. Bombardment — fire before all other ranged units, and +50% volley damage against garrisons.',
+  'Ironhoof Rams':'Battering Horns — a Ram riding free turns the enemy flank even when infantry anchor both ends of its line. Crag Charge — the one cavalry that takes a flank in the mountains.',
+  'Gnomish Gyrocopters':'Flak Gunners — ×1.25 when the enemy has flyers. Flak Screen — each engages one enemy flying unit before the battle (−30% strength). No two gyrocopters engage the same flyer.',
+  'Dwarf Garrison':'Stone Halls — foot facing it in the mountains ×0.9. Deep Halls — counts as Guard for Shield Fort.',
   'Dwarf Ironclads':'Armoured Hulls — immune to pre-battle volleys.',
-  'Warg Riders':'Run Them Down — if at least half your winning force are Wargs, they run the beaten army down on the field: every beaten unit is 15% more likely to be destroyed in the rout, on any ground (not against a Dwarven Shield Fort). There is no chase afterwards. Against neutral guards, who never flee, they end the fight fast instead: half casualties for you on a win.',
-  // 'Orc Berserkers': their old ability was retired with the army roster (2026-10-11, Toby); the new one arrives with the unit-abilities work.
-  'Goblin Horde':'Sheer Numbers — +10% strength per other Goblin Horde in the force (max +30%).',
-  'Wyvern Riders':'Terror From Above — enemy fanaticism chance reduced by 15%. Against neutral guards, who have no fanaticism, they cut the defenders’ bonus by 10% instead. Acid Spit Volley: a pre-battle strike on one enemy unit (2–5), one chance in two whatever the commander’s Druid.',
+  'Goblin Horde':'Arrow Fodder — second-line archers shooting them fire at ×0.75. Sheer Numbers — +10% strength per other orc foot unit in the force (Goblin Hordes, Berserkers, the Orc Garrison), max +30%.',
+  'Orc Berserkers':'Frenzy — ×1.15 facing foot. Driven Before Them — +10% for each Goblin Horde beside them in the front line.',
+  'Black Arrows':'Brawling Archers — full strength when forced into the front line, where other archers fight ×0.75. Raiders’ Volley — their pre-battle volley does ×1.5 when attacking.',
+  'Warg Riders':'Wolves Panic Horses — ×1.25 facing cavalry. Run Them Down — if at least half your winning force are Wargs, they run the beaten army down on the field: every beaten unit is 15% more likely to be destroyed in the rout, on any ground (not against a Dwarven Shield Fort). There is no chase afterwards. Against neutral guards, who never flee, they end the fight fast instead: half casualties for you on a win.',
+  'Wyvern Riders':'Terror From Above — the enemy’s strongest front-line unit fights ×0.85. Acid Spit — a pre-battle strike on one enemy unit (2–5), one chance in two whatever the commander’s Druid.',
+  'Orc Garrison':'Bloodthirsty — defending, ×1.15 facing foot. Raiders’ Muster — an orcish province that sees an orc realm win there gains a Goblin Horde in its garrison at turn’s end, for nothing.',
   'Orcish Longships':'Reaver Crews — the whole force fights at +25% in any battle the phase it lands from these ships, even if another hero takes command of the combined host.',
   'Whale Cohort':'Breach and Swamp — 25% chance each to sink one enemy fleet outright before the battle is fought.',
   // ── Creature / Monster / primal army abilities ── Each carries an always-on signature multiplier
   // PLUS a pre-battle strike (fires in the pre-battle magic phase; its chance rises with the
   // commanding hero’s Druid skill — 30% base, +10% per level, hard cap 90%; see primalStrikeChance (the winged riders’ own strikes: a flat 50%, 2026-10-11)
   // in the GM portal. 2026-09-27: this comment read "20% base" and had done for some time.
-  'Noble Griffons':'Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4). One chance in two, whatever the commander’s Druid.',
+  // (The Noble Griffons' blurb is with the other human units above: a second key here would silently replace it.)
   'Giant Eagles':'Stoop on the Archers — ×1.25 strength when the enemy fields ranged troops. Diving Talons: a pre-battle strike on one enemy unit (4–8).',
   'Forest Ents':'Rooted Grove — ×1.3 strength in forest and jungle. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each).',
   'Stone Giants':'Mountain Bulwark — ×1.3 strength in mountains; devastating melee, very slow. Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7).',
@@ -10403,7 +10414,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.12-0010</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.12-0020</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
