@@ -14392,8 +14392,8 @@ function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='dr
 // SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a
 // veteran company hits harder than a green one), +10% per level of the commander's Archery,
 // × the firing unit's own ability (Woodland Volley, Bombardment, Raiders' Volley), rounded, minimum 1.
-// Winged riders take double and are shot first. What a TARGET can lose is capped: 30% of its own
-// base strength (60% for a winged rider; Ironwood Crossbows' Punch Through lifts both — see
+// Winged riders take double and are shot first. What a TARGET can lose is capped: 40% of its own
+// base strength (80% for a winged rider; Ironwood Crossbows' Punch Through lifts both to 55% / 90% — see
 // missileCap). The 25% pre-battle floor below still applies on top.
 const MISSILE_SHOT_PCT=0.30, MISSILE_ARCH_PER_LVL=0.10, MISSILE_CAP_FRACTION=0.40;   // 2026-10-11 (Toby): volleys 20% → 30%
 function missileShotDamage(firer, archSkill, dmgMult){
