@@ -25,7 +25,11 @@ const want=t=>RANGE[t]?`${RANGE[t][0]}–${RANGE[t][1]}`:null;
 const TERR={plains:'plain',plain:'plain',desert:'desert',forest:'forest',jungle:'jungle',mountains:'mountain',mountain:'mountain',sea:'sea'};
 const WORD='(?:plains?|desert|forest|jungle|mountains?|sea)';
 const CLAIM=new RegExp(`(?<![\\d.×x+−-])(\\d+(?:–\\d+)?) (?:units? )?(?:on|in|at) ((?:(?:the )?${WORD}(?:, | or |, or )?)+)`,'g');
-const strip=h=>h.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\s+/g,' ');
+const strip=h=>{
+  let out=h, prev;
+  do { prev=out; out=out.replace(/<[^>]+>/g,''); } while(out!==prev);
+  return out.replace(/&nbsp;/g,' ').replace(/\s+/g,' ');
+};
 const sentences=text=>text.split(/(?<=[.!?])\s+/).filter(s=>/\bfront\b/i.test(s));
 
 for(const [name,file] of [['rulebook','kingdoms-call-rules.html'],['intro','kingdoms-call-rules-intro.html']]){
