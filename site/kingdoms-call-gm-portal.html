@@ -422,7 +422,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.12-0020'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.12-0030'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -518,12 +518,12 @@ function demoteOrDisband(a){
   a._disbanded=true;
   return true;
 }
-function disbandLine(owner,a){
+function disbandLine(owner,a,clause){
   // 2026-09-23d: a unit NAMED "the …" reads "the Pale Shades (Vervain's Shadow Archers)", never
-  // "Vervain's the Pale Shades" (same rule as unitRef).
+  // "Vervain's the Pale Shades" (same rule as unitRef). `clause` (2026-10-12): whom they fought, after the name.
   const _core=(a.unitName&&/^the\s/i.test(a.unitName))?`${a.unitName} (${owner?owner+"'s ":''}${a.type})`
     :`${owner?owner+"'s ":''}${a.unitName?a.unitName+' ('+a.type+')':a.type}`;
-  return `— ${_core} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
+  return `— ${_core}${clause?`, ${clause},`:''} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
 }
 // "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
 // never "Atk's the Red Hand" (2026-09-23d). Module level since 2026-10-11 (they were inside runTurn).
@@ -551,11 +551,17 @@ function unitRef(ownerName, a){
 //   o.diedVerb / o.promoteVerb  the site's wording ("were annihilated in the rout!", "are hardened by
 //                victory to"); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
 //                "All other forces survive" line reads it); o.say receives each unit's line.
+//   o.faced      (2026-10-12, Toby: who beat whom) a Map army → clause, or a function of the army, from
+//                battleFacedClauses: each line puts it after the company's own reference — "Aldric's Levies
+//                (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's Men-at-Arms), were
+//                annihilated in the rout!". Without it the lines read as they always did.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
 function rollUnitFates(force, o){
   const rng=o.rng||Math.random, tiers=o.tiers||QUALITY_TIERS, say=o.say||(()=>{}), ref=o.unitRef||unitRef, who=o.owner||'';
   const dust=a=>a._isSkeletal?' Their bones crumble to dust — gone forever.':'';
   const diedVerb=o.diedVerb||(o.won?'were destroyed in the fighting.':'were destroyed in the rout!'), promoteVerb=o.promoteVerb||'earn promotion to';
+  const clauseOf=a=>{ const f=o.faced; if(!f||!a) return ''; const c=typeof f==='function'?f(a):(typeof f.get==='function'?f.get(a):null); return c?String(c):''; };
+  const head=(a,q0)=>{ const c=clauseOf(a); return ref(who,q0?{...a,quality:q0}:a)+(c?`, ${c},`:''); };
   const r={died:0,promoted:0,demoted:0,disbanded:0,held:0,survived:0};
   // HUMAN — Knightly Example (2026-10-11, Toby): with a Gilded Lances unit in the army, Levies and
   // Men-at-Arms never lose a tier in defeat (they hold, as under a Shield Fort). o.knightly overrides.
@@ -563,19 +569,19 @@ function rollUnitFates(force, o){
   (force||[]).forEach(a=>{
     if(!a) return;
     const idx=tiers.indexOf(a.quality), roll=rng();
-    if(roll<o.dieAt(a)){ a._died=true; r.died++; say(`— ${ref(who,a)} ${diedVerb}${dust(a)}`); return; }
+    if(roll<o.dieAt(a)){ a._died=true; r.died++; say(`— ${head(a)} ${diedVerb}${dust(a)}`); return; }
     if(a._isSkeletal){ r.survived++; return; }
     if(o.won){
-      if(roll<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— ${ref(who,{...a,quality:q0})} ${promoteVerb} ${a.quality}!`); }
+      if(roll<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— ${head(a,q0)} ${promoteVerb} ${a.quality}!`); }
       else r.survived++;
       return;
     }
     const roll2=rng();
     if(roll2<o.demoteAt(a)){
-      if(o.shieldFort){ r.held++; say(`— ${ref(who,a)} fall back behind the shield wall in good order.`); }
-      else if(knightly&&(a.type==='Shieldwall Levies'||a.type==='Men-at-Arms')){ r.held++; say(`— ${ref(who,a)} keep their nerve under the Knightly Example of the Gilded Lances and lose nothing in defeat.`); }
-      else { const q0=a.quality; if(demoteOrDisband(a)){ r.disbanded++; say(disbandLine(who,a)); } else { r.demoted++; if(o.notable) a._notable=true; say(`— ${ref(who,{...a,quality:q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
-    } else if(roll2<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— Despite defeat, ${ref(who,{...a,quality:q0})} improved to ${a.quality}!`); }
+      if(o.shieldFort){ r.held++; say(`— ${head(a)} fall back behind the shield wall in good order.`); }
+      else if(knightly&&(a.type==='Shieldwall Levies'||a.type==='Men-at-Arms')){ r.held++; say(`— ${head(a)} keep their nerve under the Knightly Example of the Gilded Lances and lose nothing in defeat.`); }
+      else { const q0=a.quality; if(demoteOrDisband(a)){ r.disbanded++; say(disbandLine(who,a,clauseOf(a))); } else { r.demoted++; if(o.notable) a._notable=true; say(`— ${head(a,q0)} lost heart in defeat, reduced to ${a.quality}.`); } }
+    } else if(roll2<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— Despite defeat, ${head(a,q0)} improved to ${a.quality}!`); }
     else r.survived++;
   });
   return r;
@@ -619,15 +625,21 @@ function battleTallyLine(texts){
   // attacker cut down after the defender's list) is still credited to the side it names.
   const _heads=[]; T.forEach(s=>{ const h=s.match(BATTLE_CAS_HEAD_RE); if(h&&!_heads.some(x=>x.role===h[3])) _heads.push({name:h[2],role:h[3]}); });
   const sideFor=role=>{ let sd=sides.find(x=>x.role===role); if(!sd){ const h=_heads.find(x=>x.role===role); sd={name:h?h.name:role,role,lost:[],fled:[],dem:0,pro:0}; sides.push(sd); } return sd; };
-  const ownerSide=s=>{ const hit=_heads.filter(h=>s.startsWith(`— ${h.name}'s `)||s.includes(`(${h.name}'s `)).sort((a,b)=>b.name.length-a.name.length)[0]; return hit?sideFor(hit.role):null; };
+  // 2026-10-12 (Toby: who beat whom): a fate line now names the ENEMY company too ("…, facing the Red Hand
+  // (Aldric's Gnomish Gyrocopters), were annihilated…"), so the owner and the type are read from the company
+  // named FIRST — its own reference always opens the line — not from the longest match anywhere in it.
+  const ownerSide=s=>{ const body=s.replace(/^— (Despite defeat, )?/,''); let best=null;
+    _heads.forEach(h=>{ const i1=body.startsWith(`${h.name}'s `)?0:-1, i2=body.indexOf(`(${h.name}'s `); const i=[i1,i2].filter(x=>x>=0).sort((a,b)=>a-b)[0];
+      if(i==null) return; if(!best||i<best.i||(i===best.i&&h.name.length>best.h.name.length)) best={i,h}; });
+    return best?sideFor(best.h.role):null; };
   const typeOf=(s,role)=>{
     const R=roster[role]||[];
-    // the type printed in the line wins ("the Red Hand (Def's Giant Eagles, Crack)"); a bare unit
+    // the type printed first in the line wins ("the Red Hand (Def's Giant Eagles, Crack)"); a bare unit
     // name ("— the Red Hand are cut down") is looked up on the side's roster.
-    const types=[...new Set(R.map(a=>a.type))].filter(ty=>s.includes(ty)).sort((a,b)=>b.length-a.length);
-    if(types[0]) return types[0];
-    const byName=R.filter(a=>a.unitName&&a.unitName!==a.type&&s.includes(a.unitName)).sort((a,b)=>b.unitName.length-a.unitName.length)[0];
-    return byName?byName.type:null;
+    const types=[...new Set(R.map(a=>a.type))].map(ty=>({ty,i:s.indexOf(ty)})).filter(x=>x.i>=0).sort((a,b)=>a.i-b.i||b.ty.length-a.ty.length);
+    if(types[0]) return types[0].ty;
+    const byName=R.filter(a=>a.unitName&&a.unitName!==a.type&&s.includes(a.unitName)).map(a=>({a,i:s.indexOf(a.unitName)})).sort((x,y)=>x.i-y.i||y.a.unitName.length-x.a.unitName.length)[0];
+    return byName?byName.a.type:null;
   };
   const _atkForceName=(()=>{ const f=T.find(s=>s.startsWith('\u2691FORCE\u2691')&&/"role":"attacker"/.test(s)); try{ return f?JSON.parse(f.slice(7)).name:''; }catch(_){ return ''; } })();
   T.forEach(s=>{
@@ -963,6 +975,37 @@ function battleFacingStage(g){
   const parts=[...groups].map(([k,n])=>n>1?`${k} (${n} units)`:k);
   if(even) parts.push(`${even} even`);
   return parts.join('; ');
+}
+// ── WHO EACH COMPANY FOUGHT (2026-10-12, Toby: the battle reports say who beat whom) ── From a faced grid, a
+// map army → the clause its fate line carries: "facing X", "shooting X over the line", "in a flank duel with
+// X", "guarding the end against X", "wrapping the line at X", "met at the end of the line by X", "riding free
+// round the flank", "fighting from the air", "in the second line", "in the reserve", "shooting at an empty
+// column", "with nobody opposite" — X the enemy company as ownedUnitName writes it (enemyOwner is that side's
+// name). Read it right after the deploy, while the rows still carry the deploy's facing: the stay-or-retreat
+// estimate faces the survivors afresh later.
+function battleFacedClauses(g, enemyOwner){
+  const m=new Map(); if(!g||!Array.isArray(g.units)) return m;
+  g.units.forEach(u=>{
+    const r=u&&u.row, f=r&&r._faced; if(!r||!r.a) return;
+    const vs=(f&&f.vs&&f.vs.a)?ownedUnitName(enemyOwner,f.vs.a):null; let c=null;
+    if(vs) switch(f.kind){
+      case 'faces': c=`facing ${vs}`; break;
+      case 'met': c=`met at the end of the line by ${vs}`; break;
+      case 'wraps': c=`wrapping the line at ${vs}`; break;
+      case 'shoots': c=`shooting ${vs} over the line`; break;
+      case 'duel': c=`in a flank duel with ${vs}`; break;
+      case 'guards': c=`guarding the end against ${vs}`; break;
+      default: c=null; }
+    if(!c){ const k=f?f.kind:'', p=u.place;
+      if(k==='free') c='riding free round the flank';
+      else if(k==='wraps') c='wrapping the end of the line';
+      else if(k==='guards') c='guarding the end of the line';
+      else if(p==='air'||r.fly) c='fighting from the air';
+      else if(p==='reserve') c='in the reserve';
+      else if(p==='second') c=/empty column/.test((f&&f.why)||'')?'shooting at an empty column':'in the second line';
+      else c='with nobody opposite'; }
+    m.set(r.a,c); });
+  return m;
 }
 // ── THE SCOUT'S ADVANTAGE AND THE LINE-UP (Battle lines III, 2026-10-11, Toby) ── The side that knows
 // the ground better (the higher exploration of the province; a province's own guard or garrison knows
@@ -15593,6 +15636,9 @@ const BATTLE_ARMY_SPELLS={
     const _explA=((prov.exploredBy||{})[c.player])||0, _explD=100;
     const _dep=battleDeploy(armiesWithStr,defsWithStr,{terrain:prov.terrain,roll:terrainFront,tacA:tactSkill,tacD:defTactLvl,flankA:atkFlankDisc,flankD:defFlankDisc,scout:battleScout(_explA,_explD)});
     _gA.grid=_dep.gA; _gD.grid=_dep.gD; lineWidth=defLineWidth=_dep.W;
+    // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
+    const _facedDefNm=defHero?defHero.name.replace(' (wandering)',''):((prov.owner!=null&&!neutralGuardHero)?('the garrison of '+prov.name):('the defenders of '+prov.name));
+    const _facedA=battleFacedClauses(_dep.gA,_facedDefNm), _facedD=battleFacedClauses(_dep.gD,String(c.name||cName||'').replace(' (wandering)',''));   // the commander's plain name, not "X's leaderless host"
     const atkBaseStr=_gA.grid.face.total, defBaseStr=_gD.grid.face.total;
     const _defNm=defHero?defHero.name:`the defenders of ${prov.name}`;
     narrative.push(battleWidthLine(prov.terrain,lineWidth));
@@ -15727,7 +15773,7 @@ const BATTLE_ARMY_SPELLS={
       if(_npcWargs) narrative.push(`🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${cName}'s losses are halved.`);
       // (Run Them Down halves the death roll only; the promotion window keeps the unhalved figure, as it always has.)
       const _fw=rollUnitFates(armies,{owner:cName,won:true,dieAt:a=>winDeathChance*steelMultOf(a)*(_npcWargs?0.5:1),
-        promoteTo:a=>winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G),say:l=>narrative.push(l)});
+        promoteTo:a=>winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G),faced:_facedA,say:l=>narrative.push(l)});
       const winSurv=_fw.survived, winEvents=_fw.died+_fw.promoted;
       if(winSurv>0) narrative.push(`— ${winEvents>0?'All other':'All'} forces survive the engagement.`);
       c.armies=c.armies.filter(a=>!a._died&&!a._disbanded);
@@ -15752,7 +15798,8 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>{
         if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtkEff){
           a._died=true;
-          narrative.push(`— ${unitRef(_defOwnerNm,a)} were destroyed in the rout!`);
+          const _fc=_facedD.get(a); // whom they fought (2026-10-12)
+          narrative.push(`— ${unitRef(_defOwnerNm,a)}${_fc?`, ${_fc},`:''} were destroyed in the rout!`);
         }
       });
       const _trapped=defenders.filter(a=>!a._died);
@@ -15795,7 +15842,8 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>{
         if(Math.random()<winDeathChance*0.5){ // defenders take lighter casualties when they win
           a._defDied=true;
-          narrative.push(`— ${unitRef(defName2.replace(' (wandering)',''),a)} were destroyed in the fighting.`); // item 8
+          const _fc=_facedD.get(a); // whom they fought (2026-10-12)
+          narrative.push(`— ${unitRef(defName2.replace(' (wandering)',''),a)}${_fc?`, ${_fc},`:''} were destroyed in the fighting.`); // item 8
         }
       });
       if(defenders.some(a=>!a._defDied)) narrative.push(`— ${defenders.some(a=>a._defDied)?'All other':'All'} forces survive the engagement.`);
@@ -15829,7 +15877,7 @@ const BATTLE_ARMY_SPELLS={
       else if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef*100)}% losses).`);
       rollUnitFates(armies,{owner:cName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDefEff,
         demoteAt:a=>loseDemoteChance*tacMultNPC,promoteTo:a=>loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G),
-        shieldFort:_npcSF,notable:true,say:l=>narrative.push(l)});
+        shieldFort:_npcSF,notable:true,faced:_facedA,say:l=>narrative.push(l)});
 
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
@@ -18297,6 +18345,8 @@ const BATTLE_ARMY_SPELLS={
     const _explA=((prov.exploredBy||{})[atk.player])||0, _explD=(def.player==null)?100:(((prov.exploredBy||{})[def.player])||0);
     const _dep=battleDeploy(atkRows,defRows,{terrain:pvpTerrain,roll:pvpFront,tacA:atkTact,tacD:defTact,flankA:atkFlankPvp,flankD:defFlankPvp,scout:battleScout(_explA,_explD)});
     _gA.grid=_dep.gA; _gD.grid=_dep.gD; pvpFront=_dep.W;
+    // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
+    const _facedA=battleFacedClauses(_dep.gA,String(def.name||defName||'').replace(' (wandering)','')), _facedD=battleFacedClauses(_dep.gD,String(atk.name||atkName||'').replace(' (wandering)',''));   // the commanders' plain names, not "X's leaderless host"
     const atkBaseStr=_gA.grid.face.total, defBaseStr=_gD.grid.face.total;
     narrative.push(battleWidthLine(pvpTerrain,pvpFront));
     narrative.push(battleScoutLine(_dep,atkName,defName,_explA,_explD)); { const _mv=battleMovesLine(_dep,atkName,defName); if(_mv) narrative.push(_mv); }
@@ -18452,7 +18502,7 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Winning attacker
       const _cas0=narrative.length;
       rollUnitFates(atkArmies,{owner:atkName,won:true,dieAt:a=>winDeathPvP*atkSteelMultOf(a),
-        promoteTo:a=>winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),say:l=>narrative.push(l)});
+        promoteTo:a=>winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),faced:_facedA,say:l=>narrative.push(l)});
       survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0));
@@ -18463,7 +18513,7 @@ const BATTLE_ARMY_SPELLS={
       const _cas1=narrative.length;
       rollUnitFates(defArmies,{owner:defName,won:false,dieAt:a=>loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff,
         demoteAt:a=>loseDemotePvP*defTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),
-        shieldFort:_sfDef,say:l=>narrative.push(l)});
+        shieldFort:_sfDef,faced:_facedD,say:l=>narrative.push(l)});
       survLine(defArmies,_cas1);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -18545,13 +18595,13 @@ const BATTLE_ARMY_SPELLS={
       const _cas2=narrative.length;
       rollUnitFates(atkArmies,{owner:atkName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff,
         demoteAt:a=>loseDemotePvP*atkTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),
-        shieldFort:_sfAtk,say:l=>narrative.push(l)});
+        shieldFort:_sfAtk,faced:_facedA,say:l=>narrative.push(l)});
       survLine(atkArmies,_cas2);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       // Winning defender — small death chance, good XP chance
       const _cas3=narrative.length;
       rollUnitFates(defArmies,{owner:defName,won:true,promoteVerb:'are hardened by victory to',dieAt:a=>winDeathPvP*defSteelMultOf(a),
-        promoteTo:a=>winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),say:l=>narrative.push(l)});
+        promoteTo:a=>winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),faced:_facedD,say:l=>narrative.push(l)});
       survLine(defArmies,_cas3);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -19015,6 +19065,8 @@ const BATTLE_ARMY_SPELLS={
     }
     const deadArmies=(deadChar.armies||[]).filter(a=>!a._isSkeletal&&!a._temporary);
     const skelArmies=(deadChar.armies||[]).filter(a=>a._isSkeletal&&!a._temporary);
+    // Who slew the commander (handleHeroDeath stamps it; 2026-10-12, Toby): the host's line says so.
+    const _by=deadChar._slainBy||null, _fell=_by?`after their commander fell to ${_by}`:'after their fall';
     // Skeletal armies crumble — record to graves
     if(skelArmies.length>0&&prov) recordBattleGraves(prov,skelArmies);
     if(deadArmies.length>0&&prov){
@@ -19026,7 +19078,8 @@ const BATTLE_ARMY_SPELLS={
             unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
             id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
         });
-        log('system',`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
+        log('system',_by?`${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`
+          :`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
       };
       if(deadChar.player===null){
         // A NEUTRAL character's leaderless troops always turn mercenary.
@@ -19034,7 +19087,7 @@ const BATTLE_ARMY_SPELLS={
       } else if(prov.owner===deadChar.player){
         // Friendly province — armies garrison
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
-        log('system',`${deadChar.name}'s armies garrison in ${prov.name} after their fall.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
+        log('system',`${deadChar.name}'s armies garrison in ${prov.name} ${_fell}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
       } else if(isOpenSea(prov)&&prov.owner==null&&!(prov.neutralDefenders||[]).length){
         // 2026-09-23c (Toby): a commander who falls at SEA leaves his host garrisoning the sea province
         // itself. Own waters are the branch above; unowned, undefended water is claimed for the realm.
@@ -19042,7 +19095,7 @@ const BATTLE_ARMY_SPELLS={
         setProvinceOwner(prov,deadChar.player,null,_currentPhase);
         const _pl=G.players[deadChar.player]; if(_pl){ _pl.provinces=_pl.provinces||[]; if(!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id); }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
-        log('system',`${deadChar.name}'s armies hold ${prov.name} after their fall — the water is claimed for ${_pl?_pl.name:'the realm'} and they garrison it.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
+        log('system',`${deadChar.name}'s armies hold ${prov.name} ${_fell} — the water is claimed for ${_pl?_pl.name:'the realm'} and they garrison it.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
       } else {
         // Enemy/neutral province — armies flee to adjacent friendly province or become mercenaries
         const neighbors=(prov?getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces):[]).filter(n=>n.terrain!=='sea');
@@ -19052,13 +19105,14 @@ const BATTLE_ARMY_SPELLS={
           ||neighbors.find(n=>n.owner===deadChar.player)||null;
         if(safeProv){
           safeProv.garrisonArmies=(safeProv.garrisonArmies||[]).concat(deadArmies);
-          log('system',`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:safeProv.id});
+          log('system',_by?`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}, their commander slain by ${_by}.`:`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:safeProv.id});
         } else {
           scatterAsMercs();
         }
       }
     }
     deadChar.armies=[];
+    delete deadChar._slainBy;
   }
 
   // ── A SPARED COWARD LEAVES HIS HOST BEHIND (2026-09-26, Toby item 7) ────
@@ -19154,6 +19208,10 @@ const BATTLE_ARMY_SPELLS={
     // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
     if(deadChar.tm){ for(const k in deadChar.tm){ deadChar.tm[k]=Math.round((deadChar.tm[k]||0)*0.75); } }
     const prov=G.world.provinces[deadChar.location];
+    // Who slew them (2026-10-12, Toby: the battle reports say who beat whom): the killer's name, or the cause a
+    // caller gives (opts.slainBy, e.g. a lair's guardian). Read by disperseDeadCharArmies, which clears it.
+    { const _by=(killerChar&&killerChar.name)?String(killerChar.name).replace(' (wandering)',''):((opts&&opts.slainBy)||null);
+      if(_by) deadChar._slainBy=_by; else delete deadChar._slainBy; }
 
     // 1. Armies. Normally dispersed at once; a pre-battle-duel death defers this (keepArmies)
     // so the leaderless force can fight the battle first — the caller disperses the survivors.
@@ -19969,7 +20027,7 @@ const BATTLE_ARMY_SPELLS={
             // / disbands them; the same helper runs on every contested re-fight, so a guard erodes
             // at the same rate each time he loses.
             const defSurvivors=erodeGuardSurvivors(_guardSlainInDuel?null:neutralGuard, toProv, neutralGuard.armies||[],
-              line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}));
+              line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}), c.name);
             neutralGuard.armies=defSurvivors;
             if(_guardSlainInDuel){
               // The guard is dead — the survivors are the province's leaderless garrison now.
@@ -20411,7 +20469,7 @@ const BATTLE_ARMY_SPELLS={
             if(llBattle.won){
               _payWinPoint();
               const llSurv=erodeGuardSurvivors(null, toProv, toProv.neutralDefenders||[],
-                line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}));
+                line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}), c.name);
               toProv.neutralDefenders=llSurv; toProv.npcArmies=llSurv.length;
               toProv._leaderlessDefenders=llSurv.length>0;
               if(llSurv.length>0){
@@ -20719,7 +20777,7 @@ const BATTLE_ARMY_SPELLS={
             c.items=(c.items||[]).filter(it=>it.effect&&it.effect.stat==='mithrilArmour');
             log('explore',`The ${f.monster?.name||'guardian'} drags ${c.name}'s possessions into its hoard — ${_lairLeft.map(it=>it.name).join(', ')} now lie among the bones, waiting for a stronger hand.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
-          handleHeroDeath(c,null);
+          handleHeroDeath(c,null,{slainBy:`the ${f.monster?.name||'guardian'} of ${prov.name}`}); // the host is told what slew its commander (2026-10-12)
           break; // no further order processing for this hero
         }
         const stolenByThief=encounter.fled&&f.monster?._treasureStolen;
@@ -24076,8 +24134,9 @@ const BATTLE_ARMY_SPELLS={
   // Of the survivors who hold their ground (don't flee), only SOME are bloodied down a quality
   // tier; the rest fight on unbowed.
   const GUARD_DEMOTE_CHANCE=0.5;
-  function erodeGuardSurvivors(guard, prov, survivors, emit){
-    const kept=[];
+  // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
+  function erodeGuardSurvivors(guard, prov, survivors, emit, victor){
+    const kept=[]; const _vh=victor?`${String(victor).replace(' (wandering)','')}'s host`:null;
     (survivors||[]).forEach(a=>{
       const gname=(guard&&guard.name||'the defenders').replace(' (wandering)','');
       if(Math.random()<GUARD_FLIGHT_CHANCE){
@@ -24085,18 +24144,18 @@ const BATTLE_ARMY_SPELLS={
         G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
           location:prov.id,isSea:SEA_TYPES.has(a.type),
           id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
-        emit(`— ${unitRef(gname,a)} break ranks and flee — they now roam as mercenaries near ${prov.name}.`); // unified unit naming
+        emit(`— ${unitRef(gname,a)} break ranks and flee${_vh?` before ${_vh}`:''} — they now roam as mercenaries near ${prov.name}.`); // unified unit naming
         return;
       }
       // Only some of those who stay are worn down a tier; the rest hold at their current quality.
       if(Math.random()<GUARD_DEMOTE_CHANCE){
         const _q0=a.quality;
         if(demoteOrDisband(a)){ emit(disbandLine(gname,a)); return; }
-        emit(`— ${unitRef(gname,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality} — they rally around ${gname}.`);
+        emit(`— ${unitRef(gname,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality} — ${_vh?`beaten by ${_vh}, `:''}they rally around ${gname}.`);
         kept.push(a);
         return;
       }
-      emit(`— ${unitRef(gname,a)} hold their ground unbroken and rally around ${gname}.`);
+      emit(`— ${unitRef(gname,a)} hold their ground unbroken${_vh?` against ${_vh}`:''} and rally around ${gname}.`);
       kept.push(a);
     });
     return kept;
@@ -24182,7 +24241,7 @@ const BATTLE_ARMY_SPELLS={
           // Erode the survivors exactly as the first battle does — flee, demote, or disband.
           const _survPool=liveGuard?(guard.armies||[]):(prov.neutralDefenders||[]);
           const surv=erodeGuardSurvivors(liveGuard?guard:null, prov, _survPool,
-            line=>log('combat',line,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true}));
+            line=>log('combat',line,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true}), attacker.name);
           if(liveGuard) guard.armies=surv;
           if(surv.length>0){
             prov._battleUnresolved=true;
@@ -24743,11 +24802,11 @@ const BATTLE_ARMY_SPELLS={
       let llLeft=0;
       if(neutralGuard&&neutralGuard.alive){
         neutralGuard.armies=erodeGuardSurvivors(neutralGuard, prov, neutralGuard.armies||[],
-          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}));
+          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}), c.name);
       } else if((neutralGuard&&!neutralGuard.alive)||llDefs.length>0){
         // Leaderless survivors (guard slain in the duel, or already leaderless) erode the same way.
         const _surv=erodeGuardSurvivors(null, prov, prov.neutralDefenders||[],
-          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}));
+          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}), c.name);
         prov.neutralDefenders=_surv; prov.npcArmies=_surv.length;
         prov._leaderlessDefenders=_surv.length>0; llLeft=_surv.length;
       }
@@ -26795,6 +26854,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(dc.alive) { delete dc._leaderlessHost; return; }
     delete dc._leaderlessHost;
     if((dc.armies||[]).length>0) disperseDeadCharArmies(dc);
+    delete dc._slainBy; // a commander who fell with no host keeps no note of the killer in the saved state
   });
 
   // Intel collapse: emit one consolidated intrusion line per (target, hero, province) now that all
@@ -28166,7 +28226,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.12-0020</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.12-0030</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

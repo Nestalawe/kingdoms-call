@@ -227,6 +227,20 @@ engine itself keeps them in several places by kind:
 `UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
 replaces the first (the words test checks).
 
+## A fate line names two companies
+
+Since 2026-10-12 a casualty line names the enemy company too: "— Aldric's Levies (Shieldwall Levies, Average),
+facing the Red Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!". Two readers depend on the
+company's own reference coming **first**:
+
+- the losses tally (`battleTallyLine`) reads the owner and the unit type from the first match in the line, so a
+  new fate line must open with the company's own reference (`unitRef`) and put the clause after it;
+- the clause comes from `battleFacedClauses`, read from the deploy's grids right after `battleDeploy`. Anything
+  that faces the rows again later (the stay-or-retreat estimate does) overwrites the rows' `_faced` stamps, so
+  read the map once, early, and pass it to `rollUnitFates` as `faced`.
+
+`tests/battle-faced-lines.test.js` holds the wording of every branch and the tally's crediting.
+
 ## A sort comparator must give the same answer every time
 
 `.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is

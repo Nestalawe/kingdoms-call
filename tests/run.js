@@ -50,6 +50,8 @@ const SUITE=[
   ['battle-grid',          'tests/battle-grid.test.js'],
   ['battle-facing',        'tests/battle-facing.test.js'],
   ['battle-scout',         'tests/battle-scout.test.js'],
+  ['battle-faced-lines',   'tests/battle-faced-lines.test.js'],
+  ['battle-faced-turn',    'tests/battle-faced-turn.test.js'],
   ['roster',               'tests/roster.test.js'],
   ['goblins-two-a-turn',   'tests/goblins-two-a-turn.test.js'],
   ['abilities-human',      'tests/abilities-human.test.js'],
