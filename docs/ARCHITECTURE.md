@@ -104,6 +104,11 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   page and the data file and reloads the tab once if either has a newer stamp, so the newest engine
   resolves it (`refreshIfNewerBuild`).
 - **Bots** plan their orders inside `runTurn`, in the same tab, from the same state a human saw.
+- **Battle lines** (`battleGrid` and its helpers, module level beside the strength ladder). The front the
+  ground allows is rolled once per battle (`rollBattleWidth`: plains and desert 6–8, forest and jungle 4–6,
+  mountain 2–4, sea 8–10); each side is placed by unit type into flanks, front, second line and reserve;
+  both battle paths, the stay-or-retreat estimate and the bots' estimates (`battleLineTotal`, at the middle
+  width) score through it, and the report prints the grid as 📊 lines, which the portals draw in monospace.
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.
