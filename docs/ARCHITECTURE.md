@@ -38,11 +38,16 @@ Order inside each portal's `<head>` and body, and why it matters:
 3. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
    key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
 4. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
-5. **The main script.** It checks the data file before anything else (below), creates the Supabase
-   client, and calls `init()`, which hides the spinner.
-6. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
-   `kc-config.js` just before it). On staging it adds "Staging · PR #N · abc1234" to the footer; on the live
-   site, whose `kc-config.js` has no `deployed`, it does nothing.
+5. **`kc-db-guard.js`** (both portals and the leaderboard), straight after `kc-config.js`: `kcDbGuard`, the
+   database version guard ([traps.md](traps.md#a-site-change-that-needs-a-database-change)).
+6. **The main script.** It checks the data file before anything else (below), creates the Supabase
+   client, then `kcDbGuard(sb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call
+   `init()` (the leaderboard: `loadAll()`), which hides the spinner. Otherwise the guard raises "The game is
+   being updated" through the boot-failure reporter, and nothing is read or written.
+7. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
+   `kc-config.js` just before it). On staging it adds "Staging · PR #N · abc1234" to the footer, plus
+   "database <version>" on pages that use the database; on the live site, whose `kc-config.js` has no
+   `deployed`, it does nothing.
 
 Everything is a classic script, so **top-level `const`/`let` from every script share one global
 scope**. A name declared in two scripts is a `SyntaxError` that stops the page loading. A top-level

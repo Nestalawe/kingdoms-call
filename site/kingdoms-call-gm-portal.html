@@ -15,6 +15,7 @@
 (function(){
   let shown=false;
   function hint(m){
+    if(/being updated/i.test(m)) return 'Nothing was read or saved. Reload in a few minutes; if it keeps happening, tell the GM what the message above says.';
     if(/supabase is not defined/i.test(m)) return 'The Supabase library could not be downloaded from cdn.jsdelivr.net or unpkg.com. Check your internet connection, ad-blocker or firewall, then reload.';
     if(/kingdoms-call-data\.js/i.test(m)) return 'Upload the current <b>kingdoms-call-data.js</b> to the same folder as this page, then reload.';
     if(/before initialization|is not defined/i.test(m)) return 'A script error stopped the portal from starting (this build, or a stale cached copy). Hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
@@ -391,6 +392,7 @@ section{display:none;}.section-active{display:block;}
 </div>
 
 <script src="kc-config.js"></script>
+<script src="kc-db-guard.js"></script>
 <script src="kingdoms-call-data.js"></script>
 <script>
 // ── DATA FILE GUARD ── the content tables (items, monsters, names, spells, titles, discoveries)
@@ -403,6 +405,10 @@ section{display:none;}.section-active{display:block;}
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
 const KC_DATA_MIN='2026.10.08-2159';
+// The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
+// first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
+// a database change").
+const KC_DB_MIN='20261011025524';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
@@ -416,7 +422,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.11-1506'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.11-1559'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -27754,11 +27760,11 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   return {ok:true, committed:true, turn:G.turn};
 }
 
-init();
+kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-1506</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-1559</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

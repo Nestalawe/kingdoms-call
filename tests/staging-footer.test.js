@@ -3,11 +3,12 @@
 // Each page in site/ is booted in jsdom three times:
 //   - with site/kc-config.js as it is (the live one: no `deployed`): no staging line;
 //   - with the kc-config.js the staging deploy writes (.github/scripts/staging.js): the line, in the page's
-//     <footer> where it has one, else in a small fixed stamp;
+//     <footer> where it has one, else in a small fixed stamp; on a page that uses the database it also names
+//     the database's version, once the version guard has read it (P0-34);
 //   - (two pages) with a hand-made config whose `deployed` isn't a number and a commit: no line, no markup.
 // Reads site/ (or $KC_SITE).
 const fs=require('fs');
-const {SITE,sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {SITE,sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {configFile}=require('../.github/scripts/staging.js');
 
 const SHA='abcdef1234567890abcdef1234567890abcdef12';
@@ -44,8 +45,9 @@ async function boot(name,config){
     if(!el) fail(`${name}: no staging line with the staging config (does the page load kc-config.js and kc-staging-footer.js?)`);
     else{
       const text=el.textContent, href=el.getAttribute('href');
+      const want='Staging · PR #21 · abcdef1'+(/\bcreateClient\s*\(/.test(fs.readFileSync(sitePath(name),'utf8'))?` · database ${DB_VERSION}`:'');
       const placed=doc.querySelector('footer')?!!el.closest('footer'):el.style.position==='fixed';
-      if(text!=='Staging · PR #21 · abcdef1') fail(`${name}: the staging line reads "${text}"`);
+      if(text!==want) fail(`${name}: the staging line reads "${text}", expected "${want}"`);
       else if(href!=='https://github.com/Nestalawe/kingdoms-call/pull/21') fail(`${name}: the staging line links to ${href}`);
       else if(!placed) fail(`${name}: the staging line isn't in the page's footer (or, with none, a fixed stamp)`);
       else if(dom.window.getComputedStyle(el).textTransform!=='none') fail(`${name}: the staging line is shown as ${dom.window.getComputedStyle(el).textTransform}, which changes the commit's letters`);

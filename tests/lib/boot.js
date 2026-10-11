@@ -6,6 +6,9 @@
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
 //   routeExternal(target, cdn)  answers the CDN with a stub and fonts with nothing (Playwright page/context)
+//   DB_VERSION                  the newest migration in supabase/migrations/: the database version every
+//                               stand-in database reports through rpc('kc_db_version') (P0-34), unless a test
+//                               says otherwise (bootJsdom's opts.dbVersion)
 //
 // Fixed seed: when KC_SEED is set (tests/run.js sets it), Math.random is replaced by a seeded sfc32
 // generator, both in this Node process (for a harness's own random orders) and in every page booted
@@ -44,6 +47,33 @@ function seededRandom(seed){
     return (t>>>0)/4294967296;
   };
 }
+// The pages check the database's version before their first read (site/kc-db-guard.js). Every stand-in
+// database answers it as an up-to-date database would: the newest migration in the repo.
+const DB_VERSION=fs.readdirSync(path.join(__dirname,'..','..','supabase','migrations'))
+  .map(f=>(/^(\d{14})_/.exec(f)||[])[1]).filter(Boolean).sort().pop();
+
+// Wraps a stand-in `supabase` so its clients answer rpc('kc_db_version'). `answers`: a version, null (no such
+// function: a database from before P0-34), 'offline' (no answer at all), or a list of those, used in order (the
+// last one repeats). `calls` (optional) records every from()/rpc() the page makes, by name.
+function withDbVersion(supabase,answers=DB_VERSION,calls){
+  if(!supabase||typeof supabase.createClient!=='function') return supabase;
+  const list=Array.isArray(answers)?answers.slice():[answers];
+  const next=()=>list.length>1?list.shift():list[0];
+  return {...supabase,createClient(...args){
+    const c=supabase.createClient(...args), rpc=c.rpc, from=c.from;
+    c.rpc=(fn,...a)=>{
+      if(calls) calls.push('rpc:'+fn);
+      if(fn!=='kc_db_version') return rpc.call(c,fn,...a);
+      const v=next();
+      if(v==='offline') return Promise.resolve({data:null,error:{message:'TypeError: Failed to fetch'},status:0});
+      if(v===null) return Promise.resolve({data:null,status:404,error:{code:'PGRST202',message:'Could not find the function public.kc_db_version without parameters in the schema cache'}});
+      return Promise.resolve({data:v,error:null,status:200});
+    };
+    if(calls&&typeof from==='function') c.from=(t,...a)=>{ calls.push('from:'+t); return from.call(c,t,...a); };
+    return c;
+  }};
+}
+
 const SEED=process.env.KC_SEED;
 let bootCount=0;
 if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
@@ -51,6 +81,8 @@ if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
 // opts.supabase   the object installed as window.supabase (e.g. {createClient:()=>nullStub()})
 // opts.setup(w)   the harness's own beforeParse lines (error capture, console handling, overrides)
 // opts.url, opts.pretendToBeVisual   jsdom options; defaults match the original harnesses
+// opts.dbVersion, opts.dbCalls         what rpc('kc_db_version') answers, and a list recording the page's
+//                                      database calls (withDbVersion above); by default an up-to-date database
 function bootJsdom(html,opts={}){
   const {JSDOM}=require('jsdom');
   const n=bootCount++;
@@ -62,6 +94,7 @@ function bootJsdom(html,opts={}){
       if(opts.supabase) w.supabase=opts.supabase;
       w.confirm=()=>true; w.alert=()=>{};
       if(opts.setup) opts.setup(w);
+      w.supabase=withDbVersion(w.supabase,'dbVersion' in opts?opts.dbVersion:DB_VERSION,opts.dbCalls);
     }});
 }
 
@@ -77,11 +110,15 @@ function serve(dir=SITE,port=0){
   return new Promise(r=>server.listen(port,'127.0.0.1',()=>{ server.url=`http://127.0.0.1:${server.address().port}`; r(server); }));
 }
 
+// The CDN stub's clients answer rpc('kc_db_version') with DB_VERSION, as withDbVersion does in jsdom.
+const dbVersionPatch=v=>`;(function(){var s=window.supabase;if(!s||!s.createClient)return;var mk=s.createClient;`
+  +`window.supabase=Object.assign({},s,{createClient:function(){var c=mk.apply(s,arguments),rpc=c.rpc;`
+  +`c.rpc=function(fn){return fn==='kc_db_version'?Promise.resolve({data:${JSON.stringify(v)},error:null,status:200}):rpc.apply(c,arguments);};return c;}});})();`;
 async function routeExternal(target,cdnBody){
-  await target.route('**cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:cdnBody}));
+  await target.route('**cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:cdnBody+dbVersionPatch(DB_VERSION)}));
   await target.route('**unpkg.com/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:''}));
   await target.route('**fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
   await target.route('**fonts.gstatic.com/**',r=>r.fulfill({status:200,body:''}));
 }
 
-module.exports={SITE,sitePath,readPage,bootJsdom,seededRandom,serve,routeExternal};
+module.exports={SITE,sitePath,readPage,bootJsdom,seededRandom,serve,routeExternal,withDbVersion,DB_VERSION};
