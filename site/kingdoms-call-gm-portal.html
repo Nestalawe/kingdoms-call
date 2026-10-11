@@ -525,6 +525,57 @@ function disbandLine(owner,a){
     :`${owner?owner+"'s ":''}${a.unitName?a.unitName+' ('+a.type+')':a.type}`;
   return `— ${_core} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
 }
+// "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
+// never "Atk's the Red Hand" (2026-09-23d). Module level since 2026-10-11 (they were inside runTurn).
+function ownedUnitName(ownerName, a){
+  if(a&&a.unitName&&/^the\s/i.test(a.unitName)) return `${a.unitName} (${ownerName?ownerName+"'s ":''}${a.type})`;
+  return `${ownerName?ownerName+"'s ":''}${(a&&(a.unitName||a.type))||'unit'}`;
+}
+function unitRef(ownerName, a){
+  // 2026-09-23d: "the Pale Shades (Vervain's Shadow Archers, Average)" — never "Vervain's the Pale Shades".
+  if(a.unitName&&/^the\s/i.test(a.unitName)) return `${a.unitName} (${ownerName?ownerName+"'s ":''}${a.type}, ${a.quality})`;
+  const core=a.unitName?`${a.unitName} (${a.type}, ${a.quality})`:`${a.quality} ${a.type}`;
+  return ownerName?`${ownerName}'s ${core}`:core;
+}
+// ── UNIT FATES AFTER A BATTLE (2026-10-11, refactor only) ── the per-unit rolls that four casualty loops
+// used to repeat (the NPC attacker winning or losing; a realm battle's winner and loser). The numbers stay
+// at the call sites, which pass the thresholds their battle computed; this owns the order of the rolls,
+// the flags and the wording, so a test can drive it with its own dice (o.rng) and a later change to one
+// line changes it everywhere. The dice are drawn exactly as before: one roll per unit; a beaten unit that
+// neither died nor is skeletal draws a second.
+//   o.won        the winner's rolls: below dieAt(a) it dies; else (not skeletal) below promoteTo(a) it
+//                rises a tier (a unit that cannot rise simply survives).
+//   !o.won       the loser's rolls: below dieAt(a) it dies; else (not skeletal) a second roll: below
+//                demoteAt(a) it falls back in good order (o.shieldFort) or loses a tier / disbands; else
+//                below promoteTo(a) it rises a tier despite defeat.
+//   o.diedVerb / o.promoteVerb  the site's wording ("were annihilated in the rout!", "are hardened by
+//                victory to"); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
+//                "All other forces survive" line reads it); o.say receives each unit's line.
+// Returns {died, promoted, demoted, disbanded, held, survived}.
+function rollUnitFates(force, o){
+  const rng=o.rng||Math.random, tiers=o.tiers||QUALITY_TIERS, say=o.say||(()=>{}), ref=o.unitRef||unitRef, who=o.owner||'';
+  const dust=a=>a._isSkeletal?' Their bones crumble to dust — gone forever.':'';
+  const diedVerb=o.diedVerb||(o.won?'were destroyed in the fighting.':'were destroyed in the rout!'), promoteVerb=o.promoteVerb||'earn promotion to';
+  const r={died:0,promoted:0,demoted:0,disbanded:0,held:0,survived:0};
+  (force||[]).forEach(a=>{
+    if(!a) return;
+    const idx=tiers.indexOf(a.quality), roll=rng();
+    if(roll<o.dieAt(a)){ a._died=true; r.died++; say(`— ${ref(who,a)} ${diedVerb}${dust(a)}`); return; }
+    if(a._isSkeletal){ r.survived++; return; }
+    if(o.won){
+      if(roll<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— ${ref(who,{...a,quality:q0})} ${promoteVerb} ${a.quality}!`); }
+      else r.survived++;
+      return;
+    }
+    const roll2=rng();
+    if(roll2<o.demoteAt(a)){
+      if(o.shieldFort){ r.held++; say(`— ${ref(who,a)} fall back behind the shield wall in good order.`); }
+      else { const q0=a.quality; if(demoteOrDisband(a)){ r.disbanded++; say(disbandLine(who,a)); } else { r.demoted++; if(o.notable) a._notable=true; say(`— ${ref(who,{...a,quality:q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
+    } else if(roll2<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— Despite defeat, ${ref(who,{...a,quality:q0})} improved to ${a.quality}!`); }
+    else r.survived++;
+  });
+  return r;
+}
 
 // ── BATTLE SUMMARY vs FULL REPORT (2026-09-23d, Toby item 1) ────
 // Every battle is still written as ONE narrative array. emitBattle tags each line with the battle's
@@ -14271,18 +14322,8 @@ function kinNarrative(force, leader, ownerRace, sideName){
   if(leadOnly) parts.push(`${leadOnly} unit${leadOnly!==1?'s':''} of their commander's race (+20%)`);
   return `🤝 Kinship — ${sideName}: ${parts.join('; ')}.`;
 }
-// "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
-// never "Atk's the Red Hand" (2026-09-23d).
-function ownedUnitName(ownerName, a){
-  if(a&&a.unitName&&/^the\s/i.test(a.unitName)) return `${a.unitName} (${ownerName?ownerName+"'s ":''}${a.type})`;
-  return `${ownerName?ownerName+"'s ":''}${(a&&(a.unitName||a.type))||'unit'}`;
-}
-function unitRef(ownerName, a){
-  // 2026-09-23d: "the Pale Shades (Vervain's Shadow Archers, Average)" — never "Vervain's the Pale Shades".
-  if(a.unitName&&/^the\s/i.test(a.unitName)) return `${a.unitName} (${ownerName?ownerName+"'s ":''}${a.type}, ${a.quality})`;
-  const core=a.unitName?`${a.unitName} (${a.type}, ${a.quality})`:`${a.quality} ${a.type}`;
-  return ownerName?`${ownerName}'s ${core}`:core;
-}
+// ownedUnitName / unitRef moved to module level beside disbandLine (2026-10-11), so rollUnitFates and the
+// tests can reach them.
 // a COASTAL province is a land province with at least one sea neighbour (used by Sea Giants' Tidal
 // Might). Module-level so every battle path and the bot model can share it.
 function provIsCoastal(G, prov){
@@ -15585,20 +15626,10 @@ const BATTLE_ARMY_SPELLS={
       else narrative.push(`After ${aAn(severity)} ${severity} engagement (margin ${(margRatio*100).toFixed(0)}% of total strength), ${cName}'s forces ${pick(WIN_VERBS)} ${guardName}!`);
       narrative.push(`⚔ **${cName}'s forces** (attacker):`);
       if(_npcWargs) narrative.push(`🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${cName}'s losses are halved.`);
-      let winSurv=0, winEvents=0;
-      armies.forEach(a=>{
-        const idx=tiers.indexOf(a.quality);
-        const roll=Math.random();
-        if(roll<winDeathChance*steelMultOf(a)*(_npcWargs?0.5:1)){
-          narrative.push(`— ${unitRef(cName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
-          a._died=true; winEvents++;
-        } else if(!a._isSkeletal && roll<winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G)){
-          if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);winEvents++;}
-          else winSurv++;
-        } else {
-          winSurv++;
-        }
-      });
+      // (Run Them Down halves the death roll only; the promotion window keeps the unhalved figure, as it always has.)
+      const _fw=rollUnitFates(armies,{owner:cName,won:true,dieAt:a=>winDeathChance*steelMultOf(a)*(_npcWargs?0.5:1),
+        promoteTo:a=>winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G),say:l=>narrative.push(l)});
+      const winSurv=_fw.survived, winEvents=_fw.died+_fw.promoted;
       if(winSurv>0) narrative.push(`— ${winEvents>0?'All other':'All'} forces survive the engagement.`);
       c.armies=c.armies.filter(a=>!a._died&&!a._disbanded);
       // Evil: Terror effect on decisive win — battle province AND all adjacent provinces
@@ -15697,26 +15728,9 @@ const BATTLE_ARMY_SPELLS={
       const _npcRideDefEff=_npcSF?0:_npcRideDef;
       if(_npcRideDef>0&&_npcSF) narrative.push(`🛡 ${cName}'s Dwarven Guard lock shields as they give ground — the defenders' Free Lances find no broken backs to ride down.`);
       else if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef*100)}% losses).`);
-      armies.forEach(a=>{
-        const idx=tiers.indexOf(a.quality);
-        const roll=Math.random();
-        if(roll<loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDefEff){
-          narrative.push(`— ${unitRef(cName,a)} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);
-          a._died=true;
-        } else if(!a._isSkeletal){
-          const roll2=Math.random();
-          if(roll2<loseDemoteChance*tacMultNPC){
-            if(_npcSF){ narrative.push(`— ${unitRef(cName,a)} fall back behind the shield wall in good order.`); }
-            else {
-              const _q0=a.quality;
-              if(demoteOrDisband(a)) narrative.push(disbandLine(cName,a));
-              else {a._notable=true;narrative.push(`— ${unitRef(cName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`);}
-            }
-          } else if(roll2<loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G)){
-            if(idx>=0&&idx<4){const _q0=a.quality;a.quality=tiers[idx+1];a._notable=true;narrative.push(`— Despite defeat, ${unitRef(cName,{...a,quality:_q0})} improved to ${a.quality}!`);}
-          }
-        }
-      });
+      rollUnitFates(armies,{owner:cName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDefEff,
+        demoteAt:a=>loseDemoteChance*tacMultNPC,promoteTo:a=>loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G),
+        shieldFort:_npcSF,notable:true,say:l=>narrative.push(l)});
 
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
@@ -18339,14 +18353,8 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`After ${aAn(severity)} ${severity} battle, ${atkName}'s forces ${_winVerb} ${defName}'s army and seize ${prov.name}!`);
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Winning attacker
       const _cas0=narrative.length;
-      atkArmies.forEach(a=>{
-        const i=tiers.indexOf(a.quality);
-        const roll=Math.random();
-        if(roll<winDeathPvP*atkSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(atkName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal && roll<winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G)){
-          if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— ${unitRef(atkName,{...a,quality:_q0})} earn promotion to ${a.quality}!`);}
-        }
-      });
+      rollUnitFates(atkArmies,{owner:atkName,won:true,dieAt:a=>winDeathPvP*atkSteelMultOf(a),
+        promoteTo:a=>winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),say:l=>narrative.push(l)});
       survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0));
@@ -18355,16 +18363,9 @@ const BATTLE_ARMY_SPELLS={
       if(_wargAtk) narrative.push(_sfDef?`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Warg Riders find no broken backs to run down.`:`🐺 ${atkName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${defName}).`);
       // Losing defender
       const _cas1=narrative.length;
-      defArmies.forEach(a=>{
-        const i=tiers.indexOf(a.quality);
-        const roll=Math.random();
-        if(roll<loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal){
-          const roll2=Math.random();
-          if(roll2<loseDemotePvP*defTacMult){ if(_sfDef){ narrative.push(`— ${unitRef(defName,a)} fall back behind the shield wall in good order.`); } else { const _q0=a.quality; if(demoteOrDisband(a)) narrative.push(disbandLine(defName,a)); else narrative.push(`— ${unitRef(defName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(defName,{...a,quality:_q0})} improved to ${a.quality}!`);}}
-        }
-      });
+      rollUnitFates(defArmies,{owner:defName,won:false,dieAt:a=>loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff,
+        demoteAt:a=>loseDemotePvP*defTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),
+        shieldFort:_sfDef,say:l=>narrative.push(l)});
       survLine(defArmies,_cas1);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -18444,26 +18445,15 @@ const BATTLE_ARMY_SPELLS={
       else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef*100)}% losses to ${atkName}).`);
       if(_wargDef) narrative.push(_sfAtk?`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Warg Riders find no broken backs to run down.`:`🐺 ${defName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${atkName}).`);
       const _cas2=narrative.length;
-      atkArmies.forEach(a=>{
-        const i=tiers.indexOf(a.quality);
-        const roll=Math.random();
-        if(roll<loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff){a._died=true;narrative.push(`— ${unitRef(atkName,a)} were annihilated in the rout!${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal){
-          const roll2=Math.random();
-          if(roll2<loseDemotePvP*atkTacMult){ if(_sfAtk){ narrative.push(`— ${unitRef(atkName,a)} fall back behind the shield wall in good order.`); } else { const _q0=a.quality; if(demoteOrDisband(a)) narrative.push(disbandLine(atkName,a)); else narrative.push(`— ${unitRef(atkName,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
-          else if(roll2<loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G)){if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— Despite defeat, ${unitRef(atkName,{...a,quality:_q0})} improved to ${a.quality}!`);}}
-        }
-      });
+      rollUnitFates(atkArmies,{owner:atkName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff,
+        demoteAt:a=>loseDemotePvP*atkTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),
+        shieldFort:_sfAtk,say:l=>narrative.push(l)});
       survLine(atkArmies,_cas2);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       // Winning defender — small death chance, good XP chance
       const _cas3=narrative.length;
-      defArmies.forEach(a=>{
-        const i=tiers.indexOf(a.quality);
-        const roll=Math.random();
-        if(roll<winDeathPvP*defSteelMultOf(a)){a._died=true;narrative.push(`— ${unitRef(defName,a)} were destroyed in the fighting.${a._isSkeletal?' Their bones crumble to dust — gone forever.':''}`);}
-        else if(!a._isSkeletal && roll<winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G)){if(i<4){const _q0=a.quality;a.quality=tiers[i+1];narrative.push(`— ${unitRef(defName,{...a,quality:_q0})} are hardened by victory to ${a.quality}!`);}}
-      });
+      rollUnitFates(defArmies,{owner:defName,won:true,promoteVerb:'are hardened by victory to',dieAt:a=>winDeathPvP*defSteelMultOf(a),
+        promoteTo:a=>winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),say:l=>narrative.push(l)});
       survLine(defArmies,_cas3);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
