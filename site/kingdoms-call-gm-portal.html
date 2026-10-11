@@ -422,7 +422,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.11-2142'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.11-2205'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -625,26 +625,128 @@ function battleMarginBand(margRatio){ const r=Math.max(0,margRatio||0); return B
 // immunity.
 
 // ── BATTLE LINES — ONE source of truth for every battle site (NPC attack, NPC defence, PvP both
-// sides, and the bot's battle model). Terrain sets the front width; a force's ground units are
-// sorted strongest-first and fill FOUR lines of that width. The front line fights at full strength,
-// the second at ×0.5, the third at ×0.25, the fourth at ×0.125 — and anything beyond the fourth
-// line also fights at ×0.125. Flyers always fight from the front and never take a slot. sd09
-// Flanking Tactics lifts each rear line one step: ×0.75 / ×0.5 / ×0.25.
-const BATTLE_FRONT_WIDTH={plain:6,desert:6,sea:6,forest:4,jungle:4,mountain:3};
-const BATTLE_LINE_MULTS=[1,0.5,0.25,0.125];
-const BATTLE_LINE_MULTS_FLANK=[1,0.75,0.5,0.25];
-const BATTLE_LINE_NAMES=['front line','second line','third line','fourth line'];
-function battleFrontWidth(terrain){ return BATTLE_FRONT_WIDTH[terrain]??6; }
-function battleLineOf(groundRank,width){ return Math.min(BATTLE_LINE_MULTS.length-1, Math.floor(groundRank/Math.max(1,width))); }
-// sd09's rear-line multipliers live on its data row (`lines`), falling back to the table above.
+// sides, the stay-or-retreat estimate, and the bots' battle model). 2026-10-11 (Toby): ROWS AND
+// COLUMNS. The ground allows a front of so many units, rolled fresh for each battle (plains and
+// desert 6–8, forest and jungle 4–6, mountain 2–4, sea 8–10) and the same for both sides. Each side
+// is placed by unit TYPE (KC_UNIT_TYPE):
+//   • flanks (plains and desert only): up to Tactical+1 cavalry fight at full strength and take no
+//     place in the front;
+//   • front: infantry and the rest of the cavalry, strongest first; a ranged unit steps into an empty
+//     front place only when nothing else can, and fights there at ×0.75;
+//   • second line: a ranged unit standing behind a fighter in its own column shoots over it at FULL
+//     strength; anything else in the second line fights at ×0.5;
+//   • reserve: ×0.25 for the next `width` units, ×0.125 beyond (sd09 Flanking Tactics lifts the
+//     ×0.5 / ×0.25 / ×0.125 steps, as it always has);
+//   • the four winged riders (KC_UNIT_CLASS.flying) fight from the air and take no place: full
+//     strength up to the enemy's ground units in line plus their flyers (never fewer than 2), and
+//     ×0.5 beyond that. Flying BEASTS hold a place like infantry, as before.
+// At sea the hulls and sea-beasts take the front before any carried land unit, and there are no
+// flanks. Columns fill strongest-in-the-centre, so the grid a report prints is the grid that was
+// scored. Nothing faces anything yet: who-faces-whom is the next step (Battle lines II).
+const BATTLE_FRONT_RANGE={plain:[6,8],desert:[6,8],sea:[8,10],forest:[4,6],jungle:[4,6],mountain:[2,4]};
+const BATTLE_FLANK_TERRAINS=new Set(['plain','desert']);
+const BATTLE_LINE_MULTS=[1,0.5,0.25,0.125];       // front · second line (not shooting over) · reserve · deep reserve
+const BATTLE_LINE_MULTS_FLANK=[1,0.75,0.5,0.25];  // sd09's fallback if its data row carries no `lines`
+const BATTLE_RANGED_IN_FRONT=0.75, BATTLE_FLYER_BEYOND_CAP=0.5, BATTLE_FLYER_CAP_MIN=2, BATTLE_FLANK_TAC_CAP=5;
+// Own copies of the three class lists the grid reads (each consumer builds its own, see the data file).
+const GRID_FLY_TYPES=new Set(KC_UNIT_CLASS.flying), GRID_CAV_TYPES=new Set(KC_UNIT_CLASS.cavalry), GRID_SEA_TYPES=new Set(KC_UNIT_CLASS.sea);
+// The width this battle's ground allows: ONE roll per battle, shared by both sides.
+function rollBattleWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return r[0]+Math.floor(Math.random()*(r[1]-r[0]+1)); }
+// The middle of the range: what the bots' estimates and the Strategist's command score assume.
+function battleFrontWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return Math.round((r[0]+r[1])/2); }
 function flankLineMults(){ const l=(typeof DISC_BY_ID!=='undefined'&&DISC_BY_ID.sd09&&DISC_BY_ID.sd09.effect&&DISC_BY_ID.sd09.effect.lines); return (Array.isArray(l)&&l.length===4)?l:BATTLE_LINE_MULTS_FLANK; }
-function battleLineMult(groundRank,width,flank){ return (flank?flankLineMults():BATTLE_LINE_MULTS)[battleLineOf(groundRank,width)]; }
-// rows: [{base, fly,...}] where `base` is the unit's FINAL per-unit strength — every modifier
-// already folded in (terrain, quality, Druid, Archery, Naval, Tactical, Illusory Terrain, items…).
-// 2026-09-11
-//: the ordering must reflect that final figure, so battleLineTotal and battleLineNarrative sort
-// internally rather than trusting the caller. Non-mutating: callers keep their array.
-function battleLineSort(rows){ return [...rows].sort((x,y)=>(y.fly-x.fly)||(y.base-x.base)); }
+// A row's place comes from its unit's type: 'fly' for the four winged riders (no place in the line),
+// 'cav', 'arc' (ranged), and 'foot' for everything else — infantry, the walking and swimming beasts,
+// fleets, elementals, and any type the tables have never heard of. A row with no unit on it (the
+// bots' estimates) falls back on its own `fly` flag.
+function battleRole(row, terrain){
+  const t=row&&row.a&&row.a.type;
+  if(t==null) return (row&&row.fly)?'fly':'foot';
+  if(GRID_FLY_TYPES.has(t)) return 'fly';
+  if(terrain!=='sea'&&GRID_CAV_TYPES.has(t)) return 'cav';   // no horse charges at sea
+  if(unitTypeOf(t)==='ranged') return 'arc';
+  return 'foot';
+}
+// Short unit codes for the grid print (5 characters; a type not listed uses its first 5 letters).
+const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr',
+  'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr',
+  'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr',
+  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Whale Cohort':'Whale',
+  'Stone Giants':'Giant','Forest Ents':'Ent','Giant Eagles':'GEagl','Crimson Rocs':'Roc','Cave Trolls':'Troll','Manticore Pride':'Manti','Basilisk Brood':'Basil','Sea Giants':'SeaGt','Kraken Tentacles':'Krakn','Elder Dragons':'Drago','Titan Warbeasts':'Titan','Leviathan Pods':'Levia',
+  'Air Elemental':'AirEl','Fire Elemental':'FirEl','Earth Elemental':'ErtEl','Water Elemental':'WatEl','Darkness Elemental':'DrkEl'};
+function shortUnit(row){ const t=(row&&row.a&&row.a.type)||(row&&row.name)||'unit'; return UNIT_SHORT[t]||String(t).replace(/[^A-Za-z]/g,'').slice(0,5); }
+// Place one side and score it. rows: [{a, base, fly, …}] with `base` the unit's FINAL per-unit
+// strength (every modifier and this battle's pre-battle damage already in). opts: {tac, flank,
+// enemy, enemyTac} — `enemy` is the other side's rows (or its placed grid), needed only for the
+// flyer cap; without it flyers are uncapped (the bots' estimates). Returns the grid: the front and
+// second lines as cells per column, the reserve, the flanks, the flyers, every row's place and
+// multiplier (also stamped on the row as `_g`, never on the army), and `total`.
+function battleGrid(rows, width, terrain, opts){
+  opts=opts||{}; const W=Math.max(1,width|0);
+  const mults=opts.flank?flankLineMults():BATTLE_LINE_MULTS;
+  const tac=Math.max(0,Math.min(BATTLE_FLANK_TAC_CAP,(opts.tac|0)));
+  const R=(rows||[]).filter(Boolean).map(r=>({r, role:battleRole(r,terrain), s:(+r.base||0)}));
+  const byS=(a,b)=>b.s-a.s;
+  const fly=R.filter(x=>x.role==='fly').sort(byS);
+  let cav=R.filter(x=>x.role==='cav').sort(byS);
+  const slots=BATTLE_FLANK_TERRAINS.has(terrain)?tac+1:0;
+  const flanks=cav.slice(0,slots); cav=cav.slice(slots);
+  const seaFirst=x=>(terrain==='sea'&&x.r.a&&GRID_SEA_TYPES.has(x.r.a.type))?1:0;   // at sea the hulls hold the front
+  const fighters=R.filter(x=>x.role==='foot').concat(cav).sort((a,b)=>(seaFirst(b)-seaFirst(a))||byS(a,b));
+  const arcs=R.filter(x=>x.role==='arc').sort(byS);
+  const front=fighters.slice(0,W), spare=fighters.slice(W);
+  const back=arcs.slice(0,front.length); let arcLeft=arcs.slice(front.length);
+  while(front.length<W&&arcLeft.length) front.push(arcLeft.shift());            // only when nothing else can
+  const pool=back.concat(spare,arcLeft);                                         // ranged behind fighters first
+  const second=pool.slice(0,W), reserve=pool.slice(W);
+  // Columns: a centred block, the strongest at the most central column, alternating outwards.
+  const mid=(W-1)/2, order=[...Array(W).keys()].sort((a,b)=>(Math.abs(a-mid)-Math.abs(b-mid))||(a-b));
+  const frontCells=Array(W).fill(null), secondCells=Array(W).fill(null);
+  { const n=front.length, off=Math.floor((W-n)/2);
+    const occ=[...Array(n).keys()].map(k=>k+off).sort((a,b)=>(Math.abs(a-mid)-Math.abs(b-mid))||(a-b));
+    front.forEach((x,k)=>{ frontCells[occ[k]]=x; }); }
+  { const a=second.filter(x=>x.role==='arc'), o=second.filter(x=>x.role!=='arc');
+    order.forEach(c=>{ if(frontCells[c]&&frontCells[c].role!=='arc'&&a.length) secondCells[c]=a.shift(); });
+    const q=a.concat(o); order.forEach(c=>{ if(!secondCells[c]&&q.length) secondCells[c]=q.shift(); }); }
+  // Flyer cap: the enemy's ground units in line (front and flanks) plus their flyers, never below 2.
+  let cap=Infinity, E=opts.enemy;
+  if(E){ if(Array.isArray(E)) E=battleGrid(E,W,terrain,{tac:opts.enemyTac}); cap=Math.max(BATTLE_FLYER_CAP_MIN, E.front.filter(Boolean).length+E.flanks.length+E.fly.length); }
+  const units=[]; let total=0;
+  const put=(x,place,col,mult,why)=>{ const g={place,col,mult,why}; x.r._g=g; units.push({row:x.r,place,col,mult,why}); total+=x.s*mult; };
+  frontCells.forEach((x,c)=>{ if(x) put(x,'front',c,x.role==='arc'?BATTLE_RANGED_IN_FRONT:1,x.role==='arc'?'ranged in the front line':'front line'); });
+  secondCells.forEach((x,c)=>{ if(!x) return; const f=frontCells[c];
+    if(x.role==='arc'&&f&&f.role!=='arc') put(x,'second',c,1,'shooting over the '+shortUnit(f.r)); else put(x,'second',c,mults[1],'second line'); });
+  reserve.forEach((x,k)=>put(x,'reserve',k,k<W?mults[2]:mults[3],k<W?'reserve':'deep reserve'));
+  flanks.forEach((x,k)=>put(x,'flank',k,1,'on the flank'));
+  fly.forEach((x,k)=>put(x,'air',k,k<cap?1:BATTLE_FLYER_BEYOND_CAP,k<cap?'in the air':'in the air, beyond the line'));
+  return {W,terrain,front:frontCells,second:secondCells,reserve,flanks,fly,units,total,cap:isFinite(cap)?cap:null};
+}
+// The old entry point, kept for the estimates that only need a total (the bots, the Strategist's
+// command score, the stay-or-retreat test). opts as battleGrid's, plus `terrain`.
+function battleLineTotal(rows,width,flank,opts){ return battleGrid(rows,width,(opts&&opts.terrain)||null,Object.assign({},opts||{},{flank})).total; }
+// ── The grid in the report ── one line names the ground, then two 📊 lines a side: cells five wide,
+// "·" for an empty place, the defender's second line above its front and the attacker's below, so the
+// two fronts meet in the middle. The portals draw a 📊 line that contains "│" in monospace.
+const GROUND_WORDS={plain:['open ground','allows'],desert:['desert','allows'],forest:['forest','allows'],jungle:['jungle','allows'],mountain:['mountains','allow'],sea:['open water','allows']};
+function battleWidthLine(terrain, W){ const g=GROUND_WORDS[terrain]||[String(terrain||'ground'),'allows']; return `📊 Battle lines — the ${g[0]} ${g[1]} a front of ${W}.`; }
+function battleGridLines(label, g, defender){
+  if(!g) return [];
+  const cell=x=>(x?shortUnit(x.r):'·').padEnd(5).slice(0,5);
+  const lab=String(label||'').split(/\s+/)[0].slice(0,8).padEnd(8);
+  const extras=[];
+  if(g.flanks.length) extras.push('flanks: '+g.flanks.map(x=>shortUnit(x.r)).join(', '));
+  if(g.fly.length) extras.push('air: '+g.fly.map(x=>shortUnit(x.r)).join(', '));
+  if(g.reserve.length) extras.push('reserve: '+g.reserve.map(x=>shortUnit(x.r)).join(', '));
+  const l1=`📊 ${lab} 1st │ ${g.front.map(cell).join(' ')} │${extras.length?' '+extras.join(' · '):''}`;
+  const l2=g.second.some(Boolean)?`📊 ${lab} 2nd │ ${g.second.map(cell).join(' ')} │`:null;
+  return defender?[l2,l1].filter(Boolean):[l1,l2].filter(Boolean);
+}
+// The ladder's Battle-lines stage: every unit's place and multiplier, grouped.
+function battleGridStage(g){
+  const groups=new Map();
+  g.units.forEach(u=>{ const k=`${u.place} ×${u.mult}`; if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(shortUnit(u.row)); });
+  return [...groups].map(([k,v])=>`${k}: ${v.join(', ')}`).join('; ');
+}
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
 // creature bond, arrows…) were folded in silently, and Tactical was listed as if it lifted the whole
@@ -673,7 +775,7 @@ function ladderLines(role, name, rows, width, flank, forceMods, final, opt){
   });
   const unitMods=[...agg.values()].filter(g=>!g.delta||Math.round(g.d)!==0)
     .map(g=>g.delta?`${g.label} ${g.d>=0?'+':'−'}${Math.abs(Math.round(g.d))}`:`${g.label} (${pl(g.n,'unit')})`);
-  const lineTot=battleLineTotal(rows,width,flank);
+  const lineTot=(opt.grid&&isFinite(opt.grid.total))?opt.grid.total:battleLineTotal(rows,width,flank);
   const cmd=[...cagg.values()].map(g=>`${g.label} on ${pl(g.n,g.key==='tac'?'land/air unit':'unit')}`);
   // Tactical never lifts fleets or sea-beasts (they take Naval) — say so whenever it leaves units
   // out. Since 2026-09-23c it lifts flyers exactly as it lifts land units (Toby).
@@ -691,26 +793,9 @@ function ladderLines(role, name, rows, width, flank, forceMods, final, opt){
   L.push(fm.length?`    · Whole force: ${r0(cmdSum)} ${fm.map(x=>`× ${x.label} ${ladderFm(x.m)}`).join(' ')} = ${r0(preSum)}`
                   :`    · Whole force: no force-wide modifiers — ${r0(preSum)}`);
   if(hit.length&&r0(preSum-postSum)>0) L.push(`    · Pre-battle volleys & spells: ${r0(preSum)} − ${r0(preSum-postSum)} = ${r0(postSum)} (${pl(hit.length,'unit')} hit; taken off the finished figures)`);
-  if(ground>width){ const m=flank?flankLineMults():BATTLE_LINE_MULTS; L.push(`    · Battle lines: ${r0(postSum)} → **${r0(lineTot)}** (${pl(ground-width,'unit')} behind the ${width}-unit front at ${m.slice(1).map(x=>'×'+x).join(' / ')})`); }
+  if(opt.grid) L.push(`    · Battle lines (front of ${opt.grid.W}): ${r0(postSum)} → **${r0(lineTot)}** (${battleGridStage(opt.grid)})`);
+  else if(ground>width){ const m=flank?flankLineMults():BATTLE_LINE_MULTS; L.push(`    · Battle lines: ${r0(postSum)} → **${r0(lineTot)}** (${pl(ground-width,'unit')} behind the ${width}-unit front at ${m.slice(1).map(x=>'×'+x).join(' / ')})`); }
   return L;
-}
-function battleLineTotal(rows,width,flank){
-  let g=0,total=0;
-  battleLineSort(rows).forEach(r=>{ let m=1; if(!r.fly){ m=battleLineMult(g,width,flank); g++; } total+=r.base*m; });
-  return total;
-}
-// Narrative line for a force that overflows its front, e.g. "📊 mountain terrain — Aldric's front
-// line holds 3: A, B, C; second line (×0.5): D, E, F; third line (×0.25): G; fourth line and beyond
-// (×0.125): H."
-function battleLineNarrative(who,rows,width,flank,terrain){
-  const ground=battleLineSort(rows).filter(r=>!r.fly); if(ground.length<=width) return null;
-  const mults=flank?flankLineMults():BATTLE_LINE_MULTS; const name=r=>(r.a&&(r.a.unitName||r.a.type))||r.name||'unit';
-  // "The defenders" is already plural — don't glue an apostrophe-s onto it.
-  const poss=/s$/i.test(who)?`${who}'`:`${who}'s`;
-  const parts=[`${poss} front line holds ${width}: ${ground.slice(0,width).map(name).join(', ')}`];
-  for(let L=1;L<mults.length;L++){ const from=L*width, to=(L===mults.length-1)?ground.length:(L+1)*width; const seg=ground.slice(from,to); if(!seg.length) break;
-    parts.push(`${BATTLE_LINE_NAMES[L]}${L===mults.length-1&&ground.length>(L+1)*width?' and beyond':''} (×${mults[L]}): ${seg.map(name).join(', ')}`); }
-  return `📊 ${terrain} terrain — ${parts.join('; ')}.${flank?' (Flanking Tactics)':''}`;
 }
 // (Declared here at TRUE module level — the block at PREBATTLE_STR_FLOOR sits inside runTurn and the bot model cannot see it.)
 // ARCHERY IN ARMY BATTLES (2026-09-23b, Toby): the commander's Archery lifts every missile unit he
@@ -1872,7 +1957,7 @@ async function loadTurnLog(gameId, turn){
     const rawText=raw0.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
     const isStat=rawText.startsWith('📊');
     const isBattle=rawText.startsWith('⚔')||rawText.startsWith('⚠');
-    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#231e16;padding:2px 6px;background:#f5f0e8">${rawText}</div>`;
+    if(isStat) return`<div class="log-entry stat" style="font-size:.78rem;color:#231e16;padding:2px 6px;background:#f5f0e8${/│/.test(rawText)?';font-family:monospace;white-space:pre;overflow-x:auto':''}">${rawText}</div>`;
     if(isBattle) return`<div class="log-entry combat" style="border-left:4px solid var(--crimson);background:#fdf0f0;padding:4px 8px;margin-top:4px;font-weight:600">${rawText}</div>`;
     return`<div class="log-entry ${e.type||''}" style="padding:2px 6px">${rawText}</div>`;
   }
@@ -5886,8 +5971,9 @@ function botEffForce(G,c,armies){
   return (armies||c.armies||[]).reduce((s,a)=>{ if(!a) return s; let m=1; try{ m=druIdPenaltyMult(c,a,align,tamed&&TAMED_FLYER_TYPES_D.has(a.type)); }catch(e){ m=1; } return s+unitBaseStrength(a)*m; },0);
 }
 // BATTLE MODEL: mirror of the engine's land-battle arithmetic so a bot's estimate is honest:
-// per-unit Druid penalty, the terrain battle lines (shared BATTLE_FRONT_WIDTH / battleLineMult —
-// four lines at ×1/×0.5/×0.25/×0.125, sd09 lifting each rear line a step, flyers always up front),
+// per-unit Druid penalty, the terrain battle lines (shared BATTLE_FRONT_RANGE / battleGrid at the middle
+// width — front, second line and reserve at ×1/×0.5/×0.25/×0.125, ranged shooting over a fighter at ×1,
+// sd09 lifting each rear step, the winged riders in the air),
 // and the commander's Tactical multiplier (×1+0.2/level, capped ×2.0) on land units. Before this
 // bots summed raw base strength and so under-read a drilled host by 40–100% — they won 96% of the
 // battles they dared and declined the rest. Fortune (log-ratio CDF) and fanaticism stay random and
@@ -5934,8 +6020,8 @@ function botBattleForce(G,c,armies,terrain,opts){
     const fly=BOT_AERIAL_TYPES.has(a.type), sea=BOT_SEA_ALL.has(a.type);
     // Tactical / Naval folded in before battleLineTotal sorts — same reason as the NPC defender.
     m*=botRaceTerrainMult(G,c,a,terrain,defending,opts.ownerPi);
-    return {base:unitBaseStrength(a)*m*(sea?nav:tac), fly, sea}; }); // flyers take Tactical (2026-09-23c)
-  return battleLineTotal(rows,width,flank)*botFervourMult(G,c,armies,defending);
+    return {a, base:unitBaseStrength(a)*m*(sea?nav:tac), fly, sea}; }); // flyers take Tactical (2026-09-23c); `a` so the grid can place by type
+  return battleLineTotal(rows,width,flank,{terrain,tac:(csk.tactical||0)})*botFervourMult(G,c,armies,defending);
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
 // (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
@@ -14227,11 +14313,16 @@ function seaPenalty(armyType, terrain){
   // undamaged figure (_cmdS) is multiplied by the side's force product F, THEN this battle's pre-battle
   // damage comes off (floored at 25% of that figure), THEN the battle lines weight the units. Returns
   // the side's final strength; the rows keep every stage for the ladder.
-  function finishSide(rows, width, flank, forceMods){
+  // opts (2026-10-11): {terrain, tac, enemy, enemyTac, out} — the grid is built here, on the finished
+  // figures, and handed back through opts.out.grid for the report and the ladder.
+  function finishSide(rows, width, flank, forceMods, opts){
     const F=(forceMods||[]).reduce((p,x)=>p*((x&&isFinite(x.m))?x.m:1),1);
     rows.forEach(r=>{ const pre=r._cmdS*F, post=applyPrebattleDamage(r.a,pre);
       r._F=F; r._fPre=pre; r._fPost=post; r._dmg=pre-post; r.base=post; r.s=post; });
-    return battleLineTotal(rows,width,flank);
+    opts=opts||{};
+    const g=battleGrid(rows,width,opts.terrain||null,{flank,tac:opts.tac,enemy:opts.enemy,enemyTac:opts.enemyTac});
+    if(opts.out) opts.out.grid=g;
+    return g.total;
   }
   function provName(id){return G.world.provinces[id]?.name||'unknown';}
   function provOf(c){return G.world.provinces[c.location];}
@@ -15072,7 +15163,7 @@ const BATTLE_ARMY_SPELLS={
     // ── BATTLE LINES ──
     // (The old count-based "N flanking units" line is gone — it described a mechanic that no longer existed.)
     const atkFlankDisc=hasDisc(c.player,'sd09');
-    const terrainFront=battleFrontWidth(prov.terrain);
+    const terrainFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides
     const lineWidth=terrainFront;
     void atkCount; void defCount;
     // Illusory Terrain: if this province is cloaked by an enemy's illusion, the attacker is
@@ -15172,10 +15263,11 @@ const BATTLE_ARMY_SPELLS={
     // lists are the single source of each side's force product — the ladder prints them as they are.
     const _nAtkFM=[{label:'morale',m:_npcAtkMorale},{label:'orders',m:atkOrdN},{label:'home ground',m:atkHomeBonus},{label:'fanaticism',m:fanMult},{label:'discoveries',m:finalAtkMod},{label:'consecrated ground',m:(_consecNPC?0.85:1)}];
     const _nDefFM=[{label:"defender's position",m:defBonus},{label:'home',m:homeBonus},{label:'morale',m:_npcDefMorale},{label:'orders',m:defOrdN}];
-    const atkBaseStr=finishSide(armiesWithStr,lineWidth,atkFlankDisc,_nAtkFM);
-    const defBaseStr=finishSide(defsWithStr,defLineWidth,defFlankDisc,_nDefFM);
-    { const _bl=battleLineNarrative(cName,armiesWithStr,lineWidth,atkFlankDisc,prov.terrain); if(_bl) narrative.push(_bl);
-      const _bd=battleLineNarrative(defHero?defHero.name:'The defenders',defsWithStr,defLineWidth,defFlankDisc,prov.terrain); if(_bd) narrative.push(_bd); }
+    const _gA={}, _gD={};
+    const atkBaseStr=finishSide(armiesWithStr,lineWidth,atkFlankDisc,_nAtkFM,{terrain:prov.terrain,tac:tactSkill,enemy:defsWithStr,enemyTac:defTactLvl,out:_gA});
+    const defBaseStr=finishSide(defsWithStr,defLineWidth,defFlankDisc,_nDefFM,{terrain:prov.terrain,tac:defTactLvl,enemy:armiesWithStr,enemyTac:tactSkill,out:_gD});
+    narrative.push(battleWidthLine(prov.terrain,lineWidth));
+    narrative.push(...battleGridLines(defHero?defHero.name:'Guards',_gD.grid,true), ...battleGridLines(cName,_gA.grid,false));
     // Roll with variance — each side rolls 0 to 70% of the stronger side's POST-multiplier
     // strength. Dice basis unified with the PvP path: both scale the random swing off the FULL
     // effective strength each force brings to the field (all multipliers applied), so luck is
@@ -15199,8 +15291,8 @@ const BATTLE_ARMY_SPELLS={
     const _defLabelStat=defHero?defHero.name:`the defenders of ${prov.name}`;
     const _nAtkTm=tacMulted(effectiveTactBonus,c), _nDefTm=tacMulted(defTactBonus,defHero);
     narrative.push(`📊 **Battle stats:**`);
-    narrative.push(...ladderLines('Attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {tact:(isLandBattle&&_nAtkTm>1)?{mult:_nAtkTm,label:`Tactical ${ladderFm(_nAtkTm)}`}:null}));
-    narrative.push(...ladderLines('Defender', _defLabelStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {tact:(prov.terrain!=='sea'&&_nDefTm>1)?{mult:_nDefTm,label:`Tactical ${ladderFm(_nDefTm)}`}:null}));
+    narrative.push(...ladderLines('Attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {grid:_gA.grid, tact:(isLandBattle&&_nAtkTm>1)?{mult:_nAtkTm,label:`Tactical ${ladderFm(_nAtkTm)}`}:null}));
+    narrative.push(...ladderLines('Defender', _defLabelStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {grid:_gD.grid, tact:(prov.terrain!=='sea'&&_nDefTm>1)?{mult:_nDefTm,label:`Tactical ${ladderFm(_nDefTm)}`}:null}));
     narrative.push(`  ${fortuneNarrative(cName,_defLabelStat,atkBaseStr,defBaseStr,_fort)}`);
 
     // Combat result narrative
@@ -17642,8 +17734,7 @@ const BATTLE_ARMY_SPELLS={
     // reduced-effect reserve). This is the ONE source of truth for the front width, used by BOTH
     // the narrative here and the front-line strength computation below, so they can never disagree.
     // mechanic used a fixed 3 — the "battlefront one wide vs three wide" inconsistency Toby saw.)
-    const pvpFront=battleFrontWidth(prov.terrain);
-    narrative.push(`The ${prov.terrain} terrain sets a ${pvpFront}-unit front. Lines behind it fight at ×0.5, ×0.25 and ×0.125.`);
+    const pvpFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides; the report names it with the grid
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(KC_UNIT_CLASS.missile);
@@ -17895,10 +17986,11 @@ const BATTLE_ARMY_SPELLS={
     // lists are the single source of each side's force product — the ladder prints them as they are.
     const _pAtkFM=[{label:'fanaticism',m:atkFanMult},{label:'discoveries',m:atkDiscBonus},{label:'duel morale',m:atkMorale},{label:'consecrated ground',m:_consecPenalty},{label:'sanctuary wards',m:atkSanct},{label:'orders',m:atkOrd},{label:'home ground',m:atkHomeBonusP}];
     const _pDefFM=[{label:'fanaticism',m:defFanMult},{label:"defender's position",m:defBonus},{label:'duel morale',m:defMorale},{label:'discoveries',m:defDiscBonus},{label:'sanctuary wards',m:defSanct},{label:'orders',m:defOrd}];
-    const atkBaseStr=finishSide(atkRows,pvpFront,atkFlankPvp,_pAtkFM);
-    const defBaseStr=finishSide(defRows,pvpFront,defFlankPvp,_pDefFM);
-    { const _a=battleLineNarrative(atkName,atkRows,pvpFront,atkFlankPvp,pvpTerrain); if(_a) narrative.push(_a);
-      const _d=battleLineNarrative(defName,defRows,pvpFront,defFlankPvp,pvpTerrain); if(_d) narrative.push(_d); }
+    const _gA={}, _gD={};
+    const atkBaseStr=finishSide(atkRows,pvpFront,atkFlankPvp,_pAtkFM,{terrain:pvpTerrain,tac:atkTact,enemy:defRows,enemyTac:defTact,out:_gA});
+    const defBaseStr=finishSide(defRows,pvpFront,defFlankPvp,_pDefFM,{terrain:pvpTerrain,tac:defTact,enemy:atkRows,enemyTac:atkTact,out:_gD});
+    narrative.push(battleWidthLine(pvpTerrain,pvpFront));
+    narrative.push(...battleGridLines(defName,_gD.grid,true), ...battleGridLines(atkName,_gA.grid,false));
     // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
     // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
     // Item 9: fortune of battle — one swing, applied as a pair of luck multipliers (see
@@ -17916,8 +18008,8 @@ const BATTLE_ARMY_SPELLS={
     // fleets never get it. The Whole-force list below MUST mirror atkBaseStr / defBaseStr above —
     // the harness asserts lineTotal × Π(m) === baseStr for both sides.
     narrative.push(`📊 **Battle stats:**`);
-    narrative.push(...ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {tact:(pvpIsLand&&atkTactBonus>1)?{mult:tacMulted(atkTactBonus,atk),label:`Tactical ${atkTact} ${ladderFm(tacMulted(atkTactBonus,atk))}`}:null}));
-    narrative.push(...ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {tact:(pvpIsLand&&defTactBonus>1)?{mult:tacMulted(defTactBonus,def),label:`Tactical ${defTact} ${ladderFm(tacMulted(defTactBonus,def))}`}:null}));
+    narrative.push(...ladderLines('Attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {grid:_gA.grid, tact:(pvpIsLand&&atkTactBonus>1)?{mult:tacMulted(atkTactBonus,atk),label:`Tactical ${atkTact} ${ladderFm(tacMulted(atkTactBonus,atk))}`}:null}));
+    narrative.push(...ladderLines('Defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {grid:_gD.grid, tact:(pvpIsLand&&defTactBonus>1)?{mult:tacMulted(defTactBonus,def),label:`Tactical ${defTact} ${ladderFm(tacMulted(defTactBonus,def))}`}:null}));
     narrative.push(`  ${fortuneNarrative(atkName,defName,atkBaseStr,defBaseStr,_fortP)}`);
 
     const won=atkStr>=defStr;
@@ -18017,7 +18109,7 @@ const BATTLE_ARMY_SPELLS={
       const mine=clean(isAtk?atk.armies:def.armies), foe=clean(isAtk?def.armies:atk.armies);
       if(!mine.length) return 0;
       const rows=mine.map(a=>_pvpRow(a,isAtk,mine,foe));
-      const tot=battleLineTotal(rows,pvpFront,isAtk?atkFlankPvp:defFlankPvp);
+      const tot=battleLineTotal(rows,pvpFront,isAtk?atkFlankPvp:defFlankPvp,{terrain:pvpTerrain,tac:isAtk?atkTact:defTact,enemy:foe.map(a=>_pvpRow(a,!isAtk,foe,mine)),enemyTac:isAtk?defTact:atkTact});
       return isAtk ? tot*_atkFanDet*atkDiscBonus*atkMorale*_consecPenalty*atkSanct*atkOrd*atkHomeBonusP
                    : tot*_defFanDet*defBonus*defMorale*defDiscBonus*defSanct*defOrd;
     };
@@ -23543,9 +23635,9 @@ const BATTLE_ARMY_SPELLS={
       let base=0;
       try{ base=armStr(a,cand,align,terrain,{force:pooled,enemyForce:[],isAttacker:!!isAttacker,coastal:_coast}); }catch(e){ base=unitBaseStrength(a); }
       const fly=FLYING_TYPES.has(a.type), sea=SEA_TYPES.has(a.type);
-      return {base:base*(sea?navB:tacB), fly, sea}; // flyers take Tactical (2026-09-23c)
+      return {a, base:base*(sea?navB:tacB), fly, sea}; // flyers take Tactical (2026-09-23c); `a` so the grid can place by type
     });
-    return battleLineTotal(rows, battleFrontWidth(terrain), (cand.player!=null&&hasDisc(cand.player,'sd09')));
+    return battleLineTotal(rows, battleFrontWidth(terrain), (cand.player!=null&&hasDisc(cand.player,'sd09')), {terrain,tac:tact});
   }
   // Choose the leader of a pooled force. `deflt` is whoever would have led before (the mover, or
   // the standing defender); `joiners` are the characters whose troops are folding in. Returns the
@@ -27768,7 +27860,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-2142</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-2205</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
