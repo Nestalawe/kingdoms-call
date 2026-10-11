@@ -464,7 +464,7 @@ const ARMY_COST_MASTER={
   'Gnomish Gyrocopters':3,'Dwarf Ironclads':4,'Ironhoof Rams':3,
   // ── Orcish ──
   'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
-  'Wyvern Riders':4,'Orcish Longships':3,
+  'Wyvern Riders':4,'Orcish Longships':3,'Black Arrows':2,
   // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), and
   // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
 };
@@ -484,7 +484,7 @@ const ARMY_SPEED_MASTER={
   'Gnomish Gyrocopters':4,'Dwarf Ironclads':2,'Ironhoof Rams':3,
   // ── Orcish ──
   'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
-  'Wyvern Riders':5,'Orcish Longships':3,
+  'Wyvern Riders':5,'Orcish Longships':3,'Black Arrows':2,
   // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), added below.
 };
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_SPEED_MASTER[t]=d.speed; });
@@ -675,7 +675,7 @@ function battleRole(row, terrain){
 const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr','Men-at-Arms':'MaA',
   'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr','Stag Riders':'Stag',
   'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr','Ironhoof Rams':'Ram',
-  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Whale Cohort':'Whale',
+  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Black Arrows':'BlkAr','Whale Cohort':'Whale',
   'Stone Giants':'Giant','Forest Ents':'Ent','Giant Eagles':'GEagl','Crimson Rocs':'Roc','Cave Trolls':'Troll','Manticore Pride':'Manti','Basilisk Brood':'Basil','Sea Giants':'SeaGt','Kraken Tentacles':'Krakn','Elder Dragons':'Drago','Titan Warbeasts':'Titan','Leviathan Pods':'Levia',
   'Air Elemental':'AirEl','Fire Elemental':'FirEl','Earth Elemental':'ErtEl','Water Elemental':'WatEl','Darkness Elemental':'DrkEl'};
 function shortUnit(row){ const t=(row&&row.a&&row.a.type)||(row&&row.name)||'unit'; return UNIT_SHORT[t]||String(t).replace(/[^A-Za-z]/g,'').slice(0,5); }
@@ -12860,7 +12860,7 @@ function realmRecruitCost(pl, armyType, baseCost){
 const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeoman Longbows':'Human','Gilded Lances':'Human','Human Garrison':'Human','Men-at-Arms':'Human',
   'Elven Bowmen':'Elven','Forest Wardens':'Elven','Shadow Archers':'Elven','Eagle Riders':'Elven','Elven Galleys':'Elven','Elven Garrison':'Elven','Stag Riders':'Elven',
   'Dwarven Guard':'Dwarven','Ironwood Crossbows':'Dwarven','Mountain Guns':'Dwarven','Dwarf Ironclads':'Dwarven','Gnomish Gyrocopters':'Dwarven','Dwarf Garrison':'Dwarven','Ironhoof Rams':'Dwarven',
-  'Warg Riders':'Orcish','Orc Berserkers':'Orcish','Goblin Horde':'Orcish','Wyvern Riders':'Orcish','Orcish Longships':'Orcish','Orc Garrison':'Orcish'};
+  'Warg Riders':'Orcish','Orc Berserkers':'Orcish','Goblin Horde':'Orcish','Wyvern Riders':'Orcish','Orcish Longships':'Orcish','Black Arrows':'Orcish','Orc Garrison':'Orcish'};
 
 
 
@@ -14073,7 +14073,7 @@ const TERRAIN_MODS={
   // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
   // ×1.1 (Guard, Crossbows, Guns). tests/roster holds every cell to the decided roster.
   plain:{
-    'Men-at-Arms':1.10,'Stag Riders':1.10,'Ironhoof Rams':1.0,
+    'Men-at-Arms':1.10,'Stag Riders':1.10,'Ironhoof Rams':1.0,'Black Arrows':1.0,
     'Shieldwall Levies':1.10,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.10,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':1.0,
     'Shadow Archers':0.90,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
@@ -14088,7 +14088,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   desert:{
-    'Men-at-Arms':1.0,'Stag Riders':1.0,'Ironhoof Rams':0.90,
+    'Men-at-Arms':1.0,'Stag Riders':1.0,'Ironhoof Rams':0.90,'Black Arrows':1.0,
     'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':0.90,
     'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.90,
     'Shadow Archers':0.85,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
@@ -14103,7 +14103,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   forest:{
-    'Men-at-Arms':0.90,'Stag Riders':1.10,'Ironhoof Rams':0.90,
+    'Men-at-Arms':0.90,'Stag Riders':1.10,'Ironhoof Rams':0.90,'Black Arrows':0.90,
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':0.85,
     'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.90,'Ironwood Crossbows':0.90,
@@ -14118,7 +14118,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   jungle:{
-    'Men-at-Arms':0.85,'Stag Riders':1.0,'Ironhoof Rams':0.85,
+    'Men-at-Arms':0.85,'Stag Riders':1.0,'Ironhoof Rams':0.85,'Black Arrows':0.90,
     'Shieldwall Levies':0.85,'Free Lances':0.70,'Gilded Lances':0.70,'Yeoman Longbows':0.80,
     'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.85,'Ironwood Crossbows':0.85,
@@ -14133,7 +14133,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   mountain:{
-    'Men-at-Arms':0.90,'Stag Riders':0.85,'Ironhoof Rams':1.0,
+    'Men-at-Arms':0.90,'Stag Riders':0.85,'Ironhoof Rams':1.0,'Black Arrows':0.90,
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':1.0,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.85,
     'Shadow Archers':1.0,'Dwarven Guard':1.10,'Ironwood Crossbows':1.10,
@@ -14427,7 +14427,7 @@ function seaPenalty(armyType, terrain){
       const has=(st)=>activeItems(heroChar).some(it=>it.effect&&it.effect.stat===st);
       const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons','Stag Riders','Ironhoof Rams']);
       const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers','Men-at-Arms']);
-      const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows']);
+      const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Black Arrows']);
       const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
       const FLEET_I=new Set(KC_UNIT_CLASS.carrier);
       if(has('armyBonus')) str+=2;                                   // Battle Standard

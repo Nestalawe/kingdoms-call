@@ -3183,8 +3183,9 @@ function renderReportView(report){
             const _airNote=_airborne?` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`:'';
             // sea transport — how many hulls this force needs to enter a sea province, and how many
             // it has. Mirrors the engine's getSeaCapability: only the six carrier fleets carry (a
-            // hull each); light foot (levies, archers, gun-crews, garrisons, Goblin Horde, Forest
-            // Wardens, Dwarven Guard, Orc Berserkers) take ½ a hull, everything else on foot takes
+            // hull each); light foot (levies, Men-at-Arms, archers incl. Black Arrows, gun-crews,
+            // garrisons, Goblin Horde, Forest Wardens, Dwarven Guard, Orc Berserkers:
+            // KC_UNIT_CLASS.lightFoot) take ½ a hull, everything else on foot takes
             // a full hull; flyers and sea units need none; Naval mastery (level 8+) halves the
             // need; a fully airborne column needs no ships at all.
             const _CARRIER_UI2=new Set(KC_UNIT_CLASS.carrier);
@@ -6590,7 +6591,7 @@ function updateRaceDesc(){
     Human:'🛡 <strong>Human:</strong> The all-rounders — the widest choice of troops (Levies and sturdy Men-at-Arms, Longbows, the best horse in the game) and the strongest navy (Galleons and fast Corsairs). Their units also <strong>learn twice as fast</strong>, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
     Elven:'🏹 <strong>Elven:</strong> Archers and woodsmen. Elven troops fight at <strong>×1.5 in forest and jungle</strong>, and an Elven unit that would be destroyed often slips away home instead of dying. Swift Eagle Riders scout and strike, and Stag Riders are the one cavalry at home among the trees. Weakest in the open. Feud with Dwarves.',
     Dwarven:'⛏ <strong>Dwarven:</strong> The anvil. Dwarven troops fight at <strong>×1.5 whenever they defend</strong>, and every Dwarven character of a Dwarven realm wears <strong>Mithril Armour</strong> — 2 less damage from every blow and arrow they take. Mountain Guns and armoured Ironclads hit very hard, and Ironhoof Rams are the one cavalry sure-footed in the mountains. Slow to march. Feud with Elves.',
-    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with <strong>18 HP instead of 15</strong> and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
+    Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes (two a turn), Black Arrows, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with <strong>18 HP instead of 15</strong> and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
   };
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
 }
