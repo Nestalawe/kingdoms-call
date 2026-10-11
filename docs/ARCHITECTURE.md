@@ -121,7 +121,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
 - **Unit fates** (`rollUnitFates`, module level beside `disbandLine`). After a battle, each unit of a player's
   force rolls once for its fate (a beaten survivor twice); the four casualty sections (the attacker winning or
   losing against a province's guard, a realm battle's winner and loser) all call it, passing their own
-  thresholds and verbs, and a test passes its own dice.
+  thresholds and verbs, and a test passes its own dice. Each line names whom the company fought
+  (`battleFacedClauses`, a map read from the deploy's grids right after the deploy, before the stay-or-retreat
+  estimate faces the survivors afresh); the losses tally (`battleTallyLine`) reads a line's owner and unit
+  type from the company named first in it, which is always the company's own reference.
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.
