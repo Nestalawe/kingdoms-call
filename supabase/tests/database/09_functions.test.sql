@@ -1,13 +1,14 @@
 -- The database's own functions, as the site's roles see them.
 --
--- kc_transfer_games(game_ids, email) moves games to the account with that email. The site no longer
--- calls it (its GM-portal button was removed on 25 Sept 2026). No account moves a game it doesn't
--- run, and signed-out visitors can't call it.
+-- kc_transfer_games(game_ids, email) used to move games to the account with that email. The site
+-- stopped calling it when its GM-portal button was removed (25 Sept 2026), and it's gone since plan step
+-- P0-30. No account moves a game it doesn't run, signed-out visitors can't call it, and nothing tells a
+-- caller whether an email has an account.
 -- handle_new_user() is the sign-up trigger that gives each new account a profile. It runs only as a
 -- trigger.
 begin;
 \ir ../lib/world.psql
-select plan(6);
+select plan(7);
 
 -- ── nobody moves a game they don't run ───────────────────────────────────────────────────────
 
@@ -22,6 +23,12 @@ select isnt(pg_temp.kc_outcome($$select public.kc_transfer_games(array[pg_temp.k
 select pg_temp.kc_as('anon');
 select throws_ok($$select public.kc_transfer_games(array[pg_temp.kc_game('A')::text], 'gm2@example.test')$$,
   null, null, 'a signed-out visitor can''t call the transfer');
+
+select pg_temp.kc_as('p1');
+select is(
+  pg_temp.kc_outcome($$select public.kc_transfer_games('{}'::text[], 'nobody@example.test')$$),
+  pg_temp.kc_outcome($$select public.kc_transfer_games('{}'::text[], 'p2@example.test')$$),
+  'an unknown email gets the same answer as a known one');
 
 select pg_temp.kc_as('postgres');
 select is((select gm_user_id from public.games where id = pg_temp.kc_game('A')), pg_temp.kc_uid('gm'),
