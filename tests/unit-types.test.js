@@ -7,8 +7,8 @@
 //   1. KC_UNIT_TYPE exists, is non-empty, and every value is one of the five types.
 //   2. Every unit with a base strength (KC_UNIT_BASE_STR: humanoid, fleet, primal, elemental) has a type.
 //   3. The table agrees with the class lists: cavalry ↔ 'cavalry', sea ↔ 'naval', aerial ↔ 'flyer',
-//      missile → 'ranged' (Goblin Horde excepted: infantry that looses spears in the archery step),
-//      'ranged' → missile, garrison → 'infantry'.
+//      missile ↔ 'ranged', garrison → 'infantry'. (Until the army roster of 2026-10-11 the Goblin Horde
+//      was the one exception: infantry that loosed spears in the archery step. The spears are retired.)
 //   4. Both portals demand KC_UNIT_TYPE from the data file (the stamp guard), and each has a helper that
 //      answers 'infantry' for a type it has never heard of (old saves and test fixtures name such types).
 const fs=require('fs'), vm=require('vm');
@@ -33,9 +33,9 @@ const TYPES=['infantry','ranged','cavalry','flyer','naval'];
   all(C.cavalry,'cavalry','KC_UNIT_CLASS.cavalry'); within('cavalry',C.cavalry,'cavalry');
   all(C.sea,'naval','KC_UNIT_CLASS.sea');          within('naval',C.sea,'sea');
   all(C.aerial,'flyer','KC_UNIT_CLASS.aerial');    within('flyer',C.aerial,'aerial');
-  all((C.missile||[]).filter(u=>u!=='Goblin Horde'),'ranged','KC_UNIT_CLASS.missile (Goblin Horde aside)'); within('ranged',C.missile,'missile');
+  all(C.missile,'ranged','KC_UNIT_CLASS.missile'); within('ranged',C.missile,'missile');
   all(C.garrison,'infantry','KC_UNIT_CLASS.garrison');
-  ok(T['Goblin Horde']==='infantry','Goblin Horde is infantry (it looses spears in the archery step, but it is a foot unit)');
+  ok(T['Goblin Horde']==='infantry'&&!(C.missile||[]).includes('Goblin Horde'),'Goblin Horde is plain infantry (its thrown spears were retired with the army roster, 2026-10-11)');
 
   // 4: the portals.
   const gm=fs.readFileSync(sitePath('kingdoms-call-gm-portal.html'),'utf8'), pp=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');

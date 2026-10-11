@@ -1110,11 +1110,9 @@ function unitAbilityMult(army, ctx, terrain){
     const others=Math.max(0,countType(force,'Goblin Horde')-1);
     m*=1+Math.min(0.30,others*0.10);
   }
-  // ORC — Outnumbered and Uncaring: berserkers fight harder the worse the odds get.
-  if(t==='Orc Berserkers' && force.length>0 && enemy.length>force.length){
-    const excess=(enemy.length-force.length)/force.length;
-    m*=1+Math.min(0.30, Math.floor(excess/0.25)*0.10);
-  }
+  // ORC — the Berserkers' old ability (+10% strength per 25% the enemy outnumbered them, max +30%)
+  // was retired with the army roster, 2026-10-11 (Toby); their new one arrives with the unit-abilities
+  // work. tests/roster checks that outnumbered Berserkers fight at ×1.
   // ORC — Reaver Crews: troops put ashore by longships hit the beach at a run.
   if(ctx.amphibious) m*=1.25;
 

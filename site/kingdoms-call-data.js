@@ -1689,7 +1689,7 @@ const KC_UNIT_CLASS={
   carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'],
   primalSea:['Sea Giants','Kraken Tentacles','Leviathan Pods'],
   cavalry:['Free Lances','Gilded Lances','Warg Riders'],
-  missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'],
+  missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns'],   // 2026-10-11 (Toby, the army roster): the Goblin Horde's thrown spears are retired; it is plain infantry
   garrison:['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'],
   lightFoot:['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns'],
   tamedFlyer:['Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'],
@@ -1702,7 +1702,7 @@ const KC_UNIT_CLASS={
 // cavalry ↔ cavalry, sea ↔ naval, aerial ↔ flyer, missile → ranged. A unit missing here counts as
 // infantry (old saves and test fixtures name types that no longer exist). Garrisons are infantry that
 // muster into the province; "light foot" (half a hull) stays a shipping tag, not a type. Goblin Horde is
-// infantry that also looses spears in the archery step, until the roster pass retires the spears.
+// plain infantry: its thrown spears were retired with the army roster (2026-10-11).
 const KC_UNIT_TYPE={
   // Human
   'Shieldwall Levies':'infantry','Free Lances':'cavalry','Yeoman Longbows':'ranged','Gilded Lances':'cavalry','Noble Griffons':'flyer','Galleon Fleet':'naval','Corsair Fleet':'naval','Human Garrison':'infantry',
