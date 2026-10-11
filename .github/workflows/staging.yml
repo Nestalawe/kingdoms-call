@@ -6,7 +6,8 @@
 # Only for PRs from this repo (a fork gets no secrets). The tests run first; nothing is published if they
 # fail. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
 # kc-config.js pointing at the staging database (variables STAGING_SUPABASE_URL, STAGING_SUPABASE_KEY),
-# all in the "staging" environment.
+# all in the "staging" environment. That kc-config.js also names the PR and commit, which every page's
+# footer shows (site/kc-staging-footer.js).
 name: Staging
 
 on:
@@ -52,6 +53,8 @@ jobs:
         env:
           STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
           STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
 
       - name: Publish site/ to the staging repo
         id: publish

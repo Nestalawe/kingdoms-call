@@ -28,6 +28,7 @@ const SUITE=[
   ['sort-comparators',     'tests/sort-comparators.test.js'],
   ['dangerous-paths',      'tests/dangerous-paths.test.js'],
   ['staging',              'tests/staging.test.js'],
+  ['staging-footer',       'tests/staging-footer.test.js'],
   ['migrations',           'tests/migrations.test.js'],
   ['landing-footer',       'tests/landing-footer.test.js'],
   ['boot-pages',           'tests/boot-pages.test.js'],

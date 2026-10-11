@@ -40,6 +40,9 @@ Order inside each portal's `<head>` and body, and why it matters:
 4. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
 5. **The main script.** It checks the data file before anything else (below), creates the Supabase
    client, and calls `init()`, which hides the spinner.
+6. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
+   `kc-config.js` just before it). On staging it adds "Staging · PR #N · abc1234" to the footer; on the live
+   site, whose `kc-config.js` has no `deployed`, it does nothing.
 
 Everything is a classic script, so **top-level `const`/`let` from every script share one global
 scope**. A name declared in two scripts is a `SyntaxError` that stops the page loading. A top-level
@@ -163,7 +166,8 @@ copies each time ([traps.md](traps.md#the-gm-portals-two-build-stamps),
 A second copy of the site at <https://kingdoms-call-staging.github.io/>, with its own Supabase project and
 no real players. A pull request labelled `staging` is tested, then published there with a `kc-config.js`
 pointing at the staging database (`.github/workflows/staging.yml`). One pull request is on staging at a
-time, and its PR comment says so.
+time, and its PR comment says so. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's
+footer says which pull request and commit is on staging, linking to the pull request.
 
 ## Tests
 
