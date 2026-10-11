@@ -130,11 +130,13 @@ function slice(src,name){
   // units reach a realm's capital on its next turn (backfillHomeRosters, which runs at the top of every
   // runTurn, appends every missing land type of the race); every other province keeps the pool it was
   // generated with.
+  // The staged game is handed to the page as data (a window property), never written into code.
   for(const race of R.RACES){
     const home=CELLS_BEFORE.plain[race], other=CELLS_BEFORE.forest[race];
-    const out=g.ev(`(()=>{ const gs={players:[{race:${JSON.stringify(race)},homeProvinceId:0,provinces:[0,1]}],characters:[],
-      world:{cols:2,rows:1,provinces:[{id:0,race:${JSON.stringify(race)},terrain:'plain',row:0,col:0,armyTypes:${JSON.stringify(home)}},
-                                      {id:1,race:${JSON.stringify(race)},terrain:'forest',row:0,col:1,armyTypes:${JSON.stringify(other)}}]}};
+    g.dom.window.__rosterFixture={race,home,other};
+    const out=g.ev(`(()=>{ const f=window.__rosterFixture; const gs={players:[{race:f.race,homeProvinceId:0,provinces:[0,1]}],characters:[],
+      world:{cols:2,rows:1,provinces:[{id:0,race:f.race,terrain:'plain',row:0,col:0,armyTypes:f.home.slice()},
+                                      {id:1,race:f.race,terrain:'forest',row:0,col:1,armyTypes:f.other.slice()}]}};
       try{ backfillHomeRosters(gs); }catch(e){ return {threw:e.message}; } return {home:gs.world.provinces[0].armyTypes,other:gs.world.provinces[1].armyTypes}; })()`);
     const land=R.unitsOf(race,d=>d.type!=='naval');
     ok(out&&!out.threw&&Array.isArray(out.home)&&land.every(u=>out.home.includes(u)),`${race}: a running game's capital gains every land unit of the race, the new one included (got ${out&&(out.threw||(out.home||[]).join(', '))})`);
