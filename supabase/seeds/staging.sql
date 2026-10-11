@@ -52,5 +52,25 @@ IF EXISTS (SELECT 1 FROM auth.users WHERE email = 'overlord@kingdoms-call.test')
   PERFORM public.kc_set_overlord('overlord@kingdoms-call.test', true);
 END IF;
 
+-- 4. Game Masters (P0-32b): the test GM is one (as everyone who ran a game became one when it went live), and
+--    test player 3 has an open offer from the test Overlord, to accept or decline (P0-32c adds the banner).
+INSERT INTO public.game_masters (user_id, offered_at, offered_by, accepted_at)
+SELECT u.id, now(), NULL, now() FROM auth.users u WHERE u.email = 'gm@kingdoms-call.test'
+ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.game_masters (user_id, offered_at, offered_by, accepted_at)
+SELECT u.id, now(), (SELECT id FROM auth.users WHERE email = 'overlord@kingdoms-call.test'), NULL
+FROM auth.users u WHERE u.email = 'player3@kingdoms-call.test'
+ON CONFLICT (user_id) DO NOTHING;
+
+-- 4. Game Masters (P0-32b): the test GM is one (as everyone who ran a game became one when it went live), and
+--    test player 3 has an open offer from the test Overlord, to accept or decline (P0-32c adds the banner).
+INSERT INTO public.game_masters (user_id, offered_at, offered_by, accepted_at)
+SELECT u.id, now(), NULL, now() FROM auth.users u WHERE u.email = 'gm@kingdoms-call.test'
+ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.game_masters (user_id, offered_at, offered_by, accepted_at)
+SELECT u.id, now(), (SELECT id FROM auth.users WHERE email = 'overlord@kingdoms-call.test'), NULL
+FROM auth.users u WHERE u.email = 'player3@kingdoms-call.test'
+ON CONFLICT (user_id) DO NOTHING;
+
 END
 $seed$;
