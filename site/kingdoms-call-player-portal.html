@@ -2589,7 +2589,8 @@ function buildChronicle(log, chars_for_log){
       const flex=opt.tail?'display:flex;align-items:flex-start;gap:6px;':'';
       const inner=opt.tail?`<span style="min-width:0">${text}</span>${tail}`:text;
       const sub=(_ind>0&&!opt.compact)?`margin-left:${Math.min(4,Math.ceil(_ind/2))*12}px;font-size:.76rem;padding-top:2px;padding-bottom:2px;margin-bottom:1px;`:'';
-      if(isStat) return`<div class="log-entry stat" style="${flex}${sub}">${inner}</div>`;
+      const _gridLine=/│/.test(rawText)?'white-space:pre;overflow-x:auto;':'';   // 2026-10-11: a battle-lines grid keeps its columns
+      if(isStat) return`<div class="log-entry stat" style="${flex}${sub}${_gridLine}">${inner}</div>`;
       if(isTally) return`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#f6ecdf;font-weight:600">${inner}</div>`;
       if(isBattleHeader&&!sub) return`<div class="log-entry combat" style="${flex}border-left-width:4px;background:#fdf0f0;margin-top:6px;font-weight:600">${inner}</div>`;
       return`<div class="log-entry ${e.type||''}" style="${flex}${sub}">${inner}</div>`;
@@ -10401,7 +10402,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.11-2142</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.11-2205</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
