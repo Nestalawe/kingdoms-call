@@ -31,7 +31,9 @@ begin
 end;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."kc_transfer_games"(text[], text) TO "anon", "authenticated";
+REVOKE ALL ON FUNCTION "public"."kc_transfer_games"(text[], text) FROM "anon";
+
+GRANT EXECUTE ON FUNCTION "public"."kc_transfer_games"(text[], text) TO "authenticated";
 
 GRANT EXECUTE ON FUNCTION "public"."kc_transfer_games"(text[], text) TO "service_role";
 

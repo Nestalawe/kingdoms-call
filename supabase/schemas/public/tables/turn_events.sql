@@ -31,7 +31,11 @@ CREATE POLICY "gm rw turn_events" ON "public"."turn_events"
   USING (true)
   WITH CHECK (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."turn_events" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."turn_events" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."turn_events" FROM "authenticated";
+
+GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."turn_events" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."turn_events" TO "service_role";
 

@@ -38,7 +38,11 @@ CREATE POLICY "read game_messages" ON "public"."game_messages"
    FROM public.games g
   WHERE (((g.id)::text = game_messages.game_id) AND (g.gm_user_id = auth.uid()))))));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_messages" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."game_messages" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."game_messages" FROM "authenticated";
+
+GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."game_messages" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_messages" TO "service_role";
 

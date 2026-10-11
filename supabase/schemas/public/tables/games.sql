@@ -51,7 +51,11 @@ CREATE POLICY "g3" ON "public"."games"
   TO PUBLIC
   USING (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."games" TO "anon", "authenticated";
+REVOKE ALL ON TABLE "public"."games" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."games" FROM "authenticated";
+
+GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."games" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."games" TO "service_role";
 

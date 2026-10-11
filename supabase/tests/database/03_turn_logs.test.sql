@@ -7,7 +7,7 @@
 -- Also checked: nobody but the game's GM writes or deletes them.
 begin;
 \ir ../lib/world.psql
-select plan(10);
+select plan(11);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -47,6 +47,8 @@ select is(pg_temp.kc_writes($$delete from public.turn_logs where game_id = pg_te
   'another GM can''t delete the game''s logs');
 
 select pg_temp.kc_as('anon');
+select is(pg_temp.kc_count($$select id from public.turn_logs$$), 0,
+  'a signed-out visitor can''t read any log');
 select is(pg_temp.kc_writes($$insert into public.turn_logs (game_id, player_index, turn, entries)
           values (pg_temp.kc_game('A'), 0, 3, '[]')$$), 0,
   'a signed-out visitor can''t write a log');

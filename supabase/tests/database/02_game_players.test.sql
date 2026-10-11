@@ -9,7 +9,7 @@
 -- the game's GM adds or removes realms.
 begin;
 \ir ../lib/world.psql
-select plan(16);
+select plan(17);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -73,6 +73,8 @@ select is(pg_temp.kc_writes($$delete from public.game_players where game_id = pg
   'another GM can''t remove the game''s realms');
 
 select pg_temp.kc_as('anon');
+select is(pg_temp.kc_count($$select id from public.game_players$$), 0,
+  'a signed-out visitor can''t read any slot');
 select is(pg_temp.kc_writes($$insert into public.game_players (game_id, user_id, player_index, display_name)
           values (pg_temp.kc_game('S'), null, 1, 'Nobody')$$), 0,
   'a signed-out visitor can''t join a game');
