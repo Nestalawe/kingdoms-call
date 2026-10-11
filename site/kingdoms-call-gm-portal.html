@@ -455,7 +455,7 @@ const KC_BUILD_STAMP='2026.10.11-2340'; // this build (the footer shows the same
 const ARMY_COST_MASTER={
   // ── Human ──
   'Shieldwall Levies':2,'Free Lances':3,'Yeoman Longbows':2,'Gilded Lances':4,'Human Garrison':1,
-  'Noble Griffons':4,'Galleon Fleet':3,'Corsair Fleet':3,
+  'Noble Griffons':4,'Galleon Fleet':3,'Corsair Fleet':3,'Men-at-Arms':3,
   // ── Elven ──
   'Elven Bowmen':3,'Forest Wardens':2,'Shadow Archers':4,'Elven Garrison':1,
   'Eagle Riders':4,'Elven Galleys':3,'Whale Cohort':3,
@@ -475,7 +475,7 @@ Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_COST_MASTER[t]=d.cost
 const ARMY_SPEED_MASTER={
   // ── Human ──
   'Shieldwall Levies':2,'Free Lances':4,'Yeoman Longbows':2,'Gilded Lances':3,'Human Garrison':1,
-  'Noble Griffons':5,'Galleon Fleet':3,'Corsair Fleet':4,
+  'Noble Griffons':5,'Galleon Fleet':3,'Corsair Fleet':4,'Men-at-Arms':2,
   // ── Elven ──
   'Elven Bowmen':2,'Forest Wardens':3,'Shadow Archers':3,'Elven Garrison':1,
   'Eagle Riders':5,'Elven Galleys':4,'Whale Cohort':5,
@@ -672,7 +672,7 @@ function battleRole(row, terrain){
   return 'foot';
 }
 // Short unit codes for the grid print (5 characters; a type not listed uses its first 5 letters).
-const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr',
+const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr','Men-at-Arms':'MaA',
   'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr',
   'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr',
   'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Whale Cohort':'Whale',
@@ -12809,7 +12809,7 @@ function discSumOf(pl, kind, field, pred){
 }
 const DISC_CLS_SETS={
   cavalry:new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']),
-  infantry:new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']),
+  infantry:new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers','Men-at-Arms']),
   missile:new Set(KC_UNIT_CLASS.missile),
   fleet:new Set(KC_UNIT_CLASS.carrier),
   flyer:new Set(KC_UNIT_CLASS.aerial),
@@ -12857,7 +12857,7 @@ function realmRecruitCost(pl, armyType, baseCost){
   discEffectsOf(pl,'recruitCost').forEach(e=>{ if(!discUnitMatch(e, armyType, true)) return; if(e.delta) c+=e.delta; if(e.factor) c=Math.ceil(c*e.factor); });
   return Math.max(1,c);
 }
-const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeoman Longbows':'Human','Gilded Lances':'Human','Human Garrison':'Human',
+const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeoman Longbows':'Human','Gilded Lances':'Human','Human Garrison':'Human','Men-at-Arms':'Human',
   'Elven Bowmen':'Elven','Forest Wardens':'Elven','Shadow Archers':'Elven','Eagle Riders':'Elven','Elven Galleys':'Elven','Elven Garrison':'Elven',
   'Dwarven Guard':'Dwarven','Ironwood Crossbows':'Dwarven','Mountain Guns':'Dwarven','Dwarf Ironclads':'Dwarven','Gnomish Gyrocopters':'Dwarven','Dwarf Garrison':'Dwarven',
   'Warg Riders':'Orcish','Orc Berserkers':'Orcish','Goblin Horde':'Orcish','Wyvern Riders':'Orcish','Orcish Longships':'Orcish','Orc Garrison':'Orcish'};
@@ -14073,6 +14073,7 @@ const TERRAIN_MODS={
   // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
   // ×1.1 (Guard, Crossbows, Guns). tests/roster holds every cell to the decided roster.
   plain:{
+    'Men-at-Arms':1.10,
     'Shieldwall Levies':1.10,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.10,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':1.0,
     'Shadow Archers':0.90,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
@@ -14087,6 +14088,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   desert:{
+    'Men-at-Arms':1.0,
     'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':0.90,
     'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.90,
     'Shadow Archers':0.85,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
@@ -14101,6 +14103,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   forest:{
+    'Men-at-Arms':0.90,
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':0.85,
     'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.90,'Ironwood Crossbows':0.90,
@@ -14115,6 +14118,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   jungle:{
+    'Men-at-Arms':0.85,
     'Shieldwall Levies':0.85,'Free Lances':0.70,'Gilded Lances':0.70,'Yeoman Longbows':0.80,
     'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.85,'Ironwood Crossbows':0.85,
@@ -14129,6 +14133,7 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   mountain:{
+    'Men-at-Arms':0.90,
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':1.0,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.85,
     'Shadow Archers':1.0,'Dwarven Guard':1.10,'Ironwood Crossbows':1.10,
@@ -14421,7 +14426,7 @@ function seaPenalty(armyType, terrain){
     if(heroChar&&heroChar.items&&heroChar.items.length){
       const has=(st)=>activeItems(heroChar).some(it=>it.effect&&it.effect.stat===st);
       const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']);
-      const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']);
+      const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers','Men-at-Arms']);
       const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows']);
       const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
       const FLEET_I=new Set(KC_UNIT_CLASS.carrier);
