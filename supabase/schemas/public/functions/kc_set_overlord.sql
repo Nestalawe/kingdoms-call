@@ -22,7 +22,9 @@ begin
   if exists (select 1 from public.game_players where user_id = v_user) then
     raise exception 'That account holds a realm in a game. The Overlord never runs or plays games: use a separate login.';
   end if;
-  -- P0-32b adds: refuse an account that's a Game Master (a game_masters row).
+  if exists (select 1 from public.game_masters where user_id = v_user) then
+    raise exception 'That account is a Game Master, or has been offered GM. The Overlord never runs or plays games: use a separate login.';
+  end if;
   select user_id into v_current from public.site_admins;
   if v_current = v_user then
     return 'Overlord already set';

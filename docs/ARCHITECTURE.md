@@ -143,7 +143,37 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | `game_results` | One row per realm when a game ends |
 | `game_records` | Hall of Fame: one precomputed row per finished game |
 | `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. Nothing on the site uses it yet |
+| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. Nothing on the site uses it yet |
 | `game_messages`, `game_message_reads` | Dispatches between players, and each realm's read markers |
+
+### Where a rule is enforced: access rules or database functions
+
+There's no server: every page talks straight to the database with the public key, so any rule that stops a
+player doing something must be enforced **inside the database**. Two tools do that (a third, Supabase Edge
+Functions, would add a server runtime and deploy path, and isn't used):
+
+- **Access rules** (row-level security) on the table, with the page reading or writing it directly. Use them
+  for **plain reads and writes of a row**: who may see which rows, who may insert, update or delete their own.
+  Most tables work this way.
+- **Database functions** that the page calls by name (`rpc`), on a table no API role may write. Use them for
+  **actions with conditions**, which rules express badly:
+  - the check spans other tables (`gm_revoke` is refused while that GM runs an unfinished game);
+  - only one column may change, once, and nothing else (`gm_accept_offer` fills in your own `accepted_at`;
+    rules can't limit *which* columns an update touches without column grants plus a trigger);
+  - the refusal needs to say why. A rule's refusal is always the same "violates row-level security policy";
+    a function can say "That Game Master runs an unfinished game: hand it over first", which the page can show;
+  - it reads what the site otherwise can't (`overlord_accounts()` reads accounts' emails, for the Overlord
+    only).
+
+  One function per action keeps each rule in one place to read and test, and leaves the table no other way
+  in. The examples are the Game Master functions (P0-32b) and `kc_set_overlord()` (P0-32a).
+
+**The price of functions.** They're `security definer`: they run with the owner's rights and bypass the
+access rules, so **each must check its caller itself** (`is_site_admin()`, `auth.uid()`), set
+`search_path TO ''`, revoke Supabase's default grants and grant `execute` only to the roles that need it
+(`supabase/README.md`). A missed check is a real hole, so each has access-rule tests from every point of view
+in `supabase/tests/database/`. Their logic is SQL (plpgsql), not JavaScript, and lives in
+`supabase/schemas/public/functions/`.
 
 **`games.meta`** is a ~1 KB summary of the world (turn mode, which realms are exempt from orders, map
 size, bot set-up, archived flag, …), built by `buildGameMeta` and written by every path that writes
