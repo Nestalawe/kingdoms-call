@@ -46,5 +46,11 @@ SELECT '00000000-0000-4000-8000-00000000a002', 'Staging test: Open Game', u.id, 
 FROM auth.users u WHERE u.email = 'gm@kingdoms-call.test'
 ON CONFLICT (id) DO NOTHING;
 
+-- 3. The test Overlord (P0-32a): overlord@kingdoms-call.test, which is in no game. On the live database the
+--    Overlord is set by .github/workflows/overlord.yml instead.
+IF EXISTS (SELECT 1 FROM auth.users WHERE email = 'overlord@kingdoms-call.test') THEN
+  PERFORM public.kc_set_overlord('overlord@kingdoms-call.test', true);
+END IF;
+
 END
 $seed$;
