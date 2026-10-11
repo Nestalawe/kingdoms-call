@@ -220,3 +220,12 @@ time, so **every later merge waits behind it**, site-only fixes included, and sh
   ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). (Deleting the rejected migration's
   file also works, and CI allows it with a warning, but staging then has to be undone by hand.)
 - Approval requests expire after 30 days.
+
+## A new table is open to signed-out visitors until its migration says otherwise
+
+Supabase gives every new table, sequence and function in `public` to every API role, signed-out visitors
+(`anon`) included, with every privilege (`truncate` too, which ignores the access rules). The schema
+generator doesn't write `grant` or `revoke`, so a generated migration leaves those defaults in place. Write
+the revokes by hand in the same migration ([supabase/README.md](../supabase/README.md#changing-the-structure)).
+`supabase/tests/database/00_privileges.test.sql` checks every table, sequence and function, so a forgotten
+revoke turns the `db` check red.

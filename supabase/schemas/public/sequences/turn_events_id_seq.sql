@@ -1,6 +1,6 @@
 CREATE SEQUENCE "public"."turn_events_id_seq" AS bigint INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1 NO CYCLE;
 
-GRANT SELECT, UPDATE, USAGE ON SEQUENCE "public"."turn_events_id_seq" TO "anon", "authenticated";
+GRANT SELECT, UPDATE, USAGE ON SEQUENCE "public"."turn_events_id_seq" TO "authenticated";
 
 GRANT SELECT, UPDATE, USAGE ON SEQUENCE "public"."turn_events_id_seq" TO "service_role";
 

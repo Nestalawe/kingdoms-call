@@ -15,7 +15,7 @@ begin
 end;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."handle_new_user"() TO PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "public"."handle_new_user"() FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION "public"."handle_new_user"() TO "service_role";
 

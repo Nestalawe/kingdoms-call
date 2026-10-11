@@ -8,7 +8,7 @@ The live game's database structure, under version control since plan step P0-15 
 | `schemas/` | **The source of truth:** the desired structure, one file per table, function or sequence. A table's file holds its columns, its row-level security and its policies together. |
 | `migrations/` | The changes that build it, in order. Generated from `schemas/`, then reviewed. Never edit one that has been applied. |
 | `config.toml` | Settings for a local copy in Docker (`supabase start`). `major_version` must match the live Postgres major version. |
-| `tests/` | The access-rule tests (pgTAP): `database/` has one file per table, `lib/world.psql` the made-up world they share. |
+| `tests/` | The access-rule tests (pgTAP): `database/` has `00_privileges` (what each API role may do at all) and one file per table, `lib/world.psql` the made-up world they share. |
 
 ## Changing the structure
 
@@ -19,9 +19,14 @@ The live game's database structure, under version control since plan step P0-15 
    - data changes (`insert`, `update`, `delete`);
    - a trigger whose function lives in `auth` or `storage`;
    - view ownership, security-invoker settings and column-level privileges, which aren't always kept;
+   - **any change to table, sequence or function privileges** (`grant`, `revoke`): the generator ignores
+     them. Edit the grant lines in `schemas/` too, so they say the same;
    - casts, operators and similar rarely-used object types.
 4. `npx supabase@2.120.0 db reset --local` rebuilds the local copy from the migrations; check it.
 5. Add or change the access-rule tests in `tests/` (every migration has them), in the same pull request.
+   **A new table, sequence or function** gets Supabase's default grants: everything, to signed-out visitors
+   (`anon`) too. Its migration revokes what the site doesn't use (`anon`: nothing, unless a signed-out page
+   reads it; `authenticated`: `select`, `insert`, `update`, `delete` only), or `00_privileges` fails.
 6. The PR states the rollback, and what Toby is approving, in plain words (see `CLAUDE.md`).
 
 **Rules for `migrations/`.** CI's `db` job refuses a pull request that breaks the first two

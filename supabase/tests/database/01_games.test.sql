@@ -8,7 +8,7 @@
 -- own name, and a game is never handed to another account by editing it.
 begin;
 \ir ../lib/world.psql
-select plan(19);
+select plan(20);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -61,6 +61,8 @@ select is(pg_temp.kc_writes($$insert into public.games (name, gm_user_id) values
   'an account can''t create a game in another account''s name');
 
 select pg_temp.kc_as('anon');
+select is(pg_temp.kc_count($$select id from public.games$$), 0,
+  'a signed-out visitor sees no game');
 select is(pg_temp.kc_writes($$update public.games set status = 'complete'$$), 0,
   'a signed-out visitor can''t change any game');
 select is(pg_temp.kc_writes($$insert into public.games (name) values ('Nobody''s game')$$), 0,

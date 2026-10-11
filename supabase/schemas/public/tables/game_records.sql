@@ -38,7 +38,9 @@ CREATE POLICY "read game_records" ON "public"."game_records"
   TO "anon", "authenticated"
   USING (true);
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_records" TO "anon", "authenticated";
+GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."game_records" TO "authenticated";
+
+GRANT SELECT ON TABLE "public"."game_records" TO "anon";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_records" TO "service_role";
 

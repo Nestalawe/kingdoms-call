@@ -16,7 +16,7 @@ CREATE POLICY "own game_message_reads" ON "public"."game_message_reads"
   USING ((user_id = auth.uid()))
   WITH CHECK ((user_id = auth.uid()));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_message_reads" TO "anon", "authenticated";
+GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."game_message_reads" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_message_reads" TO "service_role";
 
