@@ -14,6 +14,7 @@ Tried **before** merging.
 
 1. Add the label **`staging`** to the pull request.
 2. Wait for the comment **"🧪 On staging"** on the pull request (a few minutes: the tests run first).
+   Every page's footer on staging then says **"Staging · PR #N · abc1234"**: check it names this pull request.
 3. Open the staging site and follow the pull request's **"What to try on staging"** checklist.
 4. Works → talk it through if needed, then merge. Doesn't → say what went wrong on the pull request; new
    commits go up to staging by themselves while the label is on.
