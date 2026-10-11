@@ -186,6 +186,26 @@ rulebooks.
   collapse them into the shared table.
 - Never reorder a character's `items` array. Send Item addresses items by index.
 
+## A new army unit is a dozen tables
+
+A unit type is keyed by its name in tables spread over three files, and nothing throws when one is
+missed: a unit with no cost recruits for 2g, one with no speed never marches, one with no names is "the
+Guard", one missing from a terrain block fights at ×1 there. When adding (or renaming) a unit, touch:
+
+- `site/kingdoms-call-data.js`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
+  starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
+  names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
+  `KC_UNIT_BASE_STR`.
+- GM portal: `ARMY_COST_MASTER`, `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
+  `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
+  `TERRAIN_MODS` (inside `runTurn`) and the magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
+- Player portal: `UNIT_ABILITIES` and the race blurbs. Rulebook: the roster, home-roster, move-rate and
+  kinds-of-unit tables and the light-foot list. The intro's list of kinds.
+
+Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and `tests/roster-words.test.js`
+then list every table and sentence that is still missing it. Running games' capitals pick a new unit up on their next
+turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
+
 ## A sort comparator must give the same answer every time
 
 `.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is

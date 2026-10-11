@@ -58,7 +58,7 @@ function slice(src,name){
   ok(same(D.C.cavalry,typed('cavalry')),`KC_UNIT_CLASS.cavalry is exactly the cavalry: ${typed('cavalry').join(', ')} (got ${D.C.cavalry.join(', ')})`);
   ok(same(D.C.missile,typed('ranged')),`KC_UNIT_CLASS.missile is exactly the ranged units (the goblins' spears are retired): got ${D.C.missile.join(', ')}`);
   ok(!D.C.missile.includes('Goblin Horde'),'Goblin Horde no longer looses anything in the archery step');
-  ok(same(D.C.flying,typed('flyer'))&&same(D.C.aerial,typed('flyer')),'KC_UNIT_CLASS.flying and .aerial are exactly the winged riders');
+  ok(same(D.C.flying,typed('flyer'))&&typed('flyer').every(u=>D.C.aerial.includes(u)),'KC_UNIT_CLASS.flying is exactly the winged riders, and .aerial (riders and flying beasts) holds them all');
   ok(typed('naval').every(u=>D.C.sea.includes(u)&&D.C.carrier.includes(u)),'every humanoid fleet is in KC_UNIT_CLASS.sea and .carrier');
   const foot=UNITS.filter(u=>ROSTER[u].type==='infantry'||ROSTER[u].type==='ranged');
   ok(same(D.C.lightFoot,foot),`KC_UNIT_CLASS.lightFoot (half a hull) is exactly the infantry and ranged units: missing ${foot.filter(u=>!D.C.lightFoot.includes(u)).join(', ')||'none'}; extra ${D.C.lightFoot.filter(u=>!foot.includes(u)).join(', ')||'none'}`);
@@ -101,10 +101,11 @@ function slice(src,name){
     const code=G.UNIT_SHORT[u];
     ok(typeof code==='string'&&/^[A-Za-z]{3,5}$/.test(code),`${u}: a UNIT_SHORT code of 3–5 letters for the grid print (got ${JSON.stringify(code)})`);
   }
-  const cls=G.DISC_CLS_SETS||{};
-  ok(cls.cavalry instanceof Set&&typed('cavalry').every(u=>cls.cavalry.has(u)),'DISC_CLS_SETS.cavalry (discovery effects) reaches every cavalry unit, Stag Riders and Ironhoof Rams included');
-  ok(cls.infantry instanceof Set&&['Shieldwall Levies','Men-at-Arms','Dwarven Guard','Orc Berserkers'].every(u=>cls.infantry.has(u)),'DISC_CLS_SETS.infantry reaches Men-at-Arms beside Levies, Guard and Berserkers');
-  ok(cls.missile instanceof Set&&typed('ranged').every(u=>cls.missile.has(u))&&!cls.missile.has('Goblin Horde'),'DISC_CLS_SETS.missile is the ranged units, Black Arrows in and Goblin Horde out');
+  // (The sets were built in the vm's realm, so `instanceof Set` would be false here: ask for .has instead.)
+  const cls=G.DISC_CLS_SETS||{}; const isSet=s=>!!s&&typeof s.has==='function';
+  ok(isSet(cls.cavalry)&&typed('cavalry').every(u=>cls.cavalry.has(u)),'DISC_CLS_SETS.cavalry (discovery effects) reaches every cavalry unit, Stag Riders and Ironhoof Rams included');
+  ok(isSet(cls.infantry)&&['Shieldwall Levies','Men-at-Arms','Dwarven Guard','Orc Berserkers'].every(u=>cls.infantry.has(u)),'DISC_CLS_SETS.infantry reaches Men-at-Arms beside Levies, Guard and Berserkers');
+  ok(isSet(cls.missile)&&typed('ranged').every(u=>cls.missile.has(u))&&!cls.missile.has('Goblin Horde'),'DISC_CLS_SETS.missile is the ranged units, Black Arrows in and Goblin Horde out');
   // The magic items' class sets inside runTurn (Golden Spur, Legionnaire's Mark, Eagle-Eye Pendant).
   const itemSet=name=>{ const m=new RegExp(`const ${name}=new Set\\(\\[[^\\]]*\\]\\);`).exec(gm); if(!m) return null; try{ return vm.runInContext(m[0]+`;${name}`,ctx); }catch(e){ return null; } };
   const CAV_I=itemSet('CAV_I'), INF_I=itemSet('INF_I'), ARCH_I=itemSet('ARCH_I');
