@@ -3,7 +3,8 @@
 // attacks neutral defenders). Both reports must name the front the ground allows (within the
 // terrain's range), draw a 📊 grid line for each side, put the attacker's Longbows in the second line
 // behind the Levies, and give the ladder its Battle-lines stage and (battle lines II) its Who-faces-whom
-// stage, which ends on the strength the header names. A unit test can't do this: the two
+// stage, which ends on the strength the header names, and (battle lines III) say who scouted and that
+// the front it chose is the one drawn. A unit test can't do this: the two
 // battle paths each build their own rows and print their own report, and this checks both.
 // Nothing here depends on who wins: the grid is drawn before the dice.
 const {bootScenario,order,plan}=require('./lib/scenario');
@@ -60,6 +61,10 @@ const RANGE={plain:[6,8],desert:[6,8],sea:[8,10],forest:[4,6],jungle:[4,6],mount
     const face=/Who faces whom: \d+ → \*\*(\d+)\*\* \(/.exec(txt), head=/Attacker \([^)]*\): \d+ units? — strength \*\*(\d+)\*\*/.exec(txt);
     ok(!!face,`${label}: the ladder has its Who-faces-whom stage`);
     ok(!!face&&!!head&&face[1]===head[1],`${label}: the attacker's strength is the figure the facing stage ends on (${head&&head[1]} / ${face&&face[1]})`);
+    // Battle lines III: the report says who scouted and that the front it chose is the one drawn.
+    const sc=/📊 Scouting — (.+?) knows the ground .*?: .*? (takes the front of (\d+) the dice allow|(?:widens|narrows) the front from \d+ to (\d+)) and lines up second/.exec(txt);
+    ok(!!sc,`${label}: the report says who scouted and lines up second`);
+    ok(!!sc&&+(sc[3]||sc[4])===Wd,`${label}: the front the scout chose is the front drawn (${sc&&(sc[3]||sc[4])} / ${Wd})`);
     ok(!/undefined|NaN|\[object Object\]/.test(txt),`${label}: no undefined / NaN in the report`);
   }
   console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);

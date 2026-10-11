@@ -711,15 +711,21 @@ function battleGrid(rows, width, terrain, opts){
   // Flyer cap: the enemy's ground units in line (front and flanks) plus their flyers, never below 2.
   let cap=Infinity, E=opts.enemy;
   if(E){ if(Array.isArray(E)) E=battleGrid(E,W,terrain,{tac:opts.enemyTac}); cap=Math.max(BATTLE_FLYER_CAP_MIN, E.front.filter(Boolean).length+E.flanks.length+E.fly.length); }
-  const units=[]; let total=0;
-  const put=(x,place,col,mult,why)=>{ const g={place,col,mult,why}; x.r._g=g; units.push({row:x.r,place,col,mult,why}); total+=x.s*mult; };
-  frontCells.forEach((x,c)=>{ if(x) put(x,'front',c,x.role==='arc'?BATTLE_RANGED_IN_FRONT:1,x.role==='arc'?'ranged in the front line':'front line'); });
-  secondCells.forEach((x,c)=>{ if(!x) return; const f=frontCells[c];
+  return battleRegrid({W,terrain,front:frontCells,second:secondCells,reserve,flanks,fly,cap:isFinite(cap)?cap:null,mults,
+    frontSet:frontCells.filter(Boolean).map(x=>x.role).sort().join()});   // the kinds of unit the front was deployed with (battleLegal)
+}
+// Score a grid from its cells: every unit's place and multiplier (stamped on the row as `_g`) and the
+// total. battleGrid ends here, and the line-up (battleBestSwap) calls it again after every swap.
+function battleRegrid(g){
+  const W=g.W, mults=g.mults||BATTLE_LINE_MULTS, cap=g.cap==null?Infinity:g.cap; const units=[]; let total=0;
+  const put=(x,place,col,mult,why)=>{ const s={place,col,mult,why}; x.r._g=s; units.push({row:x.r,place,col,mult,why}); total+=x.s*mult; };
+  g.front.forEach((x,c)=>{ if(x) put(x,'front',c,x.role==='arc'?BATTLE_RANGED_IN_FRONT:1,x.role==='arc'?'ranged in the front line':'front line'); });
+  g.second.forEach((x,c)=>{ if(!x) return; const f=g.front[c];
     if(x.role==='arc'&&f&&f.role!=='arc') put(x,'second',c,1,'shooting over the '+shortUnit(f.r)); else put(x,'second',c,mults[1],'second line'); });
-  reserve.forEach((x,k)=>put(x,'reserve',k,k<W?mults[2]:mults[3],k<W?'reserve':'deep reserve'));
-  flanks.forEach((x,k)=>put(x,'flank',k,1,'on the flank'));
-  fly.forEach((x,k)=>put(x,'air',k,k<cap?1:BATTLE_FLYER_BEYOND_CAP,k<cap?'in the air':'in the air, beyond the line'));
-  return {W,terrain,front:frontCells,second:secondCells,reserve,flanks,fly,units,total,cap:isFinite(cap)?cap:null};
+  g.reserve.forEach((x,k)=>put(x,'reserve',k,k<W?mults[2]:mults[3],k<W?'reserve':'deep reserve'));
+  g.flanks.forEach((x,k)=>put(x,'flank',k,1,'on the flank'));
+  g.fly.forEach((x,k)=>put(x,'air',k,k<cap?1:BATTLE_FLYER_BEYOND_CAP,k<cap?'in the air':'in the air, beyond the line'));
+  g.units=units; g.total=total; return g;
 }
 // The old entry point, kept for the estimates that only need a total (the bots, the Strategist's
 // command score, the stay-or-retreat test). opts as battleGrid's, plus `terrain`.
@@ -831,6 +837,75 @@ function battleFacingStage(g){
   const parts=[...groups].map(([k,n])=>n>1?`${k} (${n} units)`:k);
   if(even) parts.push(`${even} even`);
   return parts.join('; ');
+}
+// ── THE SCOUT'S ADVANTAGE AND THE LINE-UP (Battle lines III, 2026-10-11, Toby) ── The side that knows
+// the ground better (the higher exploration of the province; a province's own guard or garrison knows
+// it fully; ties go to the defender) takes the rolled front or one wider or narrower, whichever suits
+// it on the two default deployments, and lines up second: seeing the enemy's line, it may shift its own
+// (up to BATTLE_LINEUP_MAX swaps). Then the commanders take turns, the side that did not scout first,
+// one swap per level of Tactical (counted to 5). A swap exchanges two places in the front or the second
+// line; it is legal only while the front stays one unbroken block holding the same kinds of unit it was
+// deployed with, so a line can be reordered, or a unit traded for one of its own kind behind it, but
+// never thinned or stiffened with archers. Every swap is judged with both sides faced (battleFacing),
+// as the mover would see it, and only an improving swap is made. Nothing here is random.
+const BATTLE_LINEUP_MAX=30;
+function battleScout(explAtk, explDef){ return ((+explAtk||0)>(+explDef||0))?'atk':'def'; }
+function battleWidthChoices(terrain, roll){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return [roll-1,roll,roll+1].filter(w=>w>=r[0]&&w<=r[1]); }
+function battleLegal(g){
+  const occ=g.front.map(Boolean), f=occ.indexOf(true), l=occ.lastIndexOf(true);
+  if(f>=0) for(let c=f;c<=l;c++) if(!occ[c]) return false;
+  return g.front.filter(Boolean).map(x=>x.role).sort().join()===g.frontSet;
+}
+// log(my faced strength / theirs), both grids faced afresh.
+function battleLineRatio(gA, gD, terrain, meIsAtk){ battleFacing(gA,gD,terrain); const r=Math.log(Math.max(gA.face.total,1e-9)/Math.max(gD.face.total,1e-9)); return meIsAtk?r:-r; }
+// The best single legal swap for `me`; makes it and returns it, or returns null when none improves.
+function battleBestSwap(me, them, terrain, meIsAtk){
+  const gA=meIsAtk?me:them, gD=meIsAtk?them:me;
+  const base=battleLineRatio(gA,gD,terrain,meIsAtk); let best=null, gain=1e-9;
+  const cells=[]; for(let c=0;c<me.W;c++){ cells.push(['front',c]); cells.push(['second',c]); }
+  for(let i=0;i<cells.length;i++) for(let j=i+1;j<cells.length;j++){
+    const [ra,ca]=cells[i],[rb,cb]=cells[j], a=me[ra][ca], b=me[rb][cb];
+    if(!a&&!b) continue; if(a&&b&&a.role===b.role&&a.s===b.s) continue;   // nothing to gain from twins
+    me[ra][ca]=b; me[rb][cb]=a;
+    if(battleLegal(me)){ battleRegrid(me); const g=battleLineRatio(gA,gD,terrain,meIsAtk)-base; if(g>gain){ gain=g; best=[i,j]; } }
+    me[ra][ca]=a; me[rb][cb]=b;
+  }
+  if(!best){ battleRegrid(me); battleFacing(gA,gD,terrain); return null; }
+  const [ra,ca]=cells[best[0]],[rb,cb]=cells[best[1]]; const t=me[ra][ca]; me[ra][ca]=me[rb][cb]; me[rb][cb]=t;
+  battleRegrid(me); battleFacing(gA,gD,terrain);
+  return {from:[ra,ca],to:[rb,cb],gain};
+}
+// Deploy both sides. rowsA / rowsD: finished rows (finishSide). o: {terrain, roll, tacA, tacD, flankA,
+// flankD, scout:'atk'|'def'}. Returns {W, gA, gD, scout, lineup, moves:{scout, other}, roll}, both grids
+// faced on their final layout.
+function battleDeploy(rowsA, rowsD, o){
+  const build=w=>({gA:battleGrid(rowsA,w,o.terrain,{flank:o.flankA,tac:o.tacA,enemy:rowsD,enemyTac:o.tacD}), gD:battleGrid(rowsD,w,o.terrain,{flank:o.flankD,tac:o.tacD,enemy:rowsA,enemyTac:o.tacA})});
+  const scoutAtk=o.scout==='atk'; let pick=null;
+  for(const w of battleWidthChoices(o.terrain,o.roll)){ const g=build(w); const r=battleLineRatio(g.gA,g.gD,o.terrain,scoutAtk); if(!pick||r>pick.r+1e-9) pick={w,r,gA:g.gA,gD:g.gD}; }
+  if(!pick){ const g=build(o.roll); pick={w:o.roll,r:0,gA:g.gA,gD:g.gD}; }
+  const W=pick.w, gA=pick.gA, gD=pick.gD, me=scoutAtk?gA:gD, other=scoutAtk?gD:gA;
+  let lineup=0; while(lineup<BATTLE_LINEUP_MAX&&battleBestSwap(me,other,o.terrain,scoutAtk)) lineup++;
+  const capT=t=>Math.max(0,Math.min(BATTLE_FLANK_TAC_CAP,(t|0)));
+  let mo=capT(scoutAtk?o.tacD:o.tacA), ms=capT(scoutAtk?o.tacA:o.tacD); const moves={scout:0,other:0};
+  while(mo>0||ms>0){ let moved=false;
+    if(mo>0){ mo--; if(battleBestSwap(other,me,o.terrain,!scoutAtk)){ moves.other++; moved=true; } }
+    if(ms>0){ ms--; if(battleBestSwap(me,other,o.terrain,scoutAtk)){ moves.scout++; moved=true; } }
+    if(!moved) break; }
+  battleFacing(gA,gD,o.terrain);
+  return {W,gA,gD,scout:o.scout,lineup,moves,roll:o.roll};
+}
+// The report's two lines: who scouted and what front it chose; how many times each line shifted.
+function battleScoutLine(d, atkName, defName, explAtk, explDef){
+  const atk=d.scout==='atk', s=atk?atkName:defName, mine=atk?explAtk:explDef, theirs=atk?explDef:explAtk;
+  const why=mine>theirs?`knows the ground better (explored ${Math.round(mine)}% against ${Math.round(theirs)}%)`:`knows the ground as well as the enemy (${Math.round(mine)}% explored by both), and the defender's claim stands`;
+  const w=d.W===d.roll?`takes the front of ${d.W} the dice allow`:(d.W>d.roll?`widens the front from ${d.roll} to ${d.W}`:`narrows the front from ${d.roll} to ${d.W}`);
+  return `📊 Scouting — ${s} ${why}: ${s} ${w} and lines up second${d.lineup?` (${d.lineup} ${d.lineup===1?'adjustment':'adjustments'})`:''}.`;
+}
+function battleMovesLine(d, atkName, defName){
+  if(!d.moves.other&&!d.moves.scout) return null;
+  const atk=d.scout==='atk', s=atk?atkName:defName, o=atk?defName:atkName;
+  const n=k=>k===0?'holds the line as it stands':k===1?'shifts the line once':k===2?'shifts the line twice':`shifts the line ${k} times`;
+  return `📊 Tactics — ${o} ${n(d.moves.other)}; ${s} ${n(d.moves.scout)}.`;
 }
 // ── STRENGTH LADDER (2026-09-23b) ── The Battle stats block used to print one figure per side plus an
 // "(incl. …)" list of SOME multipliers. Per-unit effects (kinship, terrain, Dwarven Bulwark, the Druid
@@ -15254,8 +15329,8 @@ const BATTLE_ARMY_SPELLS={
     // ── BATTLE LINES ──
     // (The old count-based "N flanking units" line is gone — it described a mechanic that no longer existed.)
     const atkFlankDisc=hasDisc(c.player,'sd09');
-    const terrainFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides
-    const lineWidth=terrainFront;
+    const terrainFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides; the scout may take one wider or narrower (battleDeploy)
+    let lineWidth=terrainFront;
     void atkCount; void defCount;
     // Illusory Terrain: if this province is cloaked by an enemy's illusion, the attacker is
     // disoriented — each unit fights as though caught in the worst ground for its kind (min −15%).
@@ -15290,7 +15365,7 @@ const BATTLE_ARMY_SPELLS={
     // exactly as the attacker's does.
     let navalSkillDef=defHero?effStat(defHero,'naval'):0; if(defHero&&defHero._curseHalveStat==='naval') navalSkillDef=Math.floor(navalSkillDef/2);
     const defNavalFleetBonus=1+(navalSkillDef*0.2);
-    const defLineWidth=terrainFront;
+    let defLineWidth=terrainFront;
     // the defenders' Flanking Tactics come from the province OWNER (a player garrison) or the
     // defending commander's realm — previously hard-coded ×0.5 whatever discoveries they held.
     const defFlankDisc=(prov.owner!=null&&hasDisc(prov.owner,'sd09'))||(!!defHero&&defHero.player!=null&&hasDisc(defHero.player,'sd09'));
@@ -15357,9 +15432,16 @@ const BATTLE_ARMY_SPELLS={
     const _gA={}, _gD={};
     finishSide(armiesWithStr,lineWidth,atkFlankDisc,_nAtkFM,{terrain:prov.terrain,tac:tactSkill,enemy:defsWithStr,enemyTac:defTactLvl,out:_gA});
     finishSide(defsWithStr,defLineWidth,defFlankDisc,_nDefFM,{terrain:prov.terrain,tac:defTactLvl,enemy:armiesWithStr,enemyTac:tactSkill,out:_gD});
-    battleFacing(_gA.grid,_gD.grid,prov.terrain);   // 2026-10-11 Battle lines II: who faces whom, read off the two placed grids
+    // 2026-10-11 Battle lines III: the better-explored side picks the width and lines up second; the
+    // commanders then shift their lines, one swap per Tactical level. The ground's own defenders (a
+    // neutral guard, a standing garrison) know it fully. finishSide's grids are replaced by the deploy's.
+    const _explA=((prov.exploredBy||{})[c.player])||0, _explD=100;
+    const _dep=battleDeploy(armiesWithStr,defsWithStr,{terrain:prov.terrain,roll:terrainFront,tacA:tactSkill,tacD:defTactLvl,flankA:atkFlankDisc,flankD:defFlankDisc,scout:battleScout(_explA,_explD)});
+    _gA.grid=_dep.gA; _gD.grid=_dep.gD; lineWidth=defLineWidth=_dep.W;
     const atkBaseStr=_gA.grid.face.total, defBaseStr=_gD.grid.face.total;
+    const _defNm=defHero?defHero.name:`the defenders of ${prov.name}`;
     narrative.push(battleWidthLine(prov.terrain,lineWidth));
+    narrative.push(battleScoutLine(_dep,cName,_defNm,_explA,_explD)); { const _mv=battleMovesLine(_dep,cName,_defNm); if(_mv) narrative.push(_mv); }
     narrative.push(...battleGridLines(defHero?defHero.name:'Guards',_gD.grid,true), ...battleGridLines(cName,_gA.grid,false));
     // Roll with variance — each side rolls 0 to 70% of the stronger side's POST-multiplier
     // strength. Dice basis unified with the PvP path: both scale the random swing off the FULL
@@ -17827,7 +17909,7 @@ const BATTLE_ARMY_SPELLS={
     // reduced-effect reserve). This is the ONE source of truth for the front width, used by BOTH
     // the narrative here and the front-line strength computation below, so they can never disagree.
     // mechanic used a fixed 3 — the "battlefront one wide vs three wide" inconsistency Toby saw.)
-    const pvpFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides; the report names it with the grid
+    let pvpFront=rollBattleWidth(prov.terrain);   // 2026-10-11: rolled once per battle, shared by both sides; the scout may take one wider or narrower (battleDeploy); the report names it with the grid
 
     // Compute strengths — mirrors combatVsNPC with full bonuses
     const MISSILE_A=new Set(KC_UNIT_CLASS.missile);
@@ -18082,9 +18164,15 @@ const BATTLE_ARMY_SPELLS={
     const _gA={}, _gD={};
     finishSide(atkRows,pvpFront,atkFlankPvp,_pAtkFM,{terrain:pvpTerrain,tac:atkTact,enemy:defRows,enemyTac:defTact,out:_gA});
     finishSide(defRows,pvpFront,defFlankPvp,_pDefFM,{terrain:pvpTerrain,tac:defTact,enemy:atkRows,enemyTac:atkTact,out:_gD});
-    battleFacing(_gA.grid,_gD.grid,pvpTerrain);   // 2026-10-11 Battle lines II: who faces whom, read off the two placed grids
+    // 2026-10-11 Battle lines III: the better-explored side picks the width and lines up second; the
+    // commanders then shift their lines, one swap per Tactical level (a defender without a realm, a
+    // wanderer on its own ground, knows it fully). finishSide's grids are replaced by the deploy's.
+    const _explA=((prov.exploredBy||{})[atk.player])||0, _explD=(def.player==null)?100:(((prov.exploredBy||{})[def.player])||0);
+    const _dep=battleDeploy(atkRows,defRows,{terrain:pvpTerrain,roll:pvpFront,tacA:atkTact,tacD:defTact,flankA:atkFlankPvp,flankD:defFlankPvp,scout:battleScout(_explA,_explD)});
+    _gA.grid=_dep.gA; _gD.grid=_dep.gD; pvpFront=_dep.W;
     const atkBaseStr=_gA.grid.face.total, defBaseStr=_gD.grid.face.total;
     narrative.push(battleWidthLine(pvpTerrain,pvpFront));
+    narrative.push(battleScoutLine(_dep,atkName,defName,_explA,_explD)); { const _mv=battleMovesLine(_dep,atkName,defName); if(_mv) narrative.push(_mv); }
     narrative.push(...battleGridLines(defName,_gD.grid,true), ...battleGridLines(atkName,_gA.grid,false));
     // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
     // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
