@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.11-2142
+// Data file v2026.10.11-2340
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.11-2142';
+const KC_DATA_STAMP='2026.10.11-2340';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1684,15 +1684,15 @@ const SPELL_DEFS_P={
 const KC_UNIT_CLASS={
   flying:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'],
   aerial:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'],
-  creature:['Noble Griffons','Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Eagle Riders'],
-  monster:['Wyvern Riders','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'],
+  creature:['Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort'],   // 2026-10-11 (Toby): the winged riders are soldiers of their race, not beasts
+  monster:['Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'],
   carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'],
   primalSea:['Sea Giants','Kraken Tentacles','Leviathan Pods'],
   cavalry:['Free Lances','Gilded Lances','Warg Riders'],
   missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Goblin Horde'],
   garrison:['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'],
   lightFoot:['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns'],
-  tamedFlyer:['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'],
+  tamedFlyer:['Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'],
   sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'],
 };
 
@@ -1723,9 +1723,9 @@ const KC_UNIT_TYPE={
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;
 // skeletons are exempt. Level 2 is empty since 2026-09-27 (Gyrocopters are machines).
 const KC_DRUID_LEVELS={
-  1:['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison','Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison','Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison','Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison'],
+  1:['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison','Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison','Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison','Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison','Eagle Riders','Noble Griffons','Wyvern Riders'],   // the winged riders: racial troops since 2026-10-11 (Gnomish Gyrocopters, a machine, need nobody)
   2:[],
-  3:['Eagle Riders','Wyvern Riders','Whale Cohort','Noble Griffons'],
+  3:['Whale Cohort'],
   4:['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles'],
   5:['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods'],
 };
@@ -1750,7 +1750,7 @@ const KC_ITEM_UNCAPPED_SKILLS=['melee','archery','white','psychic','illusory','e
 const KC_ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2};
 const KC_ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
 const KC_RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
-const KC_AWAKEN_TIERS={'Giant Eagles':1,'Eagle Riders':1,'Forest Ents':2,'Noble Griffons':2,'Stone Giants':3,'Crimson Rocs':3};
+const KC_AWAKEN_TIERS={'Giant Eagles':1,'Forest Ents':2,'Stone Giants':3,'Crimson Rocs':3};   // 2026-10-11 (Toby): the wild no longer sends Eagle Riders or Noble Griffons
 const KC_BASIC_EXPLORE={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
 const KC_TERRAIN_COLORS={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const KC_PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];

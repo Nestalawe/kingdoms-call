@@ -41,16 +41,19 @@ FOOT.forEach(t=>ok(ctx.discUnitIs('humanoid',t,true),`foot ${t} should be humano
 BEASTS.filter(t=>!FLYERS.includes(t)).forEach(t=>ok(!ctx.discUnitIs('humanoid',t,true),`beast ${t} must NOT be humanoid`));
 FLEETS.forEach(t=>ok(!ctx.discUnitIs('humanoid',t,true),`fleet ${t} must NOT be humanoid`));
 ok(!ctx.discUnitIs('humanoid',{type:'Shieldwall Levies',_isSkeletal:true}),'skeletal must NOT be humanoid');
-// …and they keep their creature/monster identity for the Druid & alignment rules.
-ok(ctx.discUnitIs('creature','Eagle Riders',true)&&ctx.discUnitIs('creature','Noble Griffons',true),'Eagle Riders / Noble Griffons stay Creatures');
-ok(ctx.discUnitIs('monster','Wyvern Riders',true),'Wyvern Riders stays a Monster');
+// 2026-10-11 (Toby, the winged riders are soldiers of their race): they are no longer Creatures or
+// Monsters for the Druid & alignment rules (they were, from 2026-09-27 to 2026-10-11).
+ok(!ctx.discUnitIs('creature','Eagle Riders',true)&&!ctx.discUnitIs('creature','Noble Griffons',true),'Eagle Riders / Noble Griffons are no longer Creatures');
+ok(!ctx.discUnitIs('monster','Wyvern Riders',true),'Wyvern Riders are no longer a Monster');
 // race-keyed discovery effects reach the flyers
 ok(ctx.discUnitMatch({race:'Orcish'},{type:'Wyvern Riders',race:'Orcish'}),'Orcish heritage reaches Wyvern Riders');
 ok(ctx.discUnitMatch({cls:'humanoid',race:'Elven'},{type:'Eagle Riders',race:'Elven'}),'Elven humanoid creed reaches Eagle Riders');
 
-// Item 2 — Gyrocopters need no Druid; the rest of the ladder is untouched.
+// Item 2 — Gyrocopters need no Druid; the rest of the ladder is untouched. 2026-10-11 (Toby): the three
+// winged riders moved from Druid 3 to Druid 1, with the other racial troops; the Whale Cohort keeps 3.
 ok(ctx.getDruidLevel('Gnomish Gyrocopters')===0,'Gyrocopters require Druid 0');
-ok(ctx.getDruidLevel('Eagle Riders')===3&&ctx.getDruidLevel('Wyvern Riders')===3&&ctx.getDruidLevel('Noble Griffons')===3&&ctx.getDruidLevel('Whale Cohort')===3,'Druid 3 tier unchanged');
+ok(ctx.getDruidLevel('Eagle Riders')===1&&ctx.getDruidLevel('Wyvern Riders')===1&&ctx.getDruidLevel('Noble Griffons')===1,'the winged riders require Druid 1, as racial troops');
+ok(ctx.getDruidLevel('Whale Cohort')===3,'Druid 3 tier: the Whale Cohort');
 ok(ctx.getDruidLevel('Cave Trolls')===4&&ctx.getDruidLevel('Elder Dragons')===5,'Druid 4/5 tiers unchanged');
 ok(ctx.getDruidLevel('Shieldwall Levies')===1,'humanoid foot still Druid 1');
 
