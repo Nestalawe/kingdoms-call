@@ -48,6 +48,7 @@ async function boot(name,config){
       if(text!=='Staging · PR #21 · abcdef1') fail(`${name}: the staging line reads "${text}"`);
       else if(href!=='https://github.com/Nestalawe/kingdoms-call/pull/21') fail(`${name}: the staging line links to ${href}`);
       else if(!placed) fail(`${name}: the staging line isn't in the page's footer (or, with none, a fixed stamp)`);
+      else if(dom.window.getComputedStyle(el).textTransform!=='none') fail(`${name}: the staging line is shown as ${dom.window.getComputedStyle(el).textTransform}, which changes the commit's letters`);
       else ok(`${name}: "${text}" → ${href}`);
     }
     dom.window.close();

@@ -14,6 +14,7 @@
   var foot=document.querySelector('footer');
   if(foot){
     a.style.color='inherit';
+    a.style.textTransform='none';   // a footer styled in capitals would show the commit as E3F17F2
     foot.appendChild(document.createElement('br'));
     foot.appendChild(a);
   } else {
