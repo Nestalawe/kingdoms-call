@@ -14064,12 +14064,16 @@ const TERRAIN_MODS={
   // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
   // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
   // bonus (see unitAbilityMult).
+  // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
+  // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
+  // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
+  // ×1.1 (Guard, Crossbows, Guns). tests/roster holds every cell to the decided roster.
   plain:{
-    'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.0,
-    'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.80,
+    'Shieldwall Levies':1.10,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.10,
+    'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':1.0,
     'Shadow Archers':0.90,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
     'Mountain Guns':0.85,'Dwarf Garrison':0.90,'Warg Riders':1.10,
-    'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
+    'Orc Berserkers':1.0,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.0,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
@@ -14080,10 +14084,10 @@ const TERRAIN_MODS={
   },
   desert:{
     'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':0.90,
-    'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.80,
+    'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.90,
     'Shadow Archers':0.85,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
     'Mountain Guns':0.85,'Dwarf Garrison':0.85,'Warg Riders':1.10,
-    'Orc Berserkers':1.05,'Goblin Horde':0.90,'Orc Garrison':0.90,
+    'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':0.90,
     'Elven Garrison':0.85,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
@@ -14094,7 +14098,7 @@ const TERRAIN_MODS={
   },
   forest:{
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':0.85,
-    'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.20,
+    'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.90,'Ironwood Crossbows':0.90,
     'Mountain Guns':0.80,'Dwarf Garrison':0.90,'Warg Riders':0.90,
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
@@ -14108,7 +14112,7 @@ const TERRAIN_MODS={
   },
   jungle:{
     'Shieldwall Levies':0.85,'Free Lances':0.70,'Gilded Lances':0.70,'Yeoman Longbows':0.80,
-    'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.20,
+    'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.85,'Ironwood Crossbows':0.85,
     'Mountain Guns':0.75,'Dwarf Garrison':0.85,'Warg Riders':0.80,
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
@@ -14123,8 +14127,8 @@ const TERRAIN_MODS={
   mountain:{
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':1.0,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.85,
-    'Shadow Archers':1.0,'Dwarven Guard':1.20,'Ironwood Crossbows':1.15,
-    'Mountain Guns':1.20,'Dwarf Garrison':1.15,'Warg Riders':0.80,
+    'Shadow Archers':1.0,'Dwarven Guard':1.10,'Ironwood Crossbows':1.10,
+    'Mountain Guns':1.10,'Dwarf Garrison':1.15,'Warg Riders':0.80,
     'Orc Berserkers':0.90,'Goblin Horde':0.90,'Orc Garrison':0.90,
     'Elven Garrison':0.90,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
