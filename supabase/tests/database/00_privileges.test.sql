@@ -1,8 +1,9 @@
 -- Privileges: what each API role may do at all, before any access rule is asked.
 --
 -- What the game needs:
---   a signed-out visitor reads the Hall of Fame (game_records) and nothing else; every other page signs
---   in before its first query;
+--   a signed-out visitor reads the Hall of Fame (game_records) and asks for the database's version
+--   (kc_db_version(), P0-34: every page asks before its first read), and nothing else; every other page
+--   signs in before its first query;
 --   a signed-in account reads and writes through the access rules (select, insert, update, delete);
 --   sign-up gives a new account its profile; the trigger's function runs as the trigger only, so nobody
 --   needs to call it (a trigger's function isn't checked for EXECUTE when it fires; the test runner can't
@@ -46,8 +47,9 @@ select is((select string_agg(c.relname || ' ' || p, ', ' order by c.relname, p)
 
 select is((select string_agg(f.oid::regprocedure::text, ', ' order by 1)
            from pg_proc f where f.pronamespace = 'public'::regnamespace
-             and has_function_privilege('anon', f.oid, 'EXECUTE')), null,
-  'signed-out visitors can''t call any function');
+             and has_function_privilege('anon', f.oid, 'EXECUTE')
+             and f.oid <> 'public.kc_db_version()'::regprocedure), null,
+  'signed-out visitors can''t call any function except asking for the database''s version');
 
 select is((select string_agg(r, ', ' order by r) from unnest(array['anon','authenticated']) r
            where has_function_privilege(r, 'public.handle_new_user()', 'EXECUTE')), null,
