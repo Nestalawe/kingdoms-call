@@ -107,10 +107,13 @@ message. **When the data file changes, bump its stamps and both portals' minimum
 - **Battle lines** (`battleGrid` and its helpers, module level beside the strength ladder). The front the
   ground allows is rolled once per battle (`rollBattleWidth`: plains and desert 6–8, forest and jungle 4–6,
   mountain 2–4, sea 8–10); each side is placed by unit type into flanks, front, second line and reserve;
-  `battleFacing` then reads the two placed grids against each other (matchups by unit type, wrapping, flank
-  duels and guards, a turned flank) and its totals are the strengths the dice see. Both battle paths and the
-  stay-or-retreat estimate score through grid and facing; the bots' estimates (`battleLineTotal`, at the
-  middle width) through the grid alone. The report prints the grid as 📊 lines, which the portals draw in
+  `battleDeploy` lets the better-explored side (`battleScout`; a province's own defenders know it fully, ties
+  to the defender) take the roll or one either side and line up second, then gives each commander one swap
+  per Tactical level (`battleBestSwap`, every swap judged with both sides faced); `battleFacing` reads the two
+  grids against each other (matchups by unit type, wrapping, flank duels and guards, a turned flank) and its
+  totals are the strengths the dice see. Both battle paths score through deploy and facing, the stay-or-retreat
+  estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
+  grid alone. The report prints the grid as 📊 lines, which the portals draw in
   monospace, and the ladder names every place and matchup.
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).

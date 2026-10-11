@@ -4,7 +4,8 @@
 // be that terrain's range in the engine's table ("6–8 on plains or desert"), every terrain must be
 // claimed somewhere, and the old fixed-width wording (6 / 4 / 3, "four lines", flyers "always ... from
 // the front") must be gone. Battle lines II: every facing multiplier in BATTLE_FACING must appear in the
-// rulebook's "Who faces whom" step. A rule written twice must change twice (docs/traps.md).
+// rulebook's "Who faces whom" step. Battle lines III: both rulebooks say the better-explored side lines up
+// second. A rule written twice must change twice (docs/traps.md).
 const fs=require('fs'), vm=require('vm');
 const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -60,6 +61,12 @@ if(FACING){
   ok(nums.every(n=>typeof n==='number')&&missing.length===0,'every facing multiplier appears in that step'+(missing.length?' — missing: '+missing.map(n=>'×'+n).join(', '):''));
 }
 ok(/\bopposite\b/.test(strip(read('kingdoms-call-rules-intro.html'))),'the intro says each unit fights the enemy opposite it');
+
+// Battle lines III: both rulebooks say the better-explored side lines up second, and the comprehensive
+// one's "The line-up" step ties the swaps to Tactical.
+const lineAt=rules.indexOf('<li><strong>The line-up.</strong>'), lineStep=lineAt<0?'':rules.slice(lineAt,rules.indexOf('</li>',lineAt));
+ok(lineAt>=0&&/lines up second/.test(lineStep)&&/Tactical/.test(lineStep),'the rulebook\'s "How a battle is fought" has its "The line-up" step (lines up second; one swap per level of Tactical)');
+ok(/lines up second/.test(strip(read('kingdoms-call-rules-intro.html'))),'the intro says the better-explored side lines up second');
 
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail?1:0);
