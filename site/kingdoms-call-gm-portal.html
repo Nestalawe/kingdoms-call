@@ -468,18 +468,21 @@ const ARMY_COST_MASTER={
   // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
 };
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_COST_MASTER[t]=d.cost; });
+// 2026-10-11 (Toby, the army roster): land move rates by kind — garrisons 1; line foot, archers and
+// guns 2; heavy horse and the special foot (Wardens, Berserkers, Shadow Archers) 3; light horse 4;
+// the winged riders 5 (Gyrocopters 4). tests/roster holds this table to the decided roster.
 const ARMY_SPEED_MASTER={
   // ── Human ──
-  'Shieldwall Levies':3,'Free Lances':4,'Yeoman Longbows':3,'Gilded Lances':4,'Human Garrison':1,
+  'Shieldwall Levies':2,'Free Lances':4,'Yeoman Longbows':2,'Gilded Lances':3,'Human Garrison':1,
   'Noble Griffons':5,'Galleon Fleet':3,'Corsair Fleet':4,
   // ── Elven ──
-  'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Elven Garrison':1,
+  'Elven Bowmen':2,'Forest Wardens':3,'Shadow Archers':3,'Elven Garrison':1,
   'Eagle Riders':5,'Elven Galleys':4,'Whale Cohort':5,
   // ── Dwarven ──
-  'Dwarven Guard':2,'Ironwood Crossbows':2,'Mountain Guns':1,'Dwarf Garrison':1,
+  'Dwarven Guard':2,'Ironwood Crossbows':2,'Mountain Guns':2,'Dwarf Garrison':1,
   'Gnomish Gyrocopters':4,'Dwarf Ironclads':2,
   // ── Orcish ──
-  'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,
+  'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
   'Wyvern Riders':5,'Orcish Longships':3,
   // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), added below.
 };
