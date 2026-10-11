@@ -126,6 +126,20 @@ function slice(src,name){
   ok(bers===1,`outnumbered Berserkers get no multiplier any more (got ${bers})`);
   const gob=g.ev(`(()=>{ const f=[{type:'Goblin Horde'},{type:'Goblin Horde'},{type:'Goblin Horde'}]; return unitAbilityMult(f[0],{force:f,enemyForce:[{type:'Shieldwall Levies'}]},'plain'); })()`);
   ok(near(gob,1.2),`Sheer Numbers still stands: three Goblin Hordes together fight at ×1.2 (got ${gob})`);
+  // Ruling (Toby, 2026-10-11, "Option 1 is fine, leave it capitals only"): in a running game the new
+  // units reach a realm's capital on its next turn (backfillHomeRosters, which runs at the top of every
+  // runTurn, appends every missing land type of the race); every other province keeps the pool it was
+  // generated with.
+  for(const race of R.RACES){
+    const home=CELLS_BEFORE.plain[race], other=CELLS_BEFORE.forest[race];
+    const out=g.ev(`(()=>{ const gs={players:[{race:${JSON.stringify(race)},homeProvinceId:0,provinces:[0,1]}],characters:[],
+      world:{cols:2,rows:1,provinces:[{id:0,race:${JSON.stringify(race)},terrain:'plain',row:0,col:0,armyTypes:${JSON.stringify(home)}},
+                                      {id:1,race:${JSON.stringify(race)},terrain:'forest',row:0,col:1,armyTypes:${JSON.stringify(other)}}]}};
+      try{ backfillHomeRosters(gs); }catch(e){ return {threw:e.message}; } return {home:gs.world.provinces[0].armyTypes,other:gs.world.provinces[1].armyTypes}; })()`);
+    const land=R.unitsOf(race,d=>d.type!=='naval');
+    ok(out&&!out.threw&&Array.isArray(out.home)&&land.every(u=>out.home.includes(u)),`${race}: a running game's capital gains every land unit of the race, the new one included (got ${out&&(out.threw||(out.home||[]).join(', '))})`);
+    ok(out&&!out.threw&&Array.isArray(out.other)&&out.other.join()===other.join(),`${race}: a province that is not the capital keeps the pool it was generated with (got ${out&&(out.threw||(out.other||[]).join(', '))})`);
+  }
   g.dom.window.close();
   const p=await boot('kingdoms-call-player-portal.html');
   ok(p.errors.length===0,'the player portal boots'+(p.errors.length?' — '+p.errors[0].split('\n')[0]:''));
