@@ -44,6 +44,8 @@ const SUITE=[
   ['unit-types',           'tests/unit-types.test.js'],
   ['volley-thirty',        'tests/volley-thirty.test.js'],
   ['battle-grid',          'tests/battle-grid.test.js'],
+  ['battle-facing',        'tests/battle-facing.test.js'],
+  ['battle-scout',         'tests/battle-scout.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
   ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],
