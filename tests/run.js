@@ -42,6 +42,7 @@ const SUITE=[
   ['druid-and-war-spoils', 'tests/druid-and-war-spoils.test.js'],
   ['unit-types',           'tests/unit-types.test.js'],
   ['battle-grid',          'tests/battle-grid.test.js'],
+  ['battle-facing',        'tests/battle-facing.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
   ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],

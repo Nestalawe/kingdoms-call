@@ -2,7 +2,8 @@
 // one real turn with a realm battle (a king attacks a rival's province) and a province battle (a hero
 // attacks neutral defenders). Both reports must name the front the ground allows (within the
 // terrain's range), draw a 📊 grid line for each side, put the attacker's Longbows in the second line
-// behind the Levies, and give the ladder its Battle-lines stage. A unit test can't do this: the two
+// behind the Levies, and give the ladder its Battle-lines stage and (battle lines II) its Who-faces-whom
+// stage, which ends on the strength the header names. A unit test can't do this: the two
 // battle paths each build their own rows and print their own report, and this checks both.
 // Nothing here depends on who wins: the grid is drawn before the dice.
 const {bootScenario,order,plan}=require('./lib/scenario');
@@ -54,7 +55,11 @@ const RANGE={plain:[6,8],desert:[6,8],sea:[8,10],forest:[4,6],jungle:[4,6],mount
     if(['plain','desert'].includes(terr)) ok(new RegExp('flanks: .*'+open).test(atkFirst||''),`${label} (${terr}): the attacker's cavalry ride the flank`);
     else ok(!/flanks:/.test(atkFirst||'')&&new RegExp(open).test(txt),`${label} (${terr}): no flank on rough ground; the cavalry stand in the line`);
     const widthCells=(atkFirst||'').split('│')[1]||''; ok(widthCells.trim().split(/\s+/).length===Wd,`${label}: the front line prints exactly ${Wd} cells`);
-    ok(new RegExp('Battle lines \\(front of '+Wd+'\\): \\d+ → \\*\\*\\d+\\*\\* \\(').test(txt),`${label}: the ladder has its Battle-lines stage for a front of ${Wd}`);
+    ok(new RegExp('Battle lines \\(front of '+Wd+'\\): \\d+ → (\\*\\*)?\\d+(\\*\\*)? \\(').test(txt),`${label}: the ladder has its Battle-lines stage for a front of ${Wd}`);
+    // Battle lines II: the facing stage follows, and the attacker's strength is the figure it ends on.
+    const face=/Who faces whom: \d+ → \*\*(\d+)\*\* \(/.exec(txt), head=/Attacker \([^)]*\): \d+ units? — strength \*\*(\d+)\*\*/.exec(txt);
+    ok(!!face,`${label}: the ladder has its Who-faces-whom stage`);
+    ok(!!face&&!!head&&face[1]===head[1],`${label}: the attacker's strength is the figure the facing stage ends on (${head&&head[1]} / ${face&&face[1]})`);
     ok(!/undefined|NaN|\[object Object\]/.test(txt),`${label}: no undefined / NaN in the report`);
   }
   console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);
