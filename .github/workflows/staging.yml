@@ -57,6 +57,7 @@ jobs:
         id: publish
         env:
           DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -64,8 +65,9 @@ jobs:
           if [ -z "$DEPLOY_KEY" ]; then echo "::error title=staging::The staging environment has no STAGING_DEPLOY_KEY secret."; exit 1; fi
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/staging_key && chmod 600 ~/.ssh/staging_key
-          # GitHub's SSH host keys, from its own published list (over HTTPS), not trusted on first use.
-          curl -fsSL https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' > ~/.ssh/known_hosts
+          # GitHub's SSH host keys, from its own published list (over HTTPS), not trusted on first use. Signed in
+          # with the job's token: unsigned calls share a small hourly limit with other jobs and fail with 403.
+          curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/meta | jq -r '.ssh_keys[] | "github.com " + .' > ~/.ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/staging_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
           git clone --depth 1 git@github.com:Kingdoms-Call-Staging/kingdoms-call-staging.github.io.git staging-repo
           prev=$(jq -r '.pr // empty' staging-repo/staging.json 2>/dev/null || true)

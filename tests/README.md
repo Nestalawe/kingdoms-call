@@ -57,6 +57,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `stamps` | new | 0 | ✅ pass | The stamps written twice agree: the data file's `// Data file v…` comment and `KC_DATA_STAMP`; the GM portal's footer and `KC_BUILD_STAMP`, with no other `GM Portal v…` above the footer |
 | `config` | new | 0 | ✅ pass | The database address and public key live only in `site/kc-config.js`; no page types them in, and every page that creates the database client loads `kc-config.js` first |
 | `sql-banners` | new | 0 | ✅ pass | The GM portal carries no SQL for the GM to paste: no `KC_*_SQL` string, no "SQL Editor" instruction, no paste box (P0-17: the database changes only through migrations) |
+| `workflow-api-auth` | new | 0 | ✅ pass | Every call a workflow makes to GitHub's API is signed in with the job's token (unsigned calls share a small hourly limit and fail at random with 403, as the staging deploy did on 2026-10-10) |
 | `sort-comparators` | new | 0 | ✅ pass | No `.sort(...)` in the site uses a random or argument-less comparator (its result, and how many random numbers it uses, would depend on the browser's JavaScript engine); shuffles go through `shuffleP` |
 | `dangerous-paths` | new | 1 | ✅ pass | Which changed files count as dangerous (globs, case ignored, renames by their old name too) and what the warning comment says |
 | `staging` | new | 1 | ✅ pass | The staging deploy's logic: the `kc-config.js` it writes (staging address only, never the live one, no stray characters) and its "on staging" / "replaced by" comments |
