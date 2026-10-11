@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.08-2159
+// Data file v2026.10.11-2142
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.08-2159';
+const KC_DATA_STAMP='2026.10.11-2142';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1694,6 +1694,28 @@ const KC_UNIT_CLASS={
   lightFoot:['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns'],
   tamedFlyer:['Eagle Riders','Noble Griffons','Wyvern Riders','Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'],
   sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'],
+};
+
+// Unit TYPE (2026-10-11, Toby): the ONE word every player-facing table, blurb and report uses for a
+// unit — infantry, ranged, cavalry, flyer or naval. The engine's rules keep running on the class lists
+// above (their order is data); this is the vocabulary, and tests/unit-types holds the two in agreement:
+// cavalry ↔ cavalry, sea ↔ naval, aerial ↔ flyer, missile → ranged. A unit missing here counts as
+// infantry (old saves and test fixtures name types that no longer exist). Garrisons are infantry that
+// muster into the province; "light foot" (half a hull) stays a shipping tag, not a type. Goblin Horde is
+// infantry that also looses spears in the archery step, until the roster pass retires the spears.
+const KC_UNIT_TYPE={
+  // Human
+  'Shieldwall Levies':'infantry','Free Lances':'cavalry','Yeoman Longbows':'ranged','Gilded Lances':'cavalry','Noble Griffons':'flyer','Galleon Fleet':'naval','Corsair Fleet':'naval','Human Garrison':'infantry',
+  // Elven
+  'Elven Bowmen':'ranged','Forest Wardens':'infantry','Shadow Archers':'ranged','Eagle Riders':'flyer','Elven Galleys':'naval','Elven Garrison':'infantry',
+  // Dwarven
+  'Dwarven Guard':'infantry','Ironwood Crossbows':'ranged','Mountain Guns':'ranged','Gnomish Gyrocopters':'flyer','Dwarf Ironclads':'naval','Dwarf Garrison':'infantry',
+  // Orcish
+  'Warg Riders':'cavalry','Orc Berserkers':'infantry','Goblin Horde':'infantry','Wyvern Riders':'flyer','Orcish Longships':'naval','Orc Garrison':'infantry',
+  // Creatures and Monsters (the winged beasts are flyers: they cross the sea on their own wings)
+  'Whale Cohort':'naval','Stone Giants':'infantry','Forest Ents':'infantry','Giant Eagles':'flyer','Crimson Rocs':'flyer','Cave Trolls':'infantry','Manticore Pride':'flyer','Basilisk Brood':'infantry','Sea Giants':'naval','Kraken Tentacles':'naval','Elder Dragons':'flyer','Titan Warbeasts':'infantry','Leviathan Pods':'naval',
+  // Summoned elementals (they stand in the line like foot)
+  'Air Elemental':'infantry','Fire Elemental':'infantry','Earth Elemental':'infantry','Water Elemental':'infantry','Darkness Elemental':'infantry',
 };
 
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his

@@ -59,7 +59,8 @@ scope**. A name declared in two scripts is a `SyntaxError` that stops the page l
 - **Content tables** (`ALL_MAGIC_ITEMS_P`, `MONSTERS_P`, `PRIMAL_ARMY_DEFS_P`, `MASTERY_UNLOCKS`, …):
   plain literals. Nothing in the file may reference portal code.
 - **Shared rule tables** (the block headed `SHARED RULE TABLES`): every `KC_*` table, e.g.
-  `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_DRUID_LEVELS`, `KC_UNIT_BASE_STR`, `KC_SKILLS`,
+  `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_UNIT_TYPE` (each unit's one type word: infantry,
+  ranged, cavalry, flyer or naval), `KC_DRUID_LEVELS`, `KC_UNIT_BASE_STR`, `KC_SKILLS`,
   `KC_SEASONS`, `KC_GRAND_DESIGNS`. Until 27 Sept each lived in two to eleven hand-typed copies,
   several of which had drifted. Now each portal builds its own local copy **from** these
   (`new Set(KC_UNIT_CLASS.creature)`, `KC_SEASONS.slice()`, `{...KC_SKILL_LABELS}`), so no consumer can
