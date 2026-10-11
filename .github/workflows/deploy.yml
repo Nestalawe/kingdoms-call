@@ -1,14 +1,15 @@
-# On main: test, then bring the databases up to date, then publish site/ to GitHub Pages (no build step,
+# On main: test, then bring the live database up to date, then publish site/ to GitHub Pages (no build step,
 # no Jekyll). Runs on a push to main, or by hand; the jobs that change anything refuse any other branch, so a
 # manual run from a branch only tests. Needs Settings → Pages → Source set to "GitHub Actions".
 #
-# The order (P0-17): test → migrate staging → migrate production → deploy site.
+# The order (P0-17, P0-33): test → migrate production → deploy site. Staging isn't touched: each pull request
+# was tried there, on a database rebuilt for it, before it merged (staging.yml).
 # - "migrations" lists the migrations added since the commit that's live on the site, with their SQL, in its
-#   job summary. With none, both migrate jobs are skipped and the site deploys after the tests.
+#   job summary. With none, the migrate job is skipped and the site deploys after the tests.
 # - "migrate-production" runs in the "production" environment: it waits for Toby's approval (Review
 #   deployments), soon after the daily backup. If he rejects it, or any step fails, the site doesn't deploy.
-# - Both migrate jobs apply only what "migrations" listed, and refuse anything else
-#   (.github/scripts/migrations.js). Secrets: STAGING_DB_URL ("staging"), SUPABASE_DB_URL ("production").
+# - It applies only what "migrations" listed, and refuses anything else (.github/scripts/migrations.js).
+#   Secret: SUPABASE_DB_URL ("production").
 name: Deploy
 
 on:
@@ -55,34 +56,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-  migrate-staging:
-    needs: [ci, migrations]
-    if: needs.migrations.outputs.changed == 'true' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    environment: staging
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-
-      - uses: supabase/setup-cli@v3
-        with:
-          version: 2.120.0
-
-      - run: node .github/scripts/migrations.js apply staging
-        env:
-          DB_URL: ${{ secrets.STAGING_DB_URL }}
-          EXPECTED: ${{ needs.migrations.outputs.expected }}
-
   migrate-production:
-    needs: [migrations, migrate-staging]
+    needs: [ci, migrations]
     if: needs.migrations.outputs.changed == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -109,7 +84,7 @@ jobs:
 
   # Runs after the tests, and after production is migrated whenever there was something to migrate.
   deploy:
-    needs: [ci, migrations, migrate-staging, migrate-production]
+    needs: [ci, migrations, migrate-production]
     if: >-
       !cancelled() && github.ref == 'refs/heads/main'
       && needs.ci.result == 'success' && needs.migrations.result == 'success'

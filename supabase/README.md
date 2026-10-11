@@ -8,6 +8,7 @@ The live game's database structure, under version control since plan step P0-15 
 | `schemas/` | **The source of truth:** the desired structure, one file per table, function or sequence. A table's file holds its columns, its row-level security and its policies together. |
 | `migrations/` | The changes that build it, in order. Generated from `schemas/`, then reviewed. Never edit one that has been applied. |
 | `config.toml` | Settings for a local copy in Docker (`supabase start`). `major_version` must match the live Postgres major version. |
+| `seeds/staging.sql` | Staging's made-up games, for its test accounts. Run on staging only, each time a pull request goes on it ([docs/staging.md](../docs/staging.md)); never locally or in CI. |
 | `tests/` | The access-rule tests (pgTAP): `database/` has `00_privileges` (what each API role may do at all) and one file per table, `lib/world.psql` the made-up world they share. |
 
 ## Changing the structure
@@ -31,6 +32,9 @@ The live game's database structure, under version control since plan step P0-15 
    signed-out page reads it). The generator then writes the matching migration; `00_privileges` fails if it's
    missing.
 6. The PR states the rollback, and what Toby is approving, in plain words (see `CLAUDE.md`).
+7. A new table that testers will want rows in on staging gets made-up ones in `seeds/staging.sql`, inside its
+   `DO` block (the CLI runs the file as one statement), written so a second run changes nothing
+   (`ON CONFLICT DO NOTHING`). Then label the pull request `staging` and try it there before merging.
 
 **Rules for `migrations/`.** CI's `db` job refuses a pull request that breaks the first two
 (`.github/scripts/migrations.js pr-check`):
@@ -54,7 +58,8 @@ refuses a pull request that changes both.
 - the site changes straight after each merge;
 - a player who opened the game yesterday still has yesterday's page in their tab, and a GM's tab keeps
   running turns with the page it loaded;
-- a pull request on staging runs against the staging database, which only gets a change once it's merged.
+- a site pull request put on staging without the database change it needs (not stacked on it) meets a
+  database without it.
 
 So for a while, new pages meet the old database, or old pages meet the new one. If either needs the other,
 something breaks in that window. Usually it's quiet (a list that doesn't load), but it can be a turn that
@@ -65,8 +70,8 @@ column of `game_players`:
 1. **The database pull request** adds the empty column, plus the tests that say who can set it. Nothing on
    the site uses it yet, so it can go live whenever Toby approves, and nobody notices.
 2. **The site pull request** shows and sets the banner. It checks the column is there first; if it isn't,
-   the banner simply doesn't appear. Because the database change is already merged, staging has the column,
-   so Toby tries the real thing there before it's merged.
+   the banner simply doesn't appear. Its branch is made from the database pull request's branch
+   ("stacked"), so on staging it has the column: Toby tries the whole feature before either is merged.
 3. **Removing something** (an old column, an old access rule) goes **last**, in its own pull request, once
    no page in use reads it any more. That's expand, then contract.
 
@@ -82,19 +87,23 @@ column of `game_players`:
 
 ## How a migration goes live
 
-Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate staging → migrate production →
-deploy the site** (plan step P0-17).
+**Before merging,** the migration is tried on staging: labelling the pull request `staging` rebuilds the
+staging database from `main`'s migrations, then applies the pull request's own on top, on a database that
+already holds made-up games (plan step P0-33; [docs/staging.md](../docs/staging.md#trying-a-pull-request)).
+A migration that fails there is fixed in its own pull request, before anything is merged.
+
+Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate production → deploy the site**
+(plan steps P0-17, P0-33). Staging isn't touched.
 1. **`migrations`** lists the migrations added since the commit that's live on the site, with their SQL and
    their pull requests, in the run's summary. With none, the site deploys straight after the tests.
-2. **`migrate-staging`** applies them to the staging database.
-3. **`migrate-production`** waits for **Toby's approval** (the run page's **Review deployments** button,
-   in the `production` environment). **This wait is when the change is tried on staging** (below). He
-   approves soon after the daily backup (about 19:35 UTC), once it's listed in Supabase → Database →
-   Backups.
-4. **`deploy`** publishes the site, only if production was migrated. If Toby rejects it, or anything fails,
+2. **`migrate-production`** waits for **Toby's approval** (the run page's **Review deployments** button,
+   in the `production` environment). The change was tried on staging before merging, so the approval is
+   about timing: he approves soon after the daily backup (about 19:35 UTC), once it's listed in Supabase →
+   Database → Backups.
+3. **`deploy`** publishes the site, only if production was migrated. If Toby rejects it, or anything fails,
    the site doesn't deploy, and the next push to `main` (or a manual run of Deploy) asks again.
 
-Both migrate jobs apply only the migrations listed in step 1, and refuse to touch a database that has
+`migrate-production` applies only the migrations listed in step 1, and refuses to touch a database that has
 migrations the repo doesn't, or that is missing older ones. Nobody applies a migration from a laptop to the
 live database, and nobody pastes SQL into its SQL Editor.
 
@@ -105,8 +114,8 @@ live database, and nobody pastes SQL into its SQL Editor.
 records the baseline as applied without running it: the live structure is the baseline (P0-15). A database
 with no history and no game tables is refused: the pipeline never builds one from nothing.
 
-**Trying a migration on staging** happens in that wait: the staging database already has it, the live one
-doesn't yet. The steps, for Toby and agents alike, are in [docs/staging.md](../docs/staging.md#a-database-change-tables-columns-access-rules).
+**Staging's database** is never migrated by this pipeline: it's emptied and rebuilt for each pull request put
+on it (`.github/scripts/migrations.js reset staging`), so it can hold an unmerged pull request's migrations.
 Nobody applies a migration by hand.
 
 ## The access-rule tests

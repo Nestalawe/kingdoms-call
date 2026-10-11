@@ -69,9 +69,9 @@ down to ~1 KB after the fix).
 
 ## A new column must be optional at the write site
 
-Since P0-17 the live site deploys only after its migration, but a pull request on staging runs against the
-staging database before its migration is applied there (that happens on merge), and old copies of the
-site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
+Since P0-17 the live site deploys only after its migration, but a site pull request labelled `staging`
+without the database pull request it needs (not stacked on it) meets a staging database without the
+change, and old copies of the site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
 prefer the new column and fall back to the old source. Prove it with a test that hides the column
 (`MISSING_COLS` in `tests/lib/stub-db.js`), as `tests/meta-missing-turn.test.js` does. This is why database
@@ -218,7 +218,7 @@ time, so **every later merge waits behind it**, site-only fixes included, and sh
   migration is still new compared with the live site. So follow a rejection quickly with a pull request
   whose migration undoes it: production then gets both in order and ends up unchanged
   ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). (Deleting the rejected migration's
-  file also works, and CI allows it with a warning, but staging then has to be undone by hand.)
+  file also works, and CI allows it with a warning; staging is rebuilt for each pull request anyway.)
 - Approval requests expire after 30 days.
 
 ## A new table is open to signed-out visitors until its migration says otherwise

@@ -3,7 +3,7 @@
 // before approving production.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE}=require('../.github/scripts/migrations.js');
+const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE,resetGuard,connectHint,resetSummary}=require('../.github/scripts/migrations.js');
 
 const D='supabase/migrations/';
 const BASE='20261010054853', NEXT='20261012000000', LATER='20261013000000';
@@ -88,7 +88,8 @@ test('Toby\'s summary lists each migration, its pull request, the order, the bac
     {file:`${D}${NEXT}_tighten.sql`,pr:31,sql:'revoke all on public.x from anon;\n-- ```fence```'},
   ]});
   assert.match(s,new RegExp(`${NEXT}_tighten\\.sql\` from #31`));
-  assert.match(s,/staging first, then production/);
+  assert.match(s,/production once Toby approves it, then the site/);
+  assert.doesNotMatch(s,/staging first/,'staging is no longer migrated on merge (P0-33)');
   assert.ok(s.includes(BACKUP_NOTE));
   assert.match(s,/revoke all on public\.x from anon;/);
   assert.equal(s.match(/```/g).length,2,'the SQL can\'t close its own code block');
@@ -124,4 +125,50 @@ test('a pull request changes the database or the site, never both',()=>{
   assert.match(msg,/1 migration file\) and the site \(2 files\)/);
   assert.match(msg,/Split it in two: first the database change/);
   assert.match(msg,/supabase\/README\.md#database-and-site-changes-go-separately/);
+});
+
+// ---- Staging follows the pull request (P0-33): `reset staging` rebuilds the staging database ----
+
+const STAGING_REF='yquaxxzdepqquitlgxkh', LIVE='yymsnsrpggpgmzgcfrys';
+const STAGING_URL=`https://${STAGING_REF}.supabase.co`;
+const pooler=ref=>`postgresql://postgres.${ref}:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres`;
+const direct=ref=>`postgresql://postgres:pw@db.${ref}.supabase.co:5432/postgres`;
+
+test('a reset rebuilds only the staging database, named by its own address',()=>{
+  assert.equal(resetGuard({target:'staging',dbUrl:pooler(STAGING_REF),stagingUrl:STAGING_URL}),STAGING_REF);
+  assert.equal(resetGuard({target:'staging',dbUrl:direct(STAGING_REF),stagingUrl:STAGING_URL}),STAGING_REF);
+});
+
+test('a reset refuses any target but staging',()=>{
+  for(const target of ['production','live','',undefined])
+    assert.throws(()=>resetGuard({target,dbUrl:pooler(STAGING_REF),stagingUrl:STAGING_URL}),/only.*staging/,String(target));
+});
+
+test('a reset refuses the live database, however it is named',()=>{
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler(LIVE),stagingUrl:STAGING_URL}),/live/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:direct(LIVE),stagingUrl:STAGING_URL}),/live/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler(LIVE),stagingUrl:`https://${LIVE}.supabase.co`}),/live/);
+});
+
+test('a reset refuses a database that isn\'t the staging project, or no address at all',()=>{
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler('abcdefghijklmnopqrst'),stagingUrl:STAGING_URL}),/isn't the staging project/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:`postgresql://postgres:pw@localhost:5432/postgres?x=${STAGING_REF}`,stagingUrl:STAGING_URL}),/isn't the staging project/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:'',stagingUrl:STAGING_URL}),/STAGING_DB_URL/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler(STAGING_REF),stagingUrl:''}),/STAGING_SUPABASE_URL/);
+});
+
+test('a connection failure says the free staging project may have paused',()=>{
+  for(const msg of ['failed to connect to postgres: dial tcp: i/o timeout','FATAL: Tenant or user not found','connection refused'])
+    assert.match(connectHint(msg),/paused/,msg);
+  assert.equal(connectHint('syntax error at or near "x"'),'syntax error at or near "x"');
+});
+
+test('the staging rebuild\'s summary names the base, the pull request\'s migrations and the test accounts',()=>{
+  const s=resetSummary({base:'c'.repeat(40),added:[NEXT],accounts:['gm@kingdoms-call.test','player1@kingdoms-call.test'],seeds:2});
+  assert.match(s,/Staging database/);
+  assert.match(s,/`ccccccc`/);
+  assert.match(s,new RegExp(`- \`${NEXT}\``));
+  assert.match(s,/gm@kingdoms-call\.test/);
+  assert.match(s,/STAGING_TEST_PASSWORD/);
+  assert.match(resetSummary({base:'c'.repeat(40),added:[],accounts:[],seeds:1}),/adds no migrations/);
 });

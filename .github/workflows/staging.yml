@@ -1,7 +1,14 @@
 # Puts a pull request on the staging site (https://kingdoms-call-staging.github.io/), talking to the
 # staging database, when it carries the label "staging" (P0-13). New commits on a labelled PR go up too.
 # One PR is on staging at a time: the newest one deployed. Its PR gets an "On staging" comment, and the
-# PR it replaced is told so.
+# PR it replaced is told so. Merging changes nothing on staging.
+#
+# Before the site goes up, the staging database is rebuilt for this PR (P0-33,
+# .github/scripts/migrations.js `reset staging`): emptied (games and accounts too), rebuilt from main's
+# migrations, the test accounts signed up (password: secret STAGING_TEST_PASSWORD), made-up games seeded
+# (supabase/seeds/staging.sql), then this PR's own migrations applied on top and the seed run again. So a
+# database change is tried before it's merged. Any failure stops the run before the site is published.
+# Database address: secret STAGING_DB_URL.
 #
 # Only for PRs from this repo (a fork gets no secrets). The tests run first; nothing is published if they
 # fail. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
@@ -47,6 +54,25 @@ jobs:
       - run: npx playwright install --with-deps chromium
 
       - run: npm test
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.120.0
+
+      # main's migrations and seed, beside this PR's checkout (GitHub's merge of the PR into its base).
+      - name: Check out main
+        run: |
+          git fetch --no-tags --depth 1 origin main
+          git worktree add "$RUNNER_TEMP/main" FETCH_HEAD
+
+      - name: Rebuild the staging database for this pull request
+        run: node .github/scripts/migrations.js reset staging
+        env:
+          DB_URL: ${{ secrets.STAGING_DB_URL }}
+          MAIN_DIR: ${{ runner.temp }}/main
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
+          STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
 
       - name: Write the staging config
         run: node .github/scripts/staging.js config > site/kc-config.js
