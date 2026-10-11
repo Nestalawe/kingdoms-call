@@ -223,14 +223,15 @@ async function plan(){
 }
 
 // The connection string is an argument, so a failure is reported by the subcommand's name only: never the
-// command line, which would print the database password.
-function cli(args){
+// command line, which would print the database password. Most subcommands answer in JSON; `db query` on a
+// file that's one DO block (the staging seed) answers only with the command tag, `DO`: pass {json:false}.
+function cli(args,{json=true}={}){
   const bin=process.env.SUPABASE_CLI||'supabase';
   const r=spawnSync(bin,[...args,'--db-url',process.env.DB_URL,'--agent','no','--output-format','json'],
     {encoding:'utf8',stdio:['ignore','pipe','inherit']});
   if(r.error||r.status!==0)
     throw new Error(`supabase ${args.slice(0,2).join(' ')} failed (exit ${r.status}): ${scrub(cliError(r.stdout),process.env.DB_URL)}`);
-  return JSON.parse(r.stdout);
+  return json?JSON.parse(r.stdout):r.stdout;
 }
 // The CLI reports an error as JSON on stdout: {"_tag":"Error","error":{"message":…}}.
 function cliError(stdout){
@@ -282,12 +283,12 @@ async function reset(target){
   const {DB_URL:dbUrl,STAGING_SUPABASE_URL:stagingUrl,STAGING_SUPABASE_KEY:key,STAGING_TEST_PASSWORD:password,MAIN_DIR:mainDir}=process.env;
   resetGuard({target,dbUrl,stagingUrl});
   if(!mainDir||!fs.existsSync(path.join(mainDir,DIR))) throw new Error('MAIN_DIR must be a checkout of main, with supabase/migrations.');
-  const run=args=>{ try{ return cli(args); }catch(e){ throw new Error(connectHint(e.message)); } };
+  const run=(args,opts)=>{ try{ return cli(args,opts); }catch(e){ throw new Error(connectHint(e.message)); } };
   const base=execFileSync('git',['-C',mainDir,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
   let seeds=0;
   const seed=dir=>{
     const file=path.resolve(dir,'supabase/seeds/staging.sql');
-    if(fs.existsSync(file)){ run(['db','query','--file',file]); seeds++; }
+    if(fs.existsSync(file)){ run(['db','query','--file',file],{json:false}); seeds++; }
   };
 
   console.log(`1. Emptying staging and rebuilding it from main's migrations (${base.slice(0,7)})`);
@@ -334,4 +335,4 @@ if(require.main===module){
 }
 
 module.exports={parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE,
-  resetGuard,connectHint,resetSummary};
+  resetGuard,connectHint,resetSummary,reset};

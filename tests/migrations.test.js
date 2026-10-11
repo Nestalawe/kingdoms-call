@@ -172,3 +172,41 @@ test('the staging rebuild\'s summary names the base, the pull request\'s migrati
   assert.match(s,/STAGING_TEST_PASSWORD/);
   assert.match(resetSummary({base:'c'.repeat(40),added:[],accounts:[],seeds:1}),/adds no migrations/);
 });
+
+// `reset staging` end to end, against a stand-in Supabase CLI (SUPABASE_CLI) that answers as CLI 2.120.0 did on
+// staging: JSON for reset, push and migration list, but only the command tag (`DO`) for the seed, which is one
+// DO block. On 2026-10-11 the first real run stopped at the seed: every CLI answer was parsed as JSON.
+test('a staging rebuild runs every step, in order, with the CLI\'s real answers',async()=>{
+  const fs=require('fs'), os=require('os'), path=require('path'), {execFileSync}=require('child_process');
+  const {reset}=require('../.github/scripts/migrations.js');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'kc-reset-'));
+  const log=path.join(tmp,'calls.log'), cliPath=path.join(tmp,'supabase');
+  fs.writeFileSync(cliPath,`#!/usr/bin/env node
+const a=process.argv.slice(2), fs=require('fs');
+fs.appendFileSync(${JSON.stringify(log)},a.filter(x=>!/^postgresql:/.test(x)).join(' ')+'\\n');
+const has=w=>a.join(' ').startsWith(w);
+if(has('db reset')) console.log(JSON.stringify({target:'remote',version:'',message:'Reset remote database.'}));
+else if(has('db query')) console.log('DO');
+else if(has('db push --dry-run')) console.log(JSON.stringify({upToDate:false,dryRun:true,migrations:['${NEXT}_x.sql'],seeds:[],roles:[]}));
+else if(has('db push')) console.log(JSON.stringify({upToDate:false,dryRun:false,migrations:['${NEXT}_x.sql'],seeds:[],roles:[]}));
+else if(has('migration list')) console.log(JSON.stringify({migrations:[{local:'${BASE}',remote:'${BASE}'},{local:'${NEXT}',remote:'${NEXT}'}]}));
+else process.exit(9);
+`,{mode:0o755});
+  const main=path.join(tmp,'main');
+  fs.mkdirSync(path.join(main,'supabase','migrations'),{recursive:true});
+  fs.mkdirSync(path.join(main,'supabase','seeds'));
+  fs.writeFileSync(path.join(main,'supabase','seeds','staging.sql'),'DO $$ BEGIN END $$;\n');
+  execFileSync('git',['init','-q',main]);
+  execFileSync('git',['-C',main,'-c','user.name=t','-c','user.email=t@t','commit','-q','--allow-empty','-m','main']);
+  const env={...process.env}, fetch0=globalThis.fetch;
+  Object.assign(process.env,{SUPABASE_CLI:cliPath,MAIN_DIR:main,DB_URL:pooler(STAGING_REF),STAGING_SUPABASE_URL:STAGING_URL,
+    STAGING_SUPABASE_KEY:'sb_publishable_example_key_1234567890',STAGING_TEST_PASSWORD:'a-long-shared-password',
+    GITHUB_STEP_SUMMARY:path.join(tmp,'summary.md')});
+  globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({})});
+  const out=console.log; console.log=()=>{};
+  try{ await reset('staging'); }
+  finally{ console.log=out; globalThis.fetch=fetch0; for(const k of Object.keys(process.env)) if(!(k in env)) delete process.env[k]; Object.assign(process.env,env); }
+  const calls=fs.readFileSync(log,'utf8').trim().split('\n').map(l=>l.split(' ').slice(0,2).join(' '));
+  assert.deepEqual(calls,['db reset','db query','db push','db push','migration list','db query']);
+  assert.match(fs.readFileSync(path.join(tmp,'summary.md'),'utf8'),new RegExp(`Staging database[\\s\\S]*${NEXT}[\\s\\S]*Seed runs: 2`));
+});
