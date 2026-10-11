@@ -29,7 +29,7 @@ then, a rule's background is in the code comments near it.
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
-| `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path) |
+| `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
 | `docs/` | Architecture, traps, how to try a change on staging (`staging.md`) and, later, rulings and history |

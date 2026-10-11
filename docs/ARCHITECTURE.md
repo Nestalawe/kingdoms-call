@@ -121,6 +121,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
 | `game_records` | Hall of Fame: one precomputed row per finished game |
+| `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. Nothing on the site uses it yet |
 | `game_messages`, `game_message_reads` | Dispatches between players, and each realm's read markers |
 
 **`games.meta`** is a ~1 KB summary of the world (turn mode, which realms are exempt from orders, map

@@ -54,7 +54,8 @@ Merge the database change first, then the site change.
 - **Test accounts:** `overlord@kingdoms-call.test`, `gm@kingdoms-call.test`,
   `player1@kingdoms-call.test`, `player2@kingdoms-call.test` and `player3@kingdoms-call.test`, all with
   one password, kept in Toby's password manager as "Kingdoms Call staging test accounts" (it's the staging
-  environment's `STAGING_TEST_PASSWORD` secret). The GM runs two made-up games: **Two Realms** (players 1
+  environment's `STAGING_TEST_PASSWORD` secret). `overlord@` is staging's Overlord (the account above
+  all others, P0-32a; nothing on the site uses that yet). The GM runs two made-up games: **Two Realms** (players 1
   and 2 have joined; Turn 0 can be run straight away) and **Open Game** (nobody yet; player 3 can join).
   You can also sign up on staging with any email (no confirmation email is sent), until the next rebuild.
 - **Staging stops answering** after a quiet week: the free Supabase project pauses, and putting a pull

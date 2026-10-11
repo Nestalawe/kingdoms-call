@@ -1,0 +1,59 @@
+# Sets the Overlord on the live database (plan step P0-32a, decision D-13): the account whose email is the
+# "production" environment's secret OVERLORD_EMAIL. Run by hand (Actions → Overlord → Run workflow) from main;
+# Toby approves each run (the "production" environment). Staging's Overlord is set by its seed instead
+# (supabase/seeds/staging.sql).
+#
+# The email and the account's id never appear in this repo or in the run's log (the repo, and so its logs, are
+# public): the email reaches the database as a bound parameter of public.kc_set_overlord(), whose messages
+# never contain it. The run's summary says only "Overlord set", "Overlord already set", or why it refused:
+# no account with that email, an account that runs or plays in a game, or an Overlord already set (run again
+# with replace: yes to hand the role over).
+name: Overlord
+
+on:
+  workflow_dispatch:
+    inputs:
+      replace:
+        description: Replace an existing Overlord (a hand-over)
+        type: choice
+        options: ['no', 'yes']
+        default: 'no'
+
+permissions: {}
+
+# Never alongside a deploy (which may be migrating the same database).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  overlord:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    environment: production
+    steps:
+      - name: Set the Overlord
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          OVERLORD_EMAIL: ${{ secrets.OVERLORD_EMAIL }}
+          REPLACE: ${{ inputs.replace }}
+        run: |
+          set -uo pipefail
+          say(){ echo "$1"; printf '## Overlord\n\n%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          if [ -z "$DB_URL" ]; then say "❌ Refused: the production environment has no SUPABASE_DB_URL secret."; exit 1; fi
+          if [ -z "$OVERLORD_EMAIL" ]; then say "❌ Refused: the production environment has no OVERLORD_EMAIL secret."; exit 1; fi
+          if [ "$REPLACE" != yes ] && [ "$REPLACE" != no ]; then say "❌ Refused: replace must be yes or no."; exit 1; fi
+          command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null; }
+          out=$(psql "$DB_URL" -X -q -At -v ON_ERROR_STOP=1 -v VERBOSITY=terse \
+                  -v email="$OVERLORD_EMAIL" -v replace="$REPLACE" 2>&1 <<'SQL'
+          select public.kc_set_overlord($1, $2::boolean) \bind :email :replace \g
+          SQL
+          )
+          status=$?
+          # Only kc_set_overlord's own messages are shown; anything else (a connection failure) is summarised.
+          msg=$(printf '%s\n' "$out" | sed -n 's/^.*ERROR:  //p' | head -1)
+          if [ $status -eq 0 ]; then say "✅ $out"
+          elif [ -n "$msg" ]; then say "❌ Refused: $msg"; exit 1
+          else say "❌ Couldn't reach the live database (psql exit $status). Nothing changed."; exit 1; fi
