@@ -818,13 +818,13 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.08-2159';
+const KC_DATA_MIN_P='2026.10.11-2142';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
 const KC_DB_MIN='20261011025524';
 (function(){
-  const need=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
+  const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
   const stamp=(typeof KC_DATA_STAMP==='string')?KC_DATA_STAMP:null;
   const allMissing=missing.length===need.length;
@@ -2134,7 +2134,7 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
 // Skill descriptions shown on hover (join screen). Edit these as skill mechanics change.
 const SKILL_INFO={
   melee:'Close-quarters fighting. Raises your hit chance and damage in duels and monster encounters, and strengthens your character leading front-line troops. The King starts with Melee 2.',
-  archery:'Missile combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your missile units loose before the lines close (each shot does 20% of the shooting unit\'s own strength, +10% per Archery level, doubled against winged riders; no unit can lose more than 40% of its strength to arrows, 80% for a winged rider) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 2–5 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.',
+  archery:'Ranged combat. In an army battle it sharpens the <strong>pre-battle volley</strong> your ranged units loose before the lines close (each shot does 20% of the shooting unit\'s own strength, +10% per Archery level, doubled against winged riders; no unit can lose more than 40% of its strength to arrows, 80% for a winged rider) — and every level lifts the missile units you lead by <strong>+5% strength</strong> in the battle itself (Archery 5 = +25%). In personal combat a Fire action hits at 30% + 10% per level (then +5% a level past 5, capped 80%) for 2–5 damage plus half your Archery; at <strong>Archery 3 and above you loose two arrows per Fire action</strong>. A Fire action must first reach bow range — from spell range that is a speed check, from melee you must break away — and <strong>every level of Archery adds +5% to both of those checks</strong> (fieldcraft). An archer standing at bow range also gets a free <strong>parting shot</strong> at any foe who closes into melee. The King starts with Archery 1.',
   tactical:'Battlefield command. Adds roughly +20% strength per level to your land armies in a battle — the single biggest force multiplier when attacking or defending provinces (land and air units — flyers included; fleets use Naval instead; land battles only).',
   march:'Marching & coordination. Improves the chance that your other armies link up as reinforcements ("contingent unify") when you attack the same province, and helps large forces move together.',
   naval:'Seamanship. Boosts the strength of your fleets and sea creatures in every battle, on land or at sea (+20% per level), and speeds them across the water. <strong>Sea movement points = the SLOWEST sea unit you lead, after each unit is improved by your Naval bonus</strong> — a squadron sails at the pace of its worst ship, just as a land column marches at the pace of its slowest army. The Naval bonus works like March: slow hulls (speed 2 or less) gain +0/+0/+1/+1/+2/+3 at Naval 0-5, faster ones +0/+1/+1/+2/+2/+2. A hero leading <em>no</em> armies always has 5 sea movement points — Naval skill is command of a fleet, not of a rowing boat. Essential for a maritime power.',
@@ -4263,6 +4263,9 @@ function roundReportNumbers(text){
 // if a unit's strength is rebalanced in the GM engine it must be changed here too, or players will
 // be shown a number the battle engine does not agree with.
 const UNIT_BASE_STR_P={...KC_UNIT_BASE_STR};
+// The unit's TYPE word (2026-10-11): infantry, ranged, cavalry, flyer or naval, from the shared
+// KC_UNIT_TYPE table; a type the table has never heard of is infantry (same answer as the engine's unitTypeOf).
+function unitTypeOfP(armyType){ return (typeof KC_UNIT_TYPE!=='undefined'&&KC_UNIT_TYPE[armyType])||'infantry'; }
 const UNIT_Q_MULT_P={...KC_UNIT_Q_MULT};
 // A unit's strength before any terrain, Tactical, Druid, fanaticism or magic modifier is applied.
 function unitBaseStrengthP(a){ return (UNIT_BASE_STR_P[a&&a.type]||4)*(UNIT_Q_MULT_P[(a&&a.quality)||'Average']||2); }
@@ -6510,20 +6513,20 @@ function updateAlignmentDesc(){
 const UNIT_ABILITIES={
   'Shieldwall Levies':'Shieldwall — +25% strength when at least two are in the same force.',
   'Free Lances':'Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
-  'Yeoman Longbows':'Massed Volley — +10% missile damage per other missile unit in the force (max +30%).',
+  'Yeoman Longbows':'Massed Volley — +10% volley damage per other ranged unit in the force (max +30%).',
   'Gilded Lances':'Shock of the Charge — +40% strength when attacking. No bonus defending.',
   'Galleon Fleet':'Broadside — fires in the pre-battle archery phase during sea battles.',
   'Corsair Fleet':'Cut the Line — if at least half your winning force are Corsairs, the enemy cannot retreat by sea. Against neutral guards they instead keep your own line of escape to the ships open.',
-  'Elven Bowmen':'Woodland Volley — double missile damage in forest and jungle.',
+  'Elven Bowmen':'Woodland Volley — double volley damage in forest and jungle.',
   'Forest Wardens':'Ambush — in forest or jungle, the side facing them gets no archery phase at all. Works attacking or defending, and against province defenders as well as another realm.', // 2026-09-27: was "when Wardens DEFEND" — Ambush has always fired on attack too in PvP, and now does against neutral defenders as well.
-  'Shadow Archers':'Loosed From Cover — cannot be targeted by enemy missile fire.',
+  'Shadow Archers':'Loosed From Cover — cannot be targeted by enemy volleys.',
   'Eagle Riders':'Skyward Retreat — never suffer the extra casualties of being trapped with no retreat.',
-  'Elven Galleys':'Sea Archers — your missile units ignore the land-unit penalty at sea.',
+  'Elven Galleys':'Sea Archers — your ranged units ignore the land-unit penalty at sea.',
   'Dwarven Guard':'Shield Fort — if at least half the force are Guard, a beaten force never routs: with a retreat open it withdraws in good order (immune to pursuit losses and to demotion in retreat); trapped, it locks shields and holds the province contested with no flight casualties. Both halves work in every battle, and a province\'s own Guard defenders get the same protection when they lose.', // 2026-09-27: the good-order half used to be wired for player-vs-player battles only.
   'Ironwood Crossbows':'Punch Through — can soften a target to 55% instead of the usual 40% limit (90% instead of 80% against a winged rider).', // 2026-09-27: was "45% / 30%" — the engine moved to 55/40 (and 90/80 winged) on 2026-09-24 and this blurb never followed. Kept in step with missileCap / _MISSILE_CAP_FRAC.
-  'Mountain Guns':'Bombardment — fire before all other missile units, and +50% damage against garrisons.',
+  'Mountain Guns':'Bombardment — fire before all other ranged units, and +50% damage against garrisons.',
   'Gnomish Gyrocopters':'Flak Screen — each engages one enemy flying unit (−30% strength). No two gyrocopters engage the same flyer.',
-  'Dwarf Ironclads':'Armoured Hulls — immune to pre-battle missile damage.',
+  'Dwarf Ironclads':'Armoured Hulls — immune to pre-battle volleys.',
   'Warg Riders':'Run Them Down — if at least half your winning force are Wargs, they run the beaten army down on the field: every beaten unit is 15% more likely to be destroyed in the rout, on any ground (not against a Dwarven Shield Fort). There is no chase afterwards. Against neutral guards, who never flee, they end the fight fast instead: half casualties for you on a win.',
   'Orc Berserkers':'Outnumbered and Uncaring — +10% strength for every 25% the enemy outnumbers you (max +30%).',
   'Goblin Horde':'Sheer Numbers — +10% strength per other Goblin Horde in the force (max +30%).',
@@ -6535,13 +6538,13 @@ const UNIT_ABILITIES={
   // commanding hero’s Druid skill — 30% base, +10% per level, hard cap 90%; see primalStrikeChance
   // in the GM portal. 2026-09-27: this comment read "20% base" and had done for some time.
   'Noble Griffons':'Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4). Chance rises with the commander’s Druid skill.',
-  'Giant Eagles':'Stoop on the Archers — ×1.25 strength when the enemy fields missile troops. Diving Talons: a pre-battle strike on one enemy unit (4–8).',
+  'Giant Eagles':'Stoop on the Archers — ×1.25 strength when the enemy fields ranged troops. Diving Talons: a pre-battle strike on one enemy unit (4–8).',
   'Forest Ents':'Rooted Grove — ×1.3 strength in forest and jungle. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each).',
   'Stone Giants':'Mountain Bulwark — ×1.3 strength in mountains; devastating melee, very slow. Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7).',
   'Cave Trolls':'Regenerating Hide — ×1.2 strength always, ×1.3 more in mountain or forest (about ×1.56 there). Hurled Rubble: a pre-battle strike on one enemy unit (4–7).',
   'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker. Spine Volley: a pre-battle strike across every enemy unit (2–4 each).',
   'Basilisk Brood':'Stone Deterrent — ×1.25 strength when their side is defending. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
-  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields missile troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
+  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields ranged troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
   'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each).',
   'Titan Warbeasts':'Colossal Bulk — ×1.3 strength in every battle (they fight from the back line at full front-line effect). World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each).',
   'Sea Giants':'Tidal Might — ×1.2 strength in a coastal land province (one bordering the sea). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
@@ -10398,7 +10401,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.11-1559</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.11-2142</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

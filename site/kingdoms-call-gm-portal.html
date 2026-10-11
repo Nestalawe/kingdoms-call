@@ -404,13 +404,13 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.08-2159';
+const KC_DATA_MIN='2026.10.11-2142';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
 const KC_DB_MIN='20261011025524';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
-const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
+const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).
@@ -422,7 +422,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.11-1559'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.11-2142'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -2304,6 +2304,10 @@ const DRUID_ARMY_LEVELS_P=Object.fromEntries(Object.entries(KC_DRUID_LEVELS).map
 // (Gnomish Gyrocopters are machines, not beasts, and are deliberately NOT tamed).
 const TAMED_FLYER_TYPES_D=new Set(KC_UNIT_CLASS.tamedFlyer);
 // Returns the Druid level required to lead a given army type
+// The unit's TYPE word (2026-10-11): infantry, ranged, cavalry, flyer or naval, from the shared
+// KC_UNIT_TYPE table. Anything the table has never heard of (an old save, a test fixture) is infantry,
+// which is what such a unit already does in battle: it holds a place in the line.
+function unitTypeOf(armyType){ return (typeof KC_UNIT_TYPE!=='undefined'&&KC_UNIT_TYPE[armyType])||'infantry'; }
 function getDruidLevel(armyType){
   for(const [lvl, armies] of Object.entries(DRUID_ARMY_LEVELS_P)){
     if(armies.has(armyType)) return parseInt(lvl);
@@ -14896,7 +14900,7 @@ const BATTLE_ARMY_SPELLS={
     if(archeryBlockedBy(defenders,prov.terrain)&&armies.some(a=>MISSILE_ARMIES.has(a.type)))
       narrative.push(`🌲 ${cName}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`);
     if(missileAtk.length>0&&defenders.length>0){
-      narrative.push(`🏹 **Pre-battle Archery Phase** — ${missileAtk.length} missile unit${missileAtk.length!==1?'s':''}${hasQuiver?' (Quiver of the Hawk: double volleys)':''}${_manyArrows?' (Quiver of Many Arrows: +1 shot)':''}`);
+      narrative.push(`🏹 **Pre-battle Archery Phase** — ${missileAtk.length} ranged unit${missileAtk.length!==1?'s':''}${hasQuiver?' (Quiver of the Hawk: double volleys)':''}${_manyArrows?' (Quiver of Many Arrows: +1 shot)':''}`);
       const volleys=(hasQuiver?2:1)+(_manyArrows?1:0);
       let totalArrowDmg=0;
       missileAtk.forEach(atk=>{
@@ -15009,7 +15013,7 @@ const BATTLE_ARMY_SPELLS={
     const missileDef=(_cLA||_defArchBlocked)?[]:abilityMissileUnits(defenders, prov.terrain);
     if(missileDef.length>0&&armies.length>0){
       const defArchSkill=defHero?effStat(defHero,'archery'):0; // a leaderless garrison shoots at Archery 0
-      narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} missile unit${missileDef.length!==1?'s':''}`);
+      narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} ranged unit${missileDef.length!==1?'s':''}`);
       let totalDefArrow=0;
       missileDef.forEach(def=>{
         // winged riders first (a random one each shot), else any random attacker not yet at its cap
@@ -27764,7 +27768,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-1559</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-2142</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
