@@ -14182,13 +14182,13 @@ function bestCurseSkill(hero){
 }
 function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='druid'?'Druid mastery':'Tactical command'; }
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
-// SHOOTER, not the target: 20% of the firing unit's base strength (unit strength × quality — so a
+// SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a
 // veteran company hits harder than a green one), +10% per level of the commander's Archery,
 // × the firing unit's own ability (Massed Volley, Woodland Volley, Bombardment), rounded, minimum 1.
 // Winged riders take double and are shot first. What a TARGET can lose is capped: 30% of its own
 // base strength (60% for a winged rider; Ironwood Crossbows' Punch Through lifts both — see
 // missileCap). The 25% pre-battle floor below still applies on top.
-const MISSILE_SHOT_PCT=0.20, MISSILE_ARCH_PER_LVL=0.10, MISSILE_CAP_FRACTION=0.40;
+const MISSILE_SHOT_PCT=0.30, MISSILE_ARCH_PER_LVL=0.10, MISSILE_CAP_FRACTION=0.40;   // 2026-10-11 (Toby): volleys 20% → 30%
 function missileShotDamage(firer, archSkill, dmgMult){
   const fs=firer?unitBaseStrength(firer):10;
   return Math.max(1, Math.round(fs*MISSILE_SHOT_PCT*(1+MISSILE_ARCH_PER_LVL*Math.max(0,archSkill||0))*(dmgMult||1)));
