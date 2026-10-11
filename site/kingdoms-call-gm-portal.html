@@ -450,16 +450,17 @@ const KC_BUILD_STAMP='2026.10.11-2340'; // this build (the footer shows the same
 // instead.
 //
 // Cost is BOTH the recruitment price and the per-turn wage: a unit costs its price again every turn
-// it exists.
+// it exists. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2, Shadow Archers 3→4, Ironwood
+// Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR). tests/roster holds both.
 const ARMY_COST_MASTER={
   // ── Human ──
   'Shieldwall Levies':2,'Free Lances':3,'Yeoman Longbows':2,'Gilded Lances':4,'Human Garrison':1,
   'Noble Griffons':4,'Galleon Fleet':3,'Corsair Fleet':3,
   // ── Elven ──
-  'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':3,'Elven Garrison':1,
+  'Elven Bowmen':3,'Forest Wardens':2,'Shadow Archers':4,'Elven Garrison':1,
   'Eagle Riders':4,'Elven Galleys':3,'Whale Cohort':3,
   // ── Dwarven ──
-  'Dwarven Guard':3,'Ironwood Crossbows':3,'Mountain Guns':4,'Dwarf Garrison':1,
+  'Dwarven Guard':3,'Ironwood Crossbows':2,'Mountain Guns':4,'Dwarf Garrison':1,
   'Gnomish Gyrocopters':3,'Dwarf Ironclads':4,
   // ── Orcish ──
   'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,

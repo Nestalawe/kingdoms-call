@@ -1732,9 +1732,11 @@ const KC_DRUID_LEVELS={
 
 // Base strength per unit type (× the quality multiplier). Humanoid units and fleets, then every
 // primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place primal stats are written),
-// then the five summoned elementals.
+// then the five summoned elementals. 2026-10-11 (Toby, the army roster): Free Lances 5→6, Gilded
+// Lances 6→7, Forest Wardens 5→4, Shadow Archers 6→7, Ironwood Crossbows 5→4, Warg Riders 5→6; the
+// costs moved with them in ARMY_COST_MASTER (GM portal). tests/roster holds both to the decided table.
 const KC_UNIT_BASE_STR=Object.assign(
-  {'Shieldwall Levies':4,'Free Lances':5,'Yeoman Longbows':4,'Gilded Lances':6,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':5,'Shadow Archers':6,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':5,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':5,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4},
+  {'Shieldwall Levies':4,'Free Lances':6,'Yeoman Longbows':4,'Gilded Lances':7,'Human Garrison':2,'Elven Bowmen':5,'Forest Wardens':4,'Shadow Archers':7,'Eagle Riders':6,'Noble Griffons':6,'Gnomish Gyrocopters':5,'Elven Galleys':5,'Elven Garrison':2,'Dwarven Guard':6,'Ironwood Crossbows':4,'Mountain Guns':7,'Dwarf Garrison':2,'Warg Riders':6,'Orc Berserkers':6,'Goblin Horde':3,'Wyvern Riders':6,'Orc Garrison':2,'Galleon Fleet':5,'Corsair Fleet':4,'Dwarf Ironclads':7,'Orcish Longships':5,'Whale Cohort':4},
   Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t,d])=>[t,d.str])),
   {'Air Elemental':10,'Fire Elemental':10,'Earth Elemental':11,'Water Elemental':10,'Darkness Elemental':11});
 const KC_UNIT_Q_MULT={Green:1,Average:2,Veteran:3,Crack:4,Elite:5};
