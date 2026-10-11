@@ -80,10 +80,21 @@ column of `game_players`:
   site doesn't rely on. The access-rule tests in `tests/` say what the game needs, so a migration that
   takes away something the site uses turns `db` red. A migration's pull request may add to those tests, but
   never loosens or removes one.
-- **Site code must cope while its database change is missing.** It checks first and switches the feature
-  off quietly ([traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), and its pull
-  request has a page test where the stand-in database hides the new table or column (`__DB.hide(...)`, as
-  `tests/gm-messaging-boot.test.js` does).
+- **Site code that needs a database change either copes without it, or declares it** (plan step P0-34). It
+  never half-works on a database that's too old.
+  - **Cope**, for an optional extra: it checks first and switches the feature off quietly
+    ([traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), and its pull request has a
+    page test where the stand-in database hides the new table or column (`__DB.hide(...)`, as
+    `tests/gm-messaging-boot.test.js` does).
+  - **Declare**, when the page can't sensibly work without it (say, a permission the GM portal relies on to
+    run turns): raise the page's `KC_DB_MIN` to that migration's version. On a database older than that, the
+    page stops before its first read with "The game is being updated. Try again in a few minutes." and a
+    Reload button, instead of failing halfway
+    ([traps.md](../docs/traps.md#a-site-change-that-needs-a-database-change)).
+
+  The pull request says which it chose. On the live site the stop should never show: the site deploys only
+  after its migrations. It covers a migration rejected or undone after the site that needs it was merged,
+  and a site pull request put on staging without the database pull request it's stacked on.
 
 ## How a migration goes live
 

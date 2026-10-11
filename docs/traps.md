@@ -77,6 +77,27 @@ prefer the new column and fall back to the old source. Prove it with a test that
 (`MISSING_COLS` in `tests/lib/stub-db.js`), as `tests/meta-missing-turn.test.js` does. This is why database
 and site changes go in separate PRs ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)).
 
+## A site change that needs a database change
+
+Every page that uses the database (both portals and the Hall of Fame) declares `KC_DB_MIN`, the oldest
+database version it works with (a migration's 14-digit version), and starts through
+`kcDbGuard(sb, KC_DB_MIN)` (`site/kc-db-guard.js`, P0-34). Before the first read, it asks the database for
+its version (`kc_db_version()`, the newest migration applied). On an older database, or one without the
+function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
+or written.
+- **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
+  work without the change; otherwise cope ([above](#a-new-column-must-be-optional-at-the-write-site)).
+  Raise it in every page that needs the change, not only the one you edited.
+- `npm test`'s `db-min` check fails if a `KC_DB_MIN` is newer than the newest file in
+  `supabase/migrations/`: the migration must be merged, or the site branch stacked on its pull request.
+- Never lower `KC_DB_MIN` to get a page past the stop. It means the database is missing something the page
+  relies on.
+- The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots the page again, so the check runs
+  again before any turn.
+- Tests: every stand-in database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
+  `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
+  `'offline'`), as `tests/db-guard.test.js` does.
+
 ## String-anchor harness hooks
 
 Until the engine is split into modules (Phase 1), several tests reach inside the GM portal by matching

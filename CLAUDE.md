@@ -25,7 +25,7 @@ then, a rule's background is in the code comments near it.
 
 | Path | What |
 |---|---|
-| `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to), `kc-staging-footer.js` (on staging, the footer names the PR) |
+| `site/` | The deployable site, published exactly as it is (no build step): `index.html`, `kingdoms-call-gm-portal.html`, `kingdoms-call-player-portal.html`, `kingdoms-call-leaderboard.html`, both rulebooks, `kingdoms-call-data.js`, `kc-config.js` (which database the site talks to), `kc-db-guard.js` (the database version guard), `kc-staging-footer.js` (on staging, the footer names the PR) |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `run.js` (the runner), `*.test.js`, `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `quarantine/` (kept, not run) |
 | `tools/legacy/` | Older content-export tools, kept for reference; not run by the tests |
@@ -143,9 +143,12 @@ a PR that changes both. Database first, then site, then any removal (expand, the
 - **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test
   of what the game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of
   what Toby is approving.
-- **A site PR** that uses a new table or column copes while it's missing (probe and fall back:
+- **A site PR** that uses a new table or column either **copes** while it's missing (probe and fall back:
   [traps.md](docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
-  (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`).
+  (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`), or
+  **declares** it by raising the page's `KC_DB_MIN` to the migration's version, so an older database stops
+  the page with a clear message ([traps.md](docs/traps.md#a-site-change-that-needs-a-database-change)).
+  Cope for an optional extra; declare when the page can't work without it. Say which in the PR.
 
 Migrations are forward-only (a rollback is a new migration); a merged one is never edited (CI's `db` check
 refuses it); every migration has pgTAP tests.
