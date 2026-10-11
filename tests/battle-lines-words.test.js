@@ -3,7 +3,8 @@
 // text; nothing runs. In every rulebook sentence about the front, each width claimed for a terrain must
 // be that terrain's range in the engine's table ("6–8 on plains or desert"), every terrain must be
 // claimed somewhere, and the old fixed-width wording (6 / 4 / 3, "four lines", flyers "always ... from
-// the front") must be gone. A rule written twice must change twice (docs/traps.md).
+// the front") must be gone. Battle lines II: every facing multiplier in BATTLE_FACING must appear in the
+// rulebook's "Who faces whom" step. A rule written twice must change twice (docs/traps.md).
 const fs=require('fs'), vm=require('vm');
 const {sitePath}=require('./lib/boot');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -43,7 +44,22 @@ for(const [name,file] of [['rulebook','kingdoms-call-rules.html'],['intro','king
   const old=/four lines|always fight from the front|never take a line slot|rear-line reduction|always take the front line|front line, terrain-proof/.exec(text);
   ok(!old,`the ${name} has dropped the old fixed-width wording`+(old?` — still says "${old[0]}"`:''));
 }
-ok(/<li><strong>The battle lines\.<\/strong>/.test(read('kingdoms-call-rules.html')),'the rulebook\'s "How a battle is fought" has its "The battle lines" step');
+const rules=read('kingdoms-call-rules.html');
+ok(/<li><strong>The battle lines\.<\/strong>/.test(rules),'the rulebook\'s "How a battle is fought" has its "The battle lines" step');
+
+// Battle lines II: the facing multipliers are written in the engine's BATTLE_FACING and in the
+// rulebook's "Who faces whom" step; every multiplier must appear there as ×n.
+const fm=/const BATTLE_FACING=(\{[\s\S]*?\n\});/.exec(gm);
+ok(!!fm,'the GM portal declares BATTLE_FACING');
+const FACING=fm?vm.runInNewContext('('+fm[1]+')',{}):null;
+const stepAt=rules.indexOf('<li><strong>Who faces whom.</strong>'), step=stepAt<0?'':rules.slice(stepAt,rules.indexOf('</li>',stepAt));
+ok(stepAt>=0,'the rulebook\'s "How a battle is fought" has its "Who faces whom" step');
+if(FACING){
+  const nums=[FACING.front.cav.arc,FACING.front.cav.foot,FACING.front.foot.cav,FACING.front.foot.arc,FACING.back.foot,FACING.back.cav,FACING.wrap,FACING.sideHit,FACING.freeFlank,FACING.turned];
+  const missing=[...new Set(nums)].filter(n=>!step.includes('×'+n));
+  ok(nums.every(n=>typeof n==='number')&&missing.length===0,'every facing multiplier appears in that step'+(missing.length?' — missing: '+missing.map(n=>'×'+n).join(', '):''));
+}
+ok(/\bopposite\b/.test(strip(read('kingdoms-call-rules-intro.html'))),'the intro says each unit fights the enemy opposite it');
 
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail?1:0);
