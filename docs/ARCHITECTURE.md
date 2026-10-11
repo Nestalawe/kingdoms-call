@@ -115,6 +115,10 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
   monospace, and the ladder names every place and matchup.
+- **Unit fates** (`rollUnitFates`, module level beside `disbandLine`). After a battle, each unit of a player's
+  force rolls once for its fate (a beaten survivor twice); the four casualty sections (the attacker winning or
+  losing against a province's guard, a realm battle's winner and loser) all call it, passing their own
+  thresholds and verbs, and a test passes its own dice.
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.
