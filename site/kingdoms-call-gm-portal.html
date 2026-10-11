@@ -404,7 +404,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.11-2142';
+const KC_DATA_MIN='2026.10.11-2340';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -422,7 +422,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.11-2320'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.11-2340'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -7332,11 +7332,10 @@ function botDrillOrder(G,pi,c){
 // co-located partners when possible, toward the drill cap of 5). Practice is always secondary: it
 // only ever fills phases nothing else claimed.
 // 2026-09-26 (study): an officer below his role's working level trains THAT skill in every filler phase — an
-// admiral to Naval 3, a flying general to Druid 3 (Eagle Riders / Griffons / Wyverns are Druid-3 units; every
-// missing level is −20% on them). Without this the explore-first filler left admirals at Naval 1.
+// admiral to Naval 3. (The flying general trained Druid 3 while the winged riders were beasts; since 2026-10-11
+// they are soldiers of their race and need none.) Without this the explore-first filler left admirals at Naval 1.
 function botRoleTrainSkill(c){ const s=(c&&c.skills)||{};
   if(c._botRole==='admiral'&&(s.naval||0)<3) return 'naval';
-  if(c._botRole==='skygeneral'&&(s.druid||0)<3) return 'druid';
   // 2026-09-26 (idea 8): the holder of a craft keeps at it to MASTERY 7 in his filler phases — Sabotage,
   // Grand Heist, Chart the Unknown, Research Breakthrough and the rest are level-7 orders nobody reached.
   const k={scholar:'sage',scout:'explorer',spy:'spy',thief:'thief'}[c._botRole]; if(k&&(s[k]||0)>=5&&(s[k]||0)<7) return k;
@@ -11161,7 +11160,11 @@ function primalStrikeItemBonus(c){
   if(!c||typeof activeItems!=='function') return 0;
   return activeItems(c).reduce((s,it)=>s+((it&&it.primalStrike)||0)+((it&&it.effect&&it.effect.stat==='primalStrike')?(it.effect.bonus||0):0),0);
 }
-function primalStrikeChance(druidLvl, commander){
+// 2026-10-11 (Toby): the winged riders' own strikes (a Griffon's Screech Dive, a Wyvern's Acid Spit) are
+// soldiers' work, not beast-craft: a flat chance in two, whatever the commander's Druid.
+const RIDER_STRIKE_PCT=50;
+function primalStrikeChance(druidLvl, commander, unitType){
+  if(unitType&&KC_UNIT_CLASS.flying.includes(unitType)) return RIDER_STRIKE_PCT;
   return Math.min(90, 30+(druidLvl||0)*10+primalStrikeItemBonus(commander));
 }
 // == LAIR GRADES: RELICS EVERYWHERE, DANGER FARTHEST FROM HOME ==== The grade of every lair is
@@ -15091,7 +15094,7 @@ const BATTLE_ARMY_SPELLS={
       if(armySpells.length===0||defenders.length===0) return;
       const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
       // Cast chance: 20% + 10% per druid level (druid rating governs primal/special units)
-      const armySpellChance=primalStrikeChance(druIdLvlMag, atkCmdrSlain?null:c);
+      const armySpellChance=primalStrikeChance(druIdLvlMag, atkCmdrSlain?null:c, atk.type);
       const armySpellRoll=d100();
       if(armySpellRoll>armySpellChance&&_isPrimalStrikeA){
         narrative.push(`〰 ${atk.unitName||atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag>0?`, Druid ${druIdLvlMag}`:', no commanding druid'}).`);
@@ -15297,7 +15300,7 @@ const BATTLE_ARMY_SPELLS={
       }
       if(armySpells.length===0||armies.length===0) return;
       const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
-      const armySpellChance=primalStrikeChance(defDruIdLvl, (defHero&&!defHero._druidNegated)?defHero:null);
+      const armySpellChance=primalStrikeChance(defDruIdLvl, (defHero&&!defHero._druidNegated)?defHero:null, def.type);
       if(Math.random()*100<armySpellChance){
         narrative.push(`✨ ${def.unitName||def.type} (defending) — **${sp.name}**: "${sp.flavour}"`);
         if(sp.target==='all'){
@@ -17999,7 +18002,7 @@ const BATTLE_ARMY_SPELLS={
           armySpells=PRIMAL_ARMY_DEFS_P[a.type].spells.filter(s=>s.dmg&&s.dmg[1]>0);
         if(!armySpells.length||!enemyArmies.length) return;
         const sp=armySpells[Math.floor(Math.random()*armySpells.length)];
-        const _pvpStrikeChance=primalStrikeChance(druLvl, heroChar._druidNegated?null:heroChar);
+        const _pvpStrikeChance=primalStrikeChance(druLvl, heroChar._druidNegated?null:heroChar, a.type);
         const _pvpHit=Math.random()*100<_pvpStrikeChance;
         if(!_pvpHit&&_isPrimalP)
           narr.push(`〰 ${a.unitName||a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl>0?`, Druid ${druLvl}`:', no commanding druid'}).`);
@@ -28045,7 +28048,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-2320</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-2340</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
