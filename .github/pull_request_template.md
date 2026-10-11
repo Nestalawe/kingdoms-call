@@ -23,8 +23,7 @@ None.
 ## What to try on staging
 
 <!-- A numbered checklist Toby can follow without reading code: which game, which screen, what to do,
-what he should see. How and when (site PR: before merging; database PR: after merging, before approving
-production): docs/staging.md. -->
+what he should see. Every PR, database ones included, is tried there before merging: docs/staging.md. -->
 
 1. …
 

@@ -164,9 +164,12 @@ copies each time ([traps.md](traps.md#the-gm-portals-two-build-stamps),
 ## Staging
 
 A second copy of the site at <https://kingdoms-call-staging.github.io/>, with its own Supabase project and
-no real players. A pull request labelled `staging` is tested, then published there with a `kc-config.js`
-pointing at the staging database (`.github/workflows/staging.yml`). One pull request is on staging at a
-time, and its PR comment says so. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's
+no real players. A pull request labelled `staging` is tested; then the staging database is rebuilt for it
+(emptied, `main`'s migrations, the test accounts, the made-up games of `supabase/seeds/staging.sql`, then the
+pull request's own migrations and the seed again: `.github/scripts/migrations.js reset staging`); then the
+site is published there with a `kc-config.js` pointing at the staging database
+(`.github/workflows/staging.yml`). One pull request is on staging at a time, and its PR comment says so;
+merging changes nothing there. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's
 footer says which pull request and commit is on staging, linking to the pull request.
 
 ## Tests

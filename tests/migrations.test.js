@@ -3,7 +3,7 @@
 // before approving production.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE}=require('../.github/scripts/migrations.js');
+const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE,resetGuard,connectHint,resetSummary}=require('../.github/scripts/migrations.js');
 
 const D='supabase/migrations/';
 const BASE='20261010054853', NEXT='20261012000000', LATER='20261013000000';
@@ -88,7 +88,8 @@ test('Toby\'s summary lists each migration, its pull request, the order, the bac
     {file:`${D}${NEXT}_tighten.sql`,pr:31,sql:'revoke all on public.x from anon;\n-- ```fence```'},
   ]});
   assert.match(s,new RegExp(`${NEXT}_tighten\\.sql\` from #31`));
-  assert.match(s,/staging first, then production/);
+  assert.match(s,/production once Toby approves it, then the site/);
+  assert.doesNotMatch(s,/staging first/,'staging is no longer migrated on merge (P0-33)');
   assert.ok(s.includes(BACKUP_NOTE));
   assert.match(s,/revoke all on public\.x from anon;/);
   assert.equal(s.match(/```/g).length,2,'the SQL can\'t close its own code block');
@@ -124,4 +125,88 @@ test('a pull request changes the database or the site, never both',()=>{
   assert.match(msg,/1 migration file\) and the site \(2 files\)/);
   assert.match(msg,/Split it in two: first the database change/);
   assert.match(msg,/supabase\/README\.md#database-and-site-changes-go-separately/);
+});
+
+// ---- Staging follows the pull request (P0-33): `reset staging` rebuilds the staging database ----
+
+const STAGING_REF='yquaxxzdepqquitlgxkh', LIVE='yymsnsrpggpgmzgcfrys';
+const STAGING_URL=`https://${STAGING_REF}.supabase.co`;
+const pooler=ref=>`postgresql://postgres.${ref}:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres`;
+const direct=ref=>`postgresql://postgres:pw@db.${ref}.supabase.co:5432/postgres`;
+
+test('a reset rebuilds only the staging database, named by its own address',()=>{
+  assert.equal(resetGuard({target:'staging',dbUrl:pooler(STAGING_REF),stagingUrl:STAGING_URL}),STAGING_REF);
+  assert.equal(resetGuard({target:'staging',dbUrl:direct(STAGING_REF),stagingUrl:STAGING_URL}),STAGING_REF);
+});
+
+test('a reset refuses any target but staging',()=>{
+  for(const target of ['production','live','',undefined])
+    assert.throws(()=>resetGuard({target,dbUrl:pooler(STAGING_REF),stagingUrl:STAGING_URL}),/only.*staging/,String(target));
+});
+
+test('a reset refuses the live database, however it is named',()=>{
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler(LIVE),stagingUrl:STAGING_URL}),/live/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:direct(LIVE),stagingUrl:STAGING_URL}),/live/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler(LIVE),stagingUrl:`https://${LIVE}.supabase.co`}),/live/);
+});
+
+test('a reset refuses a database that isn\'t the staging project, or no address at all',()=>{
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler('abcdefghijklmnopqrst'),stagingUrl:STAGING_URL}),/isn't the staging project/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:`postgresql://postgres:pw@localhost:5432/postgres?x=${STAGING_REF}`,stagingUrl:STAGING_URL}),/isn't the staging project/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:'',stagingUrl:STAGING_URL}),/STAGING_DB_URL/);
+  assert.throws(()=>resetGuard({target:'staging',dbUrl:pooler(STAGING_REF),stagingUrl:''}),/STAGING_SUPABASE_URL/);
+});
+
+test('a connection failure says the free staging project may have paused',()=>{
+  for(const msg of ['failed to connect to postgres: dial tcp: i/o timeout','FATAL: Tenant or user not found','connection refused'])
+    assert.match(connectHint(msg),/paused/,msg);
+  assert.equal(connectHint('syntax error at or near "x"'),'syntax error at or near "x"');
+});
+
+test('the staging rebuild\'s summary names the base, the pull request\'s migrations and the test accounts',()=>{
+  const s=resetSummary({base:'c'.repeat(40),added:[NEXT],accounts:['gm@kingdoms-call.test','player1@kingdoms-call.test'],seeds:2});
+  assert.match(s,/Staging database/);
+  assert.match(s,/`ccccccc`/);
+  assert.match(s,new RegExp(`- \`${NEXT}\``));
+  assert.match(s,/gm@kingdoms-call\.test/);
+  assert.match(s,/STAGING_TEST_PASSWORD/);
+  assert.match(resetSummary({base:'c'.repeat(40),added:[],accounts:[],seeds:1}),/adds no migrations/);
+});
+
+// `reset staging` end to end, against a stand-in Supabase CLI (SUPABASE_CLI) that answers as CLI 2.120.0 did on
+// staging: JSON for reset, push and migration list, but only the command tag (`DO`) for the seed, which is one
+// DO block. On 2026-10-11 the first real run stopped at the seed: every CLI answer was parsed as JSON.
+test('a staging rebuild runs every step, in order, with the CLI\'s real answers',async()=>{
+  const fs=require('fs'), os=require('os'), path=require('path'), {execFileSync}=require('child_process');
+  const {reset}=require('../.github/scripts/migrations.js');
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'kc-reset-'));
+  const log=path.join(tmp,'calls.log'), cliPath=path.join(tmp,'supabase');
+  fs.writeFileSync(cliPath,`#!/usr/bin/env node
+const a=process.argv.slice(2), fs=require('fs');
+fs.appendFileSync(${JSON.stringify(log)},a.filter(x=>!/^postgresql:/.test(x)).join(' ')+'\\n');
+const has=w=>a.join(' ').startsWith(w);
+if(has('db reset')) console.log(JSON.stringify({target:'remote',version:'',message:'Reset remote database.'}));
+else if(has('db query')) console.log('DO');
+else if(has('db push --dry-run')) console.log(JSON.stringify({upToDate:false,dryRun:true,migrations:['${NEXT}_x.sql'],seeds:[],roles:[]}));
+else if(has('db push')) console.log(JSON.stringify({upToDate:false,dryRun:false,migrations:['${NEXT}_x.sql'],seeds:[],roles:[]}));
+else if(has('migration list')) console.log(JSON.stringify({migrations:[{local:'${BASE}',remote:'${BASE}'},{local:'${NEXT}',remote:'${NEXT}'}]}));
+else process.exit(9);
+`,{mode:0o755});
+  const main=path.join(tmp,'main');
+  fs.mkdirSync(path.join(main,'supabase','migrations'),{recursive:true});
+  fs.mkdirSync(path.join(main,'supabase','seeds'));
+  fs.writeFileSync(path.join(main,'supabase','seeds','staging.sql'),'DO $$ BEGIN END $$;\n');
+  execFileSync('git',['init','-q',main]);
+  execFileSync('git',['-C',main,'-c','user.name=t','-c','user.email=t@t','commit','-q','--allow-empty','-m','main']);
+  const env={...process.env}, fetch0=globalThis.fetch;
+  Object.assign(process.env,{SUPABASE_CLI:cliPath,MAIN_DIR:main,DB_URL:pooler(STAGING_REF),STAGING_SUPABASE_URL:STAGING_URL,
+    STAGING_SUPABASE_KEY:'sb_publishable_example_key_1234567890',STAGING_TEST_PASSWORD:'a-long-shared-password',
+    GITHUB_STEP_SUMMARY:path.join(tmp,'summary.md')});
+  globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({})});
+  const out=console.log; console.log=()=>{};
+  try{ await reset('staging'); }
+  finally{ console.log=out; globalThis.fetch=fetch0; for(const k of Object.keys(process.env)) if(!(k in env)) delete process.env[k]; Object.assign(process.env,env); }
+  const calls=fs.readFileSync(log,'utf8').trim().split('\n').map(l=>l.split(' ').slice(0,2).join(' '));
+  assert.deepEqual(calls,['db reset','db query','db push','db push','migration list','db query']);
+  assert.match(fs.readFileSync(path.join(tmp,'summary.md'),'utf8'),new RegExp(`Staging database[\\s\\S]*${NEXT}[\\s\\S]*Seed runs: 2`));
 });

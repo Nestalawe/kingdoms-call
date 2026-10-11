@@ -4,56 +4,65 @@
 <https://kingdoms-call-staging.github.io/>. It has its own database with made-up accounts and games and no
 real players. Nothing done there touches the live game.
 
-Every pull request that changes something players or the GM can notice is tried on staging before it goes
-live. How depends on what the pull request changes. A pull request changes **the site** or **the
-database**, never both ([why](../supabase/README.md#database-and-site-changes-go-separately)).
+Every pull request that changes something players or the GM can notice is tried on staging **before it's
+merged**, whether it changes the site, the database, or both (as two stacked pull requests: below).
 
-## A site change (pages, rules, screens)
-
-Tried **before** merging.
+## Trying a pull request
 
 1. Add the label **`staging`** to the pull request.
-2. Wait for the comment **"🧪 On staging"** on the pull request (a few minutes: the tests run first).
+2. Wait for the comment **"🧪 On staging"** on the pull request (a few minutes: the tests run first, then
+   staging's database is rebuilt for it).
    Every page's footer on staging then says **"Staging · PR #N · abc1234"**: check it names this pull request.
-3. Open the staging site and follow the pull request's **"What to try on staging"** checklist.
+3. Open the staging site, sign in with a test account (below), and follow the pull request's **"What to try
+   on staging"** checklist.
 4. Works → talk it through if needed, then merge. Doesn't → say what went wrong on the pull request; new
    commits go up to staging by themselves while the label is on.
 
-## A database change (tables, columns, access rules)
+**What "rebuilt for it" means.** Each time a pull request goes on staging, staging's database is emptied
+(games and accounts too) and built again: first exactly as the live database is meant to be (`main`'s
+database changes), then with this pull request's own database changes on top, then the made-up games and
+test accounts. So a database change is tried on a database that already holds games, as the live one will
+be, before anyone has merged anything. If it fails, the run stops before the site goes up, and the pull
+request is fixed. Nothing on `main` needs undoing.
 
-Tried **after** merging, **before** the live database changes. Merging changes the staging database only;
-the live one waits for Toby's approval, and that wait is when it's tried.
-
-1. **Before merging,** add the label **`staging`**, so the staging site runs the current site (a database
-   pull request changes no site files, so this puts today's site on staging).
-2. **Merge it.** The **Deploy** run (Actions tab) changes the **staging** database, then stops at
-   **migrate-production** and waits. GitHub notifies Toby.
-3. **Try it on staging now**, following the pull request's "What to try on staging". Do it promptly:
-   while this run waits, every other update to the site waits behind it.
-4. **Works →** Toby opens the run, clicks **Review deployments** → ticks **production** → **Approve and
-   deploy**, soon after the daily backup (about 19:35 UTC, 08:35 in New Zealand, once today's backup is
-   listed in Supabase → Database → Backups). The live database changes, then the site deploys.
-5. **Doesn't work →** Toby clicks **Reject**. The live database is untouched. The fix is a new pull request
-   whose database change undoes this one; it goes through the same steps, and the live database gets both,
-   in order, ending up unchanged.
+**After merging a database change,** the **Deploy** run (Actions tab) stops at **migrate-production** and
+waits; GitHub notifies Toby. He opens the run, clicks **Review deployments** → ticks **production** →
+**Approve and deploy**, soon after the daily backup (about 19:35 UTC, 08:35 in New Zealand, once today's
+backup is listed in Supabase → Database → Backups). The live database changes, then the site deploys.
+Approve it promptly: while this run waits, every other update to the site waits behind it. Rejecting it
+leaves the live database untouched and the site not deployed.
 
 Nobody changes either database by hand, and nobody pastes SQL into Supabase.
 
 ## A change that needs both
 
-Two pull requests, in this order ([why](../supabase/README.md#database-and-site-changes-go-separately)):
-1. the database change, tried as above (nothing uses it yet, so there's usually little to see);
-2. the site change that uses it, tried as a site change: staging's database already has what it needs.
+Two pull requests ([why](../supabase/README.md#database-and-site-changes-go-separately)):
+1. the database change, on its own branch from `main`;
+2. the site change, on a branch made **from the database change's branch** ("stacked"). It contains both,
+   so labelling it puts both on staging: Toby tries the whole feature before either is merged.
+
+Merge the database change first, then the site change.
 
 ## Things to know
 
 - **One pull request is on staging at a time:** the last one labelled (or updated while labelled). The
   pull request it replaced gets a "replaced" comment. Label it again to put it back.
-- **Accounts:** sign up on staging with any email; no confirmation email is sent. Accounts made before the
-  staging database was rebuilt have no profile: make a new one.
-- **Staging stops answering** after a quiet week: the free Supabase project pauses. Restore it from the
-  Supabase dashboard (the staging project), and try again.
+- **Staging starts afresh each time** a pull request goes on it: games, accounts and sign-ins are wiped,
+  and the made-up games come back. Don't keep anything there you want to keep.
+- **Merging changes nothing on staging.** It keeps the last pull request put on it. To try the newest
+  `main` there, label any open pull request (or push to a labelled one): it's rebuilt from the new `main`.
+- **Test accounts:** `overlord@kingdoms-call.test`, `gm@kingdoms-call.test`,
+  `player1@kingdoms-call.test`, `player2@kingdoms-call.test` and `player3@kingdoms-call.test`, all with
+  one password, kept in Toby's password manager as "Kingdoms Call staging test accounts" (it's the staging
+  environment's `STAGING_TEST_PASSWORD` secret). The GM runs two made-up games: **Two Realms** (players 1
+  and 2 have joined; Turn 0 can be run straight away) and **Open Game** (nobody yet; player 3 can join).
+  You can also sign up on staging with any email (no confirmation email is sent), until the next rebuild.
+- **Staging stops answering** after a quiet week: the free Supabase project pauses, and putting a pull
+  request on staging fails with a connection error that says so. Restore it from the Supabase dashboard
+  (the staging project), then add the label again.
 - **"Missing from the database" on the GM portal's game list** means the site on staging is ahead of
-  staging's database: usually a site change whose database change isn't merged yet.
-- How it works underneath: `.github/workflows/staging.yml` (site) and `.github/workflows/deploy.yml`
-  ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live), database).
+  staging's database: usually a site change labelled without the database change it needs. Stack it on
+  that pull request (above).
+- How it works underneath: `.github/workflows/staging.yml`, `.github/scripts/migrations.js` (`reset
+  staging`), `supabase/seeds/staging.sql` (the made-up games), and, for the live database,
+  `.github/workflows/deploy.yml` ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)).

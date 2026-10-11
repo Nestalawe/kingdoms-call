@@ -3,8 +3,12 @@
 //                                                       commit that's live on the site. Writes the outputs `changed`
 //                                                       and `expected`, and the job summary (each migration's SQL and
 //                                                       its pull request) that Toby reads before approving production
-//   node .github/scripts/migrations.js apply <target>   brings the database at DB_URL (staging or production) up to
-//                                                       date, refusing any migration that isn't in EXPECTED
+//   node .github/scripts/migrations.js apply production brings the production database (DB_URL) up to date,
+//                                                       refusing any migration that isn't in EXPECTED
+//   node .github/scripts/migrations.js reset staging    on a pull request labelled `staging` (staging.yml, P0-33): empties
+//                                                       the staging database (DB_URL), rebuilds it from main's migrations
+//                                                       (MAIN_DIR, a checkout of main), signs up the test accounts, seeds
+//                                                       it, then applies this pull request's own migrations and seeds again
 //   node .github/scripts/migrations.js pr-check         on a pull request (HEAD is GitHub's merge commit): no merged
 //                                                       migration is changed, new ones are named and ordered, and
 //                                                       the database and the site aren't changed together
@@ -15,6 +19,7 @@
 // Everything except main() is pure and unit-tested in tests/migrations.test.js. main() runs git, the GitHub API
 // (read-only) and the Supabase CLI (SUPABASE_CLI, default "supabase"), whose JSON output it reads.
 const fs=require('fs'), path=require('path'), {execFileSync,spawnSync}=require('child_process');
+const {LIVE_REF,stagingRef,signUpTestAccounts}=require('./staging.js');
 
 const DIR='supabase/migrations';
 const NAME=/^(\d{14})_([a-z0-9_]+)\.sql$/;
@@ -83,7 +88,7 @@ function decide({list,expected,hasGames,bootstrapped=false}){
   const remote=list.filter(m=>m.remote).map(m=>m.remote);
   const unknown=list.filter(m=>m.remote&&!m.local).map(m=>m.remote);
   if(unknown.length)
-    return {action:'refuse',reason:`the database has migrations the repo doesn't: ${unknown.join(', ')}. Someone applied them by hand, or a pull request that was tried on this database never merged. Repair its history before deploying.`};
+    return {action:'refuse',reason:`the database has migrations the repo doesn't: ${unknown.join(', ')}. Someone applied them by hand. Repair its history before deploying.`};
   if(!remote.length){
     if(bootstrapped) return {action:'refuse',reason:'recording the baseline as applied didn\'t show up in the migration history.'};
     if(hasGames!==true) return {action:'refuse',reason:'the database has no migration history and no game tables. The pipeline never builds a database from nothing; set it up by hand (supabase/README.md).'};
@@ -103,8 +108,9 @@ function planSummary({migrations,live,head}){
   else lines.push(`Compared with the commit live on the site, \`${live.slice(0,7)}\`, this deploy (\`${head.slice(0,7)}\`) brings:`,'');
   if(!migrations.length){ lines.push('No database changes. The site deploys straight after the tests.'); return lines.join('\n')+'\n'; }
   for(const m of migrations) lines.push(`- \`${path.basename(m.file)}\`${m.pr?` from #${m.pr} (what it changes, in plain words, and its rollback are in that pull request)`:''}`);
-  lines.push('','**Order:** staging first, then production once Toby approves it, then the site. If production is '
-    +'rejected, the site doesn\'t deploy, and the next push to `main` asks again.','',BACKUP_NOTE,'');
+  lines.push('','**Order:** production once Toby approves it, then the site. If production is rejected, the site '
+    +'doesn\'t deploy, and the next push to `main` asks again. (Staging doesn\'t change on a merge: each pull request '
+    +'is tried there before it\'s merged.)','',BACKUP_NOTE,'');
   for(const m of migrations){
     const sql=m.sql.replace(/\n$/,'').split('\n');
     const shown=sql.slice(0,MAX_SQL_LINES).join('\n').replace(/```/g,'` ` `');
@@ -121,6 +127,43 @@ function applySummary({target,decision,applied=[],bootstrapped}){
   else if(decision.action==='nothing') lines.push('Already up to date: nothing to apply.');
   else lines.push('✅ Applied:','',...applied.map(v=>`- \`${v}\``));
   if(decision.action==='refuse'&&applied.length) lines.push('','Applied before it stopped:','',...applied.map(v=>`- \`${v}\``));
+  return lines.join('\n')+'\n';
+}
+
+// ---- Staging follows the pull request (P0-33) ----
+
+// Before `reset staging` empties a database: the target is staging and nothing else; the database address
+// (the staging environment's STAGING_DB_URL secret, which no other environment holds) names the staging project
+// (STAGING_SUPABASE_URL) in its user (session pooler, postgres.<ref>) or its host (db.<ref>.supabase.co), and
+// never the live one. Returns the staging project's ref. Messages never carry the address.
+function resetGuard({target,dbUrl,stagingUrl}){
+  if(target!=='staging') throw new Error(`A reset only ever rebuilds staging, never ${target||'(no target)'}.`);
+  if(!stagingUrl) throw new Error('No STAGING_SUPABASE_URL: a reset runs only in the staging environment.');
+  const ref=stagingRef(stagingUrl);
+  if(!dbUrl) throw new Error('No database address: the staging environment\'s STAGING_DB_URL secret is missing (a reset runs only in the staging environment).');
+  if(dbUrl.includes(LIVE_REF)) throw new Error('The database address names the live database: a reset never touches it.');
+  let user='', host='';
+  try{ const u=new URL(dbUrl); user=decodeURIComponent(u.username); host=u.hostname; }catch{}
+  if(user!==`postgres.${ref}`&&host!==`db.${ref}.supabase.co`)
+    throw new Error(`STAGING_DB_URL isn't the staging project (${ref}): its user or its host must name it.`);
+  return ref;
+}
+
+// The free staging project pauses after a quiet week; then every connection fails. Say so.
+function connectHint(message){
+  if(!/failed to connect|connection refused|i\/o timeout|timed out|no such host|tenant or user not found/i.test(message)) return message;
+  return `${message} The staging project may have paused after a quiet week (free plan): restore it from the `
+    +'Supabase dashboard, then add the `staging` label again (or push a commit).';
+}
+
+function resetSummary({base,added,accounts,seeds}){
+  const lines=['## Staging database','',
+    `Rebuilt for this pull request: emptied (games and accounts too), then \`main\`'s migrations up to \`${base.slice(0,7)}\`, `
+    +'the test accounts, and the made-up games (`supabase/seeds/staging.sql`).',''];
+  if(added.length) lines.push('Then this pull request\'s own migrations, on top:','',...added.map(v=>`- \`${v}\``),'');
+  else lines.push('This pull request adds no migrations.','');
+  lines.push(`Seed runs: ${seeds} (main's, then this pull request's).`,'',
+    'Test accounts (password: the staging environment\'s `STAGING_TEST_PASSWORD` secret):','',...accounts.map(e=>`- ${e}`));
   return lines.join('\n')+'\n';
 }
 
@@ -180,14 +223,15 @@ async function plan(){
 }
 
 // The connection string is an argument, so a failure is reported by the subcommand's name only: never the
-// command line, which would print the database password.
-function cli(args){
+// command line, which would print the database password. Most subcommands answer in JSON; `db query` on a
+// file that's one DO block (the staging seed) answers only with the command tag, `DO`: pass {json:false}.
+function cli(args,{json=true}={}){
   const bin=process.env.SUPABASE_CLI||'supabase';
   const r=spawnSync(bin,[...args,'--db-url',process.env.DB_URL,'--agent','no','--output-format','json'],
     {encoding:'utf8',stdio:['ignore','pipe','inherit']});
   if(r.error||r.status!==0)
     throw new Error(`supabase ${args.slice(0,2).join(' ')} failed (exit ${r.status}): ${scrub(cliError(r.stdout),process.env.DB_URL)}`);
-  return JSON.parse(r.stdout);
+  return json?JSON.parse(r.stdout):r.stdout;
 }
 // The CLI reports an error as JSON on stdout: {"_tag":"Error","error":{"message":…}}.
 function cliError(stdout){
@@ -204,7 +248,8 @@ function scrub(text,url){
 const migrationList=()=>cli(['migration','list']).migrations||[];
 
 function apply(target){
-  if(!['staging','production'].includes(target)) throw new Error('apply needs a target: staging or production');
+  // Staging isn't migrated on a merge (P0-33): it's rebuilt for each pull request put on it (`reset staging`).
+  if(target!=='production') throw new Error('apply needs the target production (staging is rebuilt by `reset staging`)');
   if(!process.env.DB_URL) throw new Error(`No database address: the ${target} environment's secret is missing.`);
   const expected=(process.env.EXPECTED||'').split(/\s+/).filter(Boolean);
   let list=migrationList(), bootstrapped=null;
@@ -234,6 +279,37 @@ function apply(target){
   console.log(d.action==='nothing'?`${target}: already up to date.`:`${target}: applied ${applied.join(', ')}.`);
 }
 
+async function reset(target){
+  const {DB_URL:dbUrl,STAGING_SUPABASE_URL:stagingUrl,STAGING_SUPABASE_KEY:key,STAGING_TEST_PASSWORD:password,MAIN_DIR:mainDir}=process.env;
+  resetGuard({target,dbUrl,stagingUrl});
+  if(!mainDir||!fs.existsSync(path.join(mainDir,DIR))) throw new Error('MAIN_DIR must be a checkout of main, with supabase/migrations.');
+  const run=(args,opts)=>{ try{ return cli(args,opts); }catch(e){ throw new Error(connectHint(e.message)); } };
+  const base=execFileSync('git',['-C',mainDir,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
+  let seeds=0;
+  const seed=dir=>{
+    const file=path.resolve(dir,'supabase/seeds/staging.sql');
+    if(fs.existsSync(file)){ run(['db','query','--file',file],{json:false}); seeds++; }
+  };
+
+  console.log(`1. Emptying staging and rebuilding it from main's migrations (${base.slice(0,7)})`);
+  run(['db','reset','--no-seed','--yes','--workdir',path.resolve(mainDir)]);
+  console.log('2. Signing up the test accounts');
+  const accounts=await signUpTestAccounts({url:stagingUrl,key,password});
+  console.log('3. Seeding (main\'s seed)');
+  seed(mainDir);
+  console.log('4. Applying this pull request\'s own migrations');
+  const added=run(['db','push','--dry-run']).migrations.map(version);
+  if(added.length) run(['db','push','--yes']);
+  const list=migrationList();
+  const left=list.filter(m=>m.local&&!m.remote).map(m=>m.local), extra=list.filter(m=>m.remote&&!m.local).map(m=>m.remote);
+  if(left.length||extra.length)
+    throw new Error(`after the push, staging and this pull request differ: still pending ${left.join(', ')||'none'}; not in this pull request ${extra.join(', ')||'none'}. If main has a migration this branch lacks, bring the branch up to date with main.`);
+  console.log('5. Seeding (this pull request\'s seed)');
+  seed('.');
+  summary(resetSummary({base,added,accounts:accounts.map(a=>a.email),seeds}));
+  console.log(`staging: rebuilt from main ${base.slice(0,7)}${added.length?`, plus ${added.join(', ')}`:''}.`);
+}
+
 function prCheck(){
   // On a pull request, actions/checkout gives GitHub's merge commit: its first parent is the base branch.
   const base='HEAD^1';
@@ -249,8 +325,8 @@ function prCheck(){
 
 if(require.main===module){
   const [cmd,arg]=process.argv.slice(2);
-  const run={plan,apply:()=>apply(arg),'pr-check':prCheck}[cmd];
-  if(!run){ console.error('usage: migrations.js plan | apply <staging|production> | pr-check'); process.exit(2); }
+  const run={plan,apply:()=>apply(arg),reset:()=>reset(arg),'pr-check':prCheck}[cmd];
+  if(!run){ console.error('usage: migrations.js plan | apply production | reset staging | pr-check'); process.exit(2); }
   Promise.resolve().then(run).catch(e=>{
     console.log(`::error title=migrations::${e.message}`);
     summary(`\n❌ **Stopped:** ${e.message}\n`);
@@ -258,4 +334,5 @@ if(require.main===module){
   });
 }
 
-module.exports={parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE};
+module.exports={parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE,
+  resetGuard,connectHint,resetSummary,reset};
