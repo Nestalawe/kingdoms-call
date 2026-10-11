@@ -27,6 +27,10 @@ CREATE POLICY "p1" ON "public"."profiles"
   TO PUBLIC
   USING ((id = auth.uid()));
 
+REVOKE ALL ON TABLE "public"."profiles" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."profiles" FROM "authenticated";
+
 GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."profiles" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."profiles" TO "service_role";

@@ -24,6 +24,10 @@ CREATE POLICY "tl2" ON "public"."turn_logs"
   TO PUBLIC
   USING (true);
 
+REVOKE ALL ON TABLE "public"."turn_logs" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."turn_logs" FROM "authenticated";
+
 GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."turn_logs" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."turn_logs" TO "service_role";

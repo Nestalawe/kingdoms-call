@@ -57,6 +57,10 @@ CREATE POLICY "gp6" ON "public"."game_players"
    FROM public.games
   WHERE (games.gm_user_id = auth.uid()))));
 
+REVOKE ALL ON TABLE "public"."game_players" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."game_players" FROM "authenticated";
+
 GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."game_players" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_players" TO "service_role";

@@ -38,6 +38,10 @@ CREATE POLICY "read game_records" ON "public"."game_records"
   TO "anon", "authenticated"
   USING (true);
 
+REVOKE ALL ON TABLE "public"."game_records" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."game_records" FROM "authenticated";
+
 GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."game_records" TO "authenticated";
 
 GRANT SELECT ON TABLE "public"."game_records" TO "anon";

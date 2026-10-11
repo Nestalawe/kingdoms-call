@@ -34,6 +34,10 @@ CREATE POLICY "gm rw game_results" ON "public"."game_results"
   USING (true)
   WITH CHECK (true);
 
+REVOKE ALL ON TABLE "public"."game_results" FROM "anon";
+
+REVOKE ALL ON TABLE "public"."game_results" FROM "authenticated";
+
 GRANT DELETE, INSERT, SELECT, UPDATE ON TABLE "public"."game_results" TO "authenticated";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."game_results" TO "service_role";
