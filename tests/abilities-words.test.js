@@ -23,14 +23,16 @@ const norm=s=>s.replace(/[’‘]/g,"'");
 // the player portal's blurbs
 const ppBlock=(/const UNIT_ABILITIES=\{([\s\S]*?)\n\};/.exec(pp)||['',''])[1];
 ok(ppBlock.length>0,'the player portal declares UNIT_ABILITIES');
+// Every `'Unit':'blurb',` entry, parsed once (no regex is built from a unit name).
+const entries=[...ppBlock.matchAll(/\n\s*'((?:[^'\\]|\\.)*)':'((?:[^'\\]|\\.)*)'/g)].map(x=>[x[1],x[2]]);
 { // one blurb per unit: in an object literal the last key wins, so a second entry silently replaces the first
-  const keys=[...ppBlock.matchAll(/\n\s*'((?:[^'\\]|\\.)*)':'/g)].map(x=>x[1]);
+  const keys=entries.map(e=>e[0]);
   const dup=keys.filter((k,i)=>keys.indexOf(k)!==i);
   ok(dup.length===0,`UNIT_ABILITIES declares each unit once (duplicates: ${dup.join(', ')||'none'})`); }
+const blurbs=Object.fromEntries(entries); // the last entry wins, as it does in the object literal
 for(const [u,names] of Object.entries(ABILITIES)){
-  const m=new RegExp(`\\n\\s*'${u.replace(/[-]/g,'\\-')}':'((?:[^'\\\\]|\\\\.)*)'`).exec(ppBlock);
-  ok(!!m,`the player portal has a blurb for ${u}`); if(!m) continue;
-  const text=norm(m[1]);
+  ok(u in blurbs,`the player portal has a blurb for ${u}`); if(!(u in blurbs)) continue;
+  const text=norm(blurbs[u]);
   for(const n of names) ok(text.includes(n),`${u}'s blurb names ${n} — "${text.slice(0,80)}…"`);
 }
 // the rulebook's roster rows
