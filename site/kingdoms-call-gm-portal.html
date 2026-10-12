@@ -554,6 +554,7 @@ function unitRef(ownerName, a){
 //                (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's Men-at-Arms), were
 //                annihilated in the rout!". Without it the lines read as they always did.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
+const TROLL_REGEN_CHANCE=0.30;   // Regenerating Hide (the Cave Trolls)
 function rollUnitFates(force, o){
   const rng=o.rng||Math.random, tiers=o.tiers||QUALITY_TIERS, say=o.say||(()=>{}), ref=o.unitRef||unitRef, who=o.owner||'';
   const dust=a=>a._isSkeletal?' Their bones crumble to dust — gone forever.':'';
@@ -567,7 +568,12 @@ function rollUnitFates(force, o){
   (force||[]).forEach(a=>{
     if(!a) return;
     const idx=tiers.indexOf(a.quality), roll=rng();
-    if(roll<o.dieAt(a)){ a._died=true; r.died++; say(`— ${head(a)} ${diedVerb}${dust(a)}`); return; }
+    if(roll<o.dieAt(a)){
+      // PRIMAL — Regenerating Hide (2026-10-13, the beast abilities): a Cave Trolls company that fails its death roll after a
+      // LOST battle shrugs it off three times in ten (the rulebook's "regenerating" brutes, now real). Not in a victory: the
+      // hide knits in flight, not in the press of the win. o.regen overrides the chance (the tests feed the dice).
+      if(a.type==='Cave Trolls'&&!o.won&&rng()<(o.regen!=null?o.regen:TROLL_REGEN_CHANCE)){ r.survived++; say(`— ${head(a)} are cut down — and rise again, the Regenerating Hide knitting flesh as they stagger clear.`); return; }
+      a._died=true; r.died++; say(`— ${head(a)} ${diedVerb}${dust(a)}`); return; }
     if(a._isSkeletal){ r.survived++; return; }
     if(o.won){
       if(roll<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— ${head(a,q0)} ${promoteVerb} ${a.quality}!`); }
@@ -1304,6 +1310,12 @@ function unitAbilityMult(army, ctx, terrain){
   }
   // ORC — Reaver Crews: troops put ashore by longships hit the beach at a run.
   if(ctx.amphibious) m*=1.25;
+  // PRIMAL — Shoal Swarm (2026-10-13, the beast abilities): sharks are worthless alone and deadly in numbers — +10% per
+  // other Shark Shoals in the force, to +30% (as the goblins' Sheer Numbers).
+  if(t==='Shark Shoals'){
+    const others=Math.max(0,force.filter(a=>a&&a.type==='Shark Shoals').length-1);
+    m*=1+Math.min(0.30,others*0.10);
+  }
 
   // ── PRIMAL ARMY SIGNATURE ABILITIES ────
   // Each primal beast carries one always-on battle ability, hooked into the enemy's composition or
@@ -1349,7 +1361,7 @@ function missileCap(target, firer){
 }
 function missileCapReached(target, firer){
   if(!target) return true;
-  if(target.type==='Dwarf Ironclads') return true; // arrow-immune — never worth a shot
+  if(target.type==='Dwarf Ironclads'||target.type==='Great Turtles') return true; // arrow-immune (Armoured Hulls; the turtles' Shell Wall) — never worth a shot
   return (target._archeryRed||0) >= missileCap(target, firer);
 }
 // 2026-09-24 (Toby): targets are RANDOM. Every shot picks at random among the enemy's winged riders
@@ -14471,16 +14483,20 @@ function applyPrebattleDamage(army, str){
 function applyMissileHit(target, archSkill, firer, opts){
   opts=opts||{};
   // DWARF — Armoured Hulls: arrows and bolts simply do not tell against plated warships.
-  if(target&&target.type==='Dwarf Ironclads') return {dmg:0,isFly:false,capped:false,immune:true};
+  if(target&&target.type==='Dwarf Ironclads') return {dmg:0,isFly:false,capped:false,immune:true,why:'armoured hull'};
+  // PRIMAL — Shell Wall (2026-10-13, the beast abilities): nor against the Great Turtles' shells.
+  if(target&&target.type==='Great Turtles') return {dmg:0,isFly:false,capped:false,immune:true,why:'shell'};
   const isFly=FLYING_TYPES.has(target.type);
   let dmg=missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
   if(isFly) dmg=dmg*2; // archers are especially good against winged riders — double damage
+  // PRIMAL — Thick Hide: a volley at the Great Bears does half (rounded up).
+  const thickHide=target.type==='Great Bears'; if(thickHide) dmg=Math.ceil(dmg/2);
   // DWARF — Punch Through: heavy bolts grind a target past the point bows can manage.
   const cap=missileCap(target, firer);
   const already=target._archeryRed||0;
   dmg=Math.max(0, Math.min(dmg, cap-already));
   if(dmg>0){ target._archeryRed=already+dmg; target._tempStrReduction=(target._tempStrReduction||0)+dmg; }
-  return {dmg, isFly, capped:already+dmg>=cap};
+  return {dmg, isFly, capped:already+dmg>=cap, thickHide};
 }
 
 
@@ -15431,8 +15447,8 @@ const BATTLE_ARMY_SPELLS={
           const dmgMult=missileDamageMult(atk, armies, prov.terrain, target, true);
           const hit=applyMissileHit(target, archSkillAtk, atk, {dmgMult});
           totalArrowDmg+=hit.dmg;
-          if(hit.immune) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}, but the shot glances off the armoured hull.`);
-          else if(hit.dmg>0) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${atk.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
+          if(hit.immune) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}, but the shot glances off the ${hit.why||'armoured hull'}.`);
+          else if(hit.dmg>0) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${hit.thickHide?' (Thick Hide: half)':''}${dmgMult>1?` (${atk.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
           else narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}, but they are already softened as much as arrows can manage.`);
         }
       });
@@ -15544,8 +15560,8 @@ const BATTLE_ARMY_SPELLS={
         const dmgMult=missileDamageMult(def, defenders, prov.terrain, target, false);
         const hit=applyMissileHit(target, defArchSkill, def, {dmgMult});
         totalDefArrow+=hit.dmg;
-        if(hit.immune) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but the shot glances off the armoured hull.`);
-        else if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${def.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
+        if(hit.immune) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but the shot glances off the ${hit.why||'armoured hull'}.`);
+        else if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${hit.thickHide?' (Thick Hide: half)':''}${dmgMult>1?` (${def.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
         else narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but they are already as softened as arrows can manage.`);
         }
       });
@@ -18290,8 +18306,8 @@ const BATTLE_ARMY_SPELLS={
           const t=pool[Math.floor(Math.random()*pool.length)];
           const dmgMult=missileDamageMult(a, myForce, pvpTerrain, t, isAtk);
           const hit=applyMissileHit(t, archLvl, a, {dmgMult});
-          if(hit.immune) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: shot glances off the armoured hull.`);
-          else if(hit.dmg>0) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: −${hit.dmg} str${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${a.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
+          if(hit.immune) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: shot glances off the ${hit.why||'armoured hull'}.`);
+          else if(hit.dmg>0) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: −${hit.dmg} str${hit.isFly?' (×2 vs flying!)':''}${hit.thickHide?' (Thick Hide: half)':''}${dmgMult>1?` (${a.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
           else narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: already softened as far as arrows allow.`);
         }
       });
@@ -18508,6 +18524,16 @@ const BATTLE_ARMY_SPELLS={
     // immune, exactly as it is to Ride Them Down.
     const _wargAtk=isHalfOrMore(atkArmies,'Warg Riders');
     const _wargDef=isHalfOrMore(defArmies,'Warg Riders');
+    // PRIMAL (2026-10-13, the beast abilities): the Manticores hunt a broken foe down on any ground, and at sea the sharks tear into
+    // beaten crews — each +RUN_THEM_DOWN_PCT to the loser's destruction rolls when at least half the winning force is theirs,
+    // as the Wargs' Run Them Down; a Shield Fort withdrawal is immune to both.
+    const _mantAtk=isHalfOrMore(atkArmies,'Manticore Pride'), _mantDef=isHalfOrMore(defArmies,'Manticore Pride');
+    const _sharkAtk=pvpTerrain==='sea'&&isHalfOrMore(atkArmies,'Shark Shoals'), _sharkDef=pvpTerrain==='sea'&&isHalfOrMore(defArmies,'Shark Shoals');
+    const _huntPct=(mant,shark)=>(mant?RUN_THEM_DOWN_PCT:0)+(shark?RUN_THEM_DOWN_PCT:0);
+    const _huntLines=(mant,shark,sf,winner,loser,narr)=>{
+      if(mant) narr.push(sf?`🛡 ${loser}'s Dwarven Guard lock shields as they give ground — ${winner}'s Manticore Pride find no broken backs to hunt.`:`🦂 ${winner}'s Manticore Pride hunt the broken companies down before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${loser}).`);
+      if(shark) narr.push(sf?`🛡 ${loser}'s Dwarven Guard lock shields as they give ground — ${winner}'s Shark Shoals find nothing in the water.`:`🦈 Feeding Frenzy — ${winner}'s Shark Shoals tear into ${loser}'s beaten crews as they founder (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${loser}).`);
+    };
     // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11.)
     const _noEscapeRoll=(force,name,narr)=>{
       (force||[]).forEach(a=>{
@@ -18573,10 +18599,11 @@ const BATTLE_ARMY_SPELLS={
         promoteTo:a=>winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),faced:_facedA,say:l=>narrative.push(l)});
       survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
-      const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0));
+      const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0)+_huntPct(_mantAtk,_sharkAtk));
       if(_rideAtk>0&&_sfDef) narrative.push(`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideAtk>0) narrative.push(`🐎 ${atkName}'s Free Lances ride down the broken companies (+${dispFloor(_rideAtk*100)}% losses to ${defName}).`);
       if(_wargAtk) narrative.push(_sfDef?`🛡 ${defName}'s Dwarven Guard lock shields as they give ground — ${atkName}'s Warg Riders find no broken backs to run down.`:`🐺 ${atkName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${defName}).`);
+      _huntLines(_mantAtk,_sharkAtk,_sfDef,atkName,defName,narrative);
       // Losing defender
       const _cas1=narrative.length;
       rollUnitFates(defArmies,{owner:defName,won:false,dieAt:a=>loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff,
@@ -18656,10 +18683,11 @@ const BATTLE_ARMY_SPELLS={
       const _headIdx=narrative.length;
       narrative.push(`${atkName}'s assault is repelled! After ${aAn(severity)} ${severity} engagement, ${defName} drives the attackers from ${prov.name}.`);
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Losing attacker
-      const _rideDefEff=_sfAtk?0:(_rideDef+(_wargDef?RUN_THEM_DOWN_PCT:0));
+      const _rideDefEff=_sfAtk?0:(_rideDef+(_wargDef?RUN_THEM_DOWN_PCT:0)+_huntPct(_mantDef,_sharkDef));
       if(_rideDef>0&&_sfAtk) narrative.push(`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Free Lances find no broken backs to ride down.`);
       else if(_rideDef>0) narrative.push(`🐎 ${defName}'s Free Lances ride down the broken companies (+${dispFloor(_rideDef*100)}% losses to ${atkName}).`);
       if(_wargDef) narrative.push(_sfAtk?`🛡 ${atkName}'s Dwarven Guard lock shields as they give ground — ${defName}'s Warg Riders find no broken backs to run down.`:`🐺 ${defName}'s Warg Riders run down the broken companies before they can get clear (+${dispFloor(RUN_THEM_DOWN_PCT*100)}% losses to ${atkName}).`);
+      _huntLines(_mantDef,_sharkDef,_sfAtk,defName,atkName,narrative);
       const _cas2=narrative.length;
       rollUnitFates(atkArmies,{owner:atkName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff,
         demoteAt:a=>loseDemotePvP*atkTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),

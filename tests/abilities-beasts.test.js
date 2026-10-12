@@ -93,7 +93,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   r=fight([['Unicorn Herd',2]],[['Cave Trolls',2]],2,'forest');
   ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity/.test(u.why)),`Purity: unicorns facing Cave Trolls ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
   r=fight([['Unicorn Herd',2]],[['Shieldwall Levies',2,{_isSkeletal:true}]],2,'forest');
-  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.75*1.25)&&/Purity/.test(u.why)&&/Spear Hedge/.test(u.why)),`…and facing skeletal Levies (the Spear Hedge still caps the charge at ×0.75, Purity lifts it) — ${whyOf(r.me,'Unicorn Herd')}`);
+  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.75)&&/Purity/.test(u.why)&&/Spear Hedge/.test(u.why)),`…and facing skeletal Levies Purity is named, but the Spear Hedge still caps even a pure charge at ×0.75 — ${whyOf(r.me,'Unicorn Herd')}`);
   r=fight([['Unicorn Herd',2]],[['Orc Berserkers',2]],2,'forest');
   ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85)&&!/Purity/.test(u.why)),'facing living orcs the herd is plain cavalry');
 
