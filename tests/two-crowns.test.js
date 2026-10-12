@@ -88,7 +88,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(/Battle for|battle is initiated/.test(te),'the Evil king fights in the terrorised province');
     ok(/Reign of Fear ×1\.5/.test(te),'the ladder names Reign of Fear ×1.5 on the trolls');
     ok(/Terror lingers/.test(te),'the defenders there still fight demoralised by the Terror');
-    ok(/savage fury/.test(te),"Evil's savage fury (×1.25 with a Monster in the host) stays");
+    ok(/savage fury|fanatical zeal/.test(te),"Evil's savage fury (×1.25 with a Monster in the host) stays — or the zeal roll fired, which outranks it and is the one line the report prints then");
     ok(!/Druid shortfall/.test(te),'the Druid-1 Evil king leads his trolls with no shortfall warning');
     ok(/Battle for|battle is initiated/.test(td),'the Druidic king fights too');
     ok(!/wild ferocity/i.test(td)&&!/wild ferocity/i.test(r.text()),'Wild Ferocity is gone: no ×1.25 line for a Druidic host with a Creature');
