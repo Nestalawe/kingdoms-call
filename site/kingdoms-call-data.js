@@ -19,42 +19,46 @@ const KC_DATA_STAMP='2026.10.12-0010';
 // ════
 // Army type lookups for movement and sea rules Primal army type definitions (added to main lookup
 // tables) Format mirrors existing entries
+// 2026-10-13 (Toby, Creatures and Monsters I): the wild roster as decided (tests/lib/primal-decided.js) — a
+// Druid-4 beast about 2.6–2.75 strength a gold, a Druid-5 beast 2.4–2.6, because a realm's own-race troops
+// carry a ×1.44 kinship no beast gets; every flyer moves 5, no walker slower than 2. Terrain is written ONCE,
+// in the GM portal's TERRAIN_MODS; the always-on terrain multipliers these units used to carry on top are gone.
 const PRIMAL_ARMY_DEFS_P={
   // ── Druid 4 — Land ──
-  'Stone Giants'    :{str:9,speed:1,cost:5,race:'Stone Giant',cat:'Heavy',
-    desc:'Ancient stone-fleshed giants. Mountain Bulwark: +30% strength when the battle is fought in mountain terrain. Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Crushingly slow (speed 1).',
+  'Stone Giants'    :{str:13,speed:2,cost:5,race:'Stone Giant',cat:'Heavy',
+    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
     spells:[{name:'Boulder Barrage',dmg:[4,7],target:'single',flavour:'Giants heave boulders that shatter a formation before contact!'}]},
-  'Forest Ents'     :{str:8,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
-    desc:'Living trees of great age. Rooted Grove: +30% strength in forest or jungle terrain. Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
+  'Forest Ents'     :{str:11,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
+    desc:'Living trees of great age, at home in forest and jungle (terrain ×1.15 there; they wither in the desert). Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
     spells:[{name:'Choking Spores',dmg:[2,4],target:'all',flavour:'A cloud of ancient spores rolls across the whole enemy line.'}]},
   'Giant Eagles'    :{str:7,speed:5,cost:4,race:'Giant Eagle',cat:'Free Lances',
     desc:'Wild eagle-lords, not the Elven-tamed variety. Stoop on the Archers: +25% strength whenever the enemy fields any missile unit. Pre-battle strike Diving Talons: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
     spells:[{name:'Diving Talons',dmg:[4,8],target:'single',flavour:'Eagles fold their wings and fall on the archers like thunderbolts!'}]},
-  'Cave Trolls'     :{str:8,speed:2,cost:4,race:'Cave Troll',cat:'Heavy',
-    desc:'Regenerating mountain brutes. Regenerating Hide: +20% strength in every battle, and a further +30% (about +56% total) in mountain or forest terrain. Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
+  'Cave Trolls'     :{str:11,speed:2,cost:4,race:'Cave Troll',cat:'Heavy',
+    desc:'Regenerating mountain brutes, at home in the mountains and the forest (terrain ×1.15 and ×1.1 there). Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
     spells:[{name:'Hurled Rubble',dmg:[4,7],target:'single',flavour:'A troll rips a slab from the earth and hurls it into the ranks.'}]},
-  'Manticore Pride' :{str:8,speed:4,cost:5,race:'Manticore',cat:'Free Lances',
+  'Manticore Pride' :{str:13,speed:5,cost:5,race:'Manticore',cat:'Free Lances',
     desc:'Ferocious lion-scorpion-bat creatures. Relentless Hunt: +25% strength when their side is the ATTACKER. Pre-battle strike Spine Volley: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
     spells:[{name:'Spine Volley',dmg:[2,4],target:'all',flavour:'A storm of tail-spines rains across every enemy unit.'}]},
-  'Basilisk Brood'  :{str:7,speed:2,cost:4,race:'Basilisk',cat:'Heavy',
+  'Basilisk Brood'  :{str:11,speed:2,cost:4,race:'Basilisk',cat:'Heavy',
     desc:'Petrifying reptiles. Stone Deterrent: +25% strength when their side is DEFENDING. Pre-battle strike Petrifying Gaze: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
     spells:[{name:'Petrifying Gaze',dmg:[2,4],target:'all',flavour:'A hundred stony eyes sweep the field — flesh begins to seize.'}]},
   // ── Druid 4 — Sea ──
-  'Sea Giants'      :{str:9,speed:3,cost:5,race:'Sea Giant',cat:'Naval',
+  'Sea Giants'      :{str:13,speed:3,cost:5,race:'Sea Giant',cat:'Naval',
     desc:'Colossal ocean-dwelling giants that wade ashore. Tidal Might: +20% strength when fighting in a coastal land province (one bordering the sea). Pre-battle strike Tidal Surge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit.',
     spells:[{name:'Tidal Surge',dmg:[4,8],target:'single',flavour:'A wall of driven water smashes a vessel broadside.'}]},
   'Kraken Tentacles':{str:10,speed:2,cost:6,race:'Kraken',cat:'Naval',
     desc:'Severed but animate tentacles of elder krakens. Deepwater Grasp: +35% strength in a sea battle. Pre-battle strike Crushing Coils: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit.',
     spells:[{name:'Crushing Coils',dmg:[5,9],target:'single',flavour:'Titanic coils breach and drag a hull under.'}]},
   // ── Druid 5 — Land ──
-  'Elder Dragons'   :{str:12,speed:4,cost:8,race:'Dragon',cat:'Free Lances',
+  'Elder Dragons'   :{str:19,speed:5,cost:8,race:'Dragon',cat:'Free Lances',
     desc:'Fully sapient ancient dragons — each unit is one elder dragon. Wyrmscale: +25% strength in every battle. Pre-battle strike Dragonfire Breath: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit. Flying.',
     spells:[{name:'Dragonfire Breath',dmg:[3,6],target:'all',flavour:'A sheet of ancient fire washes across the entire front line!'}]},
-  'Crimson Rocs'      :{str:10,speed:5,cost:6,race:'Roc',cat:'Free Lances',
+  'Crimson Rocs'      :{str:15,speed:5,cost:6,race:'Roc',cat:'Free Lances',
     desc:'Riders atop massive thunder-birds. Air Superiority: +30% strength whenever the enemy fields any missile unit. Pre-battle strike Thunderous Stoop: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit. Flying (speed 5).',
     spells:[{name:'Thunderous Stoop',dmg:[5,9],target:'single',flavour:'A roc plummets from cloud-height and scatters a unit outright.'}]},
-  'Titan Warbeasts' :{str:11,speed:2,cost:7,race:'Titan',cat:'Heavy',
-    desc:'Primordial mythic beasts. Colossal Bulk: +30% strength in every battle (they fight from the back line at front-line power). Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
+  'Titan Warbeasts' :{str:18,speed:2,cost:7,race:'Titan',cat:'Heavy',
+    desc:'Primordial mythic beasts, at home on the plain and in the desert (terrain ×1.1 there). Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
     spells:[{name:'World-Shaking Charge',dmg:[3,6],target:'all',flavour:'The herd charges — the ground itself throws every enemy off balance.'}]},
   // ── Druid 5 — Sea ──
   'Leviathan Pods'  :{str:13,speed:3,cost:8,race:'Leviathan',cat:'Naval',

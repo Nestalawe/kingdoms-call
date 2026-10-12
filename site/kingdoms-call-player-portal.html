@@ -7041,8 +7041,9 @@ function formatRace(race, unitType){
   return race;
 }
 
-// Primal army speeds (for UI calculations)
-const PRIMAL_ARMY_SPEEDS={'Stone Giants':1,'Forest Ents':2,'Giant Eagles':5,'Cave Trolls':2,'Manticore Pride':4,'Basilisk Brood':2,'Sea Giants':3,'Kraken Tentacles':2,'Elder Dragons':4,'Crimson Rocs':5,'Titan Warbeasts':2,'Leviathan Pods':3};
+// Primal army speeds (for UI calculations) — built from the one primal table in the data file (2026-10-13:
+// this was a hand-typed copy, and the roster PR would have left it a move behind).
+const PRIMAL_ARMY_SPEEDS=Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t,d])=>[t,d.speed]));
 
 
 // ── Alignment spectrum & hero hire pricing (mirrors the GM engine) ────
