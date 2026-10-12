@@ -15,7 +15,8 @@ for(const [u,race] of [['Noble Griffons','Human'],['Eagle Riders','Elven'],['Wyv
   ok(!/Druid 3|tamed creature/i.test(r.rest),`the ${u} row no longer says "needs Druid 3"`);
 }
 const a=rules.indexOf('<strong>Druid 1</strong> —'); const L=a<0?'':rules.slice(a,rules.indexOf('</li>',a));
-ok(/Druid 1<\/strong> — [^<]*winged riders/.test(L)&&!/Druid 2<\/strong> — Gnomish/.test(L)&&/Druid 3<\/strong> — Whale Cohort\./.test(L),'the Druid ladder puts the winged riders at Druid 1, lists no Gyrocopters at 2 and leaves Druid 3 to the Whale Cohort');
+// (2026-10-13, Creatures and Monsters III: the Shark Shoals share Druid 3 with the Whale Cohort; no winged rider does.)
+ok(/Druid 1<\/strong> — [^<]*winged riders/.test(L)&&!/Druid 2<\/strong> — Gnomish/.test(L)&&/Druid 3<\/strong> — Whale Cohort/.test(L)&&!/Druid 3<\/strong> — [^<]*(Riders|Griffons|Gyrocopters)/.test(L),'the Druid ladder puts the winged riders at Druid 1, lists no Gyrocopters at 2 and leaves Druid 3 to the sea-beasts (the Whale Cohort first)');
 ok(!/Eagle Riders \(Druid 3\)/.test(rules),'the mastery example no longer uses Eagle Riders');
 ok(/land one time in two whatever your Druid/.test(rules),'the rulebook says the riders\' strikes land one time in two');
 const c=rules.indexOf('ALL <strong>Creature</strong> armies'); const creed=c<0?'':rules.slice(c,c+300);
