@@ -53,8 +53,7 @@ the database change first, then the site change. Each one has to work without th
 refuses a pull request that changes both.
 
 **Why.** The database and the site go live at different moments, and old copies of the site stay around:
-- the database changes when Toby approves it, which may be hours after the merge (just after the daily
-  backup);
+- the database changes when Toby approves it, which may be a while after the merge;
 - the site changes straight after each merge;
 - a player who opened the game yesterday still has yesterday's page in their tab, and a GM's tab keeps
   running turns with the page it loaded;
@@ -109,8 +108,16 @@ Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate produc
    their pull requests, in the run's summary. With none, the site deploys straight after the tests.
 2. **`migrate-production`** waits for **Toby's approval** (the run page's **Review deployments** button,
    in the `production` environment). The change was tried on staging before merging, so the approval is
-   about timing: he approves soon after the daily backup (about 19:35 UTC), once it's listed in Supabase →
-   Database → Backups.
+   about timing: once the conditions in the pull request's "What Toby is approving" are met (e.g. "the site PR
+   is live", "players were asked to reload").
+   - The summary says what each migration does to the data already there: **rules only** (access rules,
+     permissions, functions, indexes), **adds rows**, or ⚠️ **changes or removes data** (`update`, `delete`,
+     `truncate`, dropping a table or column, changing a column's type). The first two lose nothing, and the
+     pull request's rollback undoes them, so they don't wait for a backup.
+   - Only a migration that **changes or removes data** needs a copy of the database taken first (or approval
+     just after a daily backup): nothing else undoes it. None has so far. An automatic, encrypted copy before
+     such a migration is planned for when the first one comes (the copy must never be readable in this public
+     repo's Actions).
 3. **`deploy`** publishes the site, only if production was migrated. If Toby rejects it, or anything fails,
    the site doesn't deploy, and the next push to `main` (or a manual run of Deploy) asks again.
 
