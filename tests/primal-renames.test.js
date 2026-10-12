@@ -53,7 +53,7 @@ function slice(src,name,from=0){
   const types=d=>((d.effect||{}).types||[]);
   ok(types(disc('ad13')).join()==='Noble Griffons,Thunderbirds'&&/Thunderbirds/.test(disc('ad13').desc)&&!/Giant Eagles/.test(disc('ad13').desc),'Angelic Hosts lifts Noble Griffons and Thunderbirds');
   ok(types(disc('au13')).join()==='Thunderbirds,Crimson Rocs'&&/Thunderbirds/.test(disc('au13').desc),'Sky Kin lifts Thunderbirds and Crimson Rocs');
-  ok(types(disc('au20')).join()==='Whale Cohort'&&!/Leviathan/.test(disc('au20').desc),'Whale Lore lifts the Whale Cohort (the Leviathans are gone; the Great Turtles join it in their own PR)');
+  ok(types(disc('au20')).includes('Whale Cohort')&&!types(disc('au20')).includes('Leviathan Pods')&&!/Leviathan/.test(disc('au20').desc),'Whale Lore lifts the Whale Cohort and no Leviathan (the Great Turtles join it in Creatures and Monsters IV)');
   ok(/Thunderbirds/.test(disc('sd40').desc)&&!/Giant Eagles/.test(disc('sd40').desc),'Dragon Taming names the Thunderbirds among the winged beasts');
   for(const d of D.DISC) for(const u of OLD) ok(!types(d).includes(u)&&!(d.desc||'').includes(u),`discovery ${d.id} no longer names ${u}`);
 
