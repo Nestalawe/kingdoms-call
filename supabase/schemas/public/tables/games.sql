@@ -51,6 +51,14 @@ CREATE POLICY "g3" ON "public"."games"
   TO PUBLIC
   USING (true);
 
+-- Only Game Masters create games, in their own name, and the Overlord creates none (P0-32d, D-13). Restrictive:
+-- it narrows every other rule that would allow an insert.
+CREATE POLICY "only Game Masters create games" ON "public"."games"
+  AS RESTRICTIVE
+  FOR INSERT
+  TO "authenticated"
+  WITH CHECK (((gm_user_id = ( SELECT auth.uid() AS uid)) AND ( SELECT public.is_game_master() AS is_game_master) AND (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
+
 REVOKE ALL ON TABLE "public"."games" FROM "anon";
 
 REVOKE ALL ON TABLE "public"."games" FROM "authenticated";
