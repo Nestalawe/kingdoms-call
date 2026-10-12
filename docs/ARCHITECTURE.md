@@ -145,7 +145,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 |---|---|
 | `profiles` | One row per account: display name |
 | `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below). Created only by a Game Master, in their own name; never by the Overlord (P0-32d) |
-| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's (P0-32d) |
+| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's (P0-32d); one realm per slot number in a game (P0-20). Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B) |
 | `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log) |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
