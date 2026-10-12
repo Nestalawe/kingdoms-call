@@ -1293,14 +1293,14 @@ function unitAbilityMult(army, ctx, terrain){
   if(ctx.amphibious) m*=1.25;
 
   // ── PRIMAL ARMY SIGNATURE ABILITIES ────
-  // Each primal beast carries one always-on battle ability, hooked into terrain, the enemy's
-  // composition, or attack/defend posture — the army-battle counterpart of a monster's special.
-  // These finally deliver the promises in each unit's `desc`. Pre-battle strikes live on the units'
-  // `spells` and resolve separately in the pre-battle magic phase. Druid 4 —
-  if(t==='Stone Giants'     && terrain==='mountain') m*=1.30;                 // Mountain Bulwark
-  if(t==='Forest Ents'      && (terrain==='forest'||terrain==='jungle')) m*=1.30; // Rooted Grove
+  // Each primal beast carries one always-on battle ability, hooked into the enemy's composition or
+  // attack/defend posture — the army-battle counterpart of a monster's special. Pre-battle strikes live
+  // on the units' `spells` and resolve separately in the pre-battle magic phase.
+  // 2026-10-13 (Toby, Creatures and Monsters I): terrain is written ONCE, in TERRAIN_MODS. The multipliers
+  // that doubled a terrain row are gone — Mountain Bulwark (Stone Giants), Rooted Grove (Forest Ents),
+  // Regenerating Hide's ×1.2/×1.3 (Cave Trolls) — and so is the Titans' always-on ×1.3 (Colossal Bulk's
+  // place in the line comes with the beast abilities, as the humanoid units' did). Druid 4 —
   if(t==='Giant Eagles'     && enemyHasMissile) m*=1.25;                      // Stoop on the Archers
-  if(t==='Cave Trolls'){ m*=1.20; if(terrain==='mountain'||terrain==='forest') m*=1.30; } // Regenerating Hide
   if(t==='Manticore Pride'  && ctx.isAttacker) m*=1.25;                       // Relentless Hunt
   if(t==='Basilisk Brood'   && !ctx.isAttacker) m*=1.25;                      // Stone Deterrent
   if(t==='Sea Giants'       && terrain!=='sea' && ctx.coastal) m*=1.20;       // Tidal Might
@@ -1308,7 +1308,6 @@ function unitAbilityMult(army, ctx, terrain){
   // Druid 5 —
   if(t==='Elder Dragons') m*=1.25;                                            // Wyrmscale (unconditional)
   if(t==='Crimson Rocs'     && enemyHasMissile) m*=1.30;                      // Air Superiority
-  if(t==='Titan Warbeasts') m*=1.30;                                          // Colossal Bulk (unconditional)
   if(t==='Leviathan Pods'   && terrain==='sea') m*=1.40;                      // Fleet-Sinker
   return m;
 }
@@ -14272,8 +14271,8 @@ const TERRAIN_MODS={
     'Elven Garrison':1.0,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
-    'Stone Giants':0.90,'Forest Ents':0.85,'Cave Trolls':1.0,
-    'Manticore Pride':1.15,'Basilisk Brood':0.90,'Titan Warbeasts':1.15,
+    'Stone Giants':0.90,'Forest Ents':0.90,'Cave Trolls':1.0,
+    'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
@@ -14287,8 +14286,8 @@ const TERRAIN_MODS={
     'Elven Garrison':0.85,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
-    'Stone Giants':0.90,'Forest Ents':0.60,'Cave Trolls':0.85,
-    'Manticore Pride':1.15,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
+    'Stone Giants':0.90,'Forest Ents':0.75,'Cave Trolls':0.85,
+    'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
@@ -14302,9 +14301,9 @@ const TERRAIN_MODS={
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
-    'Stone Giants':0.90,'Forest Ents':1.20,'Cave Trolls':1.10,
-    'Manticore Pride':0.80,'Basilisk Brood':1.0,'Titan Warbeasts':0.75,
-    'Crimson Rocs':0.90,'Elder Dragons':1.0,
+    'Stone Giants':0.90,'Forest Ents':1.15,'Cave Trolls':1.10,
+    'Manticore Pride':1.0,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
+    'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   jungle:{
@@ -14317,9 +14316,9 @@ const TERRAIN_MODS={
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
-    'Stone Giants':0.80,'Forest Ents':1.20,'Cave Trolls':1.05,
-    'Manticore Pride':0.80,'Basilisk Brood':1.10,'Titan Warbeasts':0.70,
-    'Crimson Rocs':0.85,'Elder Dragons':1.0,
+    'Stone Giants':0.80,'Forest Ents':1.15,'Cave Trolls':1.05,
+    'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
+    'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   mountain:{
@@ -14332,9 +14331,9 @@ const TERRAIN_MODS={
     'Elven Garrison':0.90,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
-    'Stone Giants':1.15,'Forest Ents':0.85,'Cave Trolls':1.15,
-    'Manticore Pride':0.80,'Basilisk Brood':0.90,'Titan Warbeasts':0.75,
-    'Crimson Rocs':1.10,'Elder Dragons':1.10,
+    'Stone Giants':1.15,'Forest Ents':0.90,'Cave Trolls':1.15,
+    'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':0.80,
+    'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   sea:{
