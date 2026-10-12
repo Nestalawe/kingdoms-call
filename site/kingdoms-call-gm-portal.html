@@ -712,9 +712,10 @@ function battleMarginBand(margRatio){ const r=Math.max(0,margRatio||0); return B
 //     strength; anything else in the second line fights at ×0.5;
 //   • reserve: ×0.25 for the next `width` units, ×0.125 beyond (sd09 Flanking Tactics lifts the
 //     ×0.5 / ×0.25 / ×0.125 steps, as it always has);
-//   • the four winged riders (KC_UNIT_CLASS.flying) fight from the air and take no place: full
-//     strength up to the enemy's ground units in line plus their flyers (never fewer than 2), and
-//     ×0.5 beyond that. Flying BEASTS hold a place like infantry, as before.
+//   • the winged riders and the flying beasts (KC_UNIT_CLASS.aerial) fight from the air and take no
+//     place: full strength up to the enemy's ground units in line plus their flyers (never fewer than 2),
+//     and ×0.5 beyond that. (2026-10-13, the beast abilities: the flying beasts used to hold a place like
+//     infantry. Archers still single out the riders only, and hit them twice as hard: FLYING_TYPES.)
 // At sea the hulls and sea-beasts take the front before any carried land unit, and there are no
 // flanks. Columns fill strongest-in-the-centre, so the grid a report prints is the grid that was
 // scored. Who faces whom is then read off the two grids (battleFacing, below the print helpers).
@@ -724,15 +725,15 @@ const BATTLE_LINE_MULTS=[1,0.5,0.25,0.125];       // front · second line (not s
 const BATTLE_LINE_MULTS_FLANK=[1,0.75,0.5,0.25];  // sd09's fallback if its data row carries no `lines`
 const BATTLE_RANGED_IN_FRONT=0.75, BATTLE_FLYER_BEYOND_CAP=0.5, BATTLE_FLYER_CAP_MIN=2, BATTLE_FLANK_TAC_CAP=5;
 // Own copies of the three class lists the grid reads (each consumer builds its own, see the data file).
-const GRID_FLY_TYPES=new Set(KC_UNIT_CLASS.flying), GRID_CAV_TYPES=new Set(KC_UNIT_CLASS.cavalry), GRID_SEA_TYPES=new Set(KC_UNIT_CLASS.sea);
+const GRID_FLY_TYPES=new Set(KC_UNIT_CLASS.aerial), GRID_CAV_TYPES=new Set(KC_UNIT_CLASS.cavalry), GRID_SEA_TYPES=new Set(KC_UNIT_CLASS.sea);
 // The width this battle's ground allows: ONE roll per battle, shared by both sides.
 function rollBattleWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return r[0]+Math.floor(Math.random()*(r[1]-r[0]+1)); }
 // The middle of the range: what the bots' estimates and the Strategist's command score assume.
 function battleFrontWidth(terrain){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return Math.round((r[0]+r[1])/2); }
 function flankLineMults(){ const l=(typeof DISC_BY_ID!=='undefined'&&DISC_BY_ID.sd09&&DISC_BY_ID.sd09.effect&&DISC_BY_ID.sd09.effect.lines); return (Array.isArray(l)&&l.length===4)?l:BATTLE_LINE_MULTS_FLANK; }
-// A row's place comes from its unit's type: 'fly' for the four winged riders (no place in the line),
-// 'cav', 'arc' (ranged), and 'foot' for everything else — infantry, the walking and swimming beasts,
-// fleets, elementals, and any type the tables have never heard of. A row with no unit on it (the
+// A row's place comes from its unit's type: 'fly' for the winged riders and the flying beasts (no place
+// in the line), 'cav', 'arc' (ranged), and 'foot' for everything else — infantry, the walking and
+// swimming beasts, fleets, elementals, and any type the tables have never heard of. A row with no unit on it (the
 // bots' estimates) falls back on its own `fly` flag.
 function battleRole(row, terrain){
   const t=row&&row.a&&row.a.type;

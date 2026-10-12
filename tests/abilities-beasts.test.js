@@ -52,12 +52,13 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   ok(placed(r.me,'Elder Dragons').filter(u=>near(u.mult,1)).length===2&&placed(r.me,'Elder Dragons').filter(u=>near(u.mult,0.5)).length===2,`four Dragons over one Levy company: two at full strength (the cap never falls below two), two at half beyond the line (got ${placed(r.me,'Elder Dragons').map(u=>u.mult).join(', ')})`);
 
   // ── Storm Wings: with Thunderbirds on the other side, every enemy unit in the air fights ×0.85 ──
-  r=fight([['Shieldwall Levies',2],['Thunderbirds',1]],[['Shieldwall Levies',2],['Eagle Riders',1],['Crimson Rocs',1]],2,'plain');
-  ok(faced(r.them,'Eagle Riders').every(u=>near(u.m,0.85)&&/Storm Wings/.test(u.why))&&faced(r.them,'Crimson Rocs').every(u=>near(u.m,0.85)&&/Storm Wings/.test(u.why)),`Storm Wings: the Eagle Riders and the Rocs in the air fight ×0.85 — ${whyOf(r.them,'Eagle Riders')} | ${whyOf(r.them,'Crimson Rocs')}`);
+  // (Noble Griffons, not Eagle Riders: on open ground an Eagle leaves the air for an empty flank slot — Stoop on the Horses.)
+  r=fight([['Shieldwall Levies',2],['Thunderbirds',1]],[['Shieldwall Levies',2],['Noble Griffons',1],['Crimson Rocs',1]],2,'plain');
+  ok(faced(r.them,'Noble Griffons').every(u=>near(u.m,0.85)&&/Storm Wings/.test(u.why))&&faced(r.them,'Crimson Rocs').every(u=>near(u.m,0.85)&&/Storm Wings/.test(u.why)),`Storm Wings: the Griffons and the Rocs in the air fight ×0.85 — ${whyOf(r.them,'Noble Griffons')} | ${whyOf(r.them,'Crimson Rocs')}`);
   ok(faced(r.them,'Shieldwall Levies').every(u=>!/Storm Wings/.test(u.why)),'…the Levies on the ground are not touched');
   ok(faced(r.me,'Thunderbirds').every(u=>near(u.m,1)),'the Thunderbirds themselves fight even in the air');
-  r=fight([['Shieldwall Levies',2],['Crimson Rocs',1]],[['Shieldwall Levies',2],['Eagle Riders',1]],2,'plain');
-  ok(faced(r.them,'Eagle Riders').every(u=>near(u.m,1)&&!/Storm Wings/.test(u.why)),'no Thunderbirds, no Storm Wings');
+  r=fight([['Shieldwall Levies',2],['Crimson Rocs',1]],[['Shieldwall Levies',2],['Noble Griffons',1]],2,'plain');
+  ok(faced(r.them,'Noble Griffons').every(u=>near(u.m,1)&&!/Storm Wings/.test(u.why)),'no Thunderbirds, no Storm Wings');
   // Storm Wings and Flak Gunners both tell: a Gyrocopter facing enemy flyers under Thunderbirds fights ×1.25 × ×0.85
   r=fight([['Shieldwall Levies',2],['Thunderbirds',1]],[['Shieldwall Levies',2],['Gnomish Gyrocopters',1]],2,'plain');
   ok(faced(r.them,'Gnomish Gyrocopters').every(u=>near(u.m,1.25*0.85)&&/Flak Gunners/.test(u.why)&&/Storm Wings/.test(u.why)),`Flak Gunners and Storm Wings stack on a Gyrocopter — ${whyOf(r.them,'Gnomish Gyrocopters')}`);
