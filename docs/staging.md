@@ -41,7 +41,11 @@ Two pull requests ([why](../supabase/README.md#database-and-site-changes-go-sepa
 2. the site change, on a branch made **from the database change's branch** ("stacked"). It contains both,
    so labelling it puts both on staging: Toby tries the whole feature before either is merged.
 
-Merge the database change first, then the site change.
+Merge the database change first, then the site change. Until the database change is merged, the site
+change merges into the database change's branch, not `main`, and its `merges-into-main` check is red.
+Merging the database change deletes its branch, and GitHub moves the site change onto `main` (the check
+turns green). **Never merge a pull request whose `merges-into-main` check is red:** its change would land
+on another branch and never go live.
 
 ## Things to know
 

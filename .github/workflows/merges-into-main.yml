@@ -1,0 +1,30 @@
+# Fails on a pull request that would merge into a branch other than main. Only main deploys, so merging
+# such a pull request puts its change on another branch, where it never goes live.
+#
+# Stacked pull requests (a site change made from its database change's branch, docs/staging.md) are red
+# here until the pull request below them is merged: deleting that branch on merge makes GitHub move them
+# onto main, which turns this green. It isn't a required check; it's the red cross next to the merge button.
+name: Merges into main
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  merges-into-main:
+    name: merges-into-main
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check the pull request merges into main
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ "$BASE" = "main" ]; then
+            echo "This pull request merges into main."
+          else
+            echo "::error::This pull request merges into '$BASE', not main, so merging it won't deploy anything. Merge the pull request for '$BASE' first: once its branch is deleted, GitHub moves this one onto main."
+            exit 1
+          fi
