@@ -2789,6 +2789,10 @@ function druIdPenaltyMult(heroChar, army, playerAlignment, tamed){
   // on the caller passing the realm alignment — which every combat call site does.)
   const CREATURE_ARMIES_D=new Set(KC_UNIT_CLASS.creature);
   if(CREATURE_ARMIES_D.has(armyType)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic')) return 1.0;
+  // Evil alignment (2026-10-13, Toby, Creatures and Monsters I): the mirror — no Druid penalty for Monster
+  // armies under an Evil realm (or a personally Evil wandering commander). They are driven, not led.
+  const MONSTER_ARMIES_D=new Set(KC_UNIT_CLASS.monster);
+  if(MONSTER_ARMIES_D.has(armyType)&&(playerAlignment==='Evil'||heroChar.alignment==='Evil')) return 1.0;
 
   // sd40 Dragon Taming: the caller (inside runTurn, where G is visible) passes tamed=true when the
   // commander's realm holds the discovery and the army is a winged beast — no Druid penalty at all.
@@ -10585,12 +10589,14 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
 
     // ── Tasks 6 & 7: alignment starting primal neighbour ── Pagan kings open beside a PRIMAL
     // FOREST or JUNGLE province that holds a RITUAL SITE (somewhere to Perform Rites from turn
-    // one). Druidic kings open beside a PRIMAL CREATURE province (Griffons, Eagles, Ents, Giants,
-    // Rocs — a wild host they can lead with no Druid requirement). We convert a free neighbour,
-    // preferring one that is NOT the king's own-race homeland guaranteed above.
+    // one). Druidic kings open beside a PRIMAL CREATURE province (Eagles, Ents, Giants, Rocs — a wild
+    // host they can lead with no Druid requirement), and since 2026-10-13 (Toby, Creatures and
+    // Monsters I) Evil kings beside a PRIMAL MONSTER province (Trolls, Basilisks, Manticores… — the
+    // mirror). We convert a free neighbour, preferring one that is NOT the king's own-race homeland
+    // guaranteed above.
     {
       const _align=sp.alignment;
-      if(_align==='Pagan'||_align==='Druidic'){
+      if(_align==='Pagan'||_align==='Druidic'||_align==='Evil'){
         const CBT={plain:['Giant Eagles','Stone Giants'],desert:['Stone Giants','Giant Eagles'],forest:['Forest Ents','Giant Eagles'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Giant Eagles']};
         const MBT={plain:['Titan Warbeasts','Manticore Pride'],desert:['Manticore Pride','Basilisk Brood'],forest:['Cave Trolls','Basilisk Brood'],jungle:['Basilisk Brood','Cave Trolls','Manticore Pride'],mountain:['Cave Trolls','Elder Dragons']};
         const _allFreeNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
@@ -10610,13 +10616,14 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
           // prefer an existing forest/jungle neighbour; else re-terrain one to forest/jungle
           cand=pool.find(n=>n.terrain==='forest'||n.terrain==='jungle')||pool[0];
           if(cand){ if(cand.terrain!=='forest'&&cand.terrain!=='jungle') cand.terrain=Math.random()<0.5?'forest':'jungle'; }
-        } else { // Druidic
+        } else { // Druidic or Evil
           cand=_pick(_freeNbrs)[0];
         }
         if(cand){
-          const creatureOnly=(_align==='Druidic');
+          const creatureOnly=(_align==='Druidic'), monsterOnly=(_align==='Evil');
           const bank=creatureOnly?(CBT[cand.terrain]||['Stone Giants'])
-                                 :((Math.random()<0.5?CBT:MBT)[cand.terrain]||['Stone Giants']);
+                    :monsterOnly?(MBT[cand.terrain]||['Cave Trolls'])
+                                :((Math.random()<0.5?CBT:MBT)[cand.terrain]||['Stone Giants']);
           const primalUnit=bank[Math.floor(Math.random()*bank.length)];
           cand.race='Primal:'+(PRIMAL_ARMY_DEFS_P[primalUnit]?.race||primalUnit);
           cand.armyTypes=[primalUnit];
@@ -10672,6 +10679,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     const kingSkills={melee:2,archery:1,sage:1};
     if(sp.alignment==='Divine') kingSkills.white=(kingSkills.white||0)+1;
     if(sp.alignment==='Druidic') kingSkills.druid=(kingSkills.druid||0)+1;
+    if(sp.alignment==='Evil') kingSkills.druid=(kingSkills.druid||0)+1;       // 2026-10-13 (Toby): the mirror — an Evil king drives his Monsters from turn one
     if(sp.alignment==='Pagan') kingSkills.explorer=(kingSkills.explorer||0)+1; // the old faith walks the wild places
     if(sp.alignment==='Undead'){
       kingSkills.necromancy=(kingSkills.necromancy||0)+1;
@@ -14487,6 +14495,7 @@ function seaPenalty(armyType, terrain){
     if(heroChar._curseHalveStat==='druid') lvl=Math.floor(lvl/2);
     lvl=Math.max(0,Math.min(DRUID_MASTERY_MAX_LVL,lvl));
     const waived=(CREATURE_ARMIES.has(army.type)&&(playerAlignment==='Druidic'||heroChar.alignment==='Druidic'))
+               ||(MONSTER_ARMIES.has(army.type)&&(playerAlignment==='Evil'||heroChar.alignment==='Evil'))   // 2026-10-13: Evil's mirror
                ||!!dragonTamed(heroChar,army);
     const min=waived?0:getDruidLevel(army.type);
     const gain=Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL*Math.max(0,lvl-min));
@@ -27196,6 +27205,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     const heirSkills={melee:2,archery:1,sage:1};
     if(p.alignment==='Divine') heirSkills.white=(heirSkills.white||0)+1;
     if(p.alignment==='Druidic') heirSkills.druid=(heirSkills.druid||0)+1;
+    if(p.alignment==='Evil') heirSkills.druid=(heirSkills.druid||0)+1;       // 2026-10-13: as the king
     if(p.alignment==='Pagan') heirSkills.explorer=(heirSkills.explorer||0)+1;
     if(p.alignment==='Undead') heirSkills.necromancy=(heirSkills.necromancy||0)+1;
     const heirName=(typeof nextHeroName==='function')?nextHeroName(p.alignment||'Neutral'):(deadKing?'Heir of '+deadKing.name:'The New Monarch');
