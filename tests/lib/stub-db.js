@@ -35,7 +35,7 @@ function makeStub(){
   const DB={ profiles:[{id:'gm1',name:'Test GM'}], games:[], game_players:[], turn_logs:[],
              turn_events:[], game_results:[], game_records:[], game_messages:[], game_message_reads:[],
              game_masters:[{user_id:'gm1',offered_at:'2026-10-01T00:00:00Z',offered_by:null,accepted_at:'2026-10-01T00:00:00Z'}],
-             site_admins:[] };
+             site_admins:[], message_reports:[] };
   const MISSING=new Set();
   const MISSING_COLS=new Set();     // "table.column": answered as the real database does for an unknown column
   const RULES={ownSlotsOnly:false};
@@ -188,6 +188,17 @@ function makeStub(){
       }).flatMap(g=>DB.game_players.filter(x=>String(x.game_id)===String(g.id)).map(x=>({
         game_id:x.game_id, player_index:x.player_index, is_bot:!x.user_id, orders_submitted:!!x.orders_submitted,
         alignment:g.status==='setup'?((parsed(x.turn_report).playerSetup||{}).alignment||null):null })));
+    },
+    // as supabase/schemas/public/functions/gm_reported_messages.sql (P0-24); a report whose dispatch is gone is gone
+    gm_reported_messages:(a)=>{
+      const g0=a&&a.p_game;
+      const mayGm=gid=>DB.games.some(g=>String(g.id)===String(gid)&&g.gm_user_id===me())
+        &&!DB.game_players.some(p=>String(p.game_id)===String(gid)&&p.user_id===me());
+      const ov=DB.site_admins.some(r=>r.user_id===me());
+      return DB.message_reports.map(r=>({r,m:DB.game_messages.find(m=>String(m.id)===String(r.message_id))}))
+        .filter(({m})=>m&&(g0==null||String(m.game_id)===String(g0))&&(ov||mayGm(m.game_id)))
+        .map(({r,m})=>({report_id:r.id,message_id:m.id,game_id:m.game_id,turn:m.turn,from_index:m.from_index,to_indexes:m.to_indexes,
+          scope:m.scope,body:m.body,sent_at:m.created_at,reporter_index:r.reporter_index,reason:r.reason,reported_at:r.created_at}));
     },
     is_game_master:()=>DB.game_masters.some(r=>r.user_id===me()&&r.accepted_at!=null),
     is_site_admin:()=>DB.site_admins.some(r=>r.user_id===me()),

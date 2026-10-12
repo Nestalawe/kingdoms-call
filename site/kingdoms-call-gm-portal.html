@@ -386,6 +386,12 @@ section{display:none;}.section-active{display:block;}
       <h3>Last Turn Chronicle</h3>
       <div id="detail-log"></div>
     </div>
+
+    <!-- Reported dispatches (P0-24): players' reports, for this game's GM -->
+    <div class="card" id="detail-reports-card" style="display:none">
+      <h3>⚑ Reported dispatches</h3>
+      <div id="detail-reports"></div>
+    </div>
   </section>
 </div>
 
@@ -1613,6 +1619,44 @@ async function gmPortalAllowed(){
   return false;
 }
 
+// ── REPORTED DISPATCHES (P0-24, rulings D-01 and D-13g) ────
+// A player reports a dispatch they received; the game's GM sees it here (gm_reported_messages), with the reporter
+// and their reason, and may delete it. A GM who plays a realm in the game sees none: its reports go to the Overlord.
+// Every player-written string is escaped (_rdEsc, until P0-19's shared helper).
+const _rdEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function loadReportedDispatches(game){
+  const card=document.getElementById('detail-reports-card'), el=document.getElementById('detail-reports');
+  if(!card||!el) return;
+  card.style.display='none';
+  if(!game||!_kcHasMsg) return;
+  card.style.display='block';
+  if((game.game_players||currentGamePlayers||[]).some(p=>p.user_id&&currentUser&&p.user_id===currentUser.id)){
+    el.innerHTML='<div class="msg-info">You play a realm in this game, so its reported dispatches go to the Overlord, not to you.</div>';
+    return;
+  }
+  el.innerHTML='<div class="msg-info">Loading…</div>';
+  const {data,error}=await sb.rpc('gm_reported_messages',{p_game:game.id});
+  if(!currentGame||String(currentGame.id)!==String(game.id)) return;   // another game was opened meanwhile
+  if(error){ el.innerHTML='<div class="msg-error">'+_rdEsc(error.message)+'</div>'; return; }
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){ el.innerHTML='<div style="color:var(--stone);font-size:.85rem">No dispatches reported.</div>'; return; }
+  const realm=i=>{ const p=(currentGamePlayers||[]).find(x=>Number(x.player_index)===Number(i)); return (p&&p.display_name)||('Realm '+(Number(i)+1)); };
+  el.innerHTML=rows.map(r=>{
+    const to=r.scope==='public'?'every realm':(r.to_indexes||[]).map(realm).join(', ');
+    return `<div class="player-slot" style="display:block">
+      <div style="font-size:.78rem;color:var(--stone)">${r.turn!=null?'Turn '+_rdEsc(r.turn)+' · ':''}from <strong>${_rdEsc(realm(r.from_index))}</strong> to ${_rdEsc(to)} · reported by <strong>${_rdEsc(realm(r.reporter_index))}</strong>${r.reason?' · “'+_rdEsc(r.reason)+'”':''}</div>
+      <div style="margin:6px 0;white-space:pre-wrap">${_rdEsc(r.body)}</div>
+      <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteReportedDispatch(${Number(r.message_id)||0})">Delete this dispatch</button>
+    </div>`;
+  }).join('');
+}
+async function deleteReportedDispatch(id){
+  if(!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
+  const {error}=await sb.from('game_messages').delete().eq('id',id);
+  if(error){ alert(error.message); return; }
+  await loadReportedDispatches(currentGame);
+}
+
 // ── GAME LIST ────
 async function loadGames(){
   const el=document.getElementById('games-list');
@@ -2024,6 +2068,7 @@ async function openGame(gameId){
   // a JSON string — a silent no-op. It now runs inside runTurn on the parsed state (where the
   // rewritten names are actually used and saved).
   currentGamePlayers=game.game_players||[];
+  loadReportedDispatches(game);   // P0-24; fills its own card when it answers
 
   document.getElementById('detail-game-name').textContent=game.name;
   const maxP=game.max_players||4;

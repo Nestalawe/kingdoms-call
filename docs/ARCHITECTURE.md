@@ -152,7 +152,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | `game_records` | Hall of Fame: one precomputed row per finished game |
 | `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. The GM portal asks `is_site_admin()` after sign-in (P0-32c) |
 | `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c) |
-| `game_messages`, `game_message_reads` | Dispatches between players, and each realm's read markers |
+| `game_messages`, `game_message_reads`, `message_reports` | Dispatches between players, each realm's read markers, and the dispatches players have reported (P0-24) |
 
 ### Where a rule is enforced: access rules or database functions
 
@@ -209,10 +209,15 @@ the page narrows the lists to their own entries.
 
 ## Dispatches (player messaging)
 
-Two tables, outside the turn path: nothing in `runTurn` or the reports touches them. The player portal
+Three tables, outside the turn path: nothing in `runTurn` or the reports touches them. The player portal
 polls every 8 s while Dispatches is open (less often otherwise, never in a hidden tab). It fetches only
 messages newer than the last id seen. Unread markers compare message **ids**, not timestamps. Messaging
 is hidden in games with fewer than two human realms.
+
+A dispatch is at most 500 characters, 10 a minute and 300 a day per player per game (P0-23, enforced in the
+database). A private dispatch is read by the realms in the conversation and the Overlord. A player can
+**⚑ Report** a dispatch they received (`message_reports`); the game's GM sees reports on the game's screen
+(`gm_reported_messages`), unless the GM plays in that game, when only the Overlord does (P0-24).
 
 ## Version stamps
 
