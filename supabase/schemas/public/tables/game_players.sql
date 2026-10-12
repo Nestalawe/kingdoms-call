@@ -25,10 +25,12 @@ CREATE UNIQUE INDEX game_players_one_per_user ON public.game_players USING btree
 -- slots; a tab that can't see them would otherwise take a number twice.
 CREATE UNIQUE INDEX game_players_one_per_number ON public.game_players USING btree (game_id, player_index);
 
+-- A slot is read by the player who holds it and by the game's GM (P0-21). Everyone else sees other realms only
+-- through get_game_slots (P0-20). is_game_gm is security definer, so this doesn't recurse.
 CREATE POLICY "gp1" ON "public"."game_players"
   FOR SELECT
-  TO PUBLIC
-  USING (true);
+  TO "authenticated"
+  USING (((user_id = ( SELECT auth.uid() AS uid)) OR ( SELECT public.is_game_gm(game_players.game_id) AS is_game_gm)));
 
 CREATE POLICY "gp2" ON "public"."game_players"
   FOR INSERT
