@@ -18,7 +18,10 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // A made-up hero with an earned pool of 0 (15 max HP): every roll in this band succeeds (100%).
   const hero=(name,melee,hp)=>{ const c={id:nextId++,name,player:0,alive:true,race:'Human',alignment:'Good',temper:'Brave',
     skills:{melee},items:[],armies:[],hpEarned:0,maxHp:15,hp:hp==null?15:hp,location:0}; G.characters.push(c); return c; };
-  const fight=(a,b,rounds)=>{ const A=H.pcCharCombatant(a), B=H.pcCharCombatant(b); A.tactics=['ME']; B.tactics=['ME'];
+  // `toTheDeath`: neither fighter breaks off (the engine's own flag, as for a lair's guardians), so a
+  // fight staged to end in a kill ends in a kill and not, some seeds, in a Brave fighter's flight.
+  const fight=(a,b,rounds,toTheDeath)=>{ const A=H.pcCharCombatant(a), B=H.pcCharCombatant(b); A.tactics=['ME']; B.tactics=['ME'];
+    if(toTheDeath){ A.neverFlees=true; B.neverFlees=true; }
     const res=H.resolvePersonalCombat(A,B,{maxRounds:rounds}); a.hp=Math.max(0,res.aHp); b.hp=Math.max(0,res.bHp); return res; };
 
   // Each fight is staged so its shape is overwhelming, not lucky: two master swordsmen (Melee 9) with
@@ -33,9 +36,10 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 
   // 2. A fight to the finish between two master swordsmen, one with ten times the other's HP: the
   //    winner is wounded on the way, but is NOT rolled for inside the fight (the win award does that,
-  //    once).
+  //    once). Fought to the death: a Brave fighter at a quarter of his HP would otherwise try to break
+  //    off (30% a round), and a flight leaves no winner.
   { const a=hero('Corvin',9,300), b=hero('Dunmore',9,30); a.maxHp=300; b.maxHp=30;
-    const res=fight(a,b,40);
+    const res=fight(a,b,40,true);
     ok(res.winner&&res.winner.ref===a&&a.hp<300,`staged: Corvin wins, wounded (HP ${a.hp})`);
     ok(a.hpEarned===0,`the winner gets no wound roll inside the fight (earned ${a.hpEarned}); the win award is his one roll`); }
 
