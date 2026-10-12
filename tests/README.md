@@ -30,7 +30,9 @@ it prints the end of that test's output and the seed to repeat it with.
 - **`lib/stub-db.js`** holds every Supabase stand-in the tests use. Nothing connects to a real
   database. `makeStub()` mirrors the Game Master functions (`is_game_master`, `is_site_admin`,
   `gm_accept_offer`, `gm_decline_offer`) over its `game_masters` and `site_admins` rows; its default
-  account is a Game Master. The harnesses were written with five different stubs; each is kept exactly as it
+  account is a Game Master. It also mirrors `get_game_slots` and the one-realm-per-number and one-per-account
+  rules on `game_players`; `RULES.ownSlotsOnly` applies P0-21's read rule and records any read that asks for
+  another realm's row. The harnesses were written with five different stubs; each is kept exactly as it
   behaved, so moving a harness onto the shared file didn't change what it sees.
 - **Fixed seed.** `run.js` sets `KC_SEED`. `boot.js` then replaces `Math.random` with a seeded
   generator (sfc32), both in the test process and in every jsdom page. So a run's random choices
@@ -85,6 +87,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `boot-pages` | new | 4 | ✅ pass | Every page boots in jsdom with no error, rejection or `console.error` |
 | `db-guard` | new | 4 | ✅ pass | Both portals and the Hall of Fame ask the database its version before anything else: up to date → they boot; older than `KC_DB_MIN`, no `kc_db_version`, or no answer twice → they stop with "The game is being updated" and a Reload button, having made no other database call; no answer once → they ask again and boot (P0-34) |
 | `gm-offer-and-gate` | new | 4 | ✅ pass | Game Masters by offer, on the pages (P0-32c): the player portal's "offered to make you a Game Master" banner shows only with an open offer; Accept calls `gm_accept_offer` and links to the GM portal, No thanks calls `gm_decline_offer`; the GM portal shows a player, or an open offer, only "You're not a Game Master" and reads nothing else (no game list, watcher or probes), stops too when the check fails, and lets a Game Master and the Overlord in |
+| `other-realms-slots` | new | 4 | ✅ pass | The player portal sees other realms only through `get_game_slots` (P0-20): with P0-21's read rule on in the stand-in database (a player reads only their own slot), My Games' "N of M realms have sent orders", the open games' "joined" count, the join form's taken Divine/Undead and next free slot number, and the Dispatches roster's human realms are all right, and no read asks for another realm's row; a join refused because someone took that number at the same moment says so |
 | `meta-missing-turn` | new | 2 | ✅ pass | With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still resolves and saves without writing it. The example to copy for site code that must cope without its database change ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)) |
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
 | `home-placement` | `claude_homeplacement_0927.js` | 1 | ✅ pass | Capitals are at least 4 hexes apart on every map size |
