@@ -227,6 +227,25 @@ engine itself keeps them in several places by kind:
 `UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
 replaces the first (the words test checks).
 
+## Terror is spent at battle start
+
+`consumeTerror` runs at the start of every battle and deletes the province's `_terrorStacks`, `_terrorisedBy` and
+the rest once it has demoralised the defenders. Anything that must know whether a province is "under Terror"
+for that battle (Reign of Fear reads it through `reignOfFearHere`) reads it **before** the call, in both battle
+paths, and hands the answer on through the strength context (`ctx.reignOfFear`). Read it after and it is always
+false. The order code (Call from the Pit) reads the stamps directly: no battle has run in that phase yet.
+
+## An alignment order is written in a dozen places
+
+Call from the Pit (2026-10-13) touched: the engine's `case` in the order switch, the order-name map
+(`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate), the short label map, the
+bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
+`ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
+rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
+texts; and, for a new shared table, `KC_SHARED_TABLE_NAMES` and the player portal's `need` list. Nothing
+throws when one is missed: the order is simply refused, hidden or priced wrong. Copy Awaken the Wild's
+occurrences (grep `awaken_wild` and `Awaken the Wild`) and mirror each.
+
 ## A fate line names two companies
 
 Since 2026-10-12 a casualty line names the enemy company too: "— Aldric's Levies (Shieldwall Levies, Average),

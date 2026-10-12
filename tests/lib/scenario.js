@@ -29,14 +29,18 @@ async function bootScenario(opts={}){
   const rest=()=>[0,1,2,3,4].map(()=>({action:'rest',target:'',extra:'',desc:''}));
 
   // A fresh world: `realms` realms on a cols×rows map; safe start off; then prepare(S,W) edits it.
-  async function world({realms=2,cols=10,rows=6,seaPct=20}={}){
+  // `alignments` (and `races`) name a realm's alignment (race) by index, for a test that needs a particular
+  // crown; a realm not named keeps the random one it was dealt.
+  async function world({realms=2,cols=10,rows=6,seaPct=20,alignments=[],races=[]}={}){
     const setup=W.generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
+    const builds=W.eval('(typeof BOT_SKILL_BUILD!=="undefined")?BOT_SKILL_BUILD:{}');
+    setup.forEach((s,i)=>{ if(alignments[i]){ s.alignment=alignments[i]; if(builds[s.alignment]) s.skills={...builds[s.alignment]}; } if(races[i]) s.race=races[i]; });   // a crown's own skill build, as a bot of that alignment would be dealt
     const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct});
     S.safeStart=false;
     return {S,setup};
   }
-  async function turn({realms=2,cols=10,rows=6,seaPct=20,bots=[],prepare,orders={}}={}){
-    const {S,setup}=await world({realms,cols,rows,seaPct});
+  async function turn({realms=2,cols=10,rows=6,seaPct=20,alignments=[],races=[],bots=[],prepare,orders={}}={}){
+    const {S,setup}=await world({realms,cols,rows,seaPct,alignments,races});
     const extra=prepare?prepare(S,W):null;
     const ord=(typeof orders==='function')?orders(S,extra):orders;
     const all={};
