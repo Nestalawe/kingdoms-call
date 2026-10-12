@@ -14597,6 +14597,9 @@ function seaPenalty(armyType, terrain){
     // start. It used to be faked as pre-battle damage; now that damage lands after every modifier it
     // would have shrunk below the advertised −10%/stack, so it is applied here as the multiplier it is.
     if(army._terrorMult!=null&&army._terrorMult<1){ str=Math.round(str*army._terrorMult); if(_tr) _tr.push({label:`Terror ${ladderFm(army._terrorMult)}`}); }
+    // REIGN OF FEAR (2026-10-13): an Evil realm's Monsters on ground its own Terror still grips (ctx.reignOfFear,
+    // read at the call site before the Terror is consumed).
+    if(ctx&&ctx.reignOfFear&&playerAlignment==='Evil'&&MONSTER_ARMIES.has(army.type)){ str=Math.round(str*REIGN_OF_FEAR_MULT); if(_tr) _tr.push({label:`Reign of Fear ${ladderFm(REIGN_OF_FEAR_MULT)}`}); }
     // PRE-BATTLE DAMAGE (arrows, battle magic, primal strikes, flak). 2026-09-24 (Toby): in a battle
     // the ladder calls armStr with opts.deferDamage and subtracts the damage in ladderRow AFTER every
     // unit and command modifier — modifiers are fixed when the lines form (after the duel, before
@@ -14835,6 +14838,12 @@ const BATTLE_ARMY_SPELLS={
   // lingers until the next battle fought there, demoralising whoever defends
   // (−10% strength per stack, capped at −50%). Repeated terror events stack.
   const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=5;
+  // REIGN OF FEAR (2026-10-13, Toby, Creatures and Monsters I): an Evil realm's Monsters fight ×1.5 in a
+  // province still gripped by that realm's own Terror, attacking or defending — the mirror of the Druids'
+  // Home of the Wild, on ground Evil makes its own by winning. Read at battle start, BEFORE consumeTerror
+  // clears the stacks (reignOfFearHere), and applied in armStr through ctx.reignOfFear.
+  const REIGN_OF_FEAR_MULT=1.5;
+  function reignOfFearHere(prov, playerIdx){ return !!(prov&&playerIdx!=null&&(prov._terrorStacks||0)>0&&prov._terrorisedBy===playerIdx); }
   function spreadTerror(battleProv, byPlayer, narrative){
     const targets=[battleProv, ...getNeighborsP(battleProv,G.world.cols,G.world.rows,G.world.provinces)];
     const seen=new Set();
@@ -15126,13 +15135,15 @@ const BATTLE_ARMY_SPELLS={
     // battle report — before terror, flak or any other pre-battle note.
     if(!c._resumeBattle) narrative.push(`➡️ ${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''} moves into ${prov.name}, held by ${_npcHeldBy} — a battle is initiated.`); // same opener as PvP
     // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders
-    // (stacking).
+    // (stacking). Reign of Fear is read first: the attacker's Monsters fight ×1.5 on ground its Terror grips.
+    const _fearAtk=reignOfFearHere(prov,c.player);
     consumeTerror(prov, defenders, narrative);
+    if(_fearAtk&&(c.player!=null?G.players[c.player]?.alignment:null)==='Evil'&&armies.some(a=>a&&MONSTER_ARMIES.has(a.type))) narrative.push(`💀 Reign of Fear — ${prov.name} still cowers under ${cName}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // commander's magic items in play
     { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
       const _kD=kinNarrative(defenders,neutralGuardHero||null,(prov.owner!=null?G.players[prov.owner]?.race:null),`the defenders of ${prov.name}`); if(_kD) narrative.push(_kD); }
-    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:provIsCoastal(G,prov)}):0),0)); // 2026-09-18 · 2026-09-23b: same ctx as the battle rows
+    { const _aS=Math.round((armies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,c,(c.player!=null?G.players[c.player]?.alignment:null),prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:provIsCoastal(G,prov),reignOfFear:_fearAtk}):0),0)); // 2026-09-18 · 2026-09-23b: same ctx as the battle rows
       narrative.push(forceMarker(`${c.name}${c.player!=null?` (${G.players[c.player]?.name})`:''}`, c.player, 'attacker', armies, `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, with`)); // realm named, as in PvP
       // 2026-09-24 (Toby item 2): the defending side's header carries its own post-modifier strength
       // in the SAME format as the attacker's (and as PvP) — terrain, kinship, abilities and the
@@ -15551,7 +15562,7 @@ const BATTLE_ARMY_SPELLS={
       if(SEA_TYPES.has(a.type)) cmd.push({key:'nav',label:`Naval ${navalSkillAtk} ${ladderFm(navalFleetBonus)}`,m:navalFleetBonus}); // Naval lifts fleets on land AND sea
       else cmd.push({key:'tac',label:`Tactical ${ladderFm(tacMulted(effectiveTactBonus,c))}`,m:tacMulted(effectiveTactBonus,c)}); // land AND air units (flyers since 2026-09-23c)
       if(_atkIllActive) cmd.push({key:'ill',label:`illusory terrain ${ladderFm(illusoryTerrainMult(a.type))}`,m:illusoryTerrainMult(a.type)});
-      return ladderRow(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal},cmd);
+      return ladderRow(a,c,playerAlign,prov.terrain,{force:armies,enemyForce:defenders,isAttacker:true,amphibious:!!c._amphibiousAssault,coastal:_provCoastal,reignOfFear:_fearAtk},cmd);
     }).sort((x,y)=>(y.fly-x.fly)||y.base-x.base); // flying first, then strongest
 
     const rawAtkStr=battleLineTotal(armiesWithStr,lineWidth,atkFlankDisc); // undamaged, before whole-force (2026-09-24)
@@ -17973,14 +17984,20 @@ const BATTLE_ARMY_SPELLS={
     // and the dice. 2026-09-23b: now built with the SAME ctx the battle uses (it had none, so a
     // defending Dwarven host showed 32 here and fought from 48); it equals the ladder's "Units" stage
     // before any pre-battle volleys or spells land.
+    // Reign of Fear (2026-10-13): read before the Terror is consumed below — whichever side's own Terror still
+    // grips this province has its Monsters at ×1.5 (an Evil realm only; armStr checks the alignment).
+    const _fearAtk=reignOfFearHere(prov,atk.player), _fearDef=reignOfFearHere(prov,def.player);
     { const _dcC=provIsCoastal(G,prov);
-      const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain,{force:atkArmies,enemyForce:defArmies,isAttacker:true,amphibious:!!atk._amphibiousAssault,coastal:_dcC}):0),0));
-      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain,{force:defArmies,enemyForce:atkArmies,isAttacker:false,coastal:_dcC}):0),0));
+      const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain,{force:atkArmies,enemyForce:defArmies,isAttacker:true,amphibious:!!atk._amphibiousAssault,coastal:_dcC,reignOfFear:_fearAtk}):0),0));
+      const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain,{force:defArmies,enemyForce:atkArmies,isAttacker:false,coastal:_dcC,reignOfFear:_fearDef}):0),0));
       narrative.push(forceMarker(`${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, `attacks ${prov.name}${atkTact>0?` under Tactical ${atkTact} command`:''} — army strength ${_aS}, with`));
       narrative.push(forceMarker(`${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, `${DEF_VERBS[0]} ${prov.name}${defTact>0?` under Tactical ${defTact} command`:''} — army strength ${_dS}, with`)); }
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now
     // (stacking).
     consumeTerror(prov, defArmies, narrative);
+    for(const [_f,_h,_hn,_ar] of [[_fearAtk,atk,atkName,atkArmies],[_fearDef,def,defName,defArmies]]){
+      if(_f&&(G.players[_h.player]?.alignment)==='Evil'&&_ar.some(a=>a&&MONSTER_ARMIES.has(a.type))) narrative.push(`💀 Reign of Fear — ${prov.name} still cowers under ${_hn}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`);
+    }
 
     // ── DUEL BEFORE BATTLE (Adventurer Kings rules) ── A commander challenges to a duel if their
     // encounter plan contains an aggressive action (Melee/Fire Arrow/Cast offensive spell) AND no
@@ -18103,7 +18120,7 @@ const BATTLE_ARMY_SPELLS={
     // Bulwark…) × Archery (missile units) × Naval (fleets) or Tactical (land and air units — flyers
     // since 2026-09-23c; land battles only) × Illusory Terrain.
     function _pvpCtx(isAtk, force, enemy){
-      return {force, enemyForce:enemy, isAttacker:isAtk, amphibious:isAtk&&!!atk._amphibiousAssault, coastal:_pvpCoastal};
+      return {force, enemyForce:enemy, isAttacker:isAtk, amphibious:isAtk&&!!atk._amphibiousAssault, coastal:_pvpCoastal, reignOfFear:isAtk?_fearAtk:_fearDef};
     }
     function _pvpCmd(a, isAtk){
       const hero=isAtk?atk:def, cmd=[];
