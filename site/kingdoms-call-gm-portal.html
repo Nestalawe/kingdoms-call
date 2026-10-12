@@ -800,7 +800,9 @@ function battleRegrid(g){
     if(x.role==='arc'&&typeOfX(x)==='Black Arrows') put(x,'front',c,1,'Brawling Archers in the front line');   // the orcs' archers fight hand to hand at full strength
     else put(x,'front',c,x.role==='arc'?BATTLE_RANGED_IN_FRONT:1,x.role==='arc'?'ranged in the front line':'front line'); });
   g.second.forEach((x,c)=>{ if(!x) return; const f=g.front[c];
-    if(x.role==='arc'&&f&&f.role!=='arc') put(x,'second',c,1,'shooting over the '+shortUnit(f.r)); else put(x,'second',c,mults[1],'second line'); });
+    if(x.role==='arc'&&f&&f.role!=='arc') put(x,'second',c,1,'shooting over the '+shortUnit(f.r));
+    else if(typeOfX(x)==='Titan Warbeasts') put(x,'second',c,1,'Colossal Bulk: full strength from the second line');   // the Titans reach over the front (2026-10-13, the beast abilities)
+    else put(x,'second',c,mults[1],'second line'); });
   g.reserve.forEach((x,k)=>put(x,'reserve',k,k<W?mults[2]:mults[3],k<W?'reserve':'deep reserve'));
   g.flanks.forEach((x,k)=>put(x,'flank',k,1,'on the flank'));
   g.fly.forEach((x,k)=>put(x,'air',k,k<cap?1:BATTLE_FLYER_BEYOND_CAP,k<cap?'in the air':'in the air, beyond the line'));
@@ -861,8 +863,10 @@ const ABILITY_WOODS=new Set(['forest','jungle']);
 const GRID_GARRISON_TYPES=new Set(KC_UNIT_CLASS.garrison);
 const typeOfX=x=>x&&x.r&&x.r.a&&x.r.a.type;
 const abilityHas=(g,type)=>!!g&&['front','second','reserve','flanks','fly'].some(k=>(g[k]||[]).some(x=>x&&typeOfX(x)===type));
-// The cavalry that may take the one flank slot rough ground allows.
-function abilityFlanksRough(x, terrain){ const t=typeOfX(x); return (ABILITY_WOODS.has(terrain)&&t==='Stag Riders')||(terrain==='mountain'&&t==='Ironhoof Rams'); }
+// The cavalry that may take the one flank slot rough ground allows (2026-10-13, the beast abilities: the Unicorn Herd's
+// Through the Glades joins the Stag Riders in the woods).
+const GRID_MONSTER_TYPES=new Set(KC_UNIT_CLASS.monster);
+function abilityFlanksRough(x, terrain){ const t=typeOfX(x); return (ABILITY_WOODS.has(terrain)&&(t==='Stag Riders'||t==='Unicorn Herd'))||(terrain==='mountain'&&t==='Ironhoof Rams'); }
 // x meets e (both placed cells {r, role, s}): the role matchup, then x's ability, then e's. where:
 // 'front' (facing or met), 'duel' (flank riders), 'guard' (a rider guarding a line end); meIsAtk: x's side attacks.
 function abilityFront(x, e, terrain, where, meIsAtk){
@@ -875,7 +879,13 @@ function abilityFront(x, e, terrain, where, meIsAtk){
   if(t==='Free Lances'&&where==='duel'){ m*=1.15; names.push('Harriers'); }
   if(t==='Forest Wardens'&&ABILITY_WOODS.has(terrain)){ m*=1.15; names.push('Woodland Skirmish'); }
   if(t==='Orc Garrison'&&!meIsAtk&&e.role==='foot'){ m*=1.15; names.push('Bloodthirsty'); }
+  // The beasts (2026-10-13, Creatures and Monsters V): the walking beasts' matchups, and the unicorns' Purity.
+  if(t==='Great Bears'&&e.role==='foot'){ m*=1.15; names.push('Maul'); }
+  if(t==='Mammoth Host'&&e.role==='foot'){ m*=1.15; names.push('Trample'); }
+  if(t==='Dread Hydras'&&e.role==='foot'){ m*=1.25; names.push('Many Heads'); }
+  if(t==='Unicorn Herd'&&(GRID_MONSTER_TYPES.has(et)||(e.r&&e.r.a&&e.r.a._isSkeletal))){ m*=1.25; names.push('Purity'); }
   if(et==='Shieldwall Levies'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Spear Hedge'); }
+  if(et==='Stone Giants'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Boulder Wall'); }
   if(et==='Dwarven Guard'&&x.role==='foot'){ m*=0.85; names.push('Unbreakable'); }
   if(et==='Dwarf Garrison'&&x.role==='foot'&&terrain==='mountain'){ m*=0.9; names.push('Stone Halls'); }
   if(et==='Elven Garrison'&&x.role==='cav'&&ABILITY_WOODS.has(terrain)){ m*=0.85; names.push('Thorn Hedge'); }
@@ -930,7 +940,7 @@ function battleFaceSide(me, them, mine, theirs, terrain, meIsAtk){
     else if(myOver.has(c)){ const g=guardOf.get(c);
       if(g){ vs=g; const f=abilityFront(x,g,terrain,'front',meIsAtk); m=f.m; kind='met'; why+=` met by ${shortUnit(g.r)}${f.why}`; }
       else { const ts=theirs.span; vs=ts?them.front[c<ts[0]?ts[0]:ts[1]]:null; m=BATTLE_FACING.wrap; kind='wraps'; why+=' wraps the end'; } }
-    if(endHit.has(c)){ const held=t==='Dwarven Guard'?'Unbreakable':(!meIsAtk&&GRID_GARRISON_TYPES.has(t))?'Hold the Gate':null;   // never hit from the side
+    if(endHit.has(c)){ const held=t==='Dwarven Guard'?'Unbreakable':t==='Forest Ents'?'Rooted':(!meIsAtk&&GRID_GARRISON_TYPES.has(t))?'Hold the Gate':null;   // never hit from the side (Rooted: the Ents, 2026-10-13)
       if(held) why+=`, ${held}`; else { m*=BATTLE_FACING.sideHit; why+=', hit from the side'; } }
     const s=me.second[c];
     if((t==='Shieldwall Levies'||t==='Human Garrison')&&s&&s.role==='arc'){ m*=1.25; why+=', Shieldwall'; }   // Town Watch: a garrison counts as Levies
@@ -954,7 +964,12 @@ function battleFaceSide(me, them, mine, theirs, terrain, meIsAtk){
     else if(i<mine.duel+mine.blocking.length){ const e=them.front[mine.blocking[i-mine.duel].col]; const f=e?abilityFront(x,e,terrain,'guard',meIsAtk):{m:1,why:''}; put(x,f.m,'guards',e||null,`${shortUnit(x.r)} guards the end v ${e?shortUnit(e.r):'nobody'}${f.why}`); }
     else put(x,BATTLE_FACING.freeFlank,'free',null,`${shortUnit(x.r)} rides free`); });
   const enemyFlyers=them.fly.length>0||them.flanks.some(x=>x.role==='fly');
-  me.fly.forEach(x=>{ if(typeOfX(x)==='Gnomish Gyrocopters'&&enemyFlyers) put(x,1.25,'faces',null,`${shortUnit(x.r)}, Flak Gunners`); else put(x,1,'even',null,shortUnit(x.r)); });
+  // Storm Wings (2026-10-13, the beast abilities): with Thunderbirds on the other side, every unit of mine in the air fights ×0.85.
+  const storm=abilityHas(them,'Thunderbirds');
+  me.fly.forEach(x=>{ let m=1, why=shortUnit(x.r), kind='even';
+    if(typeOfX(x)==='Gnomish Gyrocopters'&&enemyFlyers){ m*=1.25; why+=', Flak Gunners'; kind='faces'; }
+    if(storm){ m*=0.85; why+=', Storm Wings'; }
+    put(x,m,kind,null,why); });
   return {total,units,turned,anchored,duels:mine.duel,guarding:mine.blocking.length,free:mine.free};
 }
 // Both sides at once (the engagement is shared). Stamps g.face on each grid; g.face.total is the
