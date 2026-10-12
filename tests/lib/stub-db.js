@@ -8,7 +8,11 @@
 //                         P0-17) hides single columns, "table.column", the way the real database
 //                         answers before a migration has run: for site code that must cope without it.
 //                         It mirrors the Game Master functions (P0-32b) over DB.game_masters and
-//                         DB.site_admins; its default account, gm1, is a Game Master.
+//                         DB.site_admins; its default account, gm1, is a Game Master. It mirrors
+//                         get_game_slots (P0-20) and the one-realm-per-number and one-per-account
+//                         rules on game_players. RULES.ownSlotsOnly applies P0-21's read rule (your own
+//                         slot, or every slot of a game you run) and records 'game_players.select:other'
+//                         in CALLS whenever a read asked for rows that rule hides.
 //   cannedStub(o)         answers every read with fixed rows and records every write
 //                         (the `sbStub` pasted into six engine harnesses).
 //   nullStub()            every read is empty; enough for a page to boot
@@ -30,6 +34,7 @@ function makeStub(){
              site_admins:[] };
   const MISSING=new Set();
   const MISSING_COLS=new Set();     // "table.column": answered as the real database does for an unknown column
+  const RULES={ownSlotsOnly:false};
   let SESSION={user:{id:'gm1'}};
   let NEXT=1;
   const CALLS=[];
@@ -49,6 +54,12 @@ function makeStub(){
         else if(kind==='gte') r=r.filter(x=>Number(x[k])>=Number(v));
         else if(kind==='lte') r=r.filter(x=>Number(x[k])<=Number(v));
       });
+      if(table==='game_players'&&st.op==='select'&&RULES.ownSlotsOnly){
+        const me=SESSION&&SESSION.user&&SESSION.user.id;
+        const mayRead=x=>x.user_id===me||DB.games.some(g=>String(g.id)===String(x.game_id)&&g.gm_user_id===me);
+        if(r.some(x=>!mayRead(x))) CALLS.push('game_players.select:other');
+        r=r.filter(mayRead);
+      }
       if(st.order){ const [k,asc]=st.order; r.sort((a,b)=>asc?(a[k]>b[k]?1:a[k]<b[k]?-1:0):(a[k]<b[k]?1:a[k]>b[k]?-1:0)); }
       if(st.limit!=null) r=r.slice(0,st.limit);
       return r;
@@ -90,6 +101,15 @@ function makeStub(){
       }
       if(st.op==='insert'){
         const list=Array.isArray(st.payload)?st.payload:[st.payload];
+        if(table==='game_players'){
+          // the unique indexes game_players_one_per_number (P0-20) and game_players_one_per_user
+          const clash=list.map(p=>{
+            const same=x=>String(x.game_id)===String(p.game_id);
+            if(DB.game_players.some(x=>same(x)&&Number(x.player_index)===Number(p.player_index))) return 'game_players_one_per_number';
+            if(p.user_id&&DB.game_players.some(x=>same(x)&&x.user_id===p.user_id)) return 'game_players_one_per_user';
+            return null; }).find(Boolean);
+          if(clash) return {data:null,error:{code:'23505',message:`duplicate key value violates unique constraint "${clash}"`}};
+        }
         const made=list.map(p=>{ const row={id:p.id!=null?p.id:'row'+(NEXT++),...p}; DB[table].push(row); return row; });
         return {data:st.single?clone(made[0]):clone(made),error:null};
       }
@@ -143,7 +163,19 @@ function makeStub(){
   const RPC_ERRORS=new Set();
   const me=()=>SESSION&&SESSION.user&&SESSION.user.id;
   const ownOffer=()=>DB.game_masters.find(r=>r.user_id===me());
+  const parsed=v=>{ if(typeof v!=='string') return v||{}; try{ return JSON.parse(v); }catch(e){ return {}; } };
   const RPC={
+    // as supabase/schemas/public/functions/get_game_slots.sql
+    get_game_slots:(a)=>{
+      const ids=((a&&a.p_games)||[]).map(String);
+      return DB.games.filter(g=>ids.includes(String(g.id))).filter(g=>{
+        const cfg=parsed(g.game_state);
+        return g.gm_user_id===me()||DB.game_players.some(x=>String(x.game_id)===String(g.id)&&x.user_id===me())
+          ||(g.status==='setup'&&(cfg.visibility!=='private'||(cfg.invited||[]).includes(me())));
+      }).flatMap(g=>DB.game_players.filter(x=>String(x.game_id)===String(g.id)).map(x=>({
+        game_id:x.game_id, player_index:x.player_index, is_bot:!x.user_id, orders_submitted:!!x.orders_submitted,
+        alignment:g.status==='setup'?((parsed(x.turn_report).playerSetup||{}).alignment||null):null })));
+    },
     is_game_master:()=>DB.game_masters.some(r=>r.user_id===me()&&r.accepted_at!=null),
     is_site_admin:()=>DB.site_admins.some(r=>r.user_id===me()),
     gm_accept_offer:()=>{ const r=ownOffer(); if(!r) throw new Error('You have no offer to accept.');
@@ -151,11 +183,11 @@ function makeStub(){
     gm_decline_offer:()=>{ const r=ownOffer(); if(!r||r.accepted_at!=null) throw new Error('You have no offer to decline.');
       DB.game_masters.splice(DB.game_masters.indexOf(r),1); return null; },
   };
-  function rpc(fn){
+  function rpc(fn,args){
     CALLS.push('rpc.'+fn);
     if(RPC_ERRORS.has(fn)) return Promise.resolve({data:null,error:{message:'TypeError: Failed to fetch'}});
     if(!RPC[fn]) return Promise.resolve({data:[],error:null});
-    try{ return Promise.resolve({data:RPC[fn](),error:null}); }
+    try{ return Promise.resolve({data:RPC[fn](args),error:null}); }
     catch(e){ return Promise.resolve({data:null,error:{message:e.message,code:'P0001'}}); }
   }
   const client={ from:builder, rpc,
@@ -165,7 +197,7 @@ function makeStub(){
            signOut:async()=>({error:null}), signInWithPassword:async()=>({data:{},error:null}) },
     channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}), removeChannel(){},
     storage:{from:()=>({upload:async()=>({data:null,error:null}),download:async()=>({data:null,error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})} };
-  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, RPC_ERRORS, CALLS,
+  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, RPC_ERRORS, RULES, CALLS,
            setUser(id){ SESSION=id?{user:{id}}:null; } };
 }
 
@@ -325,10 +357,17 @@ function messagingStubInstall(window){
   window.supabase={ createClient:()=>({
     from:builder,
     // The two questions the GM portal asks after sign-in (P0-32c); every other function answers nothing.
-    rpc:async(fn)=>{
+    rpc:async(fn,args)=>{
       const me=SESSION&&SESSION.user&&SESSION.user.id;
       if(fn==='is_game_master') return {data:DB.game_masters.some(r=>r.user_id===me&&r.accepted_at!=null),error:null};
       if(fn==='is_site_admin') return {data:false,error:null};
+      // get_game_slots (P0-20), for the members of the games asked about (the stub signs in as a player)
+      if(fn==='get_game_slots'){
+        const ids=((args&&args.p_games)||[]).map(String);
+        const mine=ids.filter(id=>DB.game_players.some(p=>String(p.game_id)===id&&p.user_id===me));
+        return {data:DB.game_players.filter(p=>mine.includes(String(p.game_id))).map(p=>({game_id:p.game_id,
+          player_index:p.player_index,is_bot:!p.user_id,orders_submitted:!!p.orders_submitted,alignment:null})),error:null};
+      }
       return {data:null,error:null};
     },
     auth:{

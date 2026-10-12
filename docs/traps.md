@@ -241,6 +241,15 @@ company's own reference coming **first**:
 
 `tests/battle-faced-lines.test.js` holds the wording of every branch and the tally's crediting.
 
+## Other realms' slots come only from `get_game_slots`
+
+The player portal reads its **own** `game_players` row directly, and every other realm's slot only through
+`fetchGameSlots` (`rpc('get_game_slots')`, P0-20): number, bot or not, orders in or not, alignment while in
+setup. From P0-21 the database answers a direct read of another realm's row with nothing, so a new feature that
+reads other slots directly would quietly see only its own. If it needs more than `get_game_slots` gives, that's
+a database change first. `tests/other-realms-slots.test.js` switches P0-21's rule on in the stand-in database
+(`RULES.ownSlotsOnly`) and fails on any read that asks for another realm's row.
+
 ## A sort comparator must give the same answer every time
 
 `.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is

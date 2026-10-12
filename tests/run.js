@@ -42,6 +42,7 @@ const SUITE=[
   ['boot-pages',           'tests/boot-pages.test.js'],
   ['db-guard',             'tests/db-guard.test.js'],
   ['gm-offer-and-gate',    'tests/gm-offer-and-gate.test.js'],
+  ['other-realms-slots',   'tests/other-realms-slots.test.js'],
   ['meta-missing-turn',    'tests/meta-missing-turn.test.js'],
   ['turn-fuzz',            'tests/turn-fuzz.test.js',            FULL?['16','12']:['4','6']],
   ['home-placement',       'tests/home-placement.test.js',       [], {RUNS:FULL?'1000':'200'}],
