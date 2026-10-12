@@ -83,6 +83,19 @@ ok(!/Wyvern Riders/.test(norm(((/<tr><td><strong>Monsters<\/strong><\/td><td>([\
 ok(!/Wyvern Riders/.test(evil),'the Evil section no longer names Wyvern Riders among the Monsters');
 ok(!/\[M\] Monsters:<\/span>[^<]*Wyvern Riders/.test(pp)&&!/Monster armies — Wyvern Riders/.test(pp)&&!/\(trolls, wyverns/.test(pp),'the player portal\'s Evil texts no longer name Wyvern Riders among the Monsters');
 void monsterLists;
+// Every live beast is named where its family is listed (2026-10-13, Creatures and Monsters III: the Shark Shoals join
+// the Monsters): the Evil section's savage-fury list and the player portal's Evil texts name every live Monster; the
+// player portal's Creature list names every live Creature; the Sea-beasts row names the swimming Monsters.
+const liveOf=f=>LIVE.filter(u=>ROSTER[u].family===f);
+const fury=(/savage fury[^()]*\(([^)]*)\)/i.exec(evil)||['',''])[1];
+for(const u of liveOf('Monster')) ok(fury.includes(u),`the Evil section's savage-fury list names ${u}`);
+const ppMon=(/\[M\] Monsters:<\/span>([^<']*)/.exec(pp)||['',''])[1], ppMonSum=(/Monster armies — ([^—]*) — fight with savage fury/.exec(pp)||['',''])[1];
+for(const u of liveOf('Monster')){ ok(ppMon.includes(u),`the player portal's [M] Monsters list names ${u}`); ok(ppMonSum.includes(u),`the player portal's Evil realm text names ${u} among the Monster armies`); }
+const ppCre=(/\[C\] Creatures:<\/span>([^<']*)/.exec(pp)||['',''])[1];
+for(const u of liveOf('Creature')) ok(ppCre.includes(u),`the player portal's [C] Creatures list names ${u}`);
+const seaBeasts=norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]));
+for(const u of liveOf('Monster').filter(u=>ROSTER[u].type==='naval')) ok(new RegExp(u.split(' ').pop().replace(/s$/,'').toLowerCase()+'s?','i').test(seaBeasts),`the kinds-of-unit Sea-beasts row names the ${u}`);
+ok((norm(rules).match(/whale and shark waters/g)||[]).length>=2,'the rulebook\'s sea-tax texts say "whale and shark waters" where they said "whale waters"');
 // The player portal's texts.
 ok(/Call from the Pit/.test(pp)&&/'Call from the Pit':'Evil'/.test(pp),"the player portal lists Call from the Pit as Evil's order");
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
