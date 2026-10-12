@@ -42,17 +42,16 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
       w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' ')); w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(res=>setTimeout(res,400)); const P=d.window;
   P.__rep=rep; P.eval(`currentGamePlayer={id:'gpx',orders:null}; currentReport=__rep;`);
-  P.buildOrdersForm(P.eval('currentReport.characters'),false,null,rep.turn);
+  // Hire Hero offers the heroes in the hirer's own province, and the order form lists only those; she
+  // may have drifted out of the capital at the end of the turn, so the king (the hirer below) is
+  // placed where she stands before the form is built. Either province is the realm's own.
   const king=(rep.characters||[]).find(c=>c.isKing);
+  king.locationId=avail.locationId; king.locationName=avail.locationName;
+  P.buildOrdersForm(P.eval('currentReport.characters'),false,null,rep.turn);
   const opt=html=>{ const m=String(html).match(/<option[^>]*value="(?:hire:)?\d+"[^>]*>[^<]*Wenna[^<]*<\/option>/); return m?m[0]:''; };
   const plainText=html=>{ const el=P.document.createElement('div'); el.innerHTML=String(html); return (el.textContent||'').trim(); };
   const g=html=>{ const m=opt(html).match(/(\d+)g\/turn/); return m?+m[1]:null; };
-  // Hire Hero lists the heroes in the hirer's own province: ask for a stand-in hirer standing where
-  // she is (she may have drifted out of the capital at the end of the turn).
-  const standIn={...king,id:'stand-in',isKing:false,locationId:avail.locationId,locationName:avail.locationName};
-  P.__si=standIn; P.eval('currentReport.characters.push(__si)');
-  const hireHtml=P.buildTargetField(standIn,0,{action:'Hire Hero'});
-  P.eval("currentReport.characters=currentReport.characters.filter(c=>c.id!=='stand-in')");
+  const hireHtml=P.buildTargetField(king,0,{action:'Hire Hero'});
   ok(g(hireHtml)===price,`the Hire Hero dropdown quotes ${price}g (quotes ${g(hireHtml)}g: ${plainText(opt(hireHtml))})`);
   // The Broker list (a Neutral king) reads the same figure.
   P.eval(`currentReport.kingdom.alignment='Neutral';`);
