@@ -18,7 +18,7 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
     ok(!(r in D.KC_AWAKEN_TIERS),`${r} cannot be called up by Awaken the Wild`);
   }
   ok(D.KC_DRUID_LEVELS[3].join()==='Whale Cohort','Druid 3 is left to the Whale Cohort');
-  ok(Object.keys(D.KC_AWAKEN_TIERS).join()==='Giant Eagles,Forest Ents,Stone Giants,Crimson Rocs','Awaken the Wild offers Giant Eagles, Forest Ents, Stone Giants and Crimson Rocs');
+  ok(Object.keys(D.KC_AWAKEN_TIERS).join()==='Thunderbirds,Forest Ents,Stone Giants,Crimson Rocs','Awaken the Wild offers Thunderbirds, Forest Ents, Stone Giants and Crimson Rocs');
   ok(!Object.values(D.KC_DRUID_LEVELS).some(l=>l.includes('Gnomish Gyrocopters')),'Gnomish Gyrocopters still need nobody');
 
   const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/x',
@@ -27,11 +27,11 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
   const gm=await boot('kingdoms-call-gm-portal.html');
   ok(gm.errors.length===0,'the GM portal boots'+(gm.errors.length?' — '+gm.errors[0].split('\n')[0]:''));
   for(const r of RIDERS) ok(gm.ev(`getDruidLevel(${JSON.stringify(r)})`)===1,`the engine asks Druid 1 of ${r}, as of Levies`);
-  ok(gm.ev("getDruidLevel('Giant Eagles')")===4&&gm.ev("getDruidLevel('Shieldwall Levies')")===1&&gm.ev("getDruidLevel('Gnomish Gyrocopters')")===0,'Giant Eagles still need Druid 4, Levies Druid 1, Gyrocopters none');
+  ok(gm.ev("getDruidLevel('Thunderbirds')")===4&&gm.ev("getDruidLevel('Shieldwall Levies')")===1&&gm.ev("getDruidLevel('Gnomish Gyrocopters')")===0,'Thunderbirds need Druid 4, Levies Druid 1, Gyrocopters none');
   const chance=gm.ev('primalStrikeChance');
   ok(typeof chance==='function','primalStrikeChance() is declared at module level');
   ok(chance(0,null,'Noble Griffons')===50&&chance(5,null,'Noble Griffons')===50&&chance(0,null,'Wyvern Riders')===50,'a winged rider\'s strike lands one time in two whatever the Druid');
-  ok(chance(0,null,'Giant Eagles')===30&&chance(2,null,'Elder Dragons')===50&&chance(9,null,'Elder Dragons')===90,'a beast\'s strike still runs 30% + 10% a level, capped at 90');
+  ok(chance(0,null,'Thunderbirds')===30&&chance(2,null,'Elder Dragons')===50&&chance(9,null,'Elder Dragons')===90,'a beast\'s strike still runs 30% + 10% a level, capped at 90');
   ok(chance(0,null)===30,'…and with no unit named, the beasts\' figure');
   gm.dom.window.close();
   const pp=await boot('kingdoms-call-player-portal.html');

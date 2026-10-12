@@ -10,7 +10,7 @@
 // retired or widened here are module-level functions the booted portals answer directly.
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
-const P=require('./lib/primal-decided'); const {ROSTER,RETIRING,PIT_TIERS,LAND_TERRAINS,LIVE,COMING}=P;
+const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,PIT_TIERS,LAND_TERRAINS,LIVE,COMING}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 
@@ -49,7 +49,7 @@ function slice(src,name){
     ok(fam===d.family,`${u}: a ${d.family} in KC_UNIT_CLASS (got ${fam})`);
   }
   for(const u of COMING) ok(!(u in D.S)&&!(u in D.T),`${u} is not in the tables yet (it arrives in its own PR)`);
-  for(const u of Object.keys(RETIRING)) ok(u in D.S,`${u} is still in the tables (it goes in its own PR)`);
+  for(const u of Object.keys(RENAMED)) ok(!(u in D.S)&&!(u in D.T),`${u} is out of the tables (it is ${RENAMED[u]} now)`);
   ok(!!D.PIT,'the data file declares KC_PIT_TIERS (Call from the Pit)');
   if(D.PIT){
     ok(Object.keys(D.PIT).join()===Object.keys(PIT_TIERS).join()&&Object.keys(PIT_TIERS).every(t=>D.PIT[t]===PIT_TIERS[t]),`KC_PIT_TIERS is ${JSON.stringify(PIT_TIERS)} (got ${JSON.stringify(D.PIT)})`);

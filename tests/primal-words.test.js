@@ -42,10 +42,15 @@ ok(!/Rooted Grove/.test((rows['Forest Ents']||{}).ability||'')&&!/Rooted Grove/.
 ok(!/×1\.2|×1\.3|×1\.56/.test((rows['Cave Trolls']||{}).ability||''),'the Cave Trolls row no longer promises an always-on ×1.2 / ×1.3');
 ok(!/×1\.3/.test((rows['Titan Warbeasts']||{}).ability||''),'the Titan Warbeasts row no longer promises an always-on ×1.3');
 
+// ── The renamed units (Creatures and Monsters II): the old names on no page ──
+for(const [page,text] of [['rulebook',rules],['intro',intro],['player portal',pp]]) for(const old of Object.keys(P.RENAMED)) ok(!text.includes(old),`${page}: no "${old}" (it is ${P.RENAMED[old]} now)`);
+ok(/Thunderbirds/.test(norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])))&&!/eagles/.test(norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]))),'the kinds-of-unit Creatures row names thunderbirds, not eagles');
+ok(!/leviathans?/i.test(norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]))),'the kinds-of-unit Sea-beasts row no longer names leviathans');
+
 // ── The move-rate table ──
 const moveTable=(/<caption>Representative base land move rates[\s\S]*?<\/table>/.exec(rules)||[''])[0];
 const MROW=/<tr><td class="num">(\d)<\/td><td>([\s\S]*?)<\/td><\/tr>/g; const moveRows=[]; while((m=MROW.exec(moveTable))) moveRows.push({n:+m[1],text:strip(m[2])});
-const MOVE_ALIASES={'Stone Giants':/Stone Giants/,'Forest Ents':/Forest Ents/,'Cave Trolls':/Cave Trolls/,'Basilisk Brood':/Basilisk/,'Titan Warbeasts':/Titan/,'Manticore Pride':/Manticore/,'Elder Dragons':/Elder Dragons/,'Crimson Rocs':/Crimson Rocs/};
+const MOVE_ALIASES={'Stone Giants':/Stone Giants/,'Forest Ents':/Forest Ents/,'Cave Trolls':/Cave Trolls/,'Basilisk Brood':/Basilisk/,'Titan Warbeasts':/Titan/,'Manticore Pride':/Manticore/,'Elder Dragons':/Elder Dragons/,'Crimson Rocs':/Crimson Rocs/,'Thunderbirds':/Thunderbirds/,'Dread Hydras':/Hydras/};
 for(const [u,re] of Object.entries(MOVE_ALIASES)){
   const inRows=moveRows.filter(r=>re.test(r.text));
   ok(inRows.length>=1,`move table: ${u} is listed`);
