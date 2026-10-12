@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0020'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.12-2027'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -5164,8 +5164,16 @@ function exportStats(kind){
 }
 async function forgetDeletedGames(){
   if(!_stats.rows) return;
-  const live=new Set((_stats.games||[]).map(g=>String(g.id)));
-  const gone=[...new Set([..._stats.rows.map(r=>r.game_id),..._stats.results.map(r=>r.game_id)])].filter(id=>!live.has(id));
+  // A game is "deleted" only if no games row exists for it, whoever runs it: the statistics on screen can include
+  // other GMs' games (the Overlord sees every game's, since P0-22), so _stats.games (this account's own) can't decide.
+  const recorded=[...new Set([..._stats.rows.map(r=>r.game_id),..._stats.results.map(r=>r.game_id)])];
+  const live=new Set();
+  for(let i=0;i<recorded.length;i+=100){
+    const {data,error}=await sb.from('games').select('id').in('id',recorded.slice(i,i+100));
+    if(error){ alert('Could not check which games still exist: '+error.message+'. Nothing was deleted.'); return; }
+    (data||[]).forEach(g=>live.add(String(g.id)));
+  }
+  const gone=recorded.filter(id=>!live.has(String(id)));
   if(!gone.length){ alert('Every recorded game still exists — nothing to forget.'); return; }
   if(!confirm(`Delete the recorded turns and results of ${gone.length} game${gone.length!==1?'s':''} that no longer exist? This cannot be undone.`)) return;
   await sb.from('turn_events').delete().in('game_id',gone);
@@ -28284,7 +28292,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0020</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.12-2027</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
