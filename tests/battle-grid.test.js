@@ -2,7 +2,7 @@
 // portal (module level, beside the strength ladder). Level 1 (unit): the placement rules are pure
 // functions of the rows, the width and the terrain; a scenario would only add a battle's luck on top.
 //   • battleRole: the four winged riders are 'fly', cavalry 'cav' (but 'foot' at sea), ranged 'arc',
-//     everything else 'foot' — infantry, garrisons, flying beasts, fleets, and a type the tables have
+//     everything else 'foot' — infantry, garrisons, the walking beasts, fleets, and a type the tables have
 //     never heard of; a row with no unit falls back on its own `fly` flag.
 //   • battleGrid: ranged units behind a fighter shoot over it at ×1, in an empty front place ×0.75;
 //     the second line otherwise ×0.5, the reserve ×0.25 then ×0.125 (sd09's lines when `flank`);
@@ -35,7 +35,8 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   ok(role(row('Yeoman Longbows'),'plain')==='arc','Yeoman Longbows are ranged');
   ok(role(row('Free Lances'),'plain')==='cav'&&role(row('Free Lances'),'sea')==='foot','Free Lances are cavalry on land, foot at sea');
   ok(role(row('Eagle Riders'),'forest')==='fly','Eagle Riders fly');
-  ok(role(row('Crimson Rocs'),'plain')==='foot','Crimson Rocs (a flying beast) hold a place like foot');
+  ok(role(row('Crimson Rocs'),'plain')==='fly','Crimson Rocs (a flying beast) fight from the air like the winged riders (2026-10-13, the beast abilities; they held a place like foot before)');
+  ok(role(row('Forest Ents'),'plain')==='foot','Forest Ents (a walking beast) hold a place like foot');
   ok(role(row('Goblin Horde'),'plain')==='foot'&&role(row('Human Garrison'),'plain')==='foot'&&role(row('Galleon Fleet'),'sea')==='foot','Goblins, garrisons and fleets are foot');
   ok(role(row('Light Infantry'),'plain')==='foot','an unknown type is foot');
   ok(role({fly:true,base:5},'plain')==='fly'&&role({fly:false,base:5},'plain')==='foot','a row with no unit uses its fly flag');

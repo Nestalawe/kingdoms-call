@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.13-0070
+// Data file v2026.10.13-0090
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.13-0070';
+const KC_DATA_STAMP='2026.10.13-0090';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -26,19 +26,19 @@ const KC_DATA_STAMP='2026.10.13-0070';
 const PRIMAL_ARMY_DEFS_P={
   // ── Druid 4 — Land ──
   'Stone Giants'    :{str:13,speed:2,cost:5,race:'Stone Giant',cat:'Heavy',
-    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
+    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Boulder Wall: cavalry facing them fights at no better than ×0.75. Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
     spells:[{name:'Boulder Barrage',dmg:[4,7],target:'single',flavour:'Giants heave boulders that shatter a formation before contact!'}]},
   'Forest Ents'     :{str:11,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
-    desc:'Living trees of great age, at home in forest and jungle (terrain ×1.15 there; they wither in the desert). Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
+    desc:'Living trees of great age, at home in forest and jungle (terrain ×1.15 there; they wither in the desert). Rooted: never hit from the side when the enemy line wraps their end. Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
     spells:[{name:'Choking Spores',dmg:[2,4],target:'all',flavour:'A cloud of ancient spores rolls across the whole enemy line.'}]},
   'Thunderbirds'    :{str:11,speed:5,cost:4,race:'Thunderbird',cat:'Free Lances',
-    desc:'Storm-birds of the high crags (they replace the Giant Eagles, 2026-10-13: the elves already ride eagles). Pre-battle strike Lightning Strike: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
+    desc:'Storm-birds of the high crags (they replace the Giant Eagles, 2026-10-13: the elves already ride eagles). They fight from the air, taking no place in the line. Storm Wings: every enemy unit in the air fights ×0.85. Pre-battle strike Lightning Strike: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
     spells:[{name:'Lightning Strike',dmg:[4,8],target:'single',flavour:'Thunder cracks from the flock and a bolt tears through the ranks!'}]},
   'Cave Trolls'     :{str:11,speed:2,cost:4,race:'Cave Troll',cat:'Heavy',
-    desc:'Regenerating mountain brutes, at home in the mountains and the forest (terrain ×1.15 and ×1.1 there). Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
+    desc:'Regenerating mountain brutes, at home in the mountains and the forest (terrain ×1.15 and ×1.1 there). Regenerating Hide: after a lost battle, a 30% chance to shrug off a death roll. Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
     spells:[{name:'Hurled Rubble',dmg:[4,7],target:'single',flavour:'A troll rips a slab from the earth and hurls it into the ranks.'}]},
   'Manticore Pride' :{str:13,speed:5,cost:5,race:'Manticore',cat:'Free Lances',
-    desc:'Ferocious lion-scorpion-bat creatures. Relentless Hunt: +25% strength when their side is the ATTACKER. Pre-battle strike Spine Volley: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
+    desc:'Ferocious lion-scorpion-bat creatures that fight from the air. Relentless Hunt: +25% strength when their side is the ATTACKER, and when at least half the winning force are Manticores the beaten foe takes +15% rout losses. Pre-battle strike Spine Volley: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
     spells:[{name:'Spine Volley',dmg:[2,4],target:'all',flavour:'A storm of tail-spines rains across every enemy unit.'}]},
   'Basilisk Brood'  :{str:11,speed:2,cost:4,race:'Basilisk',cat:'Heavy',
     desc:'Petrifying reptiles. Stone Deterrent: +25% strength when their side is DEFENDING. Pre-battle strike Petrifying Gaze: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to every enemy unit.',
@@ -58,25 +58,25 @@ const PRIMAL_ARMY_DEFS_P={
     desc:'Riders atop massive thunder-birds. Air Superiority: +30% strength whenever the enemy fields any missile unit. Pre-battle strike Thunderous Stoop: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit. Flying (speed 5).',
     spells:[{name:'Thunderous Stoop',dmg:[5,9],target:'single',flavour:'A roc plummets from cloud-height and scatters a unit outright.'}]},
   'Titan Warbeasts' :{str:18,speed:2,cost:7,race:'Titan',cat:'Heavy',
-    desc:'Primordial mythic beasts, at home on the plain and in the desert (terrain ×1.1 there). Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
+    desc:'Primordial mythic beasts, at home on the plain and in the desert (terrain ×1.1 there). Colossal Bulk: they fight from the second line at full strength. Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
     spells:[{name:'World-Shaking Charge',dmg:[3,6],target:'all',flavour:'The herd charges — the ground itself throws every enemy off balance.'}]},
   // ── Druid 5 — Land (the Dread Hydras take the Leviathan Pods' place, 2026-10-13) ──
   'Dread Hydras'    :{str:19,speed:2,cost:8,race:'Hydra',cat:'Heavy',
-    desc:'Many-headed terrors of the fens, at home in jungle and forest (terrain ×1.1 and ×1.05 there). They take the Leviathan Pods\' place as the greatest of the Monsters (2026-10-13), on land. Pre-battle strike Venom Breath: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to EVERY enemy unit.',
+    desc:'Many-headed terrors of the fens, at home in jungle and forest (terrain ×1.1 and ×1.05 there). They take the Leviathan Pods\' place as the greatest of the Monsters (2026-10-13), on land. Many Heads: ×1.25 facing foot. Pre-battle strike Venom Breath: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to EVERY enemy unit.',
     spells:[{name:'Venom Breath',dmg:[3,6],target:'all',flavour:'A hundred heads exhale as one and a green mist rolls over the line.'}]},
   // ── Druid 3 — Sea (the weak sea Monster, 2026-10-13: the Monsters' answer to the Whale Cohort) ──
   'Shark Shoals'    :{str:5,speed:5,cost:3,race:'Shark',cat:'Naval',
-    desc:'Grey hunters of the poor shallows: the cheapest and weakest of the Monsters, and the one sea-beast an Evil realm leads from its first turn. A shoal is no hull: it carries nothing. Found in shark waters, the poor seas the whales do not hold; no special strike (speed 5).'},
+    desc:'Grey hunters of the poor shallows: the cheapest and weakest of the Monsters, and the one sea-beast an Evil realm leads from its first turn. A shoal is no hull: it carries nothing. Shoal Swarm: +10% per other Shark Shoals in the force, to +30%. Feeding Frenzy: when at least half the winning force are shoals, a foe beaten at sea takes +15% rout losses. Found in shark waters, the poor seas the whales do not hold; no special strike (speed 5).'},
   // ── Druid 4 — the four new Creatures (2026-10-13, Creatures and Monsters IV: nine Creatures to nine Monsters) ──
   'Great Bears'     :{str:11,speed:3,cost:4,race:'Great Bear',cat:'Heavy',
-    desc:'Great bears of the deep woods and high crags, at home in forest and mountain (terrain ×1.1 there; they suffer in the desert). No special strike; their Maul comes with the beasts\' battle-line abilities. Move 3.'},
+    desc:'Great bears of the deep woods and high crags, at home in forest and mountain (terrain ×1.1 there; they suffer in the desert). Maul: ×1.15 facing foot. Thick Hide: pre-battle volleys against them do half. No special strike. Move 3.'},
   'Unicorn Herd'    :{str:13,speed:4,cost:5,race:'Unicorn',cat:'Cavalry',
-    desc:'The wild\'s only horse: a herd of unicorns, at home on the plain and in the forest (terrain ×1.1 there; ×0.9 in the jungle, ×0.85 in the mountains). Cavalry (move 4). No special strike; their Purity comes with the beasts\' battle-line abilities.'},
+    desc:'The wild\'s only horse: a herd of unicorns, at home on the plain and in the forest (terrain ×1.1 there; ×0.9 in the jungle, ×0.85 in the mountains). Cavalry (move 4). Purity: ×1.25 facing Monsters and skeletons. Through the Glades: takes a flank in forest and jungle, as the Stag Riders do. No special strike.'},
   'Mammoth Host'    :{str:13,speed:2,cost:5,race:'Mammoth',cat:'Heavy',
-    desc:'A host of mammoths, at home on the open plain (terrain ×1.1; ×0.85 in the desert, ×0.8 in the forest, ×0.75 in the jungle). Pre-battle strike Stampede: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit. Slow (speed 2).',
+    desc:'A host of mammoths, at home on the open plain (terrain ×1.1; ×0.85 in the desert, ×0.8 in the forest, ×0.75 in the jungle). Trample: ×1.15 facing foot. Pre-battle strike Stampede: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit. Slow (speed 2).',
     spells:[{name:'Stampede',dmg:[2,4],target:'all',flavour:'The herd thunders through the enemy line before it has formed.'}]},
   'Great Turtles'   :{str:13,speed:2,cost:5,race:'Great Turtle',cat:'Naval',
-    desc:'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and carry nothing. Slow (speed 2); no special strike. Recruited where they live, never awakened.'},
+    desc:'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and carry nothing. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live, never awakened.'},
 };
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only

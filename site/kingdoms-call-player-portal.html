@@ -829,7 +829,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.13-0070';
+const KC_DATA_MIN_P='2026.10.13-0090';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -6607,18 +6607,23 @@ const UNIT_ABILITIES={
   // commanding hero’s Druid skill — 30% base, +10% per level, hard cap 90%; see primalStrikeChance (the winged riders’ own strikes: a flat 50%, 2026-10-11)
   // in the GM portal. 2026-09-27: this comment read "20% base" and had done for some time.
   // (The Noble Griffons' blurb is with the other human units above: a second key here would silently replace it.)
-  'Thunderbirds':'Lightning Strike: a pre-battle strike on one enemy unit (4–8). Storm-birds of the high crags, at full strength on any ground or water.',
-  'Forest Ents':'Choking Spores: a pre-battle strike across the whole enemy line (2–4 each). At home in forest and jungle (terrain ×1.15), withering in the desert.',
-  'Stone Giants':'Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). Devastating melee, at home in the mountains (terrain ×1.15); slow.',
-  'Cave Trolls':'Hurled Rubble: a pre-battle strike on one enemy unit (4–7). At home in the mountains and the forest (terrain ×1.15 and ×1.1).',
-  'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker. Spine Volley: a pre-battle strike across every enemy unit (2–4 each).',
+  'Thunderbirds':'Storm Wings — every enemy unit in the air fights ×0.85. Lightning Strike: a pre-battle strike on one enemy unit (4–8). Storm-birds of the high crags that fight from the air, taking no place in the line.',
+  'Forest Ents':'Rooted — never hit from the side when the enemy line wraps their end. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each). At home in forest and jungle (terrain ×1.15), withering in the desert.',
+  'Stone Giants':'Boulder Wall — cavalry facing them fights at no better than ×0.75. Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). At home in the mountains (terrain ×1.15); slow.',
+  'Cave Trolls':'Regenerating Hide — after a lost battle, a 30% chance to shrug off a death roll. Hurled Rubble: a pre-battle strike on one enemy unit (4–7). At home in the mountains and the forest (terrain ×1.15 and ×1.1).',
+  'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker, and when at least half the winning force are Manticores the beaten foe takes +15% rout losses. Spine Volley: a pre-battle strike across every enemy unit (2–4 each). Fights from the air.',
   'Basilisk Brood':'Stone Deterrent — ×1.25 strength when their side is defending. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
-  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields ranged troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
-  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each).',
-  'Titan Warbeasts':'World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each). At home on the plain and in the desert (terrain ×1.1).',
+  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields ranged troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9). Fights from the air, taking no place in the line.',
+  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each). Fights from the air, taking no place in the line.',
+  'Titan Warbeasts':'Colossal Bulk — fights from the second line at full strength. World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each). At home on the plain and in the desert (terrain ×1.1).',
   'Sea Giants':'Tidal Might — ×1.2 strength in a coastal land province (one bordering the sea). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
   'Eldritch Kraken':'Deepwater Grasp — ×1.35 strength at sea. Crushing Coils: a pre-battle strike that drags one enemy unit under (5–9).',
-  'Dread Hydras':'Venom Breath: a pre-battle strike across the whole enemy line (3–6 each). The greatest of the Monsters, at home in jungle and forest (terrain ×1.1 and ×1.05).',
+  'Dread Hydras':'Many Heads — ×1.25 facing foot. Venom Breath: a pre-battle strike across the whole enemy line (3–6 each). The greatest of the Monsters, at home in jungle and forest (terrain ×1.1 and ×1.05).',
+  'Shark Shoals':'Shoal Swarm — +10% strength per other Shark Shoals in the force, to +30%. Feeding Frenzy — when at least half the winning force are shoals, a foe beaten at sea takes +15% rout losses. A shoal is no hull: it carries nothing.',
+  'Great Bears':'Maul — ×1.15 facing foot. Thick Hide — pre-battle volleys against them do half. At home in forest and mountain (terrain ×1.1), poor in the desert; move 3.',
+  'Unicorn Herd':'Purity — ×1.25 facing Monsters and skeletons. Through the Glades — the one cavalry, with the Stag Riders, that takes a flank in forest and jungle. At home on the plain and in the forest (terrain ×1.1).',
+  'Mammoth Host':'Trample — ×1.15 facing foot. Stampede: a pre-battle strike across the whole enemy line (2–4 each). At home on the open plain (terrain ×1.1), ill at ease under trees; slow.',
+  'Great Turtles':'Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power and carry nothing; slow.',
 };
 function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // the unit ability descriptions were removed from the map pop-ups; instead they surface as a hover
@@ -10489,7 +10494,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0080</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0100</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
