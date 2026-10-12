@@ -297,8 +297,7 @@ games.
 A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys
 only after that ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). Deploys run one at a
 time, so **every later merge waits behind it**, site-only fixes included, and ships with it once approved.
-- Merge a migration when Toby can approve it soon (just after the daily backup, about 19:35 UTC), not
-  ahead of an urgent site fix.
+- Merge a migration when Toby can approve it soon, not ahead of an urgent site fix.
 - If he rejects it, the run fails and nothing deploys; the next push to `main` asks again, because the
   migration is still new compared with the live site. So follow a rejection quickly with a pull request
   whose migration undoes it: production then gets both in order and ends up unchanged

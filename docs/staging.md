@@ -27,8 +27,10 @@ request is fixed. Nothing on `main` needs undoing.
 
 **After merging a database change,** the **Deploy** run (Actions tab) stops at **migrate-production** and
 waits; GitHub notifies Toby. He opens the run, clicks **Review deployments** → ticks **production** →
-**Approve and deploy**, soon after the daily backup (about 19:35 UTC, 08:35 in New Zealand, once today's
-backup is listed in Supabase → Database → Backups). The live database changes, then the site deploys.
+**Approve and deploy**, once the conditions in the pull request's "What Toby is approving" are met. The run's
+summary says what each migration does to the data already there; only one marked ⚠️ **changes or removes data**
+needs a copy of the database first ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). The
+live database changes, then the site deploys.
 Approve it promptly: while this run waits, every other update to the site waits behind it. Rejecting it
 leaves the live database untouched and the site not deployed.
 

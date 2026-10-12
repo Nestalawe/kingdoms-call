@@ -7,7 +7,8 @@
 # - "migrations" lists the migrations added since the commit that's live on the site, with their SQL, in its
 #   job summary. With none, the migrate job is skipped and the site deploys after the tests.
 # - "migrate-production" runs in the "production" environment: it waits for Toby's approval (Review
-#   deployments), soon after the daily backup. If he rejects it, or any step fails, the site doesn't deploy.
+#   deployments). The summary marks a migration that changes or removes data (it needs a copy of the database
+#   first); the rest lose nothing. If he rejects it, or any step fails, the site doesn't deploy.
 # - It applies only what "migrations" listed, and refuses anything else (.github/scripts/migrations.js).
 #   Secret: SUPABASE_DB_URL ("production").
 name: Deploy

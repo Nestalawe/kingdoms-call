@@ -3,7 +3,8 @@
 // before approving production.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,BACKUP_NOTE,resetGuard,connectHint,resetSummary}=require('../.github/scripts/migrations.js');
+const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,migrationKind,resetGuard,connectHint,resetSummary}=require('../.github/scripts/migrations.js');
+const fs=require('fs'), path=require('path');
 
 const D='supabase/migrations/';
 const BASE='20261010054853', NEXT='20261012000000', LATER='20261013000000';
@@ -83,22 +84,72 @@ test('an empty database, or a bootstrap that didn\'t take, is refused',()=>{
   assert.equal(decide({list:[m(BASE,'')],expected:[BASE],hasGames:true,bootstrapped:true}).action,'refuse');
 });
 
-test('Toby\'s summary lists each migration, its pull request, the order, the backup timing and the SQL',()=>{
+test('Toby\'s summary lists each migration, its pull request, its kind, the order and the SQL',()=>{
   const s=planSummary({live:'a'.repeat(40),head:'b'.repeat(40),migrations:[
     {file:`${D}${NEXT}_tighten.sql`,pr:31,sql:'revoke all on public.x from anon;\n-- ```fence```'},
   ]});
   assert.match(s,new RegExp(`${NEXT}_tighten\\.sql\` from #31`));
   assert.match(s,/production once Toby approves it, then the site/);
   assert.doesNotMatch(s,/staging first/,'staging is no longer migrated on merge (P0-33)');
-  assert.ok(s.includes(BACKUP_NOTE));
+  assert.match(s,/rules only/);
+  assert.match(s,/No migration here changes or removes data/);
+  assert.doesNotMatch(s,/daily backup|copy of the database first/);
   assert.match(s,/revoke all on public\.x from anon;/);
   assert.equal(s.match(/```/g).length,2,'the SQL can\'t close its own code block');
+});
+
+test('a migration that changes or removes data is flagged at the top of Toby\'s summary, and named',()=>{
+  const s=planSummary({live:'a'.repeat(40),head:'b'.repeat(40),migrations:[
+    {file:`${D}${NEXT}_tighten.sql`,pr:31,sql:'revoke all on public.x from anon;'},
+    {file:`${D}${LATER}_tidy.sql`,pr:32,sql:'alter table public.games drop column old_meta;'},
+  ]});
+  const warn=s.indexOf('changes or removes data'), first=s.indexOf(`${NEXT}_tighten`);
+  assert.ok(warn>=0&&warn<first,'the warning comes before the list');
+  assert.match(s,new RegExp(`${LATER}_tidy\\.sql\` from #32[^\\n]*changes or removes data[^\\n]*drop column`));
+  assert.match(s,/copy of the database first/);
 });
 
 test('with no migrations, the summary says the site deploys straight away',()=>{
   const s=planSummary({live:'a'.repeat(40),head:'b'.repeat(40),migrations:[]});
   assert.match(s,/No database changes/);
-  assert.ok(!s.includes(BACKUP_NOTE));
+  assert.doesNotMatch(s,/rules only|changes or removes data/);
+});
+
+test('each migration\'s kind: rules only, adds rows, or changes or removes data',()=>{
+  const k=sql=>migrationKind(sql).kind;
+  // rules only: policies, grants, functions, indexes, comments; words in names, comments and strings don't count
+  assert.equal(k(`create policy "p" on public.x for delete to authenticated using (true);
+    grant delete, insert, update on table public.x to authenticated;
+    alter table public.x add constraint x_fk foreign key (a) references public.y(id) on delete cascade;
+    create unique index x_one on public.x using btree (a, b);
+    comment on table public.x is 'delete from here? update x set nothing; insert into';
+    -- delete from public.x; drop table public.x
+    create policy "insert into, update set: just a name" on public.x for insert with check (true);`),'rules');
+  // a function's body doesn't run when the migration does
+  assert.equal(k(`create or replace function public.f() returns void language plpgsql as $function$
+    begin delete from public.game_masters where user_id = auth.uid(); update public.x set a = 1; end
+    $function$;`),'rules');
+  // a DO block does
+  assert.equal(k(`do $$ begin if exists (select 1 from public.x) then raise exception 'stop'; end if; end $$;`),'rules');
+  assert.equal(k(`do $$ begin delete from public.x where a is null; end $$;`),'changes');
+  assert.equal(k(`insert into public.game_masters (user_id) select gm_user_id from public.games on conflict do nothing;`),'adds');
+  for(const sql of ['update public.games set meta = null;','UPDATE "public"."games" SET "meta" = NULL;',
+    'delete from public.turn_logs where turn < 3;','truncate public.turn_events;','drop table public.old_things;',
+    'alter table public.games drop column meta;','alter table "public"."games" alter column "turn" type bigint;'])
+    assert.equal(k(sql),'changes',sql);
+  assert.deepEqual(migrationKind('alter table public.games drop column meta; delete from public.x;').reasons,['delete from','drop column']);
+  assert.equal(k('grant delete, insert, maintain, references, select, trigger, truncate, update on table public.x to service_role;'),'rules',
+    'truncate as a privilege isn\'t a truncate');
+});
+
+test('every migration in the repo is sorted as expected',()=>{
+  const dir=path.join(__dirname,'..','supabase','migrations');
+  const kinds=Object.fromEntries(fs.readdirSync(dir).filter(f=>f.endsWith('.sql'))
+    .map(f=>[f.replace(/^\d{14}_|\.sql$/g,''),migrationKind(fs.readFileSync(path.join(dir,f),'utf8')).kind]));
+  assert.equal(kinds.game_masters_backfill,'adds','the Game Master data step adds rows');
+  assert.equal(kinds.game_masters,'rules','functions that delete and update, but only when called');
+  for(const [name,kind] of Object.entries(kinds))
+    if(!['baseline','game_masters_backfill'].includes(name)) assert.equal(kind,'rules',name);
 });
 
 test('each database\'s summary says what happened',()=>{
