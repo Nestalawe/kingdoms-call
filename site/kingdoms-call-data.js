@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.13-0090
+// Data file v2026.10.13-0110
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.13-0090';
+const KC_DATA_STAMP='2026.10.13-0110';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -76,7 +76,7 @@ const PRIMAL_ARMY_DEFS_P={
     desc:'A host of mammoths, at home on the open plain (terrain ×1.1; ×0.85 in the desert, ×0.8 in the forest, ×0.75 in the jungle). Trample: ×1.15 facing foot. Pre-battle strike Stampede: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit. Slow (speed 2).',
     spells:[{name:'Stampede',dmg:[2,4],target:'all',flavour:'The herd thunders through the enemy line before it has formed.'}]},
   'Great Turtles'   :{str:13,speed:2,cost:5,race:'Great Turtle',cat:'Naval',
-    desc:'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and carry nothing. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live, never awakened.'},
+    desc:'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and, Island Back, carry two land units a hull where a fleet carries one. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live, never awakened.'},
 };
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only
@@ -1703,7 +1703,7 @@ const SPELL_DEFS_P={
 //   flying     — the four humanoid racial flyers: lift one foot soldier each; the racial-flyer rules
 //   aerial     — every unit that crosses sea without a hull (flying + the winged primal beasts)
 //   creature / monster — the two primal families (Druidic favours creatures, Evil monsters)
-//   carrier    — hulls that ferry land units (1 berth each; light foot take half)
+//   carrier    — hulls that ferry land units (1 berth each, KC_CARRIER_BERTHS for the exceptions; light foot take half)
 //   primalSea  — Druid-summoned sea beasts: swim, carry nothing, raised only at sea (the Shark Shoals too)
 //   sea        — carrier ++ primalSea, in that order: every unit that moves by sea
 //   cavalry    — horse (never air-lifted; Ride Them Down)
@@ -1716,7 +1716,7 @@ const KC_UNIT_CLASS={
   aerial:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Thunderbirds','Manticore Pride','Elder Dragons','Crimson Rocs'],
   creature:['Thunderbirds','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort','Great Bears','Unicorn Herd','Mammoth Host','Great Turtles'],   // 2026-10-11 (Toby): the winged riders are soldiers of their race, not beasts; 2026-10-13 (Creatures and Monsters IV): the four new Creatures
   monster:['Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken','Elder Dragons','Titan Warbeasts','Dread Hydras','Shark Shoals'],   // 2026-10-13 (Creatures and Monsters II): Kraken Tentacles → Eldritch Kraken, Leviathan Pods → Dread Hydras (a land Monster); III: Shark Shoals, the weak sea Monster
-  carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'],
+  carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Great Turtles'],   // 2026-10-13 (Creatures and Monsters VI): the Great Turtles' Island Back carries two units a hull (KC_CARRIER_BERTHS)
   primalSea:['Sea Giants','Eldritch Kraken','Shark Shoals','Great Turtles'],   // 2026-10-13 (Creatures and Monsters III): the Shark Shoals swim and carry nothing like the two great sea-beasts; world generation deals them to the poor seas, not the prosperous ones. IV: the Great Turtles, the one Creature among them, in the prosperous seas
   cavalry:['Free Lances','Gilded Lances','Warg Riders','Stag Riders','Ironhoof Rams','Unicorn Herd'],   // 2026-10-13 (IV): the wild's only horse
   missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Black Arrows'],   // 2026-10-11 (Toby, the army roster): the Goblin Horde's thrown spears are retired (it is plain infantry); the orcs' archers are the Black Arrows
@@ -1787,6 +1787,9 @@ const KC_AWAKEN_TIERS={'Thunderbirds':1,'Forest Ents':2,'Stone Giants':3,'Crimso
 // caller of each Druid level may call up, for its price + 2g, in an owned wild province or one the realm's own
 // Terror still grips.
 const KC_PIT_TIERS={'Cave Trolls':1,'Basilisk Brood':2,'Manticore Pride':3,'Titan Warbeasts':3};
+// Berths a carrier offers land units (a hull not listed offers one; light foot take half a berth). 2026-10-13 (Creatures
+// and Monsters VI): the Great Turtles' Island Back carries two.
+const KC_CARRIER_BERTHS={'Great Turtles':2};
 const KC_BASIC_EXPLORE={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
 const KC_TERRAIN_COLORS={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const KC_PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];

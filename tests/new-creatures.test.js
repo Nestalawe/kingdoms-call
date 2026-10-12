@@ -6,7 +6,7 @@
 //     mammoths on the plain and in the desert; no land pool holds the turtles;
 //   • three worlds: every Creature province's beast is in its terrain's pool; every prosperous sea holds Sea
 //     Giants, Eldritch Kraken or Great Turtles (race Primal:Great Turtle), and the turtles do appear;
-//   • the classes: the Great Turtles swim and carry nothing (primalSea, sea, no hull); the Unicorn Herd is cavalry;
+//   • the classes: the Great Turtles swim (primalSea, sea; a carrier too since Island Back); the Unicorn Herd is cavalry;
 //     Whale Lore lifts the Great Turtles with the Whale Cohort;
 //   • a turn: a Druidic king at Druid 3 awakens Great Bears in his forest; his heir awakens a Mammoth Host in a
 //     wild province; a Druid-1 hero is refused the Unicorn Herd ("answer only a caller of Druid 3+"); a call for
@@ -56,7 +56,8 @@ const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
   }
 
   // ── The classes and Whale Lore ──
-  ok(W.eval("KC_UNIT_CLASS.primalSea.includes('Great Turtles')&&KC_UNIT_CLASS.sea.includes('Great Turtles')&&!KC_UNIT_CLASS.carrier.includes('Great Turtles')"),'the Great Turtles are a primal sea beast and no hull (they swim, carry nothing, and are raised only at sea)');
+  // (2026-10-13, Creatures and Monsters VI: the turtles' Island Back makes them a carrier too; they stay a primal sea beast.)
+  ok(W.eval("KC_UNIT_CLASS.primalSea.includes('Great Turtles')&&KC_UNIT_CLASS.sea.includes('Great Turtles')"),'the Great Turtles are a primal sea beast (they swim and are raised only at sea)');
   ok(W.eval("KC_UNIT_CLASS.cavalry.includes('Unicorn Herd')&&!KC_UNIT_CLASS.cavalry.includes('Great Bears')&&!KC_UNIT_CLASS.cavalry.includes('Mammoth Host')"),'the Unicorn Herd is cavalry; the bears and mammoths are not');
   ok(W.eval("KC_UNIT_CLASS.creature.includes('Great Turtles')&&!KC_UNIT_CLASS.monster.includes('Great Turtles')"),'the Great Turtles are a Creature among the sea-beasts');
   const lore=W.eval("((SAGE_DISCOVERIES_P.find(d=>d.id==='au20')||{}).effect||{}).types||[]");

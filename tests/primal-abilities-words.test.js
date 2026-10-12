@@ -13,7 +13,7 @@ const ABILITIES={
   'Whale Cohort':['Breach and Swamp'], 'Shark Shoals':['Shoal Swarm','Feeding Frenzy'],
   'Thunderbirds':['Storm Wings','Lightning Strike'], 'Forest Ents':['Rooted','Choking Spores'], 'Great Bears':['Maul','Thick Hide'],
   'Stone Giants':['Boulder Wall','Boulder Barrage'], 'Unicorn Herd':['Purity','Through the Glades'], 'Mammoth Host':['Trample','Stampede'],
-  'Great Turtles':['Shell Wall'], 'Crimson Rocs':['Air Superiority','Thunderous Stoop'],
+  'Great Turtles':['Shell Wall','Island Back'], 'Crimson Rocs':['Air Superiority','Thunderous Stoop'],
   'Cave Trolls':['Regenerating Hide','Hurled Rubble'], 'Basilisk Brood':['Stone Deterrent','Petrifying Gaze'], 'Manticore Pride':['Relentless Hunt','Spine Volley'],
   'Sea Giants':['Tidal Might','Tidal Surge'], 'Eldritch Kraken':['Deepwater Grasp','Crushing Coils'], 'Titan Warbeasts':['Colossal Bulk','World-Shaking Charge'],
   'Elder Dragons':['Wyrmscale','Dragonfire Breath'], 'Dread Hydras':['Many Heads','Venom Breath'],
