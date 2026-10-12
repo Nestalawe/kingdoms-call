@@ -757,7 +757,7 @@ section{display:none;}.section-active{display:block;}
         <div id="msg-thread"><div class="msg-empty">Loading dispatches…</div></div>
         <div id="msg-composer">
           <div id="msg-note"></div>
-          <textarea id="msg-input" maxlength="4000" rows="2" placeholder="Write your dispatch…" oninput="onMsgInput()"></textarea>
+          <textarea id="msg-input" maxlength="500" rows="2" placeholder="Write your dispatch…" oninput="onMsgInput()"></textarea>
           <div id="msg-send-row">
             <span class="mc-hint" id="msg-hint"></span>
             <button id="msg-send-btn" onclick="sendMessage()" disabled>Send</button>
@@ -10019,7 +10019,7 @@ const KC_MSG_TABLE='game_messages';
 const KC_MSG_READS='game_message_reads';
 const MSG_POLL_MS=8000;      // tick length while the Dispatches view is open
 const MSG_SLOW_EVERY=4;      // … and one tick in four when it is not (≈32s, for the unread badge)
-const MSG_MAX_LEN=4000;
+const MSG_MAX_LEN=500;   // the database refuses longer (P0-23, ruling D-05)
 const MSG_PAGE=400;          // most recent dispatches loaded on entry; later ones arrive by id, and
                              // anything older is fetched a page at a time by loadOlderMessages()
 let _msgGameId=null, _msgMyIndex=null, _msgMyName='', _msgMyColor=null;
@@ -10440,7 +10440,12 @@ async function sendMessage(){
     const th=document.getElementById('msg-thread'); if(th) th.scrollTop=th.scrollHeight;
     markChannelRead(key);
   }catch(e){
-    _msgErr='Dispatch not sent: '+String(e&&e.message||e);
+    // P0-23: the database's limits. Its rate refusals (10 a minute, 300 a day) are written for players, so they
+    // show as they are; its length check is reworded. The dispatch stays in the box either way.
+    const m=String(e&&e.message||e);
+    _msgErr=(e&&e.hint==='kc_dispatch_rate')?m
+      :/game_messages_body_len/.test(m)?'A dispatch can be at most '+MSG_MAX_LEN+' characters. Shorten it and send again.'
+      :'Dispatch not sent: '+m;
   }finally{ _msgSending=false; updateMsgComposer(); }
 }
 
@@ -10483,7 +10488,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0020</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.12-2132</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

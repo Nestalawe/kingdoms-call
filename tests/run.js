@@ -45,6 +45,7 @@ const SUITE=[
   ['db-guard',             'tests/db-guard.test.js'],
   ['gm-offer-and-gate',    'tests/gm-offer-and-gate.test.js'],
   ['other-realms-slots',   'tests/other-realms-slots.test.js'],
+  ['dispatch-limits',      'tests/dispatch-limits.test.js'],
   ['profiles-no-email',    'tests/profiles-no-email.test.js'],
   ['meta-missing-turn',    'tests/meta-missing-turn.test.js'],
   ['turn-fuzz',            'tests/turn-fuzz.test.js',            FULL?['16','12']:['4','6']],
