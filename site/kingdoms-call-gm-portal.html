@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0030';
+const KC_DATA_MIN='2026.10.13-0050';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0040'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.13-0060'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -740,7 +740,7 @@ function battleRole(row, terrain){
 const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr','Men-at-Arms':'MaA',
   'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr','Stag Riders':'Stag',
   'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr','Ironhoof Rams':'Ram',
-  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Black Arrows':'BlkAr','Whale Cohort':'Whale',
+  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Black Arrows':'BlkAr','Whale Cohort':'Whale','Shark Shoals':'Shark',
   'Stone Giants':'Giant','Forest Ents':'Ent','Thunderbirds':'Thund','Crimson Rocs':'Roc','Cave Trolls':'Troll','Manticore Pride':'Manti','Basilisk Brood':'Basil','Sea Giants':'SeaGt','Eldritch Kraken':'Krakn','Elder Dragons':'Drago','Titan Warbeasts':'Titan','Dread Hydras':'Hydra',
   'Air Elemental':'AirEl','Fire Elemental':'FirEl','Earth Elemental':'ErtEl','Water Elemental':'WatEl','Darkness Elemental':'DrkEl'};
 function shortUnit(row){ const t=(row&&row.a&&row.a.type)||(row&&row.name)||'unit'; return UNIT_SHORT[t]||String(t).replace(/[^A-Za-z]/g,'').slice(0,5); }
@@ -8221,7 +8221,7 @@ function botSeaStrike(G,pi,c,P,myStr,T,maxHops){
     let sc=null, fight=false, rv=false;
     if(N.terrain==='sea'){ if(N.owner==null&&botKnows(G,pi,N.id)){
         const tStr=botTargetDefence(G,pi,N); if(tStr>0&&strIn('sea')<tStr*margin) return;
-        const kind=(N.race==='Primal:Whale')?'whale':(N.race&&String(N.race).startsWith('Primal:'))?'primal':'open';
+        const kind=(N.race==='Primal:Whale'||N.race==='Primal:Shark')?'whale':(N.race&&String(N.race).startsWith('Primal:'))?'primal':'open';   // poor waters (whale or shark) score alike
         sc=(N.tax||1)*T.taxScoreWeight-tStr-d*2+(kind==='open'?40:kind==='whale'?15:0); fight=tStr>0; } }
     else { const bo=N.owner;
       // rendezvous: an owned coast where a general with liftable foot soldiers stands, when the hulls have room
@@ -9994,6 +9994,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   const NAME_SEA_BY_TYPE={
     primal:{pre:['Kraken','Wyrm','Serpent','Abyssal','Drowned','Sunken','Titan','Leviathan','Dread','Deep','Black','Storm'],suf:[' Deep',' Abyss',' Maw',' Trench',' Reach',' Fathoms',' Gulf',' Dark']},
     whale: {pre:['Whale','Grey','Cold','Deep','Wander','Song','Tide','Mist','Roam','Bower'],suf:[' Sound',' Waters',' Bay',' Reach',' Passage',' Run',' Sea',' Shoals']},
+    shark: {pre:['Shark','Red','Fin','Hunger','Blood','Teeth','Reef','Sandbar','Wreck','Carrion'],suf:[' Shallows',' Bank',' Reef',' Shoals',' Bar',' Flats',' Sound',' Run']},   // 2026-10-13: shark waters
     open:  {pre:['Storm','Grey','Salt','Foam','Pale','Azure','Wild','Bitter','Calm','Wide','Open','Far'],suf:[' Sea',' Straits',' Channel',' Gulf',' Waters',' Expanse',' Reach',' Ocean',' Bight']},
   };
   const pickFrom=arr=>arr[Math.floor(Math.random()*arr.length)];
@@ -10002,6 +10003,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     if(p.terrain==='sea'){
       let kind='open';
       if(p.race==='Primal:Whale') kind='whale';
+      else if(p.race==='Primal:Shark') kind='shark';
       else if(p.race&&p.race.startsWith('Primal:')) kind='primal';
       const pool=NAME_SEA_BY_TYPE[kind];
       return pickFrom(pool.pre)+pickFrom(pool.suf);
@@ -10429,9 +10431,12 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   });
   // Sea provinces: only non-humanoid sea armies — no Fleet/Corsair/Galleys/Longships Sea provinces
   // get non-humanoid sea armies only (no player fleets). Their army pool and tax are decided purely
-  // by type: 20% Primal (Prosperous, tax 4-6), 20% Whale Cohort (Poor, tax 2-3), 60% open water (no
-  // armies, tax 1).
-  const PRIMAL_SEA_TYPES=KC_UNIT_CLASS.primalSea.slice();
+  // by type: 20% Primal (Prosperous, tax 4-6), 20% poor waters (tax 2-3; dealt half whale waters and
+  // half shark waters, turn about, so every world gets an even share — 2026-10-13, Toby: the Shark
+  // Shoals are the Monsters' weak sea-beast as the Whale Cohort is the Creatures'), 60% open water
+  // (no armies, tax 1).
+  const PRIMAL_SEA_TYPES=KC_UNIT_CLASS.primalSea.filter(t=>t!=='Shark Shoals');   // the prosperous seas' beasts; the Shark Shoals are the poor seas' (below)
+  let _poorSeaShark=false;
   provinces.filter(p=>p.terrain==='sea').forEach(p=>{
     const r=Math.random();
     if(r<0.20){
@@ -10450,12 +10455,13 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       p.npcArmies=defCount;
       p.explored=0;
     } else if(r<0.40){
-      // Whale Cohort waters — Poor (tax 1-3)
-      p.armyTypes=['Whale Cohort'];
-      p.race='Primal:Whale';
+      // Poor waters: whale waters and shark waters, turn about.
+      const beast=_poorSeaShark?'Shark Shoals':'Whale Cohort'; _poorSeaShark=!_poorSeaShark;
+      p.armyTypes=[beast];
+      p.race=beast==='Shark Shoals'?'Primal:Shark':'Primal:Whale';
       p.tax=rP(2,3); // Poor waters — 2-3, matching the poor land band (2026-09-21: no 1-tax band province)
       const defCount=neutralDefCount(p.tax);
-      p.neutralDefenders=Array.from({length:defCount},()=>({type:'Whale Cohort',quality:'Average',race:'Primal',unitName:armyUnitName('Whale Cohort')}));
+      p.neutralDefenders=Array.from({length:defCount},()=>({type:beast,quality:'Average',race:'Primal',unitName:armyUnitName(beast)}));
       p.npcArmies=defCount;
     } else {
       // Open water — no armies, no defenders, tax exactly 1.
@@ -14298,7 +14304,7 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.0,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.0,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
     'Stone Giants':0.90,'Forest Ents':0.90,'Cave Trolls':1.0,
     'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
@@ -14313,7 +14319,7 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':0.90,
     'Elven Garrison':0.85,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
     'Stone Giants':0.90,'Forest Ents':0.75,'Cave Trolls':0.85,
     'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
@@ -14328,7 +14334,7 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
     'Stone Giants':0.90,'Forest Ents':1.15,'Cave Trolls':1.10,
     'Manticore Pride':1.0,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
@@ -14343,7 +14349,7 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
     'Stone Giants':0.80,'Forest Ents':1.15,'Cave Trolls':1.05,
     'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
@@ -14358,7 +14364,7 @@ const TERRAIN_MODS={
     'Orc Berserkers':0.90,'Goblin Horde':0.90,'Orc Garrison':0.90,
     'Elven Garrison':0.90,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
     'Stone Giants':1.15,'Forest Ents':0.90,'Cave Trolls':1.15,
     'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':0.80,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
@@ -14369,7 +14375,7 @@ const TERRAIN_MODS={
     // are full strength. Flying at full strength. Individual modifiers here are mostly 1.0 since
     // the sea penalty is applied globally.
     'Galleon Fleet':1.0,'Corsair Fleet':1.0,'Elven Galleys':1.0,
-    'Dwarf Ironclads':1.0,'Orcish Longships':1.0,'Whale Cohort':1.0,
+    'Dwarf Ironclads':1.0,'Orcish Longships':1.0,'Whale Cohort':1.0,'Shark Shoals':1.0,
     'Sea Giants':1.0,'Eldritch Kraken':1.0,
     // Flying fight fine at sea
     'Eagle Riders':1.0,'Wyvern Riders':1.0,'Gnomish Gyrocopters':1.0,
@@ -21045,8 +21051,8 @@ const BATTLE_ARMY_SPELLS={
           for(let q=0;q<actualQty;q++){
             // sd01 Superior Forging: recruited armies start at Veteran
           const startQuality=((gdActive(c.player,'Druidic')&&(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)))||Math.random()<discRecruitQChance(G.players[c.player],armyType))?'Veteran':'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
-          // Whale Cohorts are wild sea creatures — always the Primal race, whoever raises them.
-          const recruitRace=(armyType==='Whale Cohort')?'Primal':(prov.race||'Human');
+          // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
+          const recruitRace=(armyType==='Whale Cohort'||armyType==='Shark Shoals')?'Primal':(prov.race||'Human');
           _pushRecruit({type:armyType,quality:startQuality,race:recruitRace,unitName:armyUnitName(armyType)});
           if(!HUMANOID_RACES_SG.has(recruitRace)&&!_destGarrison) trySkillGain(_destChar,'druid',SKILLGAIN_STD); // Druid: led a non-humanoid recruit
           else if(CREATURE_ARMIES.has(armyType)||MONSTER_ARMIES.has(armyType)) trySkillGain(_destGarrison?c:_destChar,'druid',SKILLGAIN_COMMON); // 2026-09-21: any primal recruit (incl. into a garrison) — small chance for the recruiter
@@ -28301,7 +28307,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0040</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0060</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

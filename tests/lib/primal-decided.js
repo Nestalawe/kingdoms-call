@@ -26,7 +26,7 @@ const ROSTER={
   'Great Turtles':   {family:'Creature',type:'naval',   cost:5,str:13,speed:2,druid:4,terr:{},status:'coming'},
   'Crimson Rocs':    {family:'Creature',type:'flyer',   cost:6,str:15,speed:5,druid:5,terr:{},status:'live'},
   // ── Monsters (9) ──
-  'Shark Shoals':    {family:'Monster', type:'naval',   cost:3,str:5, speed:5,druid:3,terr:{},status:'coming'},
+  'Shark Shoals':    {family:'Monster', type:'naval',   cost:3,str:5, speed:5,druid:3,terr:{},status:'live'},   // 2026-10-13 (Creatures and Monsters III)
   'Cave Trolls':     {family:'Monster', type:'infantry',cost:4,str:11,speed:2,druid:4,terr:{desert:0.85,forest:1.1,jungle:1.05,mountain:1.15},status:'live'},
   'Basilisk Brood':  {family:'Monster', type:'infantry',cost:4,str:11,speed:2,druid:4,terr:{plain:0.9,desert:1.1,jungle:1.1,mountain:0.9},status:'live'},
   'Manticore Pride': {family:'Monster', type:'flyer',   cost:5,str:13,speed:5,druid:4,terr:{},status:'live'},

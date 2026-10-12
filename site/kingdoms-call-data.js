@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.13-0030
+// Data file v2026.10.13-0050
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.13-0030';
+const KC_DATA_STAMP='2026.10.13-0050';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -64,6 +64,9 @@ const PRIMAL_ARMY_DEFS_P={
   'Dread Hydras'    :{str:19,speed:2,cost:8,race:'Hydra',cat:'Heavy',
     desc:'Many-headed terrors of the fens, at home in jungle and forest (terrain ×1.1 and ×1.05 there). They take the Leviathan Pods\' place as the greatest of the Monsters (2026-10-13), on land. Pre-battle strike Venom Breath: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to EVERY enemy unit.',
     spells:[{name:'Venom Breath',dmg:[3,6],target:'all',flavour:'A hundred heads exhale as one and a green mist rolls over the line.'}]},
+  // ── Druid 3 — Sea (the weak sea Monster, 2026-10-13: the Monsters' answer to the Whale Cohort) ──
+  'Shark Shoals'    :{str:5,speed:5,cost:3,race:'Shark',cat:'Naval',
+    desc:'Grey hunters of the poor shallows: the cheapest and weakest of the Monsters, and the one sea-beast an Evil realm leads from its first turn. A shoal is no hull: it carries nothing. Found in shark waters, the poor seas the whales do not hold; no special strike (speed 5).'},
 };
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only
@@ -1186,6 +1189,7 @@ const ARMY_UNIT_NAMES={
   'Elven Galleys':['the Moonwave Galleys','the Silver-Oar Fleet','the Tidecaller Ships','the Starborn Mariners','the Whisperwind Fleet','the Gilded Galleys','the Pale Convoy','the Dawn Wave-Ships','the Mariners of the Amber Court','the Fleet of the Last Grove','the Fleet of the Whispering Vale','the Willow Oarsingers','the Radiant Ships','the Pale Oarsingers','the Dawn Flotilla','the Radiant Galleys','the Verdant Fleet','the Willow Galleys','the Seakin of the Whispering Vale','the Whisper Mariners','the Pale Galleys','the Evenstar Convoy','the Silver Mariners','the Flotilla of the Dawnpetal','the Flotilla of the Silver Glade','the Glimmer Seakin','the Fleet of the Moonwood','the Fleet of the Glimmerfen','the Mariners of the Dawnpetal','the Radiant Seakin','the Fleet of the Amber Court','the Gilded Wave-Ships','the Convoy of the Dawnpetal','the Emerald Fleet','the Dusk Convoy','the Leaf Seakin','the Glimmer Wave-Ships','the Willow Ships','the Argent Flotilla','the Wave-Ships of the Evenmere'],
   'Dwarf Ironclads':['the Iron-Hull Squadron','the Steam-and-Rivet Fleet','the Deep-Keel Ironclads','the Forge-at-Sea Ships','the Boilerplate Armada','the Molten Fleet','the Stone Ships','the Basalt Line','the Hulls of the Molten Halls','the Molten Ships','the Monitors of the Anvilhold','the Coalfire Hulls','the Steam-Ships of the Emberdeep','the Armada of the Molten Halls','the Deep Fleet','the Hulls of the Underforge','the Ember Fleet','the Hammer Monitors','the Bronze Hulls','the Stone Fleet','the Bronze Fleet','the Hulls of the Anvilhold','the Granite Monitors','the Runed Ironclads','the Steam-Ships of the Lost Delve','the Steam-Ships of the Underforge','the Stone Hulls','the Ironclads of the Molten Halls','the Line of the Emberdeep','the Ember Hulls','the Monitors of the Molten Halls','the Under Ships','the Ironbeard Armada','the Ore Ironclads','the Under Armada','the Runed Line','the Steamed Monitors','the Ships of the Great Vein','the Cinder Line','the Runed Hulls'],
   'Orcish Longships':['the Bone-Prow Raiders','the Skull-Sail Fleet','the Storm-Oar Warships','the Sea-Ravager Longships','the Tide-Crusher Fleet','the Gutter Reavers','the Warpaint Wolves','the Fang Fleet','the Warships of the Ashen Hills','the Jagged Wolves','the Cruel Longships','the Reeking Sea-Raiders','the Rovers of the Bone Fields','the Blood Fleet','the Wolves of the Ashen Hills','the Cinder Fleet','the Gutter Rovers','the Ragged Longships','the Longships of the Redfang Camp','the Warpaint Rovers','the Warships of the Waste','the Warpaint Reavers','the Gutter Wolves','the Grime Reavers','the Sea-Raiders of the Grime Warren','the Rovers of the Gorewood','the Ash Sea-Raiders','the Fleet of the Skullpit','the Fleet of the Grime Warren','the Rust Wolves','the Warpaint Raiders','the Jagged Longships','the Grime Wolves','the Jagged Warships','the Blood Wolves','the Broken Raiders','the Rust Rovers','the Cruel Rovers','the Jagged Flotilla','the Fleet of the Rust Pits'],
+  'Shark Shoals':['the Grey Hunger','the Red-Water Shoal','the Reef Teeth','the Shallows Frenzy','the Fin-Dark Tide','the Blood-Scent Pack','the Sandbar Reavers','the Shoal of the Bitten Keel','the Grey Fins of the Bank','the Hunger of the Shallows','the Teeth of the Reef','the Dusk-Fin Shoal','the Wreck-Water Pack','the Pale-Belly Shoal','the Shoal of the Drowned Net','the Riptide Hunters','the Low-Water Teeth','the Fins of the Grey Bank','the Carrion Tide','the Shoal of the Lost Oar','the Salt-Blood Pack','the Shallow-Sea Reavers','the Bone-Reef Shoal','the Circling Grey','the Hunger of the Bar','the Keel-Biters','the Shoal of the Red Shallows','the Grey-Fin Legion'],
   'Whale Cohort':['the Leviathan Riders','the Deep-Song Cavalry','the Crestmane Wave-Guard','the Bluewater Brotherhood','the Ancient-Tide Riders','the Riders of the Far Tide','the Salt Tide-Guard','the Wave-Guard of the Deep','the Cavalry of the Salt Coast','the Maelstrom Song-Riders','the Brine Cavalry','the Riders of the Deep','the Maelstrom Riders','the Anchor Deep-Riders','the Kraken Cavalry','the Wave Riders','the Tide Whalekin','the Anchor Brotherhood','the Cavalry of the Grey Waters','the Tide Brotherhood','the Reef Whalekin','the Pods of the Grey Waters','the Storm Riders','the Iron Riders','the Riders of the Salt Coast','the Tide-Guard of the Drowned Shore','the Wind Cavalry','the Deep-Riders of the Strait','the Salt Cavalry','the Undertow Pods','the Squall Wave-Guard','the Tide-Guard of the Far Tide','the Grey Deep-Riders','the Undertow Wave-Guard','the Coral Whalekin','the Grey Tide-Guard','the Maelstrom Brotherhood','the Deep Brotherhood','the Reef Pods','the Cavalry of the Drowned Shore'],
   'Noble Griffons':['the Gilded Griffonry','the Argent Wing','the Heraldic Talons','the Sovereign Skyguard','the Crest-and-Claw','the Royal Aerie','the Banner Griffons','the Highcrest Wing','the Skyborne Nobility','the Golden Griffonry','the Pinion Guard','the Azure Talons','the Crownfeather Flight','the Regal Skyriders','the Griffons of the High Keep','the Silver Griffonry','the Emblem Wing','the Stormcrest Griffons','the Sunward Talons','the Bannered Aerie','the Griffons of the Dawn Spire','the Ivory Wing','the Skyguard of the Crown','the Proud Talons','the Griffonry of the Sunspire','the Aurelian Flight','the Gallant Griffons','the High-Aerie Nobles','the Skyward Banners','the Griffons of the Golden Court'],
   'Gnomish Gyrocopters':['the Copper Rotors','the Whirligig Squadron','the Brass Propellers','the Cogwheel Flight','the Sputtering Wing','the Tinker Skyfleet','the Gearwing Corps','the Rattle-Rotor Squadron','the Steam-Vane Flight','the Clockwork Aeronauts','the Gyro Guild','the Piston Wing','the Bellows Brigade','the Sprocket Skyriders','the Kettle-Copters','the Whirlgear Squadron','the Boiler Wing','the Rivet Rotors','the Aether Tinkers','the Cog-and-Rotor Corps','the Flywheel Squadron','the Brass Aeronauts','the Spark-Plug Flight','the Grease-Gear Wing','the Cinderbelt Copters','the Gizmo Skyfleet','the Widget Wing','the Turbine Tinkers','the Rotorworks Guild','the Whistling Cogs'],
@@ -1686,7 +1690,7 @@ const SPELL_DEFS_P={
 //   aerial     — every unit that crosses sea without a hull (flying + the winged primal beasts)
 //   creature / monster — the two primal families (Druidic favours creatures, Evil monsters)
 //   carrier    — hulls that ferry land units (1 berth each; light foot take half)
-//   primalSea  — Druid-summoned sea beasts: swim, carry nothing
+//   primalSea  — Druid-summoned sea beasts: swim, carry nothing, raised only at sea (the Shark Shoals too)
 //   sea        — carrier ++ primalSea, in that order: every unit that moves by sea
 //   cavalry    — horse (never air-lifted; Ride Them Down)
 //   missile    — units that loose in the pre-battle archery phase
@@ -1697,15 +1701,15 @@ const KC_UNIT_CLASS={
   flying:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'],
   aerial:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Thunderbirds','Manticore Pride','Elder Dragons','Crimson Rocs'],
   creature:['Thunderbirds','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort'],   // 2026-10-11 (Toby): the winged riders are soldiers of their race, not beasts
-  monster:['Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken','Elder Dragons','Titan Warbeasts','Dread Hydras'],   // 2026-10-13 (Creatures and Monsters II): Kraken Tentacles → Eldritch Kraken, Leviathan Pods → Dread Hydras (a land Monster)
+  monster:['Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken','Elder Dragons','Titan Warbeasts','Dread Hydras','Shark Shoals'],   // 2026-10-13 (Creatures and Monsters II): Kraken Tentacles → Eldritch Kraken, Leviathan Pods → Dread Hydras (a land Monster); III: Shark Shoals, the weak sea Monster
   carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'],
-  primalSea:['Sea Giants','Eldritch Kraken'],
+  primalSea:['Sea Giants','Eldritch Kraken','Shark Shoals'],   // 2026-10-13 (Creatures and Monsters III): the Shark Shoals swim and carry nothing like the two great sea-beasts; world generation deals them to the poor seas, not the prosperous ones
   cavalry:['Free Lances','Gilded Lances','Warg Riders','Stag Riders','Ironhoof Rams'],
   missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Black Arrows'],   // 2026-10-11 (Toby, the army roster): the Goblin Horde's thrown spears are retired (it is plain infantry); the orcs' archers are the Black Arrows
   garrison:['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'],
   lightFoot:['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns','Men-at-Arms','Black Arrows'],
   tamedFlyer:['Thunderbirds','Manticore Pride','Crimson Rocs','Elder Dragons'],
-  sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Eldritch Kraken'],
+  sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Eldritch Kraken','Shark Shoals'],
 };
 
 // Unit TYPE (2026-10-11, Toby): the ONE word every player-facing table, blurb and report uses for a
@@ -1725,7 +1729,7 @@ const KC_UNIT_TYPE={
   // Orcish
   'Warg Riders':'cavalry','Orc Berserkers':'infantry','Goblin Horde':'infantry','Wyvern Riders':'flyer','Orcish Longships':'naval','Orc Garrison':'infantry','Black Arrows':'ranged',
   // Creatures and Monsters (the winged beasts are flyers: they cross the sea on their own wings)
-  'Whale Cohort':'naval','Stone Giants':'infantry','Forest Ents':'infantry','Thunderbirds':'flyer','Crimson Rocs':'flyer','Cave Trolls':'infantry','Manticore Pride':'flyer','Basilisk Brood':'infantry','Sea Giants':'naval','Eldritch Kraken':'naval','Elder Dragons':'flyer','Titan Warbeasts':'infantry','Dread Hydras':'infantry',
+  'Whale Cohort':'naval','Stone Giants':'infantry','Forest Ents':'infantry','Thunderbirds':'flyer','Crimson Rocs':'flyer','Cave Trolls':'infantry','Manticore Pride':'flyer','Basilisk Brood':'infantry','Sea Giants':'naval','Eldritch Kraken':'naval','Elder Dragons':'flyer','Titan Warbeasts':'infantry','Dread Hydras':'infantry','Shark Shoals':'naval',
   // Summoned elementals (they stand in the line like foot)
   'Air Elemental':'infantry','Fire Elemental':'infantry','Earth Elemental':'infantry','Water Elemental':'infantry','Darkness Elemental':'infantry',
 };
@@ -1737,7 +1741,7 @@ const KC_UNIT_TYPE={
 const KC_DRUID_LEVELS={
   1:['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison','Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison','Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison','Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison','Eagle Riders','Noble Griffons','Wyvern Riders','Men-at-Arms','Stag Riders','Ironhoof Rams','Black Arrows'],   // the winged riders: racial troops since 2026-10-11 (Gnomish Gyrocopters, a machine, need nobody); the roster's new units follow
   2:[],
-  3:['Whale Cohort'],
+  3:['Whale Cohort','Shark Shoals'],
   4:['Stone Giants','Forest Ents','Thunderbirds','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken'],
   5:['Elder Dragons','Crimson Rocs','Titan Warbeasts','Dread Hydras'],
 };

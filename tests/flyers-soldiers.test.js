@@ -17,7 +17,8 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
     ok(D.KC_DRUID_LEVELS[1].includes(r)&&![2,3,4,5].some(l=>(D.KC_DRUID_LEVELS[l]||[]).includes(r)),`${r} sit at Druid 1 with the other racial troops`);
     ok(!(r in D.KC_AWAKEN_TIERS),`${r} cannot be called up by Awaken the Wild`);
   }
-  ok(D.KC_DRUID_LEVELS[3].join()==='Whale Cohort','Druid 3 is left to the Whale Cohort');
+  // (2026-10-13, Creatures and Monsters III: the Shark Shoals share Druid 3 with the Whale Cohort; no winged rider does.)
+  ok(D.KC_DRUID_LEVELS[3][0]==='Whale Cohort'&&!D.KC_DRUID_LEVELS[3].some(r=>RIDERS.includes(r)),'Druid 3 is left to the sea-beasts, the Whale Cohort first');
   ok(Object.keys(D.KC_AWAKEN_TIERS).join()==='Thunderbirds,Forest Ents,Stone Giants,Crimson Rocs','Awaken the Wild offers Thunderbirds, Forest Ents, Stone Giants and Crimson Rocs');
   ok(!Object.values(D.KC_DRUID_LEVELS).some(l=>l.includes('Gnomish Gyrocopters')),'Gnomish Gyrocopters still need nobody');
 

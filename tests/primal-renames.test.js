@@ -41,7 +41,7 @@ function slice(src,name,from=0){
     ok(!!D.PR[u]&&Array.isArray(D.PR[u].spells)&&D.PR[u].spells.length===1&&D.PR[u].spells[0].dmg[1]>0,`${u}: carries one pre-battle strike`);
   }
   ok(D.C.aerial.includes('Thunderbirds')&&D.C.tamedFlyer.includes('Thunderbirds')&&!D.C.aerial.includes('Giant Eagles')&&!D.C.tamedFlyer.includes('Giant Eagles'),'Thunderbirds cross the sea on the wing and can be tamed; Giant Eagles no longer');
-  ok(D.C.primalSea.join()==='Sea Giants,Eldritch Kraken'&&D.C.sea.includes('Eldritch Kraken')&&!D.C.sea.includes('Leviathan Pods'),`the primal seas are Sea Giants and Eldritch Kraken (got ${D.C.primalSea.join(', ')})`);
+  ok(D.C.primalSea.slice(0,2).join()==='Sea Giants,Eldritch Kraken'&&D.C.sea.includes('Eldritch Kraken')&&!D.C.sea.includes('Leviathan Pods'),`the primal seas are Sea Giants and Eldritch Kraken (got ${D.C.primalSea.join(', ')})`);
   ok(!D.C.sea.includes('Dread Hydras')&&!D.C.primalSea.includes('Dread Hydras')&&!D.C.aerial.includes('Dread Hydras'),'Dread Hydras walk: neither a sea unit nor a flyer');
   ok(D.A['Thunderbirds']===1&&!('Giant Eagles' in D.A),'Awaken the Wild offers Thunderbirds at Druid 1 in place of Giant Eagles');
   for(const u of OLD){
