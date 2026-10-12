@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.13-0010
+// Data file v2026.10.13-0030
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.13-0010';
+const KC_DATA_STAMP='2026.10.13-0030';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -31,9 +31,9 @@ const PRIMAL_ARMY_DEFS_P={
   'Forest Ents'     :{str:11,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
     desc:'Living trees of great age, at home in forest and jungle (terrain ×1.15 there; they wither in the desert). Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
     spells:[{name:'Choking Spores',dmg:[2,4],target:'all',flavour:'A cloud of ancient spores rolls across the whole enemy line.'}]},
-  'Giant Eagles'    :{str:7,speed:5,cost:4,race:'Giant Eagle',cat:'Free Lances',
-    desc:'Wild eagle-lords, not the Elven-tamed variety. Stoop on the Archers: +25% strength whenever the enemy fields any missile unit. Pre-battle strike Diving Talons: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
-    spells:[{name:'Diving Talons',dmg:[4,8],target:'single',flavour:'Eagles fold their wings and fall on the archers like thunderbolts!'}]},
+  'Thunderbirds'    :{str:11,speed:5,cost:4,race:'Thunderbird',cat:'Free Lances',
+    desc:'Storm-birds of the high crags (they replace the Giant Eagles, 2026-10-13: the elves already ride eagles). Pre-battle strike Lightning Strike: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit. Flying (speed 5).',
+    spells:[{name:'Lightning Strike',dmg:[4,8],target:'single',flavour:'Thunder cracks from the flock and a bolt tears through the ranks!'}]},
   'Cave Trolls'     :{str:11,speed:2,cost:4,race:'Cave Troll',cat:'Heavy',
     desc:'Regenerating mountain brutes, at home in the mountains and the forest (terrain ×1.15 and ×1.1 there). Pre-battle strike Hurled Rubble: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit.',
     spells:[{name:'Hurled Rubble',dmg:[4,7],target:'single',flavour:'A troll rips a slab from the earth and hurls it into the ranks.'}]},
@@ -47,8 +47,8 @@ const PRIMAL_ARMY_DEFS_P={
   'Sea Giants'      :{str:13,speed:3,cost:5,race:'Sea Giant',cat:'Naval',
     desc:'Colossal ocean-dwelling giants that wade ashore. Tidal Might: +20% strength when fighting in a coastal land province (one bordering the sea). Pre-battle strike Tidal Surge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–8 strength damage to one enemy unit.',
     spells:[{name:'Tidal Surge',dmg:[4,8],target:'single',flavour:'A wall of driven water smashes a vessel broadside.'}]},
-  'Kraken Tentacles':{str:10,speed:2,cost:6,race:'Kraken',cat:'Naval',
-    desc:'Severed but animate tentacles of elder krakens. Deepwater Grasp: +35% strength in a sea battle. Pre-battle strike Crushing Coils: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit.',
+  'Eldritch Kraken' :{str:15,speed:2,cost:6,race:'Kraken',cat:'Naval',
+    desc:'Elder krakens of the lightless deep, risen whole (renamed from Kraken Tentacles, 2026-10-13). Deepwater Grasp: +35% strength in a sea battle. Pre-battle strike Crushing Coils: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 5–9 strength damage to one enemy unit.',
     spells:[{name:'Crushing Coils',dmg:[5,9],target:'single',flavour:'Titanic coils breach and drag a hull under.'}]},
   // ── Druid 5 — Land ──
   'Elder Dragons'   :{str:19,speed:5,cost:8,race:'Dragon',cat:'Free Lances',
@@ -60,10 +60,10 @@ const PRIMAL_ARMY_DEFS_P={
   'Titan Warbeasts' :{str:18,speed:2,cost:7,race:'Titan',cat:'Heavy',
     desc:'Primordial mythic beasts, at home on the plain and in the desert (terrain ×1.1 there). Pre-battle strike World-Shaking Charge: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to every enemy unit.',
     spells:[{name:'World-Shaking Charge',dmg:[3,6],target:'all',flavour:'The herd charges — the ground itself throws every enemy off balance.'}]},
-  // ── Druid 5 — Sea ──
-  'Leviathan Pods'  :{str:13,speed:3,cost:8,race:'Leviathan',cat:'Naval',
-    desc:'Pods of ocean-spanning leviathans — the premier naval unit. Fleet-Sinker: +40% strength in a sea battle. Pre-battle strike Abyssal Maelstrom: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to every enemy unit.',
-    spells:[{name:'Abyssal Maelstrom',dmg:[4,7],target:'all',flavour:'The sea itself rises in a spiral that swallows a whole fleet.'}]},
+  // ── Druid 5 — Land (the Dread Hydras take the Leviathan Pods' place, 2026-10-13) ──
+  'Dread Hydras'    :{str:19,speed:2,cost:8,race:'Hydra',cat:'Heavy',
+    desc:'Many-headed terrors of the fens, at home in jungle and forest (terrain ×1.1 and ×1.05 there). They take the Leviathan Pods\' place as the greatest of the Monsters (2026-10-13), on land. Pre-battle strike Venom Breath: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 3–6 strength damage to EVERY enemy unit.',
+    spells:[{name:'Venom Breath',dmg:[3,6],target:'all',flavour:'A hundred heads exhale as one and a green mist rolls over the line.'}]},
 };
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only
@@ -1143,16 +1143,16 @@ const _VARIANT_BANK={
 const PRIMAL_UNIT_NAMES={
   'Stone Giants':['the Stoneback Clan','the Mountain-Shapers','the Ironhide Brethren','the World-Crushers','the Ancient Fist','the Colossi of the Long Dark','the Host of the Deep Wild','the Elder Breakers','the Rift Colossi','the Host of the Dawn of Days','the Titan Fist','the Kin of the Long Dark','the World Shapers','the Rift Shapers','the Myth Titans','the Clan of the Old Storm','the Old-Blood Clan','the Titans of the Long Dark','the Storm Shapers','the Clan of the First Age','the Host of the Long Dark','the Sky Clan','the Breakers of the Rift','the Kin of the Bones of the Earth','the Host of the World-Root','the Wild Clan','the Fell Clan','the Kin of the Rift'],
   'Forest Ents':['the Heartwood Wardens','the Root-Walkers','the Old Growth Guard','the Thornback Ancients','the Bark-and-Blood Clan','the Wild Rootborn','the Walkers of the Dawn of Days','the Ancients of the World-Root','the Myth Rootborn','the Earth Walkers','the Primeval Rootborn','the Storm Ancients','the Ancients of the Long Dark','the Deep Elders','the Wild Guard','the Fell Walkers','the World Clan','the Doom Grove-Kin','the Doom Bark-Host','the Rootborn of the Deep Wild','the Rootborn of the Dawn of Days','the Wardens of the Elder Peaks','the Titan Wardens','the Titan Guard','the Thunder Bark-Host','the Old-Blood Walkers','the Wardens of the Deep Wild','the Ancient Guard'],
-  'Giant Eagles':['the Stormcrest Wing','the Thunder-Talon Flock','the Sky-Lords of the Peak','the Iron-Eye Squadron','the High-Aerie Wild','the Doom Wild','the Skylords of the Sundered Lands','the Sky Talons','the Skylords of the World-Root','the Old-Blood Talons','the Squadron of the Deep Wild','the Earth Wild','the Old-Blood Flock','the Talons of the Elder Peaks','the Titan Talons','the Wing of the Elder Peaks','the Deep Wing','the Earth Aerie','the Earth Stormwing','the World Wing','the Flight of the Long Dark','the Sky Flight','the Elder Squadron','the Aerie of the Elder Peaks','the Sky Flock','the Squadron of the Bones of the Earth','the Flock of the Dawn of Days','the Myth Aerie'],
+  'Thunderbirds':['the Stormcrest Wing','the Thunder-Talon Flock','the Sky-Lords of the Peak','the Iron-Eye Squadron','the High-Aerie Wild','the Doom Wild','the Skylords of the Sundered Lands','the Sky Talons','the Skylords of the World-Root','the Old-Blood Talons','the Squadron of the Deep Wild','the Earth Wild','the Old-Blood Flock','the Talons of the Elder Peaks','the Titan Talons','the Wing of the Elder Peaks','the Deep Wing','the Earth Aerie','the Earth Stormwing','the World Wing','the Flight of the Long Dark','the Sky Flight','the Elder Squadron','the Aerie of the Elder Peaks','the Sky Flock','the Squadron of the Bones of the Earth','the Flock of the Dawn of Days','the Myth Aerie'],
   'Cave Trolls':['the Tunnel-Breakers','the Deepstone Hulks','the Regen-Blood Kin','the Cavern-Crushers','the Under-Mountain Terrors','the Brutes of the Old Storm','the Primeval Deepkin','the Ancient Kin','the Deepkin of the Dawn of Days','the Earth Breakers','the Sky Deepkin','the Mountain Hulks','the Sky Hulks','the Primeval Hulks','the Elder Maulers','the Doom Deepkin','the Terrors of the First Age','the Sky Terrors','the Ancient Deepkin','the Maulers of the Old Storm','the Kin of the Rift','the World Brutes','the Old-Blood Deepkin','the Mountain Brutes','the Maulers of the Rift','the Earth Brutes','the Thunder Crushers','the Primeval Gnashers'],
   'Manticore Pride':['the Sunscorch Pride','the Razor-Tail Pack','the Blood-Mane Pride','the Desert-Scourge','the Iron-Stinger Pride','the Ancient Manes','the Manes of the Deep Wild','the Old-Blood Pride','the Doom Manes','the Pack of the World-Root','the Doom Scourge','the Hoary Pride','the Hunt of the Rift','the Hoary Pack','the Prowl of the Deep Wild','the Doom Pride','the Titan Bloodpride','the Thunder Pride','the Old-Blood Stingers','the Earth Hunt','the Scourge of the Deep Wild','the Myth Scourge','the Titan Pride','the Scourge of the Rift','the Prowl of the Bones of the Earth','the Ancient Terrors','the Deep Bloodpride','the Mountain Hunt'],
   'Basilisk Brood':['the Stone-Eye Clutch','the Petrifiers Brood','the Ancient Gaze','the Stoneborn Clutch','the Still-Eye Pack','the Myth Fangs','the Petrifiers of the Sundered Lands','the Coil of the World-Root','the Pack of the Long Dark','the Wild Coil','the Hoary Brood','the Earth Stoneborn','the Wild Fangs','the Elder Coil','the Ancient Pack','the Storm Clutch','the Fangs of the Bones of the Earth','the Coil of the Elder Peaks','the Clutch of the Bones of the Earth','the Elder Petrifiers','the Titan Brood','the Old-Blood Petrifiers','the Old-Blood Gaze','the Doom Coil','the Deep Petrifiers','the Deep Fangs','the Storm Fangs','the Sky Coil'],
   'Sea Giants':['the Tide-Striders','the Deep-Waders','the Brine-Born Giants','the Abyssal Walkers','the Storm-Wave Clan','the Waders of the Bones of the Earth','the Fell Striders','the Mountain Striders','the Storm Tideborn','the Primeval Tideborn','the Striders of the Deep Wild','the Storm Striders','the Doom Colossi','the Myth Walkers','the Clan of the Deep Wild','the Walkers of the Long Dark','the Earth Striders','the Colossi of the Dawn of Days','the Doom Walkers','the Elder Deepkin','the Deep Tideborn','the Thunder Walkers','the Sky Clan','the Deep Clan','the Thunder Striders','the Deepkin of the Elder Peaks','the Ancient Deepkin','the Sky Brine-Host'],
-  'Kraken Tentacles':['the Elder-Coil','the Abyss-Reach','the Crushing Depths','the Writhing Dark','the Void-Grasp','the Myth Writhe','the Maw of the First Age','the Dark of the Sundered Lands','the Maw of the Dawn of Days','the Depths of the Dawn of Days','the Deep Grasp','the Grasp of the Elder Peaks','the Fell Dark','the Dark of the First Age','the Sky Depths','the World Maw','the Dark of the Old Storm','the Grasp of the Deep Wild','the Thunder Reach','the Myth Drowners','the Reach of the Deep Wild','the Primeval Writhe','the Thunder Coil','the Reach of the Elder Peaks','the Earth Drowners','the Mountain Writhe','the Elder Abyss-Arms','the Deep Writhe'],
+  'Eldritch Kraken':['the Elder-Coil','the Abyss-Reach','the Crushing Depths','the Writhing Dark','the Void-Grasp','the Myth Writhe','the Maw of the First Age','the Dark of the Sundered Lands','the Maw of the Dawn of Days','the Depths of the Dawn of Days','the Deep Grasp','the Grasp of the Elder Peaks','the Fell Dark','the Dark of the First Age','the Sky Depths','the World Maw','the Dark of the Old Storm','the Grasp of the Deep Wild','the Thunder Reach','the Myth Drowners','the Reach of the Deep Wild','the Primeval Writhe','the Thunder Coil','the Reach of the Elder Peaks','the Earth Drowners','the Mountain Writhe','the Elder Abyss-Arms','the Deep Writhe'],
   'Elder Dragons':['the Ageless Flame','the Ancient Wrath','the Worldburner Wing','the Elder-Brood','the Eternal Scales','the Rift Dread','the Scales of the Deep Wild','the Earth Wyrms','the Thunder Dread','the Titan Brood','the Old-Blood Firestorm','the Mountain Flame','the Storm Dread','the Doom Wyrms','the Old-Blood Flame','the Ancients of the Dawn of Days','the Firestorm of the Deep Wild','the Wyrms of the Bones of the Earth','the Wild Wyrms','the Myth Wrath','the Storm Brood','the Brood of the Deep Wild','the Wing of the Elder Peaks','the Myth Firestorm','the Wyrms of the Rift','the Titan Ancients','the Mountain Brood','the Fell Scales'],
   'Crimson Rocs':['the Thunder-Wing Riders','the Sky-Mountain Cavalry','the Stormborn Flock','the Roc-Lord Squadron','the Cloud-Shatter Wing','the Skylords of the Elder Peaks','the World Flock','the Elder Cloudkin','the Ancient Riders','the Ancient Cavalry','the Thunder Skylords','the Flock of the Long Dark','the Fell Wing','the Squadron of the Deep Wild','the Riders of the Bones of the Earth','the Talons of the Rift','the Hoary Flock','the Thunder Talons','the Riders of the Rift','the Elder Flock','the World Wing','the Stormflight of the Elder Peaks','the Riders of the Dawn of Days','the Mountain Flock','the Doom Talons','the Primeval Flock','the Rift Wing','the Mountain Skylords'],
   'Titan Warbeasts':['the World-Trembler Pack','the Ancient-Blood Herd','the Primordial Stampede','the Myth-Bone Herd','the Epoch-Beast Pack','the Sky Ramparts','the Old-Blood Ramparts','the Sky Behemoths','the Herd of the Sundered Lands','the Old-Blood Colossi','the Old-Blood Beasts','the World Behemoths','the Earth War-Herd','the Herd of the Old Storm','the Earth Pack','the Colossi of the Dawn of Days','the Earth Behemoths','the Pack of the Sundered Lands','the Herd of the Rift','the Primeval War-Herd','the Fell Stampede','the Primeval Colossi','the Hoary Ramparts','the Deep Pack','the Behemoths of the Dawn of Days','the Myth Colossi','the Hoary Beasts','the Pack of the Long Dark'],
-  'Leviathan Pods':['the Endless-Deep Pod','the World-Serpent Cohort','the Abyss-Song Pod','the Ancient-Current Group','the Tide-Ender Pod','the Mountain Serpents','the Serpents of the Elder Peaks','the Primeval Drowners','the Titan Serpents','the Doom Cohort','the Elder Abyss-Pod','the Myth Tide-Host','the Storm Abyss-Pod','the Group of the First Age','the Rift Serpents','the Cohort of the First Age','the Thunder Group','the Doom Drowners','the Titan Group','the Tide-Host of the First Age','the Cohort of the Elder Peaks','the Mountain Cohort','the Earth Cohort','the Mountain Drowners','the Sky Tide-Host','the Drowners of the Sundered Lands','the Serpents of the First Age','the Tide-Host of the Rift'],
+  'Dread Hydras':['the Many-Headed Coil','the Hundred Maws','the Fen-Brood','the Venom Heads','the Marsh Hydra Spawn','the Heads of the Black Mire','the Regrowing Coil','the Serpent-Crowned','the Brood of the Drowned Fen','the Hissing Hundred','the Mire-Wyrms','the Coils of the Dawn of Days','the Fen Hydras','the Hydras of the Long Dark','the Venom-Crowned','the Heads of the Rift','the Doom Hydras','the Elder Heads','the Hydras of the Deep Wild','the Sevenfold Maw','the Brood of the Old Storm','the Bog-Terrors','the Hundred-Fanged','the Marsh Kings','the Hydras of the Bones of the Earth','the Fell Heads','the Mire Brood','the Coil of the First Age'],
 };
 
 // Unique army unit name descriptors by race+type. Pools are sized generously to the largest-map
@@ -1302,7 +1302,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"sd76","name":"Blooded Retinues","category":"Heroic","desc":"Practice orders in Melee and Archery have +10% chance of success.","effect":{"kind":"practice","pct":0.1,"skills":["melee","archery"]}},
   // ── Special ──
   {"id":"sd39","name":"Arcane Observatory","category":"Special","desc":"Each turn, a random province you have not yet fully explored is charted in full (100% explored).","effect":{"type":"turnReveal"}},
-  {"id":"sd40","name":"Dragon Taming","category":"Special","desc":"Your characters lead winged beasts — Eagle Riders, Noble Griffons, Wyvern Riders, Giant Eagles, Manticore Pride, Crimson Rocs and Elder Dragons — at full strength whatever their Druid skill: no Druid shortfall penalty ever applies to a flyer under your banner.","effect":{"type":"flyingNoDruid"}},
+  {"id":"sd40","name":"Dragon Taming","category":"Special","desc":"Your characters lead winged beasts — Eagle Riders, Noble Griffons, Wyvern Riders, Thunderbirds, Manticore Pride, Crimson Rocs and Elder Dragons — at full strength whatever their Druid skill: no Druid shortfall penalty ever applies to a flyer under your banner.","effect":{"type":"flyingNoDruid"}},
   {"id":"sd77","name":"Aerie Masters","category":"Special","desc":"Each flying unit you recruit has a 25% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitQ","pct":0.25,"cls":"flyer"}},
   {"id":"sd78","name":"Primal Accord","category":"Special","desc":"Your Creature and Monster armies cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"cls":"primal","max":1}},
   // ── Human Heritage ──
@@ -1402,7 +1402,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"ad10","name":"Relic Hunters","category":"Divine Creed","alignment":"Divine","desc":"+50% chance of an extra magic item from any lair your characters clear in plains or desert. Also: Every Research order in your own Creed's field has +6% discovery chance.","effect":{"kind":"itemChance","pct":0.5,"terrains":["plain","desert"]},"effect2":{"kind":"research","pct":6,"field":"own"}},
   {"id":"ad11","name":"Knighthood","category":"Divine Creed","alignment":"Divine","desc":"Each cavalry unit you recruit has a 30% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitQ","pct":0.3,"cls":"cavalry"}},
   {"id":"ad12","name":"Pilgrim Roads","category":"Divine Creed","alignment":"Divine","desc":"Every province you own with tax 7 or more yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"minTax":7}},
-  {"id":"ad13","name":"Angelic Hosts","category":"Divine Creed","alignment":"Divine","desc":"Noble Griffons and Giant Eagles of your realm fight at +24% strength.","effect":{"kind":"unitStr","pct":0.24,"types":["Noble Griffons","Giant Eagles"]}},
+  {"id":"ad13","name":"Angelic Hosts","category":"Divine Creed","alignment":"Divine","desc":"Noble Griffons and Thunderbirds of your realm fight at +24% strength.","effect":{"kind":"unitStr","pct":0.24,"types":["Noble Griffons","Thunderbirds"]}},
   {"id":"ad14","name":"Saints' Relics","category":"Divine Creed","alignment":"Divine","desc":"Your characters gain +20% to hit in personal combat against undead foes. Also: Every character of yours with at least 1 level of White Magic has +4 maximum HP.","effect":{"kind":"duelHit","pct":20,"vs":"undead"},"effect2":{"kind":"maxHp","hp":4,"skill":"white"}},
   {"id":"ad15","name":"Crusading Zeal","category":"Divine Creed","alignment":"Divine","desc":"Your missile units (bows, crossbows, guns, goblin hordes) fight at +27% strength when attacking.","effect":{"kind":"unitStr","pct":0.27,"cls":"missile","side":"atk"}},
   {"id":"ad16","name":"Seminaries","category":"Divine Creed","alignment":"Divine","desc":"Your characters learn White Magic 60% faster, by every means.","effect":{"kind":"skillGain","pct":0.6,"skills":["white"]}},
@@ -1444,14 +1444,14 @@ const SAGE_DISCOVERIES_P=[
   {"id":"au10","name":"Primal Fury","category":"Druidic Creed","alignment":"Druidic","desc":"Your forces are 30% more likely to be seized by fanatical zeal in battle when Creature armies march with them.","effect":{"kind":"fanatic","pct":0.3,"withCls":"creature"}},
   {"id":"au11","name":"Mending Moss","category":"Druidic Creed","alignment":"Druidic","desc":"Your Creature armies are 60% less likely to be destroyed in battle. Also: Your Creature armies fight at +11% strength when defending.","effect":{"kind":"deathRed","pct":0.6,"cls":"creature"},"effect2":{"kind":"unitStr","pct":0.11,"side":"def","cls":"creature"}},
   {"id":"au12","name":"Oak Guardians","category":"Druidic Creed","alignment":"Druidic","desc":"Forest Ents of your realm fight at +15% strength.","effect":{"kind":"unitStr","pct":0.15,"types":["Forest Ents"]}},
-  {"id":"au13","name":"Sky Kin","category":"Druidic Creed","alignment":"Druidic","desc":"Giant Eagles and Crimson Rocs of your realm fight at +15% strength.","effect":{"kind":"unitStr","pct":0.15,"types":["Giant Eagles","Crimson Rocs"]}},
+  {"id":"au13","name":"Sky Kin","category":"Druidic Creed","alignment":"Druidic","desc":"Thunderbirds and Crimson Rocs of your realm fight at +15% strength.","effect":{"kind":"unitStr","pct":0.15,"types":["Thunderbirds","Crimson Rocs"]}},
   {"id":"au14","name":"Herd Lore","category":"Druidic Creed","alignment":"Druidic","desc":"Your Creature armies cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"cls":"creature","max":1}},
   {"id":"au15","name":"Druids' Circle","category":"Druidic Creed","alignment":"Druidic","desc":"Your characters learn Druid 150% faster, by every means.","effect":{"kind":"skillGain","pct":1.5,"skills":["druid"]}},
   {"id":"au16","name":"Seasonal Rites","category":"Druidic Creed","alignment":"Druidic","desc":"Practice orders in Druid and Elemental Magic have +21% chance of success.","effect":{"kind":"practice","pct":0.21,"skills":["druid","elemental"]}},
   {"id":"au17","name":"Hidden Hoards","category":"Druidic Creed","alignment":"Druidic","desc":"+50% chance of an extra magic item from any lair your characters clear in forest or jungle. Also: Gold carried off from lairs your characters clear in jungle is increased by 100%.","effect":{"kind":"itemChance","pct":0.5,"terrains":["forest","jungle"]},"effect2":{"kind":"lairGold","pct":1,"terrains":["jungle"]}},
   {"id":"au18","name":"Barkskin","category":"Druidic Creed","alignment":"Druidic","desc":"Every character of yours with at least 1 level of Druid has +3 maximum HP.","effect":{"kind":"maxHp","hp":3,"skill":"druid"}},
   {"id":"au19","name":"Thornwalls","category":"Druidic Creed","alignment":"Druidic","desc":"Your garrisons standing without a commander fight at +30% strength in forest or jungle. Also: Your forces are 20% more likely to be seized by fanatical zeal in battle in forest or jungle.","effect":{"kind":"unitStr","pct":0.3,"led":"garrison","terrain":["forest","jungle"]},"effect2":{"kind":"fanatic","pct":0.2,"terrain":["forest","jungle"]}},
-  {"id":"au20","name":"Whale Lore","category":"Druidic Creed","alignment":"Druidic","desc":"Whale Cohort and Leviathan Pods of your realm fight at +15% strength.","effect":{"kind":"unitStr","pct":0.15,"types":["Whale Cohort","Leviathan Pods"]}},
+  {"id":"au20","name":"Whale Lore","category":"Druidic Creed","alignment":"Druidic","desc":"Whale Cohort of your realm fight at +15% strength.","effect":{"kind":"unitStr","pct":0.15,"types":["Whale Cohort"]}},
   // ── Neutral Creed ──
   {"id":"an01","name":"Trade Compacts","category":"Neutral Creed","alignment":"Neutral","desc":"Every province you own with tax 4–6 yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"minTax":4,"maxTax":6}},
   {"id":"an02","name":"Free Ports","category":"Neutral Creed","alignment":"Neutral","desc":"Every province you own on the coast, with tax 4 or more yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"coastal":true,"minTax":4}},
@@ -1695,17 +1695,17 @@ const SPELL_DEFS_P={
 //   tamedFlyer — winged beasts sd40 Dragon Taming leads with no Druid (not the Gyrocopter: a machine)
 const KC_UNIT_CLASS={
   flying:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'],
-  aerial:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Giant Eagles','Manticore Pride','Elder Dragons','Crimson Rocs'],
-  creature:['Giant Eagles','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort'],   // 2026-10-11 (Toby): the winged riders are soldiers of their race, not beasts
-  monster:['Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Titan Warbeasts','Leviathan Pods'],
+  aerial:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders','Thunderbirds','Manticore Pride','Elder Dragons','Crimson Rocs'],
+  creature:['Thunderbirds','Forest Ents','Stone Giants','Crimson Rocs','Whale Cohort'],   // 2026-10-11 (Toby): the winged riders are soldiers of their race, not beasts
+  monster:['Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken','Elder Dragons','Titan Warbeasts','Dread Hydras'],   // 2026-10-13 (Creatures and Monsters II): Kraken Tentacles → Eldritch Kraken, Leviathan Pods → Dread Hydras (a land Monster)
   carrier:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'],
-  primalSea:['Sea Giants','Kraken Tentacles','Leviathan Pods'],
+  primalSea:['Sea Giants','Eldritch Kraken'],
   cavalry:['Free Lances','Gilded Lances','Warg Riders','Stag Riders','Ironhoof Rams'],
   missile:['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Mountain Guns','Black Arrows'],   // 2026-10-11 (Toby, the army roster): the Goblin Horde's thrown spears are retired (it is plain infantry); the orcs' archers are the Black Arrows
   garrison:['Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison'],
   lightFoot:['Shieldwall Levies','Yeoman Longbows','Ironwood Crossbows','Elven Bowmen','Shadow Archers','Human Garrison','Elven Garrison','Dwarf Garrison','Orc Garrison','Goblin Horde','Forest Wardens','Dwarven Guard','Orc Berserkers','Mountain Guns','Men-at-Arms','Black Arrows'],
-  tamedFlyer:['Giant Eagles','Manticore Pride','Crimson Rocs','Elder Dragons'],
-  sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Kraken Tentacles','Leviathan Pods'],
+  tamedFlyer:['Thunderbirds','Manticore Pride','Crimson Rocs','Elder Dragons'],
+  sea:['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Sea Giants','Eldritch Kraken'],
 };
 
 // Unit TYPE (2026-10-11, Toby): the ONE word every player-facing table, blurb and report uses for a
@@ -1725,7 +1725,7 @@ const KC_UNIT_TYPE={
   // Orcish
   'Warg Riders':'cavalry','Orc Berserkers':'infantry','Goblin Horde':'infantry','Wyvern Riders':'flyer','Orcish Longships':'naval','Orc Garrison':'infantry','Black Arrows':'ranged',
   // Creatures and Monsters (the winged beasts are flyers: they cross the sea on their own wings)
-  'Whale Cohort':'naval','Stone Giants':'infantry','Forest Ents':'infantry','Giant Eagles':'flyer','Crimson Rocs':'flyer','Cave Trolls':'infantry','Manticore Pride':'flyer','Basilisk Brood':'infantry','Sea Giants':'naval','Kraken Tentacles':'naval','Elder Dragons':'flyer','Titan Warbeasts':'infantry','Leviathan Pods':'naval',
+  'Whale Cohort':'naval','Stone Giants':'infantry','Forest Ents':'infantry','Thunderbirds':'flyer','Crimson Rocs':'flyer','Cave Trolls':'infantry','Manticore Pride':'flyer','Basilisk Brood':'infantry','Sea Giants':'naval','Eldritch Kraken':'naval','Elder Dragons':'flyer','Titan Warbeasts':'infantry','Dread Hydras':'infantry',
   // Summoned elementals (they stand in the line like foot)
   'Air Elemental':'infantry','Fire Elemental':'infantry','Earth Elemental':'infantry','Water Elemental':'infantry','Darkness Elemental':'infantry',
 };
@@ -1738,8 +1738,8 @@ const KC_DRUID_LEVELS={
   1:['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Galleon Fleet','Corsair Fleet','Human Garrison','Elven Bowmen','Forest Wardens','Shadow Archers','Elven Galleys','Elven Garrison','Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Ironclads','Dwarf Garrison','Warg Riders','Orc Berserkers','Goblin Horde','Orcish Longships','Orc Garrison','Eagle Riders','Noble Griffons','Wyvern Riders','Men-at-Arms','Stag Riders','Ironhoof Rams','Black Arrows'],   // the winged riders: racial troops since 2026-10-11 (Gnomish Gyrocopters, a machine, need nobody); the roster's new units follow
   2:[],
   3:['Whale Cohort'],
-  4:['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles'],
-  5:['Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods'],
+  4:['Stone Giants','Forest Ents','Thunderbirds','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken'],
+  5:['Elder Dragons','Crimson Rocs','Titan Warbeasts','Dread Hydras'],
 };
 
 // Base strength per unit type (× the quality multiplier). Humanoid units and fleets, then every
@@ -1764,7 +1764,7 @@ const KC_ITEM_UNCAPPED_SKILLS=['melee','archery','white','psychic','illusory','e
 const KC_ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2};
 const KC_ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
 const KC_RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
-const KC_AWAKEN_TIERS={'Giant Eagles':1,'Forest Ents':2,'Stone Giants':3,'Crimson Rocs':3};   // 2026-10-11 (Toby): the wild no longer sends Eagle Riders or Noble Griffons
+const KC_AWAKEN_TIERS={'Thunderbirds':1,'Forest Ents':2,'Stone Giants':3,'Crimson Rocs':3};   // 2026-10-11 (Toby): the wild no longer sends Eagle Riders or Noble Griffons
 // Call from the Pit (2026-10-13, Toby, Creatures and Monsters I): Evil's mirror of Awaken the Wild — the Monster a
 // caller of each Druid level may call up, for its price + 2g, in an owned wild province or one the realm's own
 // Terror still grips.
