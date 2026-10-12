@@ -35,7 +35,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   ok(role(row('Yeoman Longbows'),'plain')==='arc','Yeoman Longbows are ranged');
   ok(role(row('Free Lances'),'plain')==='cav'&&role(row('Free Lances'),'sea')==='foot','Free Lances are cavalry on land, foot at sea');
   ok(role(row('Eagle Riders'),'forest')==='fly','Eagle Riders fly');
-  ok(role(row('Giant Eagles'),'plain')==='foot','Giant Eagles (a flying beast) hold a place like foot');
+  ok(role(row('Crimson Rocs'),'plain')==='foot','Crimson Rocs (a flying beast) hold a place like foot');
   ok(role(row('Goblin Horde'),'plain')==='foot'&&role(row('Human Garrison'),'plain')==='foot'&&role(row('Galleon Fleet'),'sea')==='foot','Goblins, garrisons and fleets are foot');
   ok(role(row('Light Infantry'),'plain')==='foot','an unknown type is foot');
   ok(role({fly:true,base:5},'plain')==='fly'&&role({fly:false,base:5},'plain')==='foot','a row with no unit uses its fly flag');
