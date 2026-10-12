@@ -5,7 +5,8 @@
 // the rulebooks against it, so the engine and the books cannot drift apart.
 //
 // `status` says where a unit is in the programme: 'live' units are held to this table now; 'coming' units
-// arrive in their own PR (and are not yet in any table). Three of today's units were renamed or replaced on
+// arrive in their own PR (and are not yet in any table). Since Creatures and Monsters VI (2026-10-13) every unit is
+// live; the field stays for the next beast. Three of today's units were renamed or replaced on
 // 2026-10-13 (Creatures and Monsters II): Giant Eagles → Thunderbirds, Kraken Tentacles → Eldritch Kraken,
 // Leviathan Pods → Dread Hydras (a land Monster of the same power; Leviathan companies and waters become
 // Eldritch Kraken, since a land beast cannot swim). RENAMED lists the old names: they are in no table.

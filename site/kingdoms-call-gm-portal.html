@@ -638,7 +638,7 @@ function battleTallyLine(texts){
     return best?sideFor(best.h.role):null; };
   const typeOf=(s,role)=>{
     const R=roster[role]||[];
-    // the type printed first in the line wins ("the Red Hand (Def's Giant Eagles, Crack)"); a bare unit
+    // the type printed first in the line wins ("the Red Hand (Def's Thunderbirds, Crack)"); a bare unit
     // name ("— the Red Hand are cut down") is looked up on the side's roster.
     const types=[...new Set(R.map(a=>a.type))].map(ty=>({ty,i:s.indexOf(ty)})).filter(x=>x.i>=0).sort((a,b)=>a.i-b.i||b.ty.length-a.ty.length);
     if(types[0]) return types[0].ty;
@@ -8238,8 +8238,8 @@ function botLiftable(t){ return !(BOT_SEA_ALL.has(t)||BOT_AERIAL_TYPES.has(t)||B
 // BFS over sea hexes from `P` (a coast or a sea hex): the best landing — an enemy or unowned land province
 // beside the water that this column can beat — or an unowned sea hex to claim. Returns {moves,N} or null.
 // 2026-09-26 (Toby item 6): SEA TARGETS ARE NOW STRENGTH-GATED — before this an admiral would sail into a
-// Leviathan sea on its tax alone. Order of preference among winnable seas: OPEN water first (no defenders,
-// +40), WHALE waters next (+15), then the Primal monster / creature seas. Coastal land: poor before rich
+// Kraken sea on its tax alone. Order of preference among winnable seas: OPEN water first (no defenders,
+// +40), the poor WHALE and SHARK waters next (+15), then the prosperous primal seas. Coastal land: poor before rich
 // falls out of the same gate — a weak fleet can only take a poorly-held coast, a strong one prefers the
 // wealth. Item 7: an admiral with spare berths also sails to an owned coast where a GENERAL stands with
 // liftable troops (a rendezvous: the general hands his foot soldiers over next turn).
@@ -27838,8 +27838,8 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
         G.players.forEach((pl,i)=>{ if(i===pi||!met(pi,i))return; any=true; line(i,pnm(i)); });
         if(!any) log('system',`[The Beastlord] No rival realm remains to reckon.`,{actor:pi,targets:[pi]});
       unmetLine(pi,'The Beastlord'); } }
-    // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: griffons, eagles,
-    // ents, giants, rocs and whale cohorts. Deliberately symmetrical with the Beastlord's board so
+    // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: thunderbirds, ents,
+    // bears, giants, unicorns, mammoths, rocs, whale cohorts and great turtles (KC_UNIT_CLASS.creature). Deliberately symmetrical with the Beastlord's board so
     // a player holding both reads one format twice rather than two.
     { const pi=holder('wild'); if(pi!=null){
         const census=(i,set)=>{

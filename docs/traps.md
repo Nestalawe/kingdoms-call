@@ -206,6 +206,29 @@ Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and 
 then list every table and sentence that is still missing it. Running games' capitals pick a new unit up on their next
 turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
 
+**A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
+first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:
+`PRIMAL_ARMY_DEFS_P` (the one place a beast's cost, strength, move, sub-race and pre-battle strike are written:
+the master tables and the player portal's speeds are built from it), `PRIMAL_UNIT_NAMES` (28 names),
+`KC_UNIT_CLASS` (`creature` or `monster`, plus `aerial` for a flyer, `cavalry` for a horse, `primalSea` for a
+swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`, `KC_AWAKEN_TIERS` or `KC_PIT_TIERS` if a crown
+calls it up; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and **both** copies of the wild pools
+(`CREATURE_BY_TERRAIN` / `MONSTER_BY_TERRAIN` in world generation and `CBT` / `MBT` in the alignment-neighbour
+pass: `tests/new-creatures.test.js` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
+(the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
+and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
+(`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
+
+## A sea unit must be a carrier or a primal sea beast
+
+The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bots' `BOT_SEA_ALL`) is built from
+`KC_UNIT_CLASS.carrier` plus `KC_UNIT_CLASS.primalSea`, **not** from `KC_UNIT_CLASS.sea`, which several other
+consumers read. A unit listed in `sea` alone is a land unit the moment it is at sea: it needs a berth, is
+stranded by `settleStrandedAtSea` and blocks the column's move. Put a new swimmer in `primalSea` (it swims,
+carries nothing, is raised only at sea and cannot march inland) or, if it ferries troops, in `carrier` (one
+berth, or its `KC_CARRIER_BERTHS` entry); the first run of `tests/shark-waters.test.js` showed the shoal left behind as
+a garrison for exactly this reason. World generation's prosperous-seas pool is `primalSea` less the Shark Shoals.
+
 ## A unit ability is written in four places
 
 Every humanoid land unit has two abilities: a matchup and one more. Each lives in the engine, in the
@@ -226,6 +249,14 @@ engine itself keeps them in several places by kind:
 `tests/abilities-turn.test.js` the turn hooks. Add a new ability to the words table first. In the player portal's
 `UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
 replaces the first (the words test checks).
+
+The beasts' abilities (2026-10-13) live in the same places, with `tests/primal-abilities-words.test.js` for the
+names and `tests/abilities-beasts.test.js` / `tests/abilities-beasts-turn.test.js` for the numbers, plus three
+more homes: a beast's always-on multiplier in `unitAbilityMult` (Relentless Hunt, Shoal Swarm, …), its pre-battle
+strike on its `spells` in `PRIMAL_ARMY_DEFS_P`, and the rout in the realm battle (the Manticores' pursuit and
+Feeding Frenzy beside Run Them Down). The grid's flyer set is `KC_UNIT_CLASS.aerial` (riders and flying beasts);
+the archers' first-target set is still `KC_UNIT_CLASS.flying` (riders only). A missile immunity is one line in
+`applyMissileHit` **and** one in `missileCapReached`, or archers keep wasting shots on the immune unit.
 
 ## Terror is spent at battle start
 
