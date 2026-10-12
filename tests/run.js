@@ -72,6 +72,7 @@ const SUITE=[
   ['primal-renames',       'tests/primal-renames.test.js'],
   ['two-crowns',           'tests/two-crowns.test.js'],
   ['shark-waters',         'tests/shark-waters.test.js'],
+  ['new-creatures',        'tests/new-creatures.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
   ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],

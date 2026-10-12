@@ -19,7 +19,8 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
   }
   // (2026-10-13, Creatures and Monsters III: the Shark Shoals share Druid 3 with the Whale Cohort; no winged rider does.)
   ok(D.KC_DRUID_LEVELS[3][0]==='Whale Cohort'&&!D.KC_DRUID_LEVELS[3].some(r=>RIDERS.includes(r)),'Druid 3 is left to the sea-beasts, the Whale Cohort first');
-  ok(Object.keys(D.KC_AWAKEN_TIERS).join()==='Thunderbirds,Forest Ents,Stone Giants,Crimson Rocs','Awaken the Wild offers Thunderbirds, Forest Ents, Stone Giants and Crimson Rocs');
+  // (2026-10-13, Creatures and Monsters IV: the new Creatures are appended after these four; no rider joins them.)
+  ok(Object.keys(D.KC_AWAKEN_TIERS).slice(0,4).join()==='Thunderbirds,Forest Ents,Stone Giants,Crimson Rocs'&&!RIDERS.some(r=>r in D.KC_AWAKEN_TIERS),'Awaken the Wild offers Thunderbirds, Forest Ents, Stone Giants and Crimson Rocs first, and no winged rider');
   ok(!Object.values(D.KC_DRUID_LEVELS).some(l=>l.includes('Gnomish Gyrocopters')),'Gnomish Gyrocopters still need nobody');
 
   const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/x',

@@ -50,7 +50,8 @@ ok(!/leviathans?/i.test(norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([
 // ── The move-rate table ──
 const moveTable=(/<caption>Representative base land move rates[\s\S]*?<\/table>/.exec(rules)||[''])[0];
 const MROW=/<tr><td class="num">(\d)<\/td><td>([\s\S]*?)<\/td><\/tr>/g; const moveRows=[]; while((m=MROW.exec(moveTable))) moveRows.push({n:+m[1],text:strip(m[2])});
-const MOVE_ALIASES={'Stone Giants':/Stone Giants/,'Forest Ents':/Forest Ents/,'Cave Trolls':/Cave Trolls/,'Basilisk Brood':/Basilisk/,'Titan Warbeasts':/Titan/,'Manticore Pride':/Manticore/,'Elder Dragons':/Elder Dragons/,'Crimson Rocs':/Crimson Rocs/,'Thunderbirds':/Thunderbirds/,'Dread Hydras':/Hydras/};
+const MOVE_ALIASES={'Stone Giants':/Stone Giants/,'Forest Ents':/Forest Ents/,'Cave Trolls':/Cave Trolls/,'Basilisk Brood':/Basilisk/,'Titan Warbeasts':/Titan/,'Manticore Pride':/Manticore/,'Elder Dragons':/Elder Dragons/,'Crimson Rocs':/Crimson Rocs/,'Thunderbirds':/Thunderbirds/,'Dread Hydras':/Hydras/,
+  'Great Bears':/Great Bears/,'Unicorn Herd':/Unicorn/,'Mammoth Host':/Mammoth/};   // 2026-10-13 (Creatures and Monsters IV)
 for(const [u,re] of Object.entries(MOVE_ALIASES)){
   const inRows=moveRows.filter(r=>re.test(r.text));
   ok(inRows.length>=1,`move table: ${u} is listed`);
@@ -94,8 +95,22 @@ for(const u of liveOf('Monster')){ ok(ppMon.includes(u),`the player portal's [M]
 const ppCre=(/\[C\] Creatures:<\/span>([^<']*)/.exec(pp)||['',''])[1];
 for(const u of liveOf('Creature')) ok(ppCre.includes(u),`the player portal's [C] Creatures list names ${u}`);
 const seaBeasts=norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]));
-for(const u of liveOf('Monster').filter(u=>ROSTER[u].type==='naval')) ok(new RegExp(u.split(' ').pop().replace(/s$/,'').toLowerCase()+'s?','i').test(seaBeasts),`the kinds-of-unit Sea-beasts row names the ${u}`);
+for(const u of LIVE.filter(u=>ROSTER[u].type==='naval'&&u!=='Whale Cohort')) ok(new RegExp(u.split(' ').pop().replace(/s$/,'').toLowerCase()+'s?','i').test(seaBeasts),`the kinds-of-unit Sea-beasts row names the ${u} (every swimming beast that is no hull)`);
 ok((norm(rules).match(/whale and shark waters/g)||[]).length>=2,'the rulebook\'s sea-tax texts say "whale and shark waters" where they said "whale waters"');
+// The four new Creatures (2026-10-13, Creatures and Monsters IV): the Creature lists and the Awaken the Wild texts name
+// them, the Druidic realm text names every live Creature, and no page still offers eagles or griffons to the wild.
+const ppDruSummary=(/Druidic:`[^`]*`/.exec(pp)||[''])[0], ppDruDesc=(/Druidic:'🌿 <strong>Druidic:<\/strong>(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+for(const u of liveOf('Creature')) ok(ppDruSummary.includes(u),`the player portal's Druidic realm text names ${u} among the Creature armies`);
+for(const [u,tier] of Object.entries(P.AWAKEN_TIERS)){
+  ok(new RegExp(`${u}[^.]{0,60}Druid ${tier}`).test(dru)||new RegExp(`Druid ${tier}[^.]{0,80}${u}`).test(dru)||new RegExp(`${u}[^.]{0,200}at Druid ${tier}`).test(dru),`the Druidic section offers ${u} at Druid ${tier} through Awaken the Wild`);
+  ok(ppDruSummary.includes(u),`the player portal's Druidic realm text offers ${u} through Awaken the Wild`);
+}
+ok(!/Great Turtles[^.]{0,40}Druid \d/.test((/Awaken the Wild[^.]*\./.exec(dru)||[''])[0]),'Awaken the Wild never offers the Great Turtles (they are recruited where they swim)');
+const awakenRow=norm((/<tr><td>🌿 Druidic<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]);
+ok(/Awaken the Wild/.test(awakenRow)&&!/eagles|griffons/i.test(awakenRow),"the orders table's Awaken the Wild row no longer offers eagles or griffons");
+ok(!/eagles|griffons/i.test(ppDruDesc),"the player portal's Druidic join-screen blurb no longer names griffons or eagles among the Creatures");
+const creaturesRow=norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])), wildwarden=norm((/<tr><td>The Wildwarden<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]);
+for(const w of ['bears','unicorns','mammoths','turtles']){ ok(new RegExp(w,'i').test(creaturesRow),`the kinds-of-unit Creatures row names ${w}`); ok(new RegExp(w,'i').test(wildwarden),`the Wildwarden title names ${w}`); }
 // The player portal's texts.
 ok(/Call from the Pit/.test(pp)&&/'Call from the Pit':'Evil'/.test(pp),"the player portal lists Call from the Pit as Evil's order");
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
