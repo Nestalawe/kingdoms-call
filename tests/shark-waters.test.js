@@ -17,7 +17,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 (async()=>{
   const sc=await bootScenario();
   const W=sc.W;
-  const RICH=new Set(['Sea Giants','Eldritch Kraken']);   // the prosperous seas' beasts; a poor sea holds whales or sharks
+  const RICH=new Set(W.eval('KC_UNIT_CLASS.primalSea').filter(t=>t!=='Shark Shoals'));   // the prosperous seas' beasts (Sea Giants, Eldritch Kraken and, from Creatures and Monsters IV, Great Turtles); a poor sea holds whales or sharks
   const king=(S,pi)=>S.characters.find(c=>c.isKing&&c.player===pi);
 
   // ── The seas of three worlds ──

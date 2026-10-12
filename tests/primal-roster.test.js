@@ -10,7 +10,7 @@
 // retired or widened here are module-level functions the booted portals answer directly.
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
-const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,PIT_TIERS,LAND_TERRAINS,LIVE,COMING}=P;
+const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,AWAKEN_TIERS,PIT_TIERS,LAND_TERRAINS,LIVE,COMING}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 
@@ -32,7 +32,7 @@ function slice(src,name){
   // ── The shared data file ──
   const ctx=vm.createContext({});
   vm.runInContext(fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8'),ctx);
-  const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,PIT:(typeof KC_PIT_TIERS!=="undefined"?KC_PIT_TIERS:null)})',ctx);
+  const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,PIT:(typeof KC_PIT_TIERS!=="undefined"?KC_PIT_TIERS:null),AW:(typeof KC_AWAKEN_TIERS!=="undefined"?KC_AWAKEN_TIERS:null)})',ctx);
   const druidOf=u=>{ for(const [l,list] of Object.entries(D.L)) if(list.includes(u)) return +l; return 0; };
   for(const u of LIVE){
     const d=ROSTER[u];
@@ -50,6 +50,10 @@ function slice(src,name){
   }
   for(const u of COMING) ok(!(u in D.S)&&!(u in D.T),`${u} is not in the tables yet (it arrives in its own PR)`);
   for(const u of Object.keys(RENAMED)) ok(!(u in D.S)&&!(u in D.T),`${u} is out of the tables (it is ${RENAMED[u]} now)`);
+  // Awaken the Wild's tiers (2026-10-13, Creatures and Monsters IV: Great Bears at 2, Unicorn Herd and Mammoth Host at 3;
+  // never the Great Turtles or the Whale Cohort, which are recruited where they swim).
+  ok(!!D.AW&&Object.keys(D.AW).join()===Object.keys(AWAKEN_TIERS).join()&&Object.keys(AWAKEN_TIERS).every(t=>D.AW[t]===AWAKEN_TIERS[t]),`KC_AWAKEN_TIERS is ${JSON.stringify(AWAKEN_TIERS)} (got ${JSON.stringify(D.AW)})`);
+  ok(!!D.AW&&Object.keys(D.AW).every(t=>D.C.creature.includes(t)&&D.T[t]!=='naval'),'every unit the wild awakens is a Creature of the land');
   ok(!!D.PIT,'the data file declares KC_PIT_TIERS (Call from the Pit)');
   if(D.PIT){
     ok(Object.keys(D.PIT).join()===Object.keys(PIT_TIERS).join()&&Object.keys(PIT_TIERS).every(t=>D.PIT[t]===PIT_TIERS[t]),`KC_PIT_TIERS is ${JSON.stringify(PIT_TIERS)} (got ${JSON.stringify(D.PIT)})`);
