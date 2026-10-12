@@ -177,10 +177,6 @@ section{display:none;}.section-active{display:block;}
   <!-- AUTH -->
   <section id="sec-auth">
     <div class="card" style="max-width:440px;margin:0 auto">
-      <div class="tab-bar" style="margin-bottom:18px">
-        <button id="tab-signin" class="active" onclick="setAuthTab('signin')">Sign In</button>
-        <button id="tab-signup" onclick="setAuthTab('signup')">Create GM Account</button>
-      </div>
       <div id="auth-msg"></div>
       <div id="auth-signin">
         <label>Email</label>
@@ -189,15 +185,17 @@ section{display:none;}.section-active{display:block;}
         <input type="password" id="si-password" placeholder="Password" onkeydown="if(event.key==='Enter')doSignIn()">
         <button class="btn btn-crimson btn-full" onclick="doSignIn()">Sign In as GM</button>
       </div>
-      <div id="auth-signup" style="display:none">
-        <label>Email</label>
-        <input type="email" id="su-email" placeholder="your@email.com">
-        <label>Password</label>
-        <input type="password" id="su-password" placeholder="At least 6 characters">
-        <label>Confirm Password</label>
-        <input type="password" id="su-password2" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doSignUp()">
-        <button class="btn btn-crimson btn-full" onclick="doSignUp()">Create GM Account</button>
-      </div>
+      <!-- P0-32c: no sign-up here. Game Masters are chosen by the Overlord from existing accounts. -->
+      <p style="margin-top:14px;font-size:.85rem;text-align:center">New here? <a href="kingdoms-call-player-portal.html">Register on the player portal</a></p>
+    </div>
+  </section>
+
+  <!-- NOT A GAME MASTER (P0-32c): a signed-in account that is neither a Game Master nor the Overlord sees only this -->
+  <section id="sec-not-gm">
+    <div class="card" style="max-width:440px;margin:0 auto">
+      <div id="not-gm-msg" class="msg-info">You're not a Game Master. Game Masters are chosen by the Overlord.</div>
+      <p style="font-size:.9rem"><a href="kingdoms-call-player-portal.html">Go to the player portal</a></p>
+      <button class="btn btn-ghost" onclick="doSignOut()">Sign Out</button>
     </div>
   </section>
 
@@ -408,7 +406,7 @@ const KC_DATA_MIN='2026.10.11-2340';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN='20261011025524';
+const KC_DB_MIN='20261011191234';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
@@ -422,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.11-2350'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.12-1348'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1387,14 +1385,6 @@ function show(id){
 }
 
 // ── AUTH ────
-function setAuthTab(tab){
-  document.getElementById('tab-signin').classList.toggle('active',tab==='signin');
-  document.getElementById('tab-signup').classList.toggle('active',tab==='signup');
-  document.getElementById('auth-signin').style.display=tab==='signin'?'block':'none';
-  document.getElementById('auth-signup').style.display=tab==='signup'?'block':'none';
-  document.getElementById('auth-msg').innerHTML='';
-}
-
 async function doSignIn(){
   const email=document.getElementById('si-email').value.trim();
   const pwd=document.getElementById('si-password').value;
@@ -1410,21 +1400,6 @@ async function doSignIn(){
   }
   currentUser=data.user;
   onSignedIn();
-}
-
-async function doSignUp(){
-  const email=document.getElementById('su-email').value.trim();
-  const pwd=document.getElementById('su-password').value;
-  const pwd2=document.getElementById('su-password2').value;
-  const msg=document.getElementById('auth-msg');
-  if(!email||!pwd){msg.innerHTML='<div class="msg-error">Please enter email and password.</div>';return;}
-  if(pwd!==pwd2){msg.innerHTML='<div class="msg-error">Passwords do not match.</div>';return;}
-  if(pwd.length<6){msg.innerHTML='<div class="msg-error">Password must be at least 6 characters.</div>';return;}
-  msg.innerHTML='<div class="msg-info">Creating account…</div>';
-  const {error}=await sb.auth.signUp({email,password:pwd,options:{data:{display_name:'Game Master'}}});
-  if(error){msg.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
-  msg.innerHTML='<div class="msg-success">Account created! If email confirmation is on, check your inbox. Otherwise sign in now.</div>';
-  setTimeout(()=>setAuthTab('signin'),2500);
 }
 
 async function doSignOut(){
@@ -1473,6 +1448,7 @@ async function submitChangePassword(){
 
 async function onSignedIn(){
   document.getElementById('gm-email-display').textContent=currentUser.email;
+  if(!(await gmPortalAllowed())) return;   // P0-32c: Game Masters and the Overlord only; nothing else loads
   show('sec-games');
   await probeGameMeta();      // Disk-IO fix (2026-09-25): is the light `games.meta` column there?
   probeTelemetry().then(ok=>{ if(ok) backfillGameResults(); }); // telemetry tables (2026-09-25) — never blocks sign-in
@@ -1481,6 +1457,22 @@ async function onSignedIn(){
   loadGames();
   startAutoTurnWatcher(); // automatic turn modes only fire while a signed-in GM tab is open
   backfillGameMeta();     // one-off: stamp meta on any game that predates the column (no-op after)
+}
+
+// P0-32c: the GM portal is for Game Masters (an accepted offer, P0-32b) and the Overlord. Anyone else, or a
+// check that fails, gets the "not a Game Master" page and nothing else: no game list, no watcher, no probes.
+async function gmPortalAllowed(){
+  const [gm,ov]=await Promise.all([sb.rpc('is_game_master'),sb.rpc('is_site_admin')]);
+  const err=gm.error||ov.error;
+  if(!err&&(gm.data===true||ov.data===true)) return true;
+  const msg=document.getElementById('not-gm-msg');
+  msg.className=err?'msg-error':'msg-info';
+  msg.textContent=err?`Couldn't check whether you're a Game Master (${err.message}). Reload to try again.`
+    :"You're not a Game Master. Game Masters are chosen by the Overlord.";
+  // a Game Master who signed out in this tab may have left the watcher running
+  if(_autoWatcherTimer){ clearInterval(_autoWatcherTimer); _autoWatcherTimer=null; }
+  show('sec-not-gm');
+  return false;
 }
 
 // ── GAME LIST ────
@@ -28038,7 +28030,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.11-2350</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.12-1348</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
