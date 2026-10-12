@@ -25,11 +25,17 @@ ALTER SEQUENCE "public"."turn_events_id_seq" OWNED BY "public"."turn_events"."id
 
 CREATE INDEX turn_events_game_idx ON public.turn_events USING btree (game_id, turn);
 
-CREATE POLICY "gm rw turn_events" ON "public"."turn_events"
+-- Read and written only by the game's GM, or the Overlord (P0-22, ruling D-09). game_id is text with no foreign
+-- key: a deleted game's leftovers are the Overlord's to clear.
+CREATE POLICY "game's GM or the Overlord" ON "public"."turn_events"
   FOR ALL
   TO "authenticated"
-  USING (true)
-  WITH CHECK (true);
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
+   FROM public.games g
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid))))))
+  WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
+   FROM public.games g
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid))))));
 
 REVOKE ALL ON TABLE "public"."turn_events" FROM "anon";
 
