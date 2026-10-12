@@ -233,8 +233,10 @@ function nullStub(){ const res=d=>Promise.resolve({data:d,error:null});
   const chain=()=>{const o={};['select','eq','neq','in','order','limit','gte','lte','is','not','or','filter','contains','gt','lt','range','update','insert','upsert','delete'].forEach(m=>o[m]=()=>o);o.single=o.maybeSingle=()=>res(null);o.then=(f,j)=>res([]).then(f,j);return o;};
   return {from:()=>chain(),rpc:()=>res([]),auth:{getSession:()=>res({session:null}),getUser:()=>res({user:null}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:()=>res({}),signInWithPassword:()=>res({})},channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}),removeChannel(){},storage:{from:()=>({upload:()=>res(null),download:()=>res(null),getPublicUrl:()=>({data:{publicUrl:''}})})}}; }
 
-// rows(): the Hall-of-Fame rows to serve. calls: array; every non-select is pushed as {table,op,filters,payload}.
-function leaderboardStub({rows,calls,signedIn,isGm}){
+// rows(): the Hall-of-Fame rows to serve. calls: array; every non-select is pushed as {table,op,filters,payload},
+// every rpc as {rpc,args}. me: the signed-in account (default gm-1); isGm: it runs a game; isOverlord: it's the
+// Overlord (is_site_admin, P0-22).
+function leaderboardStub({rows,calls,signedIn,isGm,isOverlord,me='gm-1'}){
   const q=(table)=>{
     const st={table,op:'select',filters:[]};
     const res=()=>{
@@ -255,7 +257,10 @@ function leaderboardStub({rows,calls,signedIn,isGm}){
     };
     return api;
   };
-  return {from:q, auth:{getSession:async()=>({data:{session:signedIn?{user:{id:'gm-1'}}:null}})}};
+  const rpc=async(fn,args)=>{ calls.push({rpc:fn,args});
+    if(fn==='is_site_admin') return {data:!!(signedIn&&isOverlord),error:null};
+    return {data:null,error:null}; };
+  return {from:q, rpc, auth:{getSession:async()=>({data:{session:signedIn?{user:{id:me}}:null}})}};
 }
 
 // Browser-only: installs window.supabase and the test's handle window.__DB. Self-contained.
