@@ -1701,7 +1701,7 @@ async function submitChangePassword(){
 
 async function onSignedIn(){
   // Load profile
-  const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  const {data:profile}=await sb.from('profiles').select('id,name').eq('id',currentUser.id).single();   // never email (P0-31)
   currentProfile=profile;
   const displayName=profile?.name||currentUser.user_metadata?.display_name||currentUser.email.split('@')[0];
   document.getElementById('player-name-display').textContent=displayName;
@@ -10462,7 +10462,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.12-1550</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.12-1846</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
