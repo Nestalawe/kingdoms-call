@@ -484,6 +484,17 @@ section{display:none;}.section-active{display:block;}
 
     <div id="msg-games"></div>
 
+    <!-- Game Master offer (P0-32c): shown while the Overlord's offer to this account is open (loadGmOffer) -->
+    <div class="card" id="gm-offer-banner" style="display:none">
+      <div id="gm-offer-ask">
+        <p style="margin:0 0 10px"><strong>The Overlord has offered to make you a Game Master.</strong> A Game Master creates games and runs their turns.</p>
+        <button class="btn btn-gold" id="gm-offer-accept" onclick="acceptGmOffer()">Accept</button>
+        <button class="btn btn-ghost" id="gm-offer-decline" onclick="declineGmOffer()">No thanks</button>
+      </div>
+      <div id="gm-offer-done" style="display:none">You're now a Game Master. <a href="kingdoms-call-gm-portal.html">Open the GM portal</a> to create and run games.</div>
+      <div id="gm-offer-msg"></div>
+    </div>
+
     <!-- My active games -->
     <div class="card">
       <h2>⚔ Your Games</h2>
@@ -822,7 +833,7 @@ const KC_DATA_MIN_P='2026.10.13-0010';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN='20261011025524';
+const KC_DB_MIN='20261012023733';
 (function(){
   const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -1690,7 +1701,7 @@ async function submitChangePassword(){
 
 async function onSignedIn(){
   // Load profile
-  const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  const {data:profile}=await sb.from('profiles').select('id,name').eq('id',currentUser.id).single();   // never email (P0-31)
   currentProfile=profile;
   const displayName=profile?.name||currentUser.user_metadata?.display_name||currentUser.email.split('@')[0];
   document.getElementById('player-name-display').textContent=displayName;
@@ -1717,9 +1728,51 @@ function openGameFresh(gamePlayerId){
   location.reload();
 }
 
+// ── OTHER REALMS' SLOTS (P0-20) ────
+// The portal sees other realms only through get_game_slots: each slot's game_id, player_index, is_bot,
+// orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
+// (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
+// see are left out.
+async function fetchGameSlots(gameIds){
+  const ids=[...new Set((gameIds||[]).filter(Boolean))];
+  if(!ids.length) return {data:[],error:null};
+  const {data,error}=await sb.rpc('get_game_slots',{p_games:ids});
+  return {data:Array.isArray(data)?data:[],error};
+}
+
 // ── GAME LISTS ────
 async function loadAllGames(){
-  await Promise.all([loadMyGames(), loadOpenGames()]);
+  await Promise.all([loadMyGames(), loadOpenGames(), loadGmOffer()]);
+}
+
+// ── GAME MASTER OFFER (P0-32c) ────
+// The Overlord offers an account Game Master (P0-32b): its own game_masters row, open while accepted_at is
+// null. Accept and No thanks are database functions acting on the signed-in account's own offer. The banner
+// is an extra: if the read fails, it just stays hidden.
+async function loadGmOffer(){
+  const el=document.getElementById('gm-offer-banner');
+  const {data,error}=await sb.from('game_masters').select('accepted_at').eq('user_id',currentUser.id).maybeSingle();
+  const open=!error&&data&&!data.accepted_at;
+  if(open){ document.getElementById('gm-offer-ask').style.display='block'; document.getElementById('gm-offer-done').style.display='none'; }
+  el.style.display=open?'block':'none';
+}
+async function answerGmOffer(fn){
+  const ask=document.getElementById('gm-offer-ask'), msg=document.getElementById('gm-offer-msg');
+  ask.querySelectorAll('button').forEach(b=>{ b.disabled=true; });
+  msg.innerHTML='';
+  const {error}=await sb.rpc(fn);
+  ask.querySelectorAll('button').forEach(b=>{ b.disabled=false; });
+  if(error){ msg.className='msg-error'; msg.textContent=error.message; return false; }
+  return true;
+}
+async function acceptGmOffer(){
+  if(!(await answerGmOffer('gm_accept_offer'))) return;
+  document.getElementById('gm-offer-ask').style.display='none';
+  document.getElementById('gm-offer-done').style.display='block';
+}
+async function declineGmOffer(){
+  if(!confirm('Turn down the offer to become a Game Master? The Overlord would have to offer again.')) return;
+  if(await answerGmOffer('gm_decline_offer')) document.getElementById('gm-offer-banner').style.display='none';
 }
 
 // ── LIVE UPDATE POLLING ────
@@ -1758,9 +1811,9 @@ async function pollForUpdates(){
     // of the change signature or the tally would sit stale until the turn resolved.
     // (Exempt realms are not filtered out here — this is change-detection only; loadMyGames does the
     // real, game_state-aware tally when it repaints.)
-    const {data:pollSlots}=await sb.from('game_players').select('game_id,user_id,orders_submitted').in('game_id',gameIds);
+    const {data:pollSlots}=await fetchGameSlots(gameIds);
     const _tally={};
-    (pollSlots||[]).forEach(r=>{ if(!r.user_id) return; const t=_tally[r.game_id]=_tally[r.game_id]||[0,0]; t[1]++; if(r.orders_submitted) t[0]++; });
+    (pollSlots||[]).forEach(r=>{ if(r.is_bot) return; const t=_tally[r.game_id]=_tally[r.game_id]||[0,0]; t[1]++; if(r.orders_submitted) t[0]++; });
 
     // Signature of everything the My Games cards show — cheap change-detection.
     const active=_activeSectionId();
@@ -1813,7 +1866,7 @@ async function loadMyGames(){
   const gamesById=Object.fromEntries((games||[]).map(g=>[g.id,g]));
   // every slot in those games, so each card can show HOW MANY realms have sent their orders. Counts
   // only — never which realms, and never what they ordered.
-  const {data:allSlots}=await sb.from('game_players').select('game_id,user_id,player_index,orders_submitted').in('game_id',gameIds);
+  const {data:allSlots}=await fetchGameSlots(gameIds);
   const slotsByGame={};
   (allSlots||[]).forEach(s=>{ (slotsByGame[s.game_id]=slotsByGame[s.game_id]||[]).push(s); });
   // 2026-09-28 (Toby item 3): unread Dispatches per game, for the ✉ badge on each card.
@@ -1880,7 +1933,7 @@ async function fetchUnreadDispatchCounts(mySlots, allSlots){
   const out={};
   try{
     const humans={};
-    _msgArr(allSlots).forEach(s=>{ if(s&&s.user_id){ const k=String(s.game_id); humans[k]=(humans[k]||0)+1; } });
+    _msgArr(allSlots).forEach(s=>{ if(s&&!s.is_bot){ const k=String(s.game_id); humans[k]=(humans[k]||0)+1; } });
     const mine={};
     _msgArr(mySlots).forEach(s=>{ const k=String(s.game_id); if((humans[k]||0)>=2&&_msgNum(s.player_index)!=null) mine[k]=_msgNum(s.player_index); });
     const ids=Object.keys(mine); if(!ids.length) return out;
@@ -1956,7 +2009,7 @@ function realmExemptInP(g,idx){
 }
 function ordersInTextP(g,slots){
   if(!g||g.status!=='active') return '';
-  const need=(slots||[]).filter(p=>p&&p.user_id&&!realmExemptInP(g,p.player_index));
+  const need=(slots||[]).filter(p=>p&&!p.is_bot&&!realmExemptInP(g,p.player_index));
   if(need.length===0) return '';
   const inN=need.filter(p=>p.orders_submitted).length;
   const waiting=need.length-inN;
@@ -2004,7 +2057,7 @@ async function loadOpenGames(){
   }
   // Fetch player counts for these games
   const gameIds=games.map(g=>g.id);
-  const {data:allSlots}=await sb.from('game_players').select('game_id,user_id').in('game_id',gameIds);
+  const {data:allSlots}=await fetchGameSlots(gameIds);
   const slotsByGame={};
   (allSlots||[]).forEach(s=>{
     if(!slotsByGame[s.game_id]) slotsByGame[s.game_id]=[];
@@ -2057,7 +2110,7 @@ async function loadOpenGames(){
   const openGames=games.filter(g=>{
     if(myGameIds.has(g.id)) return false;
     if(!canSee(g)) return false; // private game this player wasn't invited to
-    const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
+    const joined=(slotsByGame[g.id]||[]).filter(p=>!p.is_bot).length;
     return joined<humanCapOf(g);
   });
 
@@ -2066,7 +2119,7 @@ async function loadOpenGames(){
     return;
   }
   el.innerHTML=openGames.map(g=>{
-    const joined=(slotsByGame[g.id]||[]).filter(p=>p.user_id).length;
+    const joined=(slotsByGame[g.id]||[]).filter(p=>!p.is_bot).length;
     const maxP=humanCapOf(g); // human-facing capacity; reserved bot slots stay hidden
     const info=gameInfo(g);
     const gmEsc=info.gm.replace(/'/g,"\\'");
@@ -2090,15 +2143,8 @@ async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize){
   show('sec-join');
 
   // Fetch existing players' alignments to enforce unique Divine/Undead
-  const {data:slots}=await sb.from('game_players').select('turn_report').eq('game_id',gameId);
-  const takenAlignments=new Set();
-  (slots||[]).forEach(s=>{
-    try{
-      const rpt=typeof s.turn_report==='string'?JSON.parse(s.turn_report):s.turn_report;
-      const align=rpt?.playerSetup?.alignment;
-      if(align) takenAlignments.add(align);
-    }catch(e){}
-  });
+  const {data:slots}=await fetchGameSlots([gameId]);
+  const takenAlignments=new Set((slots||[]).map(s=>s.alignment).filter(Boolean));
 
   // Update alignment dropdown
   const alignSel=document.getElementById('join-alignment');
@@ -2254,11 +2300,8 @@ async function doJoinGame(gameId){
   // Re-check alignment uniqueness at submit time (in case someone bypassed the dropdown)
   const UNIQUE_ALIGNS_CHECK=['Divine','Undead'];
   if(UNIQUE_ALIGNS_CHECK.includes(alignment)){
-    const {data:slots2}=await sb.from('game_players').select('turn_report').eq('game_id',gameId);
-    const takenNow=new Set();
-    (slots2||[]).forEach(s=>{
-      try{const rpt=typeof s.turn_report==='string'?JSON.parse(s.turn_report):s.turn_report;const a=rpt?.playerSetup?.alignment;if(a)takenNow.add(a);}catch(e){}
-    });
+    const {data:slots2}=await fetchGameSlots([gameId]);
+    const takenNow=new Set((slots2||[]).map(s=>s.alignment).filter(Boolean));
     if(takenNow.has(alignment)){
       msg.innerHTML=`<div class="msg-error">⚠ The <strong>${alignment}</strong> alignment is already taken in this game. Only one player per game may choose Divine or Undead. Please choose a different alignment.</div>`;
       return;
@@ -2297,7 +2340,8 @@ async function doJoinGame(gameId){
   }
 
   // Find next available player_index
-  const {data:existingSlots}=await sb.from('game_players').select('player_index').eq('game_id',gameId);
+  const {data:existingSlots,error:slotsErr}=await fetchGameSlots([gameId]);
+  if(slotsErr){_joinInFlight=false;msg.innerHTML='<div class="msg-error"></div>';msg.firstChild.textContent=slotsErr.message;return;}
   const takenIndices=new Set((existingSlots||[]).map(s=>s.player_index));
   const maxP=joiningGame.maxP||4;
   let nextIndex=0;
@@ -2323,6 +2367,11 @@ async function doJoinGame(gameId){
     // to My Games, so a race the two portal guards cannot see still ends in a sensible place.
     // (Supabase surfaces the code on error.code; the message text is matched too in case a proxy or
     // a future client version drops the code field.)
+    // P0-20: game_players_one_per_number refuses a slot number someone took a moment ago: not a second realm.
+    if(/one_per_number/.test(error.message||'')){
+      msg.innerHTML='<div class="msg-error">Another player joined this game at the same moment. Please press Join again.</div>';
+      return;
+    }
     const _dup=error.code==='23505'||/duplicate key|unique constraint|one_per_user/i.test(error.message||'');
     if(_dup){
       msg.innerHTML=`<div class="msg-error">${JOIN_DUP_MSG}</div>`;
@@ -10021,17 +10070,16 @@ async function loadMessageRoster(gameId, report){
     known[i]={index:i,name:k.name||('Realm '+(i+1)),color:k.color||null,alignment:k.alignment||null,
               conceded:!!k.conceded,eliminated:!!k.eliminated,relation:k.relation||'neutral'};
   });
-  // A bot is the only slot with no user_id. display_name is the realm name the GM stored at join /
-  // bot creation, and is the fallback when a realm has been met but carries no name in the report.
+  // Which slots are human comes from get_game_slots (P0-20): it never gives names, so a met realm is named
+  // from the report (or "Realm N").
   let humans=new Set(), total=0;
   try{
-    const {data:slots,error}=await sb.from('game_players').select('player_index,user_id,display_name').eq('game_id',gameId);
+    const {data:slots,error}=await fetchGameSlots([gameId]);
     if(error) throw error;
     _msgArr(slots).forEach(s=>{
       const i=_msgNum(s.player_index); if(i==null) return;
       total++;
-      if(s.user_id) humans.add(i);
-      if(known[i]&&!known[i].name&&s.display_name) known[i].name=s.display_name;
+      if(!s.is_bot) humans.add(i);
     });
   }catch(e){ _msgErr='Could not read the realm roster: '+(e&&e.message||e); }
   _msgRealms={};

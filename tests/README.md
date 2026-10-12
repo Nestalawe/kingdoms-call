@@ -29,7 +29,11 @@ it prints the end of that test's output and the seed to repeat it with.
   character its orders (Rest by default), runs `runTurn` and returns the saved world and the GM's log.
   `alignments` (and `races`) name a realm's crown by index, with the skill build a bot of that crown is dealt.
 - **`lib/stub-db.js`** holds every Supabase stand-in the tests use. Nothing connects to a real
-  database. The harnesses were written with five different stubs; each is kept exactly as it
+  database. `makeStub()` mirrors the Game Master functions (`is_game_master`, `is_site_admin`,
+  `gm_accept_offer`, `gm_decline_offer`) over its `game_masters` and `site_admins` rows; its default
+  account is a Game Master. It also mirrors `get_game_slots` and the one-realm-per-number and one-per-account
+  rules on `game_players`; `RULES.ownSlotsOnly` applies P0-21's read rule and records any read that asks for
+  another realm's row. The harnesses were written with five different stubs; each is kept exactly as it
   behaved, so moving a harness onto the shared file didn't change what it sees.
 - **Fixed seed.** `run.js` sets `KC_SEED`. `boot.js` then replaces `Math.random` with a seeded
   generator (sfc32), both in the test process and in every jsdom page. So a run's random choices
@@ -63,6 +67,8 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `config` | new | 0 | ✅ pass | The database address and public key live only in `site/kc-config.js`; no page types them in, and every page that creates the database client loads `kc-config.js` first |
 | `db-min` | new | 0 | ✅ pass | Every page that uses the database declares `KC_DB_MIN`, loads `kc-db-guard.js` and starts through `kcDbGuard(sb, KC_DB_MIN)`; no `KC_DB_MIN` is newer than the newest migration (P0-34) |
 | `sql-banners` | new | 0 | ✅ pass | The GM portal carries no SQL for the GM to paste: no `KC_*_SQL` string, no "SQL Editor" instruction, no paste box (P0-17: the database changes only through migrations) |
+| `gm-portal-no-signup` | new | 0 | ✅ pass | The GM portal makes no accounts: no sign-up form, tab or `auth.signUp` call; its sign-in says "New here? Register on the player portal" (P0-32c) |
+| `profiles-columns` | new | 0 | ✅ pass | Every read of `profiles` names its columns, and none is `email` (P0-31: with the email column's privilege taken away, a read of `*` fails even for your own row) |
 | `workflow-api-auth` | new | 0 | ✅ pass | Every call a workflow makes to GitHub's API is signed in with the job's token (unsigned calls share a small hourly limit and fail at random with 403, as the staging deploy did on 2026-10-10) |
 | `sort-comparators` | new | 0 | ✅ pass | No `.sort(...)` in the site uses a random or argument-less comparator (its result, and how many random numbers it uses, would depend on the browser's JavaScript engine); shuffles go through `shuffleP` |
 | `dangerous-paths` | new | 1 | ✅ pass | Which changed files count as dangerous (globs, case ignored, renames by their old name too) and what the warning comment says |
@@ -82,6 +88,9 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `battle-faced-turn` | new | 2 | ✅ pass | The lines a real turn writes: a province battle's casualty lines name whom each company fought (the attacker's, and the defenders' own loop), the losses tally still counts each side's own losses; a beaten guard's survivors are told what beat them (`erodeGuardSurvivors`, driven with a fixed `Math.random`: flee, lose heart, hold, and the old wording when no victor is named); a fallen commander's host is told who slew them (`handleHeroDeath` stamps `_slainBy`, `disperseDeadCharArmies` says it and clears it). Level 2 because the battle paths and the three helpers live inside `runTurn` (code-anchor hook) |
 | `boot-pages` | new | 4 | ✅ pass | Every page boots in jsdom with no error, rejection or `console.error` |
 | `db-guard` | new | 4 | ✅ pass | Both portals and the Hall of Fame ask the database its version before anything else: up to date → they boot; older than `KC_DB_MIN`, no `kc_db_version`, or no answer twice → they stop with "The game is being updated" and a Reload button, having made no other database call; no answer once → they ask again and boot (P0-34) |
+| `gm-offer-and-gate` | new | 4 | ✅ pass | Game Masters by offer, on the pages (P0-32c): the player portal's "offered to make you a Game Master" banner shows only with an open offer; Accept calls `gm_accept_offer` and links to the GM portal, No thanks calls `gm_decline_offer`; the GM portal shows a player, or an open offer, only "You're not a Game Master" and reads nothing else (no game list, watcher or probes), stops too when the check fails, and lets a Game Master and the Overlord in |
+| `other-realms-slots` | new | 4 | ✅ pass | The player portal sees other realms only through `get_game_slots` (P0-20): with P0-21's read rule on in the stand-in database (a player reads only their own slot), My Games' "N of M realms have sent orders", the open games' "joined" count, the join form's taken Divine/Undead and next free slot number, and the Dispatches roster's human realms are all right, and no read asks for another realm's row; a join refused because someone took that number at the same moment says so |
+| `profiles-no-email` | new | 4 | ✅ pass | No screen shows another player's email (P0-31, D-08): as today and with the email column revoked in the stand-in database (`REVOKED_COLS`), the GM's invite picker lists players by name with the month each joined, searches by name only, and the player portal shows your own name |
 | `meta-missing-turn` | new | 2 | ✅ pass | With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still resolves and saves without writing it. The example to copy for site code that must cope without its database change ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)) |
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
 | `home-placement` | `claude_homeplacement_0927.js` | 1 | ✅ pass | Capitals are at least 4 hexes apart on every map size |

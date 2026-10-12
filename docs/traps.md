@@ -260,6 +260,15 @@ company's own reference coming **first**:
 
 `tests/battle-faced-lines.test.js` holds the wording of every branch and the tally's crediting.
 
+## Other realms' slots come only from `get_game_slots`
+
+The player portal reads its **own** `game_players` row directly, and every other realm's slot only through
+`fetchGameSlots` (`rpc('get_game_slots')`, P0-20): number, bot or not, orders in or not, alignment while in
+setup. From P0-21 the database answers a direct read of another realm's row with nothing, so a new feature that
+reads other slots directly would quietly see only its own. If it needs more than `get_game_slots` gives, that's
+a database change first. `tests/other-realms-slots.test.js` switches P0-21's rule on in the stand-in database
+(`RULES.ownSlotsOnly`) and fails on any read that asks for another realm's row.
+
 ## A sort comparator must give the same answer every time
 
 `.sort(()=>Math.random()-0.5)`, or a random tie-break like `(a,b)=>(a.d-b.d)||(Math.random()-0.5)`, is
@@ -307,8 +316,7 @@ games.
 A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys
 only after that ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). Deploys run one at a
 time, so **every later merge waits behind it**, site-only fixes included, and ships with it once approved.
-- Merge a migration when Toby can approve it soon (just after the daily backup, about 19:35 UTC), not
-  ahead of an urgent site fix.
+- Merge a migration when Toby can approve it soon, not ahead of an urgent site fix.
 - If he rejects it, the run fails and nothing deploys; the next push to `main` asks again, because the
   migration is still new compared with the live site. So follow a rejection quickly with a pull request
   whose migration undoes it: production then gets both in order and ends up unchanged
@@ -326,3 +334,13 @@ schema file doesn't take those away: the file must say `REVOKE ALL … FROM "ano
 doesn't just leave a new table open: it **gives back** what an earlier migration took away, the next time
 anyone generates a migration (it nearly happened in P0-29). `supabase/tests/database/00_privileges.test.sql`
 checks every table, sequence and function, so either mistake turns the `db` check red.
+
+## A stacked pull request merges into its base branch, not `main`
+
+A site pull request stacked on its database pull request ([staging.md](staging.md#a-change-that-needs-both))
+targets the database change's branch. GitHub moves it onto `main` only when that branch is **deleted**
+after its merge. If the branch stays, merging the stacked pull request puts it on the leftover branch: GitHub
+says "Merged", nothing deploys (P0-20's site half and P0-21 did this, and were opened again as #56 and #57).
+The `merges-into-main` check (`.github/workflows/merges-into-main.yml`) is red on any pull request whose base
+isn't `main`; don't merge one while it's red. When you open a stacked pull request, say in its first line
+which pull request must be merged first.

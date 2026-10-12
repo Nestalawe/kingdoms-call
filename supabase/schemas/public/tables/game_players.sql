@@ -21,10 +21,16 @@ ALTER TABLE "public"."game_players"
 
 CREATE UNIQUE INDEX game_players_one_per_user ON public.game_players USING btree (game_id, user_id);
 
+-- One realm per slot number in a game (P0-20). The join form picks the next free number by reading the game's
+-- slots; a tab that can't see them would otherwise take a number twice.
+CREATE UNIQUE INDEX game_players_one_per_number ON public.game_players USING btree (game_id, player_index);
+
+-- A slot is read by the player who holds it and by the game's GM (P0-21). Everyone else sees other realms only
+-- through get_game_slots (P0-20). is_game_gm is security definer, so this doesn't recurse.
 CREATE POLICY "gp1" ON "public"."game_players"
   FOR SELECT
-  TO PUBLIC
-  USING (true);
+  TO "authenticated"
+  USING (((user_id = ( SELECT auth.uid() AS uid)) OR ( SELECT public.is_game_gm(game_players.game_id) AS is_game_gm)));
 
 CREATE POLICY "gp2" ON "public"."game_players"
   FOR INSERT
@@ -56,6 +62,21 @@ CREATE POLICY "gp6" ON "public"."game_players"
   USING ((game_id IN ( SELECT games.id
    FROM public.games
   WHERE (games.gm_user_id = auth.uid()))));
+
+-- The Overlord never holds a realm (P0-32d, D-13): no slot is added or changed to be theirs. Rows for other
+-- accounts and bot rows (no account) are untouched. Restrictive: it narrows every other rule.
+CREATE POLICY "the Overlord holds no realm (insert)" ON "public"."game_players"
+  AS RESTRICTIVE
+  FOR INSERT
+  TO "authenticated"
+  WITH CHECK (((user_id IS DISTINCT FROM ( SELECT auth.uid() AS uid)) OR (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
+
+CREATE POLICY "the Overlord holds no realm (update)" ON "public"."game_players"
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO "authenticated"
+  USING (true)
+  WITH CHECK (((user_id IS DISTINCT FROM ( SELECT auth.uid() AS uid)) OR (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
 
 REVOKE ALL ON TABLE "public"."game_players" FROM "anon";
 

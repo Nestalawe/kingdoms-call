@@ -5,11 +5,12 @@
 --   a signed-in account joins an open game (or a private one it's invited to) as itself;
 --   the GM reads every slot of their own game, writes the reports, clears orders, adds bot realms and
 --   removes a realm.
--- Also checked: nobody changes another realm's slot or puts another account into a game, and only
+-- Also checked: nobody reads another realm's slot (other realms are seen only through get_game_slots, P0-20),
+-- nobody changes another realm's slot or puts another account into a game, and only
 -- the game's GM adds or removes realms.
 begin;
 \ir ../lib/world.psql
-select plan(17);
+select plan(21);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,23 @@ select is(pg_temp.kc_writes($$insert into public.game_players (game_id, user_id,
 select is(pg_temp.kc_writes($$delete from public.game_players
           where game_id = pg_temp.kc_game('A') and player_index = 3$$), 1,
   'the GM removes a realm from their own game');
+
+-- ── nobody reads another realm's slot (P0-21) ─────────────────────────────────────────────────
+
+select pg_temp.kc_as('p2');
+select is(pg_temp.kc_count($$select orders, turn_report from public.game_players
+          where game_id = pg_temp.kc_game('A') and player_index = 0$$), 0,
+  'a rival can''t read another realm''s orders or report');
+select is(pg_temp.kc_count($$select id from public.game_players where game_id = pg_temp.kc_game('A')$$), 1,
+  'a player reads only their own slot of their game');
+
+select pg_temp.kc_as('p3');
+select is(pg_temp.kc_count($$select id from public.game_players where game_id = pg_temp.kc_game('A')$$), 0,
+  'a player in another game can''t read the game''s slots');
+
+select pg_temp.kc_as('gm2');
+select is(pg_temp.kc_count($$select id from public.game_players where game_id = pg_temp.kc_game('A')$$), 0,
+  'another GM can''t read the game''s slots');
 
 -- ── nobody changes another realm's slot ──────────────────────────────────────────────────────
 

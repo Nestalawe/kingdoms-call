@@ -1,5 +1,5 @@
--- Game Masters by offer (plan step P0-32b, decision D-13). Nothing on the site uses it yet (P0-32c adds the
--- offer banner and the GM portal gate; P0-32d makes creating a game need it).
+-- Game Masters by offer (plan step P0-32b, decision D-13). The player portal shows the offer and the GM portal
+-- lets in only Game Masters (P0-32c); creating a game needs one (P0-32d, 14_only_game_masters).
 --
 -- What the game needs:
 --   game_masters holds one row per account the Overlord has offered GM to: offered (accepted_at null) or a
@@ -13,7 +13,7 @@
 --   overlord_accounts() lists every account, with its email, for the Overlord only;
 --   kc_set_overlord() refuses an account that's a Game Master or has an offer;
 --   everyone who runs a game when this goes live becomes a Game Master (the migration's data step; mirrored
---   here for gm and gm2).
+--   for gm and gm2 in lib/world.psql).
 begin;
 \ir ../lib/world.psql
 select plan(41);
@@ -41,11 +41,9 @@ select is((select string_agg(f, ', ' order by f) from unnest(array[
            where not has_function_privilege('authenticated', f, 'EXECUTE')), null,
   'a signed-in account can call each of them (each checks who''s asking)');
 
--- The Overlord is stranger (in no game). Today's GMs (gm, gm2) are Game Masters, as the migration's data
--- step makes them on the live database.
+-- The Overlord is stranger (in no game). Today's GMs (gm, gm2) are Game Masters (lib/world.psql), as the
+-- migration's data step makes them on the live database.
 select is(public.kc_set_overlord('stranger@example.test', false), 'Overlord set', 'stranger is the Overlord');
-insert into public.game_masters (user_id, offered_at, offered_by, accepted_at)
-  values (pg_temp.kc_uid('gm'), now(), null, now()), (pg_temp.kc_uid('gm2'), now(), null, now());
 
 -- ── is_game_master() ────────────────────────────────────────────────────────────────────────────────
 

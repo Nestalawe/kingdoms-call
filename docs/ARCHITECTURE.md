@@ -43,7 +43,9 @@ Order inside each portal's `<head>` and body, and why it matters:
 6. **The main script.** It checks the data file before anything else (below), creates the Supabase
    client, then `kcDbGuard(sb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call
    `init()` (the leaderboard: `loadAll()`), which hides the spinner. Otherwise the guard raises "The game is
-   being updated" through the boot-failure reporter, and nothing is read or written.
+   being updated" through the boot-failure reporter, and nothing is read or written. In the GM portal, a
+   signed-in account is then checked (`gmPortalAllowed`: `is_game_master()` or `is_site_admin()`, P0-32c);
+   anyone else, or a check that fails, sees only "You're not a Game Master" and nothing else loads.
 7. **`kc-staging-footer.js`**, last in `<body>` (every page; the landing page and rulebooks load
    `kc-config.js` just before it). On staging it adds "Staging · PR #N · abc1234" to the footer, plus
    "database <version>" on pages that use the database; on the live site, whose `kc-config.js` has no
@@ -142,14 +144,14 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | Table | Holds |
 |---|---|
 | `profiles` | One row per account: display name |
-| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below) |
-| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report` |
+| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below). Created only by a Game Master, in their own name; never by the Overlord (P0-32d) |
+| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's (P0-32d); one realm per slot number in a game (P0-20). Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B) |
 | `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log) |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
 | `game_records` | Hall of Fame: one precomputed row per finished game |
-| `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. Nothing on the site uses it yet |
-| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. Nothing on the site uses it yet |
+| `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. The GM portal asks `is_site_admin()` after sign-in (P0-32c) |
+| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c) |
 | `game_messages`, `game_message_reads` | Dispatches between players, and each realm's read markers |
 
 ### Where a rule is enforced: access rules or database functions
@@ -160,7 +162,9 @@ Functions, would add a server runtime and deploy path, and isn't used):
 
 - **Access rules** (row-level security) on the table, with the page reading or writing it directly. Use them
   for **plain reads and writes of a row**: who may see which rows, who may insert, update or delete their own.
-  Most tables work this way.
+  Most tables work this way. Rules are normally permissive: a write is allowed if any one allows it. A
+  **restrictive** rule is ANDed with them instead, so it narrows a write without rewriting the others ("only
+  Game Masters create games" on `games`, "the Overlord holds no realm" on `game_players`, P0-32d).
 - **Database functions** that the page calls by name (`rpc`), on a table no API role may write. Use them for
   **actions with conditions**, which rules express badly:
   - the check spans other tables (`gm_revoke` is refused while that GM runs an unfinished game);

@@ -24,8 +24,28 @@ const {LIVE_REF,stagingRef,signUpTestAccounts}=require('./staging.js');
 const DIR='supabase/migrations';
 const NAME=/^(\d{14})_([a-z0-9_]+)\.sql$/;
 const MAX_SQL_LINES=400; // per migration, in the job summary
-const BACKUP_NOTE='**Approve soon after the daily backup** (about 19:35 UTC, 08:35 in New Zealand), once today\'s '
-  +'backup is listed in Supabase → Database → Backups.';
+
+// What a migration does to the data already there, for Toby's summary: 'rules' (policies, grants, functions,
+// indexes: nothing is lost, and the pull request's rollback undoes it), 'adds' (inserts rows), or 'changes'
+// (updates, deletes, truncates, drops a table or column, or changes a column's type: only a copy taken before it
+// ran can undo it). Comments, strings and quoted names are ignored, and so are function bodies (they run when the
+// function is called, not when the migration is applied); a DO block runs, so it counts.
+const CHANGES=[['update',/\bupdate\s+[\w.]+\s+set\b/],['delete from',/\bdelete\s+from\b/],['truncate',/(^|;)\s*truncate\b/],
+  ['drop table',/\bdrop\s+table\b/],['drop column',/\bdrop\s+column\b/],['alter column type',/\balter\s+column\s+[\w.]+\s+(set\s+data\s+)?type\b/]];
+function migrationKind(sql){
+  let t=String(sql).replace(/\/\*[\s\S]*?\*\//g,' ').replace(/--[^\n]*/g,' ');
+  // dollar-quoted bodies: kept after DO, dropped otherwise (a function's body)
+  t=t.replace(/(\bdo\s*)?(\$[A-Za-z_]*\$)([\s\S]*?)\2/gi,(all,isDo,tag,body)=>isDo?' '+body+' ':' ');
+  t=t.replace(/'(?:[^']|'')*'/g,"''").replace(/"(?:[^"]|"")*"/g,'ident').toLowerCase();
+  const reasons=CHANGES.filter(([,re])=>re.test(t)).map(([name])=>name);
+  if(reasons.length) return {kind:'changes',reasons};
+  return /\binsert\s+into\b/.test(t)?{kind:'adds',reasons:['insert into']}:{kind:'rules',reasons:[]};
+}
+const KIND_TEXT={
+  rules:'**rules only** (access rules, permissions, functions or indexes; no data changes)',
+  adds:'**adds rows**, changing none',
+  changes:'⚠️ **changes or removes data**',
+};
 
 const version=file=>(NAME.exec(path.basename(file))||[])[1];
 
@@ -107,10 +127,18 @@ function planSummary({migrations,live,head}){
   if(!live) lines.push('_The commit live on the site couldn\'t be found, so every migration counts as new; the jobs below apply only those each database is missing._','');
   else lines.push(`Compared with the commit live on the site, \`${live.slice(0,7)}\`, this deploy (\`${head.slice(0,7)}\`) brings:`,'');
   if(!migrations.length){ lines.push('No database changes. The site deploys straight after the tests.'); return lines.join('\n')+'\n'; }
-  for(const m of migrations) lines.push(`- \`${path.basename(m.file)}\`${m.pr?` from #${m.pr} (what it changes, in plain words, and its rollback are in that pull request)`:''}`);
+  const kinds=migrations.map(m=>migrationKind(m.sql));
+  if(kinds.some(k=>k.kind==='changes'))
+    lines.push('> ⚠️ **A migration here changes or removes data** (marked below). Nothing undoes that but a copy of the '
+      +'database taken before it runs: **take a copy of the database first**, or approve just after a daily backup.','');
+  else lines.push('No migration here changes or removes data: approve once the conditions in its pull request are met '
+    +'(they\'re in "What Toby is approving").','');
+  migrations.forEach((m,i)=>lines.push(`- \`${path.basename(m.file)}\`${m.pr?` from #${m.pr}`:''}: ${KIND_TEXT[kinds[i].kind]}`
+    +`${kinds[i].reasons.length&&kinds[i].kind==='changes'?` (\`${kinds[i].reasons.join('`, `')}\`)`:''}.`
+    +`${m.pr?' What it changes, in plain words, and its rollback are in that pull request.':''}`));
   lines.push('','**Order:** production once Toby approves it, then the site. If production is rejected, the site '
     +'doesn\'t deploy, and the next push to `main` asks again. (Staging doesn\'t change on a merge: each pull request '
-    +'is tried there before it\'s merged.)','',BACKUP_NOTE,'');
+    +'is tried there before it\'s merged.)','');
   for(const m of migrations){
     const sql=m.sql.replace(/\n$/,'').split('\n');
     const shown=sql.slice(0,MAX_SQL_LINES).join('\n').replace(/```/g,'` ` `');
@@ -334,5 +362,5 @@ if(require.main===module){
   });
 }
 
-module.exports={parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,version,BACKUP_NOTE,
+module.exports={parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,version,migrationKind,
   resetGuard,connectHint,resetSummary,reset};

@@ -27,8 +27,10 @@ request is fixed. Nothing on `main` needs undoing.
 
 **After merging a database change,** the **Deploy** run (Actions tab) stops at **migrate-production** and
 waits; GitHub notifies Toby. He opens the run, clicks **Review deployments** → ticks **production** →
-**Approve and deploy**, soon after the daily backup (about 19:35 UTC, 08:35 in New Zealand, once today's
-backup is listed in Supabase → Database → Backups). The live database changes, then the site deploys.
+**Approve and deploy**, once the conditions in the pull request's "What Toby is approving" are met. The run's
+summary says what each migration does to the data already there; only one marked ⚠️ **changes or removes data**
+needs a copy of the database first ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). The
+live database changes, then the site deploys.
 Approve it promptly: while this run waits, every other update to the site waits behind it. Rejecting it
 leaves the live database untouched and the site not deployed.
 
@@ -41,7 +43,11 @@ Two pull requests ([why](../supabase/README.md#database-and-site-changes-go-sepa
 2. the site change, on a branch made **from the database change's branch** ("stacked"). It contains both,
    so labelling it puts both on staging: Toby tries the whole feature before either is merged.
 
-Merge the database change first, then the site change.
+Merge the database change first, then the site change. Until the database change is merged, the site
+change merges into the database change's branch, not `main`, and its `merges-into-main` check is red.
+Merging the database change deletes its branch, and GitHub moves the site change onto `main` (the check
+turns green). **Never merge a pull request whose `merges-into-main` check is red:** its change would land
+on another branch and never go live.
 
 ## Things to know
 
