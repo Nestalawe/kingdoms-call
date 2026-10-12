@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0050';
+const KC_DATA_MIN='2026.10.13-0070';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0060'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.13-0080'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -740,7 +740,7 @@ function battleRole(row, terrain){
 const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr','Men-at-Arms':'MaA',
   'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr','Stag Riders':'Stag',
   'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr','Ironhoof Rams':'Ram',
-  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Black Arrows':'BlkAr','Whale Cohort':'Whale','Shark Shoals':'Shark',
+  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Black Arrows':'BlkAr','Whale Cohort':'Whale','Shark Shoals':'Shark','Great Bears':'Bear','Unicorn Herd':'Unicn','Mammoth Host':'Mamth','Great Turtles':'Turtl',
   'Stone Giants':'Giant','Forest Ents':'Ent','Thunderbirds':'Thund','Crimson Rocs':'Roc','Cave Trolls':'Troll','Manticore Pride':'Manti','Basilisk Brood':'Basil','Sea Giants':'SeaGt','Eldritch Kraken':'Krakn','Elder Dragons':'Drago','Titan Warbeasts':'Titan','Dread Hydras':'Hydra',
   'Air Elemental':'AirEl','Fire Elemental':'FirEl','Earth Elemental':'ErtEl','Water Elemental':'WatEl','Darkness Elemental':'DrkEl'};
 function shortUnit(row){ const t=(row&&row.a&&row.a.type)||(row&&row.name)||'unit'; return UNIT_SHORT[t]||String(t).replace(/[^A-Za-z]/g,'').slice(0,5); }
@@ -10252,12 +10252,14 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
         const wantCreature=_primalCreatureNext; _primalCreatureNext=!_primalCreatureNext;
         // One terrain-appropriate unit per class. Every unit here is classified by the engine's
         // CREATURE_ARMIES / MONSTER_ARMIES sets (Druidic favours Creatures, Evil favours Monsters).
+        // 2026-10-13 (Creatures and Monsters IV): Great Bears in forest and mountain, Unicorn Herd on the plain
+        // and in the forest, Mammoth Host on the plain and in the desert. (CBT, the alignment pass's copy, must match.)
         const CREATURE_BY_TERRAIN={
-          plain:['Thunderbirds','Stone Giants'],
-          desert:['Stone Giants','Thunderbirds'],
-          forest:['Forest Ents','Thunderbirds'],
+          plain:['Thunderbirds','Stone Giants','Unicorn Herd','Mammoth Host'],
+          desert:['Stone Giants','Thunderbirds','Mammoth Host'],
+          forest:['Forest Ents','Thunderbirds','Great Bears','Unicorn Herd'],
           jungle:['Forest Ents'],
-          mountain:['Stone Giants','Crimson Rocs','Thunderbirds'],
+          mountain:['Stone Giants','Crimson Rocs','Thunderbirds','Great Bears'],
         };
         const MONSTER_BY_TERRAIN={
           plain:['Titan Warbeasts','Manticore Pride'],
@@ -10623,7 +10625,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     {
       const _align=sp.alignment;
       if(_align==='Pagan'||_align==='Druidic'||_align==='Evil'){
-        const CBT={plain:['Thunderbirds','Stone Giants'],desert:['Stone Giants','Thunderbirds'],forest:['Forest Ents','Thunderbirds'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Thunderbirds']};
+        const CBT={plain:['Thunderbirds','Stone Giants','Unicorn Herd','Mammoth Host'],desert:['Stone Giants','Thunderbirds','Mammoth Host'],forest:['Forest Ents','Thunderbirds','Great Bears','Unicorn Herd'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Thunderbirds','Great Bears']};   // = CREATURE_BY_TERRAIN (tests/new-creatures holds the two together)
         const MBT={plain:['Titan Warbeasts','Manticore Pride'],desert:['Manticore Pride','Basilisk Brood'],forest:['Cave Trolls','Basilisk Brood','Dread Hydras'],jungle:['Basilisk Brood','Cave Trolls','Manticore Pride','Dread Hydras'],mountain:['Cave Trolls','Elder Dragons']};
         const _allFreeNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
         // the poor/prosperous pair must be HUMANOID for EVERY home, so this pass may never convert
@@ -14309,6 +14311,7 @@ const TERRAIN_MODS={
     'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.0,
+    'Great Bears':1.0,'Unicorn Herd':1.10,'Mammoth Host':1.10,'Great Turtles':1.0,
   },
   desert:{
     'Men-at-Arms':1.0,'Stag Riders':1.0,'Ironhoof Rams':0.90,'Black Arrows':1.0,
@@ -14324,6 +14327,7 @@ const TERRAIN_MODS={
     'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':1.10,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':0.85,
+    'Great Bears':0.80,'Unicorn Herd':1.0,'Mammoth Host':0.85,'Great Turtles':1.0,
   },
   forest:{
     'Men-at-Arms':0.90,'Stag Riders':1.10,'Ironhoof Rams':0.90,'Black Arrows':0.90,
@@ -14339,6 +14343,7 @@ const TERRAIN_MODS={
     'Manticore Pride':1.0,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.05,
+    'Great Bears':1.10,'Unicorn Herd':1.10,'Mammoth Host':0.80,'Great Turtles':1.0,
   },
   jungle:{
     'Men-at-Arms':0.85,'Stag Riders':1.0,'Ironhoof Rams':0.85,'Black Arrows':0.90,
@@ -14354,6 +14359,7 @@ const TERRAIN_MODS={
     'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.10,
+    'Great Bears':1.0,'Unicorn Herd':0.90,'Mammoth Host':0.75,'Great Turtles':1.0,
   },
   mountain:{
     'Men-at-Arms':0.90,'Stag Riders':0.85,'Ironhoof Rams':1.0,'Black Arrows':0.90,
@@ -14369,6 +14375,7 @@ const TERRAIN_MODS={
     'Manticore Pride':1.0,'Basilisk Brood':0.90,'Titan Warbeasts':0.80,
     'Crimson Rocs':1.0,'Elder Dragons':1.0,
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':0.90,
+    'Great Bears':1.10,'Unicorn Herd':0.85,'Mammoth Host':1.0,'Great Turtles':1.0,
   },
   sea:{
     // All land armies penalised in sea — ×0.75 (applied separately as seaLandPenalty) Naval units
@@ -14376,7 +14383,7 @@ const TERRAIN_MODS={
     // the sea penalty is applied globally.
     'Galleon Fleet':1.0,'Corsair Fleet':1.0,'Elven Galleys':1.0,
     'Dwarf Ironclads':1.0,'Orcish Longships':1.0,'Whale Cohort':1.0,'Shark Shoals':1.0,
-    'Sea Giants':1.0,'Eldritch Kraken':1.0,
+    'Sea Giants':1.0,'Eldritch Kraken':1.0,'Great Turtles':1.0,
     // Flying fight fine at sea
     'Eagle Riders':1.0,'Wyvern Riders':1.0,'Gnomish Gyrocopters':1.0,
     'Elder Dragons':1.0,'Crimson Rocs':1.0,'Thunderbirds':1.0,
@@ -28307,7 +28314,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0060</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0080</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
