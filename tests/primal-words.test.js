@@ -44,7 +44,7 @@ ok(!/×1\.3/.test((rows['Titan Warbeasts']||{}).ability||''),'the Titan Warbeast
 
 // ── The renamed units (Creatures and Monsters II): the old names on no page ──
 for(const [page,text] of [['rulebook',rules],['intro',intro],['player portal',pp]]) for(const old of Object.keys(P.RENAMED)) ok(!text.includes(old),`${page}: no "${old}" (it is ${P.RENAMED[old]} now)`);
-ok(/Thunderbirds/.test(norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])))&&!/eagles/.test(norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]))),'the kinds-of-unit Creatures row names thunderbirds, not eagles');
+ok(/thunderbirds/i.test(norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])))&&!/eagles/.test(norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]))),'the kinds-of-unit Creatures row names thunderbirds, not eagles');
 ok(!/leviathans?/i.test(norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]))),'the kinds-of-unit Sea-beasts row no longer names leviathans');
 
 // ── The move-rate table ──
