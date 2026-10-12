@@ -12,7 +12,9 @@
 //                         get_game_slots (P0-20) and the one-realm-per-number and one-per-account
 //                         rules on game_players. RULES.ownSlotsOnly applies P0-21's read rule (your own
 //                         slot, or every slot of a game you run) and records 'game_players.select:other'
-//                         in CALLS whenever a read asked for rows that rule hides.
+//                         in CALLS whenever a read asked for rows that rule hides. REVOKED_COLS
+//                         ("table.column") mirrors a column privilege taken away: a select of '*', or
+//                         naming that column, is refused with 42501, whoever's row it is (P0-31).
 //   cannedStub(o)         answers every read with fixed rows and records every write
 //                         (the `sbStub` pasted into six engine harnesses).
 //   nullStub()            every read is empty; enough for a page to boot
@@ -35,6 +37,7 @@ function makeStub(){
   const MISSING=new Set();
   const MISSING_COLS=new Set();     // "table.column": answered as the real database does for an unknown column
   const RULES={ownSlotsOnly:false};
+  const REVOKED_COLS=new Set();     // "table.column": not granted to the signed-in role
   let SESSION={user:{id:'gm1'}};
   let NEXT=1;
   const CALLS=[];
@@ -88,6 +91,12 @@ function makeStub(){
     }
     function run(){
       CALLS.push(st.table+'.'+st.op);
+      if(st.op==='select'){
+        const revoked=[...REVOKED_COLS].filter(k=>k.startsWith(table+'.')).map(k=>k.slice(table.length+1));
+        const top=(st.selectStr||'*').replace(/\([^)]*\)/g,'').split(',').map(x=>x.trim().split(/[:\s]/)[0]);
+        if(revoked.length&&(top.includes('*')||revoked.some(c=>top.includes(c))))
+          return {data:null,error:{message:`permission denied for table ${table}`,code:'42501'}};
+      }
       if(MISSING.has(table)) return {data:null,error:{message:`relation "public.${table}" does not exist`,code:'42P01'}};
       const hidden=hiddenColumn();
       if(hidden) return st.payload
@@ -197,7 +206,7 @@ function makeStub(){
            signOut:async()=>({error:null}), signInWithPassword:async()=>({data:{},error:null}) },
     channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}), removeChannel(){},
     storage:{from:()=>({upload:async()=>({data:null,error:null}),download:async()=>({data:null,error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})} };
-  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, RPC_ERRORS, RULES, CALLS,
+  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, REVOKED_COLS, RPC_ERRORS, RULES, CALLS,
            setUser(id){ SESSION=id?{user:{id}}:null; } };
 }
 
