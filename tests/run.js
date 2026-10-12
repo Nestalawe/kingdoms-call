@@ -69,6 +69,7 @@ const SUITE=[
   ['abilities-orcish',     'tests/abilities-orcish.test.js'],
   ['abilities-turn',       'tests/abilities-turn.test.js'],
   ['primal-roster',        'tests/primal-roster.test.js'],
+  ['primal-renames',       'tests/primal-renames.test.js'],
   ['two-crowns',           'tests/two-crowns.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],

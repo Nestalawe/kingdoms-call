@@ -126,7 +126,7 @@ const ok=(cond,msg)=>{ if(cond) pass++; else { fail++; console.log('  ✗ '+msg)
     ok(r==='stay','Cut the Line: the ships are left behind'); }
 
   // ── fuzz: random coastal forces, no crashes and no units conjured or lost ──
-  const TYPES=['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Kraken Tentacles',
+  const TYPES=['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort','Eldritch Kraken',
     'Shieldwall Levies','Yeoman Longbows','Gilded Lances','Free Lances','Dwarven Guard','Mountain Guns','Eagle Riders','Wyvern Riders','Forest Ents','Stone Giants'];
   const Q=['Green','Average','Veteran','Crack','Elite'];
   let fz=0, crash=0, lost=0;

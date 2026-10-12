@@ -31,7 +31,7 @@ let fail=0;
 const ok=(cond,msg)=>{ if(!cond){ fail++; console.log('FAIL '+msg); } };
 
 const FLYERS=['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'];
-const BEASTS=['Stone Giants','Forest Ents','Giant Eagles','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Kraken Tentacles','Elder Dragons','Crimson Rocs','Titan Warbeasts','Leviathan Pods','Whale Cohort'];
+const BEASTS=['Stone Giants','Forest Ents','Thunderbirds','Cave Trolls','Manticore Pride','Basilisk Brood','Sea Giants','Eldritch Kraken','Elder Dragons','Crimson Rocs','Titan Warbeasts','Dread Hydras','Whale Cohort'];   // 2026-10-13: the three renames
 const FLEETS=['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships','Whale Cohort'];
 const FOOT=['Shieldwall Levies','Free Lances','Yeoman Longbows','Gilded Lances','Human Garrison','Elven Bowmen','Forest Wardens','Shadow Archers','Elven Garrison','Dwarven Guard','Ironwood Crossbows','Mountain Guns','Dwarf Garrison','Warg Riders','Orc Berserkers','Goblin Horde','Orc Garrison'];
 
