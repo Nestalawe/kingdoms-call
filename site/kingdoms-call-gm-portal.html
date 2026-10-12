@@ -410,7 +410,7 @@ const KC_DATA_MIN='2026.10.12-0010';
 // a database change").
 const KC_DB_MIN='20261011025524';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
-const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
+const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).
@@ -1491,7 +1491,7 @@ const MASTERY_ORDER_KEYS=new Set(['challenge','rampage','rain_of_arrows','sniper
 const MASTERY_ORDER_LABEL={challenge:'Challenge',rampage:'Rampage',rain_of_arrows:'Rain of Arrows',snipers_mark:"Sniper's Mark",feigned_retreat:'Feigned Retreat',grand_stratagem:'Grand Stratagem',forced_march:'Forced March',lightning_advance:'Lightning Advance',blockade:'Blockade',raid_coast:'Raid the Coast',research_breakthrough:'Research Breakthrough',grand_design:'Grand Design',sabotage:'Sabotage',assassinate:'Assassinate',grand_heist:'Grand Heist',vanish:'Vanish',awaken_grove:'Awaken Grove',wild_calling:'Wild Calling',chart_unknown:'Chart the Unknown',discover_ruin:'Discover Lost Ruin'};
 // Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
 // charmed enemy hero may not be made to do.
-const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','awaken_wild','harvest_field','rite']);
+const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','awaken_wild','call_pit','harvest_field','rite']);
 // the character-targeted hostile spells a seized enemy hero will not aim at their ORIGINAL lord's
 // characters (the Encounter order is refused on the same grounds).
 const CHARMED_NO_TURN_SPELLS=new Set(['Psychic Blast','Telekinetic Storm','Curse','Charm','Control Undead','Dominate']);
@@ -4972,7 +4972,7 @@ async function writeTurnTelemetry(gs, gameRow, players, tel, turn){
 // Charts are plain HTML bars in the portal's own palette — no chart library, so nothing to load or
 // fail. Every chart is also a table: the number sits beside every bar.
 const _stats={rows:null, results:null, games:null, loadedAt:0};
-const STATS_ACTION_LABEL={move:'Move',defend:'Defend',explore:'Explore',search:'Search lair',hunt_rumours:'Hunt rumours',recruit:'Recruit',hire:'Hire hero',release:'Release hero',leave_army:'Leave army',pickup_army:'Pick up army',disband_army:'Disband',practice:'Practice',rest:'Rest',research:'Research',spy:'Spy',steal:'Steal',cast_spell:'Cast spell',use_item:'Use item',equip_items:'Equip',give_item:'Give item',encounter:'Encounter',consecrate:'Consecrate',call_to_arms:'Call to Arms',broker:'Broker',awaken_wild:'Awaken Wild',harvest_field:'Harvest Field',rite:'Rite'};
+const STATS_ACTION_LABEL={move:'Move',defend:'Defend',explore:'Explore',search:'Search lair',hunt_rumours:'Hunt rumours',recruit:'Recruit',hire:'Hire hero',release:'Release hero',leave_army:'Leave army',pickup_army:'Pick up army',disband_army:'Disband',practice:'Practice',rest:'Rest',research:'Research',spy:'Spy',steal:'Steal',cast_spell:'Cast spell',use_item:'Use item',equip_items:'Equip',give_item:'Give item',encounter:'Encounter',consecrate:'Consecrate',call_to_arms:'Call to Arms',broker:'Broker',awaken_wild:'Awaken Wild',call_pit:'Call from the Pit',harvest_field:'Harvest Field',rite:'Rite'};
 const STATS_COL={crimson:'#7a1c1c',forest:'#2d4a1e',gold:'#c8922a',blue:'#2f5f8f',stone:'#6b5a42'};
 async function openStats(force){
   show('sec-stats');
@@ -7873,6 +7873,15 @@ function botSignaturePre(G,pi,c,P,L){
       const cands=Object.keys(TIERS).filter(t=>TIERS[t]<=dru&&((ARMY_SPEED_MASTER[t]||3)>=2||c._botRole==='defender')).sort((a,b)=>(UNIT_BASE_STR[b]||0)-(UNIT_BASE_STR[a]||0));
       for(const t of cands){ const cost=(ARMY_COST_MASTER[t]||3)+2; if(botCanAfford(L,cost)){ botSpend(L,cost); L.sig.awaken=1; return {action:'awaken_wild',target:t,extra:'',desc:'Awaken the Wild — '+t}; } }
       return null; }
+    case 'Evil': {                                                      // CALL FROM THE PIT (2026-10-13): a monster for cost+2g, no recruit slot
+      if(L.sig.pit) return null;
+      const _onWild=P.owner===pi&&(P.race||'').startsWith('Primal'), _onFear=(P._terrorStacks||0)>0&&P._terrorisedBy===pi;
+      if(!_onWild&&!_onFear) return null;
+      const dru=sk.druid||0; if(dru<1) return null;
+      const TIERS={...KC_PIT_TIERS};
+      const cands=Object.keys(TIERS).filter(t=>TIERS[t]<=dru).sort((a,b)=>(UNIT_BASE_STR[b]||0)-(UNIT_BASE_STR[a]||0));
+      for(const t of cands){ const cost=(ARMY_COST_MASTER[t]||4)+2; if(botCanAfford(L,cost)){ botSpend(L,cost); L.sig.pit=1; return {action:'call_pit',target:t,extra:'',desc:'Call from the Pit — '+t}; } }
+      return null; }
     case 'Undead': {                                                    // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
       if((sk.necromancy||0)<1||!botSees(G,pi,P.id)||!(P.battleGraves||[]).length) return null;
       if(L.budget<2) return null; L.budget-=2; L.upkeep+=1;
@@ -9754,7 +9763,7 @@ function runBotPhaseOne(G, botIdxSet, stage){
         if(!(leaderIds.has(c.id)||(c.armies||[]).length>=2)) return;
         let end=o.findIndex(x=>x&&BOT_P1.reloc.has(x.action)); if(end<0) end=5;
         if(end===0&&/^(Attack|Assault|Lightning strike)/.test((o[0]||{}).desc||'')) return;       // striking first outranks mustering
-        if(o.slice(0,end).some(x=>x&&(x.action==='recruit'||x.action==='pickup_army'||x.action==='awaken_wild'))) return;
+        if(o.slice(0,end).some(x=>x&&(x.action==='recruit'||x.action==='pickup_army'||x.action==='awaken_wild'||x.action==='call_pit'))) return;
         const _cap0=L.upkeepCap; L.upkeepCap=Math.max(_cap0*BOT_P1.levyCap,(L.upkeep||0)+BOT_P1.levyWages);   // EMERGENCY LEVY
         let toks=[]; try{ toks=botFieldRecruitTokens(G,pi,c,P,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])||c._botRole==='admiral'); } finally { L.upkeepCap=_cap0; }
         const ro=botRecruitOrder(toks,null); if(!ro) return;
@@ -9835,7 +9844,7 @@ function runBotPhaseOne(G, botIdxSet, stage){
         if(a==='steal'&&x.target!=='garrison') return 5;
         if(contact){
           if(a==='recruit'&&!/to:garrison/.test(x.target)) return 4;
-          if(a==='pickup_army'||a==='awaken_wild'||a==='harvest_field'||a==='rite') return 4;
+          if(a==='pickup_army'||a==='awaken_wild'||a==='call_pit'||a==='harvest_field'||a==='rite') return 4;
           if(a==='leave_army'&&leaderIds.has(Number(x.extra))) return 4;
           if(a==='cast_spell'&&BOT_P1.gainSpell.has(x.target)) return 4;
         }
@@ -15138,7 +15147,7 @@ const BATTLE_ARMY_SPELLS={
     // (stacking). Reign of Fear is read first: the attacker's Monsters fight ×1.5 on ground its Terror grips.
     const _fearAtk=reignOfFearHere(prov,c.player);
     consumeTerror(prov, defenders, narrative);
-    if(_fearAtk&&(c.player!=null?G.players[c.player]?.alignment:null)==='Evil'&&armies.some(a=>a&&MONSTER_ARMIES.has(a.type))) narrative.push(`💀 Reign of Fear — ${prov.name} still cowers under ${cName}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`);
+    if(_fearAtk&&(c.player!=null?G.players[c.player]?.alignment:null)==='Evil'&&armies.some(a=>a&&MONSTER_ARMIES.has(a.type))) narrative.push(`💀 Reign of Fear — ${prov.name} still cowers under ${c.name}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`);
     narrative.push(`⚔ **Battle for ${prov.name}**`);
     { const _ic=magicItemsLine(c); if(_ic)narrative.push(_ic); } // commander's magic items in play
     { const _kA=kinNarrative(armies,c,(c.player!=null?G.players[c.player]?.race:null),`${c.name}'s host`); if(_kA) narrative.push(_kA); // item 7
@@ -19363,6 +19372,7 @@ const BATTLE_ARMY_SPELLS={
     'call to arms':'call_to_arms','call_to_arms':'call_to_arms',
     'broker':'broker',
     'awaken the wild':'awaken_wild','awaken_wild':'awaken_wild',
+    'call from the pit':'call_pit','call_pit':'call_pit',
     'harvest the field':'harvest_field','harvest_field':'harvest_field',
     'encounter':'encounter','encounter character':'encounter',
     'steal':'steal','steal item':'steal','steal from character':'steal',
@@ -21326,6 +21336,39 @@ const BATTLE_ARMY_SPELLS={
         c.armies.push({type:wType,quality:_awQ,race:'Primal',unitName:armyUnitName(wType)});
         trySkillGain(c,'druid',SKILLGAIN_STD);
         log('hire',`🌿 Awaken the Wild — ${c.name} calls and ${prov.name} answers: ${wType} rise from the deep places to march under the Druidic banner! (${wCost}g offering; ${_awQ} quality; they follow ${c.name}.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        break;
+      }
+      // EVIL — Call from the Pit (2026-10-13, Toby, Creatures and Monsters I): the mirror of Awaken the Wild.
+      // The dark answers an Evil crown in an owned wild (Creature or Monster) province, or in any province
+      // the realm's own Terror still grips; one Monster of the caller's Druid tier (KC_PIT_TIERS), for its
+      // price + 2g tribute, no recruit slot, once a province a turn (its own stamp: a Druidic ally's
+      // awakening in the same province does not close the pit).
+      case 'call_pit':{
+        if(G.players[c.player]?.alignment!=='Evil'){
+          log('system',`${c.name} calls to the pits below, but the dark answers only Evil crowns.`,{actor:c.player,targets:[c.player]});break;}
+        const _pitOK=(prov.owner===c.player&&(prov.race||'').startsWith('Primal'))||reignOfFearHere(prov,c.player);
+        if(!_pitOK){
+          log('system',`${c.name}: the pit opens only beneath YOUR wild (Creature or Monster) provinces, or beneath ground your Terror still grips.`,{actor:c.player,targets:[c.player]});break;}
+        if(prov._pitTurn===G.turn){
+          log('system',`${c.name} calls again to the pits beneath ${prov.name}, but the dark has already answered here this season — it will not stir a second time until the year turns.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
+        const PIT_TIERS={...KC_PIT_TIERS};
+        const pType=target;
+        const needDruP=PIT_TIERS[pType];
+        if(needDruP==null){
+          log('system',`${c.name}: choose a monster to call from the pit — ${Object.keys(PIT_TIERS).join(', ')}.`,{actor:c.player,targets:[c.player]});break;}
+        const druLvlP=effStat(c,'druid');
+        if(druLvlP<needDruP){
+          log('system',`${c.name}: ${pType} answer only a caller of Druid ${needDruP}+ (you: ${druLvlP}).`,{actor:c.player,targets:[c.player]});break;}
+        const pCost=Math.max(1,(ARMY_COST_MASTER[pType]||4)+2); // recruit cost + a 2g tribute to the dark
+        if((player.gold||0)<pCost){
+          log('system',`${c.name}: calling ${pType} takes a ${pCost}g tribute — the treasury holds only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
+        player.gold-=pCost;
+        prov._pitTurn=G.turn; // the dark has answered here this turn
+        c.armies=c.armies||[];
+        const _pitQ=(Math.random()<discRecruitQChance(G.players[c.player],pType))?'Veteran':'Average';   // ae11 Beast Masters, ae20 Black Market
+        c.armies.push({type:pType,quality:_pitQ,race:'Primal',unitName:armyUnitName(pType)});
+        trySkillGain(c,'druid',SKILLGAIN_STD);
+        log('hire',`💀 Call from the Pit — ${c.name} calls and the dark beneath ${prov.name} answers: ${pType} crawl up from the pits to serve the Evil crown! (${pCost}g tribute; ${_pitQ} quality; they follow ${c.name}.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
         break;
       }
       // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.

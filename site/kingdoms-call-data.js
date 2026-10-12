@@ -1765,6 +1765,10 @@ const KC_ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:
 const KC_ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
 const KC_RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
 const KC_AWAKEN_TIERS={'Giant Eagles':1,'Forest Ents':2,'Stone Giants':3,'Crimson Rocs':3};   // 2026-10-11 (Toby): the wild no longer sends Eagle Riders or Noble Griffons
+// Call from the Pit (2026-10-13, Toby, Creatures and Monsters I): Evil's mirror of Awaken the Wild — the Monster a
+// caller of each Druid level may call up, for its price + 2g, in an owned wild province or one the realm's own
+// Terror still grips.
+const KC_PIT_TIERS={'Cave Trolls':1,'Basilisk Brood':2,'Manticore Pride':3,'Titan Warbeasts':3};
 const KC_BASIC_EXPLORE={plain:35,desert:25,forest:20,mountain:20,jungle:15,sea:25};
 const KC_TERRAIN_COLORS={plain:'#d1a63a',desert:'#c66b3d',forest:'#2d7a2d',jungle:'#1a5e1a',mountain:'#8a7a6a',sea:'#3a7abf'};
 const KC_PHASE_NAMES=['Spring','Early Summer','Late Summer','Fall','Early Winter','End of Turn'];
