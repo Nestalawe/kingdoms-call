@@ -15,6 +15,8 @@
 //                         in CALLS whenever a read asked for rows that rule hides. REVOKED_COLS
 //                         ("table.column") mirrors a column privilege taken away: a select of '*', or
 //                         naming that column, is refused with 42501, whoever's row it is (P0-31).
+//                         INSERT_ERRORS[table] answers every insert into that table with that error, as
+//                         a database check or trigger would (P0-23).
 //   cannedStub(o)         answers every read with fixed rows and records every write
 //                         (the `sbStub` pasted into six engine harnesses).
 //   nullStub()            every read is empty; enough for a page to boot
@@ -38,6 +40,7 @@ function makeStub(){
   const MISSING_COLS=new Set();     // "table.column": answered as the real database does for an unknown column
   const RULES={ownSlotsOnly:false};
   const REVOKED_COLS=new Set();     // "table.column": not granted to the signed-in role
+  const INSERT_ERRORS={};           // table -> the error every insert into it gets
   let SESSION={user:{id:'gm1'}};
   let NEXT=1;
   const CALLS=[];
@@ -109,6 +112,7 @@ function makeStub(){
         return {data:r,error:null};
       }
       if(st.op==='insert'){
+        if(INSERT_ERRORS[table]) return {data:null,error:INSERT_ERRORS[table]};
         const list=Array.isArray(st.payload)?st.payload:[st.payload];
         if(table==='game_players'){
           // the unique indexes game_players_one_per_number (P0-20) and game_players_one_per_user
@@ -206,7 +210,7 @@ function makeStub(){
            signOut:async()=>({error:null}), signInWithPassword:async()=>({data:{},error:null}) },
     channel:()=>({on(){return this;},subscribe(){return this;},unsubscribe(){}}), removeChannel(){},
     storage:{from:()=>({upload:async()=>({data:null,error:null}),download:async()=>({data:null,error:null}),getPublicUrl:()=>({data:{publicUrl:''}})})} };
-  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, REVOKED_COLS, RPC_ERRORS, RULES, CALLS,
+  return { supabase:{createClient:()=>client}, DB, MISSING, MISSING_COLS, REVOKED_COLS, INSERT_ERRORS, RPC_ERRORS, RULES, CALLS,
            setUser(id){ SESSION=id?{user:{id}}:null; } };
 }
 
