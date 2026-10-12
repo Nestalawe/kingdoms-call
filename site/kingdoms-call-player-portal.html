@@ -829,13 +829,13 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.13-0090';
+const KC_DATA_MIN_P='2026.10.13-0110';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
 const KC_DB_MIN='20261012023733';
 (function(){
-  const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
+  const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
   const stamp=(typeof KC_DATA_STAMP==='string')?KC_DATA_STAMP:null;
   const allMissing=missing.length===need.length;
@@ -3243,7 +3243,7 @@ function renderReportView(report){
             let _hullNeed=_landUnits.reduce((n,a)=>n+(_LIGHT_UI2.has(a.type)?0.5:1),0);
             if(effSkillP(c,'naval')>=8) _hullNeed/=2;
             const _hullNeedShown=Math.ceil(_hullNeed);
-            const _hullHave=arr.filter(a=>_CARRIER_UI2.has(a.type)).length;
+            const _hullHave=arr.reduce((n,a)=>n+(_CARRIER_UI2.has(a.type)?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[a.type])||1):0),0);   // berths: a turtle's Island Back offers two
             let _seaNote='';
             if(_landUnits.length===0) _seaNote=` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
             else if(_airborne) _seaNote='';
@@ -4423,7 +4423,7 @@ function poFlyCapability(armies){
 // cap: 'all' (nothing to carry), 'sea' (hulls and flyers lift the lot), 'land' (cannot put to sea).
 function poSeaAnalysis(armies, navalRaw){
   const A=(armies||[]).filter(Boolean);
-  const hulls=A.filter(a=>PO_CARRIER_TYPES.has(a.type)).length;
+  const hulls=A.reduce((s,a)=>s+(PO_CARRIER_TYPES.has(a.type)?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[a.type])||1):0),0);   // berths, as the engine counts them: a turtle's Island Back offers two
   const seaBeasts=A.filter(a=>PO_SEA_TYPES.has(a.type)&&!PO_CARRIER_TYPES.has(a.type)).length;
   const flyers=A.filter(a=>PO_FLYING_TYPES.has(a.type)).length;
   const aerial=A.filter(a=>PO_AERIAL_TYPES.has(a.type)).length;
@@ -6623,7 +6623,7 @@ const UNIT_ABILITIES={
   'Great Bears':'Maul — ×1.15 facing foot. Thick Hide — pre-battle volleys against them do half. At home in forest and mountain (terrain ×1.1), poor in the desert; move 3.',
   'Unicorn Herd':'Purity — ×1.25 facing Monsters and skeletons. Through the Glades — the one cavalry, with the Stag Riders, that takes a flank in forest and jungle. At home on the plain and in the forest (terrain ×1.1).',
   'Mammoth Host':'Trample — ×1.15 facing foot. Stampede: a pre-battle strike across the whole enemy line (2–4 each). At home on the open plain (terrain ×1.1), ill at ease under trees; slow.',
-  'Great Turtles':'Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power and carry nothing; slow.',
+  'Great Turtles':'Island Back — carries two land units a hull, where a fleet carries one. Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power; slow.',
 };
 function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // the unit ability descriptions were removed from the map pop-ups; instead they surface as a hover
@@ -10494,7 +10494,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0100</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0120</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

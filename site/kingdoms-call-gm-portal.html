@@ -402,13 +402,13 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0090';
+const KC_DATA_MIN='2026.10.13-0110';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
 const KC_DB_MIN='20261011191234';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
-const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
+const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).
@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0100'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.13-0120'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1218,6 +1218,9 @@ function navalSpeedBonus(baseSpeed,navalLevel){
   // SEA_TYPES — every unit that crosses sea under its own power. Used throughout the engine for "is
   // this a naval unit" (sea-battle penalties, Naval-skill bonuses, hull targeting, move pools).
   const SEA_TYPES=new Set([...CARRIER_TYPES,...PRIMAL_SEA_TYPES]);
+  // Berths a unit offers land troops: one per hull, KC_CARRIER_BERTHS for the exceptions (2026-10-13, Creatures and Monsters VI:
+  // the Great Turtles' Island Back carries two), nothing for anything that is not a carrier.
+  function carrierBerths(a){ return (a&&CARRIER_TYPES.has(a.type))?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[a.type])||1):0; }
 
   // ── FLYING CARRY ────
   // A humanoid flyer (one of FLYING_TYPES) can lift a single humanoid FOOT soldier and carry it
@@ -8230,7 +8233,7 @@ function botNearestOf(G,pi,c,list,unarmed){ const P=G.world.provinces[c.location
   (list||[]).forEach(X=>{ const d=(X.id===P.id)?0:botPathLen(G,pi,P,X.id,!!unarmed); if(d==null) return; if(!best||d<best.d||(d===best.d&&(X.tax||0)>(best.X.tax||0))) best={X,d}; });
   return best; }
 // The berths an admiral still has free: hulls minus the liftable land units he already carries.
-function botSpareBerths(c){ const a=(c&&c.armies)||[]; return a.filter(x=>x&&BOT_CARRIER_TYPES.has(x.type)).length-a.filter(x=>x&&botLiftable(x.type)&&!BOT_SEA_ALL.has(x.type)).length; }
+function botSpareBerths(c){ const a=(c&&c.armies)||[]; return a.reduce((s,x)=>s+((x&&BOT_CARRIER_TYPES.has(x.type))?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[x.type])||1):0),0)-a.filter(x=>x&&botLiftable(x.type)&&!BOT_SEA_ALL.has(x.type)).length; }   // berths: a turtle's Island Back offers two
 function botLiftable(t){ return !(BOT_SEA_ALL.has(t)||BOT_AERIAL_TYPES.has(t)||BOT_CREATURE_ARMIES.has(t)||BOT_MONSTER_ARMIES.has(t)||BOT_CAVALRY_TYPES.has(t)); }
 // BFS over sea hexes from `P` (a coast or a sea hex): the best landing — an enemy or unowned land province
 // beside the water that this column can beat — or an unowned sea hex to claim. Returns {moves,N} or null.
@@ -11827,7 +11830,7 @@ const _TITLE_LABEL={throne:'Throne',vault:'Vaultkeeper',marshal:'Grand Marshal',
 // character a small perk. Each is awarded every turn to the single best living character by its
 // metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
 const MINOR_CAV=new Set(KC_UNIT_CLASS.cavalry); // flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
-const MINOR_HEAVY=new Set(['Mountain Guns','Dwarf Ironclads','Galleon Fleet','Corsair Fleet','Elven Galleys','Orcish Longships','Whale Cohort','Siege Towers']);
+const MINOR_HEAVY=new Set(['Mountain Guns','Dwarf Ironclads','Galleon Fleet','Corsair Fleet','Elven Galleys','Orcish Longships','Whale Cohort','Great Turtles','Siege Towers']);   // the ferries count (the turtles since Island Back, 2026-10-13)
 const _BEST_SCHOOL=c=>Math.max(0,...KC_MAGIC_SCHOOLS.map(s=>skillLevel(c,s)));
 const MINOR_TITLES=[
   {key:'duelist',    name:'The Duelist',            perk:'+1 melee in personal combat',        req:'Highest Melee skill of any living character.', metric:c=>skillLevel(c,'melee')},
@@ -19829,14 +19832,14 @@ const BATTLE_ARMY_SPELLS={
               // Restate the ACTUAL capacity rule: light foot take half a hull, everything else a
               // full one, and primal sea beasts (which swim but carry nothing) provide no capacity.
               const LIGHT_MSG=new Set(KC_UNIT_CLASS.lightFoot);
-              const hulls=armies.filter(a=>CARRIER_TYPES.has(a.type)).length;
+              const hulls=armies.reduce((s,a)=>s+carrierBerths(a),0);   // berths (a turtle's Island Back offers two)
               const capNeed=landArmies.reduce((s,a)=>s+(LIGHT_MSG.has(a.type)?0.5:1),0);
               const swimmers=armies.filter(a=>PRIMAL_SEA_TYPES.has(a.type));
               // hulls and flyers pool their lift, so the block message must account for both —
               // otherwise a player with griffons is told only about his shipping.
               const _flyLift=armies.filter(a=>FLYING_TYPES.has(a.type)).length;
               const _stuck=landArmies.filter(a=>!isAirCarriable(a));
-              seaBlockReason=`${c.name} cannot put to sea: ${landArmies.length} land arm${landArmies.length!==1?'ies':'y'} (${landArmies.map(a=>a.type).join(', ')}) need ${capNeed} hull${capNeed!==1?'s':''} of shipping, but the force has only ${hulls} fleet unit${hulls!==1?'s':''}`
+              seaBlockReason=`${c.name} cannot put to sea: ${landArmies.length} land arm${landArmies.length!==1?'ies':'y'} (${landArmies.map(a=>a.type).join(', ')}) need ${capNeed} hull${capNeed!==1?'s':''} of shipping, but the force has only ${hulls} berth${hulls!==1?'s':''} aboard its hulls`
                 +(_flyLift>0?` and ${_flyLift} flying unit${_flyLift!==1?'s':''} to carry the leftovers (one foot soldier each)`:` and no flyers to carry the leftovers`)+`.`
                 +(_stuck.length>0?` The ${_stuck.map(a=>a.type).join(', ')} cannot be lifted at all — cavalry, siege and beasts must go aboard ship.`:'')
                 +(swimmers.length>0?` The ${swimmers.map(a=>a.type).join(' and ')} swim under their own power but cannot carry troops.`:'')
@@ -23509,7 +23512,7 @@ const BATTLE_ARMY_SPELLS={
     const landArmies=armies.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
     // Only CARRIERS provide capacity. Primal sea beasts swim themselves across but carry nothing,
     // so they contribute 0 — a force of one Kraken plus one Goblin Horde still cannot put to sea.
-    const seaCount=armies.filter(a=>CARRIER_TYPES.has(a.type)).length;
+    const seaCount=armies.reduce((s,a)=>s+carrierBerths(a),0);   // berths, not hulls: a turtle offers two (Island Back)
     const flyCount=armies.filter(a=>AERIAL_TYPES.has(a.type)).length;
     if(landArmies.length===0) return 'all'; // only flying/sea
     // if the humanoid flyers can lift every foot soldier, the whole column takes to the air and
@@ -23560,7 +23563,7 @@ const BATTLE_ARMY_SPELLS={
     if(getSeaCapability(armies, leadChar)!=='land') return 0;
     const capOf=a=>BOT_LIGHT_ARMIES.has(a.type)?1:2; // half-hulls: light foot 1, everything else 2
     const land=armies.filter(a=>!AERIAL_TYPES.has(a.type)&&!SEA_TYPES.has(a.type));
-    let hull2=armies.filter(a=>CARRIER_TYPES.has(a.type)).length*2;
+    let hull2=armies.reduce((s,a)=>s+carrierBerths(a),0)*2;   // half-berths: a turtle offers two berths (Island Back)
     if(leadChar && perkTier(leadChar,'naval')>=3) hull2*=2;
     const must=land.filter(a=>!isAirCarriable(a)), lift=land.filter(a=>isAirCarriable(a));
     const mustNeed=must.reduce((s,a)=>s+capOf(a),0);
@@ -28358,7 +28361,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0100</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0120</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
