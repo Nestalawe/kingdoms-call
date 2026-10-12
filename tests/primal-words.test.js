@@ -81,7 +81,8 @@ void monsterLists;
 // The player portal's texts.
 ok(/Call from the Pit/.test(pp)&&/'Call from the Pit':'Evil'/.test(pp),"the player portal lists Call from the Pit as Evil's order");
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
-ok(/Druid \+1/.test((/Evil:`[^`]*`/.exec(pp)||[''])[0])||/Druid \+1/.test((/Evil:'[^']*'/.exec(pp)||[''])[0]),"the player portal's Evil texts say the king starts with Druid +1");
+const ppEvilSummary=(/Evil:`[^`]*`/.exec(pp)||[''])[0], ppEvilDesc=(/Evil:'💀 <strong>Evil:<\/strong>(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+ok(/Druid 1 from the outset|Druid \+1/.test(ppEvilSummary)&&/Druid \+1/.test(ppEvilDesc),"the player portal's Evil texts (the realm summary and the join-screen blurb) say the king starts with Druid +1");
 // The blurbs: the retired multipliers are gone.
 const blurb=u=>(new RegExp(`\\n\\s*'${u}':'((?:[^'\\\\]|\\\\.)*)'`).exec(pp)||['',''])[1].replace(/[’‘]/g,"'");
 ok(!/Mountain Bulwark/.test(blurb('Stone Giants')),"the Stone Giants blurb no longer promises Mountain Bulwark");
