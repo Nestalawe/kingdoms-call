@@ -59,6 +59,11 @@ CREATE POLICY "only Game Masters create games" ON "public"."games"
   TO "authenticated"
   WITH CHECK (((gm_user_id = ( SELECT auth.uid() AS uid)) AND ( SELECT public.is_game_master() AS is_game_master) AND (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
 
+-- Deleting a game removes its Dispatches read markers (P0-23): game_message_reads has no foreign key, and the GM
+-- can't read them.
+CREATE TRIGGER "games_delete_message_reads" AFTER DELETE ON "public"."games"
+  FOR EACH ROW EXECUTE FUNCTION public.games_delete_message_reads();
+
 REVOKE ALL ON TABLE "public"."games" FROM "anon";
 
 REVOKE ALL ON TABLE "public"."games" FROM "authenticated";
