@@ -182,9 +182,10 @@ table.kc td.num,table.kc th.num{text-align:right;font-variant-numeric:tabular-nu
 // deliberate — the alternative, reading turn_events here, is tens of megabytes per visit and would
 // repeat the 2026-09-25 Disk-IO fault.
 //
-// GM MODE. Opened from the GM portal the link carries ?gm=1. Edit controls appear only if the
-// signed-in account is a real GM (it owns at least one row in `games`), and the table's own policy
-// enforces the same thing server-side, so ?gm=1 by itself grants nothing.
+// GM MODE. Opened from the GM portal the link carries ?gm=1. Edit controls appear only for the signed-in
+// account's own games' entries (it owns at least one row in `games`), or every entry for the Overlord, who
+// alone renames players (P0-22, rulings D-09, D-11). The database enforces the same, so ?gm=1 by itself
+// grants nothing.
 if(typeof KC_CONFIG==='undefined') throw new Error('kc-config.js did not load: reload the page.');
 const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
@@ -192,9 +193,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN='20261011025524';
+const KC_DB_MIN='20261012064100';
 
-let GAMES=[], TAB='champions', GM=false, ME=null, PEOPLE={};
+let GAMES=[], TAB='champions', GM=false, OVERLORD=false, ME=null, PEOPLE={};
+// May the signed-in account edit this entry? Its GM, or the Overlord (the database's rule, P0-22).
+const canEdit=g=>OVERLORD||!!(ME&&g&&g.gm_user_id===ME.id);
 // ── REALM ≠ PLAYER ────────────────────────────────────────────────────────────────────────────
 // A realm name is per game — the same person rules Aranthia one season and the Vale the next. The
 // PERSON is their auth account, and their name lives in `profiles.name`. Every player statistic on
@@ -372,12 +375,13 @@ async function loadAll(force){
     const {data:{session}}=await sb.auth.getSession();
     ME=session?session.user:null;
   }catch(e){ ME=null; }
-  GM=false;
+  GM=false; OVERLORD=false;
   if(ME&&new URLSearchParams(location.search).get('gm')==='1'){
     try{
-      const {data}=await sb.from('games').select('id').eq('gm_user_id',ME.id).limit(1);
-      GM=!!(data&&data.length);
-    }catch(e){ GM=false; }
+      const [{data},ov]=await Promise.all([sb.from('games').select('id').eq('gm_user_id',ME.id).limit(1),sb.rpc('is_site_admin')]);
+      OVERLORD=!!(ov&&!ov.error&&ov.data===true);
+      GM=OVERLORD||!!(data&&data.length);
+    }catch(e){ GM=false; OVERLORD=false; }
   }
   $('gm-pill').innerHTML=GM?'<span class="btn btn-gold" style="cursor:default">✏ GM editing on</span>':'';
   $('show-hidden-wrap').style.display=GM?'inline-flex':'none';
@@ -482,7 +486,7 @@ function render(){
   else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
   else el.innerHTML=renderGames(G);
   const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
-  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.11-1559 · most recent game recorded '+dstr(last);
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.12-2027 · most recent game recorded '+dstr(last);
 }
 
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
@@ -537,10 +541,10 @@ function renderChampions(G){
   let html='';
   if(GM) html+=lbDiagnostics(G);
   html+='<div class="card"><h2>🏆 Champions — the players</h2>';
-  html+='<div class="muted" style="margin-bottom:9px">One line per person, however many realms they have ruled. Realm names change from game to game; the player does not.'+(GM?' As a Game Master you can correct a player’s name here — it changes their name everywhere on the board, past games included.':'')+'</div>';
+  html+='<div class="muted" style="margin-bottom:9px">One line per person, however many realms they have ruled. Realm names change from game to game; the player does not.'+(OVERLORD?' As the Overlord you can correct a player’s name here — it changes their name everywhere on the board, past games included.':'')+'</div>';
   if(!rows.length) html+='<div class="msg-info">No human players in the games that match these filters.</div>';
   else{
-    html+='<table class="kc" id="champ-table"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms ruled</th>'+(GM?'<th></th>':'')+'</tr>';
+    html+='<table class="kc" id="champ-table"><tr><th>#</th><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th>Win rate</th><th class="num">Top 3</th><th class="num">Avg rank</th><th class="num">Best score</th><th class="num">Titles</th><th>Realms ruled</th>'+(OVERLORD?'<th></th>':'')+'</tr>';
     rows.forEach((r,i)=>{
       const rl=[...r.realms];
       html+=`<tr><td>${i+1}</td><td><strong>${esc(r.name)}</strong></td><td class="num">${r.games}</td><td class="num">${r.wins}</td>`
@@ -548,7 +552,7 @@ function renderChampions(G){
         +`<td class="num">${r.podium}</td><td class="num">${r.ranked?(r.rankSum/r.ranked).toFixed(1):'—'}</td>`
         +`<td class="num">${nf(r.best)}</td><td class="num">${r.titles}</td>`
         +`<td class="muted">${esc(rl.slice(0,4).join(', '))}${rl.length>4?' +'+(rl.length-4):''}</td>`
-        +(GM?`<td>${r.uid?`<button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="renamePlayer('${esc(r.uid)}')">✏</button>`:'<span class="muted" title="This player has no account on record — nothing to rename">—</span>'}</td>`:'')
+        +(OVERLORD?`<td>${r.uid?`<button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="renamePlayer('${esc(r.uid)}')">✏</button>`:'<span class="muted" title="This player has no account on record — nothing to rename">—</span>'}</td>`:'')
         +'</tr>';
     });
     html+='</table><div id="rename-msg"></div>';
@@ -670,7 +674,7 @@ function renderPeoples(G){
 // —— GAMES ————————————————————————————————————————————————————————————————————————————————————
 function renderGames(G){
   let html='<div class="card"><h2>📜 Every recorded game</h2>';
-  html+='<div class="muted" style="margin-bottom:9px">Newest first. Click a game to see its final standings.'+(GM?' As a Game Master you can rename a game, change its date, add a note, hide it from the board, or delete it.':'')+'</div>';
+  html+='<div class="muted" style="margin-bottom:9px">Newest first. Click a game to see its final standings.'+(GM?(OVERLORD?' As the Overlord you can rename any game, change its date, add a note, hide it from the board, or delete it.':' As a Game Master you can rename your own games, change their date, add a note, hide them from the board, or delete them.'):'')+'</div>';
   html+='<table class="kc"><tr><th>Date</th><th>Game</th><th class="num">Turns</th><th>Realms</th><th>Bots</th><th>Map</th><th>Won by</th><th>How</th>'+(GM?'<th></th>':'')+'</tr>';
   G.forEach(g=>{
     const s=g.setup||{}, bots=s.bots||0, humans=s.humans!=null?s.humans:((s.realms||0)-bots);
@@ -684,7 +688,7 @@ function renderGames(G){
       +`<td class="muted">${esc(mapKey(g)||'—')}${s.seaPct!=null?' · '+s.seaPct+'% sea':''}</td>`
       +`<td>${esc(g.winner_realm||'—')}${winnerName(g)?' <span class="muted">('+esc(winnerName(g))+')</span>':(g.winner_is_bot?' <span class="pill pill-grey">bot</span>':'')}</td>`
       +`<td class="muted">${esc(g.victory||'—')}</td>`
-      +(GM?`<td><button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="event.stopPropagation();toggleEdit('${esc(g.game_id)}')">✏</button></td>`:'')
+      +(GM?`<td>${canEdit(g)?`<button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="event.stopPropagation();toggleEdit('${esc(g.game_id)}')">✏</button>`:''}</td>`:'')
       +'</tr>';
     html+=`<tr id="det-${esc(g.game_id)}" style="display:none"><td colspan="${GM?9:8}">${gameDetail(g)}</td></tr>`;
   });
@@ -703,7 +707,7 @@ function gameDetail(g){
   h+='</table>';
   const t=g.totals||{};
   h+=`<div class="muted" style="margin-top:7px">${nf(t.battles||0)} battles · ${nf(t.casualties||0)} units destroyed · ${nf(t.captures||0)} provinces changed hands · ${nf(t.lairs||0)} lair fights · ${nf(t.spells||0)} spells cast · ${nf(t.deaths||0)} characters killed · started ${dstr(g.started_at)}${GM?' · recorded by <code>'+esc(g.build||'unknown')+'</code>':''}</div>`;
-  if(GM){
+  if(GM&&canEdit(g)){
     const d=(g.finished_at||'').slice(0,10);
     h+=`<div class="gmbox" id="edit-${esc(g.game_id)}" style="display:none">
       <h4>Game Master — edit this record</h4>
@@ -746,16 +750,10 @@ async function setHidden(id,hide){
   const g=GAMES.find(x=>x.game_id===id); if(g) g.hidden=hide;
   render();
 }
-// ── GM: correct a player's name ───────────────────────────────────────────────────────────────
-// Writes `profiles.name`, the one place a person's name lives. Nothing in game_records is
-// rewritten: the board reads names live, so the change shows on every past game at once. A GM
-// needs an UPDATE policy on `profiles` covering other people's rows; the default policy usually
-// only lets an account edit itself, so the exact statement is shown if the write is refused.
-const KC_PROFILE_SQL=`drop policy if exists "gm rename players" on public.profiles;
-create policy "gm rename players" on public.profiles
-  for update to authenticated
-  using (exists (select 1 from public.games g where g.gm_user_id = auth.uid()))
-  with check (exists (select 1 from public.games g where g.gm_user_id = auth.uid()));`;
+// ── The Overlord: correct a player's name ─────────────────────────────────────────────────────
+// rename_player (P0-22, ruling D-11) writes `profiles.name`, the one place a person's name lives, and nothing
+// else; the Overlord only. Nothing in game_records is rewritten: the board reads names live, so the change shows
+// on every past game at once.
 async function renamePlayer(uid){
   const cur=PEOPLE[uid]||'';
   const name=prompt('Player name on the leaderboard.\n\nThis is the person, not their realm — it changes on every game they have played.',cur);
@@ -763,11 +761,9 @@ async function renamePlayer(uid){
   const t=name.trim();
   const msg=$('rename-msg');
   if(!t){ if(msg) msg.innerHTML='<div class="msg-warning">A player needs a name — nothing changed.</div>'; return; }
-  const {error}=await sb.from('profiles').update({name:t}).eq('id',uid);
+  const {error}=await sb.rpc('rename_player',{p_user:uid,p_name:t});
   if(error){
-    if(msg) msg.innerHTML='<div class="msg-error"><strong>Could not rename that player.</strong> '+esc(error.message)+
-      '<br>Most likely the <code>profiles</code> table only lets an account edit its own row. To let any Game Master correct a name, run this once in Supabase → SQL Editor:'+
-      '<textarea readonly onclick="this.select()" style="width:100%;height:92px;font-family:monospace;font-size:.7rem;margin:6px 0 0;background:#fdf8ee">'+esc(KC_PROFILE_SQL)+'</textarea></div>';
+    if(msg) msg.innerHTML='<div class="msg-error"><strong>Could not rename that player.</strong> '+esc(error.message)+'</div>';
     return;
   }
   PEOPLE[uid]=t;
@@ -794,7 +790,7 @@ async function deleteRecord(id,purge){
 
 kcDbGuard(sb,KC_DB_MIN).then(()=>loadAll());
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.11-1559</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.12-2027</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

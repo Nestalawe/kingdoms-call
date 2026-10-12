@@ -46,6 +46,8 @@ const SUITE=[
   ['gm-offer-and-gate',    'tests/gm-offer-and-gate.test.js'],
   ['other-realms-slots',   'tests/other-realms-slots.test.js'],
   ['profiles-no-email',    'tests/profiles-no-email.test.js'],
+  ['hall-of-fame-controls','tests/hall-of-fame-controls.test.js'],
+  ['stats-forget-deleted', 'tests/stats-forget-deleted.test.js'],
   ['meta-missing-turn',    'tests/meta-missing-turn.test.js'],
   ['turn-fuzz',            'tests/turn-fuzz.test.js',            FULL?['16','12']:['4','6']],
   ['home-placement',       'tests/home-placement.test.js',       [], {RUNS:FULL?'1000':'200'}],
