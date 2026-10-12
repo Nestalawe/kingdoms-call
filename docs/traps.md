@@ -316,3 +316,13 @@ schema file doesn't take those away: the file must say `REVOKE ALL … FROM "ano
 doesn't just leave a new table open: it **gives back** what an earlier migration took away, the next time
 anyone generates a migration (it nearly happened in P0-29). `supabase/tests/database/00_privileges.test.sql`
 checks every table, sequence and function, so either mistake turns the `db` check red.
+
+## A stacked pull request merges into its base branch, not `main`
+
+A site pull request stacked on its database pull request ([staging.md](staging.md#a-change-that-needs-both))
+targets the database change's branch. GitHub moves it onto `main` only when that branch is **deleted**
+after its merge. If the branch stays, merging the stacked pull request puts it on the leftover branch: GitHub
+says "Merged", nothing deploys (P0-20's site half and P0-21 did this, and were opened again as #56 and #57).
+The `merges-into-main` check (`.github/workflows/merges-into-main.yml`) is red on any pull request whose base
+isn't `main`; don't merge one while it's red. When you open a stacked pull request, say in its first line
+which pull request must be merged first.
