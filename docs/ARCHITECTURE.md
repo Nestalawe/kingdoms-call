@@ -144,8 +144,8 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | Table | Holds |
 |---|---|
 | `profiles` | One row per account: display name |
-| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below) |
-| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report` |
+| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below). Created only by a Game Master, in their own name; never by the Overlord (P0-32d) |
+| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's (P0-32d) |
 | `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log) |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
@@ -162,7 +162,9 @@ Functions, would add a server runtime and deploy path, and isn't used):
 
 - **Access rules** (row-level security) on the table, with the page reading or writing it directly. Use them
   for **plain reads and writes of a row**: who may see which rows, who may insert, update or delete their own.
-  Most tables work this way.
+  Most tables work this way. Rules are normally permissive: a write is allowed if any one allows it. A
+  **restrictive** rule is ANDed with them instead, so it narrows a write without rewriting the others ("only
+  Game Masters create games" on `games`, "the Overlord holds no realm" on `game_players`, P0-32d).
 - **Database functions** that the page calls by name (`rpc`), on a table no API role may write. Use them for
   **actions with conditions**, which rules express badly:
   - the check spans other tables (`gm_revoke` is refused while that GM runs an unfinished game);

@@ -57,6 +57,21 @@ CREATE POLICY "gp6" ON "public"."game_players"
    FROM public.games
   WHERE (games.gm_user_id = auth.uid()))));
 
+-- The Overlord never holds a realm (P0-32d, D-13): no slot is added or changed to be theirs. Rows for other
+-- accounts and bot rows (no account) are untouched. Restrictive: it narrows every other rule.
+CREATE POLICY "the Overlord holds no realm (insert)" ON "public"."game_players"
+  AS RESTRICTIVE
+  FOR INSERT
+  TO "authenticated"
+  WITH CHECK (((user_id IS DISTINCT FROM ( SELECT auth.uid() AS uid)) OR (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
+
+CREATE POLICY "the Overlord holds no realm (update)" ON "public"."game_players"
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO "authenticated"
+  USING (true)
+  WITH CHECK (((user_id IS DISTINCT FROM ( SELECT auth.uid() AS uid)) OR (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
+
 REVOKE ALL ON TABLE "public"."game_players" FROM "anon";
 
 REVOKE ALL ON TABLE "public"."game_players" FROM "authenticated";
