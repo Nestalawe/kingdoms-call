@@ -18004,7 +18004,7 @@ const BATTLE_ARMY_SPELLS={
     // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now
     // (stacking).
     consumeTerror(prov, defArmies, narrative);
-    for(const [_f,_h,_hn,_ar] of [[_fearAtk,atk,atkName,atkArmies],[_fearDef,def,defName,defArmies]]){
+    for(const [_f,_h,_hn,_ar] of [[_fearAtk,atk,atk.name,atkArmies],[_fearDef,def,def.name,defArmies]]){
       if(_f&&(G.players[_h.player]?.alignment)==='Evil'&&_ar.some(a=>a&&MONSTER_ARMIES.has(a.type))) narrative.push(`💀 Reign of Fear — ${prov.name} still cowers under ${_hn}'s Terror, and the monsters of the host fight at ×${REIGN_OF_FEAR_MULT}.`);
     }
 
