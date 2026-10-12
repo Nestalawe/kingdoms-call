@@ -113,14 +113,20 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   to the defender) take the roll or one either side and line up second, then gives each commander one swap
   per Tactical level (`battleBestSwap`, every swap judged with both sides faced); `battleFacing` reads the two
   grids against each other (matchups by unit type, wrapping, flank duels and guards, a turned flank) and its
-  totals are the strengths the dice see. Both battle paths score through deploy and facing, the stay-or-retreat
+  totals are the strengths the dice see. The units' own abilities sit on the same grid: `abilityFront` and
+  `abilityBack` adjust one matchup, `battleFaceSide` the cases that read the whole line, `battleGrid` who may
+  take a flank; the volley helpers (`missileDamageMult`, `abilityVolleys`, `missileTargetPool`,
+  `archeryBlockedBy`) and `unitAbilityMult` carry the rest ([traps.md](traps.md#a-unit-ability-is-written-in-four-places)). Both battle paths score through deploy and facing, the stay-or-retreat
   estimate through grid and facing; the bots' estimates (`battleLineTotal`, at the middle width) through the
   grid alone. The report prints the grid as 📊 lines, which the portals draw in
   monospace, and the ladder names every place and matchup.
 - **Unit fates** (`rollUnitFates`, module level beside `disbandLine`). After a battle, each unit of a player's
   force rolls once for its fate (a beaten survivor twice); the four casualty sections (the attacker winning or
   losing against a province's guard, a realm battle's winner and loser) all call it, passing their own
-  thresholds and verbs, and a test passes its own dice.
+  thresholds and verbs, and a test passes its own dice. Each line names whom the company fought
+  (`battleFacedClauses`, a map read from the deploy's grids right after the deploy, before the stay-or-retreat
+  estimate faces the survivors afresh); the losses tally (`battleTallyLine`) reads a line's owner and unit
+  type from the company named first in it, which is always the company's own reference.
 - **Engine functions are nested inside `runTurn`** (combat, terrain modifiers, …). Tests reach them by
   injecting code at exact source lines (see [tests/README.md](../tests/README.md#code-anchor-hooks)).
   Phase 1 of the roadmap lifts them out into modules.

@@ -14,5 +14,16 @@ ok(/SHOOTER, not the target: 30% of the firing unit/.test(gm),'the engine commen
 const word=`${Math.round(pct*100)}% of the shooting unit`;
 ok(rules.includes(word)&&!rules.includes('20% of the shooting unit'),`the rulebook's Archery text says "${word}" and no longer 20%`);
 ok(pp.includes(word)&&!pp.includes('20% of the shooting unit'),`the player portal's archery blurb says "${word}" and no longer 20%`);
+// 2026-10-12 (the wrap-up batch): the rulebook's worked example follows the constants — a shot is
+// round(strength × MISSILE_SHOT_PCT × (1 + MISSILE_ARCH_PER_LVL × Archery)), minimum 1 (missileShotDamage): Average
+// Longbows (8) do 2, Elite (20) do 6, or 9 at Archery 5 — and the engine comment beside the cap gives the cap's own
+// figure (MISSILE_CAP_FRACTION, doubled for a winged rider), not the figure it had before the cap was raised.
+const lvl=/MISSILE_ARCH_PER_LVL=(0\.\d+)/.exec(gm), per=lvl?+lvl[1]:NaN;
+const cap=/MISSILE_CAP_FRACTION=(0\.\d+)/.exec(gm), capPct=cap?Math.round(+cap[1]*100):NaN;
+ok(!!lvl&&!!cap,'the GM portal declares MISSILE_ARCH_PER_LVL and MISSILE_CAP_FRACTION');
+const shot=(s,arch)=>Math.max(1,Math.round(s*pct*(1+per*arch)));
+const example=`Average Yeoman Longbows (strength 8) do ${shot(8,0)}; Elite Longbows (20) do ${shot(20,0)}, or ${shot(20,5)} at Archery 5.`;
+ok(rules.includes(example),`the rulebook's worked example follows the constants: "${example}"`);
+ok(new RegExp(`What a TARGET can lose is capped: ${capPct}% of its own[\\s/]+base strength \\(${capPct*2}% for a winged rider`).test(gm),`the engine comment beside the cap says ${capPct}% (${capPct*2}% for a winged rider)`);   // the comment wraps between "own" and "base"
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail?1:0);

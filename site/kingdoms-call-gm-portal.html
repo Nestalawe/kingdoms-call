@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.11-2340';
+const KC_DATA_MIN='2026.10.12-0010';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.12-1348'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.12-1358'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -448,37 +448,41 @@ const KC_BUILD_STAMP='2026.10.12-1348'; // this build (the footer shows the same
 // instead.
 //
 // Cost is BOTH the recruitment price and the per-turn wage: a unit costs its price again every turn
-// it exists.
+// it exists. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2, Shadow Archers 3→4, Ironwood
+// Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR). tests/roster holds both.
 const ARMY_COST_MASTER={
   // ── Human ──
   'Shieldwall Levies':2,'Free Lances':3,'Yeoman Longbows':2,'Gilded Lances':4,'Human Garrison':1,
-  'Noble Griffons':4,'Galleon Fleet':3,'Corsair Fleet':3,
+  'Noble Griffons':4,'Galleon Fleet':3,'Corsair Fleet':3,'Men-at-Arms':3,
   // ── Elven ──
-  'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':3,'Elven Garrison':1,
-  'Eagle Riders':4,'Elven Galleys':3,'Whale Cohort':3,
+  'Elven Bowmen':3,'Forest Wardens':2,'Shadow Archers':4,'Elven Garrison':1,
+  'Eagle Riders':4,'Elven Galleys':3,'Whale Cohort':3,'Stag Riders':3,
   // ── Dwarven ──
-  'Dwarven Guard':3,'Ironwood Crossbows':3,'Mountain Guns':4,'Dwarf Garrison':1,
-  'Gnomish Gyrocopters':3,'Dwarf Ironclads':4,
+  'Dwarven Guard':3,'Ironwood Crossbows':2,'Mountain Guns':4,'Dwarf Garrison':1,
+  'Gnomish Gyrocopters':3,'Dwarf Ironclads':4,'Ironhoof Rams':3,
   // ── Orcish ──
   'Warg Riders':3,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
-  'Wyvern Riders':4,'Orcish Longships':3,
+  'Wyvern Riders':4,'Orcish Longships':3,'Black Arrows':2,
   // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), and
   // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
 };
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_COST_MASTER[t]=d.cost; });
+// 2026-10-11 (Toby, the army roster): land move rates by kind — garrisons 1; line foot, archers and
+// guns 2; heavy horse and the special foot (Wardens, Berserkers, Shadow Archers) 3; light horse 4;
+// the winged riders 5 (Gyrocopters 4). tests/roster holds this table to the decided roster.
 const ARMY_SPEED_MASTER={
   // ── Human ──
-  'Shieldwall Levies':3,'Free Lances':4,'Yeoman Longbows':3,'Gilded Lances':4,'Human Garrison':1,
-  'Noble Griffons':5,'Galleon Fleet':3,'Corsair Fleet':4,
+  'Shieldwall Levies':2,'Free Lances':4,'Yeoman Longbows':2,'Gilded Lances':3,'Human Garrison':1,
+  'Noble Griffons':5,'Galleon Fleet':3,'Corsair Fleet':4,'Men-at-Arms':2,
   // ── Elven ──
-  'Elven Bowmen':3,'Forest Wardens':3,'Shadow Archers':4,'Elven Garrison':1,
-  'Eagle Riders':5,'Elven Galleys':4,'Whale Cohort':5,
+  'Elven Bowmen':2,'Forest Wardens':3,'Shadow Archers':3,'Elven Garrison':1,
+  'Eagle Riders':5,'Elven Galleys':4,'Whale Cohort':5,'Stag Riders':4,
   // ── Dwarven ──
-  'Dwarven Guard':2,'Ironwood Crossbows':2,'Mountain Guns':1,'Dwarf Garrison':1,
-  'Gnomish Gyrocopters':4,'Dwarf Ironclads':2,
+  'Dwarven Guard':2,'Ironwood Crossbows':2,'Mountain Guns':2,'Dwarf Garrison':1,
+  'Gnomish Gyrocopters':4,'Dwarf Ironclads':2,'Ironhoof Rams':3,
   // ── Orcish ──
-  'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':3,'Orc Garrison':1,
-  'Wyvern Riders':5,'Orcish Longships':3,
+  'Warg Riders':4,'Orc Berserkers':3,'Goblin Horde':2,'Orc Garrison':1,
+  'Wyvern Riders':5,'Orcish Longships':3,'Black Arrows':2,
   // Primal units: speed written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.js), added below.
 };
 Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t,d])=>{ ARMY_SPEED_MASTER[t]=d.speed; });
@@ -512,12 +516,12 @@ function demoteOrDisband(a){
   a._disbanded=true;
   return true;
 }
-function disbandLine(owner,a){
+function disbandLine(owner,a,clause){
   // 2026-09-23d: a unit NAMED "the …" reads "the Pale Shades (Vervain's Shadow Archers)", never
-  // "Vervain's the Pale Shades" (same rule as unitRef).
+  // "Vervain's the Pale Shades" (same rule as unitRef). `clause` (2026-10-12): whom they fought, after the name.
   const _core=(a.unitName&&/^the\s/i.test(a.unitName))?`${a.unitName} (${owner?owner+"'s ":''}${a.type})`
     :`${owner?owner+"'s ":''}${a.unitName?a.unitName+' ('+a.type+')':a.type}`;
-  return `— ${_core} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
+  return `— ${_core}${clause?`, ${clause},`:''} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
 }
 // "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
 // never "Atk's the Red Hand" (2026-09-23d). Module level since 2026-10-11 (they were inside runTurn).
@@ -545,27 +549,37 @@ function unitRef(ownerName, a){
 //   o.diedVerb / o.promoteVerb  the site's wording ("were annihilated in the rout!", "are hardened by
 //                victory to"); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
 //                "All other forces survive" line reads it); o.say receives each unit's line.
+//   o.faced      (2026-10-12, Toby: who beat whom) a Map army → clause, or a function of the army, from
+//                battleFacedClauses: each line puts it after the company's own reference — "Aldric's Levies
+//                (Shieldwall Levies, Average), facing the Iron Halberds (Gorbash's Men-at-Arms), were
+//                annihilated in the rout!". Without it the lines read as they always did.
 // Returns {died, promoted, demoted, disbanded, held, survived}.
 function rollUnitFates(force, o){
   const rng=o.rng||Math.random, tiers=o.tiers||QUALITY_TIERS, say=o.say||(()=>{}), ref=o.unitRef||unitRef, who=o.owner||'';
   const dust=a=>a._isSkeletal?' Their bones crumble to dust — gone forever.':'';
   const diedVerb=o.diedVerb||(o.won?'were destroyed in the fighting.':'were destroyed in the rout!'), promoteVerb=o.promoteVerb||'earn promotion to';
+  const clauseOf=a=>{ const f=o.faced; if(!f||!a) return ''; const c=typeof f==='function'?f(a):(typeof f.get==='function'?f.get(a):null); return c?String(c):''; };
+  const head=(a,q0)=>{ const c=clauseOf(a); return ref(who,q0?{...a,quality:q0}:a)+(c?`, ${c},`:''); };
   const r={died:0,promoted:0,demoted:0,disbanded:0,held:0,survived:0};
+  // HUMAN — Knightly Example (2026-10-11, Toby): with a Gilded Lances unit in the army, Levies and
+  // Men-at-Arms never lose a tier in defeat (they hold, as under a Shield Fort). o.knightly overrides.
+  const knightly=o.knightly!=null?!!o.knightly:(force||[]).some(a=>a&&a.type==='Gilded Lances');
   (force||[]).forEach(a=>{
     if(!a) return;
     const idx=tiers.indexOf(a.quality), roll=rng();
-    if(roll<o.dieAt(a)){ a._died=true; r.died++; say(`— ${ref(who,a)} ${diedVerb}${dust(a)}`); return; }
+    if(roll<o.dieAt(a)){ a._died=true; r.died++; say(`— ${head(a)} ${diedVerb}${dust(a)}`); return; }
     if(a._isSkeletal){ r.survived++; return; }
     if(o.won){
-      if(roll<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— ${ref(who,{...a,quality:q0})} ${promoteVerb} ${a.quality}!`); }
+      if(roll<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— ${head(a,q0)} ${promoteVerb} ${a.quality}!`); }
       else r.survived++;
       return;
     }
     const roll2=rng();
     if(roll2<o.demoteAt(a)){
-      if(o.shieldFort){ r.held++; say(`— ${ref(who,a)} fall back behind the shield wall in good order.`); }
-      else { const q0=a.quality; if(demoteOrDisband(a)){ r.disbanded++; say(disbandLine(who,a)); } else { r.demoted++; if(o.notable) a._notable=true; say(`— ${ref(who,{...a,quality:q0})} lost heart in defeat, reduced to ${a.quality}.`); } }
-    } else if(roll2<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— Despite defeat, ${ref(who,{...a,quality:q0})} improved to ${a.quality}!`); }
+      if(o.shieldFort){ r.held++; say(`— ${head(a)} fall back behind the shield wall in good order.`); }
+      else if(knightly&&(a.type==='Shieldwall Levies'||a.type==='Men-at-Arms')){ r.held++; say(`— ${head(a)} keep their nerve under the Knightly Example of the Gilded Lances and lose nothing in defeat.`); }
+      else { const q0=a.quality; if(demoteOrDisband(a)){ r.disbanded++; say(disbandLine(who,a,clauseOf(a))); } else { r.demoted++; if(o.notable) a._notable=true; say(`— ${head(a,q0)} lost heart in defeat, reduced to ${a.quality}.`); } }
+    } else if(roll2<o.promoteTo(a)&&idx>=0&&idx<4){ const q0=a.quality; a.quality=tiers[idx+1]; r.promoted++; if(o.notable) a._notable=true; say(`— Despite defeat, ${head(a,q0)} improved to ${a.quality}!`); }
     else r.survived++;
   });
   return r;
@@ -609,15 +623,21 @@ function battleTallyLine(texts){
   // attacker cut down after the defender's list) is still credited to the side it names.
   const _heads=[]; T.forEach(s=>{ const h=s.match(BATTLE_CAS_HEAD_RE); if(h&&!_heads.some(x=>x.role===h[3])) _heads.push({name:h[2],role:h[3]}); });
   const sideFor=role=>{ let sd=sides.find(x=>x.role===role); if(!sd){ const h=_heads.find(x=>x.role===role); sd={name:h?h.name:role,role,lost:[],fled:[],dem:0,pro:0}; sides.push(sd); } return sd; };
-  const ownerSide=s=>{ const hit=_heads.filter(h=>s.startsWith(`— ${h.name}'s `)||s.includes(`(${h.name}'s `)).sort((a,b)=>b.name.length-a.name.length)[0]; return hit?sideFor(hit.role):null; };
+  // 2026-10-12 (Toby: who beat whom): a fate line now names the ENEMY company too ("…, facing the Red Hand
+  // (Aldric's Gnomish Gyrocopters), were annihilated…"), so the owner and the type are read from the company
+  // named FIRST — its own reference always opens the line — not from the longest match anywhere in it.
+  const ownerSide=s=>{ const body=s.replace(/^— (Despite defeat, )?/,''); let best=null;
+    _heads.forEach(h=>{ const i1=body.startsWith(`${h.name}'s `)?0:-1, i2=body.indexOf(`(${h.name}'s `); const i=[i1,i2].filter(x=>x>=0).sort((a,b)=>a-b)[0];
+      if(i==null) return; if(!best||i<best.i||(i===best.i&&h.name.length>best.h.name.length)) best={i,h}; });
+    return best?sideFor(best.h.role):null; };
   const typeOf=(s,role)=>{
     const R=roster[role]||[];
-    // the type printed in the line wins ("the Red Hand (Def's Giant Eagles, Crack)"); a bare unit
+    // the type printed first in the line wins ("the Red Hand (Def's Giant Eagles, Crack)"); a bare unit
     // name ("— the Red Hand are cut down") is looked up on the side's roster.
-    const types=[...new Set(R.map(a=>a.type))].filter(ty=>s.includes(ty)).sort((a,b)=>b.length-a.length);
-    if(types[0]) return types[0];
-    const byName=R.filter(a=>a.unitName&&a.unitName!==a.type&&s.includes(a.unitName)).sort((a,b)=>b.unitName.length-a.unitName.length)[0];
-    return byName?byName.type:null;
+    const types=[...new Set(R.map(a=>a.type))].map(ty=>({ty,i:s.indexOf(ty)})).filter(x=>x.i>=0).sort((a,b)=>a.i-b.i||b.ty.length-a.ty.length);
+    if(types[0]) return types[0].ty;
+    const byName=R.filter(a=>a.unitName&&a.unitName!==a.type&&s.includes(a.unitName)).map(a=>({a,i:s.indexOf(a.unitName)})).sort((x,y)=>x.i-y.i||y.a.unitName.length-x.a.unitName.length)[0];
+    return byName?byName.a.type:null;
   };
   const _atkForceName=(()=>{ const f=T.find(s=>s.startsWith('\u2691FORCE\u2691')&&/"role":"attacker"/.test(s)); try{ return f?JSON.parse(f.slice(7)).name:''; }catch(_){ return ''; } })();
   T.forEach(s=>{
@@ -717,10 +737,10 @@ function battleRole(row, terrain){
   return 'foot';
 }
 // Short unit codes for the grid print (5 characters; a type not listed uses its first 5 letters).
-const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr',
-  'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr',
-  'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr',
-  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Whale Cohort':'Whale',
+const UNIT_SHORT={'Shieldwall Levies':'Levy','Free Lances':'FreeL','Yeoman Longbows':'Bow','Gilded Lances':'Gild','Noble Griffons':'Grif','Galleon Fleet':'Gall','Corsair Fleet':'Cors','Human Garrison':'Garr','Men-at-Arms':'MaA',
+  'Elven Bowmen':'EBow','Forest Wardens':'Ward','Shadow Archers':'Shad','Eagle Riders':'Eagl','Elven Galleys':'Gally','Elven Garrison':'Garr','Stag Riders':'Stag',
+  'Dwarven Guard':'Guard','Ironwood Crossbows':'Xbow','Mountain Guns':'Gun','Gnomish Gyrocopters':'Gyro','Dwarf Ironclads':'Iron','Dwarf Garrison':'Garr','Ironhoof Rams':'Ram',
+  'Warg Riders':'Warg','Orc Berserkers':'Bers','Goblin Horde':'Gob','Wyvern Riders':'Wyv','Orcish Longships':'Long','Orc Garrison':'Garr','Black Arrows':'BlkAr','Whale Cohort':'Whale',
   'Stone Giants':'Giant','Forest Ents':'Ent','Giant Eagles':'GEagl','Crimson Rocs':'Roc','Cave Trolls':'Troll','Manticore Pride':'Manti','Basilisk Brood':'Basil','Sea Giants':'SeaGt','Kraken Tentacles':'Krakn','Elder Dragons':'Drago','Titan Warbeasts':'Titan','Leviathan Pods':'Levia',
   'Air Elemental':'AirEl','Fire Elemental':'FirEl','Earth Elemental':'ErtEl','Water Elemental':'WatEl','Darkness Elemental':'DrkEl'};
 function shortUnit(row){ const t=(row&&row.a&&row.a.type)||(row&&row.name)||'unit'; return UNIT_SHORT[t]||String(t).replace(/[^A-Za-z]/g,'').slice(0,5); }
@@ -738,8 +758,16 @@ function battleGrid(rows, width, terrain, opts){
   const byS=(a,b)=>b.s-a.s;
   const fly=R.filter(x=>x.role==='fly').sort(byS);
   let cav=R.filter(x=>x.role==='cav').sort(byS);
-  const slots=BATTLE_FLANK_TERRAINS.has(terrain)?tac+1:0;
-  const flanks=cav.slice(0,slots); cav=cav.slice(slots);
+  // Flank slots (Unit abilities, 2026-10-11): on open ground Tactical + 1 riders; on rough ground one, and
+  // only for the cavalry bred for it (Stag Riders in forest and jungle: Through the Trees; Ironhoof Rams
+  // in the mountains: Crag Charge); none at sea. On open ground a slot no rider fills may be held by
+  // Eagle Riders (Stoop on the Horses), who leave the air for the flank.
+  const open=BATTLE_FLANK_TERRAINS.has(terrain);
+  const slots=open?tac+1:(terrain==='sea'?0:1);
+  let flanks=[];
+  if(open){ flanks=cav.slice(0,slots); cav=cav.slice(slots); }
+  else if(slots){ const i=cav.findIndex(x=>abilityFlanksRough(x,terrain)); if(i>=0){ flanks=[cav[i]]; cav=cav.filter((_,k)=>k!==i); } }
+  if(open&&flanks.length<slots){ const eagles=fly.filter(x=>typeOfX(x)==='Eagle Riders').slice(0,slots-flanks.length); eagles.forEach(e=>{ flanks.push(e); fly.splice(fly.indexOf(e),1); }); }
   const seaFirst=x=>(terrain==='sea'&&x.r.a&&GRID_SEA_TYPES.has(x.r.a.type))?1:0;   // at sea the hulls hold the front
   const fighters=R.filter(x=>x.role==='foot').concat(cav).sort((a,b)=>(seaFirst(b)-seaFirst(a))||byS(a,b));
   const arcs=R.filter(x=>x.role==='arc').sort(byS);
@@ -768,7 +796,9 @@ function battleGrid(rows, width, terrain, opts){
 function battleRegrid(g){
   const W=g.W, mults=g.mults||BATTLE_LINE_MULTS, cap=g.cap==null?Infinity:g.cap; const units=[]; let total=0;
   const put=(x,place,col,mult,why)=>{ const s={place,col,mult,why}; x.r._g=s; units.push({row:x.r,place,col,mult,why}); total+=x.s*mult; };
-  g.front.forEach((x,c)=>{ if(x) put(x,'front',c,x.role==='arc'?BATTLE_RANGED_IN_FRONT:1,x.role==='arc'?'ranged in the front line':'front line'); });
+  g.front.forEach((x,c)=>{ if(!x) return;
+    if(x.role==='arc'&&typeOfX(x)==='Black Arrows') put(x,'front',c,1,'Brawling Archers in the front line');   // the orcs' archers fight hand to hand at full strength
+    else put(x,'front',c,x.role==='arc'?BATTLE_RANGED_IN_FRONT:1,x.role==='arc'?'ranged in the front line':'front line'); });
   g.second.forEach((x,c)=>{ if(!x) return; const f=g.front[c];
     if(x.role==='arc'&&f&&f.role!=='arc') put(x,'second',c,1,'shooting over the '+shortUnit(f.r)); else put(x,'second',c,mults[1],'second line'); });
   g.reserve.forEach((x,k)=>put(x,'reserve',k,k<W?mults[2]:mults[3],k<W?'reserve':'deep reserve'));
@@ -821,6 +851,47 @@ const BATTLE_FACING={
 };
 const faceMult=(t,a,b)=>{ const r=t&&t[a]; const m=r&&r[b]; return typeof m==='number'?m:1; };
 const backMult=r=>{ const m=BATTLE_FACING.back[r]; return typeof m==='number'?m:1; };
+// ── UNIT ABILITIES IN THE LINE (2026-10-11, Toby) ── Every humanoid unit has a matchup ability, read here
+// when a unit meets another (faces, is met by, duels, guards) or shoots over its fighter, and one more
+// ability, some of which also live here (Shieldwall, Sergeants, Driven Before Them, Terror From Above,
+// Dive on the Bowmen, Flak Gunners, the flank slots above) and the rest in the volley, fate and
+// end-of-turn code. Each returns the multiplier and the names that moved it, for the ladder and the
+// report. tests/abilities-* hold every one of them.
+const ABILITY_WOODS=new Set(['forest','jungle']);
+const GRID_GARRISON_TYPES=new Set(KC_UNIT_CLASS.garrison);
+const typeOfX=x=>x&&x.r&&x.r.a&&x.r.a.type;
+const abilityHas=(g,type)=>!!g&&['front','second','reserve','flanks','fly'].some(k=>(g[k]||[]).some(x=>x&&typeOfX(x)===type));
+// The cavalry that may take the one flank slot rough ground allows.
+function abilityFlanksRough(x, terrain){ const t=typeOfX(x); return (ABILITY_WOODS.has(terrain)&&t==='Stag Riders')||(terrain==='mountain'&&t==='Ironhoof Rams'); }
+// x meets e (both placed cells {r, role, s}): the role matchup, then x's ability, then e's. where:
+// 'front' (facing or met), 'duel' (flank riders), 'guard' (a rider guarding a line end); meIsAtk: x's side attacks.
+function abilityFront(x, e, terrain, where, meIsAtk){
+  const t=typeOfX(x), et=typeOfX(e); let m=faceMult(BATTLE_FACING.front,x.role,e.role); const names=[];
+  if(t==='Men-at-Arms'&&e.role==='cav'){ m=1.25; names.push('Halberds'); }
+  if(t==='Gilded Lances'&&e.role==='foot'){ m=1.15; names.push('Lance Charge'); }
+  if(t==='Orc Berserkers'&&e.role==='foot'){ m*=1.15; names.push('Frenzy'); }
+  if(t==='Warg Riders'&&e.role==='cav'){ m=1.25; names.push('Wolves Panic Horses'); }
+  if(t==='Eagle Riders'&&e.role==='cav'){ m=1.25; names.push('Stoop on the Horses'); }
+  if(t==='Free Lances'&&where==='duel'){ m*=1.15; names.push('Harriers'); }
+  if(t==='Forest Wardens'&&ABILITY_WOODS.has(terrain)){ m*=1.15; names.push('Woodland Skirmish'); }
+  if(t==='Orc Garrison'&&!meIsAtk&&e.role==='foot'){ m*=1.15; names.push('Bloodthirsty'); }
+  if(et==='Shieldwall Levies'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Spear Hedge'); }
+  if(et==='Dwarven Guard'&&x.role==='foot'){ m*=0.85; names.push('Unbreakable'); }
+  if(et==='Dwarf Garrison'&&x.role==='foot'&&terrain==='mountain'){ m*=0.9; names.push('Stone Halls'); }
+  if(et==='Elven Garrison'&&x.role==='cav'&&ABILITY_WOODS.has(terrain)){ m*=0.85; names.push('Thorn Hedge'); }
+  return {m, why:names.map(n=>', '+n).join('')};
+}
+// x, a second-line ranged unit, shoots e, an enemy front unit.
+function abilityBack(x, e){
+  const t=typeOfX(x), et=typeOfX(e); let m=backMult(e.role); const names=[];
+  if(t==='Yeoman Longbows'&&e.role==='cav'){ m=1; names.push('Bodkin Points'); }
+  if(t==='Elven Bowmen'&&e.role==='cav'){ m=1.25; names.push('Volley at the Charge'); }
+  if(t==='Shadow Archers'&&e.role==='arc'){ m=1.25; names.push('Marksmen'); }
+  if(t==='Ironwood Crossbows'&&(UNIT_BASE_STR[et]||0)>=6){ m*=1.25; names.push('Armour-Piercing'); }
+  if(t==='Mountain Guns'){ m*=1.15; names.push('Bombard'); }
+  if(et==='Goblin Horde'){ m*=0.75; names.push('Arrow Fodder'); }
+  return {m, why:names.map(n=>', '+n).join('')};
+}
 // The engagement: each side's span of the front, the columns where it overlaps the enemy's span
 // (nearest the centre first), how many flank duels there are, and which overlapping enemy columns each
 // side's spare riders cover (alternating sides, nearest first). Riders left after that ride free.
@@ -834,8 +905,9 @@ function battleEngage(gA,gD){
     while(e.free>0&&(o.L.length||o.R.length)){ const s=o[side].length?side:(side==='L'?'R':'L'); e.blocking.push({col:o[s].shift(),side:s}); e.free--; side=side==='L'?'R':'L'; } }
   return E;
 }
-// Face one side against the other. me / them: the two grids (same W); mine / theirs: their engagement.
-function battleFaceSide(me, them, mine, theirs, terrain){
+// Face one side against the other. me / them: the two grids (same W); mine / theirs: their engagement;
+// meIsAtk: `me` is the attacker (Hold the Gate and Bloodthirsty belong to a defending garrison).
+function battleFaceSide(me, them, mine, theirs, terrain, meIsAtk){
   const byRow=new Map(me.units.map(u=>[u.row,u]));
   const units=[]; let total=0;
   const put=(x,m,kind,vs,why)=>{ const u=byRow.get(x.r); const pm=u?u.mult:1; const f={m,kind,vs:vs?vs.r:null,why}; if(x.r._g) x.r._g.face=f; x.r._faced=f;
@@ -848,34 +920,49 @@ function battleFaceSide(me, them, mine, theirs, terrain){
   const endHit=new Set(); if(idx.length){ if(hitL) endHit.add(idx[0]); if(hitR) endHit.add(idx[idx.length-1]); }
   const footish=x=>!!x&&x.role==='foot';
   const anchored=idx.length>0&&footish(me.front[idx[0]])&&footish(me.front[idx[idx.length-1]]);
-  const turned=BATTLE_FLANK_TERRAINS.has(terrain)&&theirs.free>0&&!anchored;
-  me.front.forEach((x,c)=>{ if(!x) return; const e=them.front[c]; let m=1, kind='even', vs=null, why=shortUnit(x.r);
-    if(e){ vs=e; m=faceMult(BATTLE_FACING.front,x.role,e.role); kind='faces'; why+=` v ${shortUnit(e.r)}`; }
+  const freeRiders=them.flanks.slice(theirs.duel+theirs.blocking.length);
+  const rams=freeRiders.some(x=>typeOfX(x)==='Ironhoof Rams');                             // Battering Horns: a free Ram turns even an anchored line
+  const turned=BATTLE_FLANK_TERRAINS.has(terrain)&&freeRiders.length>0&&(!anchored||rams);
+  // Terror From Above: with Wyvern Riders on the other side, my strongest front unit fights ×0.85.
+  let terrorCol=-1; if(abilityHas(them,'Wyvern Riders')) me.front.forEach((x,c)=>{ if(x&&(terrorCol<0||x.s>me.front[terrorCol].s)) terrorCol=c; });
+  me.front.forEach((x,c)=>{ if(!x) return; const e=them.front[c]; const t=typeOfX(x); let m=1, kind='even', vs=null, why=shortUnit(x.r);
+    if(e){ vs=e; const f=abilityFront(x,e,terrain,'front',meIsAtk); m=f.m; kind='faces'; why+=` v ${shortUnit(e.r)}${f.why}`; }
     else if(myOver.has(c)){ const g=guardOf.get(c);
-      if(g){ vs=g; m=faceMult(BATTLE_FACING.front,x.role,g.role); kind='met'; why+=` met by ${shortUnit(g.r)}`; }
+      if(g){ vs=g; const f=abilityFront(x,g,terrain,'front',meIsAtk); m=f.m; kind='met'; why+=` met by ${shortUnit(g.r)}${f.why}`; }
       else { const ts=theirs.span; vs=ts?them.front[c<ts[0]?ts[0]:ts[1]]:null; m=BATTLE_FACING.wrap; kind='wraps'; why+=' wraps the end'; } }
-    if(endHit.has(c)){ m*=BATTLE_FACING.sideHit; why+=', hit from the side'; }
+    if(endHit.has(c)){ const held=t==='Dwarven Guard'?'Unbreakable':(!meIsAtk&&GRID_GARRISON_TYPES.has(t))?'Hold the Gate':null;   // never hit from the side
+      if(held) why+=`, ${held}`; else { m*=BATTLE_FACING.sideHit; why+=', hit from the side'; } }
+    const s=me.second[c];
+    if((t==='Shieldwall Levies'||t==='Human Garrison')&&s&&s.role==='arc'){ m*=1.25; why+=', Shieldwall'; }   // Town Watch: a garrison counts as Levies
+    if(t==='Shieldwall Levies'&&[c-1,c+1].some(j=>me.front[j]&&typeOfX(me.front[j])==='Men-at-Arms')){ m*=1.1; why+=', Sergeants'; }
+    if(t==='Orc Berserkers'){ const n=[c-1,c+1].filter(j=>me.front[j]&&typeOfX(me.front[j])==='Goblin Horde').length; if(n){ const g=1+Math.min(0.3,0.1*n); m*=g; why+=`, Driven Before Them ×${g.toFixed(1)}`; } }
+    if(c===terrorCol){ m*=0.85; why+=', Terror From Above'; }
     put(x,m,kind,vs,why); });
+  // Dive on the Bowmen: with Noble Griffons on the other side, my strongest shooting archer fights ×0.75.
+  let dive=null; if(abilityHas(them,'Noble Griffons')) me.second.forEach((x,c)=>{ const f=me.front[c]; if(x&&x.role==='arc'&&f&&f.role!=='arc'&&(!dive||x.s>dive.s)) dive=x; });
   me.second.forEach((x,c)=>{ if(!x) return; const f=me.front[c];
-    if(x.role==='arc'&&f&&f.role!=='arc'){ const e=them.front[c]; let m=1, why=shortUnit(x.r);
-      if(e){ m=backMult(e.role); why+=` shoots ${shortUnit(e.r)}`; } else why+=' shoots at an empty column';
-      if(turned){ m*=BATTLE_FACING.turned; why+=', flank turned'; }
+    if(x.role==='arc'&&f&&f.role!=='arc'){ let e=them.front[c]; let m=1, why=shortUnit(x.r);
+      if(typeOfX(x)==='Shadow Archers'){ const cands=them.front.filter(Boolean); if(cands.length) e=cands.reduce((b,y)=>abilityBack(x,y).m*y.s>abilityBack(x,b).m*b.s?y:b); }   // Marksmen: they pick the best target along the line
+      if(e){ const b=abilityBack(x,e); m=b.m; why+=` shoots ${shortUnit(e.r)}${b.why}`; } else why+=' shoots at an empty column';
+      if(turned){ m*=BATTLE_FACING.turned; why+=(rams&&anchored)?', flank turned (Battering Horns)':', flank turned'; }
+      if(x===dive){ m*=0.75; why+=', Griffon dive'; }
       put(x,m,e?'shoots':'even',e||null,why); }
     else put(x,1,'even',null,shortUnit(x.r)); });
   me.reserve.forEach(x=>put(x,1,'even',null,shortUnit(x.r)));
   me.flanks.forEach((x,i)=>{
-    if(i<mine.duel){ const e=them.flanks[i]; put(x,faceMult(BATTLE_FACING.front,x.role,e.role),'duel',e,`${shortUnit(x.r)} duels ${shortUnit(e.r)}`); }
-    else if(i<mine.duel+mine.blocking.length){ const e=them.front[mine.blocking[i-mine.duel].col]; put(x,e?faceMult(BATTLE_FACING.front,x.role,e.role):1,'guards',e||null,`${shortUnit(x.r)} guards the end v ${e?shortUnit(e.r):'nobody'}`); }
+    if(i<mine.duel){ const e=them.flanks[i]; const f=abilityFront(x,e,terrain,'duel',meIsAtk); put(x,f.m,'duel',e,`${shortUnit(x.r)} duels ${shortUnit(e.r)}${f.why}`); }
+    else if(i<mine.duel+mine.blocking.length){ const e=them.front[mine.blocking[i-mine.duel].col]; const f=e?abilityFront(x,e,terrain,'guard',meIsAtk):{m:1,why:''}; put(x,f.m,'guards',e||null,`${shortUnit(x.r)} guards the end v ${e?shortUnit(e.r):'nobody'}${f.why}`); }
     else put(x,BATTLE_FACING.freeFlank,'free',null,`${shortUnit(x.r)} rides free`); });
-  me.fly.forEach(x=>put(x,1,'even',null,shortUnit(x.r)));
+  const enemyFlyers=them.fly.length>0||them.flanks.some(x=>x.role==='fly');
+  me.fly.forEach(x=>{ if(typeOfX(x)==='Gnomish Gyrocopters'&&enemyFlyers) put(x,1.25,'faces',null,`${shortUnit(x.r)}, Flak Gunners`); else put(x,1,'even',null,shortUnit(x.r)); });
   return {total,units,turned,anchored,duels:mine.duel,guarding:mine.blocking.length,free:mine.free};
 }
 // Both sides at once (the engagement is shared). Stamps g.face on each grid; g.face.total is the
-// strength the dice see.
+// strength the dice see. gA is the attacker's grid.
 function battleFacing(gA,gD,terrain){
   if(!gA||!gD) return null;
   const E=battleEngage(gA,gD);
-  gA.face=battleFaceSide(gA,gD,E.A,E.D,terrain); gD.face=battleFaceSide(gD,gA,E.D,E.A,terrain);
+  gA.face=battleFaceSide(gA,gD,E.A,E.D,terrain,true); gD.face=battleFaceSide(gD,gA,E.D,E.A,terrain,false);
   return {atk:gA.face,def:gD.face};
 }
 // The ladder's stage: every matchup that moved a figure, grouped, then how many stood even.
@@ -886,6 +973,37 @@ function battleFacingStage(g){
   const parts=[...groups].map(([k,n])=>n>1?`${k} (${n} units)`:k);
   if(even) parts.push(`${even} even`);
   return parts.join('; ');
+}
+// ── WHO EACH COMPANY FOUGHT (2026-10-12, Toby: the battle reports say who beat whom) ── From a faced grid, a
+// map army → the clause its fate line carries: "facing X", "shooting X over the line", "in a flank duel with
+// X", "guarding the end against X", "wrapping the line at X", "met at the end of the line by X", "riding free
+// round the flank", "fighting from the air", "in the second line", "in the reserve", "shooting at an empty
+// column", "with nobody opposite" — X the enemy company as ownedUnitName writes it (enemyOwner is that side's
+// name). Read it right after the deploy, while the rows still carry the deploy's facing: the stay-or-retreat
+// estimate faces the survivors afresh later.
+function battleFacedClauses(g, enemyOwner){
+  const m=new Map(); if(!g||!Array.isArray(g.units)) return m;
+  g.units.forEach(u=>{
+    const r=u&&u.row, f=r&&r._faced; if(!r||!r.a) return;
+    const vs=(f&&f.vs&&f.vs.a)?ownedUnitName(enemyOwner,f.vs.a):null; let c=null;
+    if(vs) switch(f.kind){
+      case 'faces': c=`facing ${vs}`; break;
+      case 'met': c=`met at the end of the line by ${vs}`; break;
+      case 'wraps': c=`wrapping the line at ${vs}`; break;
+      case 'shoots': c=`shooting ${vs} over the line`; break;
+      case 'duel': c=`in a flank duel with ${vs}`; break;
+      case 'guards': c=`guarding the end against ${vs}`; break;
+      default: c=null; }
+    if(!c){ const k=f?f.kind:'', p=u.place;
+      if(k==='free') c='riding free round the flank';
+      else if(k==='wraps') c='wrapping the end of the line';
+      else if(k==='guards') c='guarding the end of the line';
+      else if(p==='air'||r.fly) c='fighting from the air';
+      else if(p==='reserve') c='in the reserve';
+      else if(p==='second') c=/empty column/.test((f&&f.why)||'')?'shooting at an empty column':'in the second line';
+      else c='with nobody opposite'; }
+    m.set(r.a,c); });
+  return m;
 }
 // ── THE SCOUT'S ADVANTAGE AND THE LINE-UP (Battle lines III, 2026-10-11, Toby) ── The side that knows
 // the ground better (the higher exploration of the province; a province's own guard or garrison knows
@@ -1139,26 +1257,35 @@ function isHalfOrMore(force,type){
   const n=(force||[]).length;
   return n>0 && countType(force,type)*2>=n;
 }
+// DWARF — Shield Fort's gate (2026-10-11, Toby, the unit abilities): at least half the FRONT LINE is
+// Dwarven Guard, a Dwarf Garrison counting as Guard (Deep Halls). Without a placed grid (an estimate)
+// it reads half the force, as it did before.
+function shieldFortHolds(force, grid){
+  if(grid&&Array.isArray(grid.front)){
+    const cells=grid.front.filter(Boolean);
+    const n=cells.filter(x=>{ const t=typeOfX(x); return t==='Dwarven Guard'||t==='Dwarf Garrison'; }).length;
+    return n>0&&n*2>=cells.length;
+  }
+  return isHalfOrMore(force,'Dwarven Guard');
+}
 
+// The orc foot that count for Sheer Numbers.
+const ORC_FOOT_TYPES=new Set(['Goblin Horde','Orc Berserkers','Orc Garrison']);
 // ── Force-composition strength multipliers (applied inside armStr) ──
 function unitAbilityMult(army, ctx, terrain){
   if(!army||!ctx) return 1;
   const t=army.type, force=ctx.force||[], enemy=ctx.enemyForce||[];
   const enemyHasMissile=enemy.some(a=>a&&MISSILE_ARMIES_MASTER.has(a.type));
   let m=1;
-  // HUMAN — Shieldwall: levies lock shields when there are enough of them to form a line.
-  if(t==='Shieldwall Levies' && countType(force,'Shieldwall Levies')>=2) m*=1.25;
-  // HUMAN — Shock of the Charge: heavy horse win by charging, not by standing.
-  if(t==='Gilded Lances' && ctx.isAttacker) m*=1.40;
-  // ORC — Sheer Numbers: goblins are worth little alone and a great deal in a mob.
+  // 2026-10-11 (Toby, the unit abilities): Shieldwall now lives in the line (battleFaceSide: Levies with an
+  // archer behind them), and the Gilded Lances' Shock of the Charge (+40% attacking) is retired; their
+  // abilities are Lance Charge and Knightly Example. The Berserkers' old ratio bonus went with the
+  // roster PR; theirs are Frenzy and Driven Before Them (battleFaceSide).
+  // ORC — Sheer Numbers: goblins are worth little alone and a great deal in a mob — +10% per other orc
+  // foot unit in the force (Goblin Hordes, Berserkers, the Orc Garrison), to +30%.
   if(t==='Goblin Horde'){
-    const others=Math.max(0,countType(force,'Goblin Horde')-1);
+    const others=Math.max(0,force.filter(a=>a&&ORC_FOOT_TYPES.has(a.type)).length-1);
     m*=1+Math.min(0.30,others*0.10);
-  }
-  // ORC — Outnumbered and Uncaring: berserkers fight harder the worse the odds get.
-  if(t==='Orc Berserkers' && force.length>0 && enemy.length>force.length){
-    const excess=(enemy.length-force.length)/force.length;
-    m*=1+Math.min(0.30, Math.floor(excess/0.25)*0.10);
   }
   // ORC — Reaver Crews: troops put ashore by longships hit the beach at a run.
   if(ctx.amphibious) m*=1.25;
@@ -1189,6 +1316,8 @@ function abilityMissileUnits(force, terrain){
   const list=(force||[]).filter(a=>MISSILE_ARMIES_MASTER.has(a.type));
   // HUMAN — Broadside: at sea a galleon is a floating battery.
   if(terrain==='sea') (force||[]).forEach(a=>{ if(a.type==='Galleon Fleet') list.push(a); });
+  // ELF — Tree Watch: in forest or jungle the Elven Garrison shoots like an archer unit.
+  if(terrain==='forest'||terrain==='jungle') (force||[]).forEach(a=>{ if(a&&a.type==='Elven Garrison') list.push(a); });
   // DWARF — Bombardment: the guns speak first, so they get the clear shot before the cap fills.
   list.sort((a,b)=>((b.type==='Mountain Guns')?1:0)-((a.type==='Mountain Guns')?1:0));
   return list;
@@ -1215,35 +1344,47 @@ function missileCapReached(target, firer){
 // still below their arrow cap; only when none is left does it pick at random among ALL the other
 // enemy units below their cap (no "front row" any more). Shadow Archers stay hidden while anything
 // else is visible (Loosed From Cover). `frontWidth` is ignored — kept so old callers still work.
-function missileTargetPool(enemyArmies, frontWidth, firer){
+function missileTargetPool(enemyArmies, frontWidth, firer, myForce){
   const all=(enemyArmies||[]).filter(Boolean);
-  const visible=all.filter(a=>a.type!=='Shadow Archers');
+  // ELF — Eyes of the Forest: with Eagle Riders overhead nothing hides, Shadow Archers included.
+  const visible=eyesOfTheForest(myForce)?all:all.filter(a=>a.type!=='Shadow Archers');
   const src=visible.length?visible:all;
   const live=u=>!missileCapReached(u, firer);
   const fly=src.filter(u=>FLYING_TYPES.has(u.type) && live(u));
   if(fly.length) return fly;
   return src.filter(u=>live(u));
 }
-// ELF — Ambush: enemy archers never get a clear shot at Wardens in their own woods.
-function archeryBlockedBy(defenderForce, terrain){
+// ELF — Ambush: enemy archers never get a clear shot at Wardens in their own woods — unless Eagle Riders
+// fly with the shooters (Eyes of the Forest, 2026-10-11): then the Wardens are seen and the volley flies.
+function eyesOfTheForest(force){ return (force||[]).some(a=>a&&a.type==='Eagle Riders'); }
+function archeryBlockedBy(defenderForce, terrain, shooters){
   if(terrain!=='forest'&&terrain!=='jungle') return false;
+  if(eyesOfTheForest(shooters)) return false;
   return (defenderForce||[]).some(a=>a&&a.type==='Forest Wardens');
 }
-// Per-shot damage multipliers from the firing unit's ability.
-function missileDamageMult(firer, force, terrain, target){
+// The line the report shows when Eyes of the Forest lifts an Ambush (null when it does not apply).
+function eyesOfTheForestLine(defenderForce, terrain, shooters, shooterName){
+  if(terrain!=='forest'&&terrain!=='jungle'||!eyesOfTheForest(shooters)) return null;
+  if(!(defenderForce||[]).some(a=>a&&a.type==='Forest Wardens')) return null;
+  return `🦅 ${shooterName}'s Eagle Riders mark the Forest Wardens in the thickets — the Ambush is spoiled and the volley flies.`;
+}
+// Per-shot damage multipliers from the firing unit's ability. isAtk: the firer's side attacks.
+// 2026-10-11 (Toby, the unit abilities): the Longbows' Massed Volley is retired (theirs are Bodkin Points
+// and Prepared Ground); the Black Arrows' Raiders' Volley arrives.
+function missileDamageMult(firer, force, terrain, target, isAtk){
   if(!firer) return 1;
   let m=1;
-  // HUMAN — Massed Volley: longbows are a weapon of concentration, not of individuals.
-  if(firer.type==='Yeoman Longbows'){
-    const others=(force||[]).filter(a=>a!==firer&&MISSILE_ARMIES_MASTER.has(a.type)).length;
-    m*=1+Math.min(0.30,others*0.10);
-  }
   // ELF — Woodland Volley: elven bows in elven woods.
   if(firer.type==='Elven Bowmen'&&(terrain==='forest'||terrain==='jungle')) m*=2;
   // DWARF — Bombardment: siege guns are built for breaking fortifications.
   if(firer.type==='Mountain Guns'&&target&&/Garrison/.test(target.type||'')) m*=1.5;
+  // ORC — Raiders' Volley: the Black Arrows loose hardest going forward.
+  if(firer.type==='Black Arrows'&&isAtk) m*=1.5;
   return m;
 }
+// Prepared Ground: a defending Longbow company looses two volleys. How many shots a unit fires this
+// phase, before any quiver the commander carries.
+function abilityVolleys(firer, isAtk){ return (firer&&firer.type==='Yeoman Longbows'&&!isAtk)?2:1; }
 
 // ── DWARF — Flak Screen ── Each Gyrocopter harries ONE enemy flying unit (-30%). A unit already
 // engaged by one gyrocopter cannot be picked again in the same battle, so N gyrocopters tie up N
@@ -2577,9 +2718,15 @@ const COASTAL_NAVAL_CHANCE=0.80;
 // shipyard province turns out TWO hulls a season, not one. Every province offering one of these
 // five types raises its per-turn recruit cap for that type from 1 to 2, the same allowance
 // garrisons have had. Fleets are the slowest thing in the game to accumulate (one race, one hull
-// type, only on a coast) and a navy was taking twice as long to build as an army. Read by
-// getRecruitLimit (the engine's gate) and by BOTH order-form `maxPerTurn` payloads.
+// type, only on a coast) and a navy was taking twice as long to build as an army. Read through
+// twoATurn below.
 const HUMANOID_FLEET_TYPES=new Set(['Galleon Fleet','Corsair Fleet','Elven Galleys','Dwarf Ironclads','Orcish Longships']);
+// The types a province raises TWO of in a turn: garrison units, the humanoid fleets, and — 2026-10-11
+// (Toby, the army roster, decision 9) — the Goblin Horde wherever it is offered (the horde's numbers are
+// its point). Everything else is one a turn outside the founder's own capital, which turns out two of
+// anything. Read by getRecruitLimit (the engine's gate) and by the order form's `maxPerTurn` payload
+// (buildTurnReport); tests/goblins-two-a-turn holds the two together.
+function twoATurn(armyType){ const t=String(armyType||''); return t.toLowerCase().includes('garrison')||HUMANOID_FLEET_TYPES.has(t)||t==='Goblin Horde'; }
 const SEA_TYPES_GEN=new Set(KC_UNIT_CLASS.sea);
 
 // DRUID ARMY LEVEL TABLE — a commander's Druid must be >= a unit's level, or it fights at −20% per
@@ -12507,7 +12654,7 @@ function buildTurnReport(gameState, playerIndex){
       // Primal sea beasts are only offered where they can actually be summoned: at sea.
       armyTypes:(p.armyTypes||[]).filter(at=>!(PRIMAL_SEA_NAMES.has(at)&&p.terrain!=='sea')).map(at=>({
         type:at, cost:realmRecruitCost((gameState.players||[])[playerIndex],at,ARMY_COST_OD[at]||2), // realm discounts shown in the preview
-        maxPerTurn:(at.toLowerCase().includes('garrison')||HUMANOID_FLEET_TYPES.has(at))?2:isHome?2:1,
+        maxPerTurn:(twoATurn(at)||isHome)?2:1, // the same gate as getRecruitLimit (garrisons, fleets, Goblin Hordes; two of anything at the founder's capital)
       })),
       features:(()=>{
         const total=(p.features||[]).length;
@@ -12843,8 +12990,8 @@ function discSumOf(pl, kind, field, pred){
   let s=0; discEffectsOf(pl,kind).forEach(e=>{ if(!pred||pred(e)) s+=(e[field]||0); }); return s;
 }
 const DISC_CLS_SETS={
-  cavalry:new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']),
-  infantry:new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']),
+  cavalry:new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons','Stag Riders','Ironhoof Rams']),
+  infantry:new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers','Men-at-Arms']),
   missile:new Set(KC_UNIT_CLASS.missile),
   fleet:new Set(KC_UNIT_CLASS.carrier),
   flyer:new Set(KC_UNIT_CLASS.aerial),
@@ -12892,10 +13039,10 @@ function realmRecruitCost(pl, armyType, baseCost){
   discEffectsOf(pl,'recruitCost').forEach(e=>{ if(!discUnitMatch(e, armyType, true)) return; if(e.delta) c+=e.delta; if(e.factor) c=Math.ceil(c*e.factor); });
   return Math.max(1,c);
 }
-const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeoman Longbows':'Human','Gilded Lances':'Human','Human Garrison':'Human',
-  'Elven Bowmen':'Elven','Forest Wardens':'Elven','Shadow Archers':'Elven','Eagle Riders':'Elven','Elven Galleys':'Elven','Elven Garrison':'Elven',
-  'Dwarven Guard':'Dwarven','Ironwood Crossbows':'Dwarven','Mountain Guns':'Dwarven','Dwarf Ironclads':'Dwarven','Gnomish Gyrocopters':'Dwarven','Dwarf Garrison':'Dwarven',
-  'Warg Riders':'Orcish','Orc Berserkers':'Orcish','Goblin Horde':'Orcish','Wyvern Riders':'Orcish','Orcish Longships':'Orcish','Orc Garrison':'Orcish'};
+const ARMY_RACE_OF_TYPE={'Shieldwall Levies':'Human','Free Lances':'Human','Yeoman Longbows':'Human','Gilded Lances':'Human','Human Garrison':'Human','Men-at-Arms':'Human',
+  'Elven Bowmen':'Elven','Forest Wardens':'Elven','Shadow Archers':'Elven','Eagle Riders':'Elven','Elven Galleys':'Elven','Elven Garrison':'Elven','Stag Riders':'Elven',
+  'Dwarven Guard':'Dwarven','Ironwood Crossbows':'Dwarven','Mountain Guns':'Dwarven','Dwarf Ironclads':'Dwarven','Gnomish Gyrocopters':'Dwarven','Dwarf Garrison':'Dwarven','Ironhoof Rams':'Dwarven',
+  'Warg Riders':'Orcish','Orc Berserkers':'Orcish','Goblin Horde':'Orcish','Wyvern Riders':'Orcish','Orcish Longships':'Orcish','Black Arrows':'Orcish','Orc Garrison':'Orcish'};
 
 
 
@@ -14103,12 +14250,17 @@ const TERRAIN_MODS={
   // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
   // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
   // bonus (see unitAbilityMult).
+  // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
+  // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
+  // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
+  // ×1.1 (Guard, Crossbows, Guns). tests/roster holds every cell to the decided roster.
   plain:{
-    'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.0,
-    'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.80,
+    'Men-at-Arms':1.10,'Stag Riders':1.10,'Ironhoof Rams':1.0,'Black Arrows':1.0,
+    'Shieldwall Levies':1.10,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':1.10,
+    'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':1.0,
     'Shadow Archers':0.90,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
     'Mountain Guns':0.85,'Dwarf Garrison':0.90,'Warg Riders':1.10,
-    'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
+    'Orc Berserkers':1.0,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.0,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
@@ -14118,11 +14270,12 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   desert:{
+    'Men-at-Arms':1.0,'Stag Riders':1.0,'Ironhoof Rams':0.90,'Black Arrows':1.0,
     'Shieldwall Levies':1.0,'Free Lances':1.15,'Gilded Lances':1.15,'Yeoman Longbows':0.90,
-    'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.80,
+    'Human Garrison':0.90,'Elven Bowmen':0.80,'Forest Wardens':0.90,
     'Shadow Archers':0.85,'Dwarven Guard':0.90,'Ironwood Crossbows':1.0,
     'Mountain Guns':0.85,'Dwarf Garrison':0.85,'Warg Riders':1.10,
-    'Orc Berserkers':1.05,'Goblin Horde':0.90,'Orc Garrison':0.90,
+    'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':0.90,
     'Elven Garrison':0.85,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
     'Whale Cohort':1.0,'Noble Griffons':1.0,
@@ -14132,8 +14285,9 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   forest:{
+    'Men-at-Arms':0.90,'Stag Riders':1.10,'Ironhoof Rams':0.90,'Black Arrows':0.90,
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':0.85,
-    'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.20,
+    'Human Garrison':1.0,'Elven Bowmen':1.15,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.90,'Ironwood Crossbows':0.90,
     'Mountain Guns':0.80,'Dwarf Garrison':0.90,'Warg Riders':0.90,
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
@@ -14146,8 +14300,9 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   jungle:{
+    'Men-at-Arms':0.85,'Stag Riders':1.0,'Ironhoof Rams':0.85,'Black Arrows':0.90,
     'Shieldwall Levies':0.85,'Free Lances':0.70,'Gilded Lances':0.70,'Yeoman Longbows':0.80,
-    'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.20,
+    'Human Garrison':1.0,'Elven Bowmen':1.10,'Forest Wardens':1.10,
     'Shadow Archers':1.10,'Dwarven Guard':0.85,'Ironwood Crossbows':0.85,
     'Mountain Guns':0.75,'Dwarf Garrison':0.85,'Warg Riders':0.80,
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
@@ -14160,10 +14315,11 @@ const TERRAIN_MODS={
     'Sea Giants':1.0,'Kraken Tentacles':1.0,'Leviathan Pods':1.0,
   },
   mountain:{
+    'Men-at-Arms':0.90,'Stag Riders':0.85,'Ironhoof Rams':1.0,'Black Arrows':0.90,
     'Shieldwall Levies':0.90,'Free Lances':0.75,'Gilded Lances':0.75,'Yeoman Longbows':1.0,
     'Human Garrison':1.0,'Elven Bowmen':1.0,'Forest Wardens':0.85,
-    'Shadow Archers':1.0,'Dwarven Guard':1.20,'Ironwood Crossbows':1.15,
-    'Mountain Guns':1.20,'Dwarf Garrison':1.15,'Warg Riders':0.80,
+    'Shadow Archers':1.0,'Dwarven Guard':1.10,'Ironwood Crossbows':1.10,
+    'Mountain Guns':1.10,'Dwarf Garrison':1.15,'Warg Riders':0.80,
     'Orc Berserkers':0.90,'Goblin Horde':0.90,'Orc Garrison':0.90,
     'Elven Garrison':0.90,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
@@ -14227,9 +14383,9 @@ function curseSkillLabel(stat){ return stat==='naval'?'Naval command':stat==='dr
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
 // SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a
 // veteran company hits harder than a green one), +10% per level of the commander's Archery,
-// × the firing unit's own ability (Massed Volley, Woodland Volley, Bombardment), rounded, minimum 1.
-// Winged riders take double and are shot first. What a TARGET can lose is capped: 30% of its own
-// base strength (60% for a winged rider; Ironwood Crossbows' Punch Through lifts both — see
+// × the firing unit's own ability (Woodland Volley, Bombardment, Raiders' Volley), rounded, minimum 1.
+// Winged riders take double and are shot first. What a TARGET can lose is capped: 40% of its own
+// base strength (80% for a winged rider; Ironwood Crossbows' Punch Through lifts both to 55% / 90% — see
 // missileCap). The 25% pre-battle floor below still applies on top.
 const MISSILE_SHOT_PCT=0.30, MISSILE_ARCH_PER_LVL=0.10, MISSILE_CAP_FRACTION=0.40;   // 2026-10-11 (Toby): volleys 20% → 30%
 function missileShotDamage(firer, archSkill, dmgMult){
@@ -14441,9 +14597,9 @@ function seaPenalty(armyType, terrain){
     const _preItems=str;
     if(heroChar&&heroChar.items&&heroChar.items.length){
       const has=(st)=>activeItems(heroChar).some(it=>it.effect&&it.effect.stat===st);
-      const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons']);
-      const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers']);
-      const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows']);
+      const CAV_I=new Set(['Free Lances','Gilded Lances','Warg Riders','Eagle Riders','Noble Griffons','Stag Riders','Ironhoof Rams']);
+      const INF_I=new Set(['Shieldwall Levies','Dwarven Guard','Orc Berserkers','Men-at-Arms']);
+      const ARCH_I=new Set(['Yeoman Longbows','Elven Bowmen','Shadow Archers','Ironwood Crossbows','Black Arrows']);
       const HEAVY_I=new Set(['Mountain Guns','Dwarf Ironclads']);
       const FLEET_I=new Set(KC_UNIT_CLASS.carrier);
       if(has('armyBonus')) str+=2;                                   // Battle Standard
@@ -15018,12 +15174,8 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`✝ Righteous Defence — the defenders of ${prov.name} stand on ground they hold justly (+10% defence).`);
     }
     if(activeItems(c).some(it=>it.effect&&it.effect.stat==='siegeBonus')){ defBonus=1+(defBonus-1)*0.5; narrative.push(`  🏰 ${cName}'s siege mastery halves the defenders' fortifications.`); }
-    // ORC — Terror From Above. Neutral guards never roll for fanaticism, so there is no morale to
-    // strip; the wyverns instead shake the defence itself, cutting the defenders' bonus by 10%.
-    if((c.armies||[]).some(a=>a&&a.type==='Wyvern Riders')){
-      defBonus=Math.max(1, defBonus*0.90);
-      narrative.push(`🐉 Wyverns wheel above ${prov.name} — the defenders keep one eye on the sky and their line is the worse for it (−10% defensive bonus).`);
-    }
+    // (The Wyverns' cut to a neutral defence's bonus, Dread's stand-in here, was retired with the unit
+    // abilities, 2026-10-11: Terror From Above bears on the strongest front unit, in battleFaceSide.)
     // home ground belongs ONLY to the province's founding owner — their own garrison defending it
     // (×1.2, i.e. ×1.5 total with the defender's edge), or the founder attacking to win their
     // captured capital back (×1.5). Any other holder gets nothing.
@@ -15186,8 +15338,9 @@ const BATTLE_ARMY_SPELLS={
         prov.neutralDefenders=(prov.neutralDefenders||[]).filter(a=>!a._sunk);
       }
     })();
-    const missileAtk=archeryBlockedBy(defenders,prov.terrain)?[]:abilityMissileUnits(armies, prov.terrain);
-    if(archeryBlockedBy(defenders,prov.terrain)&&armies.some(a=>MISSILE_ARMIES.has(a.type)))
+    { const _eyes=eyesOfTheForestLine(defenders,prov.terrain,armies,cName); if(_eyes) narrative.push(_eyes); }   // ELF — Eyes of the Forest
+    const missileAtk=archeryBlockedBy(defenders,prov.terrain,armies)?[]:abilityMissileUnits(armies, prov.terrain);
+    if(archeryBlockedBy(defenders,prov.terrain,armies)&&armies.some(a=>MISSILE_ARMIES.has(a.type)))
       narrative.push(`🌲 ${cName}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`);
     if(missileAtk.length>0&&defenders.length>0){
       narrative.push(`🏹 **Pre-battle Archery Phase** — ${missileAtk.length} ranged unit${missileAtk.length!==1?'s':''}${hasQuiver?' (Quiver of the Hawk: double volleys)':''}${_manyArrows?' (Quiver of Many Arrows: +1 shot)':''}`);
@@ -15197,10 +15350,10 @@ const BATTLE_ARMY_SPELLS={
         for(let v=0;v<volleys;v++){
           // Archers loose at the enemy's flyers first if any are present (double damage vs flyers);
           // otherwise they target a random front-row defender.
-          const pool=missileTargetPool(defenders, 0, atk); // winged riders first, else any random target not yet at its cap
+          const pool=missileTargetPool(defenders, 0, atk, armies); // winged riders first, else any random target not yet at its cap (Eyes of the Forest reads the shooters' force)
           if(!pool.length) break;
           const target=pool[Math.floor(Math.random()*pool.length)];
-          const dmgMult=missileDamageMult(atk, armies, prov.terrain, target);
+          const dmgMult=missileDamageMult(atk, armies, prov.terrain, target, true);
           const hit=applyMissileHit(target, archSkillAtk, atk, {dmgMult});
           totalArrowDmg+=hit.dmg;
           if(hit.immune) narrative.push(`  ${atk.unitName||atk.type} fires at ${target.unitName||target.type}, but the shot glances off the armoured hull.`);
@@ -15297,25 +15450,29 @@ const BATTLE_ARMY_SPELLS={
     // same Wardens attacking another PLAYER did (the PvP path tests the OTHER side's force whichever
     // way round it is). Both paths now agree: a force facing Wardens in forest or jungle loses its
     // volley, attacking or defending.
-    const _defArchBlocked=!_cLA&&archeryBlockedBy(armies, prov.terrain);
+    if(!_cLA){ const _eyes=eyesOfTheForestLine(armies,prov.terrain,defenders,(defHero&&defHero.name)||'The defenders'); if(_eyes) narrative.push(_eyes); }   // ELF — Eyes of the Forest
+    const _defArchBlocked=!_cLA&&archeryBlockedBy(armies, prov.terrain, defenders);
     if(_defArchBlocked&&defenders.some(a=>MISSILE_ARMIES.has(a.type)))
       narrative.push(`🌲 The defenders' archers can find no target — ${cName}'s Forest Wardens hold the thickets and the answering volley never comes.`);
     const missileDef=(_cLA||_defArchBlocked)?[]:abilityMissileUnits(defenders, prov.terrain);
     if(missileDef.length>0&&armies.length>0){
       const defArchSkill=defHero?effStat(defHero,'archery'):0; // a leaderless garrison shoots at Archery 0
-      narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} ranged unit${missileDef.length!==1?'s':''}`);
+      const _prepared=missileDef.some(d=>abilityVolleys(d,false)>1);   // HUMAN — Prepared Ground: defending Longbows loose twice
+      narrative.push(`🏹 **Defender Archery Phase** — ${missileDef.length} ranged unit${missileDef.length!==1?'s':''}${_prepared?' (Prepared Ground: the Longbows loose twice)':''}`);
       let totalDefArrow=0;
       missileDef.forEach(def=>{
+        for(let v=0;v<abilityVolleys(def,false);v++){
         // winged riders first (a random one each shot), else any random attacker not yet at its cap
-        const pool=missileTargetPool(armies, 0, def);
-        if(!pool.length) return;
+        const pool=missileTargetPool(armies, 0, def, defenders);
+        if(!pool.length) break;
         const target=pool[Math.floor(Math.random()*pool.length)];
-        const dmgMult=missileDamageMult(def, defenders, prov.terrain, target);
+        const dmgMult=missileDamageMult(def, defenders, prov.terrain, target, false);
         const hit=applyMissileHit(target, defArchSkill, def, {dmgMult});
         totalDefArrow+=hit.dmg;
         if(hit.immune) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but the shot glances off the armoured hull.`);
         else if(hit.dmg>0) narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}: −${hit.dmg} strength${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${def.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
         else narrative.push(`  ${def.unitName||def.type} fires at ${target.unitName||target.type}, but they are already as softened as arrows can manage.`);
+        }
       });
       narrative.push(`📊 Defender archery total: −${totalDefArrow} strength spread across attackers (each unit softened by at most ${dispFloor(MISSILE_CAP_FRACTION*100)}%).`);
     }
@@ -15471,6 +15628,9 @@ const BATTLE_ARMY_SPELLS={
     const _explA=((prov.exploredBy||{})[c.player])||0, _explD=100;
     const _dep=battleDeploy(armiesWithStr,defsWithStr,{terrain:prov.terrain,roll:terrainFront,tacA:tactSkill,tacD:defTactLvl,flankA:atkFlankDisc,flankD:defFlankDisc,scout:battleScout(_explA,_explD)});
     _gA.grid=_dep.gA; _gD.grid=_dep.gD; lineWidth=defLineWidth=_dep.W;
+    // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
+    const _facedDefNm=defHero?defHero.name.replace(' (wandering)',''):((prov.owner!=null&&!neutralGuardHero)?('the garrison of '+prov.name):('the defenders of '+prov.name));
+    const _facedA=battleFacedClauses(_dep.gA,_facedDefNm), _facedD=battleFacedClauses(_dep.gD,String(c.name||cName||'').replace(' (wandering)',''));   // the commander's plain name, not "X's leaderless host"
     const atkBaseStr=_gA.grid.face.total, defBaseStr=_gD.grid.face.total;
     const _defNm=defHero?defHero.name:`the defenders of ${prov.name}`;
     narrative.push(battleWidthLine(prov.terrain,lineWidth));
@@ -15506,6 +15666,8 @@ const BATTLE_ARMY_SPELLS={
     // Combat result narrative
     const margin=finalAtk-finalDef;
     const won=margin>=0;
+    // ORC — Raiders' Muster (2026-10-11, Toby): an orc realm's win in an orcish province (the end-of-turn pass reads the flag).
+    if(won&&prov.race==='Orcish'&&G.players[c.player]&&G.players[c.player].race==='Orcish') prov._raidersMuster=G.turn;
     // Tactical gain for winning a land battle is rolled AT THE END of the battle (just before the
     // return) so the 📈 line closes the battle report instead of preceding it in the chronicle.
     const _rollTacticalGain=won && prov.terrain!=='sea';
@@ -15582,13 +15744,13 @@ const BATTLE_ARMY_SPELLS={
     const _npcWargs=isHalfOrMore(armies,'Warg Riders');
     // DWARF — Shield Fort (replaces Hold the Line): a beaten Guard-heavy assault withdraws in good
     // order when a path exists, and holds trapped WITHOUT extra no-escape losses otherwise.
-    const _npcSF=isHalfOrMore(armies,'Dwarven Guard');
+    const _npcSF=shieldFortHolds(armies,_dep&&_dep.gA);   // 2026-10-11: half the FRONT LINE is Guard
     // 2026-09-27 (Toby): the same for a Guard-heavy NEUTRAL GARRISON. A neutral force never retreats,
     // so the "good order withdrawal" half cannot apply to it — what it gets is the other half: the
     // attacker's Free Lances find no broken backs, and the pinned-against-their-own-ground roll does
     // not touch them. Race-converted neutral provinces really can field Dwarven Guard, so this is a
     // live case, not a theoretical one.
-    const _npcSFDef=isHalfOrMore(defenders,'Dwarven Guard');
+    const _npcSFDef=shieldFortHolds(defenders,_dep&&_dep.gD);
 
     if(won){
       const guardName=defHero?defHero.name+' and their forces':('the defenders of '+prov.name);
@@ -15603,7 +15765,7 @@ const BATTLE_ARMY_SPELLS={
       if(_npcWargs) narrative.push(`🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${cName}'s losses are halved.`);
       // (Run Them Down halves the death roll only; the promotion window keeps the unhalved figure, as it always has.)
       const _fw=rollUnitFates(armies,{owner:cName,won:true,dieAt:a=>winDeathChance*steelMultOf(a)*(_npcWargs?0.5:1),
-        promoteTo:a=>winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G),say:l=>narrative.push(l)});
+        promoteTo:a=>winDeathChance*steelMultOf(a)+xpChance(winXPChance*milMultOf(a),a.quality)*humanXPMult(a,c.player,G),faced:_facedA,say:l=>narrative.push(l)});
       const winSurv=_fw.survived, winEvents=_fw.died+_fw.promoted;
       if(winSurv>0) narrative.push(`— ${winEvents>0?'All other':'All'} forces survive the engagement.`);
       c.armies=c.armies.filter(a=>!a._died&&!a._disbanded);
@@ -15628,7 +15790,8 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>{
         if(Math.random()<loseDeathChance*steelMultOf(a)+_npcRideAtkEff){
           a._died=true;
-          narrative.push(`— ${unitRef(_defOwnerNm,a)} were destroyed in the rout!`);
+          const _fc=_facedD.get(a); // whom they fought (2026-10-12)
+          narrative.push(`— ${unitRef(_defOwnerNm,a)}${_fc?`, ${_fc},`:''} were destroyed in the rout!`);
         }
       });
       const _trapped=defenders.filter(a=>!a._died);
@@ -15641,7 +15804,7 @@ const BATTLE_ARMY_SPELLS={
         } else {
           narrative.push(`The defenders of ${prov.name} have nowhere to retreat — they are pinned against their own ground and take further losses!`);
           _trapped.forEach(a=>{
-            if(a.type==='Eagle Riders'){ narrative.push(`— ${a.unitName||a.type} climb away over the encircling lines, untouched.`); return; }
+            // (Skyward Retreat retired with the unit abilities, 2026-10-11: the Eagles roll like anyone.)
             if(Math.random()<0.15){ a._died=true; narrative.push(`— ${a.unitName||a.type} are cut down with no escape!`); }
           });
         }
@@ -15671,7 +15834,8 @@ const BATTLE_ARMY_SPELLS={
       defenders.forEach(a=>{
         if(Math.random()<winDeathChance*0.5){ // defenders take lighter casualties when they win
           a._defDied=true;
-          narrative.push(`— ${unitRef(defName2.replace(' (wandering)',''),a)} were destroyed in the fighting.`); // item 8
+          const _fc=_facedD.get(a); // whom they fought (2026-10-12)
+          narrative.push(`— ${unitRef(defName2.replace(' (wandering)',''),a)}${_fc?`, ${_fc},`:''} were destroyed in the fighting.`); // item 8
         }
       });
       if(defenders.some(a=>!a._defDied)) narrative.push(`— ${defenders.some(a=>a._defDied)?'All other':'All'} forces survive the engagement.`);
@@ -15705,7 +15869,7 @@ const BATTLE_ARMY_SPELLS={
       else if(_npcRideDef>0) narrative.push(`🐎 The defenders' Free Lances range across the open ground and ride down ${cName}'s broken companies (+${dispFloor(_npcRideDef*100)}% losses).`);
       rollUnitFates(armies,{owner:cName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathChance*steelMultOf(a)*tacMultNPC+_npcRideDefEff,
         demoteAt:a=>loseDemoteChance*tacMultNPC,promoteTo:a=>loseDemoteChance+xpChance(loseXPChance,a.quality)*humanXPMult(a,c.player,G),
-        shieldFort:_npcSF,notable:true,say:l=>narrative.push(l)});
+        shieldFort:_npcSF,notable:true,faced:_facedA,say:l=>narrative.push(l)});
 
       // Retreat logic
       const adjProvs=getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces);
@@ -15746,11 +15910,8 @@ const BATTLE_ARMY_SPELLS={
           // Routed in place — no retreat available (or Shield-Wall Rune: the line will not break)
           narrative.push(infStay?`${cName}'s Shield-Wall holds — the infantry refuse to retreat and stand their ground, come what may.`:`${cName}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`);
           armies.filter(a=>!a._died).forEach(a=>{
-            // ELF — Skyward Retreat: eagles climb out of any trap.
-            if(a.type==='Eagle Riders'){
-              narrative.push(`— ${a.unitName||a.type} climb away over the encircling lines, untouched.`);
-              return;
-            }
+            // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11: theirs are
+            // Stoop on the Horses and Eyes of the Forest.)
             if(Math.random()<0.15){
               narrative.push(`— ${a.unitName||a.type} are cut down in the rout — no escape!${a._isSkeletal?' Their bones crumble to dust.':''}`);
               a._died=true;
@@ -17871,17 +18032,14 @@ const BATTLE_ARMY_SPELLS={
     const defFanChance={...FANATIC_CHANCE_BY_ALIGN};
     const atkAlign=G.players[atk.player]?.alignment||'Neutral';
     const defAlign=G.players[def.player]?.alignment||'Neutral';
-    // ORC — Terror From Above: wyverns overhead take the heart out of the other side.
-    const _wyvAtk=atkArmies.some(a=>a&&a.type==='Wyvern Riders');
-    const _wyvDef=defArmies.some(a=>a&&a.type==='Wyvern Riders');
-    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]??0.1)+discSum(atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))-(_wyvDef?0.15:0)); // fanatic discoveries
-    let _defFanPct=Math.max(0,(defFanChance[defAlign]??0.1)+discSum(def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies))-(_wyvAtk?0.15:0));
+    // (The Wyverns' Dread, −15% to the other side's fanaticism, was retired with the unit abilities,
+    // 2026-10-11: Terror From Above now bears on the enemy's strongest front unit, in battleFaceSide.)
+    const _atkFanPct=Math.max(0,(atkFanChance[atkAlign]??0.1)+discSum(atk.player,'fanatic','pct',e=>discFanaticApplies(e,'atk',prov.terrain,atkArmies))); // fanatic discoveries
+    let _defFanPct=Math.max(0,(defFanChance[defAlign]??0.1)+discSum(def.player,'fanatic','pct',e=>discFanaticApplies(e,'def',prov.terrain,defArmies)));
     // DIVINE — Consecrate: defenders on consecrated ground are TWICE as likely to be seized by
     // fanatical zeal (they fight before the altars of their gods).
     const _consecratedHere=def.player!=null&&isConsecrated(G.players[def.player],prov.id)&&prov.owner===def.player;
     if(_consecratedHere){ _defFanPct=Math.min(1,_defFanPct*2); }
-    if(_wyvDef) narrative.push(`🐉 ${defName}'s Wyvern Riders wheel above the field — ${atkName}'s troops fight with one eye on the sky (−15% fanaticism).`);
-    if(_wyvAtk) narrative.push(`🐉 ${atkName}'s Wyvern Riders wheel above the field — ${defName}'s troops fight with one eye on the sky (−15% fanaticism).`);
     const atkFanatic=Math.random()<_atkFanPct;
     const defFanatic=Math.random()<_defFanPct;
     // Skeletal armies are always fanatical ONLY when led by the Undead king in person.
@@ -18033,9 +18191,11 @@ const BATTLE_ARMY_SPELLS={
     // PRE-BATTLE PHASE 2: ARCHERY (both sides)
     // ════
     const MISSILE_PVP=new Set(KC_UNIT_CLASS.missile);
-    function applyPreBattleArchery(heroChar, myForce, enemyArmies, myCount, narr){
-      // ELF — Ambush: Forest Wardens defending their own woods deny the enemy an archery phase.
-      if(archeryBlockedBy(enemyArmies, pvpTerrain)){
+    function applyPreBattleArchery(heroChar, myForce, enemyArmies, myCount, narr, isAtk){
+      // ELF — Ambush: Forest Wardens defending their own woods deny the enemy an archery phase — unless
+      // Eagle Riders fly with the shooters (Eyes of the Forest).
+      { const _eyes=eyesOfTheForestLine(enemyArmies,pvpTerrain,myForce,heroChar.name); if(_eyes) narr.push(_eyes); }
+      if(archeryBlockedBy(enemyArmies, pvpTerrain, myForce)){
         narr.push(`🌲 ${heroChar.name}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`);
         return;
       }
@@ -18045,13 +18205,14 @@ const BATTLE_ARMY_SPELLS={
       const hasQ=hasItemBase(heroChar,'Quiver of the Hawk');
       const _manyQ=hasItemBase(heroChar,'Quiver of Many Arrows');
       const volleys=(hasQ?2:1)+(_manyQ?1:0);
-      narr.push(`🏹 ${heroChar.name}'s archery: ${myMissile.length} unit${myMissile.length!==1?'s':''}${hasQ?' (double volleys)':''}${_manyQ?' (+1 shot)':''}`);
+      const _prepared=myMissile.some(a=>abilityVolleys(a,isAtk)>1);   // HUMAN — Prepared Ground: defending Longbows loose twice
+      narr.push(`🏹 ${heroChar.name}'s archery: ${myMissile.length} unit${myMissile.length!==1?'s':''}${hasQ?' (double volleys)':''}${_manyQ?' (+1 shot)':''}${_prepared?' (Prepared Ground: the Longbows loose twice)':''}`);
       myMissile.forEach(a=>{
-        for(let v=0;v<volleys;v++){
-          const pool=missileTargetPool(enemyArmies, 0, a); // winged riders first, else any random target; firer passed for Punch Through's cap
+        for(let v=0;v<volleys+abilityVolleys(a,isAtk)-1;v++){
+          const pool=missileTargetPool(enemyArmies, 0, a, myForce); // winged riders first, else any random target; firer passed for Punch Through's cap; the force for Eyes of the Forest
           if(!pool.length) break;
           const t=pool[Math.floor(Math.random()*pool.length)];
-          const dmgMult=missileDamageMult(a, myForce, pvpTerrain, t);
+          const dmgMult=missileDamageMult(a, myForce, pvpTerrain, t, isAtk);
           const hit=applyMissileHit(t, archLvl, a, {dmgMult});
           if(hit.immune) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: shot glances off the armoured hull.`);
           else if(hit.dmg>0) narr.push(`  ${a.unitName||a.type} → ${t.unitName||t.type}: −${hit.dmg} str${hit.isFly?' (×2 vs flying!)':''}${dmgMult>1?` (${a.type} ability ×${dmgMult.toFixed(2)})`:''}${hit.capped?' (softened to the limit)':''}.`);
@@ -18062,8 +18223,8 @@ const BATTLE_ARMY_SPELLS={
     // DWARF — Flak Screen runs before the arrows fly.
     applyFlakScreen(atkArmies, defArmies, atk.name, narrative);
     applyFlakScreen(defArmies, atkArmies, def.name, narrative);
-    applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative);
-    if(!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative);
+    applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);
+    if(!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);
 
     // ── PRIMAL — Breach and Swamp ── Whale Cohorts rise beneath a hull and roll it over. 25% per
     // cohort to sink one enemy fleet unit outright, before either side's strength is counted.
@@ -18176,6 +18337,8 @@ const BATTLE_ARMY_SPELLS={
     const _explA=((prov.exploredBy||{})[atk.player])||0, _explD=(def.player==null)?100:(((prov.exploredBy||{})[def.player])||0);
     const _dep=battleDeploy(atkRows,defRows,{terrain:pvpTerrain,roll:pvpFront,tacA:atkTact,tacD:defTact,flankA:atkFlankPvp,flankD:defFlankPvp,scout:battleScout(_explA,_explD)});
     _gA.grid=_dep.gA; _gD.grid=_dep.gD; pvpFront=_dep.W;
+    // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
+    const _facedA=battleFacedClauses(_dep.gA,String(def.name||defName||'').replace(' (wandering)','')), _facedD=battleFacedClauses(_dep.gD,String(atk.name||atkName||'').replace(' (wandering)',''));   // the commanders' plain names, not "X's leaderless host"
     const atkBaseStr=_gA.grid.face.total, defBaseStr=_gD.grid.face.total;
     narrative.push(battleWidthLine(pvpTerrain,pvpFront));
     narrative.push(battleScoutLine(_dep,atkName,defName,_explA,_explD)); { const _mv=battleMovesLine(_dep,atkName,defName); if(_mv) narrative.push(_mv); }
@@ -18202,6 +18365,9 @@ const BATTLE_ARMY_SPELLS={
     narrative.push(`  ${fortuneNarrative(atkName,defName,atkBaseStr,defBaseStr,_fortP)}`);
 
     const won=atkStr>=defStr;
+    // ORC — Raiders' Muster (2026-10-11, Toby): an orcish province that sees an orc win this turn gains a
+    // Goblin Horde at turn's end (the end-of-turn pass reads the flag).
+    { const _wp=won?atk.player:def.player; if(prov.race==='Orcish'&&_wp!=null&&G.players[_wp]&&G.players[_wp].race==='Orcish') prov._raidersMuster=G.turn; }
     // Tactical gain deferred to the end of the battle narrative — see the return below.
     const _rollTacticalGainPvP=prov.terrain!=='sea';
     const _rollNavalGainPvP=prov.terrain==='sea';   // sea-battle winner trains Naval (mirrors Tactical on land)
@@ -18256,8 +18422,8 @@ const BATTLE_ARMY_SPELLS={
     // (immune to Ride Them Down and to demotion-in-retreat). Trapped: it holds its ground contested
     // WITHOUT the no-escape extra casualties. The old unconditional pin is gone — a beaten Guard
     // force no longer chains itself to a lost field.
-    const _sfAtk=isHalfOrMore(atkArmies,'Dwarven Guard');
-    const _sfDef=isHalfOrMore(defArmies,'Dwarven Guard');
+    const _sfAtk=shieldFortHolds(atkArmies,_dep&&_dep.gA);   // 2026-10-11 (Toby): half the FRONT LINE is Guard, a Dwarf Garrison counting
+    const _sfDef=shieldFortHolds(defArmies,_dep&&_dep.gD);
     // ORC — Run Them Down (2026-10-09, Toby item 7): a warg-heavy victor runs the beaten army down ON
     // THE FIELD. When at least half the winning force are Warg Riders, every beaten unit's chance of
     // being destroyed in the rout rises by RUN_THEM_DOWN_PCT, on any ground — instead of the old
@@ -18266,10 +18432,9 @@ const BATTLE_ARMY_SPELLS={
     // immune, exactly as it is to Ride Them Down.
     const _wargAtk=isHalfOrMore(atkArmies,'Warg Riders');
     const _wargDef=isHalfOrMore(defArmies,'Warg Riders');
-    // ELF — Skyward Retreat: eagles simply fly out of a trap.
+    // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11.)
     const _noEscapeRoll=(force,name,narr)=>{
       (force||[]).forEach(a=>{
-        if(a.type==='Eagle Riders'){ narr.push(`— ${ownedUnitName(name,a)} climb away over the encircling lines, untouched.`); return; }
         if(Math.random()<0.15){a._died=true;narr.push(`— ${ownedUnitName(name,a)} are cut down with no escape!`);}
       });
     };
@@ -18329,7 +18494,7 @@ const BATTLE_ARMY_SPELLS={
       narrative.push(`⚔ **${atkName}'s forces** (attacker):`);      // Winning attacker
       const _cas0=narrative.length;
       rollUnitFates(atkArmies,{owner:atkName,won:true,dieAt:a=>winDeathPvP*atkSteelMultOf(a),
-        promoteTo:a=>winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),say:l=>narrative.push(l)});
+        promoteTo:a=>winDeathPvP*atkSteelMultOf(a)+xpChancePvP(winXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),faced:_facedA,say:l=>narrative.push(l)});
       survLine(atkArmies,_cas0);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       const _rideAtkEff=_sfDef?0:(_rideAtk+(_wargAtk?RUN_THEM_DOWN_PCT:0));
@@ -18340,7 +18505,7 @@ const BATTLE_ARMY_SPELLS={
       const _cas1=narrative.length;
       rollUnitFates(defArmies,{owner:defName,won:false,dieAt:a=>loseDeathPvP*defSteelMultOf(a)*defTacMult+_rideAtkEff,
         demoteAt:a=>loseDemotePvP*defTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),
-        shieldFort:_sfDef,say:l=>narrative.push(l)});
+        shieldFort:_sfDef,faced:_facedD,say:l=>narrative.push(l)});
       survLine(defArmies,_cas1);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -18422,13 +18587,13 @@ const BATTLE_ARMY_SPELLS={
       const _cas2=narrative.length;
       rollUnitFates(atkArmies,{owner:atkName,won:false,diedVerb:'were annihilated in the rout!',dieAt:a=>loseDeathPvP*atkSteelMultOf(a)*atkTacMult+_rideDefEff,
         demoteAt:a=>loseDemotePvP*atkTacMult,promoteTo:a=>loseDemotePvP+xpChancePvP(loseXPPvP*atkMilMultOf(a),a.quality)*humanXPMult(a,atk.player,G),
-        shieldFort:_sfAtk,say:l=>narrative.push(l)});
+        shieldFort:_sfAtk,faced:_facedA,say:l=>narrative.push(l)});
       survLine(atkArmies,_cas2);
       narrative.push(`🛡 **${defName}'s forces** (defender):`);
       // Winning defender — small death chance, good XP chance
       const _cas3=narrative.length;
       rollUnitFates(defArmies,{owner:defName,won:true,promoteVerb:'are hardened by victory to',dieAt:a=>winDeathPvP*defSteelMultOf(a),
-        promoteTo:a=>winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),say:l=>narrative.push(l)});
+        promoteTo:a=>winDeathPvP*defSteelMultOf(a)+xpChancePvP(winXPPvP*defMilMultOf(a),a.quality)*humanXPMult(a,def.player,G),faced:_facedD,say:l=>narrative.push(l)});
       survLine(defArmies,_cas3);
       recordBattleGraves(prov, atkArmies.filter(a=>a._died), atk&&atk.player);
       recordBattleGraves(prov, defArmies.filter(a=>a._died), def&&def.player);
@@ -18892,6 +19057,8 @@ const BATTLE_ARMY_SPELLS={
     }
     const deadArmies=(deadChar.armies||[]).filter(a=>!a._isSkeletal&&!a._temporary);
     const skelArmies=(deadChar.armies||[]).filter(a=>a._isSkeletal&&!a._temporary);
+    // Who slew the commander (handleHeroDeath stamps it; 2026-10-12, Toby): the host's line says so.
+    const _by=deadChar._slainBy||null, _fell=_by?`after their commander fell to ${_by}`:'after their fall';
     // Skeletal armies crumble — record to graves
     if(skelArmies.length>0&&prov) recordBattleGraves(prov,skelArmies);
     if(deadArmies.length>0&&prov){
@@ -18903,7 +19070,8 @@ const BATTLE_ARMY_SPELLS={
             unitName:army.unitName,location:deadChar.location,isSea:SEA_SET.has(army.type),
             id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
         });
-        log('system',`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
+        log('system',_by?`${deadChar.name}'s armies, their commander slain by ${_by}, scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`
+          :`${deadChar.name}'s armies scatter — they wander as mercenaries near ${prov?.name||'their last position'}.`,{actor:deadChar.player,targets:deadChar.player!=null?[deadChar.player]:[]});
       };
       if(deadChar.player===null){
         // A NEUTRAL character's leaderless troops always turn mercenary.
@@ -18911,7 +19079,7 @@ const BATTLE_ARMY_SPELLS={
       } else if(prov.owner===deadChar.player){
         // Friendly province — armies garrison
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
-        log('system',`${deadChar.name}'s armies garrison in ${prov.name} after their fall.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
+        log('system',`${deadChar.name}'s armies garrison in ${prov.name} ${_fell}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
       } else if(isOpenSea(prov)&&prov.owner==null&&!(prov.neutralDefenders||[]).length){
         // 2026-09-23c (Toby): a commander who falls at SEA leaves his host garrisoning the sea province
         // itself. Own waters are the branch above; unowned, undefended water is claimed for the realm.
@@ -18919,7 +19087,7 @@ const BATTLE_ARMY_SPELLS={
         setProvinceOwner(prov,deadChar.player,null,_currentPhase);
         const _pl=G.players[deadChar.player]; if(_pl){ _pl.provinces=_pl.provinces||[]; if(!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id); }
         prov.garrisonArmies=(prov.garrisonArmies||[]).concat(deadArmies);
-        log('system',`${deadChar.name}'s armies hold ${prov.name} after their fall — the water is claimed for ${_pl?_pl.name:'the realm'} and they garrison it.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
+        log('system',`${deadChar.name}'s armies hold ${prov.name} ${_fell} — the water is claimed for ${_pl?_pl.name:'the realm'} and they garrison it.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:prov.id});
       } else {
         // Enemy/neutral province — armies flee to adjacent friendly province or become mercenaries
         const neighbors=(prov?getNeighborsP(prov,G.world.cols,G.world.rows,G.world.provinces):[]).filter(n=>n.terrain!=='sea');
@@ -18929,13 +19097,14 @@ const BATTLE_ARMY_SPELLS={
           ||neighbors.find(n=>n.owner===deadChar.player)||null;
         if(safeProv){
           safeProv.garrisonArmies=(safeProv.garrisonArmies||[]).concat(deadArmies);
-          log('system',`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:safeProv.id});
+          log('system',_by?`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}, their commander slain by ${_by}.`:`${deadChar.name}'s leaderless armies retreat to ${safeProv.name}.`,{actor:deadChar.player,targets:[deadChar.player],provinceId:safeProv.id});
         } else {
           scatterAsMercs();
         }
       }
     }
     deadChar.armies=[];
+    delete deadChar._slainBy;
   }
 
   // ── A SPARED COWARD LEAVES HIS HOST BEHIND (2026-09-26, Toby item 7) ────
@@ -19031,6 +19200,10 @@ const BATTLE_ARMY_SPELLS={
     // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
     if(deadChar.tm){ for(const k in deadChar.tm){ deadChar.tm[k]=Math.round((deadChar.tm[k]||0)*0.75); } }
     const prov=G.world.provinces[deadChar.location];
+    // Who slew them (2026-10-12, Toby: the battle reports say who beat whom): the killer's name, or the cause a
+    // caller gives (opts.slainBy, e.g. a lair's guardian). Read by disperseDeadCharArmies, which clears it.
+    { const _by=(killerChar&&killerChar.name)?String(killerChar.name).replace(' (wandering)',''):((opts&&opts.slainBy)||null);
+      if(_by) deadChar._slainBy=_by; else delete deadChar._slainBy; }
 
     // 1. Armies. Normally dispersed at once; a pre-battle-duel death defers this (keepArmies)
     // so the leaderless force can fight the battle first — the caller disperses the survivors.
@@ -19846,7 +20019,7 @@ const BATTLE_ARMY_SPELLS={
             // / disbands them; the same helper runs on every contested re-fight, so a guard erodes
             // at the same rate each time he loses.
             const defSurvivors=erodeGuardSurvivors(_guardSlainInDuel?null:neutralGuard, toProv, neutralGuard.armies||[],
-              line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}));
+              line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}), c.name);
             neutralGuard.armies=defSurvivors;
             if(_guardSlainInDuel){
               // The guard is dead — the survivors are the province's leaderless garrison now.
@@ -20288,7 +20461,7 @@ const BATTLE_ARMY_SPELLS={
             if(llBattle.won){
               _payWinPoint();
               const llSurv=erodeGuardSurvivors(null, toProv, toProv.neutralDefenders||[],
-                line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}));
+                line=>log('combat',line,{actor:c.player,targets:[],provinceId:toProv.id}), c.name);
               toProv.neutralDefenders=llSurv; toProv.npcArmies=llSurv.length;
               toProv._leaderlessDefenders=llSurv.length>0;
               if(llSurv.length>0){
@@ -20596,7 +20769,7 @@ const BATTLE_ARMY_SPELLS={
             c.items=(c.items||[]).filter(it=>it.effect&&it.effect.stat==='mithrilArmour');
             log('explore',`The ${f.monster?.name||'guardian'} drags ${c.name}'s possessions into its hoard — ${_lairLeft.map(it=>it.name).join(', ')} now lie among the bones, waiting for a stronger hand.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
-          handleHeroDeath(c,null);
+          handleHeroDeath(c,null,{slainBy:`the ${f.monster?.name||'guardian'} of ${prov.name}`}); // the host is told what slew its commander (2026-10-12)
           break; // no further order processing for this hero
         }
         const stolenByThief=encounter.fled&&f.monster?._treasureStolen;
@@ -23755,11 +23928,11 @@ const BATTLE_ARMY_SPELLS={
   }
   const SEASONS=KC_SEASONS.slice();
   // Turn-wide recruit tracking: provId → armyType → count recruited this turn
-  // Limits: Garrisons = 2 per turn; home province (tax≥10) = 2 per type; elsewhere = 1 per type
+  // Limits: garrisons, humanoid fleets and Goblin Hordes = 2 per turn (twoATurn, module level); the
+  // founder's own home province = 2 of anything; elsewhere = 1 per type
   const recruitedThisTurn={};
   function getRecruitLimit(armyType, prov, playerIndex){
-    if(armyType.toLowerCase().includes('garrison')) return 2;
-    if(HUMANOID_FLEET_TYPES.has(armyType)) return 2; // a shipyard lays down two hulls a season
+    if(twoATurn(armyType)) return 2; // garrisons; a shipyard's two hulls a season; Goblin Hordes (2026-10-11)
     // 2026-09-24 (Toby item 10): two a season only in the realm's ORIGINAL home province, and only
     // while its founder still holds it — a captured rival capital (or any other tax-10 seat) is 1.
     return (prov.owner===playerIndex&&homeFounderOf(G,prov.id)===playerIndex)?2:1;
@@ -23953,8 +24126,9 @@ const BATTLE_ARMY_SPELLS={
   // Of the survivors who hold their ground (don't flee), only SOME are bloodied down a quality
   // tier; the rest fight on unbowed.
   const GUARD_DEMOTE_CHANCE=0.5;
-  function erodeGuardSurvivors(guard, prov, survivors, emit){
-    const kept=[];
+  // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
+  function erodeGuardSurvivors(guard, prov, survivors, emit, victor){
+    const kept=[]; const _vh=victor?`${String(victor).replace(' (wandering)','')}'s host`:null;
     (survivors||[]).forEach(a=>{
       const gname=(guard&&guard.name||'the defenders').replace(' (wandering)','');
       if(Math.random()<GUARD_FLIGHT_CHANCE){
@@ -23962,18 +24136,18 @@ const BATTLE_ARMY_SPELLS={
         G.mercenaries.push({type:a.type,quality:a.quality,race:a.race||'Unknown',unitName:a.unitName,
           location:prov.id,isSea:SEA_TYPES.has(a.type),
           id:`merc_${Date.now()}_${Math.random().toString(36).slice(2)}`});
-        emit(`— ${unitRef(gname,a)} break ranks and flee — they now roam as mercenaries near ${prov.name}.`); // unified unit naming
+        emit(`— ${unitRef(gname,a)} break ranks and flee${_vh?` before ${_vh}`:''} — they now roam as mercenaries near ${prov.name}.`); // unified unit naming
         return;
       }
       // Only some of those who stay are worn down a tier; the rest hold at their current quality.
       if(Math.random()<GUARD_DEMOTE_CHANCE){
         const _q0=a.quality;
         if(demoteOrDisband(a)){ emit(disbandLine(gname,a)); return; }
-        emit(`— ${unitRef(gname,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality} — they rally around ${gname}.`);
+        emit(`— ${unitRef(gname,{...a,quality:_q0})} lost heart in defeat, reduced to ${a.quality} — ${_vh?`beaten by ${_vh}, `:''}they rally around ${gname}.`);
         kept.push(a);
         return;
       }
-      emit(`— ${unitRef(gname,a)} hold their ground unbroken and rally around ${gname}.`);
+      emit(`— ${unitRef(gname,a)} hold their ground unbroken${_vh?` against ${_vh}`:''} and rally around ${gname}.`);
       kept.push(a);
     });
     return kept;
@@ -24059,7 +24233,7 @@ const BATTLE_ARMY_SPELLS={
           // Erode the survivors exactly as the first battle does — flee, demote, or disband.
           const _survPool=liveGuard?(guard.armies||[]):(prov.neutralDefenders||[]);
           const surv=erodeGuardSurvivors(liveGuard?guard:null, prov, _survPool,
-            line=>log('combat',line,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true}));
+            line=>log('combat',line,{charId:_ctxCharId,phase:ph,actor:attacker.player,targets:[],provinceId:prov.id,public:true}), attacker.name);
           if(liveGuard) guard.armies=surv;
           if(surv.length>0){
             prov._battleUnresolved=true;
@@ -24620,11 +24794,11 @@ const BATTLE_ARMY_SPELLS={
       let llLeft=0;
       if(neutralGuard&&neutralGuard.alive){
         neutralGuard.armies=erodeGuardSurvivors(neutralGuard, prov, neutralGuard.armies||[],
-          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}));
+          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}), c.name);
       } else if((neutralGuard&&!neutralGuard.alive)||llDefs.length>0){
         // Leaderless survivors (guard slain in the duel, or already leaderless) erode the same way.
         const _surv=erodeGuardSurvivors(null, prov, prov.neutralDefenders||[],
-          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}));
+          line=>log('combat',line,{actor:c.player,targets,provinceId:prov.id}), c.name);
         prov.neutralDefenders=_surv; prov.npcArmies=_surv.length;
         prov._leaderlessDefenders=_surv.length>0; llLeft=_surv.length;
       }
@@ -26476,6 +26650,19 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           }
         }
       });
+      // ── RAIDERS' MUSTER (2026-10-11, Toby, the unit abilities) ── An orcish province that saw an orc
+      // victory this turn adds one Goblin Horde to its garrison for nothing: plunder feeds the horde. It
+      // is owed wages from next turn like any garrison unit. The battle set the flag; the province must
+      // still be an orc realm's at turn's end.
+      (G.world.provinces||[]).forEach(pv=>{
+        if(!pv||pv._raidersMuster!==G.turn){ if(pv&&pv._raidersMuster!=null&&pv._raidersMuster!==G.turn) delete pv._raidersMuster; return; }
+        delete pv._raidersMuster;
+        if(pv.race!=='Orcish'||pv.owner==null||!G.players[pv.owner]||G.players[pv.owner].race!=='Orcish') return;
+        pv.garrisonArmies=pv.garrisonArmies||[];
+        const _gob={type:'Goblin Horde',quality:'Average',race:'Orcish',unitName:armyUnitName('Goblin Horde')};
+        pv.garrisonArmies.push(_gob);
+        log('hire',`🥁 Raiders' Muster — word of the victory at ${pv.name} draws ${_gob.unitName} (Goblin Horde, Average) to its garrison for nothing.`,{actor:pv.owner,targets:[pv.owner],provinceId:pv.id});
+      });
       // ── GARRISON DRILL (2026-09-23c, Toby) ── Every unled unit garrisoned in a province its realm
       // owns may rise one experience level at turn's end, at exactly the chance a commander gives by
       // practising: land and air units as if by Tactical 1, fleets and sea-beasts as if by Naval 1
@@ -26659,6 +26846,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     if(dc.alive) { delete dc._leaderlessHost; return; }
     delete dc._leaderlessHost;
     if((dc.armies||[]).length>0) disperseDeadCharArmies(dc);
+    delete dc._slainBy; // a commander who fell with no host keeps no note of the killer in the saved state
   });
 
   // Intel collapse: emit one consolidated intrusion line per (target, hero, province) now that all
@@ -28030,7 +28218,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.12-1348</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.12-1358</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
