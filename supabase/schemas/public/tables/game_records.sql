@@ -23,15 +23,38 @@ CREATE TABLE "public"."game_records" (
 ALTER TABLE "public"."game_records"
   ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "gm write game_records" ON "public"."game_records"
-  FOR ALL
+-- Written by the game's GM, or the Overlord (P0-22, ruling D-09). A record outlives its game: once the game is
+-- deleted, the GM named on the record keeps it (to edit, hide or remove). A record is written only for a game
+-- that exists.
+CREATE POLICY "write game_records: the game's GM or the Overlord" ON "public"."game_records"
+  FOR INSERT
   TO "authenticated"
-  USING ((EXISTS ( SELECT 1
+  WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
    FROM public.games g
-  WHERE (g.gm_user_id = auth.uid()))))
-  WITH CHECK ((EXISTS ( SELECT 1
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid))))));
+
+CREATE POLICY "edit game_records: its GM or the Overlord" ON "public"."game_records"
+  FOR UPDATE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
    FROM public.games g
-  WHERE (g.gm_user_id = auth.uid()))));
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT (EXISTS ( SELECT 1
+   FROM public.games g
+  WHERE ((g.id)::text = game_records.game_id)))))))
+  WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
+   FROM public.games g
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT (EXISTS ( SELECT 1
+   FROM public.games g
+  WHERE ((g.id)::text = game_records.game_id)))))));
+
+CREATE POLICY "remove game_records: its GM or the Overlord" ON "public"."game_records"
+  FOR DELETE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR (game_id IN ( SELECT (g.id)::text AS id
+   FROM public.games g
+  WHERE (g.gm_user_id = ( SELECT auth.uid() AS uid)))) OR ((gm_user_id = ( SELECT auth.uid() AS uid)) AND (NOT (EXISTS ( SELECT 1
+   FROM public.games g
+  WHERE ((g.id)::text = game_records.game_id)))))));
 
 CREATE POLICY "read game_records" ON "public"."game_records"
   FOR SELECT
