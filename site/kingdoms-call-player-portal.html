@@ -5235,7 +5235,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
               🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle (not encounters)</span>
             </div>
             <select id="ep-duel-${c.id}" style="font-size:.8rem;width:100%">
-              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'accept')===d.code?' selected':''}>${d.label}</option>`).join('')}
+              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'refuse')===d.code?' selected':''}>${d.label}</option>`).join('')}
             </select>
             <div style="font-size:.68rem;color:#2f281c;margin-top:2px">
               A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
@@ -6073,7 +6073,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cdb8e0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#46275f;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6224,7 +6224,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #b8dde0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#185562;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6379,7 +6379,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
         🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle</span>
       </div>
       <select id="ep-duel-${hiredCharId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
@@ -6731,7 +6731,7 @@ async function doSaveOrders(){
       const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
       if(preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined};
     }
   });
@@ -6817,7 +6817,7 @@ async function doSubmitOrders(){
       encounterPlans[c.id]={
         tactics:tacts,
         notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined,
       };
     }
@@ -6838,7 +6838,7 @@ async function doSubmitOrders(){
       if(hPre) hTacts.push(`CS:${hPre}`);
       encounterPlans[cid]={tactics:hTacts,
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${cid}`)?.value||undefined};
     }
   });
@@ -6856,7 +6856,7 @@ async function doSubmitOrders(){
     if(rTac){
       encounterPlans[rid]={tactics:(rTac.value||'ME').split(',').filter(Boolean),
         notes:document.getElementById(`ep-notes-${rid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'refuse'};
     }
   });
   // Charm pre-order cards — same shape as the resurrect collection above; the GM parses the
@@ -6874,7 +6874,7 @@ async function doSubmitOrders(){
     if(cTac){
       encounterPlans[cid]={tactics:(cTac.value||'ME').split(',').filter(Boolean),
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'refuse'};
     }
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.

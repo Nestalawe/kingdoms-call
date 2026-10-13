@@ -149,6 +149,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `hp-wound-gain` | new | 1 | ✅ pass | After a personal fight every wounded hero who lives rolls for maximum HP, the winner rolls once (the win award, not a wound roll too) and gains the roll +1, and every roll gains (even past 50 HP) |
 | `hero-every-phase` | new | 2 | ✅ pass | A hero pulled into a friendly hero's Fall assault on a neutral-guarded province (Contingent unify) has a Fall line of his own pointing at the battle; every living hero has at least one line in every season of his realm's report |
 | `orders-group-by-location` | new | 4 | ✅ pass | The orders column's "Group by location" button groups heroes by province (keeping each hero's parked cards with it and remembering the order); "Collapse all" / "Expand all" fold and open every hero |
+| `duel-refuse-default` | new | 1 | ✅ pass | A hero's Duel Stance defaults to Refuse: a player's hero with no stance set refuses (`duelStanceOf`; a chosen Accept or Challenge is kept, NPCs still follow Temper), every Duel stance select in the orders form opens on Refuse, and the submitted plan falls back to Refuse. Level 1 because `duelStanceOf` is nested inside `runTurn` (code-anchor hook); the form part boots the player portal |
 | `naval-retreat` | `claude_navalretreat_0927.js` | 2 | ✅ pass | The naval retreat split, staged cases plus 4,000 fuzzed retreats |
 | `npc-parity` | `claude_npcparity_0927.js` | 2 | ✅ pass | Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should |
 | `report-privacy` | `claude_reportleak_0927.js` | 3 | ✅ pass | No realm's private report line reaches a second realm, over all-bot games |
@@ -186,7 +187,7 @@ message. That means the hook needs updating, not that the game is broken.
 
 | Test | Anchor in `kingdoms-call-gm-portal.html` |
 |---|---|
-| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground`, `hp-wound-gain`, `battle-faced-turn`, `abilities-beasts`, `island-back`, `battle-tweaks`, `hp-gain-private` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
+| `fuzz-wages-combat`, `fuzz-advance-masking`, `naval-retreat`, `npc-parity`, `guardian-melee`, `guardian-traits`, `hit-cap`, `retreat-dry-ground`, `hp-wound-gain`, `battle-faced-turn`, `abilities-beasts`, `island-back`, `battle-tweaks`, `hp-gain-private`, `duel-refuse-default` | `  // 4. Run all 5 phases` (exposes nested `runTurn` functions) |
 | `concede`, `report-privacy`, `overtures` | `const activePlayers=freshPlayers.filter(p=>p.user_id);` (writes reports for bot realms too) |
 | `pursuit-one-battle` | `    const chance=pursuitCatchChance(c,quarry);` (stages a certain catch) |
 | `move-points` | `  const seaMovePoints={};     // separate sea move point pool (REMAINING this turn)` (exposes the movement-point pools) |

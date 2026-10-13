@@ -16214,7 +16214,8 @@ const BATTLE_ARMY_SPELLS={
   }
   // How a commander answers the call to single combat, set per character in the player portal.
   // 'challenge' — rides out and demands a duel 'accept' — will not initiate, but answers a
-  // challenge (default) 'refuse' — will not duel; costs their force 20% strength if challenged
+  // challenge 'refuse' — will not duel; costs their force 20% strength if challenged (a player's
+  // default since 2026-10-13, Toby: a hero with no stance set no longer answers a challenge)
   const DUEL_STANCES_P=['challenge','accept','refuse'];
   const NPC_DUEL_STANCE_BY_TEMPER={Berserk:'challenge',Brave:'challenge',Cautious:'accept',Cowardly:'refuse'};
   function duelStanceOf(ch){
@@ -16224,7 +16225,7 @@ const BATTLE_ARMY_SPELLS={
     // extremes. Berserk and Brave ride out and demand single combat; Cautious will answer a
     // challenge but won't issue one; only the Cowardly refuse outright and shame their own ranks.
     if(ch&&ch.player===null) return NPC_DUEL_STANCE_BY_TEMPER[effTemper(ch)]||'accept';
-    return 'accept';
+    return 'refuse';
   }
 
   // Give any un-ordered character (player === null) a plan the moment one is needed.
