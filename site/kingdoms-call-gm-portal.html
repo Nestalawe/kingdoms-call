@@ -26011,8 +26011,8 @@ const BATTLE_ARMY_SPELLS={
   // targeted character." Chance of running the quarry down comes from the Spy Table: doubled if
   // the quarry leads an army (a column is easy to follow), divided by the distance between them,
   // and automatic if the quarry belongs to the pursuer's own realm.
-  // the old AK Spy-table (50/100/150/200/250%) is retired. The catch roll is now a Spy CONTEST: 50%
-  // base, +5% per Spy level of the pursuer, −5% per Spy level of the quarry. (2026-09-24, Toby: the
+  // the old AK Spy-table (50/100/150/200/250%) is retired. The catch roll is now a Spy CONTEST: 70%
+  // base (50% until 2026-10-13, Toby item 11), +5% per Spy level of the pursuer, −5% per Spy level of the quarry. (2026-09-24, Toby: the
   // old doubling when the quarry leads an army is gone — leading troops no longer makes a character
   // twice as easy to corner.) The roll is only ever made once the two
   // stand in the same province (advancePursuit), so the old divide-by-distance was dead code.
@@ -26020,7 +26020,7 @@ const BATTLE_ARMY_SPELLS={
   function pursuitCatchChance(c,quarry){
     if(quarry.player!=null&&quarry.player===c.player) return 100;
     const spy=effStat(c,'spy'), qSpy=effStat(quarry,'spy');
-    const pct=50+5*spy-5*qSpy; // 2026-09-24: no ×2 for a quarry leading an army
+    const pct=70+5*spy-5*qSpy; // 2026-09-24: no ×2 for a quarry leading an army · 2026-10-13 (item 11): base 70%
     return Math.max(5,Math.min(100,dispFloor(pct)));
   }
 

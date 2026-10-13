@@ -113,6 +113,7 @@ const SUITE=[
   ['skill-names-capitalised','tests/skill-names-capitalised.test.js'],
   ['item-equip-note',      'tests/item-equip-note.test.js'],
   ['march-one-rate',       'tests/march-one-rate.test.js'],
+  ['encounter-seventy',    'tests/encounter-seventy.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['battle-lines-report',  'tests/battle-lines-report.test.js'],
