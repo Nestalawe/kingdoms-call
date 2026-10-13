@@ -75,6 +75,7 @@ const SUITE=[
   ['new-creatures',        'tests/new-creatures.test.js'],
   ['abilities-beasts',     'tests/abilities-beasts.test.js'],
   ['abilities-beasts-turn','tests/abilities-beasts-turn.test.js'],
+  ['battle-tweaks',        'tests/battle-tweaks.test.js'],
   ['primal-abilities-words','tests/primal-abilities-words.test.js'],
   ['island-back',          'tests/island-back.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],

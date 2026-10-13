@@ -74,6 +74,8 @@ for(const [page,text] of [['rulebook',norm(rules)],['intro',norm(intro)],['playe
 ok(/Druid \+1/.test(evil),'the Evil section says the king starts with Druid +1');
 ok(/no Druid/.test(evil)&&/Monster/.test(evil),'the Evil section says Monsters follow with no Druid requirement');
 ok(/Reign of Fear/.test(evil)&&new RegExp(`×${REIGN_OF_FEAR}`).test(evil)&&/Terror/.test(evil),`the Evil section describes Reign of Fear (×${REIGN_OF_FEAR} in a province under Terror)`);
+ok(/Reign of Fear.{0,80}when they attack/.test(evil)&&!/attacking or defending/.test(evil),'the Evil section says Reign of Fear fires only when attacking (Toby, 2026-10-12)');
+for(const [page,text] of [['intro',norm(intro)],['player portal',pp]]) ok(!/Terror[^.]{0,40}attacking or defending/.test(text)&&!/×1\.5 on ground (under )?your Terror/.test(text),`${page}: Reign of Fear is not promised when defending`);
 ok(/Call from the Pit/.test(evil)&&/\+2g/.test(evil)&&Object.keys(PIT_TIERS).every(t=>evil.includes(t)),'the Evil section describes Call from the Pit with its four Monsters');
 ok(/Monster province/.test(evil)&&/beside/.test(evil),'the Evil section says the king opens beside a Monster province');
 ok(/Call from the Pit/.test(norm((/<tr><td>💀 Evil<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]))&&/Call from the Pit/.test(norm(((/<tr><td>😈 <strong>Evil<\/strong>[\s\S]*?<\/tr>/.exec(intro)||[''])[0]))),"the orders table and the intro's alignment table give Evil Call from the Pit as its signature action");
