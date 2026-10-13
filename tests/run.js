@@ -100,6 +100,7 @@ const SUITE=[
   ['duel-refuse-default',  'tests/duel-refuse-default.test.js'],
   ['cast-practice-projection','tests/cast-practice-projection.test.js'],
   ['lair-province-unique', 'tests/lair-province-unique.test.js'],
+  ['lair-effects-spread',  'tests/lair-effects-spread.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['battle-lines-report',  'tests/battle-lines-report.test.js'],

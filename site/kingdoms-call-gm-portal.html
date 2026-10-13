@@ -3270,13 +3270,19 @@ function itemLoreLines(items){ return (items||[]).filter(Boolean).map(d=>`📜 T
 // tier-1 EFFECTS. Two lairs could hand out "Blade of Fury" and "Sword of Wrath" — different names,
 // the same Melee +2 — and a player reasonably reads that as the game repeating itself. The roll now
 // PREFERS an effect nothing else on the map carries, and only re-uses one when the tier has no
-// unused effect left. `itemEffectKey` is the signature: effect + slot + tier, so a Weak ring and a
-// Moderate ring granting the same stat stay distinct finds.
+// unused effect left. `itemEffectKey` is the signature: the effect alone. (It used to add the slot
+// and tier, so an amulet and a trinket both giving Mountain Guns +4 counted as two different finds;
+// 2026-10-13, item 5, Toby: to a player they are the same thing found twice.)
 function itemEffectKey(it){
   if(!it) return '?';
   if(!it.effect) return 'name:'+it.name;
-  return JSON.stringify(it.effect)+'|'+(it.slot||'-')+'|'+(it.tier||1);
+  return JSON.stringify(it.effect);
 }
+// 2026-10-13 (item 5, Toby): heroes were opening two lairs in one turn and finding the same effect in
+// both. Lairs within this many provinces of each other never hold the same effect while the treasury
+// has any other choice; the distance shrinks a step at a time (down to "not in the same province")
+// only when nothing else is left.
+const LAIR_EFFECT_SPREAD=3;
 // Rebuilds the set of effects already handed out from gs._awardedItems (names are what saves keep),
 // so an existing game adopts the rule without a migration field of its own.
 function awardedEffectSet(gs){
@@ -3528,7 +3534,7 @@ function ensureAllLairHoards(gs){
     if(!fresh) return;
     const T=LAIR_ITEM_ODDS[powOf(f)]||LAIR_ITEM_ODDS.Weak;
     let slots=0; if(Math.random()<T.itemChance) slots++; if(Math.random()<T.bonusItem) slots++; if(Math.random()<(T.thirdItem||0)) slots++;
-    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov),provId:prov.id});
+    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov),provId:prov.id,prov});
   });
   if(!work.length) return;
   const taken=new Set(gs._awardedItems);
@@ -3538,6 +3544,13 @@ function ensureAllLairHoards(gs){
   const takenEff=awardedEffectSet(gs);
   const provEff={};
   const provSet=(id)=>provEff[id]||(provEff[id]=new Set());
+  // Effects within `r` provinces of a lair (item 5): every province already holding a stocked item,
+  // its own effects included — a lair stocked in an older save counts too.
+  const _cols=(gs.world&&gs.world.cols)||0;
+  provs.forEach(p=>(p.features||[]).forEach(f=>{ if(f&&!f.ritualSite&&!f.cleared) (f.hoardItems||[]).forEach(it=>provSet(p.id).add(itemEffectKey(it))); }));
+  const effectsNear=(prov,r)=>{ const out=new Set(); if(r<0) return out;
+    for(const id in provEff){ const q=provs[id]; if(!q||!provEff[id].size) continue; if(hexDistP(prov,q,_cols)<=r) provEff[id].forEach(k=>out.add(k)); }
+    return out; };
   const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
   // counts are kept PER REGION (nearest home province), so each realm's own neighbourhood gets an
   // even spread rather than only the world as a whole. `_all` keeps the world-level tally for the
@@ -3569,21 +3582,67 @@ function ensureAllLairHoards(gs){
       if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c,t).length>0); }
       if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c,null).length>0); } // last resort: the "never empty" ruling outranks rule 1 on a bare treasury
       if(!cats.length){ w.slots=0; break; }
+      const inCatOf=(cat)=>atTier?untakenT(cat,t):(untakenAny(cat,t).length?untakenAny(cat,t):untakenAny(cat,null));
+      // Item 5: an effect already in a lair within LAIR_EFFECT_SPREAD provinces is barred, and the
+      // kinds are narrowed to those that still have something else to give. The distance shrinks
+      // only when no kind does (0 = this province; -1 = no bar at all).
+      let nearOk=cats, barred=new Set();
+      for(let r=LAIR_EFFECT_SPREAD;r>=-1;r--){
+        barred=effectsNear(w.prov,r);
+        nearOk=cats.filter(c=>inCatOf(c).some(it=>!barred.has(itemEffectKey(it))));
+        if(nearOk.length) break;
+      }
+      if(!nearOk.length){ nearOk=cats; barred=new Set(); }
       // Lowest count IN THIS REGION first; the world tally breaks ties, so the map stays level too.
-      const low=Math.min(...cats.map(c=>rc[c]||0));
-      const tiedR=cats.filter(c=>(rc[c]||0)===low);
+      const low=Math.min(...nearOk.map(c=>rc[c]||0));
+      const tiedR=nearOk.filter(c=>(rc[c]||0)===low);
       const lowW=Math.min(...tiedR.map(c=>catCount[c]||0));
       const pool=shuffleP(tiedR.filter(c=>(catCount[c]||0)===lowW));
       const cat=pool[0];
-      const inCat=atTier?untakenT(cat,t):(untakenAny(cat,t).length?untakenAny(cat,t):untakenAny(cat,null));
-      // Effect filter: prefer a design nothing on the map carries yet, and never repeat one already
-      // in THIS province while any alternative exists.
-      const pe=provSet(w.provId);
-      let cand=preferFreshEffects(inCat, takenEff);
-      const notHere=cand.filter(it=>!pe.has(itemEffectKey(it)));
-      if(notHere.length) cand=notHere;
+      const inCat=inCatOf(cat);
+      // Effect filter: never an effect barred nearby while any alternative exists, then prefer a
+      // design nothing on the map carries yet.
+      let cand=inCat.filter(it=>!barred.has(itemEffectKey(it)));
+      if(!cand.length) cand=inCat;
+      cand=preferFreshEffects(cand, takenEff);
+      // …and of those, the effect with the most copies still in the treasury, so a design that
+      // exists under many names is spread over the whole map rather than left to pile up in the
+      // last lairs stocked (where the bar above would have nothing else to offer).
+      { const n={}; cand.forEach(it=>{ const k=itemEffectKey(it); n[k]=(n[k]||0)+1; });
+        const most=Math.max(...Object.values(n)); cand=cand.filter(it=>n[itemEffectKey(it)]===most); }
       const pick=cand[Math.floor(Math.random()*cand.length)];
       give(w.f,pick,w.region,w.provId); w.slots--;
+    }
+  }
+  // Item 5, repair: on the largest maps the last Weak lairs stocked can have nothing left but an
+  // effect already close by. Swap such a lair's item with another freshly stocked lair's item of the
+  // same kind and tier (so every count above is unchanged) whenever that moves the two repeats
+  // further apart. A swap is only made if the closer of the two pairs ends up further away.
+  const one=work.filter(w=>w.f.hoardItems.length===1&&!isLegendaryItem(w.f.hoardItems[0]));
+  const holders=new Map();   // effect → lairs holding it
+  const hk=(w)=>itemEffectKey(w.f.hoardItems[0]);
+  one.forEach(w=>{ const k=hk(w); if(!holders.has(k)) holders.set(k,[]); holders.get(k).push(w); });
+  const gap=(w,k,skip)=>{ let m=Infinity; for(const v of (holders.get(k)||[])){ if(v===w||v===skip) continue; const d=hexDistP(w.prov,v.prov,_cols); if(d<m) m=d; } return m; };
+  for(let pass=0;pass<2;pass++){
+    for(const w of one){
+      const ka=hk(w), gw=gap(w,ka);
+      if(!(gw<=LAIR_EFFECT_SPREAD)) continue;
+      const a=w.f.hoardItems[0];
+      let best=null, bestMin=gw;
+      for(const v of one){
+        if(v===w) continue;
+        const b=v.f.hoardItems[0], kb=itemEffectKey(b);
+        if(kb===ka||b.tier!==a.tier||itemHoardCategory(b)!==itemHoardCategory(a)) continue;
+        const before=Math.min(gw,gap(v,kb));
+        if(before>=bestMin&&best) continue;
+        const after=Math.min(gap(w,kb,v),gap(v,ka,w));
+        if(after>before&&after>bestMin){ best=v; bestMin=after; }
+      }
+      if(!best) continue;
+      const b=best.f.hoardItems[0], kb=itemEffectKey(b);
+      holders.set(ka,holders.get(ka).filter(x=>x!==w).concat([best]));
+      holders.set(kb,holders.get(kb).filter(x=>x!==best).concat([w]));
+      w.f.hoardItems[0]=b; best.f.hoardItems[0]=a;
     }
   }
 }
