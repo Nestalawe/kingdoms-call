@@ -829,7 +829,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.13-0110';
+const KC_DATA_MIN_P='2026.10.13-0201';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -6571,7 +6571,7 @@ function updateAlignmentDesc(){
 // abilities). Kept in step with battleFaceSide / abilityFront / abilityBack, the volley helpers and
 // rollUnitFates in the GM portal; tests/abilities-words holds the names to the rulebook's roster.
 const UNIT_ABILITIES={
-  'Shieldwall Levies':'Spear Hedge — cavalry facing them in the line fights at no better than ×0.75. Shieldwall — ×1.25 when an archer stands in the second line behind them.',
+  'Shieldwall Levies':'Spear Hedge — cavalry facing them in the line fights at no better than ×0.75 (the Unicorn Herd\'s Purity breaks it). Shieldwall — ×1.25 when an archer stands in the second line behind them.',
   'Men-at-Arms':'Halberds — ×1.25 facing cavalry. Sergeants — Levies beside them in the front line fight ×1.1.',
   'Free Lances':'Harriers — ×1.15 in a flank duel. Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
   'Yeoman Longbows':'Bodkin Points — no penalty shooting cavalry from the second line (other archers fire at ×0.75). Prepared Ground — defending, they loose two pre-battle volleys.',
@@ -6609,7 +6609,7 @@ const UNIT_ABILITIES={
   // (The Noble Griffons' blurb is with the other human units above: a second key here would silently replace it.)
   'Thunderbirds':'Storm Wings — every enemy unit in the air fights ×0.85. Lightning Strike: a pre-battle strike on one enemy unit (4–8). Storm-birds of the high crags that fight from the air, taking no place in the line.',
   'Forest Ents':'Rooted — never hit from the side when the enemy line wraps their end. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each). At home in forest and jungle (terrain ×1.15), withering in the desert.',
-  'Stone Giants':'Boulder Wall — cavalry facing them fights at no better than ×0.75. Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). At home in the mountains (terrain ×1.15); slow.',
+  'Stone Giants':'Boulder Wall — cavalry facing them fights at no better than ×0.75 (the Unicorn Herd\'s Purity breaks it). Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). At home in the mountains (terrain ×1.15); slow.',
   'Cave Trolls':'Regenerating Hide — after a lost battle, a 30% chance to shrug off a death roll. Hurled Rubble: a pre-battle strike on one enemy unit (4–7). At home in the mountains and the forest (terrain ×1.15 and ×1.1).',
   'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker, and when at least half the winning force are Manticores the beaten foe takes +15% rout losses. Spine Volley: a pre-battle strike across every enemy unit (2–4 each). Fights from the air.',
   'Basilisk Brood':'Stone Deterrent — ×1.25 strength when their side is defending. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
@@ -6621,7 +6621,7 @@ const UNIT_ABILITIES={
   'Dread Hydras':'Many Heads — ×1.25 facing foot. Venom Breath: a pre-battle strike across the whole enemy line (3–6 each). The greatest of the Monsters, at home in jungle and forest (terrain ×1.1 and ×1.05).',
   'Shark Shoals':'Shoal Swarm — +10% strength per other Shark Shoals in the force, to +30%. Feeding Frenzy — when at least half the winning force are shoals, a foe beaten at sea takes +15% rout losses. A shoal is no hull: it carries nothing.',
   'Great Bears':'Maul — ×1.15 facing foot. Thick Hide — pre-battle volleys against them do half. At home in forest and mountain (terrain ×1.1), poor in the desert; move 3.',
-  'Unicorn Herd':'Purity — ×1.25 facing Monsters and skeletons. Through the Glades — the one cavalry, with the Stag Riders, that takes a flank in forest and jungle. At home on the plain and in the forest (terrain ×1.1).',
+  'Unicorn Herd':'Purity — ×1.25 facing Monsters and skeletons, and it breaks a Spear Hedge or a Boulder Wall (no ×0.75 cap). Through the Glades — the one cavalry, with the Stag Riders, that takes a flank in forest and jungle. At home on the plain and in the forest (terrain ×1.1).',
   'Mammoth Host':'Trample — ×1.15 facing foot. Stampede: a pre-battle strike across the whole enemy line (2–4 each). At home on the open plain (terrain ×1.1), ill at ease under trees; slow.',
   'Great Turtles':'Island Back — carries two land units a hull, where a fleet carries one. Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power; slow.',
 };

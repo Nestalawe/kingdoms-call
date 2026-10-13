@@ -6,7 +6,7 @@
 //   Forest Ents        Rooted (never hit from the side when the enemy wraps their end) · Choking Spores (unchanged)
 //   Great Bears        Maul (×1.15 facing foot) · Thick Hide (pre-battle volleys against them do half)
 //   Stone Giants       Boulder Wall (cavalry facing them fights at no better than ×0.75) · Boulder Barrage (unchanged)
-//   Unicorn Herd       Purity (×1.25 facing Monsters and skeletons) · Through the Glades (the one cavalry, with the
+//   Unicorn Herd       Purity (×1.25 facing Monsters and skeletons; breaks a Spear Hedge or Boulder Wall, 2026-10-12) · Through the Glades (the one cavalry, with the
 //                      Stag Riders, that takes the flank in forest and jungle)
 //   Mammoth Host       Trample (×1.15 facing foot) · Stampede (unchanged)
 //   Great Turtles      Shell Wall (immune to pre-battle volleys, as the Ironclads)
@@ -94,7 +94,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   r=fight([['Unicorn Herd',2]],[['Cave Trolls',2]],2,'forest');
   ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity/.test(u.why)),`Purity: unicorns facing Cave Trolls ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
   r=fight([['Unicorn Herd',2]],[['Shieldwall Levies',2,{_isSkeletal:true}]],2,'forest');
-  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.75)&&/Purity/.test(u.why)&&/Spear Hedge/.test(u.why)),`…and facing skeletal Levies Purity is named, but the Spear Hedge still caps even a pure charge at ×0.75 — ${whyOf(r.me,'Unicorn Herd')}`);
+  ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85*1.25)&&/Purity breaks the Spear Hedge/.test(u.why)),`…and facing skeletal Levies Purity breaks the Spear Hedge (Toby, 2026-10-12): ×0.85 × ×1.25 — ${whyOf(r.me,'Unicorn Herd')}`);
   r=fight([['Unicorn Herd',2]],[['Orc Berserkers',2]],2,'forest');
   ok(faced(r.me,'Unicorn Herd').every(u=>near(u.m,0.85)&&!/Purity/.test(u.why)),'facing living orcs the herd is plain cavalry');
 

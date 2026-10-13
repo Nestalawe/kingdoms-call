@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.13-0110
+// Data file v2026.10.13-0201
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.13-0110';
+const KC_DATA_STAMP='2026.10.13-0201';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -26,7 +26,7 @@ const KC_DATA_STAMP='2026.10.13-0110';
 const PRIMAL_ARMY_DEFS_P={
   // ── Druid 4 — Land ──
   'Stone Giants'    :{str:13,speed:2,cost:5,race:'Stone Giant',cat:'Heavy',
-    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Boulder Wall: cavalry facing them fights at no better than ×0.75. Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
+    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Boulder Wall: cavalry facing them fights at no better than ×0.75 (the Unicorn Herd\'s Purity breaks it). Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
     spells:[{name:'Boulder Barrage',dmg:[4,7],target:'single',flavour:'Giants heave boulders that shatter a formation before contact!'}]},
   'Forest Ents'     :{str:11,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
     desc:'Living trees of great age, at home in forest and jungle (terrain ×1.15 there; they wither in the desert). Rooted: never hit from the side when the enemy line wraps their end. Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
@@ -71,7 +71,7 @@ const PRIMAL_ARMY_DEFS_P={
   'Great Bears'     :{str:11,speed:3,cost:4,race:'Great Bear',cat:'Heavy',
     desc:'Great bears of the deep woods and high crags, at home in forest and mountain (terrain ×1.1 there; they suffer in the desert). Maul: ×1.15 facing foot. Thick Hide: pre-battle volleys against them do half. No special strike. Move 3.'},
   'Unicorn Herd'    :{str:13,speed:4,cost:5,race:'Unicorn',cat:'Cavalry',
-    desc:'The wild\'s only horse: a herd of unicorns, at home on the plain and in the forest (terrain ×1.1 there; ×0.9 in the jungle, ×0.85 in the mountains). Cavalry (move 4). Purity: ×1.25 facing Monsters and skeletons. Through the Glades: takes a flank in forest and jungle, as the Stag Riders do. No special strike.'},
+    desc:'The wild\'s only horse: a herd of unicorns, at home on the plain and in the forest (terrain ×1.1 there; ×0.9 in the jungle, ×0.85 in the mountains). Cavalry (move 4). Purity: ×1.25 facing Monsters and skeletons, and it breaks a Spear Hedge or a Boulder Wall (no ×0.75 cap). Through the Glades: takes a flank in forest and jungle, as the Stag Riders do. No special strike.'},
   'Mammoth Host'    :{str:13,speed:2,cost:5,race:'Mammoth',cat:'Heavy',
     desc:'A host of mammoths, at home on the open plain (terrain ×1.1; ×0.85 in the desert, ×0.8 in the forest, ×0.75 in the jungle). Trample: ×1.15 facing foot. Pre-battle strike Stampede: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit. Slow (speed 2).',
     spells:[{name:'Stampede',dmg:[2,4],target:'all',flavour:'The herd thunders through the enemy line before it has formed.'}]},

@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0110';
+const KC_DATA_MIN='2026.10.13-0201';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -891,8 +891,9 @@ function abilityFront(x, e, terrain, where, meIsAtk){
   if(t==='Mammoth Host'&&e.role==='foot'){ m*=1.15; names.push('Trample'); }
   if(t==='Dread Hydras'&&e.role==='foot'){ m*=1.25; names.push('Many Heads'); }
   if(t==='Unicorn Herd'&&(GRID_MONSTER_TYPES.has(et)||(e.r&&e.r.a&&e.r.a._isSkeletal))){ m*=1.25; names.push('Purity'); }
-  if(et==='Shieldwall Levies'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Spear Hedge'); }
-  if(et==='Stone Giants'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Boulder Wall'); }
+  // 2026-10-12 (Toby): Purity breaks a Spear Hedge or a Boulder Wall — the Unicorn Herd is never held to their ×0.75 cap.
+  if(et==='Shieldwall Levies'&&x.role==='cav'&&m>0.75){ if(t==='Unicorn Herd') names.push('Purity breaks the Spear Hedge'); else { m=0.75; names.push('Spear Hedge'); } }
+  if(et==='Stone Giants'&&x.role==='cav'&&m>0.75){ if(t==='Unicorn Herd') names.push('Purity breaks the Boulder Wall'); else { m=0.75; names.push('Boulder Wall'); } }
   if(et==='Dwarven Guard'&&x.role==='foot'){ m*=0.85; names.push('Unbreakable'); }
   if(et==='Dwarf Garrison'&&x.role==='foot'&&terrain==='mountain'){ m*=0.9; names.push('Stone Halls'); }
   if(et==='Elven Garrison'&&x.role==='cav'&&ABILITY_WOODS.has(terrain)){ m*=0.85; names.push('Thorn Hedge'); }
