@@ -2752,16 +2752,16 @@ const SIGNATURE_TERRAIN_P={Human:'plain',Elven:'forest',Dwarven:'mountain',Orcis
 // genuinely possible everywhere.
 const SIGNATURE_WEIGHT_P=6;
 
-// Every humanoid province offers 2-3 recruitable land types PLUS its racial garrison. Every
-// terrain/race cell in PROVINCE_ARMIES_P carries at least 3 non-garrison units so this is always
-// satisfiable from the province's OWN terrain — no cross-terrain borrowing, so terrain stays
-// meaningful. The fuzz suite asserts that table invariant; if you thin a cell, it will fail there
-// rather than silently handing out short pools. 2026-09-12: there were too many humanoid flyers in
-// play. Half the provinces that would have offered one now offer a ground unit from the same
-// terrain instead, so roughly HALF as many flyer-recruiting provinces exist without touching the
-// terrain/race rosters themselves, and without ever leaving a province short of its `count` types.
-// The king's home province is untouched
-// (fullRaceLandRoster always grants the complete racial roster).
+// Every humanoid province offers 2 or 3 recruitable land types PLUS its racial garrison (and, on a
+// coast, its race's fleet). 2026-10-14 (Toby, item 15): two three times in four, three one time in
+// four (provincePoolSize), chosen at random from the units of the province's race that suit its
+// terrain — its PROVINCE_ARMIES_P cell, never a unit from another terrain. A cell with only two land
+// units (Human forest, Elven desert and mountain, Dwarven forest) always gives both.
+// 2026-09-12: there were too many humanoid flyers in play. Half the provinces that would have
+// offered one now offer another ground unit of the same cell instead, where the cell has one to
+// spare; where it has none, the flyer stays (since item 15 nothing is borrowed from another terrain).
+// The king's home province is untouched (fullRaceLandRoster always grants the complete racial roster).
+function provincePoolSize(rnd){ return (rnd||Math.random)()<0.75?2:3; }
 const GEN_FLYER_TYPES=new Set(KC_UNIT_CLASS.flying);
 const FLYER_PROVINCE_KEEP=0.5; // share of would-be flyer offers that survive
 function buildHumanoidPool(terrain, race, count, rnd){
@@ -2770,19 +2770,14 @@ function buildHumanoidPool(terrain, race, count, rnd){
   const local=full.filter(t=>!t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t));
   const shuffled=shuffleP(local, rnd);
   const types=shuffled.slice(0,count);
-  // Ground units this province could offer instead of a flyer: its own terrain first (terrain stays
-  // meaningful), and only if the terrain has none to spare — several race/terrain cells hold
-  // exactly two land types and one of them IS the flyer — a ground unit from elsewhere in the
-  // race's roster. Without that fallback, Elven plains and Dwarven plains could never give their
-  // flyer up and the reduction stalled at ~0.83 rather than the half Toby asked for.
+  // Ground units this province could offer instead of a flyer: only its own terrain's (item 15:
+  // every unit offered suits the province). A cell with nothing to spare keeps its flyer.
   const localSpare=shuffled.slice(count).filter(t=>!GEN_FLYER_TYPES.has(t));
-  const raceSpare=fullRaceLandRoster(race).filter(t=>!GEN_FLYER_TYPES.has(t)&&!t.toLowerCase().includes('garrison'));
   for(let i=0;i<types.length;i++){
     if(!GEN_FLYER_TYPES.has(types[i])) continue;
     if(rnd()<FLYER_PROVINCE_KEEP) continue;                       // this one keeps its flyers
     let sub=null;
     while(localSpare.length&&!sub){ const t=localSpare.shift(); if(!types.includes(t)) sub=t; }
-    if(!sub){ const pool=raceSpare.filter(t=>!types.includes(t)); if(pool.length) sub=pool[Math.floor(rnd()*pool.length)]; }
     if(sub) types[i]=sub;                                          // otherwise nothing to swap to — keep the flyer
   }
   return{types, garrison};
@@ -10511,7 +10506,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       // (The king's home province gets its full racial pool restored separately.)
       let armyPool;
       if(HUMANOID_RACES_GEN.has(race)){
-        const hp=buildHumanoidPool(terrain, race, 2, Math.random); // item: non-home humanoid provinces offer exactly TWO recruitable land types (home restores its full roster separately)
+        const hp=buildHumanoidPool(terrain, race, provincePoolSize(Math.random), Math.random); // provisional: the race-allocation pass below rebuilds it the same way (item 15: 2 or 3 types; home restores its full roster separately)
         armyPool=[...hp.types,...hp.garrison];
       } else {
         // Primal (single wild unit) and sea provinces keep whatever their pool already holds.
@@ -10614,7 +10609,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       p.race=pick;
       // Rebuild everything downstream of race: the recruitable pool and the neutral garrison that
       // was rolled from it. Province count, wealth, terrain and features are untouched.
-      const hp=buildHumanoidPool(p.terrain, pick, rP(2,3), Math.random);
+      const hp=buildHumanoidPool(p.terrain, pick, provincePoolSize(Math.random), Math.random); // item 15: 2 (75%) or 3 (25%)
       p.armyTypes=[...hp.types,...hp.garrison];
       const drawPool=hp.types.length?hp.types:p.armyTypes;
       (p.neutralDefenders||[]).forEach(d=>{
@@ -10782,7 +10777,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // (terrain, tax and features kept; recruit pool and neutral garrison rebuilt).
     const _reRaceProvince=(conv,_race)=>{
         conv.race=_race;
-        const cHp=buildHumanoidPool(conv.terrain, _race, rP(2,3), Math.random);
+        const cHp=buildHumanoidPool(conv.terrain, _race, provincePoolSize(Math.random), Math.random);
         conv.armyTypes=[...cHp.types,...cHp.garrison];
         // Coastal humanoid provinces keep their chance of a racial fleet, same rule as world gen.
         {
@@ -11085,7 +11080,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     const _neutralHum=()=>provinces.filter(p=>p&&p.terrain!=='sea'&&p.owner===null&&HUMANOID_RACES_GEN.has(p.race));
     const _reRace=(conv,_race)=>{
       conv.race=_race;
-      const cHp=buildHumanoidPool(conv.terrain,_race,rP(2,3),Math.random);
+      const cHp=buildHumanoidPool(conv.terrain,_race,provincePoolSize(Math.random),Math.random);
       conv.armyTypes=[...cHp.types,...cHp.garrison];
       const offs=conv.row%2===0?offEven:offOdd;
       const coastal=offs.some(([dr,dc])=>{ const nr=conv.row+dr; if(nr<0||nr>=rows) return false;

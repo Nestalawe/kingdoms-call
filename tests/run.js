@@ -121,6 +121,7 @@ const SUITE=[
   ['surgery-lines',        'tests/surgery-lines.test.js'],
   ['bolt-damage',          'tests/bolt-damage.test.js'],
   ['arrow-damage',         'tests/arrow-damage.test.js'],
+  ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['battle-lines-report',  'tests/battle-lines-report.test.js'],
