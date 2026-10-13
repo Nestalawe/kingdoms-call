@@ -4192,6 +4192,28 @@ function normaliseEquipment(c){
   c.items.forEach(it=>{ if(it&&!itemUsableBy(it,c)) return; const sl=itemSlot(it); if(!sl||it.equipped===true) return;
     if((count[sl]||0)<ITEM_SLOT_CAP[sl]){ it.equipped=true; count[sl]=(count[sl]||0)+1; } else it.equipped=false; });
 }
+// 2026-10-13 (Toby, item 10): every time a hero gains an item, the report says whether they put
+// it on at once or have no room for it. Call it AFTER the items are in `ch.items`: a gained item's
+// old `equipped` flag (from its last owner) is dropped, normaliseEquipment re-slots it exactly as
+// every effect read will, and the line says what came of it. Returns '' when there is nothing to
+// say.
+const KC_SLOT_WORDS={weapon:'weapon slot',armour:'armour slot',shield:'shield slot',cloak:'cloak slot',helm:'helm slot',ring:'both ring slots',amulet:'amulet slot',combat:'both combat-item slots'};
+function gainedItemNote(ch, items){
+  if(!ch||!Array.isArray(ch.items)) return '';
+  const got=(items||[]).filter(it=>it&&ch.items.includes(it));
+  if(!got.length) return '';
+  got.forEach(it=>{ delete it.equipped; });
+  normaliseEquipment(ch);
+  return '🎒 '+got.map(it=>{
+    const nm='the '+it.name;
+    if(!itemUsableBy(it,ch)) return `${ch.name} cannot use ${nm} and carries it unused.`;
+    const sl=itemSlot(it);
+    if(!sl) return `${nm[0].toUpperCase()+nm.slice(1)} needs no slot: it works for ${ch.name} at once.`;
+    if(it.equipped===true) return `${ch.name} equips ${nm} at once.`;
+    const worn=ch.items.filter(x=>x&&x!==it&&x.equipped===true&&itemSlot(x)===sl).map(x=>'the '+x.name);
+    return `${ch.name} has no room to equip ${nm}: ${worn.length?`the ${KC_SLOT_WORDS[sl]||sl+' slot'} already ${worn.length>1?'hold':'holds'} ${worn.join(' and ')}`:`the ${KC_SLOT_WORDS[sl]||sl+' slot'} is full`}, so it goes in the pack (an Equip Items order can swap it in).`;
+  }).join(' ');
+}
 function activeItems(c){ if(!c||!Array.isArray(c.items)) return []; normaliseEquipment(c); return c.items.filter(it=>it&&itemUsableBy(it,c)&&(!itemSlot(it)||it.equipped===true)); }
 // Does the character carry (active/equipped) an item whose BASE name is `base`? Resolves the two
 // alternate names of every tier-1/2 item, so 'Falcon\'s Quiver' counts as the Quiver of the Hawk.
@@ -17995,6 +18017,7 @@ const BATTLE_ARMY_SPELLS={
               cbt.ref.items.splice(cbt.ref.items.indexOf(_lost),1); applyItemMaxHp(cbt.ref,_lost);
               foe.ref.items=foe.ref.items||[]; foe.ref.items.push(_lost);
               narrative.push(`  🎒 ${cbt.name} surrenders ${_lost.name} to ${foe.name} as the price of mercy.`);
+              { const _gn=gainedItemNote(foe.ref,[_lost]); if(_gn) narrative.push('  '+_gn); } // item 10
             }
           }
         } else {
@@ -18167,6 +18190,7 @@ const BATTLE_ARMY_SPELLS={
     stayer.items=(stayer.items||[]).concat([it]);
     if(stayerCbt.ref!==stayer&&Array.isArray(stayerCbt.ref.items)) stayerCbt.ref.items=stayerCbt.ref.items.concat([it]);
     narrative.push(`  💎 In the rout ${runner.name} drops ${it.name}${isLegendaryItem(it)?' (Legendary)':''} — ${stayer.name} claims it.`);
+    { const _gn=gainedItemNote(stayer,[it]); if(_gn) narrative.push('  '+_gn); } // item 10
     return it;
   }
   function resolveDuel(atk, def, narrative){
@@ -19547,6 +19571,7 @@ const BATTLE_ARMY_SPELLS={
         if(killerChar&&killerChar!==recipient&&Array.isArray(killerChar.items)&&killerChar.items!==recipient.items) deadItems.forEach(it=>{ if(!killerChar.items.includes(it)) killerChar.items.push(it); });
         log('system',`${deadChar.name}'s possessions — ${deadItems.map(i=>i.name).join(', ')} — pass to ${recipient.name}.`,{actor:deadChar.player,targets:[deadChar.player]});
         if(recipient.player!=null&&recipient.player!==deadChar.player) log('system',`🗡 ${recipient.name} takes ${deadChar.name}'s possessions from the fallen: ${deadItems.map(i=>i.name).join(', ')}.`,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)});
+        if(recipient.player!=null){ const _gn=gainedItemNote(recipient,deadItems); if(_gn) log('system',_gn,{actor:recipient.player,targets:[recipient.player],charId:recipient.id,phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),provinceId:(recipient.location!=null?recipient.location:undefined)}); } // item 10
       } else {
         log('system',`${deadChar.name}'s possessions are lost — no heir to receive them.`,{actor:deadChar.player,targets:[deadChar.player]});
       }
@@ -21112,6 +21137,7 @@ const BATTLE_ARMY_SPELLS={
               if(_r<=_ch){ const _it=_hi[Math.floor(Math.random()*_hi.length)]; _hiAll.splice(_hiAll.indexOf(_it),1); c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
                 f._stolenItems=(f._stolenItems||[]).concat(_it.name);
                 log('explore',`🗝 ${c.name} also slips ${(isLegendaryItem(_it)?'the LEGENDARY ':'the ')}${_it.name} (${_it.desc}) out from under the guardian's nose! ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+                log('explore',gainedItemNote(c,[_it]),{actor:c.player,targets:[c.player],provinceId:prov.id}); // item 10
               } else log('explore',`${c.name} eyes the hoard's magic but cannot get near it. ${fmtRoll(_ch,_r)}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             } }
         } else if(encounter.won){
@@ -21166,6 +21192,7 @@ const BATTLE_ARMY_SPELLS={
             log('explore',`Victory! ${c.name} claims ${gold}g from the ${f.name} and hauls out ${itemNameList(baseDrops,false)}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             baseDrops.forEach(it=>log('explore',itemLoreLines([it]),{actor:c.player,targets:[c.player],provinceId:prov.id})); // one lore line per relic won
           }
+          if(drops.length>0) log('explore',gainedItemNote(c,drops),{actor:c.player,targets:[c.player],provinceId:prov.id}); // item 10: worn at once, or no room
           // recover any items earlier challengers left behind when the guardian slew them.
           if((f.lairItems||[]).length>0){
             const _recovered=f.lairItems.slice();
@@ -21173,6 +21200,7 @@ const BATTLE_ARMY_SPELLS={
             f.lairItems=[];
             log('explore',`Among the bones of the fallen, ${c.name} recovers ${itemNameList(_recovered,false)}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             _recovered.forEach(it=>log('explore',itemLoreLines([it]),{actor:c.player,targets:[c.player],provinceId:prov.id})); // lore line per recovered relic
+            log('explore',gainedItemNote(c,_recovered),{actor:c.player,targets:[c.player],provinceId:prov.id}); // item 10
           }
           // Only claim "no magic" when the fight truly yielded no items — no tier drops AND no
           // Alchemical bonus AND no recovered lair items.
@@ -22016,6 +22044,7 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} hands ${_names} to ${recip.name}.`,{actor:c.player,targets:[c.player],charId:c.id,phase:ph});
           // tell the recipient, in their own section.
           notifyTarget(recip,`📦 ${recip.name} receives ${_names} from ${c.name}.`,ph);
+          { const _gn=gainedItemNote(recip,given); if(_gn) notifyTarget(recip,_gn,ph); } // item 10
         } else {
           // Dispatch by courier — arrives at end of turn (see the end-of-turn delivery flush).
           G._itemDeliveries=G._itemDeliveries||[];
@@ -22377,6 +22406,7 @@ const BATTLE_ARMY_SPELLS={
             if(stolen&&stolen.guarded){ log('system',`${c.name}'s fingers find nothing — ${victim.name} keeps every trinket sewn tight; a master thief cannot be robbed of their own.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
             else { c.merits=(c.merits||0)+2;
               log('hire',`${c.name} deftly lifts the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:false});
+              log('hire',gainedItemNote(c,[stolen]),{actor:c.player,targets:[c.player],provinceId:prov.id,public:false}); // item 10
               if(victim.player!==null) log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) has stolen the ${stolen.name} from ${victim.name}!`,{actor:c.player,targets:[victim.player],provinceId:prov.id,charId:victim.id}); }
           }
           trySkillGain(c,'thief',SKILLGAIN_STD);
@@ -23325,7 +23355,7 @@ const BATTLE_ARMY_SPELLS={
           const purse=G.players[vp]?.gold||0;
           let take=Math.floor(purse*0.25);
           if(perkTier(c,'thief')>=3) take*=2; // THIEF L8: gold stolen doubled — the thief takes the full amount even if the realm cannot cover it (floored at 0 below)
-          const parts=[];
+          const parts=[]; let _heistItem=null;
           if(take>0){ G.players[vp].gold=Math.max(0,purse-take); G.players[c.player].gold=(G.players[c.player].gold||0)+take; parts.push(`${take}g lifted from the vaults`); }
           // ── COURIER INTERCEPT ── one item from a parcel still on the road inside the robbed
           // realm.
@@ -23337,7 +23367,7 @@ const BATTLE_ARMY_SPELLS={
           if(_ghParcels.length){
             const _p=_ghParcels[Math.floor(Math.random()*_ghParcels.length)];
             const _it=_p.items.splice(Math.floor(Math.random()*_p.items.length),1)[0];
-            c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it);
+            c.items=(c.items||[]); c.items.push(_it); applyItemMaxHp(c,_it); _heistItem=_it;
             parts.push(`the ${_it.name} cut from a courier's satchel on the road`);
             const _dest=(G.characters||[]).find(ch=>ch&&ch.id===_p.toId);   // the parcel's intended recipient
             log('system',`📦 A courier of ${G.players[vp]?.name} is waylaid on the road — ${_it.name}${_p.fromName?`, sent by ${_p.fromName}`:''}${_dest?` and bound for ${_dest.name}`:''}, never arrives.`,{actor:null,targets:[vp],provinceId:prov.id,charId:_dest?_dest.id:null,phase:ph});
@@ -23345,6 +23375,7 @@ const BATTLE_ARMY_SPELLS={
           c.merits=(c.merits||0)+2;
           const msg=parts.join(' — and ');
           log('hire',`💰 ${c.name} pulls off a Grand Heist in ${prov.name}${msg?` — ${msg}!`:', but finds little worth taking.'}`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(_heistItem){ const _gn=gainedItemNote(c,[_heistItem]); if(_gn) log('hire',_gn,{actor:c.player,targets:[c.player],provinceId:prov.id}); } // item 10
           log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
           trySkillGain(c,'thief',SKILLGAIN_STD);
         } else {
@@ -27091,6 +27122,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       dest.items=dest.items||[];
       (d.items||[]).forEach(item=>{ dest.items.push(item); applyItemMaxHp(dest,item); /* item 6 */ });
       log('hire',`📦 A courier reaches ${dest.name} with ${nm}${d.fromName?` from ${d.fromName}`:''} — delivered as the season closes, ready to use next turn.`,{actor:dest.player,targets:[dest.player],charId:dest.id,phase:99});
+      { const _gn=gainedItemNote(dest,d.items); if(_gn) log('hire',_gn,{actor:dest.player,targets:[dest.player],charId:dest.id,phase:99}); } // item 10
     });
     G._itemDeliveries=[];
   }
