@@ -14908,8 +14908,9 @@ const BATTLE_ARMY_SPELLS={
   // ── EVIL TERROR EFFECT ────
   // A decisive Evil victory terrorises the battle province AND every adjacent province. Terror
   // lingers until the next battle fought there, demoralising whoever defends
-  // (−10% strength per stack, capped at −50%). Repeated terror events stack.
-  const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=5;
+  // (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
+  // events stack up to that cap; a save already holding more is read as 3.
+  const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=3;
   // REIGN OF FEAR (2026-10-13, Toby, Creatures and Monsters I): an Evil realm's Monsters fight ×1.5 in a
   // province still gripped by that realm's own Terror — the mirror of the Druids' Home of the Wild, on ground
   // Evil makes its own by winning. 2026-10-12 (Toby): only when they ATTACK there, never when defending it. Read at battle start, BEFORE consumeTerror
