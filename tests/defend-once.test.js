@@ -19,11 +19,16 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const stage=S=>{
     S.relations=S.relations||{}; S.relations['0-1']='enemy';
     let pick=null;
-    for(const L1 of S.world.provinces.filter(p=>p.terrain!=='sea')){
-      const n=land(S,L1); if(n.length<4) continue;
+    // The five provinces are staged empty of every other realm's hero: one left standing in a province
+    // handed to the enemy would be on enemy ground and fight a war-front battle in Spring, which the
+    // turn's dice did not stage (2026-10-13: a world where that happened stripped the second column of
+    // its troops before it marched).
+    const free=p=>!S.characters.some(c=>c&&c.alive&&c.player!=null&&c.location===p.id);
+    for(const L1 of S.world.provinces.filter(p=>p.terrain!=='sea'&&free(p))){
+      const n=land(S,L1).filter(free); if(n.length<4) continue;
       for(const C of n){ for(const L2 of n){ if(L2.id===C.id) continue;
         const E1=n.find(x=>x.id!==C.id&&x.id!==L2.id&&!land(S,C).some(y=>y.id===x.id)&&!land(S,L2).some(y=>y.id===x.id));
-        const E2=land(S,L2).find(x=>x.id!==L1.id&&x.id!==C.id&&(!E1||x.id!==E1.id)&&!land(S,L1).some(y=>y.id===x.id)&&!land(S,C).some(y=>y.id===x.id));
+        const E2=land(S,L2).filter(free).find(x=>x.id!==L1.id&&x.id!==C.id&&(!E1||x.id!==E1.id)&&!land(S,L1).some(y=>y.id===x.id)&&!land(S,C).some(y=>y.id===x.id));
         if(E1&&E2){ pick={C,L1,L2,E1,E2}; break; } } if(pick) break; }
       if(pick) break; }
     const {C,L1,L2,E1,E2}=pick, ids=[C,L1,L2,E1,E2].map(p=>p.id);
