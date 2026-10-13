@@ -3,7 +3,9 @@
 -- What the game needs:
 --   a realm sends public dispatches, and private ones to one or more realms, in its own name only;
 --   a realm reads the public channel and the private dispatches it sent or received;
---   the GM reads the public channel and deletes dispatches in their own game.
+--   the GM reads the public channel and deletes dispatches in their own game;
+--   private dispatches are read only by the realms in the conversation (and the Overlord), not the GM, unless one
+--   is reported to the GM (P0-24, 18_private_dispatches).
 -- Also checked: nobody edits a dispatch, and nobody outside the game reads or deletes one.
 --
 -- In Marchwood (game A): Thornmere (p1, realm 0) and Veyholt (p2, realm 1) have exchanged one private
@@ -11,7 +13,7 @@
 -- addressed by nobody.
 begin;
 \ir ../lib/world.psql
-select plan(20);
+select plan(21);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -43,6 +45,9 @@ select is(pg_temp.kc_count($$select body from public.game_messages
 select is(pg_temp.kc_writes($$delete from public.game_messages
           where game_id = pg_temp.kc_game('A')::text and scope = 'public'$$), 1,
   'the GM deletes a dispatch in their own game');
+select is(pg_temp.kc_count($$select body from public.game_messages
+          where game_id = pg_temp.kc_game('A')::text and scope = 'private'$$), 0,
+  'the GM can''t read private dispatches in their game');
 
 -- ── a realm writes only in its own name, in its own game ─────────────────────────────────────
 
