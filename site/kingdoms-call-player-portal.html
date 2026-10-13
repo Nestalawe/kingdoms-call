@@ -4220,7 +4220,8 @@ function orderChanceNote(c, action, ph){
       return chanceLine(`The blockade forms ${pct((oc.blockade||{}).chance||50)} of the time — wind and tide decide the rest.`);
     case 'Practice Skill':{
       const o=oc.practice||{}; const by=o.byLevel||[25,20,15,10,5];
-      const sel=document.getElementById(`po-target-${c.id}-${ph}`)?.value||'';
+      const _pick=KC_SKILLS.indexOf(document.getElementById(`po-target-${c.id}-${ph}`)?.value||'');
+      const sel=_pick>=0?KC_SKILLS[_pick]:'';   // only a skill the game knows is named in the note
       const lvl=sel?Math.min(4,((c.skills||{})[sel]||0)):null;
       const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0)+((o.bySkill&&sel)?(o.bySkill[sel]||0):0); // + skill-scoped practice discoveries
       const scale=`Chance falls as mastery grows: ${by.map((v,i)=>`${v}% at ${i}`).join(', ')}.`;
