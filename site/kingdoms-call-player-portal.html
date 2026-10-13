@@ -4293,7 +4293,8 @@ function refreshLaterCastSpells(charId, fromPh){
     const before=getOrderTarget(charId,later);
     // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
     // back afterwards as the field's value, never as markup
-    const spell=Object.keys(SPELL_TO_SCHOOL).find(sp=>sp===before)||'';
+    const known=Object.keys(SPELL_TO_SCHOOL), at=known.indexOf(before);
+    const spell=at>=0?known[at]:'';
     const savedExtra=getOrderExtra(charId,later);
     try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:spell,extra:''}); }catch(e){ console.warn('cast refresh failed',e); }
     const ex=document.getElementById(`po-extra-${charId}-${later}`);
