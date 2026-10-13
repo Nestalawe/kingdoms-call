@@ -5,13 +5,16 @@ npm test                    # standard run (about a minute)
 npm run test:full           # bigger fuzz runs
 npm run test:quarantine     # the quarantined harnesses below (expected to fail)
 npm test -- --only fuzz     # only tests whose name contains "fuzz"
+npm test -- --jobs 1        # one test at a time (default: as many at once as the machine has cores)
 npm test -- --seed 123      # another fixed seed (the default is printed at the start)
 npm test -- --only concede --seed 123   # reproduce one failure exactly (same seed and sizes)
 node tests/<name>.test.js   # one test on its own (unseeded, its own default sizes)
 ```
 
-`tests/run.js` runs each test as its own Node process; a test passes when it exits 0. On a failure
-it prints the end of that test's output and the seed to repeat it with.
+`tests/run.js` runs each test as its own Node process; a test passes when it exits 0. Tests run side by side, as
+many at once as the machine has cores (`--jobs N` or `KC_JOBS` to change it): each process has the same seed, so
+results don't depend on order, and the output is printed in the suite's order. On a failure it prints the end of
+that test's output and the seed to repeat it with.
 
 ## How the tests reach the site
 
@@ -127,7 +130,8 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `primal-abilities-words` | new | 0 | ✅ pass | Every live beast's ability names in its player-portal blurb and rulebook row; the rulebook says the flying beasts fight from the air; no page still promises an ability to come |
 | `island-back` | new | 2 | ✅ pass | Island Back (2026-10-13, Creatures and Monsters VI): the Great Turtles are a carrier with two berths (`KC_CARRIER_BERTHS`, in both guards); the engine's lift (hooked `getSeaCapability` / `seaLiftShortfall`) and the player portal's mirror count them; a king with a turtle and two Men-at-Arms puts to sea, with three he is blocked for want of a berth; the Naval, Sea-beasts and turtle rows and the blurb say so |
 | `abilities-turn` | new | 2 | ✅ pass | The three abilities only a turn can show: Prepared Ground (a defending Longbow company fires twice in the report, an attacking one once, with no header); Eyes of the Forest (Eagles flying with the shooters spoil a Wardens' Ambush in a forest, with the 🦅 line; without them the Ambush holds); Raiders' Muster (an orc realm's win in an orcish province adds a named Average Goblin Horde to its garrison at turn's end, with the 🥁 line; a human win adds none). Level 2 because the archery phases and the end-of-turn muster live inside `runTurn` |
-| `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input (since 2026-10-09 each record is a list with one entry per realm, as Toby confirmed) |
+| `leaderboard-records` | `claude_leaderboard_0927.js` | 1 | ✅ pass | The Hall-of-Fame record builder never throws and always gives a storable row, even on malformed input (empty rows among them): 100 made-up games (full run: 3,000; what it catches, it catches within 50) (since 2026-10-09 each record is a list with one entry per realm, as Toby confirmed) |
+| `leaderboard-golden` | new | 1 | ✅ pass | One hand-made finished game (two realms, three turns): the Hall of Fame entry's standings, and the right realm holding each record with the right number and turn (each realm's own best, best first; a realm whose best is 0 left out; a tie keeps the turn first reached). Catches "keep the first value" and "one entry per game" bugs the fuzz can't |
 | `leaderboard-render` | `claude_lb_render_0927.js` | 4 | ✅ pass | The Hall of Fame renders every tab, filter and GM control from real built rows |
 | `leaderboard-events-paging` | new | 1 | ✅ pass | A game's Hall-of-Fame record is built from every one of its turn rows, read in pages in a fixed order (none skipped or read twice); a page that fails stops the build, saves nothing and shows the error |
 | `leaderboard-realm-bests` | new | 1 + 4 | ✅ pass | Every realm's own best for each record is kept (not only the game's best), best first; a hero who fell that turn still counts for his peaks; a title held and then lost is recorded; on the board (jsdom), searching a realm shows only that realm's entries |

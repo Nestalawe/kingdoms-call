@@ -40,11 +40,12 @@ Node 24 (`.nvmrc`).
 
 ```sh
 npm ci && npx playwright install chromium   # once
-npm test                                    # the standard run (about a minute); CI runs the same
+npm test                                    # the standard run (under a minute, tests side by side); CI runs the same
 npm run test:full                           # bigger fuzz runs
 npm run test:quarantine                     # quarantined harnesses (expected to fail)
 npm test -- --only fuzz                     # tests whose name contains "fuzz"
 npm test -- --seed 123                      # another fixed seed; a failing run prints its seed
+npm test -- --jobs 1                        # one test at a time (default: one per core)
 npm test -- --only turn-fuzz --seed 123     # reproduce one failure: same test, same seed, same sizes
 node tests/<name>.test.js                   # one test on its own: unseeded, its own default sizes
 KC_SITE=/tmp/broken-site npm test           # run against another copy of the site (fail-first proofs)
