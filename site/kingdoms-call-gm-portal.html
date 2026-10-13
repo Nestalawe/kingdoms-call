@@ -1183,13 +1183,14 @@ const MISSILE_ARMIES_MASTER=new Set(KC_UNIT_CLASS.missile);
 
 const ARMY_SPEED_R=ARMY_SPEED_MASTER; // alias → master table at top of script
 
-// ── NAVAL SPEED BONUS ────
-// Deliberately modelled on the March bonus for land units (MB_SLOW / MB_FAST in setMovePool): a
-// skilled admiral gets more out of a wallowing hull than out of one that is already fast, so slow
-// ships (base speed <= 2) gain more at high skill than fast ones. Kept at module top level so every
-// caller (setMovePool, pickup_army, leave/disband) uses the SAME table — the previous `+navalLevel`
-// was duplicated across four sites and drifted.
-const NB_SLOW=[0,0,1,1,2,3], NB_FAST=[0,1,1,2,2,2];
+// ── MARCH AND NAVAL SPEED BONUS ────
+// 2026-10-13 (Toby, item 14): one rate of advance. Every unit a hero leads gains the same bonus
+// from March (on land) or Naval (at sea), whatever its base move: +0/+0/+1/+1/+2/+3 at levels 0–5
+// (the old "slow column" ladder; the "fast column" ladder +0/+1/+1/+2/+2/+2 is gone). Flyers gain
+// nothing from March. Kept at module top level so the engine, the turn report and the bots all
+// read the same table.
+const MARCH_NAVAL_BONUS=[0,0,1,1,2,3];
+function marchSpeedBonus(marchLevel){ return MARCH_NAVAL_BONUS[Math.max(0,Math.min(5,marchLevel||0))]; }
 // Report helper (2026-09-23, item 7): the movement rate of an UNLED (garrison) unit — base speed,
 // plus the realm's Road / race `move` discoveries for a speed-1/2 land unit, as computeMovePoolMax
 // adds them. No commander, so no March / Naval / title bonus.
@@ -1204,9 +1205,8 @@ function garrisonMoveRate(a, pl){
   if(!sea&&!GARRISON_FLY_TYPES_R.has(a.type)&&base<=2&&pl&&typeof discEffectsOf==='function') discEffectsOf(pl,'move').forEach(e=>{ if(discUnitMatch(e,a)) road+=(e.extra||0); });
   return {moveRate:base+road, moveKind:sea?'sea':(GARRISON_AIR_TYPES_R.has(a.type)?'air':'land')};
 }
-function navalSpeedBonus(baseSpeed,navalLevel){
-  const lvl=Math.max(0,Math.min(5,navalLevel||0));
-  return (baseSpeed<=2?NB_SLOW[lvl]:NB_FAST[lvl]);
+function navalSpeedBonus(baseSpeed,navalLevel){ // baseSpeed is no longer used (item 14: one rate)
+  return MARCH_NAVAL_BONUS[Math.max(0,Math.min(5,navalLevel||0))];
 }
   // Flying armies can cross sea provinces without a fleet
   const FLYING_TYPES=new Set(KC_UNIT_CLASS.flying);
@@ -7002,8 +7002,7 @@ function botLandReach(c, extraTypes){
   const types=(c.armies||[]).filter(a=>a&&!BOT_SEA_ALL.has(a.type)).map(a=>a.type).concat(extraTypes||[]);
   if(!types.length) return (c.armies||[]).length?0:5;
   const ml=Math.min(((c.skills||{}).march||0),5);
-  const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
-  let mn=99; types.forEach(t=>{ const base=ARMY_SPEED_MASTER[t]||3; const sp=BOT_AERIAL_TYPES.has(t)?base:base+(base<=2?MB_SLOW[ml]:MB_FAST[ml]); if(sp<mn)mn=sp; });
+  let mn=99; types.forEach(t=>{ const base=ARMY_SPEED_MASTER[t]||3; const sp=BOT_AERIAL_TYPES.has(t)?base:base+marchSpeedBonus(ml); if(sp<mn)mn=sp; });
   return Math.max(0,Math.min(5,mn));
 }
 // 2026-09-28 (Toby: bots never take the sea): a FLEET'S reach — the slowest ship sets the pace, Naval
@@ -12164,12 +12163,11 @@ function buildTurnReport(gameState, playerIndex){
     // setMovePool.
     const marchLvl=effSkillOf(c,'march',gameState.characters||[]);
     const navalLvl=effSkillOf(c,'naval',gameState.characters||[]);
-    const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
     const _repPl=(c.player!=null)?(gameState.players[c.player]||null):null;
     function repSpd(a){
       const base=a.speed||3;
       const SEA_T=new Set(KC_UNIT_CLASS.sea);
-      const FLY_T=new Set(KC_UNIT_CLASS.flying);
+      const FLY_T=new Set(KC_UNIT_CLASS.aerial); // every flyer, riders and winged beasts (item 14)
       if(SEA_T.has(a.type)) return base+navalSpeedBonus(base,navalLvl); // the engine's naval table (was +navalLvl)
       if(FLY_T.has(a.type)) return base;
       // Road Network (sd13) and the race/alignment `move` discoveries (Toll Roads, Caravan Roads…)
@@ -12178,7 +12176,7 @@ function buildTurnReport(gameState, playerIndex){
       // 3.
       let _road=0;
       if(base<=2&&_repPl){ discEffectsOf(_repPl,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); } // sd13 Road Network is now a `move` effect
-      return base+(base<=2?MB_SLOW[Math.min(marchLvl,5)]:MB_FAST[Math.min(marchLvl,5)])+_road;
+      return base+marchSpeedBonus(marchLvl)+_road;
     }
     const SEA_UNIT_TYPES=new Set(KC_UNIT_CLASS.sea);
     // Winged units cross sea without a fleet (matches AERIAL_TYPES in the engine).
@@ -12225,9 +12223,9 @@ function buildTurnReport(gameState, playerIndex){
       }
     }
     // ── PER-UNIT MOVEMENT RATE (2026-09-23, Toby item 7) ── each led unit's OWN rate, exactly as
-    // computeMovePoolMax prices it: base speed + the March table (speed-1/2 units gain more) + Road
+    // computeMovePoolMax prices it: base speed + the March table (one rate for all) + Road
     // / race `move` discoveries (speed 1–2 land units) for land units; base + the Naval table for
-    // sea units; flyers are untouched by March. Items that raise March / Naval count (repSpd reads
+    // sea units; flyers (riders and winged beasts) are untouched by March. Items that raise March / Naval count (repSpd reads
     // the effective skill). The Swift / Sea-Wolf minor titles add +1 to land / sea pace. The
     // COLUMN still moves at its slowest unit (and a lifted column at its flyers' pace) — that figure
     // is the header's "Land: N/turn".
@@ -23997,19 +23995,9 @@ const BATTLE_ARMY_SPELLS={
     return true;
   }
 
-  // March table: extra speed per level (AK 4.1.2 + level 5 extension)
-  const MARCH_BONUS_SLOW=[0,0,1,1,2,3]; // for Speed 1-2 armies, indexed by March level
-  const MARCH_BONUS_FAST=[0,1,1,2,2,2]; // for Speed 3+ armies
+  // The March speed table is MARCH_NAVAL_BONUS at module level (item 14: one rate for every unit).
   // Unify chance table [0 distance, 1 distance, 2 distance] by March level
   const MARCH_UNIFY=[[80,50,20],[90,60,30],[100,70,40],[100,80,50],[100,90,60],[100,100,70]];
-
-  function marchAdjustedSpeed(baseSpeed, marchLevel, playerIdx){
-    if(baseSpeed<=0) return 0;
-    const bonus=baseSpeed<=2?MARCH_BONUS_SLOW[Math.min(marchLevel,5)]:MARCH_BONUS_FAST[Math.min(marchLevel,5)];
-    // sd13 Road Network: +1 move for speed 1-2 land armies
-    const roadBonus=0; // sd13 Road Network is now a `move` effect, applied per army at the move-pool sites
-    return baseSpeed+bonus+roadBonus;
-  }
 
   // Naval table: similar to March but for sea movement, +20% fleet str per level
   const NAVAL_UNIFY=[[80,50,20],[90,60,30],[100,70,40],[100,80,50],[100,90,60],[100,100,70]];
@@ -24040,7 +24028,6 @@ const BATTLE_ARMY_SPELLS={
     const armies=(c.armies||[]).filter(a=>a&&!a._phantom); // illusions set no pace and take no berth
     const marchLevel=effStat(c,'march');
     const navalLevel=effStat(c,'naval');
-    const MB_SLOW=[0,0,1,1,2,3],MB_FAST=[0,1,1,2,2,2];
     let land, sea, seaActive;
     if(armies.length===0){
       land=5; sea=5; seaActive=true; // a hero with no fleet takes passage — Naval skill buys nothing
@@ -24049,12 +24036,11 @@ const BATTLE_ARMY_SPELLS={
       if(landArmies.length>0){
         const landSpeeds=landArmies.map(a=>{
           const base=ARMY_SPEED_R[a.type]||3;
-          if(FLYING_TYPES.has(a.type)) return base; // flying not affected by March
-          // sd13 Road Network (+1 for speed 1-2 land armies — previously computed in
-          // marchAdjustedSpeed, which nothing called) and Item 5 `move` discoveries (race / cls
-          // filtered), same speed band.
+          if(AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
+          // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
+          // cls filtered), same speed band.
           let _road=0; if(c.player!=null&&base<=2){ discEff(c.player,'move').forEach(e=>{ if(discUnitMatch(e,a)) _road+=(e.extra||0); }); }
-          return base+(base<=2?MB_SLOW[Math.min(marchLevel,5)]:MB_FAST[Math.min(marchLevel,5)])+_road;
+          return base+marchSpeedBonus(marchLevel)+_road;
         });
         land=Math.min(...landSpeeds);
       } else {

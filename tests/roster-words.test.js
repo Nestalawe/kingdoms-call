@@ -74,7 +74,7 @@ ok(!/Stag Riders|Ironhoof Rams/.test(lightFoot),'the light-foot list does not na
 // ── The March example uses the Levies' move ──
 const march=/leading base-(\d) levies, at <strong>(\d)<\/strong>/.exec(rules);
 ok(!!march&&+march[1]===ROSTER['Shieldwall Levies'].speed,`the March example calls levies base-${ROSTER['Shieldwall Levies'].speed} (it says base-${march&&march[1]})`);
-ok(!!march&&+march[2]===ROSTER['Shieldwall Levies'].speed+(ROSTER['Shieldwall Levies'].speed<=2?3:2),'…and the March-5 figure follows the ladder (+3 for a slow column, +2 for a fast one)');
+ok(!!march&&+march[2]===ROSTER['Shieldwall Levies'].speed+3,'…and the March-5 figure follows the ladder (+3 at March 5, one rate for every unit since 2026-10-13)');
 
 // ── Two a turn: garrisons, shipyard hulls and Goblin Hordes ──
 const raisePara=strip((/<h3>How many you may raise in a turn<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(rules)||['',''])[1]);

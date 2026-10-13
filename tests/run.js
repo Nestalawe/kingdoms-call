@@ -111,6 +111,7 @@ const SUITE=[
   ['lair-effects-spread',  'tests/lair-effects-spread.test.js'],
   ['duel-skill-rise',      'tests/duel-skill-rise.test.js'],
   ['skill-names-capitalised','tests/skill-names-capitalised.test.js'],
+  ['march-one-rate',       'tests/march-one-rate.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['battle-lines-report',  'tests/battle-lines-report.test.js'],
