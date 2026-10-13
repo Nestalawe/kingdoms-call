@@ -10,8 +10,9 @@ merged**, whether it changes the site, the database, or both (as two stacked pul
 ## Trying a pull request
 
 1. Add the label **`staging`** to the pull request.
-2. Wait for the comment **"🧪 On staging"** on the pull request (a few minutes: the tests run first, then
-   staging's database is rebuilt for it).
+2. Wait for the comment **"🧪 On staging"** on the pull request (a few minutes: it waits for the pull request's
+   CI checks to pass, then staging's database is rebuilt for it). If CI fails, nothing goes on staging: the
+   staging check turns red and says which CI job failed.
    Every page's footer on staging then says **"Staging · PR #N · abc1234"**: check it names this pull request.
 3. Open the staging site, sign in with a test account (below), and follow the pull request's **"What to try
    on staging"** checklist.

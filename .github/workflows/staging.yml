@@ -10,8 +10,9 @@
 # database change is tried before it's merged. Any failure stops the run before the site is published.
 # Database address: secret STAGING_DB_URL.
 #
-# Only for PRs from this repo (a fork gets no secrets). The tests run first; nothing is published if they
-# fail. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
+# Only for PRs from this repo (a fork gets no secrets). Nothing is published until CI has passed on this
+# commit: the job doesn't run the tests itself (CI's ci and db jobs run them on the same commit at the same
+# time), it waits for their verdict (.github/scripts/staging.js wait-ci, up to 20 minutes) and stops if CI failed. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
 # kc-config.js pointing at the staging database (variables STAGING_SUPABASE_URL, STAGING_SUPABASE_KEY),
 # all in the "staging" environment. That kc-config.js also names the PR and commit, which every page's
 # footer shows (site/kc-staging-footer.js).
@@ -24,6 +25,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  checks: read
 
 # One deploy at a time, in order; never cut off a push that has started.
 concurrency:
@@ -47,13 +49,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: npm
 
-      - run: npm ci
-
-      - run: npx playwright install --with-deps chromium
-
-      - run: npm test
+      - name: Wait for CI to pass on this commit
+        run: node .github/scripts/staging.js wait-ci
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
 
       - uses: supabase/setup-cli@v3
         with:
