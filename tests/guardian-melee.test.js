@@ -1,6 +1,7 @@
 // 2026-10-08 (item 2) — guardian melee.
 //   (A) A guardian's melee blow rolls a base that grows with its tier — Weak 1–3, Moderate 2–5,
-//       Powerful 3–7, Legendary 4–9 — then adds ⌈Melee ÷ 2⌉ exactly as a hero's does. Heroes keep 1–3.
+//       Powerful 3–7, Legendary 4–9 — then adds +1 per level of its Melee (2026-10-14, Toby item 20:
+//       it was ⌈Melee ÷ 2⌉, as a hero's blow still is). Heroes keep 1–3 + ⌈Melee ÷ 2⌉.
 //   (B) "hero −1 melee for next round" (Grave Chill, Earthshake, Chilling Touch, Hex of Weakness,
 //       Withering Touch) really lowers the hero's Melee — to-hit and damage — for the next round only.
 // The combat functions are nested inside runTurn, so a real turn is run first and the hook at
@@ -39,13 +40,13 @@ let ROWS={}; const WRITES=[];
   MON.forEach(m=>{
     const g=PC.pcMonsterCombatant({...m,_hpFull:m.hp});
     if(g.dmgBonus||g.gauntlets) return;                      // a flat bonus on top: checked by its own passive
-    const [lo,hi]=BASE[m.power]; const sk=Math.ceil((m.melee||1)/2);
+    const [lo,hi]=BASE[m.power]; const sk=(m.melee||1);   // +1 a Melee level (item 20, 2026-10-14)
     let mn=1e9,mx=-1; for(let i=0;i<600;i++){ const v=PC.pcMeleeDamage(g,dummy()); mn=Math.min(mn,v); mx=Math.max(mx,v); }
     checked++;
     if(mn!==lo+sk||mx!==hi+sk) bad.push(`${m.name} (${m.power}, Melee ${m.melee}): ${mn}–${mx}, expected ${lo+sk}–${hi+sk}`);
   });
   ok(checked>40,`most guardians checked (${checked})`);
-  ok(!bad.length,`every guardian's blow rolls its tier's base + ⌈Melee÷2⌉ (${bad.length} wrong)${bad.length?': '+bad.slice(0,4).join('; '):''}`);
+  ok(!bad.length,`every guardian's blow rolls its tier's base + its Melee (${bad.length} wrong)${bad.length?': '+bad.slice(0,4).join('; '):''}`);
   const tiers=new Set(MON.filter(m=>!PC.pcMonsterCombatant({...m}).dmgBonus).map(m=>m.power));
   ok(['Weak','Moderate','Powerful','Legendary'].every(t=>tiers.has(t)),'all four tiers were sampled');
 
