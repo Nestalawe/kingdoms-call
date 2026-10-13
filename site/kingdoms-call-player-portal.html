@@ -4202,7 +4202,7 @@ function orderChanceNote(c, action, ph){
     case 'Research':{
       const o=oc.research||{};
       if((o.rawLevel||0)<1) return chanceLine('Research needs Sage 1+ — without it the archives yield nothing.','bad');
-      return chanceLine(`Discovery: ${pct(o.chance)} (Sage ${o.level}). A failed search still passes the season; nothing else is lost.`);
+      return chanceLine(`Discovery: ${pct(o.chance)} (Sage ${o.level}). A failed search still passes the season; nothing else is lost. Each failed Research this turn makes the hero's next one ×1.2 likelier (a discovery resets it).`);
     }
     case 'Assassinate':{
       const o=oc.assassinate||{};
