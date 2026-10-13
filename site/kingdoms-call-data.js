@@ -1615,7 +1615,7 @@ const SPELL_DEFS_P={
 
   // ══ ELEMENTAL MAGIC ══
   'Lightning Bolt': {school:'elemental',target:'none',encounter:true,phase:false,
-    desc:'Combat: deals 2–4 damage per caster level (counted to level 5) to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
+    desc:'Combat: deals 1–3 damage per caster level (counted to level 5) to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
     fn:'elemental_lightning'},
   'Fireball':       {school:'elemental',target:'none',encounter:true,phase:false,
     desc:'Combat: burns the target for 10% of its health each phase for the next three phases. Battle magic: a random enemy army unit has its base strength halved for the battle.',

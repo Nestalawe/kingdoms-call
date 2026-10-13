@@ -17070,7 +17070,7 @@ const BATTLE_ARMY_SPELLS={
 
     // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
     switch(spellName){
-      case 'Lightning Bolt':{ let d=0; const _lbLvl=Math.min(Math.max(1,lvl),5); for(let i=0;i<_lbLvl;i++) d+=rng(2,4); const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
+      case 'Lightning Bolt':{ let d=0; const _lbLvl=Math.min(Math.max(1,lvl),5); for(let i=0;i<_lbLvl;i++) d+=rng(1,3); /* 1–3 a level (2026-10-14, Toby item 9; was 2–4) */ const dealt=pcTakeHit(target,d,narrative,caster.name,'Lightning Bolt'); if(dealt)narrative.push(`  ⚡ ${caster.name}'s Lightning Bolt arcs into ${target.name} for ${dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); break; }
       case 'Fireball':{ // 2026-09-15 rebalance: the burn now reads the caster. It was a flat 10% of the target's
         // maximum health a round whoever threw it, which made Elemental the strongest school at
         // level 1 and no stronger at level 5. 3% + 1% a level: 4% a round at Elemental 1, 8% at
