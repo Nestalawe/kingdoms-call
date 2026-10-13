@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0301';
+const KC_DATA_MIN='2026.10.13-0401';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -4135,7 +4135,10 @@ function migrateItemTiers(gs){
   const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
   // An item the treasury no longer carries (dropped from a band in a later re-cut) keeps its own tier,
   // but never below its ROLE's floor - a healing draught in a pack is Moderate whatever it was rolled as.
-  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m){ if(it.tier!==m.tier) it.tier=m.tier; } else if(!isLegendaryItem(it)&&(it.tier||1)<itemTierFloor(it)) it.tier=itemTierFloor(it); };
+  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m){ if(it.tier!==m.tier) it.tier=m.tier; } else if(!isLegendaryItem(it)&&(it.tier||1)<itemTierFloor(it)) it.tier=itemTierFloor(it);
+    // 2026-10-13 (item 7, Toby): an item rolled before the descriptions named their school with a
+    // capital ("casts Charm (Psychic Magic)") carries the old lower-case copy; mend it in place.
+    if(typeof it.desc==='string') it.desc=it.desc.replace(/\((white|psychic|illusory|elemental|necromancy)\)/g,(w,k)=>`(${SKILL_LABELS[k]||k})`); };
   (gs.characters||[]).forEach(c=>(c.items||[]).forEach(fix));
   ((gs.world&&gs.world.provinces)||[]).forEach(p=>(p.features||[]).forEach(f=>{ if(f) (f.hoardItems||[]).forEach(fix); }));
   (gs.players||[]).forEach(pl=>{ if(pl&&Array.isArray(pl.vault)) pl.vault.forEach(fix); });
@@ -15456,7 +15459,7 @@ const BATTLE_ARMY_SPELLS={
         const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(c)+discSum(c.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
         const castRoll=d100();
         telSpell(c,spellName,school,spellLvl,castChance,castRoll,'battle');
-        narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
+        narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${SKILL_LABELS[school]||school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
           // pre-battle magic no longer trains the school. Casting into a battle is not the same
           // test as casting in a duel, and it was the cheapest experience in the game — one order,
@@ -15524,7 +15527,7 @@ const BATTLE_ARMY_SPELLS={
       const armySpellChance=primalStrikeChance(druIdLvlMag, atkCmdrSlain?null:c, atk.type);
       const armySpellRoll=d100();
       if(armySpellRoll>armySpellChance&&_isPrimalStrikeA){
-        narrative.push(`〰 ${atk.unitName||atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag>0?`, Druid ${druIdLvlMag}`:', no commanding druid'}).`);
+        narrative.push(`〰 ${atk.unitName||atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag>0?`, Druid ${druIdLvlMag}`:', no commanding Druid'}).`);
       }
       if(armySpellRoll<=armySpellChance){
         narrative.push(`✨ ${atk.unitName||atk.type} — **${sp.name}**: "${sp.flavour}"`);
@@ -15641,7 +15644,7 @@ const BATTLE_ARMY_SPELLS={
           const castChance=Math.min(90,30+defSpellLvl*15);
           const castRoll=d100();
           telSpell(defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
-          narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
+          narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${SKILL_LABELS[school]||school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
           if(castRoll<=castChance){
             // no school gain from pre-battle magic — see the attacker's cast above.
             if(defSpellName==='Fireball'){
@@ -15747,7 +15750,7 @@ const BATTLE_ARMY_SPELLS={
         }
       } else if(_isPrimalStrike){
         // Primal strikes now announce a miss (standard units stay quiet to keep reports lean).
-        narrative.push(`〰 ${def.unitName||def.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${defDruIdLvl>0?`, Druid ${defDruIdLvl}`:', no commanding druid'}).`);
+        narrative.push(`〰 ${def.unitName||def.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${defDruIdLvl>0?`, Druid ${defDruIdLvl}`:', no commanding Druid'}).`);
       }
     });
 
@@ -16877,11 +16880,11 @@ const BATTLE_ARMY_SPELLS={
     if(!school){ return false; }
     const lvl=caster.school[school]||0;
     const lvlEff=Math.min(lvl,5); // every EFFECT scales with caster level capped at 5 (cast chance still uses the full level)
-    if(lvl<1){ narrative.push(`  ${caster.name} cannot cast ${spellName} (no ${school} skill).`); return false; }
+    if(lvl<1){ narrative.push(`  ${caster.name} cannot cast ${spellName} (no ${SKILL_LABELS[school]||school} skill).`); return false; }
     // Per-combat spell limits: same spell once; per school 1 at Lv1, 2 at Lv2+.
     const limit=lvl>=2?2:1;
     if(caster.castSpells.includes(spellName)){ narrative.push(`  ${caster.name}: ${spellName} already cast this combat.`); return false; }
-    if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${school} spell limit reached this combat.`); return false; }
+    if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${SKILL_LABELS[school]||school} spell limit reached this combat.`); return false; }
     // ── WEAKNESS ── a guardian open to this school cannot shrug the weave off: the cast always
     // takes hold (95%), and `wx` doubles every NON-damaging effect below. Damage itself is doubled
     // once, in pcTakeHit — never here, or it would double twice.
@@ -18370,7 +18373,7 @@ const BATTLE_ARMY_SPELLS={
       const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(caster)+discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
       const castRoll=d100();
       telSpell(caster,spellName,school,spellLvl,castChance,castRoll,'battle');
-      narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
+      narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${SKILL_LABELS[school]||school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
       // no school gain from pre-battle magic — see resolveBattle's cast.
       if(spellName==='Fireball'){
@@ -18415,7 +18418,7 @@ const BATTLE_ARMY_SPELLS={
         const _pvpStrikeChance=primalStrikeChance(druLvl, heroChar._druidNegated?null:heroChar, a.type);
         const _pvpHit=Math.random()*100<_pvpStrikeChance;
         if(!_pvpHit&&_isPrimalP)
-          narr.push(`〰 ${a.unitName||a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl>0?`, Druid ${druLvl}`:', no commanding druid'}).`);
+          narr.push(`〰 ${a.unitName||a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl>0?`, Druid ${druLvl}`:', no commanding Druid'}).`);
         if(_pvpHit){
           narr.push(`✨ ${a.unitName||a.type} — **${sp.name}**: "${sp.flavour}"`);
           if(sp.target==='all'){
@@ -21334,7 +21337,7 @@ const BATTLE_ARMY_SPELLS={
         const _aDist=alignDistP(kingdomAlign,h.alignment);
         // Both hire paths now say which it is.
         const _hActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
-        const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. ${_hActs}`;
+        const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'none yet'}. ${_hActs}`;
         log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id});
         // also file the same line under the HIRED hero's own Chronicle section, at the hire phase,
         // so their section opens by explaining when and how they entered service.
@@ -21789,7 +21792,7 @@ const BATTLE_ARMY_SPELLS={
               const idx=tiers.indexOf(army.quality);
               if(idx>=0&&idx<4){
                 army.quality=tiers[idx+1];
-                log('hire',`${c.name}'s ${isNaval?'naval drills':'training drills'}: ${(army.unitName||army.type)} (${army.type}) advances to **${army.quality}**!`,{actor:c.player,targets:[c.player]});
+                log('hire',`${c.name}'s ${isNaval?'Naval drills':'training drills'}: ${(army.unitName||army.type)} (${army.type}) advances to **${army.quality}**!`,{actor:c.player,targets:[c.player]});
                 trainedAny=true;
               }
             }
@@ -21797,11 +21800,11 @@ const BATTLE_ARMY_SPELLS={
           if(trainedAny){
             // at least one promotion already logged above
           } else if(trainable.length>0){
-            log('system',`${c.name}'s ${isNaval?'naval drills were thorough but no crews':'training drills were thorough but no units'} achieved a breakthrough this season.`,{actor:c.player,targets:[c.player]});
+            log('system',`${c.name}'s ${isNaval?'Naval drills were thorough but no crews':'training drills were thorough but no units'} achieved a breakthrough this season.`,{actor:c.player,targets:[c.player]});
           } else {
             log('system',isNaval
-              ?`${c.name} drills naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
-              :`${c.name} practises tactical theory alone — leading land armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
+              ?`${c.name} drills Naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
+              :`${c.name} practises Tactical theory alone — leading land armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
           }
         }
         break;
