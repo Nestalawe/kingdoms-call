@@ -271,6 +271,10 @@ section{display:none;}.section-active{display:block;}
 .msg-bubble{max-width:92%;border:1px solid #3a2a12;border-radius:4px;padding:6px 9px 7px;background:#1e1509;font-size:.82rem;line-height:1.45;color:#e6d9be;white-space:pre-wrap;overflow-wrap:break-word;word-break:break-word;}
 .msg-bubble.mine{align-self:flex-end;background:#25301c;border-color:#48602f;}
 .msg-bubble.pub{background:#1a1320;border-color:#4a3560;}
+.msg-report{margin-left:auto;background:none;border:none;color:#8a7a5c;font-size:.66rem;cursor:pointer;padding:0 2px}
+.msg-report:hover{color:#e6b0a0;text-decoration:underline}
+.msg-reported{margin-left:auto;color:#b98a6a;font-size:.66rem}
+.mc-privacy{font-size:.66rem;color:#8a7a5c;line-height:1.35;margin-bottom:4px}
 .msg-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.03em;margin-bottom:3px;}
 .msg-from{font-weight:700;}
 .msg-when{color:#8a7a5c;}
@@ -756,6 +760,7 @@ section{display:none;}.section-active{display:block;}
         <div id="msg-channels"></div>
         <div id="msg-thread"><div class="msg-empty">Loading dispatches…</div></div>
         <div id="msg-composer">
+          <div class="mc-privacy">Private dispatches are seen only by the realms in the conversation and the site's Overlord. Use ⚑ Report to show one to your GM (or to the Overlord, if your GM plays in this game).</div>
           <div id="msg-note"></div>
           <textarea id="msg-input" maxlength="500" rows="2" placeholder="Write your dispatch…" oninput="onMsgInput()"></textarea>
           <div id="msg-send-row">
@@ -833,7 +838,7 @@ const KC_DATA_MIN_P='2026.10.13-0401';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN='20261012023733';
+const KC_DB_MIN='20261012190236';
 (function(){
   const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
@@ -10049,6 +10054,7 @@ const MSG_PAGE=400;          // most recent dispatches loaded on entry; later on
                              // anything older is fetched a page at a time by loadOlderMessages()
 let _msgGameId=null, _msgMyIndex=null, _msgMyName='', _msgMyColor=null;
 let _msgRows=[], _msgIds=new Set(), _msgMaxId=0, _msgMinId=0, _msgMoreOlder=false, _msgLoadingOlder=false;
+let _msgReported=new Set();   // ids of dispatches this player has reported (P0-24), as strings
 let _msgReads={};            // channelKey -> highest message id this realm has seen
 let _msgRealms={};           // realm index -> {index,name,color,human,met,conceded,eliminated}
 let _msgChannel='public';
@@ -10144,7 +10150,7 @@ async function initMessaging(gameId, myIndex, report){
   _msgMyIndex=_msgNum(myIndex);
   _msgMyName=(report&&report.playerName)||'';
   _msgMyColor=(report&&report.kingdom&&report.kingdom.color)||null;
-  if(!same){ _msgRows=[]; _msgIds=new Set(); _msgMaxId=0; _msgMinId=0; _msgMoreOlder=false;
+  if(!same){ _msgRows=[]; _msgIds=new Set(); _msgMaxId=0; _msgMinId=0; _msgMoreOlder=false; _msgReported=new Set();
              _msgReads={}; _msgChannel='public'; _msgExtraGroups=[]; _msgErr=null; }
   await loadMessageRoster(gameId, report);
   { const h=document.getElementById('msg-col-title');   // the tab already says "Dispatches"; the column
@@ -10157,6 +10163,7 @@ async function initMessaging(gameId, myIndex, report){
   if(!same) await loadMessageReads();
   _msgBindChannelClicks(); _msgBindComposerKeys();
   renderMessageChannels(); renderMessageThread();
+  await loadMyReports();                       // which dispatches this player has reported (P0-24)
   await refreshMessages(true);
   startMessagePolling();
 }
@@ -10398,6 +10405,8 @@ function renderMessageThread(){
         +(showTo?'<span class="msg-to">'+_msgEsc(showTo)+'</span>':'')
         +'<span class="msg-when">'+(r.turn!=null?('T'+_msgEsc(r.turn)+' · '):'')+_msgEsc(_msgWhen(r.created_at))+'</span>'
         +(fresh?'<span class="mc-unread" title="New since you last read this thread">new</span>':'')
+        +(mine?'':_msgReported.has(String(r.id))?'<span class="msg-reported" title="Your GM (or the Overlord) can see this dispatch">⚑ Reported</span>'
+          :'<button type="button" class="msg-report" title="Show this dispatch to your GM" onclick="reportMessage('+(_msgNum(r.id)||0)+')">⚑ Report</button>')
       +'</div>'+_msgEsc(r.body)+'</div>';
   });
   el.innerHTML=html;
@@ -10410,6 +10419,26 @@ function onMessagesShown(){
   const el=document.getElementById('msg-thread'); if(el) el.scrollTop=el.scrollHeight;
   markChannelRead(_msgChannel);
   refreshMessages(true);
+}
+
+// ── REPORT (P0-24, rulings D-01 and D-13g) ── a player shows a dispatch they received to the game's GM, or to the
+// Overlord when the GM plays in the game (gm_reported_messages decides). One report per dispatch; the player sees
+// their own reports (message_reports' read rule), so a reported dispatch stays marked after a reload.
+async function loadMyReports(){
+  if(!_msgGameId) return;
+  const {data,error}=await sb.from('message_reports').select('message_id').eq('game_id',String(_msgGameId));
+  if(!error) _msgReported=new Set(_msgArr(data).map(r=>String(r.message_id)));
+}
+async function reportMessage(id){
+  const r=_msgRows.find(x=>_msgNum(x.id)===_msgNum(id));
+  if(!r||_msgMyIndex==null||_msgNum(r.from_index)===_msgMyIndex) return;
+  const why=prompt('Report this dispatch?\n\nYour GM will see it, with your reason (or the Overlord will, if your GM plays in this game). The sender isn\'t told.\n\nReason (optional):','');
+  if(why==null) return;
+  const {error}=await sb.from('message_reports').insert({message_id:_msgNum(id),game_id:String(_msgGameId),
+    reporter_index:_msgMyIndex,reason:String(why).trim().slice(0,500)||null});
+  if(error&&error.code!=='23505'){ _msgErr='Report not sent: '+String(error.message||error); updateMsgComposer(); return; }
+  _msgReported.add(String(id)); _msgErr=null;
+  renderMessageThread();
 }
 
 // ── COMPOSER ──
@@ -10513,7 +10542,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0120</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-1838</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

@@ -34,7 +34,7 @@ it prints the end of that test's output and the seed to repeat it with.
   account is a Game Master. It also mirrors `get_game_slots` and the one-realm-per-number and one-per-account
   rules on `game_players`; `RULES.ownSlotsOnly` applies P0-21's read rule and records any read that asks for
   another realm's row. `INSERT_ERRORS[table]` answers every insert into a table with a given error, as a check or
-  trigger would. The harnesses were written with five different stubs; each is kept exactly as it
+  trigger would. It also has `message_reports` and mirrors `gm_reported_messages` (P0-24). The harnesses were written with five different stubs; each is kept exactly as it
   behaved, so moving a harness onto the shared file didn't change what it sees.
 - **Fixed seed.** `run.js` sets `KC_SEED`. `boot.js` then replaces `Math.random` with a seeded
   generator (sfc32), both in the test process and in every jsdom page. So a run's random choices
@@ -95,6 +95,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `dispatch-limits` | new | 4 | ✅ pass | The Dispatches box keeps to the database's limits (P0-23, D-05): at most 500 characters, counting down from 500; a dispatch refused for its rate shows the database's own words, one refused for its length says "at most 500 characters", and the text stays in the box (`INSERT_ERRORS` in the stand-in database) |
 | `hall-of-fame-controls` | new | 4 | ✅ pass | Who edits the Hall of Fame (P0-22, D-09, D-11): in GM mode a GM gets edit controls on their own games' entries only; the Overlord edits every entry and alone renames players, through `rename_player` (the name only, trimmed); a player gets none; the page offers no SQL to paste |
 | `stats-forget-deleted` | new | 4 | ✅ pass | The GM portal's "Forget deleted games' data" forgets only games with no `games` row, whoever runs them: signed in as the Overlord (who sees every game's statistics since P0-22) or a GM, the other games' statistics and Hall of Fame entries stay |
+| `report-dispatch` | new | 4 | ✅ pass | Reporting a dispatch (P0-24, D-01, D-13g): Dispatches says who sees private dispatches; each dispatch received (not one's own) has ⚑ Report, which asks for an optional reason, writes the report as the player's realm, and marks it reported (also after a reload); cancelling sends nothing; the GM's game screen lists reported dispatches (sender, recipients, reporter, reason, text, all as text) with Delete; a GM who plays in the game is told its reports go to the Overlord |
 | `meta-missing-turn` | new | 2 | ✅ pass | With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still resolves and saves without writing it. The example to copy for site code that must cope without its database change ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)) |
 | `turn-fuzz` | `claude_turnfuzz_0927.js` | 3 | ✅ pass | Whole games through `runTurn` with random orders and live bots: no crash, failed run or stuck "orders submitted" flag. 4 games × 6 turns (full: 16 × 12) |
 | `home-placement` | `claude_homeplacement_0927.js` | 1 | ✅ pass | Capitals are at least 4 hexes apart on every map size |

@@ -386,6 +386,12 @@ section{display:none;}.section-active{display:block;}
       <h3>Last Turn Chronicle</h3>
       <div id="detail-log"></div>
     </div>
+
+    <!-- Reported dispatches (P0-24): players' reports, for this game's GM -->
+    <div class="card" id="detail-reports-card" style="display:none">
+      <h3>⚑ Reported dispatches</h3>
+      <div id="detail-reports"></div>
+    </div>
   </section>
 </div>
 
@@ -406,7 +412,7 @@ const KC_DATA_MIN='2026.10.13-0401';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
-const KC_DB_MIN='20261011191234';
+const KC_DB_MIN='20261012190236';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
@@ -420,7 +426,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0410'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.13-1838'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1656,6 +1662,44 @@ async function gmPortalAllowed(){
   return false;
 }
 
+// ── REPORTED DISPATCHES (P0-24, rulings D-01 and D-13g) ────
+// A player reports a dispatch they received; the game's GM sees it here (gm_reported_messages), with the reporter
+// and their reason, and may delete it. A GM who plays a realm in the game sees none: its reports go to the Overlord.
+// Every player-written string is escaped (_rdEsc, until P0-19's shared helper).
+const _rdEsc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function loadReportedDispatches(game){
+  const card=document.getElementById('detail-reports-card'), el=document.getElementById('detail-reports');
+  if(!card||!el) return;
+  card.style.display='none';
+  if(!game||!_kcHasMsg) return;
+  card.style.display='block';
+  if((game.game_players||currentGamePlayers||[]).some(p=>p.user_id&&currentUser&&p.user_id===currentUser.id)){
+    el.innerHTML='<div class="msg-info">You play a realm in this game, so its reported dispatches go to the Overlord, not to you.</div>';
+    return;
+  }
+  el.innerHTML='<div class="msg-info">Loading…</div>';
+  const {data,error}=await sb.rpc('gm_reported_messages',{p_game:game.id});
+  if(!currentGame||String(currentGame.id)!==String(game.id)) return;   // another game was opened meanwhile
+  if(error){ el.innerHTML='<div class="msg-error">'+_rdEsc(error.message)+'</div>'; return; }
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){ el.innerHTML='<div style="color:var(--stone);font-size:.85rem">No dispatches reported.</div>'; return; }
+  const realm=i=>{ const p=(currentGamePlayers||[]).find(x=>Number(x.player_index)===Number(i)); return (p&&p.display_name)||('Realm '+(Number(i)+1)); };
+  el.innerHTML=rows.map(r=>{
+    const to=r.scope==='public'?'every realm':(r.to_indexes||[]).map(realm).join(', ');
+    return `<div class="player-slot" style="display:block">
+      <div style="font-size:.78rem;color:var(--stone)">${r.turn!=null?'Turn '+_rdEsc(r.turn)+' · ':''}from <strong>${_rdEsc(realm(r.from_index))}</strong> to ${_rdEsc(to)} · reported by <strong>${_rdEsc(realm(r.reporter_index))}</strong>${r.reason?' · “'+_rdEsc(r.reason)+'”':''}</div>
+      <div style="margin:6px 0;white-space:pre-wrap">${_rdEsc(r.body)}</div>
+      <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteReportedDispatch(${Number(r.message_id)||0})">Delete this dispatch</button>
+    </div>`;
+  }).join('');
+}
+async function deleteReportedDispatch(id){
+  if(!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
+  const {error}=await sb.from('game_messages').delete().eq('id',id);
+  if(error){ alert(error.message); return; }
+  await loadReportedDispatches(currentGame);
+}
+
 // ── GAME LIST ────
 async function loadGames(){
   const el=document.getElementById('games-list');
@@ -2067,6 +2111,7 @@ async function openGame(gameId){
   // a JSON string — a silent no-op. It now runs inside runTurn on the parsed state (where the
   // rewritten names are actually used and saved).
   currentGamePlayers=game.game_players||[];
+  loadReportedDispatches(game);   // P0-24; fills its own card when it answers
 
   document.getElementById('detail-game-name').textContent=game.name;
   const maxP=game.max_players||4;
@@ -28478,7 +28523,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0410</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-1838</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
