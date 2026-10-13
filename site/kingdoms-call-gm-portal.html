@@ -13767,6 +13767,9 @@ async function runTurn(opts){
   // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
   // fights.
   let _combatSkillProv=null;
+  // 2026-10-13 (item 6, Toby): while a pre-battle duel is fought, each duellist's id → the foe's name,
+  // so a skill rise earned in it can say so (resolveDuel sets it; trySkillGain reads it).
+  let _duelFoes=null;
   let _battleSeq=0; // 2026-09-23d: numbers each emitted battle so the player portal can fold it (emitBattle)
   // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
   // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.
@@ -14273,13 +14276,33 @@ async function runTurn(opts){
   // earned on the march that carried them INTO the battle — so at the moment of death every
   // deferred line of theirs is written out at once, i.e. before the battle narrative is emitted,
   // exactly where the march sits in the sequence of events.
+  // Write out deferred skill lines. 2026-10-13 (item 6, Toby): a line earned in a battle
+  // (meta.afterBattleIn = that province) is placed straight after the last line of the most recent
+  // battle report there in the same phase, rather than after everything else the phase brought —
+  // the lines of one rise stay together and in order. With `inPlace` (a hero falling, whose battle
+  // is not yet written) every line is simply logged where it stands.
+  function writeDeferredSkillLines(list, inPlace){
+    const blocks=new Map();
+    (list||[]).forEach(([msg,meta])=>{
+      const m={...(meta||{})}; const p=m.afterBattleIn; delete m.afterBattleIn;
+      log('system',msg,m);
+      if(p==null||inPlace) return;
+      const k=p+'|'+m.phase; if(!blocks.has(k)) blocks.set(k,{p,ph:m.phase,ents:[]});
+      blocks.get(k).ents.push(turnLog.pop());
+    });
+    blocks.forEach(({p,ph,ents})=>{
+      let at=-1;
+      for(let i=turnLog.length-1;i>=0;i--){ const x=turnLog[i]; if(x&&x.battleId!=null&&x.provinceId===p&&x.phase===ph){ at=i; break; } }
+      if(at<0) turnLog.push(...ents); else turnLog.splice(at+1,0,...ents);
+    });
+  }
   function flushDeferredSkillLogsFor(charId){
     if(charId!=null){ const _pc=(G.characters||[]).find(r=>r&&r.id===charId); if(_pc&&_pc._sgPending) resolvePendingSkillGain(_pc); } // 2026-09-26b: a falling hero's phase rise is settled first
     if(charId==null||!_deferredSkillLogs.length) return;
     const mine=_deferredSkillLogs.filter(([,meta])=>meta&&meta.charId===charId);
     if(!mine.length) return;
     _deferredSkillLogs=_deferredSkillLogs.filter(([,meta])=>!(meta&&meta.charId===charId));
-    mine.forEach(([msg,meta])=>log('system',msg,meta));
+    writeDeferredSkillLines(mine, true);
   }
   // set while the Hunting Rumours odds simulation runs fights in the background — no sandbox fight
   // may ever train a real skill (see simulateLairOdds).
@@ -14353,7 +14376,8 @@ async function runTurn(opts){
       // longer raises the skill on the spot — it becomes a CANDIDATE for this phase. When the phase
       // ends (or the character falls, or the engine moves on to another phase) one candidate is
       // drawn at random and applied; the others are dropped silently, with no notice to anyone.
-      (real._sgPending.list).push({skill, prov:_combatSkillProv, phase:_sgPh});
+      (real._sgPending.list).push({skill, prov:_combatSkillProv, phase:_sgPh,
+        duelWith:(_duelFoes&&real.id!=null&&_duelFoes.get(real.id))||null});   // item 6: earned in a duel
     }
     // the acting object may be a SHALLOW battle copy whose keys syncLeaderCopy writes back —
     // mirror the (possibly replaced) bookkeeping objects so a write-back can never roll them back.
@@ -14391,13 +14415,20 @@ async function runTurn(opts){
       // A March/Naval rise increases pace immediately: recompute this character's move pool so the
       // extra reach is available for the rest of THIS turn (preserving points already spent).
       if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
-      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${skillInPlayNote(real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
+      // 2026-10-13 (item 6, Toby): a rise earned in a battle says where, and one earned in a pre-battle
+      // duel says against whom — the duel itself is folded inside the battle's full report, so a
+      // player reading the short account would otherwise never learn why the skill went up.
+      const _riseProv=(e.prov!=null&&G.world&&G.world.provinces)?G.world.provinces[e.prov]:null;
+      const _why=e.duelWith?` in single combat with ${e.duelWith}${_riseProv?` before the Battle for ${_riseProv.name}`:''}`
+        :(_riseProv?` in the fighting at ${_riseProv.name}`:'');
+      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${_why}${skillInPlayNote(real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle. the
       // deferred (non-battle) skill-rise carries the character's id and the phase it happened in,
       // so it is reported inside THAT character's Chronicle section at the end of the phase — not
       // adrift in Realm Events. (_logCtx holds the acting character + phase here.)
       const _skCharId=real.id, _skPhase=e.phase;
+      const _after=(e.prov!=null)?{afterBattleIn:e.prov}:{};   // item 6: reported straight after that battle
       // a skill rise is the OWNER'S news — the deferred log is private to this realm. (2026-09-26b:
       // battle-earned rises no longer go into the shared battle narrative; they are settled with the
       // phase's single draw and reported at the end of the phase in the character's own section.)
@@ -14406,7 +14437,7 @@ async function runTurn(opts){
       if(real.player==null){
         log('system',`📜 ${String(real.name||'').replace(/\s*\(wandering\)/i,'')} learns from the fighting — ${SKILL_LABELS[skill]||skill} rises to ${lvl+1}.`,{targets:[],provinceId:(e.prov!=null?e.prov:real.location),system:true});
       } else {
-      _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+      _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase,..._after}]);
       // crossing a mastery threshold (6/7/8/9) earns a congratulation that spells out the new
       // level's benefits — the passive that deepens, and any new mastery order or spell now
       // available. Fires exactly once per crossing (each gain is a single level).
@@ -14414,14 +14445,14 @@ async function runTurn(opts){
       if(_newLvl>=6){
         const _mu=(MASTERY_UNLOCKS[skill]||{})[_newLvl];
         const _mline=`🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill]||skill} — level ${_newLvl}!${_mu?' '+_mu:''}`;
-        _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+        _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase,..._after}]);
       }
       }
       // when the higher skill raises the hero's wage, say so in the player's report. (A neutral has
       // no realm to tell, and their wage is set by the hire itself, so this is player-led only.)
       if(real.player!=null&&_payAfter>_payBefore){
         const wline=`💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
-        _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+        _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase,..._after}]);
       }
   }
   function resolveAllPendingSkillGains(){ (G.characters||[]).forEach(c=>{ if(c&&c._sgPending) resolvePendingSkillGain(c); }); }
@@ -18102,7 +18133,8 @@ const BATTLE_ARMY_SPELLS={
     if(_ia) narrative.push(_ia);
     if(_ib) narrative.push(_ib);
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
-    const res=resolvePersonalCombat(A, B, {maxRounds:20, heldFieldWins:true}); // a duel's field held is a win (preBattleDuel awards it)
+    _duelFoes=new Map([[atk.id,String(def.name||'').replace(/\s*\(wandering\)/i,'')],[def.id,String(atk.name||'').replace(/\s*\(wandering\)/i,'')]]); // item 6
+    let res; try{ res=resolvePersonalCombat(A, B, {maxRounds:20, heldFieldWins:true}); } finally{ _duelFoes=null; } // a duel's field held is a win (preBattleDuel awards it)
     narrative.push(...res.narrative);
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
@@ -26571,7 +26603,7 @@ const BATTLE_ARMY_SPELLS={
     // (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each reads as
     // a consequence of the action that caused it rather than interrupting it.
     resolveAllPendingSkillGains(); // 2026-09-26b: settle each character's one skill rise for the phase
-    if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
+    if(_deferredSkillLogs.length){ writeDeferredSkillLines(_deferredSkillLogs); _deferredSkillLogs=[]; }
 
     // A Move order in a later phase cancels a standing Defend (AK [3.15]).
     (G.characters||[]).forEach(c=>{
@@ -27060,7 +27092,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Item 12 safety net: flush any incidental skill-rises that were earned after the last in-phase
   // flush (none expected today, but this guarantees no such line is ever silently dropped).
   resolveAllPendingSkillGains();
-  if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
+  if(_deferredSkillLogs.length){ writeDeferredSkillLines(_deferredSkillLogs); _deferredSkillLogs=[]; }
 
   // ── Fallen-commander backstop ── The per-phase sweep deliberately leaves a leaderless host in
   // place while its province is still contested. The turn is over now, so nothing is left to fight:
