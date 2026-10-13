@@ -11,7 +11,7 @@
   let shown=false;
   function hint(m){
     if(/being updated/i.test(m)) return 'Nothing was read or saved. Reload in a few minutes; if it keeps happening, tell the GM what the message above says.';
-    if(/supabase is not defined/i.test(m)) return 'The Supabase library could not be downloaded from cdn.jsdelivr.net or unpkg.com. Check your internet connection, ad-blocker or firewall, then reload.';
+    if(/supabase is not defined/i.test(m)) return 'The Supabase library (vendor/supabase-js-2.117.3.min.js, part of this site) did not load. Check your internet connection and hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
     return 'Hard-reload the page (Ctrl/Cmd+Shift+R). If it persists, report the message above.';
   }
   function show(msg){
@@ -33,10 +33,7 @@
   window.addEventListener('unhandledrejection',e=>show((e.reason&&(e.reason.message||e.reason))||'Unhandled promise rejection'));
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-if(!window.supabase) document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
-</script>
+<script src="vendor/supabase-js-2.117.3.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 :root{--parchment:#f2e8d0;--parchment-dark:#e4d4b0;--ink:#0a0601;--ink-light:#1c1203;--crimson:#5a0e0e;--gold:#c8922a;--gold-light:#f0c35a;--forest:#1a3010;--stone:#33270f;--stone-dim:#dccba8;--bg:#0e0a04;}
@@ -486,7 +483,7 @@ function render(){
   else if(TAB==='peoples') el.innerHTML=renderPeoples(G);
   else el.innerHTML=renderGames(G);
   const last=G.map(g=>g.finished_at).filter(Boolean).sort().slice(-1)[0];
-  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.12-2027 · most recent game recorded '+dstr(last);
+  $('foot').textContent='Kingdoms Call — Hall of Fame v2026.10.14-0743 · most recent game recorded '+dstr(last);
 }
 
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
@@ -790,7 +787,7 @@ async function deleteRecord(id,purge){
 
 kcDbGuard(sb,KC_DB_MIN).then(()=>loadAll());
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.12-2027</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Hall of Fame v2026.10.14-0743</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

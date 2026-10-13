@@ -22,9 +22,35 @@ submit orders and read what they're given.
 | `kingdoms-call-data.js` | ~410 KB | Content tables (items, monsters, lairs, discoveries, hero names, …) and the **shared rule tables** both portals read |
 | `kingdoms-call-leaderboard.html` | ~780 lines | Hall of Fame: leaderboard and achievement records over finished games |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose) |
+| `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
 
 All pages sit in one folder and link each other relatively. Only `site/` is published, so URLs are the
-same as before the cutover.
+same as before the cutover. No page loads a script from another site; the only outside requests are
+Google Fonts.
+
+### supabase-js: a copy served with the site
+
+The pages load supabase-js from `site/vendor/`, not from a CDN (P0-18), so no outside party can change the
+code that holds players' logins, and a CDN outage can't stop the portals loading.
+
+- **Version:** 2.117.3, the package's browser build (`dist/umd/supabase.js`) copied unchanged to
+  `site/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
+- **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
+  `vendor-supabase` check fails if the file and this line disagree.
+- **Nothing watches it for updates** (Dependabot can't see a copied file). When you touch this area, check
+  `npm view @supabase/supabase-js@2 version` and upgrade if it's newer. P1-17 replaces the copy with a pinned
+  npm dependency.
+
+**To upgrade**, in its own PR (it changes `site/vendor/**`, so it's a dangerous path: talk it through with
+Theo):
+1. In an empty folder: `npm pack @supabase/supabase-js@<version>` (npm checks the download against the
+   registry's checksum), then unpack it with `tar -xzf`.
+2. Copy `package/dist/umd/supabase.js` to `site/vendor/supabase-js-<version>.min.js` and `package/LICENSE` to
+   `site/vendor/supabase-js-LICENSE.txt`; delete the old copy.
+3. Point the three `<script src="vendor/…">` tags (both portals and the Hall of Fame) and their boot-failure
+   hints at the new file name, and update the version and SHA-256 above (`shasum -a 256 <file>`).
+4. Read the release notes between the two versions for anything the pages use (sign-in, `rpc`, realtime).
+5. `npm test`, then try sign-in, orders and Dispatches on staging.
 
 ## How a portal boots
 
@@ -33,8 +59,7 @@ Order inside each portal's `<head>` and body, and why it matters:
 1. **Boot-failure reporter**: a small inline script, first in `<head>`. While the loading spinner is
    still showing, the first `error` or `unhandledrejection` replaces it with the message, a hint and a
    Reload button. Without it, any top-level throw looks like "Loading…" for ever.
-2. **supabase-js v2** from a CDN, with a second CDN as a fallback (`document.write`, so load order is
-   kept).
+2. **supabase-js v2**, from the site itself (`vendor/supabase-js-<version>.min.js`, [above](#supabase-js-a-copy-served-with-the-site)).
 3. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
    key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
 4. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
