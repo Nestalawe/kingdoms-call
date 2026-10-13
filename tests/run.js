@@ -98,6 +98,7 @@ const SUITE=[
   ['overtures',            'tests/overtures.test.js'],
   ['orders-group-by-location','tests/orders-group-by-location.test.js'],
   ['duel-refuse-default',  'tests/duel-refuse-default.test.js'],
+  ['cast-practice-projection','tests/cast-practice-projection.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['battle-lines-report',  'tests/battle-lines-report.test.js'],

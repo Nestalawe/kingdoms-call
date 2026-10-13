@@ -4187,6 +4187,7 @@ function rebuildTargetWrap(charId, ph){
   const saved={action:document.getElementById(`po-action-${charId}-${ph}`)?.value||'',
                target:getOrderTarget(charId,ph), extra:getOrderExtra(charId,ph)};
   try{ wrap.innerHTML=buildTargetField(c, ph, saved); }catch(e){ console.warn('target rebuild failed',e); }
+  if(saved.action==='Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
 }
 function orderChanceNote(c, action, ph){
   const oc=(c&&c.orderChance)||null; if(!oc) return '';
@@ -4259,6 +4260,41 @@ function effMagicLvl(charObj, school){
 
 // Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
 function actionSpellLimit(level){ return level>=4?3:level>=3?2:1; }
+
+// 2026-10-13 (item 2, Toby): the level each magic school may have reached by phase `ph`, assuming
+// every Practice Skill order on it in an earlier phase succeeds (+1 each). Practice trains a skill
+// only up to 5 (6–9 come from experience), so a school already at 5 or more gains nothing; item
+// bonuses are then added as effMagicLvl does. `practising` is the set of schools with such an order.
+function projectedMagicLevels(c, ph){
+  const practice={};
+  for(let prevPh=0;prevPh<ph;prevPh++){
+    const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
+    if(prevAction!=='Practice Skill') continue;
+    const t=getOrderTarget(c.id,prevPh);
+    if(t&&KC_MAGIC_SCHOOLS.includes(t)) practice[t]=(practice[t]||0)+1;
+  }
+  const projected={};
+  KC_MAGIC_SCHOOLS.forEach(school=>{
+    const raw=rawMagicLvl(c,school), n=practice[school]||0;
+    const rawProj=raw>=5?raw:Math.min(5,raw+n);
+    projected[school]=effMagicLvl({...c,skills:{...((c&&c.skills)||{}),[school]:rawProj}},school);
+  });
+  return {practising:new Set(Object.keys(practice)), projected, practice};
+}
+
+// After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
+// LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
+function refreshLaterCastSpells(charId, fromPh){
+  const c=((currentReport&&currentReport.characters)||[]).find(x=>String(x.id)===String(charId));
+  if(!c) return;
+  for(let later=fromPh+1;later<=4;later++){
+    if((document.getElementById(`po-action-${charId}-${later}`)?.value||'')!=='Cast Spell') continue;
+    const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`); if(!wrap) continue;
+    const before=getOrderTarget(charId,later);
+    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:before,extra:getOrderExtra(charId,later)}); }catch(e){ console.warn('cast refresh failed',e); }
+    if(getOrderTarget(charId,later)!==before){ const l=later; setTimeout(()=>{ syncResurrectCard(charId,l); syncCharmCard(charId,l); },0); } // the spell itself changed
+  }
+}
 
 // Combat spell limit per school level: 1→1, 2+→2
 function combatSpellLimit(level){ return level>=2?2:1; }
@@ -5684,6 +5720,7 @@ function onSpellChange(charId, ph, selectedSpell){
   // the Use Item form reuses this handler for spell items — rebuild under the live action.
   const liveAction=document.getElementById(`po-action-${charId}-${ph}`)?.value||'Cast Spell';
   wrap.innerHTML=buildTargetField(char, ph, {action:liveAction==='Use Item'?'Use Item':'Cast Spell', target:selectedSpell});
+  if(liveAction==='Cast Spell') refreshLaterCastSpells(charId, ph); // a spell from another school frees or spends a later slot
 }
 
 
@@ -5731,6 +5768,7 @@ function onActionChange(charId, ph, charIdx){
   const saved={action};
   wrap.innerHTML=buildTargetField(char, ph, saved);
   refreshOncePerTurnOptions(charId); // 2026-09-24: once-per-turn orders leave later phases' dropdowns
+  refreshLaterCastSpells(charId, ph); // 2026-10-13: a Practice or Cast here changes later casts' limits
   setTimeout(refreshExploreNotes,0); // earlier/later Explore projections depend on every order
   setTimeout(refreshAllMoveModeNotes,0); // …and so does every Move order's land/naval/flying notice
 
@@ -8149,15 +8187,11 @@ function buildTargetField(c, ph, saved){
       // Also include schools being practised in an earlier phase this turn. The practice may or may
       // not succeed, but the player should be able to pre-order a cast in case it does. If the
       // skill is still 0 when the phase resolves, the cast will simply fail with a clear message.
-      const practisingSchools=new Set();
-      const MAGIC_SCHOOLS=new Set(KC_MAGIC_SCHOOLS);
-      for(let prevPh=0;prevPh<ph;prevPh++){
-        const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
-        if(prevAction==='Practice Skill'){
-          const prevTarget=getOrderTarget(c.id,prevPh);
-          if(prevTarget&&MAGIC_SCHOOLS.has(prevTarget)) practisingSchools.add(prevTarget);
-        }
-      }
+      // 2026-10-13 (item 2, Toby): each earlier Practice order on a school is assumed to succeed, so
+      // the casting limit quoted (and enforced in the dropdown) is the one the hero may have reached
+      // by this phase. The engine counts the limit from the level at the moment of casting, so a
+      // practice that lands does raise it.
+      const {practising:practisingSchools, projected:_projLvl}=projectedMagicLevels(c,ph);
 
       // Count how many Cast Spell orders from each school already exist in earlier phases
       const schoolCastCount={};
@@ -8186,17 +8220,19 @@ function buildTargetField(c, ph, saved){
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s]))
           .map(s=>{
             const currentLvl=effMagicLvl(c,school);
+            const projLvl=_projLvl[school];
             const isPractising=practisingSchools.has(school)&&currentLvl===0;
-            const limit=actionSpellLimit(currentLvl);
+            const limit=actionSpellLimit(projLvl);
             const used=schoolCastCount[school]||0;
-            const atLimit=!isPractising&&used>=limit;
+            const atLimit=used>=limit;
+            const lvlTxt=projLvl>currentLvl?`Lv${currentLvl}→${projLvl} if practice succeeds`:`Lv${currentLvl}`;
             let label;
-            if(isPractising){
-              label=`${s} (${SKILL_LABELS[school]} — practising, may unlock)`;
+            if(isPractising&&!atLimit){
+              label=`${s} (${SKILL_LABELS[school]} — practising, may unlock: Lv${projLvl}, ${used}/${limit} used)`;
             } else if(atLimit){
-              label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — limit reached: ${used}/${limit} this turn)`;
+              label=`${s} (${SKILL_LABELS[school]} ${lvlTxt} — limit reached: ${used}/${limit} this turn)`;
             } else {
-              label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — ${used}/${limit} used)`;
+              label=`${s} (${SKILL_LABELS[school]} ${lvlTxt} — ${used}/${limit} used)`;
             }
             return{spell:s,atLimit,label};
           }));
@@ -8212,11 +8248,7 @@ function buildTargetField(c, ph, saved){
       const knownOrPractisingSchools=Object.entries(SPELLS_BY_SCHOOL)
         .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school));
       const allAtLimit=knownOrPractisingSchools.length>0&&knownOrPractisingSchools
-        .every(([school])=>{
-          const lvl=effMagicLvl(c,school);
-          if(lvl===0) return false; // practising but no skill yet — never at limit
-          return (schoolCastCount[school]||0)>=actionSpellLimit(lvl);
-        });
+        .every(([school])=>(schoolCastCount[school]||0)>=actionSpellLimit(_projLvl[school]));
 
       if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;
       if(allAtLimit) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="All magic school casting limits reached for this turn" disabled>`;
