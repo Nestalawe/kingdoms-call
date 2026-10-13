@@ -4291,7 +4291,10 @@ function refreshLaterCastSpells(charId, fromPh){
     if((document.getElementById(`po-action-${charId}-${later}`)?.value||'')!=='Cast Spell') continue;
     const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`); if(!wrap) continue;
     const before=getOrderTarget(charId,later);
-    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:before,extra:getOrderExtra(charId,later)}); }catch(e){ console.warn('cast refresh failed',e); }
+    // only a spell the table knows, and a plain id, go back into the rebuilt field
+    const spell=Object.keys(SPELL_TO_SCHOOL).find(sp=>sp===before)||'';
+    const extra=String(getOrderExtra(charId,later)||'').replace(/[^\w-]/g,'');
+    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:spell,extra}); }catch(e){ console.warn('cast refresh failed',e); }
     if(getOrderTarget(charId,later)!==before){ const l=later; setTimeout(()=>{ syncResurrectCard(charId,l); syncCharmCard(charId,l); },0); } // the spell itself changed
   }
 }
