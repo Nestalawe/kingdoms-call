@@ -16,7 +16,9 @@ function parse(code,file,lineOffset){
 }
 
 for(const name of fs.readdirSync(SITE).sort()){
-  const file=path.join(SITE,name), src=fs.readFileSync(file,'utf8');
+  const file=path.join(SITE,name);
+  if(!fs.statSync(file).isFile()) continue;   // site/vendor/: third-party copies, pinned by vendor-supabase's checksum
+  const src=fs.readFileSync(file,'utf8');
   if(name.endsWith('.js')){ parse(src,name,0); continue; }
   if(!name.endsWith('.html')) continue;
   // Parse the page as a browser would (no scripts run), then find each inline block in the source.

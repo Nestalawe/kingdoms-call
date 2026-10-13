@@ -19,10 +19,10 @@ that test's output and the seed to repeat it with.
 ## How the tests reach the site
 
 - **`lib/boot.js`** is the one way to load a page from `site/`:
-  - `readPage` returns the page with `kingdoms-call-data.js` inlined and the Supabase CDN tag removed;
+  - `readPage` returns the page with `kingdoms-call-data.js` inlined and the supabase-js tag removed;
   - `bootJsdom` boots it in jsdom;
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
-    folder, as deployed; the CDN gets a stub and the fonts get nothing.
+    folder, as deployed; `vendor/supabase-js-*.js` gets a stub and the fonts get nothing.
   - every stand-in database answers `rpc('kc_db_version')` with `DB_VERSION`, the newest migration in
     `supabase/migrations/`, so pages pass their database version guard (P0-34). `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a
@@ -69,6 +69,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `docs` | new | 0 | ✅ pass | Every relative link and heading anchor in `CLAUDE.md`, `README.md`, `docs/`, this file and the PR template resolves; every `site/`, `tests/`, `tools/` or `.github/` path they name exists; `CLAUDE.md` stays under 200 lines |
 | `stamps` | new | 0 | ✅ pass | The stamps written twice agree: the data file's `// Data file v…` comment and `KC_DATA_STAMP`; the GM portal's footer and `KC_BUILD_STAMP`, with no other `GM Portal v…` above the footer |
 | `config` | new | 0 | ✅ pass | The database address and public key live only in `site/kc-config.js`; no page types them in, and every page that creates the database client loads `kc-config.js` first |
+| `vendor-supabase` | new | 0 | ✅ pass | supabase-js is served with the site (P0-18): `site/vendor/` holds one `supabase-js-<version>.min.js`; no page loads a script from another site or uses `document.write`; every page that creates the database client loads that file first; `docs/ARCHITECTURE.md` names it and its SHA-256 |
 | `db-min` | new | 0 | ✅ pass | Every page that uses the database declares `KC_DB_MIN`, loads `kc-db-guard.js` and starts through `kcDbGuard(sb, KC_DB_MIN)`; no `KC_DB_MIN` is newer than the newest migration (P0-34) |
 | `sql-banners` | new | 0 | ✅ pass | The GM portal carries no SQL for the GM to paste: no `KC_*_SQL` string, no "SQL Editor" instruction, no paste box (P0-17: the database changes only through migrations) |
 | `gm-portal-no-signup` | new | 0 | ✅ pass | The GM portal makes no accounts: no sign-up form, tab or `auth.signUp` call; its sign-in says "New here? Register on the player portal" (P0-32c) |
@@ -166,6 +167,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `fuzz-wages-combat` | `claude_fuzz_0927c.js` | 3 | ✅ pass | All-bot turns and personal combat: no crash, no NaN/undefined in the narrative; Orc wage discount stays a whole, non-negative number |
 | `fuzz-advance-masking` | `claude_fuzz_0927d.js` | 3 | ✅ pass | Advance-and-strike combat, masking of unmet realms, archive round-trip |
 | `chromium-boot` | `claude_lb_chromium_0927.js` | 4 | ✅ pass | GM portal, player portal and Hall of Fame boot in real Chromium; links and footers present |
+| `third-party-requests` | new | 4 | ✅ pass | Every page, opened in Chromium with the real vendored supabase-js and no database, asks no other site for anything but Google Fonts; on the pages that use the database the library loads from `vendor/` (P0-18). Level 4: only a real browser shows which requests a page makes |
 | `orders-buttons-visible` | new | 4 | ✅ pass | In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone |
 | `map-fits-panel` | new | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
 | `dispatches-badge` | new | 4 | ✅ pass | In real Chromium, the unread count on the left panel's ✉ Dispatches tab appears as soon as the player switches view (Map → Report) or comes back to the browser tab, and clears once Dispatches is opened |

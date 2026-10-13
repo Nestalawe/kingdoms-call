@@ -2,10 +2,10 @@
 //
 //   SITE, sitePath(name)        where the deployable files live (site/, or $KC_SITE)
 //   readPage(nameOrPath)        page HTML with its local scripts (kingdoms-call-data.js, kc-config.js)
-//                               inlined and the Supabase CDN <script> removed, ready for jsdom
+//                               inlined and the supabase-js <script> removed, ready for jsdom
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
-//   routeExternal(target, cdn)  answers the CDN with a stub and fonts with nothing (Playwright page/context)
+//   routeExternal(target, cdn)  answers supabase-js with a stub and fonts with nothing (Playwright page/context)
 //   DB_VERSION                  the newest migration in supabase/migrations/: the database version every
 //                               stand-in database reports through rpc('kc_db_version') (P0-34), unless a test
 //                               says otherwise (bootJsdom's opts.dbVersion)
@@ -21,7 +21,9 @@ const sitePath=name=>path.join(SITE,name);
 
 // A <script src="…"> naming a plain file beside the page (no "/" or ":"), e.g. kingdoms-call-data.js or kc-config.js.
 const LOCAL_TAG=/<script src="([A-Za-z0-9._-]+\.js)"><\/script>/g;
-const CDN_TAG=/<script src="https:\/\/cdn\.jsdelivr[^"]*"><\/script>/g;
+// supabase-js: site/vendor/supabase-js-<version>.min.js since P0-18; a CDN before (still removed, so KC_SITE can point
+// at an older copy of the site). Tests install a stand-in instead.
+const SUPABASE_TAG=/<script src="(?:vendor\/supabase-js-[^"]*|https:\/\/cdn\.jsdelivr[^"]*)"><\/script>/g;
 
 // A name ('kingdoms-call-gm-portal.html') is looked up in site/; a path is used as given. Local scripts are
 // the ones beside the page, as when deployed (jsdom doesn't fetch them itself).
@@ -32,7 +34,7 @@ function readPage(nameOrPath){
     const local=path.join(path.dirname(file),src);
     return fs.existsSync(local)?'<script>'+fs.readFileSync(local,'utf8')+'</script>':tag;
   });
-  return html.replace(CDN_TAG,'');
+  return html.replace(SUPABASE_TAG,'');
 }
 
 // sfc32, seeded through splitmix32 so nearby seeds give unrelated streams.
@@ -110,12 +112,14 @@ function serve(dir=SITE,port=0){
   return new Promise(r=>server.listen(port,'127.0.0.1',()=>{ server.url=`http://127.0.0.1:${server.address().port}`; r(server); }));
 }
 
-// The CDN stub's clients answer rpc('kc_db_version') with DB_VERSION, as withDbVersion does in jsdom.
+// The stub's clients answer rpc('kc_db_version') with DB_VERSION, as withDbVersion does in jsdom.
 const dbVersionPatch=v=>`;(function(){var s=window.supabase;if(!s||!s.createClient)return;var mk=s.createClient;`
   +`window.supabase=Object.assign({},s,{createClient:function(){var c=mk.apply(s,arguments),rpc=c.rpc;`
   +`c.rpc=function(fn){return fn==='kc_db_version'?Promise.resolve({data:${JSON.stringify(v)},error:null,status:200}):rpc.apply(c,arguments);};return c;}});})();`;
-async function routeExternal(target,cdnBody){
-  await target.route('**cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:cdnBody+dbVersionPatch(DB_VERSION)}));
+async function routeExternal(target,stubBody){
+  const stub=r=>r.fulfill({status:200,contentType:'application/javascript',body:stubBody+dbVersionPatch(DB_VERSION)});
+  await target.route('**/vendor/supabase-js-*.js',stub);
+  await target.route('**cdn.jsdelivr.net/**',stub);
   await target.route('**unpkg.com/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:''}));
   await target.route('**fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}));
   await target.route('**fonts.gstatic.com/**',r=>r.fulfill({status:200,body:''}));
