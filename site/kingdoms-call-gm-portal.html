@@ -1036,8 +1036,11 @@ function battleFacedClauses(g, enemyOwner){
 // one swap per level of Tactical (counted to 5). A swap exchanges two places in the front or the second
 // line; it is legal only while the front stays one unbroken block holding the same kinds of unit it was
 // deployed with, so a line can be reordered, or a unit traded for one of its own kind behind it, but
-// never thinned or stiffened with archers. Every swap is judged with both sides faced (battleFacing),
-// as the mover would see it, and only an improving swap is made. Nothing here is random.
+// never thinned or stiffened with archers. 2026-10-12 (Toby item 18): nor slid sideways so that the fronts
+// no longer meet — the narrower front must stand wholly within the wider front's span (battleFrontsMeet), so a
+// front unit stands with nobody opposite only once every enemy front unit already has someone opposite it.
+// Every swap is judged with both sides faced (battleFacing), as the mover would see it, and only an improving
+// swap is made. Nothing here is random.
 const BATTLE_LINEUP_MAX=30;
 function battleScout(explAtk, explDef){ return ((+explAtk||0)>(+explDef||0))?'atk':'def'; }
 function battleWidthChoices(terrain, roll){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return [roll-1,roll,roll+1].filter(w=>w>=r[0]&&w<=r[1]); }
@@ -1045,6 +1048,14 @@ function battleLegal(g){
   const occ=g.front.map(Boolean), f=occ.indexOf(true), l=occ.lastIndexOf(true);
   if(f>=0) for(let c=f;c<=l;c++) if(!occ[c]) return false;
   return g.front.filter(Boolean).map(x=>x.role).sort().join()===g.frontSet;
+}
+// The two fronts meet (item 18): the narrower stands within the wider's span; two fronts of one size hold the
+// same columns. The deploy's centred blocks always meet; a swap that would part them is not legal.
+function battleFrontsMeet(g1, g2){
+  const sp=g=>{ const o=g.front.map(Boolean); return [o.indexOf(true),o.lastIndexOf(true),o.filter(Boolean).length]; };
+  const [a0,a1,an]=sp(g1), [b0,b1,bn]=sp(g2);
+  if(!an||!bn) return true;
+  return an<=bn?(a0>=b0&&a1<=b1):(b0>=a0&&b1<=a1);
 }
 // log(my faced strength / theirs), both grids faced afresh.
 function battleLineRatio(gA, gD, terrain, meIsAtk){ battleFacing(gA,gD,terrain); const r=Math.log(Math.max(gA.face.total,1e-9)/Math.max(gD.face.total,1e-9)); return meIsAtk?r:-r; }
@@ -1057,7 +1068,7 @@ function battleBestSwap(me, them, terrain, meIsAtk){
     const [ra,ca]=cells[i],[rb,cb]=cells[j], a=me[ra][ca], b=me[rb][cb];
     if(!a&&!b) continue; if(a&&b&&a.role===b.role&&a.s===b.s) continue;   // nothing to gain from twins
     me[ra][ca]=b; me[rb][cb]=a;
-    if(battleLegal(me)){ battleRegrid(me); const g=battleLineRatio(gA,gD,terrain,meIsAtk)-base; if(g>gain){ gain=g; best=[i,j]; } }
+    if(battleLegal(me)&&battleFrontsMeet(me,them)){ battleRegrid(me); const g=battleLineRatio(gA,gD,terrain,meIsAtk)-base; if(g>gain){ gain=g; best=[i,j]; } }
     me[ra][ca]=a; me[rb][cb]=b;
   }
   if(!best){ battleRegrid(me); battleFacing(gA,gD,terrain); return null; }
