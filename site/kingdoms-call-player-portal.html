@@ -3289,6 +3289,7 @@ function renderReportView(report){
           ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
           ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#231e16">${armyLabel(d)}</span>`)).join('')}`:''}
           ${provinceGrandDesignHTML(p)}
+          ${terrorNoteP(p,true)}
         </div>
       </div>`).join('')
     :'<div style="color:#3a3224;font-size:.85rem">No provinces owned yet.</div>';
@@ -8966,6 +8967,14 @@ function _lairName(f){
 // GRAND DESIGN: a Wonder of the age is no secret — anyone who can see the province sees the Wonder
 // standing in it, and who raised it. Its powers, though, serve only the realm that built it, and
 // only while that realm holds the ground: a Wonder in enemy hands is dormant stonework.
+// EVIL TERROR (2026-10-12, Toby item 23): an Evil realm's report carries each province's Terror ({pct, stacks,
+// byYou} on the map's records and its own provinces); the popup and the Your Provinces entry print it. `light`: the
+// report's pale page rather than the dark popup. No reading (any other crown, or no Terror there) → nothing.
+function terrorNoteP(pd, light){
+  const t=pd&&pd.terror; if(!t||!(t.pct>0)) return '';
+  const col=light?'#701010':'#e08a8a';
+  return `<br><span style="color:${col}">\u{1F480} Terror ${t.pct}% \u2014 ${t.stacks} stack${t.stacks!==1?'s':''}${t.byYou?' of your own':''}: its next defenders fight at \u2212${t.pct}%${t.byYou?' (yours are spared where you hold the ground)':''}</span>`;
+}
 function _grandDesignNote(pd){
   const gd=pd&&pd.grandDesign; if(!gd) return '';
   return `<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span>`
@@ -9765,6 +9774,7 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
           if(pd.consecrated) h+=`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`;
           h+=_grandDesignNote(pd);
+          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
           h+=`<br>${mapRaceBadgeHtml(formatRace(pd.race))} ${formatRace(pd.race)}`;   // the hex's own race badge
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>!f.cleared);
@@ -9784,6 +9794,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
           h+=`<br>${_ownerLineP(pd)}`;
           h+=_grandDesignNote(pd);
+          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
@@ -9801,6 +9812,7 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${_ownerLineP(pd)}`;
           h+=_grandDesignNote(pd);
+          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           h+=_graveNote(pd); // grave lore is remembered even for distant ground

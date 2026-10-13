@@ -11914,6 +11914,17 @@ function extraSkillBonuses(c, state, minorHolders){
   return out;
 }
 
+// ── EVIL TERROR: the constants and the reading (2026-10-12, Toby items 21 and 23) ── −10% a stack (more where
+// Reign of Terror set the province's own share), at most three stacks. Module level so the engine (spreadTerror,
+// consumeTerror) and the report (an Evil realm sees each province's Terror on the map and in its report) read the
+// same figures. terrorReadingOf(p, viewer) → {pct, stacks, byYou} or null when no Terror grips the province.
+const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=3;
+function terrorReadingOf(p, viewer){
+  const n=Math.min(TERROR_MAX_STACKS, (p&&p._terrorStacks)|0);
+  if(!(n>0)||p._terrorTurn===undefined) return null;
+  const per=(typeof p._terrorPct==='number'&&p._terrorPct>0)?p._terrorPct:TERROR_PCT_PER_STACK;
+  return {pct:Math.round(per*n*100), stacks:n, byYou:p._terrorisedBy===viewer};
+}
 function buildTurnReport(gameState, playerIndex){
   const player=gameState.players[playerIndex];
   const chars=gameState.characters.filter(c=>c.player===playerIndex&&(c.alive||c.killedThisTurn));
@@ -12769,6 +12780,16 @@ function buildTurnReport(gameState, playerIndex){
       if(lw.heroWages!==heroWages) nextHeroWages=heroWages;
       armyWages=lw.armyWages; heroWages=lw.heroWages; hostLeaderG=lw.hostLeaderG||0; heroWageDisc=lw.heroWageDisc||0; orcSpoilsG=lw.orcSpoilsG||0;
     } }
+  // EVIL sees the Terror (2026-10-12, Toby item 23): every province of the map that Terror grips carries its
+  // reading, the realm's own provinces in the report's list too, and a province it has visited but does not hold
+  // gets an intel line. No other crown is told.
+  if((player&&player.alignment)==='Evil'){
+    const _tr=id=>terrorReadingOf(gameState.world.provinces[id], playerIndex);
+    (worldMeta.provinces||[]).forEach(r=>{ if(!r) return; const t=_tr(r.id); if(t) r.terror=t; });
+    (ownedProvinces||[]).forEach(r=>{ if(!r) return; const t=_tr(r.id); if(t) r.terror=t; });
+    gameState.world.provinces.filter(p=>p&&visitedProvIds.has(p.id)&&!ownedProvIds.has(p.id)).forEach(p=>{ const t=_tr(p.id);
+      if(t) intel.push(`${p.name}: 💀 Terror ${t.pct}% (${t.stacks} stack${t.stacks!==1?'s':''}${t.byYou?', your own':''}) — its next defenders fight at −${t.pct}%.`); });
+  }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
     kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,taxBonusCapG:_taxCapR,taxBonusCutG:_itemTaxR.cut,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
@@ -14904,8 +14925,8 @@ const BATTLE_ARMY_SPELLS={
   // A decisive Evil victory terrorises the battle province AND every adjacent province. Terror
   // lingers until the next battle fought there, demoralising whoever defends
   // (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
-  // events stack up to that cap; a save already holding more is read as 3.
-  const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=3;
+  // events stack up to that cap; a save already holding more is read as 3. (TERROR_PCT_PER_STACK and
+  // TERROR_MAX_STACKS live at module level, beside buildTurnReport, which shows Evil realms the reading.)
   // REIGN OF FEAR (2026-10-13, Toby, Creatures and Monsters I): an Evil realm's Monsters fight ×1.5 in a
   // province still gripped by that realm's own Terror — the mirror of the Druids' Home of the Wild, on ground
   // Evil makes its own by winning. 2026-10-12 (Toby): only when they ATTACK there, never when defending it. Read at battle start, BEFORE consumeTerror
