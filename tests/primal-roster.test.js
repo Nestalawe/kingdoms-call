@@ -67,7 +67,7 @@ function slice(src,name){
   for(const u of LIVE){
     const d=ROSTER[u];
     for(const t of LAND_TERRAINS){
-      const got=((TM[t]||{})[u])??1, want=P.isLand(d)?((d.terr[t])??1):1;
+      const got=((TM[t]||{})[u])??1, want=(P.isLand(d)||d.type==='flyer')?((d.terr[t])??1):1;   // a flyer: ×0.75 in the woods (item 19)
       ok(near(got,want),`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`);
     }
   }

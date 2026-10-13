@@ -14317,9 +14317,10 @@ async function runTurn(opts){
   const HUMANOID_RACES_SG=new Set(KC_HUMANOID_RACES);
 
 // ── TERRAIN STRENGTH MODIFIERS ────
-// Applied to individual army unit strength during battle resolution. Flying units (Eagle Riders,
-// Wyvern Riders, Gnomish Gyrocopters) always 1.0. Naval units: no terrain effect anywhere — and the
-// Naval skill lifts them on land too.
+// Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
+// unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
+// forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
+// effect anywhere — and the Naval skill lifts them on land too.
 const TERRAIN_MODS={
   // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
   // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
@@ -14370,10 +14371,11 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':0.75,
     'Stone Giants':0.90,'Forest Ents':1.15,'Cave Trolls':1.10,
-    'Manticore Pride':1.0,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
+    'Manticore Pride':0.75,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
+    'Crimson Rocs':0.75,'Elder Dragons':0.75,
+    'Eagle Riders':0.75,'Wyvern Riders':0.75,'Gnomish Gyrocopters':0.75,'Thunderbirds':0.75,   // item 19: flyers in the woods
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.05,
     'Great Bears':1.10,'Unicorn Herd':1.10,'Mammoth Host':0.80,'Great Turtles':1.0,
   },
@@ -14386,10 +14388,11 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':0.75,
     'Stone Giants':0.80,'Forest Ents':1.15,'Cave Trolls':1.05,
-    'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
+    'Manticore Pride':0.75,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
+    'Crimson Rocs':0.75,'Elder Dragons':0.75,
+    'Eagle Riders':0.75,'Wyvern Riders':0.75,'Gnomish Gyrocopters':0.75,'Thunderbirds':0.75,   // item 19: flyers in the woods
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.10,
     'Great Bears':1.0,'Unicorn Herd':0.90,'Mammoth Host':0.75,'Great Turtles':1.0,
   },
@@ -14424,7 +14427,7 @@ const TERRAIN_MODS={
 
 // Returns terrain modifier for a given army type in given terrain
 function terrainMod(armyType, terrain){
-  if(FLYING_TYPES.has(armyType)) return 1.0; // flyers unaffected by terrain
+  // flyers read their row like anyone (×1 unless listed: ×0.75 in forest and jungle since item 19, 2026-10-12)
   if(SEA_TYPES.has(armyType)) return 1.0;    // fleets and sea-beasts fight at 100% on land and sea alike
   const t=TERRAIN_MODS[terrain];
   if(!t) return 1.0;
@@ -14436,8 +14439,8 @@ function terrainMod(armyType, terrain){
 // fights as though caught in the WORST possible ground for its kind, but always at LEAST a 15%
 // reduction. Returns the per-unit multiplier (≤0.85). Worst is taken over the land terrains only —
 // 'sea' is excluded (its land-army penalty is applied separately via seaPenalty, and it would
-// otherwise wrongly floor naval/flying units). Flyers are terrain-immune (worst stays 1.0) but the
-// illusion still confuses them down to the 0.85 floor. Stacks on top of the real terrain penalty,
+// otherwise wrongly floor naval/flying units). Flyers' worst ground is now the woods (×0.75, item 19,
+// 2026-10-12), so the illusion takes them to ×0.75 (it was the 0.85 floor while they ignored terrain). Stacks on top of the real terrain penalty,
 // exactly as the old flat 20% did.
 const ILLUSORY_TERRAIN_KEYS=['plain','desert','forest','jungle','mountain'];
 function illusoryTerrainMult(armyType){

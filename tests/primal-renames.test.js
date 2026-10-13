@@ -62,7 +62,7 @@ function slice(src,name,from=0){
   const ev=(name,from)=>{ const s=slice(gm,name,from); if(!s) return null; try{ return {v:vm.runInContext(s.text+`\n;${name}`,ctx),end:s.end}; }catch(e){ return null; } };
   const US=ev('UNIT_SHORT'); ok(!!US&&NEW.every(u=>typeof US.v[u]==='string'&&/^[A-Za-z]{3,5}$/.test(US.v[u]))&&OLD.every(u=>!(u in US.v)),'UNIT_SHORT has a grid code for each new name and none for the old');
   const TM=ev('TERRAIN_MODS'); ok(!!TM,'TERRAIN_MODS evaluates');
-  if(TM){ for(const u of NEW){ const d=ROSTER[u]; for(const t of P.LAND_TERRAINS){ const got=((TM.v[t]||{})[u])??1, want=P.isLand(d)?((d.terr[t])??1):1; ok(Math.abs(got-want)<1e-9,`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`); } }
+  if(TM){ for(const u of NEW){ const d=ROSTER[u]; for(const t of P.LAND_TERRAINS){ const got=((TM.v[t]||{})[u])??1, want=(P.isLand(d)||d.type==='flyer')?((d.terr[t])??1):1; ok(Math.abs(got-want)<1e-9,`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`); } }
     for(const u of OLD) ok(P.LAND_TERRAINS.every(t=>!((TM.v[t]||{}).hasOwnProperty(u))),`TERRAIN_MODS has no row for ${u}`); }
   // Both copies of the land pools (world generation and the alignment neighbour pass).
   const CB=ev('CREATURE_BY_TERRAIN'), MB=ev('MONSTER_BY_TERRAIN'), CBT=ev('CBT'), MBT=ev('MBT');
