@@ -64,6 +64,10 @@ CREATE POLICY "only Game Masters create games" ON "public"."games"
 CREATE TRIGGER "games_delete_message_reads" AFTER DELETE ON "public"."games"
   FOR EACH ROW EXECUTE FUNCTION public.games_delete_message_reads();
 
+-- Deleting a game deletes its dispatches, private ones too, which its GM can't see (P0-24).
+CREATE TRIGGER "games_delete_messages" AFTER DELETE ON "public"."games"
+  FOR EACH ROW EXECUTE FUNCTION public.games_delete_messages();
+
 REVOKE ALL ON TABLE "public"."games" FROM "anon";
 
 REVOKE ALL ON TABLE "public"."games" FROM "authenticated";
