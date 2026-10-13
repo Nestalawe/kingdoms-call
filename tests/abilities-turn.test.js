@@ -58,8 +58,13 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   r=await turn(null,(S,st)=>{ S.players[0].race='Orcish'; st.N.race='Orcish'; st.guard.armies=army('Goblin Horde',1,'Green'); st.N.neutralDefenders=[...st.guard.armies]; st.N.npcArmies=1; st.H.armies=army('Orc Berserkers',6,'Elite'); });
   { const N2=r.S2&&r.S2.world.provinces[r.extra.N.id]; const all=r.log.map(e=>e.text).join('\n');
     ok(N2&&N2.owner===0,`the orcs take the province (owner ${N2&&N2.owner})`);
-    const gob=(N2&&N2.garrisonArmies||[]).filter(a=>a&&a.type==='Goblin Horde'&&a.quality==='Average'&&/^the /.test(a.unitName||''));
-    ok(gob.length===1,`one named Average Goblin Horde stands in its garrison at turn's end (got ${gob.length}; garrison: ${(N2&&N2.garrisonArmies||[]).map(a=>a.unitName+' '+a.quality).join(', ')||'empty'})`);
+    // The horde musters at Average; the end-of-turn garrison drill (a die roll, after the muster) may
+    // then raise it one level, and says so. Either way exactly one named horde stands there, and a
+    // level above Average is allowed only with the drill's own line for it. (2026-10-14: the check
+    // used to assume the drill never fired, so it failed whenever the world's dice let it.)
+    const gob=(N2&&N2.garrisonArmies||[]).filter(a=>a&&a.type==='Goblin Horde'&&/^the /.test(a.unitName||''));
+    const drilled=g=>new RegExp('🎖 Garrison drills in [^\\n]*'+g.unitName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+' \\(Goblin Horde\\) Average → \\*\\*'+g.quality+'\\*\\*').test(all);
+    ok(gob.length===1&&(gob[0].quality==='Average'||drilled(gob[0])),`one named Goblin Horde, mustered at Average, stands in its garrison at turn's end (got ${gob.length}; garrison: ${(N2&&N2.garrisonArmies||[]).map(a=>a.unitName+' '+a.quality).join(', ')||'empty'})`);
     ok(/🥁 Raiders' Muster — word of the victory at .* draws the .* \(Goblin Horde, Average\) to its garrison for nothing\./.test(all),'the realm is told of the muster');
     ok(!N2||N2._raidersMuster==null,'the battle\'s flag is cleared'); }
   // …a human realm's win in the same province musters nothing
