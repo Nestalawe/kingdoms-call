@@ -1,6 +1,6 @@
 // 2026-10-13 (Toby, Creatures and Monsters IV) — the four new Creatures: Great Bears, Unicorn Herd, Mammoth Host and
 // Great Turtles, in the world and in a turn. Level 2 (scenario): the wild pools and the sea pass live inside
-// generateNewGame, and Awaken the Wild and the recruit path inside runTurn.
+// generateNewGame, and the recruit path inside runTurn.
 //   • the two copies of the Creature pool (world generation's, and the alignment-neighbour pass's) agree, and deal
 //     the new land beasts by terrain: bears in forest and mountain, unicorns on the plain and in the forest,
 //     mammoths on the plain and in the desert; no land pool holds the turtles;
@@ -8,14 +8,12 @@
 //     Giants, Eldritch Kraken or Great Turtles (race Primal:Great Turtle), and the turtles do appear;
 //   • the classes: the Great Turtles swim (primalSea, sea; a carrier too since Island Back); the Unicorn Herd is cavalry;
 //     Whale Lore lifts the Great Turtles with the Whale Cohort;
-//   • a turn: a Druidic king at Druid 3 awakens Great Bears in his forest; his heir awakens a Mammoth Host in a
-//     wild province; a Druid-1 hero is refused the Unicorn Herd ("answer only a caller of Druid 3+"); a call for
-//     Great Turtles is refused (the wild offers only creatures of the land); a Neutral king at Druid 4 recruits
-//     a Great Turtles company in his own prosperous sea and is not stranded.
+//   • a turn: a Neutral king at Druid 4 recruits a Great Turtles company in his own prosperous sea and is not
+//     stranded. (Awaken the Wild was removed on 2026-10-12, Toby item 22: tests/beast-calls-gone.)
 const fs=require('fs'), vm=require('vm');
 const {bootScenario, order, plan}=require('./lib/scenario');
 const {sitePath}=require('./lib/boot');
-const {ROSTER,AWAKEN_TIERS}=require('./lib/primal-decided');
+const {ROSTER}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 
 // A `const NAME={…};` of the GM portal as source text (as tests/primal-roster does).
@@ -62,7 +60,6 @@ const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
   ok(W.eval("KC_UNIT_CLASS.creature.includes('Great Turtles')&&!KC_UNIT_CLASS.monster.includes('Great Turtles')"),'the Great Turtles are a Creature among the sea-beasts');
   const lore=W.eval("((SAGE_DISCOVERIES_P.find(d=>d.id==='au20')||{}).effect||{}).types||[]");
   ok(Array.isArray(lore)&&lore.includes('Whale Cohort')&&lore.includes('Great Turtles'),`Whale Lore lifts the Whale Cohort and the Great Turtles (got ${JSON.stringify(lore)})`);
-  ok(!('Great Turtles' in W.eval('KC_AWAKEN_TIERS'))&&!('Whale Cohort' in W.eval('KC_AWAKEN_TIERS')),'Awaken the Wild never offers the Great Turtles or the Whale Cohort');
 
   // ── Three worlds ──
   let turtleSeas=0, creatureProvs=0;
@@ -81,7 +78,7 @@ const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
   ok(turtleSeas>=1,`the Great Turtles appear in the prosperous seas (${turtleSeas} turtle seas over three worlds)`);
   ok(creatureProvs>=10,`the three worlds dealt enough Creature provinces to mean something (${creatureProvs})`);
 
-  // ── A turn: Awaken the Wild and the turtles' waters ──
+  // ── A turn: the turtles' waters ──
   {
     const r=await sc.turn({realms:2,alignments:['Druidic','Neutral'],prepare(S){
       const dk=king(S,0), nk=king(S,1);
@@ -106,25 +103,14 @@ const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
         bearCost:W.eval("ARMY_COST_MASTER['Great Bears']"),mamCost:W.eval("ARMY_COST_MASTER['Mammoth Host']")};
       function home(S,pi){ return S.world.provinces[S.players[pi].homeProvinceId]; }
     },orders:(S,x)=>({
-      [x.dk]:plan(order('awaken_wild','Great Turtles'),order('awaken_wild','Great Bears')),
-      [x.heir]:plan(order('awaken_wild','Mammoth Host')),
-      [x.hero]:plan(order('awaken_wild','Unicorn Herd')),
       [x.nk]:plan(order('recruit','Great Turtles|1')),
     })});
     const x=r.extra, t=r.text();
     const army=(id,type)=>(((r.S2&&r.S2.characters.find(c=>c.id===id))||{}).armies||[]).filter(a=>a.type===type);
-    ok(/choose a creature of the land to awaken/.test(r.text(x.dk)),'a call for Great Turtles is refused: the wild offers only creatures of the land');
-    ok(/Awaken the Wild — .* Great Bears rise/.test(t),'the king awakens Great Bears in his forest');
-    ok(army(x.dk,'Great Bears').length===1&&army(x.dk,'Great Bears')[0].race==='Primal',`the king leads one company of Great Bears, of the Primal race (got ${army(x.dk,'Great Bears').length})`);
-    ok(/Awaken the Wild — .* Mammoth Host rise/.test(t)&&army(x.heir,'Mammoth Host').length===1,`the heir awakens a Mammoth Host in a wild province (got ${army(x.heir,'Mammoth Host').length})`);
-    ok(/Unicorn Herd answer only a caller of Druid 3\+/.test(r.text(x.hero))&&army(x.hero,'Unicorn Herd').length===0,'a Druid-1 hero is refused the Unicorn Herd ("answer only a caller of Druid 3+")');
-    const offerings=(t.match(new RegExp(`\\((${x.bearCost+2}|${x.mamCost+2})g offering`,'g'))||[]).length;
-    ok(offerings===2,`each awakening cost the beast's price + 2g (${x.bearCost+2}g and ${x.mamCost+2}g): ${offerings} such offerings in the log`);
     const turtles=army(x.nk,'Great Turtles');
     ok(turtles.length===1,`the Neutral king recruits one company of Great Turtles in his own waters (got ${turtles.length}): ${r.text(x.nk).split('\n').filter(l=>/Turtle|recruit/i.test(l)).slice(0,2).join(' | ')}`);
     ok(!/too few hulls|left holding/.test(r.text(x.nk)),`the turtles swim beside their king: nothing is stranded — ${(r.text(x.nk).split('\n').find(l=>/too few hulls|left holding/.test(l))||'').slice(0,160)}`);
     ok(turtles.length>0&&turtles.every(a=>typeof a.unitName==='string'&&/^the /.test(a.unitName)),`the turtles have a company name (${turtles.map(a=>a.unitName).join('; ')})`);
-    ok(AWAKEN_TIERS['Great Bears']===2&&AWAKEN_TIERS['Mammoth Host']===3&&AWAKEN_TIERS['Unicorn Herd']===3,'the decided tiers: Great Bears at Druid 2, Unicorn Herd and Mammoth Host at Druid 3');
   }
 
   console.log(`\n${pass} pass, ${fail} fail · page errors ${sc.errs.length}`);

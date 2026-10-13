@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.13-0110
+// Data file v2026.10.13-0301
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.13-0110';
+const KC_DATA_STAMP='2026.10.13-0301';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -26,7 +26,7 @@ const KC_DATA_STAMP='2026.10.13-0110';
 const PRIMAL_ARMY_DEFS_P={
   // ── Druid 4 — Land ──
   'Stone Giants'    :{str:13,speed:2,cost:5,race:'Stone Giant',cat:'Heavy',
-    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Boulder Wall: cavalry facing them fights at no better than ×0.75. Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
+    desc:'Ancient stone-fleshed giants, at home in the mountains (terrain ×1.15 there). Boulder Wall: cavalry facing them fights at no better than ×0.75 (the Unicorn Herd\'s Purity breaks it). Pre-battle strike Boulder Barrage: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 4–7 strength damage to one enemy unit. Slow (speed 2).',
     spells:[{name:'Boulder Barrage',dmg:[4,7],target:'single',flavour:'Giants heave boulders that shatter a formation before contact!'}]},
   'Forest Ents'     :{str:11,speed:2,cost:4,race:'Forest Ent',cat:'Heavy',
     desc:'Living trees of great age, at home in forest and jungle (terrain ×1.15 there; they wither in the desert). Rooted: never hit from the side when the enemy line wraps their end. Pre-battle strike Choking Spores: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit.',
@@ -71,12 +71,12 @@ const PRIMAL_ARMY_DEFS_P={
   'Great Bears'     :{str:11,speed:3,cost:4,race:'Great Bear',cat:'Heavy',
     desc:'Great bears of the deep woods and high crags, at home in forest and mountain (terrain ×1.1 there; they suffer in the desert). Maul: ×1.15 facing foot. Thick Hide: pre-battle volleys against them do half. No special strike. Move 3.'},
   'Unicorn Herd'    :{str:13,speed:4,cost:5,race:'Unicorn',cat:'Cavalry',
-    desc:'The wild\'s only horse: a herd of unicorns, at home on the plain and in the forest (terrain ×1.1 there; ×0.9 in the jungle, ×0.85 in the mountains). Cavalry (move 4). Purity: ×1.25 facing Monsters and skeletons. Through the Glades: takes a flank in forest and jungle, as the Stag Riders do. No special strike.'},
+    desc:'The wild\'s only horse: a herd of unicorns, at home on the plain and in the forest (terrain ×1.1 there; ×0.9 in the jungle, ×0.85 in the mountains). Cavalry (move 4). Purity: ×1.25 facing Monsters and skeletons, and it breaks a Spear Hedge or a Boulder Wall (no ×0.75 cap). Through the Glades: takes a flank in forest and jungle, as the Stag Riders do. No special strike.'},
   'Mammoth Host'    :{str:13,speed:2,cost:5,race:'Mammoth',cat:'Heavy',
     desc:'A host of mammoths, at home on the open plain (terrain ×1.1; ×0.85 in the desert, ×0.8 in the forest, ×0.75 in the jungle). Trample: ×1.15 facing foot. Pre-battle strike Stampede: fires in the pre-battle magic phase (30% chance +10% per Druid level of the commander, max 90%) and deals 2–4 strength damage to EVERY enemy unit. Slow (speed 2).',
     spells:[{name:'Stampede',dmg:[2,4],target:'all',flavour:'The herd thunders through the enemy line before it has formed.'}]},
   'Great Turtles'   :{str:13,speed:2,cost:5,race:'Great Turtle',cat:'Naval',
-    desc:'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and, Island Back, carry two land units a hull where a fleet carries one. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live, never awakened.'},
+    desc:'Island-backed turtles of the prosperous seas, the one Creature among the sea-beasts: they swim under their own power and, Island Back, carry two land units a hull where a fleet carries one. Shell Wall: immune to pre-battle volleys, as the Ironclads. Slow (speed 2); no special strike. Recruited where they live.'},
 };
 
 // when a character crosses a MASTERY threshold (level 6, 7, 8 or 9 in a skill — reachable only
@@ -1454,7 +1454,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"au02","name":"Wild Groves","category":"Druidic Creed","alignment":"Druidic","desc":"Every forest or jungle province you own yields +1 gold per turn (never more than 5% of your realm's base tax income a turn, rounded down, but always at least +1g).","effect":{"kind":"tax","bonus":1,"terrains":["forest","jungle"]}},
   {"id":"au03","name":"Great Migrations","category":"Druidic Creed","alignment":"Druidic","desc":"Your Creature armies of Speed 1–2 gain +1 move point per turn. Also: Your Creature armies are 150% more likely to be promoted after a battle.","effect":{"kind":"move","extra":1,"cls":"creature"},"effect2":{"kind":"promo","pct":1.5,"cls":"creature"}},
   {"id":"au04","name":"Nest Wardens","category":"Druidic Creed","alignment":"Druidic","desc":"Your Creature armies cost 3g less to recruit (minimum 1g). Also: Each Creature army unit you recruit has a 10% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitCost","delta":-3,"cls":"creature"},"effect2":{"kind":"recruitQ","pct":0.1,"cls":"creature"}},
-  {"id":"au05","name":"Deep Roots","category":"Druidic Creed","alignment":"Druidic","desc":"Awaken the Wild costs 4g less (the offering to the wild is reduced). Also: Your Creature armies are 10% less likely to be destroyed in battle when they defend.","effect":{"kind":"awakenCost","delta":-4},"effect2":{"kind":"deathRed","pct":0.1,"cls":"creature","side":"def"}},
+  {"id":"au05","name":"Deep Roots","category":"Druidic Creed","alignment":"Druidic","desc":"Your Creature armies are 10% less likely to be destroyed in battle when they defend.","effect":{"kind":"deathRed","pct":0.1,"cls":"creature","side":"def"}},
   {"id":"au06","name":"Root and Bough","category":"Druidic Creed","alignment":"Druidic","desc":"All your armies and fleets fight at +30% strength when defending in forest or jungle.","effect":{"kind":"unitStr","pct":0.3,"terrain":["forest","jungle"],"side":"def"}},
   {"id":"au07","name":"Herbcraft","category":"Druidic Creed","alignment":"Druidic","desc":"Every Rest order taken in forest or jungle restores +6 HP. Also: Every hero (not the king) in your service has +1 maximum HP.","effect":{"kind":"rest","hp":6,"terrains":["forest","jungle"]},"effect2":{"kind":"maxHp","hp":1,"heroOnly":true}},
   {"id":"au08","name":"Pathfinders","category":"Druidic Creed","alignment":"Druidic","desc":"Your Explore orders in forest or mountains map 200% more of the province. Also: Gold carried off from lairs your characters clear in forest or mountains is increased by 35%.","effect":{"kind":"explore","mult":3,"terrains":["forest","mountain"]},"effect2":{"kind":"lairGold","pct":0.35,"terrains":["forest","mountain"]}},
@@ -1782,11 +1782,7 @@ const KC_ITEM_UNCAPPED_SKILLS=['melee','archery','white','psychic','illusory','e
 const KC_ITEM_SLOT_CAP={weapon:1,armour:1,shield:1,cloak:1,helm:1,ring:2,amulet:1,combat:2};
 const KC_ITEM_RACE_ALIAS={Elf:'Elven',Elves:'Elven',Dwarf:'Dwarven',Dwarves:'Dwarven',Orc:'Orcish',Orcs:'Orcish'};
 const KC_RUMOUR_COST_BY_POWER={Weak:1,Moderate:2,Powerful:3,Legendary:4};
-const KC_AWAKEN_TIERS={'Thunderbirds':1,'Forest Ents':2,'Stone Giants':3,'Crimson Rocs':3,'Great Bears':2,'Unicorn Herd':3,'Mammoth Host':3};   // 2026-10-11 (Toby): the wild no longer sends Eagle Riders or Noble Griffons; 2026-10-13 (IV): the three new land Creatures (never the Great Turtles or the Whale Cohort: they are recruited where they swim). Append: the order is the dropdown's
-// Call from the Pit (2026-10-13, Toby, Creatures and Monsters I): Evil's mirror of Awaken the Wild — the Monster a
-// caller of each Druid level may call up, for its price + 2g, in an owned wild province or one the realm's own
-// Terror still grips.
-const KC_PIT_TIERS={'Cave Trolls':1,'Basilisk Brood':2,'Manticore Pride':3,'Titan Warbeasts':3};
+// The Druidic and Evil summoning orders' two tier tables were removed with the orders on 2026-10-12 (Toby item 22).
 // Berths a carrier offers land units (a hull not listed offers one; light foot take half a berth). 2026-10-13 (Creatures
 // and Monsters VI): the Great Turtles' Island Back carries two.
 const KC_CARRIER_BERTHS={'Great Turtles':2};

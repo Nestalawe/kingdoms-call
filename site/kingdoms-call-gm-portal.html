@@ -402,13 +402,13 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0110';
+const KC_DATA_MIN='2026.10.13-0301';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
 const KC_DB_MIN='20261011191234';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
-const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
+const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).
@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0120'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.13-0310'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -891,8 +891,9 @@ function abilityFront(x, e, terrain, where, meIsAtk){
   if(t==='Mammoth Host'&&e.role==='foot'){ m*=1.15; names.push('Trample'); }
   if(t==='Dread Hydras'&&e.role==='foot'){ m*=1.25; names.push('Many Heads'); }
   if(t==='Unicorn Herd'&&(GRID_MONSTER_TYPES.has(et)||(e.r&&e.r.a&&e.r.a._isSkeletal))){ m*=1.25; names.push('Purity'); }
-  if(et==='Shieldwall Levies'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Spear Hedge'); }
-  if(et==='Stone Giants'&&x.role==='cav'&&m>0.75){ m=0.75; names.push('Boulder Wall'); }
+  // 2026-10-12 (Toby): Purity breaks a Spear Hedge or a Boulder Wall — the Unicorn Herd is never held to their ×0.75 cap.
+  if(et==='Shieldwall Levies'&&x.role==='cav'&&m>0.75){ if(t==='Unicorn Herd') names.push('Purity breaks the Spear Hedge'); else { m=0.75; names.push('Spear Hedge'); } }
+  if(et==='Stone Giants'&&x.role==='cav'&&m>0.75){ if(t==='Unicorn Herd') names.push('Purity breaks the Boulder Wall'); else { m=0.75; names.push('Boulder Wall'); } }
   if(et==='Dwarven Guard'&&x.role==='foot'){ m*=0.85; names.push('Unbreakable'); }
   if(et==='Dwarf Garrison'&&x.role==='foot'&&terrain==='mountain'){ m*=0.9; names.push('Stone Halls'); }
   if(et==='Elven Garrison'&&x.role==='cav'&&ABILITY_WOODS.has(terrain)){ m*=0.85; names.push('Thorn Hedge'); }
@@ -1035,8 +1036,11 @@ function battleFacedClauses(g, enemyOwner){
 // one swap per level of Tactical (counted to 5). A swap exchanges two places in the front or the second
 // line; it is legal only while the front stays one unbroken block holding the same kinds of unit it was
 // deployed with, so a line can be reordered, or a unit traded for one of its own kind behind it, but
-// never thinned or stiffened with archers. Every swap is judged with both sides faced (battleFacing),
-// as the mover would see it, and only an improving swap is made. Nothing here is random.
+// never thinned or stiffened with archers. 2026-10-12 (Toby item 18): nor slid sideways so that the fronts
+// no longer meet — the narrower front must stand wholly within the wider front's span (battleFrontsMeet), so a
+// front unit stands with nobody opposite only once every enemy front unit already has someone opposite it.
+// Every swap is judged with both sides faced (battleFacing), as the mover would see it, and only an improving
+// swap is made. Nothing here is random.
 const BATTLE_LINEUP_MAX=30;
 function battleScout(explAtk, explDef){ return ((+explAtk||0)>(+explDef||0))?'atk':'def'; }
 function battleWidthChoices(terrain, roll){ const r=BATTLE_FRONT_RANGE[terrain]||BATTLE_FRONT_RANGE.plain; return [roll-1,roll,roll+1].filter(w=>w>=r[0]&&w<=r[1]); }
@@ -1044,6 +1048,14 @@ function battleLegal(g){
   const occ=g.front.map(Boolean), f=occ.indexOf(true), l=occ.lastIndexOf(true);
   if(f>=0) for(let c=f;c<=l;c++) if(!occ[c]) return false;
   return g.front.filter(Boolean).map(x=>x.role).sort().join()===g.frontSet;
+}
+// The two fronts meet (item 18): the narrower stands within the wider's span; two fronts of one size hold the
+// same columns. The deploy's centred blocks always meet; a swap that would part them is not legal.
+function battleFrontsMeet(g1, g2){
+  const sp=g=>{ const o=g.front.map(Boolean); return [o.indexOf(true),o.lastIndexOf(true),o.filter(Boolean).length]; };
+  const [a0,a1,an]=sp(g1), [b0,b1,bn]=sp(g2);
+  if(!an||!bn) return true;
+  return an<=bn?(a0>=b0&&a1<=b1):(b0>=a0&&b1<=a1);
 }
 // log(my faced strength / theirs), both grids faced afresh.
 function battleLineRatio(gA, gD, terrain, meIsAtk){ battleFacing(gA,gD,terrain); const r=Math.log(Math.max(gA.face.total,1e-9)/Math.max(gD.face.total,1e-9)); return meIsAtk?r:-r; }
@@ -1056,7 +1068,7 @@ function battleBestSwap(me, them, terrain, meIsAtk){
     const [ra,ca]=cells[i],[rb,cb]=cells[j], a=me[ra][ca], b=me[rb][cb];
     if(!a&&!b) continue; if(a&&b&&a.role===b.role&&a.s===b.s) continue;   // nothing to gain from twins
     me[ra][ca]=b; me[rb][cb]=a;
-    if(battleLegal(me)){ battleRegrid(me); const g=battleLineRatio(gA,gD,terrain,meIsAtk)-base; if(g>gain){ gain=g; best=[i,j]; } }
+    if(battleLegal(me)&&battleFrontsMeet(me,them)){ battleRegrid(me); const g=battleLineRatio(gA,gD,terrain,meIsAtk)-base; if(g>gain){ gain=g; best=[i,j]; } }
     me[ra][ca]=a; me[rb][cb]=b;
   }
   if(!best){ battleRegrid(me); battleFacing(gA,gD,terrain); return null; }
@@ -1518,7 +1530,7 @@ const MASTERY_ORDER_KEYS=new Set(['challenge','rampage','rain_of_arrows','sniper
 const MASTERY_ORDER_LABEL={challenge:'Challenge',rampage:'Rampage',rain_of_arrows:'Rain of Arrows',snipers_mark:"Sniper's Mark",feigned_retreat:'Feigned Retreat',grand_stratagem:'Grand Stratagem',forced_march:'Forced March',lightning_advance:'Lightning Advance',blockade:'Blockade',raid_coast:'Raid the Coast',research_breakthrough:'Research Breakthrough',grand_design:'Grand Design',sabotage:'Sabotage',assassinate:'Assassinate',grand_heist:'Grand Heist',vanish:'Vanish',awaken_grove:'Awaken Grove',wild_calling:'Wild Calling',chart_unknown:'Chart the Unknown',discover_ruin:'Discover Lost Ruin'};
 // Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
 // charmed enemy hero may not be made to do.
-const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','awaken_wild','call_pit','harvest_field','rite']);
+const ALIGNMENT_ORDER_KEYS=new Set(['consecrate','call_to_arms','broker','harvest_field','rite']);   // Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22)
 // the character-targeted hostile spells a seized enemy hero will not aim at their ORIGINAL lord's
 // characters (the Encounter order is refused on the same grounds).
 const CHARMED_NO_TURN_SPELLS=new Set(['Psychic Blast','Telekinetic Storm','Curse','Charm','Control Undead','Dominate']);
@@ -2796,6 +2808,16 @@ function getDruidLevel(armyType){
 
 // Returns the effective quality after druid shortfall penalty shortfall of N = -N quality tiers
 // (each missing level = 20% str penalty)
+// ── BEAST COMMAND (2026-10-12, Toby item 24) ── A hero may lead only as many Creature and Monster units as his Druid
+// level. Counted: every living beast in the column — not skeletons (the dead need no Druid), nor a summoned grove,
+// Wild Hunt beasts or phantoms, which leave at the turn's end. A realm's own heroes only (a province's chieftain
+// commands its own beasts). The rule bites where a beast would JOIN a column (Recruit Armies, Pick Up Army,
+// Leave/Transfer to a hero, Wild Calling): a hero already over it keeps what he leads and takes on no more.
+const BEAST_CMD_TYPES=new Set([...KC_UNIT_CLASS.creature,...KC_UNIT_CLASS.monster]);
+function beastCommandCount(a){ return !!a&&BEAST_CMD_TYPES.has(a.type)&&!a._isSkeletal&&!a._temporary&&a._wildHuntUntilTurn==null&&!a._phantom; }
+function beastsLed(c){ return ((c&&c.armies)||[]).filter(beastCommandCount).length; }
+function beastCommandRoom(c, chars){ if(!c||c.player==null) return Infinity; return Math.max(0, (effSkillOf(c,'druid',chars||[])|0)-beastsLed(c)); }
+function beastCommandWords(c, chars){ const d=effSkillOf(c,'druid',chars||[])|0; return `${c.name} can lead only ${d} Creature or Monster unit${d!==1?'s':''} (Druid ${d})`; }
 function druIdPenaltyMult(heroChar, army, playerAlignment, tamed){
   // Skeletal armies never suffer Druid penalties — they are already dead
   if(army._isSkeletal) return 1.0;
@@ -7907,23 +7929,7 @@ function botSignaturePre(G,pi,c,P,L){
         const g=(X.garrisonArmies||[]).length; if(g>=2) return;
         const sc=(X.tax||0)+(botIsEdge(G,pi,X)?4:0)+(X.id===botHomeId(G,pi)?2:0)-g*3; if(!best||sc>best.sc) best={X,sc}; });
       if(!best) return null; L.sig.cta=1; return {action:'call_to_arms',target:String(best.X.id),extra:'',desc:'Call to Arms in '+best.X.name}; }
-    case 'Druidic': {                                                   // AWAKEN THE WILD: a creature for cost+2g, no recruit slot
-      if(L.sig.awaken||P.owner!==pi) return null;
-      if(!(P.terrain==='forest'||P.terrain==='jungle'||(P.race||'').startsWith('Primal'))) return null;
-      const dru=sk.druid||0; if(dru<1) return null;
-      const TIERS={...KC_AWAKEN_TIERS};
-      const cands=Object.keys(TIERS).filter(t=>TIERS[t]<=dru&&((ARMY_SPEED_MASTER[t]||3)>=2||c._botRole==='defender')).sort((a,b)=>(UNIT_BASE_STR[b]||0)-(UNIT_BASE_STR[a]||0));
-      for(const t of cands){ const cost=(ARMY_COST_MASTER[t]||3)+2; if(botCanAfford(L,cost)){ botSpend(L,cost); L.sig.awaken=1; return {action:'awaken_wild',target:t,extra:'',desc:'Awaken the Wild — '+t}; } }
-      return null; }
-    case 'Evil': {                                                      // CALL FROM THE PIT (2026-10-13): a monster for cost+2g, no recruit slot
-      if(L.sig.pit) return null;
-      const _onWild=P.owner===pi&&(P.race||'').startsWith('Primal'), _onFear=(P._terrorStacks||0)>0&&P._terrorisedBy===pi;
-      if(!_onWild&&!_onFear) return null;
-      const dru=sk.druid||0; if(dru<1) return null;
-      const TIERS={...KC_PIT_TIERS};
-      const cands=Object.keys(TIERS).filter(t=>TIERS[t]<=dru).sort((a,b)=>(UNIT_BASE_STR[b]||0)-(UNIT_BASE_STR[a]||0));
-      for(const t of cands){ const cost=(ARMY_COST_MASTER[t]||4)+2; if(botCanAfford(L,cost)){ botSpend(L,cost); L.sig.pit=1; return {action:'call_pit',target:t,extra:'',desc:'Call from the Pit — '+t}; } }
-      return null; }
+    // Druidic and Evil: no signature order since 2026-10-12 (Toby item 22: Awaken the Wild and Call from the Pit removed).
     case 'Undead': {                                                    // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
       if((sk.necromancy||0)<1||!botSees(G,pi,P.id)||!(P.battleGraves||[]).length) return null;
       if(L.budget<2) return null; L.budget-=2; L.upkeep+=1;
@@ -9805,7 +9811,7 @@ function runBotPhaseOne(G, botIdxSet, stage){
         if(!(leaderIds.has(c.id)||(c.armies||[]).length>=2)) return;
         let end=o.findIndex(x=>x&&BOT_P1.reloc.has(x.action)); if(end<0) end=5;
         if(end===0&&/^(Attack|Assault|Lightning strike)/.test((o[0]||{}).desc||'')) return;       // striking first outranks mustering
-        if(o.slice(0,end).some(x=>x&&(x.action==='recruit'||x.action==='pickup_army'||x.action==='awaken_wild'||x.action==='call_pit'))) return;
+        if(o.slice(0,end).some(x=>x&&(x.action==='recruit'||x.action==='pickup_army'))) return;
         const _cap0=L.upkeepCap; L.upkeepCap=Math.max(_cap0*BOT_P1.levyCap,(L.upkeep||0)+BOT_P1.levyWages);   // EMERGENCY LEVY
         let toks=[]; try{ toks=botFieldRecruitTokens(G,pi,c,P,L).filter(t=>!BOT_SEA_ALL.has(t.split('|')[0])||c._botRole==='admiral'); } finally { L.upkeepCap=_cap0; }
         const ro=botRecruitOrder(toks,null); if(!ro) return;
@@ -9886,7 +9892,7 @@ function runBotPhaseOne(G, botIdxSet, stage){
         if(a==='steal'&&x.target!=='garrison') return 5;
         if(contact){
           if(a==='recruit'&&!/to:garrison/.test(x.target)) return 4;
-          if(a==='pickup_army'||a==='awaken_wild'||a==='call_pit'||a==='harvest_field'||a==='rite') return 4;
+          if(a==='pickup_army'||a==='harvest_field'||a==='rite') return 4;
           if(a==='leave_army'&&leaderIds.has(Number(x.extra))) return 4;
           if(a==='cast_spell'&&BOT_P1.gainSpell.has(x.target)) return 4;
         }
@@ -11918,6 +11924,17 @@ function extraSkillBonuses(c, state, minorHolders){
   return out;
 }
 
+// ── EVIL TERROR: the constants and the reading (2026-10-12, Toby items 21 and 23) ── −10% a stack (more where
+// Reign of Terror set the province's own share), at most three stacks. Module level so the engine (spreadTerror,
+// consumeTerror) and the report (an Evil realm sees each province's Terror on the map and in its report) read the
+// same figures. terrorReadingOf(p, viewer) → {pct, stacks, byYou} or null when no Terror grips the province.
+const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=3;
+function terrorReadingOf(p, viewer){
+  const n=Math.min(TERROR_MAX_STACKS, (p&&p._terrorStacks)|0);
+  if(!(n>0)||p._terrorTurn===undefined) return null;
+  const per=(typeof p._terrorPct==='number'&&p._terrorPct>0)?p._terrorPct:TERROR_PCT_PER_STACK;
+  return {pct:Math.round(per*n*100), stacks:n, byYou:p._terrorisedBy===viewer};
+}
 function buildTurnReport(gameState, playerIndex){
   const player=gameState.players[playerIndex];
   const chars=gameState.characters.filter(c=>c.player===playerIndex&&(c.alive||c.killedThisTurn));
@@ -12773,6 +12790,16 @@ function buildTurnReport(gameState, playerIndex){
       if(lw.heroWages!==heroWages) nextHeroWages=heroWages;
       armyWages=lw.armyWages; heroWages=lw.heroWages; hostLeaderG=lw.hostLeaderG||0; heroWageDisc=lw.heroWageDisc||0; orcSpoilsG=lw.orcSpoilsG||0;
     } }
+  // EVIL sees the Terror (2026-10-12, Toby item 23): every province of the map that Terror grips carries its
+  // reading, the realm's own provinces in the report's list too, and a province it has visited but does not hold
+  // gets an intel line. No other crown is told.
+  if((player&&player.alignment)==='Evil'){
+    const _tr=id=>terrorReadingOf(gameState.world.provinces[id], playerIndex);
+    (worldMeta.provinces||[]).forEach(r=>{ if(!r) return; const t=_tr(r.id); if(t) r.terror=t; });
+    (ownedProvinces||[]).forEach(r=>{ if(!r) return; const t=_tr(r.id); if(t) r.terror=t; });
+    gameState.world.provinces.filter(p=>p&&visitedProvIds.has(p.id)&&!ownedProvIds.has(p.id)).forEach(p=>{ const t=_tr(p.id);
+      if(t) intel.push(`${p.name}: 💀 Terror ${t.pct}% (${t.stacks} stack${t.stacks!==1?'s':''}${t.byYou?', your own':''}) — its next defenders fight at −${t.pct}%.`); });
+  }
   return{
     playerIndex,playerName:player.name,turnNumber:gameState.turn,
     kingdom:{conceded:!!player.conceded,gold:player.gold,merits:player.merits,taxIncome,baseTaxIncome,rawTaxBase:_rawTaxBase,sageDiscG,thiefStipend,taxBonus,perProvBonus,taxBonusCapG:_taxCapR,taxBonusCutG:_itemTaxR.cut,interestBonus,neutralTradeBonus,sdAgri:_sdAgri,sdMining:_sdMining,sdAqueduct:_sdAqueduct,sdGrand:_sdGrand,sdCreed:_sdCreed,sdRecords:_sdRecords,enslaveReduction:_enslaveReduction,earthquakeReduction:_eqReduction,cutpurseG,championG,castellanG,consecG:_consecG,hostLeaderG,heroWageDisc,orcSpoilsG,armyWages,heroWages,nextArmyWages,nextHeroWages,alignment:player.alignment,race:player.race,color:player.color},
@@ -12906,10 +12933,10 @@ function buildTurnReport(gameState, playerIndex){
     engineStamp:(typeof runningBuildStamp==='function'?runningBuildStamp():null),
     // 2026-09-23 (Toby item 6): prices the orders-column spending tracker needs and the player portal
     // has no table for — each unit type's per-turn WAGE (its recruit price after this realm's
-    // `upkeep` discoveries; skeletal units are a flat 1g), the Awaken the Wild surcharge and the
-    // Harvest the Field price, as the engine charges them.
+    // `upkeep` discoveries; skeletal units are a flat 1g) and the Harvest the Field price, as the engine
+    // charges them. (The Awaken the Wild surcharge went with the order, 2026-10-12.)
     orderPrices:(()=>{ const unitWage={}; Object.keys(ARMY_COST_MASTER).forEach(t=>{ unitWage[t]=discUpkeepWage(player,{type:t},ARMY_COST_MASTER[t]||2,new Map(),_taxCapR); });
-      return {unitWage, unitCost:{...ARMY_COST_MASTER}, awakenExtra:2+discSumOf(player,'awakenCost','delta'), harvest:Math.max(0,2+discSumOf(player,'harvestCost','delta')), brokerSpy:2}; })(),
+      return {unitWage, unitCost:{...ARMY_COST_MASTER}, harvest:Math.max(0,2+discSumOf(player,'harvestCost','delta')), brokerSpy:2}; })(),
     lastTurnLog:[{type:'system',text:`Turn ${gameState.turn} begins. ${player.name} stands ready.`}],
   };
 }
@@ -14316,9 +14343,10 @@ async function runTurn(opts){
   const HUMANOID_RACES_SG=new Set(KC_HUMANOID_RACES);
 
 // ── TERRAIN STRENGTH MODIFIERS ────
-// Applied to individual army unit strength during battle resolution. Flying units (Eagle Riders,
-// Wyvern Riders, Gnomish Gyrocopters) always 1.0. Naval units: no terrain effect anywhere — and the
-// Naval skill lifts them on land too.
+// Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
+// unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
+// forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
+// effect anywhere — and the Naval skill lifts them on land too.
 const TERRAIN_MODS={
   // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
   // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
@@ -14369,10 +14397,11 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.10,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':0.75,
     'Stone Giants':0.90,'Forest Ents':1.15,'Cave Trolls':1.10,
-    'Manticore Pride':1.0,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
+    'Manticore Pride':0.75,'Basilisk Brood':1.0,'Titan Warbeasts':0.80,
+    'Crimson Rocs':0.75,'Elder Dragons':0.75,
+    'Eagle Riders':0.75,'Wyvern Riders':0.75,'Gnomish Gyrocopters':0.75,'Thunderbirds':0.75,   // item 19: flyers in the woods
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.05,
     'Great Bears':1.10,'Unicorn Herd':1.10,'Mammoth Host':0.80,'Great Turtles':1.0,
   },
@@ -14385,10 +14414,11 @@ const TERRAIN_MODS={
     'Orc Berserkers':1.05,'Goblin Horde':1.0,'Orc Garrison':1.0,
     'Elven Garrison':1.10,'Galleon Fleet':1.0,'Corsair Fleet':1.0,
     'Elven Galleys':1.0,'Dwarf Ironclads':1.0,'Orcish Longships':1.0,
-    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':1.0,
+    'Whale Cohort':1.0,'Shark Shoals':1.0,'Noble Griffons':0.75,
     'Stone Giants':0.80,'Forest Ents':1.15,'Cave Trolls':1.05,
-    'Manticore Pride':1.0,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
-    'Crimson Rocs':1.0,'Elder Dragons':1.0,
+    'Manticore Pride':0.75,'Basilisk Brood':1.10,'Titan Warbeasts':0.75,
+    'Crimson Rocs':0.75,'Elder Dragons':0.75,
+    'Eagle Riders':0.75,'Wyvern Riders':0.75,'Gnomish Gyrocopters':0.75,'Thunderbirds':0.75,   // item 19: flyers in the woods
     'Sea Giants':1.0,'Eldritch Kraken':1.0,'Dread Hydras':1.10,
     'Great Bears':1.0,'Unicorn Herd':0.90,'Mammoth Host':0.75,'Great Turtles':1.0,
   },
@@ -14423,7 +14453,7 @@ const TERRAIN_MODS={
 
 // Returns terrain modifier for a given army type in given terrain
 function terrainMod(armyType, terrain){
-  if(FLYING_TYPES.has(armyType)) return 1.0; // flyers unaffected by terrain
+  // flyers read their row like anyone (×1 unless listed: ×0.75 in forest and jungle since item 19, 2026-10-12)
   if(SEA_TYPES.has(armyType)) return 1.0;    // fleets and sea-beasts fight at 100% on land and sea alike
   const t=TERRAIN_MODS[terrain];
   if(!t) return 1.0;
@@ -14435,8 +14465,8 @@ function terrainMod(armyType, terrain){
 // fights as though caught in the WORST possible ground for its kind, but always at LEAST a 15%
 // reduction. Returns the per-unit multiplier (≤0.85). Worst is taken over the land terrains only —
 // 'sea' is excluded (its land-army penalty is applied separately via seaPenalty, and it would
-// otherwise wrongly floor naval/flying units). Flyers are terrain-immune (worst stays 1.0) but the
-// illusion still confuses them down to the 0.85 floor. Stacks on top of the real terrain penalty,
+// otherwise wrongly floor naval/flying units). Flyers' worst ground is now the woods (×0.75, item 19,
+// 2026-10-12), so the illusion takes them to ×0.75 (it was the 0.85 floor while they ignored terrain). Stacks on top of the real terrain penalty,
 // exactly as the old flat 20% did.
 const ILLUSORY_TERRAIN_KEYS=['plain','desert','forest','jungle','mountain'];
 function illusoryTerrainMult(armyType){
@@ -14666,8 +14696,8 @@ function seaPenalty(armyType, terrain){
     // would have shrunk below the advertised −10%/stack, so it is applied here as the multiplier it is.
     if(army._terrorMult!=null&&army._terrorMult<1){ str=Math.round(str*army._terrorMult); if(_tr) _tr.push({label:`Terror ${ladderFm(army._terrorMult)}`}); }
     // REIGN OF FEAR (2026-10-13): an Evil realm's Monsters on ground its own Terror still grips (ctx.reignOfFear,
-    // read at the call site before the Terror is consumed).
-    if(ctx&&ctx.reignOfFear&&playerAlignment==='Evil'&&MONSTER_ARMIES.has(army.type)){ str=Math.round(str*REIGN_OF_FEAR_MULT); if(_tr) _tr.push({label:`Reign of Fear ${ladderFm(REIGN_OF_FEAR_MULT)}`}); }
+    // read at the call site before the Terror is consumed). 2026-10-12 (Toby): only when they ATTACK there.
+    if(ctx&&ctx.reignOfFear&&ctx.isAttacker&&playerAlignment==='Evil'&&MONSTER_ARMIES.has(army.type)){ str=Math.round(str*REIGN_OF_FEAR_MULT); if(_tr) _tr.push({label:`Reign of Fear ${ladderFm(REIGN_OF_FEAR_MULT)}`}); }
     // PRE-BATTLE DAMAGE (arrows, battle magic, primal strikes, flak). 2026-09-24 (Toby): in a battle
     // the ladder calls armStr with opts.deferDamage and subtracts the damage in ladderRow AFTER every
     // unit and command modifier — modifiers are fixed when the lines form (after the duel, before
@@ -14904,11 +14934,12 @@ const BATTLE_ARMY_SPELLS={
   // ── EVIL TERROR EFFECT ────
   // A decisive Evil victory terrorises the battle province AND every adjacent province. Terror
   // lingers until the next battle fought there, demoralising whoever defends
-  // (−10% strength per stack, capped at −50%). Repeated terror events stack.
-  const TERROR_PCT_PER_STACK=0.10, TERROR_MAX_STACKS=5;
+  // (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
+  // events stack up to that cap; a save already holding more is read as 3. (TERROR_PCT_PER_STACK and
+  // TERROR_MAX_STACKS live at module level, beside buildTurnReport, which shows Evil realms the reading.)
   // REIGN OF FEAR (2026-10-13, Toby, Creatures and Monsters I): an Evil realm's Monsters fight ×1.5 in a
-  // province still gripped by that realm's own Terror, attacking or defending — the mirror of the Druids'
-  // Home of the Wild, on ground Evil makes its own by winning. Read at battle start, BEFORE consumeTerror
+  // province still gripped by that realm's own Terror — the mirror of the Druids' Home of the Wild, on ground
+  // Evil makes its own by winning. 2026-10-12 (Toby): only when they ATTACK there, never when defending it. Read at battle start, BEFORE consumeTerror
   // clears the stacks (reignOfFearHere), and applied in armStr through ctx.reignOfFear.
   const REIGN_OF_FEAR_MULT=1.5;
   function reignOfFearHere(prov, playerIdx){ return !!(prov&&playerIdx!=null&&(prov._terrorStacks||0)>0&&prov._terrorisedBy===playerIdx); }
@@ -15691,7 +15722,7 @@ const BATTLE_ARMY_SPELLS={
     const skelHeroFanatic=align==='Undead'&&!c.isKing&&armies.some(a=>a._isSkeletal);
     // Evil: Monster armies get +25% fanaticism on top of base. (The Druidic mirror, Wild Ferocity — ×1.25
     // for a host with any Creature — was retired on 2026-10-13 (Toby, Creatures and Monsters I): the Druidic
-    // crown keeps its waiver, Home of the Wild, mastery and Awaken the Wild.)
+    // crown keeps its waiver, Home of the Wild and mastery.)
     const evilMonsterFanatic=align==='Evil'&&armies.some(a=>MONSTER_ARMIES.has(a.type));
     const fanMult=Math.max(1, fanatic?1.3:1, skeletalFanatic?UNDEAD_SKEL_KING_FAN:1, evilMonsterFanatic?1.25:1, skelHeroFanatic?UNDEAD_SKEL_HERO_FAN:1); // strongest counts (2026-09-23b)
     if(evilMonsterFanatic&&!fanatic) narrative.push(`${cName}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`);
@@ -18052,9 +18083,10 @@ const BATTLE_ARMY_SPELLS={
     // and the dice. 2026-09-23b: now built with the SAME ctx the battle uses (it had none, so a
     // defending Dwarven host showed 32 here and fought from 48); it equals the ladder's "Units" stage
     // before any pre-battle volleys or spells land.
-    // Reign of Fear (2026-10-13): read before the Terror is consumed below — whichever side's own Terror still
-    // grips this province has its Monsters at ×1.5 (an Evil realm only; armStr checks the alignment).
-    const _fearAtk=reignOfFearHere(prov,atk.player), _fearDef=reignOfFearHere(prov,def.player);
+    // Reign of Fear (2026-10-13): read before the Terror is consumed below — an attacker whose own Terror still
+    // grips this province has its Monsters at ×1.5 (an Evil realm only; armStr checks the alignment). Since
+    // 2026-10-12 (Toby) it fires only when attacking: a defender never has it.
+    const _fearAtk=reignOfFearHere(prov,atk.player), _fearDef=false;
     { const _dcC=provIsCoastal(G,prov);
       const _aS=Math.round((atkArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,atk,(G.players[atk.player]?.alignment),prov.terrain,{force:atkArmies,enemyForce:defArmies,isAttacker:true,amphibious:!!atk._amphibiousAssault,coastal:_dcC,reignOfFear:_fearAtk}):0),0));
       const _dS=Math.round((defArmies||[]).reduce((t,a)=>t+(a&&!a._phantom?armStr(a,def,(G.players[def.player]?.alignment),prov.terrain,{force:defArmies,enemyForce:atkArmies,isAttacker:false,coastal:_dcC,reignOfFear:_fearDef}):0),0));
@@ -19141,8 +19173,11 @@ const BATTLE_ARMY_SPELLS={
     // mechanism).
     if(ch!==real){ ch.hpEarned=real.hpEarned; ch.maxHp=real.maxHp; ch.pay=real.pay; if(r.gain>0&&ch.hp!=null) ch.hp=Math.min(real.maxHp, ch.hp+r.gain); }
     const line=hpGainLine(real, r);
+    // 2026-10-12 (Toby item 20): a hero's maximum-HP rise is his own realm's news. Inside a shared fight
+    // narrative it rides as a private line (emitNarrLine logs it to that realm alone, in its place in the
+    // fight); a neutral's rise is nobody's, so it is not put in the shared report at all.
     if(!line){ /* nothing gained — nothing to say */ }
-    else if(Array.isArray(narrative)) narrative.push(line);
+    else if(Array.isArray(narrative)){ if(real.player!=null) narrative.push({text:line, onlyPlayer:real.player, charId:real.id}); }
     else { const prov=(real.location!=null)?G.world.provinces[real.location]:null;
       log('combat', line, {actor:real.player!=null?real.player:-1, targets:real.player!=null?[real.player]:[], charId:real.id, provinceId:prov?prov.id:undefined}); }
     return r;
@@ -21022,7 +21057,12 @@ const BATTLE_ARMY_SPELLS={
           // province it was raised in, whatever "Muster to" names (native recruiting already needs the
           // province to be ours). A character can still march it out with Pick Up Army.
           const _toGarr=_destGarrison||(isGarrisonUnitType(unit.type)&&prov.owner===c.player);
+          // Item 24 (2026-10-12): a beast recruited into a column already holding as many beasts as its leader's
+          // Druid musters into the garrison instead (native beasts are raised only in a province the realm holds).
+          const _overCmd=!_toGarr&&prov.owner===c.player&&beastCommandCount(unit)&&beastCommandRoom(_destChar,G.characters)<=0;
           if(_toGarr){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit); if(!_destGarrison) _autoGarr.push(unit.type); }
+          else if(_overCmd){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit);
+            log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)}: ${unit.unitName||unit.type} (${unit.type}) musters into the garrison of ${prov.name} instead.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
           else { _destChar.armies=_destChar.armies||[]; _destChar.armies.push(unit); }
           // TITLE MERIT: Beastlord / Wildwarden. Credited to the RECRUITER `c`, not the recipient:
           // the merit is for finding and mustering the beast, and a hero who musters a griffon wing
@@ -21037,6 +21077,9 @@ const BATTLE_ARMY_SPELLS={
             const tok=_rawSel.find(t=>t===`merc:${merc.id}`||t===String(merc.id)||t===merc.type||t===merc.unitName);
             if(!tok) return;
             _mercTokens.add(tok);
+            // Item 24: a mercenary beast is not hired into a full column where there is no garrison to take it.
+            if(!_destGarrison&&prov.owner!==c.player&&beastCommandCount({type:merc.type})&&beastCommandRoom(_destChar,G.characters)<=0){
+              log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)} — the ${merc.unitName||merc.type} mercenaries are not hired.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); return; }
             const baseMercCost=ARMY_COST_P[merc.type]||2;
             // Neutral alignment: mercenaries cost 2g less (min 1g)
             const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(c.player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true))); // + merc discoveries
@@ -21372,74 +21415,12 @@ const BATTLE_ARMY_SPELLS={
         }
         break;
       }
-      // DRUIDIC — Awaken the Wild: the land itself answers, for a price.
-      case 'awaken_wild':{
-        if(G.players[c.player]?.alignment!=='Druidic'){
-          log('system',`${c.name} calls to the deep woods, but the wild answers only Druidic crowns.`,{actor:c.player,targets:[c.player]});break;}
-        const _wildOK=prov.owner===c.player&&(prov.terrain==='forest'||prov.terrain==='jungle'||(prov.race||'').startsWith('Primal'));
-        if(!_wildOK){
-          log('system',`${c.name}: the wild only rises on YOUR land, and only where it still runs deep — an owned forest, jungle, or wild (Creature or Monster) province.`,{actor:c.player,targets:[c.player]});break;}
-        // 2026-09-26 (Toby item 1) — ONE AWAKENING PER PROVINCE PER TURN. The land answers once a
-        // season: a column could otherwise stand in a single wild province and call up a creature in
-        // every phase (and a second caller in the same province could do it again beside them).
-        // Stamped on the PROVINCE, like the Pagan rite and the Evil conquest doctrine, so the limit
-        // holds across phases, across characters and across realms.
-        if(prov._awakenTurn===G.turn){
-          log('system',`${c.name} calls again to the deep places of ${prov.name}, but the wild has already answered here this season — it will not stir a second time until the year turns.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        const AWAKEN_TIERS={...KC_AWAKEN_TIERS};
-        const wType=target;
-        const needDru=AWAKEN_TIERS[wType];
-        if(needDru==null){
-          log('system',`${c.name}: choose a creature of the land to awaken — ${Object.keys(AWAKEN_TIERS).join(', ')}.`,{actor:c.player,targets:[c.player]});break;}
-        const druLvlW=effStat(c,'druid');
-        if(druLvlW<needDru){
-          log('system',`${c.name}: ${wType} answer only a caller of Druid ${needDru}+ (you: ${druLvlW}).`,{actor:c.player,targets:[c.player]});break;}
-        const wCost=Math.max(1,(ARMY_COST_MASTER[wType]||4)+2+discSum(c.player,'awakenCost','delta')); // recruit cost + a 2g offering to the wild (au05 Deep Roots waives it)
-        if((player.gold||0)<wCost){
-          log('system',`${c.name}: awakening ${wType} takes a ${wCost}g offering — the treasury holds only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
-        player.gold-=wCost;
-        prov._awakenTurn=G.turn; // the land has answered here this turn (see the guard above)
-        c.armies=c.armies||[];
-        // the one muster path that ignored both sd01 and the World-Tree Grove. An awakened beast is
-        // a creature/monster raised by a Druidic realm — the most thematic place of all for the
-        // Wonder to tell, and it was the only place it did not.
-        const _awQ=(gdActive(c.player,'Druidic')||Math.random()<discRecruitQChance(G.players[c.player],wType))?'Veteran':'Average';
-        c.armies.push({type:wType,quality:_awQ,race:'Primal',unitName:armyUnitName(wType)});
-        trySkillGain(c,'druid',SKILLGAIN_STD);
-        log('hire',`🌿 Awaken the Wild — ${c.name} calls and ${prov.name} answers: ${wType} rise from the deep places to march under the Druidic banner! (${wCost}g offering; ${_awQ} quality; they follow ${c.name}.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
-        break;
-      }
-      // EVIL — Call from the Pit (2026-10-13, Toby, Creatures and Monsters I): the mirror of Awaken the Wild.
-      // The dark answers an Evil crown in an owned wild (Creature or Monster) province, or in any province
-      // the realm's own Terror still grips; one Monster of the caller's Druid tier (KC_PIT_TIERS), for its
-      // price + 2g tribute, no recruit slot, once a province a turn (its own stamp: a Druidic ally's
-      // awakening in the same province does not close the pit).
+      // DRUIDIC Awaken the Wild and EVIL Call from the Pit: REMOVED 2026-10-12 (Toby item 22 — they made Creatures
+      // and Monsters too easy to come by). An order a save still holds from before is refused in plain words.
+      case 'awaken_wild':
       case 'call_pit':{
-        if(G.players[c.player]?.alignment!=='Evil'){
-          log('system',`${c.name} calls to the pits below, but the dark answers only Evil crowns.`,{actor:c.player,targets:[c.player]});break;}
-        const _pitOK=(prov.owner===c.player&&(prov.race||'').startsWith('Primal'))||reignOfFearHere(prov,c.player);
-        if(!_pitOK){
-          log('system',`${c.name}: the pit opens only beneath YOUR wild (Creature or Monster) provinces, or beneath ground your Terror still grips.`,{actor:c.player,targets:[c.player]});break;}
-        if(prov._pitTurn===G.turn){
-          log('system',`${c.name} calls again to the pits beneath ${prov.name}, but the dark has already answered here this season — it will not stir a second time until the year turns.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break;}
-        const PIT_TIERS={...KC_PIT_TIERS};
-        const pType=target;
-        const needDruP=PIT_TIERS[pType];
-        if(needDruP==null){
-          log('system',`${c.name}: choose a monster to call from the pit — ${Object.keys(PIT_TIERS).join(', ')}.`,{actor:c.player,targets:[c.player]});break;}
-        const druLvlP=effStat(c,'druid');
-        if(druLvlP<needDruP){
-          log('system',`${c.name}: ${pType} answer only a caller of Druid ${needDruP}+ (you: ${druLvlP}).`,{actor:c.player,targets:[c.player]});break;}
-        const pCost=Math.max(1,(ARMY_COST_MASTER[pType]||4)+2); // recruit cost + a 2g tribute to the dark
-        if((player.gold||0)<pCost){
-          log('system',`${c.name}: calling ${pType} takes a ${pCost}g tribute — the treasury holds only ${player.gold}g.`,{actor:c.player,targets:[c.player]});break;}
-        player.gold-=pCost;
-        prov._pitTurn=G.turn; // the dark has answered here this turn
-        c.armies=c.armies||[];
-        const _pitQ=(Math.random()<discRecruitQChance(G.players[c.player],pType))?'Veteran':'Average';   // ae11 Beast Masters, ae20 Black Market
-        c.armies.push({type:pType,quality:_pitQ,race:'Primal',unitName:armyUnitName(pType)});
-        trySkillGain(c,'druid',SKILLGAIN_STD);
-        log('hire',`💀 Call from the Pit — ${c.name} calls and the dark beneath ${prov.name} answers: ${pType} crawl up from the pits to serve the Evil crown! (${pCost}g tribute; ${_pitQ} quality; they follow ${c.name}.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+        const _gone=action==='call_pit'?'Call from the Pit':'Awaken the Wild';
+        log('system',`${c.name}: ${_gone} is no more — Creatures and Monsters now come only by recruiting them where they live.`,{actor:c.player,targets:[c.player]});
         break;
       }
       // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
@@ -21955,6 +21936,12 @@ const BATTLE_ARMY_SPELLS={
           if(removed.length===0) break; // nothing left to transfer
         }
 
+        // Item 24 (2026-10-12): beasts beyond the recipient's Druid stay with the giver.
+        if(recip2){ let _room=beastCommandRoom(recip2,G.characters); const _stay=[];
+          removed=removed.filter(a=>{ if(!beastCommandCount(a)) return true; if(_room>0){ _room--; return true; } _stay.push(a); return false; });
+          if(_stay.length){ c.armies=(c.armies||[]).concat(_stay);
+            log('hire',`🐾 ${beastCommandWords(recip2,G.characters)}: ${_stay.map(a=>a.unitName||a.type).join(', ')} ${_stay.length===1?'stays':'stay'} with ${c.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            if(!removed.length){ refreshMovePool(c); break; } } }
         if(recip2){
           recip2.armies=(recip2.armies||[]).concat(removed);
           log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -22099,6 +22086,13 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} picks up ${army.unitName?army.unitName+' ('+army.quality+' '+army.type+')':army.quality+' '+army.type} from the garrison in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         }
+        // Item 24 (2026-10-12): beasts taken up beyond the leader's Druid go back where they came from.
+        { const _new=(c.armies||[]).filter(a=>!_pickBefore.includes(a));
+          let _room=beastCommandRoom({...c,armies:_pickBefore},G.characters); const _keepN=[], _backB=[];
+          _new.forEach(a=>{ if(beastCommandCount(a)){ if(_room>0){ _room--; _keepN.push(a); } else _backB.push(a); } else _keepN.push(a); });
+          if(_backB.length){ c.armies=_pickBefore.concat(_keepN);
+            if(_pickSrc) _pickSrc.armies=(_pickSrc.armies||[]).concat(_backB); else prov.garrisonArmies=(prov.garrisonArmies||[]).concat(_backB);
+            log('hire',`🐾 ${beastCommandWords(c,G.characters)}: ${_backB.map(a=>a.unitName||a.type).join(', ')} ${_backB.length===1?'stays':'stay'} ${_pickSrc?`with ${_pickSrc.name}`:`in the garrison of ${prov.name}`}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
         // 2026-09-23c (Toby): at sea a character takes aboard only what his ships (and flyers) can
         // carry — units taken in order while they fit; the rest go back where they came from.
         if(isOpenSea(prov)&&seaLiftShortfall(c.armies||[],c)>0){
@@ -23441,11 +23435,13 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'druid')<9){log('system',`${c.name} lacks the Druid mastery (9) to sound a Wild Calling.`,{actor:c.player,targets:[c.player]});break;}
         const _wcIsBeast=(u)=>!!u&&!u._isSkeletal&&(CREATURE_ARMIES.has(u.type)||MONSTER_ARMIES.has(u.type)||!!PRIMAL_ARMY_DEFS_P[u.type]);
         const _wcWon=[]; const _wcHeard=[]; let _wcCalled=0;
+        const _wcRoom=beastCommandRoom(c,G.characters);   // item 24: no more answer than the caller's Druid has room for
         const _wcSift=(arr,label)=>{
           if(!Array.isArray(arr)) return;
           for(let i=arr.length-1;i>=0;i--){
             const u=arr[i]; if(!_wcIsBeast(u)) continue;
             _wcCalled++;
+            if(_wcWon.filter(beastCommandCount).length>=_wcRoom) continue;
             if(d100()<=50){ _wcWon.push(Object.assign({},arr.splice(i,1)[0],{_pacified:true})); if(label&&!_wcHeard.includes(label)) _wcHeard.push(label); }
           }
         };
@@ -28361,7 +28357,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0120</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0310</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

@@ -114,7 +114,8 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   mountain 2–4, sea 8–10); each side is placed by unit type into flanks, front, second line and reserve;
   `battleDeploy` lets the better-explored side (`battleScout`; a province's own defenders know it fully, ties
   to the defender) take the roll or one either side and line up second, then gives each commander one swap
-  per Tactical level (`battleBestSwap`, every swap judged with both sides faced); `battleFacing` reads the two
+  per Tactical level (`battleBestSwap`, every swap judged with both sides faced, and none that would part the
+  two fronts: `battleFrontsMeet`); `battleFacing` reads the two
   grids against each other (matchups by unit type, wrapping, flank duels and guards, a turned flank) and its
   totals are the strengths the dice see. The units' own abilities sit on the same grid: `abilityFront` and
   `abilityBack` adjust one matchup, `battleFaceSide` the cases that read the whole line, `battleGrid` who may

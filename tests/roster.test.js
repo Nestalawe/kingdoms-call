@@ -95,8 +95,8 @@ function slice(src,name){
       const got=((G.TERRAIN_MODS[t]||{})[u])??1, want=(d.terr[t])??1;
       ok(near(got,want),`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`);
     } else for(const t of LAND_TERRAINS){
-      const got=((G.TERRAIN_MODS[t]||{})[u])??1;
-      ok(near(got,1),`${u} in ${t}: a flyer or fleet fights at ×1 (got ×${got})`);
+      const got=((G.TERRAIN_MODS[t]||{})[u])??1, want=(d.terr[t])??1;
+      ok(near(got,want),`${u} in ${t}: a ${d.type} fights at ×${want} (got ×${got})`);   // a fleet ×1 everywhere; a flyer ×0.75 in the woods (item 19)
     }
   }
   for(const u of NEW_UNITS){

@@ -42,5 +42,12 @@ ok(/flying beasts?[^.]{0,120}(from the air|take no place|no place in the line)/i
 ok(!/Flying BEASTS hold a place|flying beasts hold a place/i.test(text),'…and no longer says they hold a place like infantry');
 // no promise left to keep
 for(const [page,src] of [['rulebook',rules],['player portal',pp],['data file',data]]) ok(!/comes? with the beasts?['’]? battle-line abilities|come with the beast abilities|comes with the beast abilities/i.test(norm(src)),`${page}: no ability is still promised "with the beast abilities"`);
+// Purity breaks a Spear Hedge or a Boulder Wall (Toby, 2026-10-12): the unicorns' blurb, their rulebook row and their
+// data-file description say so.
+{ const brk=/breaks a Spear Hedge or a Boulder Wall/;
+  const ppU=(/\n\s*'Unicorn Herd':'((?:[^'\\]|\\.)*)'/.exec(pp)||['',''])[1], rowU=(/<tr><td><strong>Unicorn Herd<\/strong>[\s\S]*?<\/tr>/.exec(rules)||[''])[0];
+  ok(brk.test(ppU),"the player portal's Unicorn Herd blurb says Purity breaks a Spear Hedge or a Boulder Wall");
+  ok(brk.test(rowU),"the rulebook's Unicorn Herd row says so");
+  ok(brk.test(data),"the data file's Unicorn Herd description says so"); }
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail?1:0);
