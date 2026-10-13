@@ -10707,6 +10707,11 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
   // Fisher-Yates at module top level; the palette's rules (terrain clearance, luma spacing) are
   // properties of the set, not of the seat, so any order keeps them.
   const _realmColourDeal=shuffleP(REALM_COLOURS);
+  // The wild pools the home passes deal from: the alignment neighbour pass below and the
+  // wild-country pass after the homes (item 12). Copies of CREATURE_BY_TERRAIN / MONSTER_BY_TERRAIN,
+  // which are local to the province loop; tests/new-creatures and tests/primal-renames hold them together.
+  const CBT={plain:['Thunderbirds','Stone Giants','Unicorn Herd','Mammoth Host'],desert:['Stone Giants','Thunderbirds','Mammoth Host'],forest:['Forest Ents','Thunderbirds','Great Bears','Unicorn Herd'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Thunderbirds','Great Bears']};   // = CREATURE_BY_TERRAIN (tests/new-creatures holds the two together)
+  const MBT={plain:['Titan Warbeasts','Manticore Pride'],desert:['Manticore Pride','Basilisk Brood'],forest:['Cave Trolls','Basilisk Brood','Dread Hydras'],jungle:['Basilisk Brood','Cave Trolls','Manticore Pride','Dread Hydras'],mountain:['Cave Trolls','Elder Dragons']};
   const players=setupPlayers.map((sp,pi)=>{
     const best=provinces[homeCells[pi].id];
     // Home province race always matches the king's race, and army pool updates accordingly
@@ -10804,8 +10809,6 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     {
       const _align=sp.alignment;
       if(_align==='Pagan'||_align==='Druidic'||_align==='Evil'){
-        const CBT={plain:['Thunderbirds','Stone Giants','Unicorn Herd','Mammoth Host'],desert:['Stone Giants','Thunderbirds','Mammoth Host'],forest:['Forest Ents','Thunderbirds','Great Bears','Unicorn Herd'],jungle:['Forest Ents'],mountain:['Stone Giants','Crimson Rocs','Thunderbirds','Great Bears']};   // = CREATURE_BY_TERRAIN (tests/new-creatures holds the two together)
-        const MBT={plain:['Titan Warbeasts','Manticore Pride'],desert:['Manticore Pride','Basilisk Brood'],forest:['Cave Trolls','Basilisk Brood','Dread Hydras'],jungle:['Basilisk Brood','Cave Trolls','Manticore Pride','Dread Hydras'],mountain:['Cave Trolls','Elder Dragons']};
         const _allFreeNbrs=getNeighborsP(best,cols,rows,provinces).filter(n=>n&&n.terrain!=='sea'&&n.owner==null);
         // the poor/prosperous pair must be HUMANOID for EVERY home, so this pass may never convert
         // (a) this home's own pair, (b) an earlier king's pair, or (c) any cell in an earlier
@@ -10988,6 +10991,50 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
       // updateProvinceMemory.
       _encountered:[]};
   });
+
+  // ── WILD COUNTRY NEAR THE TWO CROWNS (2026-10-13, Toby item 12) ── A Druidic king must have at
+  // least one land CREATURE province within two provinces of home, and an Evil king a land MONSTER
+  // province, so each crown can reach its speciality early. The alignment pass above only tries to
+  // put one beside the home, and it can find no free neighbour; later homes' cap passes can also
+  // re-race a primal province that sits two steps from an earlier home. This pass runs after every
+  // home is tailored and is the authority. Where nothing within two steps qualifies it converts one
+  // cell, choosing in order: a cell exactly two steps away that borders no home (so no ring breaks
+  // its one-primal cap), then a free cell in this home's own ring if that ring holds no primal yet.
+  // It never touches a home, any king's poor/prosperous pair, or a primal cell that is another
+  // crown's only qualifying province. Wrong-family primal cells are preferred over humanoid ones (the
+  // wild country only changes sides), then cells not of the king's own race.
+  {
+    const _nb=(p)=>getNeighborsP(p,cols,rows,provinces).filter(Boolean);
+    const _within2=(h)=>{ const one=_nb(h), seen=new Map(one.map(n=>[n.id,1]));
+      one.forEach(n=>_nb(n).forEach(m=>{ if(m.id!==h.id&&!seen.has(m.id)) seen.set(m.id,2); }));
+      return seen; };
+    const _famOf=(p)=>{ if(!p||p.terrain==='sea'||!String(p.race||'').startsWith('Primal')) return null;
+      const t=(p.armyTypes||[])[0]; return KC_UNIT_CLASS.creature.includes(t)?'creature':KC_UNIT_CLASS.monster.includes(t)?'monster':null; };
+    const _homeIds=new Set(players.map(pl=>pl.homeProvinceId));
+    const _pairIds=new Set(playerStarts.flatMap(h=>h._homePairIds||[]));
+    const _ringIds=new Set(); playerStarts.forEach(h=>_nb(h).forEach(n=>_ringIds.add(n.id)));
+    const _crowns=players.map(pl=>({pl, want:pl.alignment==='Druidic'?'creature':pl.alignment==='Evil'?'monster':null, home:provinces[pl.homeProvinceId]})).filter(x=>x.want&&x.home);
+    const _matches=(cr)=>[..._within2(cr.home).keys()].filter(id=>{ const q=provinces[id]; return q&&q.owner==null&&_famOf(q)===cr.want; });
+    _crowns.forEach(cr=>{
+      if(_matches(cr).length) return;
+      const near=_within2(cr.home);
+      const soleFor=(id)=>_crowns.some(o=>o!==cr&&_matches(o).length===1&&_matches(o)[0]===id);
+      const ok=(q)=>q&&q.terrain!=='sea'&&q.owner==null&&!_homeIds.has(q.id)&&!_pairIds.has(q.id)&&!soleFor(q.id);
+      const ringHasPrimal=_nb(cr.home).some(n=>n.terrain!=='sea'&&String(n.race||'').startsWith('Primal'));
+      const rank=(list)=>list.sort((x,y)=>((_famOf(y)?1:0)-(_famOf(x)?1:0))||((x.race===cr.pl.race?1:0)-(y.race===cr.pl.race?1:0)));
+      const far=rank(shuffleP([...near.entries()].filter(([id,d])=>d===2).map(([id])=>provinces[id]).filter(q=>ok(q)&&!_ringIds.has(q.id))));
+      const ring=ringHasPrimal?[]:rank(shuffleP(_nb(cr.home).filter(ok)));
+      const cand=far[0]||ring[0]||null;
+      if(!cand) return;
+      const bank=(cr.want==='creature'?CBT:MBT)[cand.terrain]||[cr.want==='creature'?'Stone Giants':'Cave Trolls'];
+      const unit=bank[Math.floor(Math.random()*bank.length)];
+      cand.race='Primal:'+(PRIMAL_ARMY_DEFS_P[unit]?.race||unit);
+      cand.armyTypes=[unit];
+      cand.neutralDefenders=Array.from({length:neutralDefCount(cand.tax)},()=>({type:unit,quality:Math.random()<0.5?'Veteran':'Average',race:cand.race,unitName:armyUnitName(unit)}));
+      cand.npcArmies=cand.neutralDefenders.length;
+      cand.name=null; // renamed by the thematic naming pass below
+    });
+  }
 
   // ── NEUTRAL RACE REBALANCE (2026-09-21) ── The allocation pass above deals the four humanoid
   // races EXACTLY evenly (to within one province) — but the home-tailoring passes that follow then
