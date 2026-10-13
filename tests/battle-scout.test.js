@@ -73,8 +73,11 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     ok(legal(g),'…and the grid is as it was'); }
 
   // the report's lines
-  ok(scoutLine({scout:'atk',W:7,roll:6,lineup:2,moves:{scout:0,other:0}},'Aldric','Gorbash',60,20)==='📊 Scouting — Aldric knows the ground better (explored 60% against 20%): Aldric widens the front from 6 to 7 and lines up second (2 adjustments).','the scouting line: who, why, the width and the adjustments');
-  ok(scoutLine({scout:'def',W:5,roll:5,lineup:0,moves:{scout:0,other:0}},'Aldric','Gorbash',50,50)==='📊 Scouting — Gorbash knows the ground as well as the enemy (50% explored by both), and the defender\'s claim stands: Gorbash takes the front of 5 the dice allow and lines up second.','a tie: the defender\'s claim stands');
+  // 2026-10-13 (item 17, Toby): the line names the better-explored side but never the exploration
+  // figures — a realm must not learn its rival's exploration of the province from a battle report.
+  ok(scoutLine({scout:'atk',W:7,roll:6,lineup:2,moves:{scout:0,other:0}},'Aldric','Gorbash',60,20)==='📊 Scouting — Aldric knows the ground better (Aldric\'s side has explored more of it than Gorbash\'s): Aldric widens the front from 6 to 7 and lines up second (2 adjustments).','the scouting line: who, why, the width and the adjustments');
+  ok(scoutLine({scout:'def',W:5,roll:5,lineup:0,moves:{scout:0,other:0}},'Aldric','Gorbash',50,50)==='📊 Scouting — Gorbash knows the ground as well as the enemy (neither side has explored more of it), and the defender\'s claim stands: Gorbash takes the front of 5 the dice allow and lines up second.','a tie: the defender\'s claim stands');
+  ok([[60,20],[20,60],[50,50],[100,99.6],[0,0]].every(([a,b])=>!/\d+%|explored \d/.test(scoutLine({scout:a>b?'atk':'def',W:5,roll:5,lineup:0,moves:{scout:0,other:0}},'Aldric','Gorbash',a,b))),'no exploration figure appears in the line, whoever scouts');
   ok(/narrows the front from 4 to 3/.test(scoutLine({scout:'def',W:3,roll:4,lineup:1,moves:{scout:0,other:0}},'Aldric','Gorbash',10,100)),'…or narrows it');
   ok(movesLine({scout:'atk',moves:{scout:1,other:2}},'Aldric','Gorbash')==='📊 Tactics — Gorbash shifts the line twice; Aldric shifts the line once.','the Tactics line: the other side first');
   ok(movesLine({scout:'def',moves:{scout:3,other:0}},'Aldric','Gorbash')==='📊 Tactics — Aldric holds the line as it stands; Gorbash shifts the line 3 times.','…and a side that could not improve its line');
