@@ -42,15 +42,10 @@ const ROSTER={
 const RENAMED={'Giant Eagles':'Thunderbirds','Kraken Tentacles':'Eldritch Kraken','Leviathan Pods':'Dread Hydras'};
 const MIGRATED={'Giant Eagles':'Thunderbirds','Kraken Tentacles':'Eldritch Kraken','Leviathan Pods':'Eldritch Kraken'};
 const RACE_RENAMED={'Primal:Giant Eagle':'Primal:Thunderbird','Primal:Leviathan':'Primal:Kraken'};
-// Awaken the Wild: the Creature a Druidic caller of each Druid level may call out of the land (the Great Turtles and
-// the Whale Cohort are never awakened: they are recruited where they swim — Toby, 2026-10-13, Creatures and Monsters IV).
-// (In the order the data file lists them: the new three are appended, since the order is the dropdown's.)
-const AWAKEN_TIERS={'Thunderbirds':1,'Forest Ents':2,'Stone Giants':3,'Crimson Rocs':3,'Great Bears':2,'Unicorn Herd':3,'Mammoth Host':3};
-// Call from the Pit (Evil's mirror of Awaken the Wild): the Monster a caller of each Druid level may call.
-const PIT_TIERS={'Cave Trolls':1,'Basilisk Brood':2,'Manticore Pride':3,'Titan Warbeasts':3};
+// Awaken the Wild and Call from the Pit, with their tier tables, were removed on 2026-10-12 (Toby item 22).
 const REIGN_OF_FEAR=1.5;   // an Evil realm's Monsters in a province under its Terror
 const LAND_TERRAINS=['plain','desert','forest','jungle','mountain'];
 const LIVE=Object.keys(ROSTER).filter(u=>ROSTER[u].status==='live');
 const COMING=Object.keys(ROSTER).filter(u=>ROSTER[u].status==='coming');
 const isLand=d=>d.type==='infantry'||d.type==='ranged'||d.type==='cavalry';
-module.exports={WOODS_FLYER,ROSTER,RENAMED,MIGRATED,RACE_RENAMED,AWAKEN_TIERS,PIT_TIERS,REIGN_OF_FEAR,LAND_TERRAINS,LIVE,COMING,isLand};
+module.exports={WOODS_FLYER,ROSTER,RENAMED,MIGRATED,RACE_RENAMED,REIGN_OF_FEAR,LAND_TERRAINS,LIVE,COMING,isLand};

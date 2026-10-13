@@ -2,10 +2,8 @@
 // (scenario): world generation and the order and battle paths live inside generateNewGame and runTurn.
 //   • world generation: an Evil king starts at Druid 1 and beside a land Monster province, as a Druidic king
 //     starts at Druid 1 beside a Creature province (three worlds);
-//   • Call from the Pit: an Evil character in an owned wild province calls Cave Trolls for their price + 2g,
-//     a second call there the same turn is refused, a Monster above the caller's Druid is refused, a Druidic
-//     king's call is refused; the pit also opens on ground still gripped by the realm's own Terror;
-//   • Reign of Fear: an Evil host's Monsters fight ×1.5 in a province under its Terror (the ladder says so), and
+//   • (Call from the Pit was removed on 2026-10-12, Toby item 22: tests/beast-calls-gone holds that.)
+//   • Reign of Fear: an Evil host's Monsters fight ×1.5 attacking a province under its Terror (the ladder says so), and
 //     its Druid-1 king leads Cave Trolls with no shortfall warning;
 //   • Wild Ferocity is gone: a Druidic host with Forest Ents gets no ×1.25 line; Evil's savage fury stays.
 const {bootScenario, order, plan}=require('./lib/scenario');
@@ -33,41 +31,6 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(eWild.length>=1&&eWild.every(p=>MON.has(wildOf(p))),`world ${k}: the Evil king opens beside a land Monster province (wild neighbours: ${eWild.map(p=>wildOf(p)).join(', ')||'none'})`);
     const dWild=nbrs(S,home(S,1)).filter(p=>p.terrain!=='sea'&&wildOf(p));
     ok(dWild.length>=1&&dWild.every(p=>CRE.has(wildOf(p))),`world ${k}: the Druidic king opens beside a land Creature province (wild neighbours: ${dWild.map(p=>wildOf(p)).join(', ')||'none'})`);
-  }
-
-  // ── Call from the Pit ──
-  {
-    const r=await sc.turn({realms:2,alignments:['Evil','Druidic'],prepare(S){
-      const ek=king(S,0), dk=king(S,1);
-      ek.skills=Object.assign({},ek.skills,{druid:1});
-      // An owned wild province beside the Evil home: the king stands in it with a full purse.
-      const H=home(S,0); const wild=nbrs(S,H).find(p=>p.terrain!=='sea'&&p.owner==null)||nbrs(S,H).find(p=>p.terrain!=='sea');
-      wild.owner=0; wild.race='Primal:Cave Troll'; wild.armyTypes=['Cave Trolls']; wild.neutralDefenders=[]; wild.npcArmies=0;
-      if(!S.players[0].provinces.includes(wild.id)) S.players[0].provinces.push(wild.id);
-      ek.location=wild.id; S.players[0].gold=40;
-      // A second Evil character, in a humanoid province of nobody's that the realm's Terror still grips.
-      const far=S.world.provinces.find(p=>p&&p.terrain!=='sea'&&p.owner==null&&!String(p.race||'').startsWith('Primal')&&p.id!==wild.id&&nbrs(S,p).every(n=>n.owner==null));
-      far.neutralDefenders=[]; far.npcArmies=0; far._terrorStacks=1; far._terrorTurn=S.turn-1; far._terrorisedBy=0;
-      const hero={...JSON.parse(JSON.stringify(ek)),id:'pit-hero',name:'Grishnak the Whip',isKing:false,armies:[],items:[],location:far.id,skills:{druid:1,melee:1}};
-      S.characters.push(hero);
-      // The Druidic king stands in its own home and is refused.
-      return {ek:ek.id,dk:dk.id,hero:hero.id,wild:wild.id,far:far.id,gold:40,trollCost:W.eval("ARMY_COST_MASTER['Cave Trolls']")};
-    },orders:(S,x)=>({
-      [x.ek]:plan(order('call_pit','Basilisk Brood'),order('call_pit','Cave Trolls'),order('call_pit','Cave Trolls')),
-      [x.hero]:plan(order('call_pit','Cave Trolls')),
-      [x.dk]:plan(order('call_pit','Cave Trolls')),
-    })});
-    const t=r.text(), x=r.extra;
-    ok(/Basilisk Brood answer only a caller of Druid 2\+/.test(t),'a Monster above the caller\'s Druid is refused ("answer only a caller of Druid 2+")');
-    ok(/Call from the Pit — .* Cave Trolls .*(crawl|rise|answer)/.test(t),'the king\'s second call brings Cave Trolls up from the pit');
-    ok(/already answered here this season/.test(t),'a second call in the same province the same turn is refused');
-    ok(/answers only Evil crowns/.test(t),"the Druidic king's call is refused: the dark answers only Evil crowns");
-    const ek2=r.S2&&r.S2.characters.find(c=>c.id===x.ek), hero2=r.S2&&r.S2.characters.find(c=>c.id===x.hero);
-    const trolls=c=>((c&&c.armies)||[]).filter(a=>a.type==='Cave Trolls');
-    ok(trolls(ek2).length===1&&trolls(ek2)[0].race==='Primal',`the king leads one company of Cave Trolls, of the Primal race (got ${trolls(ek2).length})`);
-    ok(trolls(hero2).length===1,`the pit also opens beneath ground gripped by the realm's Terror: the hero leads one company (got ${trolls(hero2).length})`);
-    const tributes=(t.match(new RegExp(`\\(${x.trollCost+2}g tribute`,'g'))||[]).length;
-    ok(tributes===2,`each call cost the trolls' price + 2g (${x.trollCost+2}g): ${tributes} such tributes in the log`);
   }
 
   // ── Reign of Fear, the waiver in a battle, and Wild Ferocity gone ──

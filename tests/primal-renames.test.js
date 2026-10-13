@@ -29,7 +29,7 @@ function slice(src,name,from=0){
   const ctx=vm.createContext({});
   const dataSrc=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
   vm.runInContext(dataSrc,ctx);
-  const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,N:PRIMAL_UNIT_NAMES,A:KC_AWAKEN_TIERS,DISC:SAGE_DISCOVERIES_P})',ctx);
+  const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,N:PRIMAL_UNIT_NAMES,DISC:SAGE_DISCOVERIES_P})',ctx);
   const druidOf=u=>{ for(const [l,list] of Object.entries(D.L)) if(list.includes(u)) return +l; return 0; };
   for(const u of NEW){
     const d=ROSTER[u];
@@ -43,7 +43,6 @@ function slice(src,name,from=0){
   ok(D.C.aerial.includes('Thunderbirds')&&D.C.tamedFlyer.includes('Thunderbirds')&&!D.C.aerial.includes('Giant Eagles')&&!D.C.tamedFlyer.includes('Giant Eagles'),'Thunderbirds cross the sea on the wing and can be tamed; Giant Eagles no longer');
   ok(D.C.primalSea.slice(0,2).join()==='Sea Giants,Eldritch Kraken'&&D.C.sea.includes('Eldritch Kraken')&&!D.C.sea.includes('Leviathan Pods'),`the primal seas are Sea Giants and Eldritch Kraken (got ${D.C.primalSea.join(', ')})`);
   ok(!D.C.sea.includes('Dread Hydras')&&!D.C.primalSea.includes('Dread Hydras')&&!D.C.aerial.includes('Dread Hydras'),'Dread Hydras walk: neither a sea unit nor a flyer');
-  ok(D.A['Thunderbirds']===1&&!('Giant Eagles' in D.A),'Awaken the Wild offers Thunderbirds at Druid 1 in place of Giant Eagles');
   for(const u of OLD){
     const lists=Object.entries(D.C).filter(([k,l])=>l.includes(u)).map(([k])=>k);
     ok(lists.length===0&&!(u in D.T)&&!(u in D.S)&&!(u in D.PR)&&!(u in D.N)&&druidOf(u)===0,`${u} is in no table (still in: ${[...lists,...(u in D.T?['KC_UNIT_TYPE']:[]),...(u in D.PR?['PRIMAL_ARMY_DEFS_P']:[]),...(u in D.N?['PRIMAL_UNIT_NAMES']:[])].join(', ')||'none'})`);
