@@ -52,15 +52,16 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   { const bow=d.gA.units.find(u=>u.row.a.type==='Yeoman Longbows'); const opp=bow&&d.gD.front[bow.col];
     ok(bow&&bow.place==='second'&&opp&&opp.r.a.type==='Shieldwall Levies','the Longbow stands in the second line, in the column of the enemy Levy'); }
   ok(d.gA.units.find(u=>u.row.a.type==='Yeoman Longbows').row._faced.kind==='shoots','the stamps are those of the final layout');
-  // the same armies with the defender scouting: lining up second, it slides its two units one place
-  // along, so its Free Lance wraps the attacker's end and the Longbow shoots at an empty column
-  // (27.2 against 19.2: the wrapping Levy with the bow behind it 12, the Levy hit from the side 7.2, the
-  // bow 8); the attacker then spends its one Tactical move on the Longbow, first
+  // the same armies with the defender scouting. Before 2026-10-12 it slid its two units one place along, so its
+  // Free Lance wrapped the attacker's end while an attacking Levy stood with nobody opposite; since Toby's item 18
+  // the fronts must meet (tests/battle-fronts-meet), so it holds its line, and the attacker spends its one
+  // Tactical move on the Longbow
   d=deploy(rows(A),rows(D),{terrain:'forest',roll:4,tacA:1,tacD:0,scout:'def'});
-  ok(d.lineup===1&&near(d.gD.face.total,19.2),`the defender slides its line one place along (lineup ${d.lineup}, ${d.gD.face.total})`);
-  ok(d.moves.other===1&&d.moves.scout===0&&near(d.gA.face.total,28.6),`the attacker answers with its Tactical move, the Longbow behind the Levy that now faces the enemy Levy: 27.2 → 28.6 (the wrapping Levy 9.6, the Levy hit from the side with its Shieldwall 9, the shot 10; moves ${d.moves.other}/${d.moves.scout}, ${d.gA.face.total})`);
+  { const fa=d.gA.front.map(Boolean).join(), fd=d.gD.front.map(Boolean).join();
+    ok(d.lineup===0&&fa===fd&&near(d.gD.face.total,15.5),`the defender may not slide its line along: it holds, both fronts in the same columns (lineup ${d.lineup}, ${d.gD.face.total})`); }
+  ok(d.moves.other===1&&d.moves.scout===0&&near(d.gA.face.total,29.2),`the attacker answers with its Tactical move, the Longbow behind the Levy that faces the enemy Levy: 27.5 → 29.2 (the Levy facing the horse 9.2, the Levy with its Shieldwall 10, the shot 10; moves ${d.moves.other}/${d.moves.scout}, ${d.gA.face.total})`);
   d=deploy(rows(A),rows(D),{terrain:'forest',roll:4,tacA:0,tacD:0,scout:'def'});
-  ok(d.lineup===1&&d.moves.other===0&&near(d.gA.face.total,27.2)&&movesLine(d,'Aldric','Gorbash')===null,`without Tactical the attacker cannot answer (${d.gA.face.total}), and the report has no Tactics line`);
+  ok(d.lineup===0&&d.moves.other===0&&near(d.gA.face.total,27.5)&&movesLine(d,'Aldric','Gorbash')===null,`without Tactical the attacker cannot answer (${d.gA.face.total}), and the report has no Tactics line`);
   ok(front(d.gA)===front(deploy(rows(A),rows(D),{terrain:'forest',roll:4,tacA:0,tacD:0,scout:'def'}).gA),'the same inputs give the same line-up');
 
   // what a legal swap is

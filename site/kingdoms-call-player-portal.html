@@ -834,13 +834,13 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.13-0050';
+const KC_DATA_MIN_P='2026.10.13-0401';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
 const KC_DB_MIN='20261012023733';
 (function(){
-  const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_AWAKEN_TIERS','KC_PIT_TIERS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
+  const need=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS','MASTERY_UNLOCKS'];
   const missing=need.filter(n=>{ try{ return typeof eval(n)==='undefined'; }catch(e){ return true; } });
   const stamp=(typeof KC_DATA_STAMP==='string')?KC_DATA_STAMP:null;
   const allMissing=missing.length===need.length;
@@ -1013,7 +1013,7 @@ const SEASONS = KC_SEASONS.slice();
 const DIRECTIONS = {NW:'North West',NE:'North East',W:'West',E:'East',SW:'South West',SE:'South East'};
 const ACTIONS = ['Move','Explore','Search Lair','Hunting Rumours','Recruit Armies','Hire Hero','Release Hero','Encounter Character','Steal','Disband Army',
   'Leave/Transfer Army','Pick Up Army','Send Item','Cast Spell','Use Item','Equip Items',
-  'Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Awaken the Wild','Call from the Pit','Harvest the Field',
+  'Spy','Practice Skill','Research','Perform Rite','Consecrate','Call to Arms','Broker','Harvest the Field',
   'Sabotage','Forced March','Grand Heist','Awaken Grove','Chart the Unknown','Discover Lost Ruin',
   'Blockade','Research Breakthrough','Assassinate','Vanish',
   'Challenge','Rampage','Rain of Arrows',"Sniper's Mark",
@@ -1023,7 +1023,7 @@ const ACTIONS = ['Move','Explore','Search Lair','Hunting Rumours','Recruit Armie
 // Alignment-signature actions: shown only to the realm that owns them (and Perform Rite joins the
 // same gating — no more dangling Pagan action in every dropdown). King-only actions are hidden from
 // heroes' dropdowns entirely.
-const ALIGN_ACTIONS={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Awaken the Wild':'Druidic','Call from the Pit':'Evil','Harvest the Field':'Undead'};
+const ALIGN_ACTIONS={'Perform Rite':'Pagan','Consecrate':'Divine','Call to Arms':'Good','Broker':'Neutral','Harvest the Field':'Undead'};   // Druidic and Evil have no signature order since 2026-10-12 (item 22)
 // King-only actions — the engine rejects these from a hero, so they are hidden from heroes'
 // dropdowns entirely (Consecrate is king-only: only the anointed crown can hallow ground — see the
 // engine handler).
@@ -1088,7 +1088,7 @@ const rawSkillLvl=(charObj,sk)=>((charObj&&charObj.skills)||{})[sk]||0;
 // is empty. Offer the full choice and let the engine judge at resolution.
 // 2026-09-24 (Toby): these two flags had drifted badly apart — each was patched at a different site on
 // a different day, so gates closed for a hired hero stood wide open for a charmed one (the Steal and
-// Spy percentages, the Research and Explore notes, the Awaken tiers, and the whole L7/L9 set). ONE
+// Spy percentages, the Research and Explore notes, and the whole L7/L9 set). ONE
 // predicate now serves every site. Add future gates through it; never test either flag directly.
 const skillsUnseenP=(c)=>!!(c&&(c._hiddenSkills||c._unknownSkills));
 // …and the two reasons, phrased for the player. `hidden` never becomes visible; `unknown` does, next turn.
@@ -1096,14 +1096,14 @@ const unseenSuffixP=(c)=>(c&&c._unknownSkills)
   ? `${(c&&c.name)||'this hero'}’s level is not known until they have joined`
   : `${(c&&c.name)||'this hero'}’s level is hidden from you`;
 // dropdown display order — most-used orders near the top, and any alignment-signature order
-// (Broker, Consecrate, Call to Arms, Perform Rite, Awaken the Wild, Call from the Pit, Harvest the Field)
+// (Broker, Consecrate, Call to Arms, Perform Rite, Harvest the Field)
 // pinned to the VERY TOP (each is only shown to its own realm, so this simply puts a realm's special order
 // first when it appears). Mastery (L7/L9) orders sink to the bottom as rare, situational picks.
 // Adjust freely — this array is the single source of the ordering.
 const ACTION_DISPLAY_ORDER=[
   // ── SPECIAL actions the character can take — pinned to the very top ── Alignment-signature
   // orders (each shown only to its own realm)…
-  'Broker','Consecrate','Call to Arms','Perform Rite','Awaken the Wild','Call from the Pit','Harvest the Field',
+  'Broker','Consecrate','Call to Arms','Perform Rite','Harvest the Field',
   // …and MASTERY (L7/L9) orders, which surface only when the hero's skill is high enough.
   // actionsFor() already filters both groups down to what THIS character actually qualifies for, so
   // only the specials available to them appear here.
@@ -3079,10 +3079,10 @@ function renderReportView(report){
   const ALIGNMENT_SUMMARIES={
     Divine:`Your realm walks in the light of the divine. All heroes recover twice as much HP when they Rest (60% of maximum HP rather than the usual 30%). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your characters — king or hero — fall, divine grace will return them to life after one full turn in death, restored to half health but stripped of armies and items — but ONLY upon consecrated ground: they rise in the nearest consecrated province you still hold, and the miracle spends that province's consecration. If the realm holds no consecrated province when the time comes, the grace is lost (a fallen king is then succeeded by an heir). Consecrate: your king may sanctify owned provinces, up to his White skill level at once (not the home province or its neighbours, and never two side by side — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and it is where your fallen are restored. Guard it: a consecrated province that is captured loses its consecration at once, and each unit of the army that takes it has a 50% chance to gain an experience level. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
     Good:`Your realm is known for honour and fellowship. Your armies fight with a solid 40% chance of fanaticism — second only to the Divine. Banner of Fellowship: allied contingents converging on the same battle unify 15% more readily under your honourable cause. Righteous Defence: any army defending a province you own fights at +10% — your soldiers know the ground they hold is held justly. Call to Arms: once per turn your king may summon the folk of any owned humanoid province — wherever they happen to be — and a free Green garrison unit of that province's native type musters to defend it. Sitting close to the centre of the alignment spectrum, most wandering heroes serve you cheaply.`,
-    Druidic:`Your realm is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Thunderbirds, Forest Ents, Stone Giants, Crimson Rocs and Whale Cohort — follow your heroes without any Druid skill requirement. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Awaken the Wild: standing in an owned forest, jungle or wild (Creature or Monster) province, your characters may call a Creature out of the land itself — Thunderbirds at Druid 1, Forest Ents at Druid 2, Stone Giants or Crimson Rocs at Druid 3 — for the unit's cost plus a 2g offering, with no recruitment slot spent. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
+    Druidic:`Your realm is bound to the living world. Your king commands Druid 1 from the outset, and all Creature armies — Thunderbirds, Forest Ents, Great Bears, Stone Giants, Unicorn Herd, Mammoth Host, Crimson Rocs, Whale Cohort and Great Turtles — follow your heroes without any Druid skill requirement, though a hero leads at most as many Creature and Monster units as his Druid level. Home of the Wild: in forest and jungle, your Creature armies fight at ×1.5 strength. Your armies fight with a 20% chance of fanaticism, and your central place on the spectrum keeps most heroes affordable.`,
     Neutral:`Your realm prizes pragmatism above all. Province tax income flows 20% richer than other realms — traders and merchants gravitate toward your neutral courts. Standing at the exact centre of the alignment spectrum, EVERY wandering hero costs you at most 3g/turn — and most cost the base 2g — the cheapest court in the world. Mercenary bands cost 2g less to hire than the going rate. Broker: your king trades in influence rather than marches — they may hire any wandering hero the realm can see without leaving their hall (they serve from wherever they stand), or buy a guaranteed full Spy report on any province the realm has ever seen for 2g. Your scholars are twice as effective — each level of Sage skill doubles your chance of making a discovery. Your armies fight with a 10% chance of fanaticism.`,
     Pagan:`Your realm draws on ancient and forgotten powers. Your king walks the wild places from birth — Explorer 1 from the outset. Perform Rite at discovered ritual sites (now found across much of the world, commonest in wild Creature and Monster country): the Wild Hunt binds a province's creatures to your host, and a Blood Offering sacrifices units to empower an equal number of others (+2 quality tiers each, to Elite). Blood Harvest: +1g per enemy unit your characters destroy in victory. Your armies fight with a 15% chance of fanaticism.`,
-    Evil:`Your realm rules through fear and domination. Your king commands Druid 1 from the outset, and all Monster armies follow your heroes without any Druid skill requirement (every level of Druid a commander does hold adds +20% to them). You begin beside a Monster province you can lead from turn one. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed — and by Reign of Fear your Monsters fight at ×1.5 in any province your own Terror still grips, attacking or defending. Monster armies — Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras and Shark Shoals — fight with savage fury under your command — a host with any of them in it fights at ×1.25 in every battle (no roll; it does not stack with zeal, the stronger counts). Call from the Pit: standing in an owned wild (Creature or Monster) province, or in any province your own Terror still grips, your characters may call a Monster up from the pits — Cave Trolls at Druid 1, Basilisk Brood at Druid 2, Manticore Pride or Titan Warbeasts at Druid 3 — for the unit's cost plus a 2g tribute, with no recruitment slot spent. When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
+    Evil:`Your realm rules through fear and domination. Your king commands Druid 1 from the outset, and all Monster armies follow your heroes without any Druid skill requirement (every level of Druid a commander does hold adds +20% to them), though a hero leads at most as many Creature and Monster units as his Druid level. You begin beside a Monster province you can lead from turn one. When your forces win decisively, a Terror effect lingers — any army defending that province in the next battle fights at −10% strength, broken by what they witnessed — and by Reign of Fear your Monsters fight at ×1.5 when they attack a province your own Terror still grips. Monster armies — Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras and Shark Shoals — fight with savage fury under your command — a host with any of them in it fights at ×1.25 in every battle (no roll; it does not stack with zeal, the stronger counts). When you conquer a province, your forces immediately plunder 50% of the province's tax value in gold. Your armies fight with a 25% base chance of fanaticism.`,
     Undead:`Your realm defies death itself. Your king commands Necromancy 1 from the outset and begins with a unit of Skeletal Shieldwall Levies at their side. All skeletal armies under your banner are exempt from the Druid penalty, cost only 1g upkeep each, and fight with undying fanaticism in EVERY battle — ×1.5 (+50%) when the king leads them in person, ×1.3 (+30%) under any other commander — the whole host is lifted. Harvest the Field: any of your characters standing where armies have fallen may raise one grave as a Skeletal unit for 2g — no magic, no Necromancy skill, just corpse-carters and cold work. Deathless March: a force of skeletons alone can never be cut down in flight — with no line of retreat they simply stand and hold the ground, because the dead do not panic. Battlefield graves in your provinces decay at half the normal rate, preserving more fallen armies for the Skeletal Armies spell. But beware: your court is priced at the far end of the alignment spectrum — righteous heroes cost dearly, and Divine heroes will never serve you at all.`,
   };
 
@@ -3098,8 +3098,8 @@ function renderReportView(report){
   const cmGuide=(playerAlignment==='Druidic'||playerAlignment==='Evil')?`
     <div style="font-size:.72rem;color:var(--stone);background:#f5f0e8;border:1px solid var(--stone);border-radius:2px;padding:5px 8px;margin-bottom:8px">
       ${playerAlignment==='Druidic'?'🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×1.5 in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.':''}
-      ${playerAlignment==='Evil'?'💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 on ground your Terror grips. On province conquest: instant 50% loot.':''}
-      <br><span style="color:#1d5a1d;font-weight:600">[C] Creatures:</span> Thunderbirds, Forest Ents, Stone Giants, Crimson Rocs, Whale Cohort
+      ${playerAlignment==='Evil'?'💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest: instant 50% loot.':''}
+      <br><span style="color:#1d5a1d;font-weight:600">[C] Creatures:</span> Thunderbirds, Forest Ents, Great Bears, Stone Giants, Unicorn Herd, Mammoth Host, Crimson Rocs, Whale Cohort, Great Turtles
       ${playerAlignment==='Evil'?'<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals':''}
     </div>`:'';
   // Royal-succession skill allocation is rendered at the TOP of the orders column now
@@ -3248,7 +3248,7 @@ function renderReportView(report){
             let _hullNeed=_landUnits.reduce((n,a)=>n+(_LIGHT_UI2.has(a.type)?0.5:1),0);
             if(effSkillP(c,'naval')>=8) _hullNeed/=2;
             const _hullNeedShown=Math.ceil(_hullNeed);
-            const _hullHave=arr.filter(a=>_CARRIER_UI2.has(a.type)).length;
+            const _hullHave=arr.reduce((n,a)=>n+(_CARRIER_UI2.has(a.type)?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[a.type])||1):0),0);   // berths: a turtle's Island Back offers two
             let _seaNote='';
             if(_landUnits.length===0) _seaNote=` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
             else if(_airborne) _seaNote='';
@@ -3266,8 +3266,11 @@ function renderReportView(report){
             const _paceBits=[`🏃 Land <strong>${effSpd2}</strong>`];
             if(_airSpd>0) _paceBits.push(`🦅 Flying <strong>${_airSpd}</strong>`);
             if(_seaSpd>0) _paceBits.push(`⚓ Sea <strong>${_seaSpd}</strong>`);
+            // Item 24 (2026-10-12): a hero leads at most as many Creature and Monster units as his Druid level.
+            const _bLed=arr.filter(beastCommandCountP).length;
+            const _bNote=_bLed>0?` · <span style="color:${_bLed>druLevel?'var(--crimson)':'#1d5a1d'}" title="A hero may lead only as many Creature and Monster units as his Druid level">🐾 beasts ${_bLed}/${druLevel}${_bLed>druLevel?' — over his Druid, he takes on no more':''}</span>`:'';
             const _oneLine=`<div style="font-size:.74rem;line-height:1.5;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">
-              <span style="flex:1;min-width:0">⚔ <strong>${arr.length}</strong> unit${arr.length!==1?'s':''} · strength <strong>${totalStr}</strong>${druidShort>0?` <span style="color:var(--crimson);font-size:.66rem">(${druidShort} under-led)</span>`:''} · ${_typeLine} · ${_paceBits.join(' · ')}</span>
+              <span style="flex:1;min-width:0">⚔ <strong>${arr.length}</strong> unit${arr.length!==1?'s':''} · strength <strong>${totalStr}</strong>${druidShort>0?` <span style="color:var(--crimson);font-size:.66rem">(${druidShort} under-led)</span>`:''}${_bNote} · ${_typeLine} · ${_paceBits.join(' · ')}</span>
               <button type="button" class="secall-btn" style="flex-shrink:0" aria-expanded="false" onclick="var d=this.parentNode.nextElementSibling;var open=d.style.display==='none';d.style.display=open?'block':'none';this.setAttribute('aria-expanded',open?'true':'false');this.textContent=open?'▾ hide units':'▸ show units'">&#9656; show units</button>
             </div>`;
             return head+_oneLine+`<div style="display:none">`+lines+summary+`</div></div>`;
@@ -3294,6 +3297,7 @@ function renderReportView(report){
           ${(p.garrisonArmies||[]).length?`<br><strong>Garrisoned (unled):</strong>${p.garrisonArmies.map(a=>`<br>`+unitAbilityTip(a.type, `${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color)||'var(--ink)'}">${armyLabel(a)}</span>`)).join('')}`:''}
           ${(p.neutralDefenders||[]).length?`<br><strong>Defenders:</strong>${p.neutralDefenders.map(d=>`<br>`+unitAbilityTip(d.type, `${unitEmoji(d.type)} <span style="color:#231e16">${armyLabel(d)}</span>`)).join('')}`:''}
           ${provinceGrandDesignHTML(p)}
+          ${terrorNoteP(p,true)}
         </div>
       </div>`).join('')
     :'<div style="color:#3a3224;font-size:.85rem">No provinces owned yet.</div>';
@@ -4188,6 +4192,7 @@ function rebuildTargetWrap(charId, ph){
   const saved={action:document.getElementById(`po-action-${charId}-${ph}`)?.value||'',
                target:getOrderTarget(charId,ph), extra:getOrderExtra(charId,ph)};
   try{ wrap.innerHTML=buildTargetField(c, ph, saved); }catch(e){ console.warn('target rebuild failed',e); }
+  if(saved.action==='Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
 }
 function orderChanceNote(c, action, ph){
   const oc=(c&&c.orderChance)||null; if(!oc) return '';
@@ -4220,7 +4225,8 @@ function orderChanceNote(c, action, ph){
       return chanceLine(`The blockade forms ${pct((oc.blockade||{}).chance||50)} of the time — wind and tide decide the rest.`);
     case 'Practice Skill':{
       const o=oc.practice||{}; const by=o.byLevel||[25,20,15,10,5];
-      const sel=document.getElementById(`po-target-${c.id}-${ph}`)?.value||'';
+      const _pick=KC_SKILLS.indexOf(document.getElementById(`po-target-${c.id}-${ph}`)?.value||'');
+      const sel=_pick>=0?KC_SKILLS[_pick]:'';   // only a skill the game knows is named in the note
       const lvl=sel?Math.min(4,((c.skills||{})[sel]||0)):null;
       const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0)+((o.bySkill&&sel)?(o.bySkill[sel]||0):0); // + skill-scoped practice discoveries
       const scale=`Chance falls as mastery grows: ${by.map((v,i)=>`${v}% at ${i}`).join(', ')}.`;
@@ -4260,6 +4266,48 @@ function effMagicLvl(charObj, school){
 
 // Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
 function actionSpellLimit(level){ return level>=4?3:level>=3?2:1; }
+
+// 2026-10-13 (item 2, Toby): the level each magic school may have reached by phase `ph`, assuming
+// every Practice Skill order on it in an earlier phase succeeds (+1 each). Practice trains a skill
+// only up to 5 (6–9 come from experience), so a school already at 5 or more gains nothing; item
+// bonuses are then added as effMagicLvl does. `practising` is the set of schools with such an order.
+function projectedMagicLevels(c, ph){
+  const practice={};
+  for(let prevPh=0;prevPh<ph;prevPh++){
+    const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
+    if(prevAction!=='Practice Skill') continue;
+    const t=getOrderTarget(c.id,prevPh);
+    if(t&&KC_MAGIC_SCHOOLS.includes(t)) practice[t]=(practice[t]||0)+1;
+  }
+  const projected={};
+  KC_MAGIC_SCHOOLS.forEach(school=>{
+    const raw=rawMagicLvl(c,school), n=practice[school]||0;
+    const rawProj=raw>=5?raw:Math.min(5,raw+n);
+    projected[school]=effMagicLvl({...c,skills:{...((c&&c.skills)||{}),[school]:rawProj}},school);
+  });
+  return {practising:new Set(Object.keys(practice)), projected, practice};
+}
+
+// After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
+// LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
+function refreshLaterCastSpells(charId, fromPh){
+  const c=((currentReport&&currentReport.characters)||[]).find(x=>String(x.id)===String(charId));
+  if(!c) return;
+  for(let later=fromPh+1;later<=4;later++){
+    if((document.getElementById(`po-action-${charId}-${later}`)?.value||'')!=='Cast Spell') continue;
+    const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`); if(!wrap) continue;
+    const before=getOrderTarget(charId,later);
+    // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
+    // back afterwards as the field's value, never as markup
+    const known=Object.keys(SPELL_TO_SCHOOL), at=known.indexOf(before);
+    const spell=at>=0?known[at]:'';
+    const savedExtra=getOrderExtra(charId,later);
+    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:spell,extra:''}); }catch(e){ console.warn('cast refresh failed',e); }
+    const ex=document.getElementById(`po-extra-${charId}-${later}`);
+    if(ex&&savedExtra&&getOrderTarget(charId,later)===spell&&(ex.tagName!=='SELECT'||[...ex.options].some(o=>o.value===savedExtra))) ex.value=savedExtra;
+    if(getOrderTarget(charId,later)!==before){ const l=later; setTimeout(()=>{ syncResurrectCard(charId,l); syncCharmCard(charId,l); },0); } // the spell itself changed
+  }
+}
 
 // Combat spell limit per school level: 1→1, 2+→2
 function combatSpellLimit(level){ return level>=2?2:1; }
@@ -4428,7 +4476,7 @@ function poFlyCapability(armies){
 // cap: 'all' (nothing to carry), 'sea' (hulls and flyers lift the lot), 'land' (cannot put to sea).
 function poSeaAnalysis(armies, navalRaw){
   const A=(armies||[]).filter(Boolean);
-  const hulls=A.filter(a=>PO_CARRIER_TYPES.has(a.type)).length;
+  const hulls=A.reduce((s,a)=>s+(PO_CARRIER_TYPES.has(a.type)?((KC_CARRIER_BERTHS&&KC_CARRIER_BERTHS[a.type])||1):0),0);   // berths, as the engine counts them: a turtle's Island Back offers two
   const seaBeasts=A.filter(a=>PO_SEA_TYPES.has(a.type)&&!PO_CARRIER_TYPES.has(a.type)).length;
   const flyers=A.filter(a=>PO_FLYING_TYPES.has(a.type)).length;
   const aerial=A.filter(a=>PO_AERIAL_TYPES.has(a.type)).length;
@@ -4474,8 +4522,6 @@ function poSeaAnalysis(armies, navalRaw){
 // Pick Up, Leave/Transfer and Disband, AND other characters' Recruit "mustered to" this hero and
 // Leave/Transfer handed to this hero, each resolved at the phase it fires. On top of that, the
 // orders below CREATE units, and are added here:
-//   · Awaken the Wild        — one Creature of the type named in the order
-//   · Call from the Pit      — one Monster of the type named in the order
 //   · Perform Rite/Wild Hunt — two Veteran beasts of the province's own wild type
 //   · Elemental Summon       — one elemental (it walks; the engine does not count it as winged)
 //   · Skeletal Armies        — one to three raised graves (by the caster's Necromancy)
@@ -4537,14 +4583,6 @@ function projectedMoveHost(charId, ph){
     const act=(document.getElementById(`po-action-${charId}-${p}`)||{}).value||'';
     if(!act) continue;
     const tgt=String((document.getElementById(`po-target-${charId}-${p}`)||{}).value||'').trim();
-    if(act==='Awaken the Wild'){
-      if(tgt) add({type:tgt,quality:'Average',unitName:`${tgt} (awakened this turn)`,_projected:true});
-      continue;
-    }
-    if(act==='Call from the Pit'){
-      if(tgt) add({type:tgt,quality:'Average',unitName:`${tgt} (called from the pit this turn)`,_projected:true});
-      continue;
-    }
     if(act==='Perform Rite'){
       if(tgt==='Wild Hunt'){
         const loc=predictedLocation(charId,p);
@@ -4936,10 +4974,6 @@ function computeOrderLedgerP(){
       else if(act==='Broker'){
         if(tgt.startsWith('hire:')) hireHero(tgt.slice(5));
         else if(tgt.startsWith('spy:')){ cats.intel.g+=(P.brokerSpy!=null?P.brokerSpy:2); cats.intel.n++; }
-      } else if(act==='Awaken the Wild'&&tgt){
-        cats.armies.g+=((P.unitCost||{})[tgt]||4)+(P.awakenExtra!=null?P.awakenExtra:2); cats.armies.n++; cats.armies.wage+=wageOf(tgt);
-      } else if(act==='Call from the Pit'&&tgt){
-        cats.armies.g+=((P.unitCost||{})[tgt]||4)+2; cats.armies.n++; cats.armies.wage+=wageOf(tgt);   // price + the 2g tribute (no discovery reduces it)
       } else if(act==='Harvest the Field'){
         cats.armies.g+=(P.harvest!=null?P.harvest:2); cats.armies.n++; cats.armies.wage+=1; // a skeletal unit's wage is a flat 1g
       } else if(act==='Perform Rite'&&/^wild/i.test(tgt)){
@@ -5250,7 +5284,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
               🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle (not encounters)</span>
             </div>
             <select id="ep-duel-${c.id}" style="font-size:.8rem;width:100%">
-              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'accept')===d.code?' selected':''}>${d.label}</option>`).join('')}
+              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'refuse')===d.code?' selected':''}>${d.label}</option>`).join('')}
             </select>
             <div style="font-size:.68rem;color:#2f281c;margin-top:2px">
               A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
@@ -5699,6 +5733,7 @@ function onSpellChange(charId, ph, selectedSpell){
   // the Use Item form reuses this handler for spell items — rebuild under the live action.
   const liveAction=document.getElementById(`po-action-${charId}-${ph}`)?.value||'Cast Spell';
   wrap.innerHTML=buildTargetField(char, ph, {action:liveAction==='Use Item'?'Use Item':'Cast Spell', target:selectedSpell});
+  if(liveAction==='Cast Spell') refreshLaterCastSpells(charId, ph); // a spell from another school frees or spends a later slot
 }
 
 
@@ -5746,6 +5781,7 @@ function onActionChange(charId, ph, charIdx){
   const saved={action};
   wrap.innerHTML=buildTargetField(char, ph, saved);
   refreshOncePerTurnOptions(charId); // 2026-09-24: once-per-turn orders leave later phases' dropdowns
+  refreshLaterCastSpells(charId, ph); // 2026-10-13: a Practice or Cast here changes later casts' limits
   setTimeout(refreshExploreNotes,0); // earlier/later Explore projections depend on every order
   setTimeout(refreshAllMoveModeNotes,0); // …and so does every Move order's land/naval/flying notice
 
@@ -6088,7 +6124,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cdb8e0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#46275f;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6239,7 +6275,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #b8dde0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#185562;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6394,7 +6430,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
         🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle</span>
       </div>
       <select id="ep-duel-${hiredCharId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
@@ -6562,10 +6598,10 @@ function updateAlignmentDesc(){
   const DESCS={
     Divine:'✨ <strong>Divine:</strong> The holy crown. Best battle fervour in the game (50% chance your host fights fanatically). Your king may <strong>Consecrate</strong> provinces: +50% tax and much stiffer defence. A fallen character returns to life one turn later on consecrated ground — no other realm can do that. Heroes heal twice as fast resting. Will not hire Undead heroes, and dark ones cost extra. One Divine realm per game.',
     Good:'⚔ <strong>Good:</strong> The steady defender. 40% fervour, +10% strength defending land you own, and better odds that your armies join up for a combined attack. <strong>Call to Arms</strong> gives the king a free garrison unit in one of your provinces every turn. Heroes of most alignments are cheap to hire. A forgiving choice.',
-    Druidic:'🌿 <strong>Druidic:</strong> The wild crown. Your king starts with Druid +1, and every character leads <strong>Creature</strong> armies (griffons, ents, giants, eagles) with no Druid training at all, and every level of Druid they do hold makes those beasts stronger. Creature armies fight at ×1.5 in forest and jungle. <strong>Awaken the Wild</strong> summons beasts straight out of your own wild provinces.',
+    Druidic:'🌿 <strong>Druidic:</strong> The wild crown. Your king starts with Druid +1, and every character leads <strong>Creature</strong> armies (thunderbirds, ents, bears, giants, unicorns, mammoths, rocs, whales and great turtles) with no Druid penalty, and every level of Druid they do hold makes those beasts stronger; a hero leads at most as many beasts as his Druid level. Creature armies fight at ×1.5 in forest and jungle.',
     Neutral:'⚖ <strong>Neutral:</strong> The merchant crown, and the easiest to learn. <strong>+20% tax from every province</strong>, the cheapest heroes in the world (2–3g whatever their alignment), and Sage discoveries come twice as often. <strong>Broker</strong> lets the king hire a distant wandering hero, or buy a spy report on anywhere you have seen, without leaving home.',
     Pagan:'\u{1F525} <strong>Pagan:</strong> The old gods, for a price. King starts with Explorer +1. At a discovered ritual site you may <strong>Perform Rite</strong>: the <strong>Wild Hunt</strong> binds that province\'s beasts to your host — the only way to field Creatures or Monsters with no Druid magic — or a <strong>Blood Offering</strong> sacrifices units to make an equal number far better. You also earn +1g for every enemy unit you destroy in a victory.',
-    Evil:'💀 <strong>Evil:</strong> The tyrant. Your king starts with Druid +1, and every character leads <strong>Monster</strong> armies (trolls, basilisks, manticores, dragons, krakens) with no Druid training at all; a Monster in the host lifts the whole host to ×1.25 in every battle. A crushing win leaves the enemy in Terror (−10% in their next fight), and your Monsters fight ×1.5 on ground your Terror grips (<strong>Reign of Fear</strong>). <strong>Call from the Pit</strong> summons a Monster straight out of your own wild provinces or terrorised ground. Each conquest is either <strong>looted</strong> for half the province\'s tax value in gold, or <strong>enslaved</strong> for a free garrison unit at the cost of its tax for three turns — your choice, character by character.',
+    Evil:'💀 <strong>Evil:</strong> The tyrant. Your king starts with Druid +1, and every character leads <strong>Monster</strong> armies (trolls, basilisks, manticores, dragons, krakens) with no Druid penalty, at most as many as his Druid level; a Monster in the host lifts the whole host to ×1.25 in every battle. A crushing win leaves the enemy in Terror (−10% in their next fight), and your Monsters fight ×1.5 attacking ground your Terror grips (<strong>Reign of Fear</strong>). Each conquest is either <strong>looted</strong> for half the province\'s tax value in gold, or <strong>enslaved</strong> for a free garrison unit at the cost of its tax for three turns — your choice, character by character.',
     Undead:'💀 <strong>Undead:</strong> The deathless. King starts with Necromancy +1 and a free skeletal unit. Skeletal armies cost just 1g, need no Druid skill, <strong>always</strong> fight fanatically (+50% under the king, +30% under a hero), and never lose men fleeing a lost battle. <strong>Harvest the Field</strong> raises a grave as a soldier for 2g with no magic at all. Will not hire Divine heroes. One Undead realm per game.',
   };
   desc.innerHTML=bulletizeDesc(DESCS[sel.value]||'');
@@ -6576,7 +6612,7 @@ function updateAlignmentDesc(){
 // abilities). Kept in step with battleFaceSide / abilityFront / abilityBack, the volley helpers and
 // rollUnitFates in the GM portal; tests/abilities-words holds the names to the rulebook's roster.
 const UNIT_ABILITIES={
-  'Shieldwall Levies':'Spear Hedge — cavalry facing them in the line fights at no better than ×0.75. Shieldwall — ×1.25 when an archer stands in the second line behind them.',
+  'Shieldwall Levies':'Spear Hedge — cavalry facing them in the line fights at no better than ×0.75 (the Unicorn Herd\'s Purity breaks it). Shieldwall — ×1.25 when an archer stands in the second line behind them.',
   'Men-at-Arms':'Halberds — ×1.25 facing cavalry. Sergeants — Levies beside them in the front line fight ×1.1.',
   'Free Lances':'Harriers — ×1.15 in a flank duel. Ride Them Down — in plains and desert only, each adds +6% to enemy losses when your side wins (max +18%). Works the same against neutral defenders — and theirs works the same against you.',
   'Yeoman Longbows':'Bodkin Points — no penalty shooting cavalry from the second line (other archers fire at ×0.75). Prepared Ground — defending, they loose two pre-battle volleys.',
@@ -6612,18 +6648,23 @@ const UNIT_ABILITIES={
   // commanding hero’s Druid skill — 30% base, +10% per level, hard cap 90%; see primalStrikeChance (the winged riders’ own strikes: a flat 50%, 2026-10-11)
   // in the GM portal. 2026-09-27: this comment read "20% base" and had done for some time.
   // (The Noble Griffons' blurb is with the other human units above: a second key here would silently replace it.)
-  'Thunderbirds':'Lightning Strike: a pre-battle strike on one enemy unit (4–8). Storm-birds of the high crags, at full strength on any ground or water.',
-  'Forest Ents':'Choking Spores: a pre-battle strike across the whole enemy line (2–4 each). At home in forest and jungle (terrain ×1.15), withering in the desert.',
-  'Stone Giants':'Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). Devastating melee, at home in the mountains (terrain ×1.15); slow.',
-  'Cave Trolls':'Hurled Rubble: a pre-battle strike on one enemy unit (4–7). At home in the mountains and the forest (terrain ×1.15 and ×1.1).',
-  'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker. Spine Volley: a pre-battle strike across every enemy unit (2–4 each).',
+  'Thunderbirds':'Storm Wings — every enemy unit in the air fights ×0.85. Lightning Strike: a pre-battle strike on one enemy unit (4–8). Storm-birds of the high crags that fight from the air, taking no place in the line.',
+  'Forest Ents':'Rooted — never hit from the side when the enemy line wraps their end. Choking Spores: a pre-battle strike across the whole enemy line (2–4 each). At home in forest and jungle (terrain ×1.15), withering in the desert.',
+  'Stone Giants':'Boulder Wall — cavalry facing them fights at no better than ×0.75 (the Unicorn Herd\'s Purity breaks it). Boulder Barrage: a pre-battle strike that shatters one enemy unit (4–7). At home in the mountains (terrain ×1.15); slow.',
+  'Cave Trolls':'Regenerating Hide — after a lost battle, a 30% chance to shrug off a death roll. Hurled Rubble: a pre-battle strike on one enemy unit (4–7). At home in the mountains and the forest (terrain ×1.15 and ×1.1).',
+  'Manticore Pride':'Relentless Hunt — ×1.25 strength when their side is the attacker, and when at least half the winning force are Manticores the beaten foe takes +15% rout losses. Spine Volley: a pre-battle strike across every enemy unit (2–4 each). Fights from the air.',
   'Basilisk Brood':'Stone Deterrent — ×1.25 strength when their side is defending. Petrifying Gaze: a pre-battle strike across the whole enemy line (2–4 each).',
-  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields ranged troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9).',
-  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each).',
-  'Titan Warbeasts':'World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each). At home on the plain and in the desert (terrain ×1.1).',
+  'Crimson Rocs':'Air Superiority — ×1.3 strength when the enemy fields ranged troops. Thunderous Stoop: a pre-battle strike scatters one enemy unit (5–9). Fights from the air, taking no place in the line.',
+  'Elder Dragons':'Wyrmscale — ×1.25 strength in every battle. Dragonfire Breath: a pre-battle strike that washes every enemy unit in fire (3–6 each). Fights from the air, taking no place in the line.',
+  'Titan Warbeasts':'Colossal Bulk — fights from the second line at full strength. World-Shaking Charge: a pre-battle strike that unbalances every enemy unit (3–6 each). At home on the plain and in the desert (terrain ×1.1).',
   'Sea Giants':'Tidal Might — ×1.2 strength in a coastal land province (one bordering the sea). Tidal Surge: a pre-battle strike on one enemy unit (4–8).',
   'Eldritch Kraken':'Deepwater Grasp — ×1.35 strength at sea. Crushing Coils: a pre-battle strike that drags one enemy unit under (5–9).',
-  'Dread Hydras':'Venom Breath: a pre-battle strike across the whole enemy line (3–6 each). The greatest of the Monsters, at home in jungle and forest (terrain ×1.1 and ×1.05).',
+  'Dread Hydras':'Many Heads — ×1.25 facing foot. Venom Breath: a pre-battle strike across the whole enemy line (3–6 each). The greatest of the Monsters, at home in jungle and forest (terrain ×1.1 and ×1.05).',
+  'Shark Shoals':'Shoal Swarm — +10% strength per other Shark Shoals in the force, to +30%. Feeding Frenzy — when at least half the winning force are shoals, a foe beaten at sea takes +15% rout losses. A shoal is no hull: it carries nothing.',
+  'Great Bears':'Maul — ×1.15 facing foot. Thick Hide — pre-battle volleys against them do half. At home in forest and mountain (terrain ×1.1), poor in the desert; move 3.',
+  'Unicorn Herd':'Purity — ×1.25 facing Monsters and skeletons, and it breaks a Spear Hedge or a Boulder Wall (no ×0.75 cap). Through the Glades — the one cavalry, with the Stag Riders, that takes a flank in forest and jungle. At home on the plain and in the forest (terrain ×1.1).',
+  'Mammoth Host':'Trample — ×1.15 facing foot. Stampede: a pre-battle strike across the whole enemy line (2–4 each). At home on the open plain (terrain ×1.1), ill at ease under trees; slow.',
+  'Great Turtles':'Island Back — carries two land units a hull, where a fleet carries one. Shell Wall — immune to pre-battle volleys, as the Ironclads. Island-backed turtles of the prosperous seas that swim under their own power; slow.',
 };
 function unitAbilityText(type){ return UNIT_ABILITIES[type]||''; }
 // the unit ability descriptions were removed from the map pop-ups; instead they surface as a hover
@@ -6741,7 +6782,7 @@ async function doSaveOrders(){
       const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
       if(preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined};
     }
   });
@@ -6827,7 +6868,7 @@ async function doSubmitOrders(){
       encounterPlans[c.id]={
         tactics:tacts,
         notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined,
       };
     }
@@ -6848,7 +6889,7 @@ async function doSubmitOrders(){
       if(hPre) hTacts.push(`CS:${hPre}`);
       encounterPlans[cid]={tactics:hTacts,
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${cid}`)?.value||undefined};
     }
   });
@@ -6866,7 +6907,7 @@ async function doSubmitOrders(){
     if(rTac){
       encounterPlans[rid]={tactics:(rTac.value||'ME').split(',').filter(Boolean),
         notes:document.getElementById(`ep-notes-${rid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'refuse'};
     }
   });
   // Charm pre-order cards — same shape as the resurrect collection above; the GM parses the
@@ -6884,7 +6925,7 @@ async function doSubmitOrders(){
     if(cTac){
       encounterPlans[cid]={tactics:(cTac.value||'ME').split(',').filter(Boolean),
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'refuse'};
     }
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
@@ -7082,6 +7123,7 @@ function druidNeedP(a, c, report){
 }
 const PRIMAL_SUBRACE_CLASS={
   'Stone Giant':'Creature','Forest Ent':'Creature','Thunderbird':'Creature','Giant Eagle':'Creature','Roc':'Creature','Whale':'Creature',   // 'Giant Eagle' and 'Leviathan': older reports, before the renames of 2026-10-13
+  'Great Bear':'Creature','Unicorn':'Creature','Mammoth':'Creature','Great Turtle':'Creature',   // 2026-10-13 (Creatures and Monsters IV)
   'Cave Troll':'Monster','Manticore':'Monster','Basilisk':'Monster','Dragon':'Monster','Titan':'Monster',
   'Sea Giant':'Monster','Kraken':'Monster','Hydra':'Monster','Leviathan':'Monster','Shark':'Monster',
 };
@@ -8076,32 +8118,6 @@ function buildTargetField(c, ph, saved){
       const _bPh=`<option value="" ${_bHasPick?'':'selected'}>— choose what the brokers are to buy —</option>`;
       return`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard('${c.id}',${ph})">${_bPh}${hireOpts}${spyOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the realm can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the realm has seen — 2g.</div>`;}
-    // ── DRUIDIC: AWAKEN THE WILD ──
-    case 'Awaken the Wild':{
-      if(report.kingdom?.alignment!=='Druidic')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="The wild answers only Druidic crowns" disabled>`;
-      const AWAKEN_TIERS={...KC_AWAKEN_TIERS};
-      const dru=effSkillP(c,'druid');
-      // 2026-09-24 (Toby): was _unknownSkills only — a charmed hero had every tier above Druid 0 greyed
-      // out and stamped "(you: 0)", which is the whole Druid level read straight off the dropdown.
-      const _awUnseen=skillsUnseenP(c);
-      const wOpts=Object.entries(AWAKEN_TIERS).map(([t,need])=>
-        `<option value="${t}" ${target===t?'selected':''} ${(dru<need&&!_awUnseen)?'disabled':''}>${t} — Druid ${need}+${(dru<need&&!_awUnseen)?` (you: ${dru})`:''}</option>`).join('');
-      const loc=predictedLocation(c.id,ph);
-      return`<select id="po-target-${c.id}-${ph}">${wOpts}</select>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Creature out of the land itself (recruit cost +2g offering; joins ${c.name}). Works only while standing in an OWNED forest, jungle, or primal province${loc?` — you will be in ${loc.name}`:''}. The land answers only <strong>once per province per turn</strong> — if anyone has already awakened the wild there this turn, the call goes unanswered.</div>`;}
-    // ── EVIL: CALL FROM THE PIT (2026-10-13, the mirror of Awaken the Wild) ──
-    case 'Call from the Pit':{
-      if(report.kingdom?.alignment!=='Evil')
-        return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="The dark answers only Evil crowns" disabled>`;
-      const PIT_TIERS={...KC_PIT_TIERS};
-      const druP=effSkillP(c,'druid');
-      const _pitUnseen=skillsUnseenP(c);
-      const pOpts=Object.entries(PIT_TIERS).map(([t,need])=>
-        `<option value="${t}" ${target===t?'selected':''} ${(druP<need&&!_pitUnseen)?'disabled':''}>${t} — Druid ${need}+${(druP<need&&!_pitUnseen)?` (you: ${druP})`:''}</option>`).join('');
-      const locP=predictedLocation(c.id,ph);
-      return`<select id="po-target-${c.id}-${ph}">${pOpts}</select>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Calls an Average-quality Monster up from the pits beneath the province (recruit cost +2g tribute; joins ${c.name}). Works only while standing in an OWNED wild (Creature or Monster) province, or in any province your own Terror still grips${locP?` — you will be in ${locP.name}`:''}. The dark answers only <strong>once per province per turn</strong> — if anyone has already called from the pit there this turn, the call goes unanswered.</div>`;}
     // ── UNDEAD: HARVEST THE FIELD ──
     case 'Harvest the Field':{
       if(report.kingdom?.alignment!=='Undead')
@@ -8184,15 +8200,11 @@ function buildTargetField(c, ph, saved){
       // Also include schools being practised in an earlier phase this turn. The practice may or may
       // not succeed, but the player should be able to pre-order a cast in case it does. If the
       // skill is still 0 when the phase resolves, the cast will simply fail with a clear message.
-      const practisingSchools=new Set();
-      const MAGIC_SCHOOLS=new Set(KC_MAGIC_SCHOOLS);
-      for(let prevPh=0;prevPh<ph;prevPh++){
-        const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
-        if(prevAction==='Practice Skill'){
-          const prevTarget=getOrderTarget(c.id,prevPh);
-          if(prevTarget&&MAGIC_SCHOOLS.has(prevTarget)) practisingSchools.add(prevTarget);
-        }
-      }
+      // 2026-10-13 (item 2, Toby): each earlier Practice order on a school is assumed to succeed, so
+      // the casting limit quoted (and enforced in the dropdown) is the one the hero may have reached
+      // by this phase. The engine counts the limit from the level at the moment of casting, so a
+      // practice that lands does raise it.
+      const {practising:practisingSchools, projected:_projLvl}=projectedMagicLevels(c,ph);
 
       // Count how many Cast Spell orders from each school already exist in earlier phases
       const schoolCastCount={};
@@ -8221,17 +8233,19 @@ function buildTargetField(c, ph, saved){
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s]))
           .map(s=>{
             const currentLvl=effMagicLvl(c,school);
+            const projLvl=_projLvl[school];
             const isPractising=practisingSchools.has(school)&&currentLvl===0;
-            const limit=actionSpellLimit(currentLvl);
+            const limit=actionSpellLimit(projLvl);
             const used=schoolCastCount[school]||0;
-            const atLimit=!isPractising&&used>=limit;
+            const atLimit=used>=limit;
+            const lvlTxt=projLvl>currentLvl?`Lv${currentLvl}→${projLvl} if practice succeeds`:`Lv${currentLvl}`;
             let label;
-            if(isPractising){
-              label=`${s} (${SKILL_LABELS[school]} — practising, may unlock)`;
+            if(isPractising&&!atLimit){
+              label=`${s} (${SKILL_LABELS[school]} — practising, may unlock: Lv${projLvl}, ${used}/${limit} used)`;
             } else if(atLimit){
-              label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — limit reached: ${used}/${limit} this turn)`;
+              label=`${s} (${SKILL_LABELS[school]} ${lvlTxt} — limit reached: ${used}/${limit} this turn)`;
             } else {
-              label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — ${used}/${limit} used)`;
+              label=`${s} (${SKILL_LABELS[school]} ${lvlTxt} — ${used}/${limit} used)`;
             }
             return{spell:s,atLimit,label};
           }));
@@ -8247,11 +8261,7 @@ function buildTargetField(c, ph, saved){
       const knownOrPractisingSchools=Object.entries(SPELLS_BY_SCHOOL)
         .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school));
       const allAtLimit=knownOrPractisingSchools.length>0&&knownOrPractisingSchools
-        .every(([school])=>{
-          const lvl=effMagicLvl(c,school);
-          if(lvl===0) return false; // practising but no skill yet — never at limit
-          return (schoolCastCount[school]||0)>=actionSpellLimit(lvl);
-        });
+        .every(([school])=>(schoolCastCount[school]||0)>=actionSpellLimit(_projLvl[school]));
 
       if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;
       if(allAtLimit) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="All magic school casting limits reached for this turn" disabled>`;
@@ -9005,6 +9015,18 @@ function _lairName(f){
 // GRAND DESIGN: a Wonder of the age is no secret — anyone who can see the province sees the Wonder
 // standing in it, and who raised it. Its powers, though, serve only the realm that built it, and
 // only while that realm holds the ground: a Wonder in enemy hands is dormant stonework.
+// EVIL TERROR (2026-10-12, Toby item 23): an Evil realm's report carries each province's Terror ({pct, stacks,
+// byYou} on the map's records and its own provinces); the popup and the Your Provinces entry print it. `light`: the
+// report's pale page rather than the dark popup. No reading (any other crown, or no Terror there) → nothing.
+// BEAST COMMAND (2026-10-12, Toby item 24; mirrors the GM portal's beastCommandCount): the units that count against a
+// hero's Druid level — every living Creature or Monster, not skeletons, a summoned grove or Wild Hunt beasts.
+function beastCommandCountP(a){ const C=new Set([...KC_UNIT_CLASS.creature,...KC_UNIT_CLASS.monster]);
+  return !!a&&C.has(a.type)&&!a.skeletal&&!a._isSkeletal&&!a.temporary&&!a._temporary&&!a.wildHunt&&a._wildHuntUntilTurn==null&&!a.phantom; }
+function terrorNoteP(pd, light){
+  const t=pd&&pd.terror; if(!t||!(t.pct>0)) return '';
+  const col=light?'#701010':'#e08a8a';
+  return `<br><span style="color:${col}">\u{1F480} Terror ${t.pct}% \u2014 ${t.stacks} stack${t.stacks!==1?'s':''}${t.byYou?' of your own':''}: its next defenders fight at \u2212${t.pct}%${t.byYou?' (yours are spared where you hold the ground)':''}</span>`;
+}
 function _grandDesignNote(pd){
   const gd=pd&&pd.grandDesign; if(!gd) return '';
   return `<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span>`
@@ -9804,6 +9826,7 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain)} · <span style="color:#e8b84b">${pd.tax??'?'}g/turn</span> · <span style="color:#8fbc5a">Your province</span>`;
           if(pd.consecrated) h+=`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`;
           h+=_grandDesignNote(pd);
+          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
           h+=`<br>${mapRaceBadgeHtml(formatRace(pd.race))} ${formatRace(pd.race)}`;   // the hex's own race badge
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf=(pd.features||[]).filter(f=>!f.cleared);
@@ -9823,6 +9846,7 @@ function renderMapIntoSvg(svgEl, report){
           if(pd.race!==undefined) h+=` · ${formatRace(pd.race)}`;
           h+=`<br>${_ownerLineP(pd)}`;
           h+=_grandDesignNote(pd);
+          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
           if(pd.explored!==undefined) h+=`<br>\u{1F50D} ${pd.explored}% explored`;
           const kf2=(pd.features||[]).filter(f=>!f.cleared);
           const kf2Lairs=kf2.filter(f=>!f.ritualSite), kf2Rituals=kf2.filter(f=>f.ritualSite);
@@ -9840,6 +9864,7 @@ function renderMapIntoSvg(svgEl, report){
           h+=`${capitalise(pd.terrain||'?')} terrain · ${pd.wealth||'unknown wealth'}`;
           h+=`<br>${_ownerLineP(pd)}`;
           h+=_grandDesignNote(pd);
+          h+=terrorNoteP(pd); // item 23: an Evil realm sees the Terror
           if(pd.armyTypes?.length) h+=pd.armyTypes.map(t=>`<br>${unitEmoji(t)} ${t}`).join('');
           else h+=`<br>${txtGlyph('\u2694')} <span style="opacity:.7;font-style:italic">No native recruitable armies</span>`;
           h+=_graveNote(pd); // grave lore is remembered even for distant ground
@@ -10517,7 +10542,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0060</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.13-0120</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

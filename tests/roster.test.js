@@ -55,7 +55,9 @@ function slice(src,name){
   }
   ok(!D.L[1].includes('Gnomish Gyrocopters'),'Gnomish Gyrocopters (a machine) still need nobody');
   const typed=t=>UNITS.filter(u=>ROSTER[u].type===t);
-  ok(same(D.C.cavalry,typed('cavalry')),`KC_UNIT_CLASS.cavalry is exactly the cavalry: ${typed('cavalry').join(', ')} (got ${D.C.cavalry.join(', ')})`);
+  // (2026-10-13, Creatures and Monsters IV: the Unicorn Herd, a Creature, joins the cavalry; the class must still hold every
+  // humanoid horse and nothing that is not typed cavalry.)
+  ok(typed('cavalry').every(u=>D.C.cavalry.includes(u))&&D.C.cavalry.every(u=>D.T[u]==='cavalry'),`KC_UNIT_CLASS.cavalry holds every humanoid horse (${typed('cavalry').join(', ')}) and only units typed cavalry (got ${D.C.cavalry.join(', ')})`);
   ok(same(D.C.missile,typed('ranged')),`KC_UNIT_CLASS.missile is exactly the ranged units (the goblins' spears are retired): got ${D.C.missile.join(', ')}`);
   ok(!D.C.missile.includes('Goblin Horde'),'Goblin Horde no longer looses anything in the archery step');
   ok(same(D.C.flying,typed('flyer'))&&typed('flyer').every(u=>D.C.aerial.includes(u)),'KC_UNIT_CLASS.flying is exactly the winged riders, and .aerial (riders and flying beasts) holds them all');
@@ -93,8 +95,8 @@ function slice(src,name){
       const got=((G.TERRAIN_MODS[t]||{})[u])??1, want=(d.terr[t])??1;
       ok(near(got,want),`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`);
     } else for(const t of LAND_TERRAINS){
-      const got=((G.TERRAIN_MODS[t]||{})[u])??1;
-      ok(near(got,1),`${u} in ${t}: a flyer or fleet fights at ×1 (got ×${got})`);
+      const got=((G.TERRAIN_MODS[t]||{})[u])??1, want=(d.terr[t])??1;
+      ok(near(got,want),`${u} in ${t}: a ${d.type} fights at ×${want} (got ×${got})`);   // a fleet ×1 everywhere; a flyer ×0.75 in the woods (item 19)
     }
   }
   for(const u of NEW_UNITS){

@@ -1,6 +1,6 @@
 // 2026-10-11 (Toby, the winged riders are soldiers of their race) — Eagle Riders, Noble Griffons and
 // Wyvern Riders are no longer Creatures or Monsters: Druid 1 to lead like every racial troop (waived for
-// their own race), no place in Awaken the Wild or Dragon Taming, and their own strikes land one time in
+// their own race), no place in Dragon Taming (Awaken the Wild itself was removed on 2026-10-12), and their own strikes land one time in
 // two whatever the commander's Druid. Level 1 (unit): the data file's tables, the booted GM portal's
 // getDruidLevel and primalStrikeChance, and the player portal's Druid table.
 const fs=require('fs'), vm=require('vm');
@@ -9,17 +9,15 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
 
 (async()=>{
-  const D=vm.runInNewContext(fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8')+'\n;({KC_UNIT_CLASS,KC_DRUID_LEVELS,KC_AWAKEN_TIERS})',{});
+  const D=vm.runInNewContext(fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8')+'\n;({KC_UNIT_CLASS,KC_DRUID_LEVELS})',{});
   for(const r of RIDERS){
     ok(!D.KC_UNIT_CLASS.creature.includes(r)&&!D.KC_UNIT_CLASS.monster.includes(r),`${r} are neither Creature nor Monster`);
     ok(!D.KC_UNIT_CLASS.tamedFlyer.includes(r),`${r} are not a flyer to be tamed`);
     ok(D.KC_UNIT_CLASS.flying.includes(r)&&D.KC_UNIT_CLASS.aerial.includes(r),`${r} still fly`);
     ok(D.KC_DRUID_LEVELS[1].includes(r)&&![2,3,4,5].some(l=>(D.KC_DRUID_LEVELS[l]||[]).includes(r)),`${r} sit at Druid 1 with the other racial troops`);
-    ok(!(r in D.KC_AWAKEN_TIERS),`${r} cannot be called up by Awaken the Wild`);
   }
   // (2026-10-13, Creatures and Monsters III: the Shark Shoals share Druid 3 with the Whale Cohort; no winged rider does.)
   ok(D.KC_DRUID_LEVELS[3][0]==='Whale Cohort'&&!D.KC_DRUID_LEVELS[3].some(r=>RIDERS.includes(r)),'Druid 3 is left to the sea-beasts, the Whale Cohort first');
-  ok(Object.keys(D.KC_AWAKEN_TIERS).join()==='Thunderbirds,Forest Ents,Stone Giants,Crimson Rocs','Awaken the Wild offers Thunderbirds, Forest Ents, Stone Giants and Crimson Rocs');
   ok(!Object.values(D.KC_DRUID_LEVELS).some(l=>l.includes('Gnomish Gyrocopters')),'Gnomish Gyrocopters still need nobody');
 
   const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/x',

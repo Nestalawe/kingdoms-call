@@ -2,12 +2,12 @@
 // Level 0 (static): the comprehensive rulebook's roster rows for every live Creature and Monster (family, type,
 // cost, base strength, move, Druid, terrain), its move-rate table and Druid ladder; the two crowns' sections and
 // the intro's table (Wild Ferocity gone; Evil leads Monsters free, its king at Druid 1, a Monster province beside
-// its home, Reign of Fear, Call from the Pit); the orders table; the player portal's alignment texts and order
+// its home, Reign of Fear; Call from the Pit and Awaken the Wild were removed on 2026-10-12, tests/beast-calls-gone); the orders table; the player portal's alignment texts and order
 // list; and no page keeps a retired rule (Wild Ferocity, the terrain multipliers now written once, Wyvern Riders
 // named as Monsters).
 const fs=require('fs');
 const {sitePath}=require('./lib/boot');
-const P=require('./lib/primal-decided'); const {ROSTER,LIVE,PIT_TIERS,REIGN_OF_FEAR}=P;
+const P=require('./lib/primal-decided'); const {ROSTER,LIVE,REIGN_OF_FEAR}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 const read=f=>fs.readFileSync(sitePath(f),'utf8');
@@ -50,7 +50,8 @@ ok(!/leviathans?/i.test(norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([
 // ── The move-rate table ──
 const moveTable=(/<caption>Representative base land move rates[\s\S]*?<\/table>/.exec(rules)||[''])[0];
 const MROW=/<tr><td class="num">(\d)<\/td><td>([\s\S]*?)<\/td><\/tr>/g; const moveRows=[]; while((m=MROW.exec(moveTable))) moveRows.push({n:+m[1],text:strip(m[2])});
-const MOVE_ALIASES={'Stone Giants':/Stone Giants/,'Forest Ents':/Forest Ents/,'Cave Trolls':/Cave Trolls/,'Basilisk Brood':/Basilisk/,'Titan Warbeasts':/Titan/,'Manticore Pride':/Manticore/,'Elder Dragons':/Elder Dragons/,'Crimson Rocs':/Crimson Rocs/,'Thunderbirds':/Thunderbirds/,'Dread Hydras':/Hydras/};
+const MOVE_ALIASES={'Stone Giants':/Stone Giants/,'Forest Ents':/Forest Ents/,'Cave Trolls':/Cave Trolls/,'Basilisk Brood':/Basilisk/,'Titan Warbeasts':/Titan/,'Manticore Pride':/Manticore/,'Elder Dragons':/Elder Dragons/,'Crimson Rocs':/Crimson Rocs/,'Thunderbirds':/Thunderbirds/,'Dread Hydras':/Hydras/,
+  'Great Bears':/Great Bears/,'Unicorn Herd':/Unicorn/,'Mammoth Host':/Mammoth/};   // 2026-10-13 (Creatures and Monsters IV)
 for(const [u,re] of Object.entries(MOVE_ALIASES)){
   const inRows=moveRows.filter(r=>re.test(r.text));
   ok(inRows.length>=1,`move table: ${u} is listed`);
@@ -73,9 +74,10 @@ for(const [page,text] of [['rulebook',norm(rules)],['intro',norm(intro)],['playe
 ok(/Druid \+1/.test(evil),'the Evil section says the king starts with Druid +1');
 ok(/no Druid/.test(evil)&&/Monster/.test(evil),'the Evil section says Monsters follow with no Druid requirement');
 ok(/Reign of Fear/.test(evil)&&new RegExp(`×${REIGN_OF_FEAR}`).test(evil)&&/Terror/.test(evil),`the Evil section describes Reign of Fear (×${REIGN_OF_FEAR} in a province under Terror)`);
-ok(/Call from the Pit/.test(evil)&&/\+2g/.test(evil)&&Object.keys(PIT_TIERS).every(t=>evil.includes(t)),'the Evil section describes Call from the Pit with its four Monsters');
+ok(/stacking, up to three times/.test(evil)&&!/up to five times/.test(evil),'the Evil section says Terror stacks up to three times (Toby, 2026-10-12, item 21)');
+ok(/Reign of Fear.{0,80}when they attack/.test(evil)&&!/attacking or defending/.test(evil),'the Evil section says Reign of Fear fires only when attacking (Toby, 2026-10-12)');
+for(const [page,text] of [['intro',norm(intro)],['player portal',pp]]) ok(!/Terror[^.]{0,40}attacking or defending/.test(text)&&!/×1\.5 on ground (under )?your Terror/.test(text),`${page}: Reign of Fear is not promised when defending`);
 ok(/Monster province/.test(evil)&&/beside/.test(evil),'the Evil section says the king opens beside a Monster province');
-ok(/Call from the Pit/.test(norm((/<tr><td>💀 Evil<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]))&&/Call from the Pit/.test(norm(((/<tr><td>😈 <strong>Evil<\/strong>[\s\S]*?<\/tr>/.exec(intro)||[''])[0]))),"the orders table and the intro's alignment table give Evil Call from the Pit as its signature action");
 ok(/no Druid/.test(norm(((/<tr><td>😈 <strong>Evil<\/strong>[\s\S]*?<\/tr>/.exec(intro)||[''])[0]))),"the intro's Evil row says Monsters need no Druid");
 // Wyvern Riders are orcish soldiers, not Monsters (2026-10-11): no Monster list may name them.
 const monsterLists=[...norm(rules).matchAll(/Monster[^.]{0,40}\(([^)]*)\)/g),...pp.matchAll(/Monster[^.]{0,40}(?:—|:)([^.]*)/g)].map(x=>x[1]);
@@ -94,10 +96,16 @@ for(const u of liveOf('Monster')){ ok(ppMon.includes(u),`the player portal's [M]
 const ppCre=(/\[C\] Creatures:<\/span>([^<']*)/.exec(pp)||['',''])[1];
 for(const u of liveOf('Creature')) ok(ppCre.includes(u),`the player portal's [C] Creatures list names ${u}`);
 const seaBeasts=norm(((/<tr><td><strong>Sea-beasts<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1]));
-for(const u of liveOf('Monster').filter(u=>ROSTER[u].type==='naval')) ok(new RegExp(u.split(' ').pop().replace(/s$/,'').toLowerCase()+'s?','i').test(seaBeasts),`the kinds-of-unit Sea-beasts row names the ${u}`);
+for(const u of LIVE.filter(u=>ROSTER[u].type==='naval'&&u!=='Whale Cohort')) ok(new RegExp(u.split(' ').pop().replace(/s$/,'').toLowerCase()+'s?','i').test(seaBeasts),`the kinds-of-unit Sea-beasts row names the ${u} (every swimming beast that is no hull)`);
 ok((norm(rules).match(/whale and shark waters/g)||[]).length>=2,'the rulebook\'s sea-tax texts say "whale and shark waters" where they said "whale waters"');
+// The four new Creatures (2026-10-13, Creatures and Monsters IV): the Creature lists name
+// them, the Druidic realm text names every live Creature, and no page still offers eagles or griffons to the wild.
+const ppDruSummary=(/Druidic:`[^`]*`/.exec(pp)||[''])[0], ppDruDesc=(/Druidic:'🌿 <strong>Druidic:<\/strong>(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
+for(const u of liveOf('Creature')) ok(ppDruSummary.includes(u),`the player portal's Druidic realm text names ${u} among the Creature armies`);
+ok(!/eagles|griffons/i.test(ppDruDesc),"the player portal's Druidic join-screen blurb no longer names griffons or eagles among the Creatures");
+const creaturesRow=norm(((/<tr><td><strong>Creatures<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(rules)||['',''])[1])), wildwarden=norm((/<tr><td>The Wildwarden<\/td>[\s\S]*?<\/tr>/.exec(rules)||[''])[0]);
+for(const w of ['bears','unicorns','mammoths','turtles']){ ok(new RegExp(w,'i').test(creaturesRow),`the kinds-of-unit Creatures row names ${w}`); ok(new RegExp(w,'i').test(wildwarden),`the Wildwarden title names ${w}`); }
 // The player portal's texts.
-ok(/Call from the Pit/.test(pp)&&/'Call from the Pit':'Evil'/.test(pp),"the player portal lists Call from the Pit as Evil's order");
 ok(/Reign of Fear/.test(pp),'the player portal\'s Evil realm text names Reign of Fear');
 const ppEvilSummary=(/Evil:`[^`]*`/.exec(pp)||[''])[0], ppEvilDesc=(/Evil:'💀 <strong>Evil:<\/strong>(?:[^'\\]|\\.)*'/.exec(pp)||[''])[0];
 ok(/Druid 1 from the outset|Druid \+1/.test(ppEvilSummary)&&/Druid \+1/.test(ppEvilDesc),"the player portal's Evil texts (the realm summary and the join-screen blurb) say the king starts with Druid +1");

@@ -32,7 +32,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(!res.winner&&!res.fledBy&&a.hp<200&&b.hp<200,`staged: six rounds, no winner, both wounded (Aldric ${a.hp}, Brannoc ${b.hp})`);
     ok(a.hpEarned>0,`a wounded hero who did not win hardens (Aldric: earned ${a.hpEarned})`);
     ok(b.hpEarned>0,`…and so does the other (Brannoc: earned ${b.hpEarned})`);
-    ok(res.narrative.some(l=>/hardened by the wounds of the fight/.test(l)),'the fight report says so'); }
+    ok(res.narrative.some(l=>/hardened by the wounds of the fight/.test(l&&l.text!=null?l.text:l)),'the fight report says so (to the hero\'s own realm: a private line since 2026-10-12, tests/hp-gain-private)'); }
 
   // 2. A fight to the finish between two master swordsmen, one with ten times the other's HP: the
   //    winner is wounded on the way, but is NOT rolled for inside the fight (the win award does that,

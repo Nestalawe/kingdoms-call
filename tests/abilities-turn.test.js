@@ -41,7 +41,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // …and attacking, Longbows loose once
   r=await turn('plain',(S,st)=>{ st.guard.armies=army('Shieldwall Levies',1,'Elite'); st.N.neutralDefenders=[...st.guard.armies]; st.N.npcArmies=1; st.H.armies=army('Yeoman Longbows',1,'Elite'); });
   txt=r.text(r.extra.H.id);
-  ok(/Pre-battle Archery Phase\*\* — 1 ranged unit/.test(txt)&&!/Prepared Ground/.test(txt)&&(txt.match(/Yeoman Longbows 1 fires at/g)||[]).length===1,'an attacking Longbow company fires once, with no Prepared Ground');
+  // A pinned defender may rally and fight again next phase (a stalled battle), so the count is per battle: one volley each.
+  { const battles=(txt.match(/⚔ \*\*Battle for /g)||[]).length, volleys=(txt.match(/Yeoman Longbows 1 fires at/g)||[]).length;
+    ok(/Pre-battle Archery Phase\*\* — 1 ranged unit/.test(txt)&&!/Prepared Ground/.test(txt)&&battles>=1&&volleys===battles,`an attacking Longbow company fires once a battle, with no Prepared Ground (${volleys} volleys over ${battles} battle${battles===1?'':'s'})`); }
 
   // Eyes of the Forest: Forest Wardens in a forest would silence the attacker's archers, unless Eagle Riders fly with them.
   r=await turn('forest',(S,st)=>{ st.guard.armies=army('Forest Wardens',1,'Green'); st.N.neutralDefenders=[...st.guard.armies]; st.N.npcArmies=1; st.H.armies=army('Yeoman Longbows',2,'Elite').concat(army('Eagle Riders',1,'Elite')); });

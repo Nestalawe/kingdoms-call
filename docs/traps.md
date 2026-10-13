@@ -206,6 +206,28 @@ Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and 
 then list every table and sentence that is still missing it. Running games' capitals pick a new unit up on their next
 turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
 
+**A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
+first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:
+`PRIMAL_ARMY_DEFS_P` (the one place a beast's cost, strength, move, sub-race and pre-battle strike are written:
+the master tables and the player portal's speeds are built from it), `PRIMAL_UNIT_NAMES` (28 names),
+`KC_UNIT_CLASS` (`creature` or `monster`, plus `aerial` for a flyer, `cavalry` for a horse, `primalSea` for a
+swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and **both** copies of the wild pools
+(`CREATURE_BY_TERRAIN` / `MONSTER_BY_TERRAIN` in world generation and `CBT` / `MBT` in the alignment-neighbour
+pass: `tests/new-creatures.test.js` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
+(the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
+and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
+(`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
+
+## A sea unit must be a carrier or a primal sea beast
+
+The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bots' `BOT_SEA_ALL`) is built from
+`KC_UNIT_CLASS.carrier` plus `KC_UNIT_CLASS.primalSea`, **not** from `KC_UNIT_CLASS.sea`, which several other
+consumers read. A unit listed in `sea` alone is a land unit the moment it is at sea: it needs a berth, is
+stranded by `settleStrandedAtSea` and blocks the column's move. Put a new swimmer in `primalSea` (it swims,
+carries nothing, is raised only at sea and cannot march inland) or, if it ferries troops, in `carrier` (one
+berth, or its `KC_CARRIER_BERTHS` entry); the first run of `tests/shark-waters.test.js` showed the shoal left behind as
+a garrison for exactly this reason. World generation's prosperous-seas pool is `primalSea` less the Shark Shoals.
+
 ## A unit ability is written in four places
 
 Every humanoid land unit has two abilities: a matchup and one more. Each lives in the engine, in the
@@ -227,24 +249,42 @@ engine itself keeps them in several places by kind:
 `UNIT_ABILITIES` a unit may appear **once**: an object literal keeps the last key, so a second entry silently
 replaces the first (the words test checks).
 
+The beasts' abilities (2026-10-13) live in the same places, with `tests/primal-abilities-words.test.js` for the
+names and `tests/abilities-beasts.test.js` / `tests/abilities-beasts-turn.test.js` for the numbers, plus three
+more homes: a beast's always-on multiplier in `unitAbilityMult` (Relentless Hunt, Shoal Swarm, …), its pre-battle
+strike on its `spells` in `PRIMAL_ARMY_DEFS_P`, and the rout in the realm battle (the Manticores' pursuit and
+Feeding Frenzy beside Run Them Down). The grid's flyer set is `KC_UNIT_CLASS.aerial` (riders and flying beasts);
+the archers' first-target set is still `KC_UNIT_CLASS.flying` (riders only). A missile immunity is one line in
+`applyMissileHit` **and** one in `missileCapReached`, or archers keep wasting shots on the immune unit.
+
+## A beast joining a column checks its leader's Druid
+
+Since 2026-10-12 (item 24) a realm's hero leads at most as many Creature and Monster units as his Druid level
+(`beastCommandCount`, `beastsLed`, `beastCommandRoom`, module level beside `druIdPenaltyMult`). The rule is enforced
+where a beast joins a column: Recruit Armies (overflow musters into the garrison), Pick Up Army, Leave/Transfer to a
+hero and Wild Calling. A new path that puts a living beast into a hero's `armies` must ask `beastCommandRoom` first,
+or the cap is quietly broken. The player portal's `beastCommandCountP` mirrors what counts.
+`tests/beast-command.test.js` holds the three orders.
+
 ## Terror is spent at battle start
 
 `consumeTerror` runs at the start of every battle and deletes the province's `_terrorStacks`, `_terrorisedBy` and
 the rest once it has demoralised the defenders. Anything that must know whether a province is "under Terror"
 for that battle (Reign of Fear reads it through `reignOfFearHere`) reads it **before** the call, in both battle
 paths, and hands the answer on through the strength context (`ctx.reignOfFear`). Read it after and it is always
-false. The order code (Call from the Pit) reads the stamps directly: no battle has run in that phase yet.
+false. (Reign of Fear fires only for the attacker since 2026-10-12, so the defender's answer is always false.)
 
 ## An alignment order is written in a dozen places
 
-Call from the Pit (2026-10-13) touched: the engine's `case` in the order switch, the order-name map
+Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
 (`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate), the short label map, the
 bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
 `ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
 rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
 texts; and, for a new shared table, `KC_SHARED_TABLE_NAMES` and the player portal's `need` list. Nothing
-throws when one is missed: the order is simply refused, hidden or priced wrong. Copy Awaken the Wild's
-occurrences (grep `awaken_wild` and `Awaken the Wild`) and mirror each.
+throws when one is missed: the order is simply refused, hidden or priced wrong. Copy Harvest the Field's
+occurrences (grep `harvest_field` and `Harvest the Field`) and mirror each. Removing one touches the same places;
+keep its `case` as a plain refusal, so an order a save still holds is answered rather than silently dropped.
 
 ## A fate line names two companies
 

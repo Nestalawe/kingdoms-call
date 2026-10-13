@@ -38,6 +38,7 @@ CREATE POLICY "gm tidy game_messages" ON "public"."game_messages"
    FROM public.games g
   WHERE ((g.id = CASE WHEN pg_input_is_valid(game_messages.game_id, 'uuid'::text) THEN (game_messages.game_id)::uuid ELSE NULL::uuid END) AND (g.gm_user_id = auth.uid())))));
 
+-- The Overlord reads every dispatch (P0-24, D-13 follow-up 1): the Dispatches note says so.
 CREATE POLICY "read game_messages" ON "public"."game_messages"
   FOR SELECT
   TO "authenticated"
@@ -47,7 +48,7 @@ CREATE POLICY "read game_messages" ON "public"."game_messages"
     ((gp.game_id = CASE WHEN pg_input_is_valid(game_messages.game_id, 'uuid'::text) THEN (game_messages.game_id)::uuid ELSE NULL::uuid END) AND (gp.user_id = auth.uid()) AND ((game_messages.scope = 'public'::text) OR (gp.player_index = game_messages.from_index) OR
     (gp.player_index = ANY (game_messages.to_indexes)))))) OR (EXISTS ( SELECT 1
    FROM public.games g
-  WHERE ((g.id = CASE WHEN pg_input_is_valid(game_messages.game_id, 'uuid'::text) THEN (game_messages.game_id)::uuid ELSE NULL::uuid END) AND (g.gm_user_id = auth.uid()))))));
+  WHERE ((g.id = CASE WHEN pg_input_is_valid(game_messages.game_id, 'uuid'::text) THEN (game_messages.game_id)::uuid ELSE NULL::uuid END) AND (g.gm_user_id = auth.uid()))))) OR ( SELECT public.is_site_admin() AS is_site_admin));
 
 REVOKE ALL ON TABLE "public"."game_messages" FROM "anon";
 

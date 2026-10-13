@@ -26,7 +26,6 @@ const PRIVATE=[
 ];
 // Lines an onlooker standing in the province may legitimately see — counted, not failed.
 const WATCHED=[
-  ['Awaken the Wild',         /🌿 Awaken the Wild/],
   ['Harvest the Field',       /💀 Harvest the Field/],
   ['Consecrate',              /consecrates /],
   ['Skeletal Armies',         /calls forth .* rises from the graves/],

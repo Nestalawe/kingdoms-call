@@ -59,7 +59,10 @@ scope**. A name declared in two scripts is a `SyntaxError` that stops the page l
 ## `kingdoms-call-data.js`: the one source for shared rules
 
 - **Content tables** (`ALL_MAGIC_ITEMS_P`, `MONSTERS_P`, `PRIMAL_ARMY_DEFS_P`, `MASTERY_UNLOCKS`, …):
-  plain literals. Nothing in the file may reference portal code.
+  plain literals. Nothing in the file may reference portal code. `PRIMAL_ARMY_DEFS_P` is the one place a
+  Creature's or Monster's cost, strength, move, sub-race and pre-battle strike are written; the GM master
+  tables and the player portal's speeds are built from it, and `tests/lib/primal-decided.js` (the wild roster
+  Toby decided on 2026-10-13) holds it, the class lists, the Druid ladder and the books to the decided figures.
 - **Shared rule tables** (the block headed `SHARED RULE TABLES`): every `KC_*` table, e.g.
   `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_UNIT_TYPE` (each unit's one type word: infantry,
   ranged, cavalry, flyer or naval), `KC_DRUID_LEVELS`, `KC_UNIT_BASE_STR`, `KC_SKILLS`,
@@ -111,7 +114,8 @@ message. **When the data file changes, bump its stamps and both portals' minimum
   mountain 2–4, sea 8–10); each side is placed by unit type into flanks, front, second line and reserve;
   `battleDeploy` lets the better-explored side (`battleScout`; a province's own defenders know it fully, ties
   to the defender) take the roll or one either side and line up second, then gives each commander one swap
-  per Tactical level (`battleBestSwap`, every swap judged with both sides faced); `battleFacing` reads the two
+  per Tactical level (`battleBestSwap`, every swap judged with both sides faced, and none that would part the
+  two fronts: `battleFrontsMeet`); `battleFacing` reads the two
   grids against each other (matchups by unit type, wrapping, flank duels and guards, a turned flank) and its
   totals are the strengths the dice see. The units' own abilities sit on the same grid: `abilityFront` and
   `abilityBack` adjust one matchup, `battleFaceSide` the cases that read the whole line, `battleGrid` who may

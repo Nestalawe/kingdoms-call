@@ -29,7 +29,7 @@ function slice(src,name,from=0){
   const ctx=vm.createContext({});
   const dataSrc=fs.readFileSync(sitePath('kingdoms-call-data.js'),'utf8');
   vm.runInContext(dataSrc,ctx);
-  const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,N:PRIMAL_UNIT_NAMES,A:KC_AWAKEN_TIERS,DISC:SAGE_DISCOVERIES_P})',ctx);
+  const D=vm.runInContext('({S:KC_UNIT_BASE_STR,C:KC_UNIT_CLASS,T:KC_UNIT_TYPE,L:KC_DRUID_LEVELS,PR:PRIMAL_ARMY_DEFS_P,N:PRIMAL_UNIT_NAMES,DISC:SAGE_DISCOVERIES_P})',ctx);
   const druidOf=u=>{ for(const [l,list] of Object.entries(D.L)) if(list.includes(u)) return +l; return 0; };
   for(const u of NEW){
     const d=ROSTER[u];
@@ -43,7 +43,6 @@ function slice(src,name,from=0){
   ok(D.C.aerial.includes('Thunderbirds')&&D.C.tamedFlyer.includes('Thunderbirds')&&!D.C.aerial.includes('Giant Eagles')&&!D.C.tamedFlyer.includes('Giant Eagles'),'Thunderbirds cross the sea on the wing and can be tamed; Giant Eagles no longer');
   ok(D.C.primalSea.slice(0,2).join()==='Sea Giants,Eldritch Kraken'&&D.C.sea.includes('Eldritch Kraken')&&!D.C.sea.includes('Leviathan Pods'),`the primal seas are Sea Giants and Eldritch Kraken (got ${D.C.primalSea.join(', ')})`);
   ok(!D.C.sea.includes('Dread Hydras')&&!D.C.primalSea.includes('Dread Hydras')&&!D.C.aerial.includes('Dread Hydras'),'Dread Hydras walk: neither a sea unit nor a flyer');
-  ok(D.A['Thunderbirds']===1&&!('Giant Eagles' in D.A),'Awaken the Wild offers Thunderbirds at Druid 1 in place of Giant Eagles');
   for(const u of OLD){
     const lists=Object.entries(D.C).filter(([k,l])=>l.includes(u)).map(([k])=>k);
     ok(lists.length===0&&!(u in D.T)&&!(u in D.S)&&!(u in D.PR)&&!(u in D.N)&&druidOf(u)===0,`${u} is in no table (still in: ${[...lists,...(u in D.T?['KC_UNIT_TYPE']:[]),...(u in D.PR?['PRIMAL_ARMY_DEFS_P']:[]),...(u in D.N?['PRIMAL_UNIT_NAMES']:[])].join(', ')||'none'})`);
@@ -53,7 +52,7 @@ function slice(src,name,from=0){
   const types=d=>((d.effect||{}).types||[]);
   ok(types(disc('ad13')).join()==='Noble Griffons,Thunderbirds'&&/Thunderbirds/.test(disc('ad13').desc)&&!/Giant Eagles/.test(disc('ad13').desc),'Angelic Hosts lifts Noble Griffons and Thunderbirds');
   ok(types(disc('au13')).join()==='Thunderbirds,Crimson Rocs'&&/Thunderbirds/.test(disc('au13').desc),'Sky Kin lifts Thunderbirds and Crimson Rocs');
-  ok(types(disc('au20')).join()==='Whale Cohort'&&!/Leviathan/.test(disc('au20').desc),'Whale Lore lifts the Whale Cohort (the Leviathans are gone; the Great Turtles join it in their own PR)');
+  ok(types(disc('au20')).includes('Whale Cohort')&&!types(disc('au20')).includes('Leviathan Pods')&&!/Leviathan/.test(disc('au20').desc),'Whale Lore lifts the Whale Cohort and no Leviathan (the Great Turtles join it in Creatures and Monsters IV)');
   ok(/Thunderbirds/.test(disc('sd40').desc)&&!/Giant Eagles/.test(disc('sd40').desc),'Dragon Taming names the Thunderbirds among the winged beasts');
   for(const d of D.DISC) for(const u of OLD) ok(!types(d).includes(u)&&!(d.desc||'').includes(u),`discovery ${d.id} no longer names ${u}`);
 
@@ -62,7 +61,7 @@ function slice(src,name,from=0){
   const ev=(name,from)=>{ const s=slice(gm,name,from); if(!s) return null; try{ return {v:vm.runInContext(s.text+`\n;${name}`,ctx),end:s.end}; }catch(e){ return null; } };
   const US=ev('UNIT_SHORT'); ok(!!US&&NEW.every(u=>typeof US.v[u]==='string'&&/^[A-Za-z]{3,5}$/.test(US.v[u]))&&OLD.every(u=>!(u in US.v)),'UNIT_SHORT has a grid code for each new name and none for the old');
   const TM=ev('TERRAIN_MODS'); ok(!!TM,'TERRAIN_MODS evaluates');
-  if(TM){ for(const u of NEW){ const d=ROSTER[u]; for(const t of P.LAND_TERRAINS){ const got=((TM.v[t]||{})[u])??1, want=P.isLand(d)?((d.terr[t])??1):1; ok(Math.abs(got-want)<1e-9,`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`); } }
+  if(TM){ for(const u of NEW){ const d=ROSTER[u]; for(const t of P.LAND_TERRAINS){ const got=((TM.v[t]||{})[u])??1, want=(P.isLand(d)||d.type==='flyer')?((d.terr[t])??1):1; ok(Math.abs(got-want)<1e-9,`${u} in ${t}: TERRAIN_MODS ×${want} (got ×${got})`); } }
     for(const u of OLD) ok(P.LAND_TERRAINS.every(t=>!((TM.v[t]||{}).hasOwnProperty(u))),`TERRAIN_MODS has no row for ${u}`); }
   // Both copies of the land pools (world generation and the alignment neighbour pass).
   const CB=ev('CREATURE_BY_TERRAIN'), MB=ev('MONSTER_BY_TERRAIN'), CBT=ev('CBT'), MBT=ev('MBT');
