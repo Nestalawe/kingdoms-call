@@ -19146,8 +19146,11 @@ const BATTLE_ARMY_SPELLS={
     // mechanism).
     if(ch!==real){ ch.hpEarned=real.hpEarned; ch.maxHp=real.maxHp; ch.pay=real.pay; if(r.gain>0&&ch.hp!=null) ch.hp=Math.min(real.maxHp, ch.hp+r.gain); }
     const line=hpGainLine(real, r);
+    // 2026-10-12 (Toby item 20): a hero's maximum-HP rise is his own realm's news. Inside a shared fight
+    // narrative it rides as a private line (emitNarrLine logs it to that realm alone, in its place in the
+    // fight); a neutral's rise is nobody's, so it is not put in the shared report at all.
     if(!line){ /* nothing gained — nothing to say */ }
-    else if(Array.isArray(narrative)) narrative.push(line);
+    else if(Array.isArray(narrative)){ if(real.player!=null) narrative.push({text:line, onlyPlayer:real.player, charId:real.id}); }
     else { const prov=(real.location!=null)?G.world.provinces[real.location]:null;
       log('combat', line, {actor:real.player!=null?real.player:-1, targets:real.player!=null?[real.player]:[], charId:real.id, provinceId:prov?prov.id:undefined}); }
     return r;
