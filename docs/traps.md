@@ -257,6 +257,15 @@ Feeding Frenzy beside Run Them Down). The grid's flyer set is `KC_UNIT_CLASS.aer
 the archers' first-target set is still `KC_UNIT_CLASS.flying` (riders only). A missile immunity is one line in
 `applyMissileHit` **and** one in `missileCapReached`, or archers keep wasting shots on the immune unit.
 
+## A beast joining a column checks its leader's Druid
+
+Since 2026-10-12 (item 24) a realm's hero leads at most as many Creature and Monster units as his Druid level
+(`beastCommandCount`, `beastsLed`, `beastCommandRoom`, module level beside `druIdPenaltyMult`). The rule is enforced
+where a beast joins a column: Recruit Armies (overflow musters into the garrison), Pick Up Army, Leave/Transfer to a
+hero and Wild Calling. A new path that puts a living beast into a hero's `armies` must ask `beastCommandRoom` first,
+or the cap is quietly broken. The player portal's `beastCommandCountP` mirrors what counts.
+`tests/beast-command.test.js` holds the three orders.
+
 ## Terror is spent at battle start
 
 `consumeTerror` runs at the start of every battle and deletes the province's `_terrorStacks`, `_terrorisedBy` and

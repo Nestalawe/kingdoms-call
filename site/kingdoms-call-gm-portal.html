@@ -2808,6 +2808,16 @@ function getDruidLevel(armyType){
 
 // Returns the effective quality after druid shortfall penalty shortfall of N = -N quality tiers
 // (each missing level = 20% str penalty)
+// ── BEAST COMMAND (2026-10-12, Toby item 24) ── A hero may lead only as many Creature and Monster units as his Druid
+// level. Counted: every living beast in the column — not skeletons (the dead need no Druid), nor a summoned grove,
+// Wild Hunt beasts or phantoms, which leave at the turn's end. A realm's own heroes only (a province's chieftain
+// commands its own beasts). The rule bites where a beast would JOIN a column (Recruit Armies, Pick Up Army,
+// Leave/Transfer to a hero, Wild Calling): a hero already over it keeps what he leads and takes on no more.
+const BEAST_CMD_TYPES=new Set([...KC_UNIT_CLASS.creature,...KC_UNIT_CLASS.monster]);
+function beastCommandCount(a){ return !!a&&BEAST_CMD_TYPES.has(a.type)&&!a._isSkeletal&&!a._temporary&&a._wildHuntUntilTurn==null&&!a._phantom; }
+function beastsLed(c){ return ((c&&c.armies)||[]).filter(beastCommandCount).length; }
+function beastCommandRoom(c, chars){ if(!c||c.player==null) return Infinity; return Math.max(0, (effSkillOf(c,'druid',chars||[])|0)-beastsLed(c)); }
+function beastCommandWords(c, chars){ const d=effSkillOf(c,'druid',chars||[])|0; return `${c.name} can lead only ${d} Creature or Monster unit${d!==1?'s':''} (Druid ${d})`; }
 function druIdPenaltyMult(heroChar, army, playerAlignment, tamed){
   // Skeletal armies never suffer Druid penalties — they are already dead
   if(army._isSkeletal) return 1.0;
@@ -21047,7 +21057,12 @@ const BATTLE_ARMY_SPELLS={
           // province it was raised in, whatever "Muster to" names (native recruiting already needs the
           // province to be ours). A character can still march it out with Pick Up Army.
           const _toGarr=_destGarrison||(isGarrisonUnitType(unit.type)&&prov.owner===c.player);
+          // Item 24 (2026-10-12): a beast recruited into a column already holding as many beasts as its leader's
+          // Druid musters into the garrison instead (native beasts are raised only in a province the realm holds).
+          const _overCmd=!_toGarr&&prov.owner===c.player&&beastCommandCount(unit)&&beastCommandRoom(_destChar,G.characters)<=0;
           if(_toGarr){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit); if(!_destGarrison) _autoGarr.push(unit.type); }
+          else if(_overCmd){ prov.garrisonArmies=prov.garrisonArmies||[]; prov.garrisonArmies.push(unit);
+            log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)}: ${unit.unitName||unit.type} (${unit.type}) musters into the garrison of ${prov.name} instead.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); }
           else { _destChar.armies=_destChar.armies||[]; _destChar.armies.push(unit); }
           // TITLE MERIT: Beastlord / Wildwarden. Credited to the RECRUITER `c`, not the recipient:
           // the merit is for finding and mustering the beast, and a hero who musters a griffon wing
@@ -21062,6 +21077,9 @@ const BATTLE_ARMY_SPELLS={
             const tok=_rawSel.find(t=>t===`merc:${merc.id}`||t===String(merc.id)||t===merc.type||t===merc.unitName);
             if(!tok) return;
             _mercTokens.add(tok);
+            // Item 24: a mercenary beast is not hired into a full column where there is no garrison to take it.
+            if(!_destGarrison&&prov.owner!==c.player&&beastCommandCount({type:merc.type})&&beastCommandRoom(_destChar,G.characters)<=0){
+              log('hire',`🐾 ${beastCommandWords(_destChar,G.characters)} — the ${merc.unitName||merc.type} mercenaries are not hired.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); return; }
             const baseMercCost=ARMY_COST_P[merc.type]||2;
             // Neutral alignment: mercenaries cost 2g less (min 1g)
             const mCost=Math.max(1,baseMercCost-(G.players[c.player]?.alignment==='Neutral'?2:0)+discSum(c.player,'merc','delta',e=>!e.cls||discUnitIs(e.cls,merc.type,true))); // + merc discoveries
@@ -21918,6 +21936,12 @@ const BATTLE_ARMY_SPELLS={
           if(removed.length===0) break; // nothing left to transfer
         }
 
+        // Item 24 (2026-10-12): beasts beyond the recipient's Druid stay with the giver.
+        if(recip2){ let _room=beastCommandRoom(recip2,G.characters); const _stay=[];
+          removed=removed.filter(a=>{ if(!beastCommandCount(a)) return true; if(_room>0){ _room--; return true; } _stay.push(a); return false; });
+          if(_stay.length){ c.armies=(c.armies||[]).concat(_stay);
+            log('hire',`🐾 ${beastCommandWords(recip2,G.characters)}: ${_stay.map(a=>a.unitName||a.type).join(', ')} ${_stay.length===1?'stays':'stay'} with ${c.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            if(!removed.length){ refreshMovePool(c); break; } } }
         if(recip2){
           recip2.armies=(recip2.armies||[]).concat(removed);
           log('hire',`${c.name} transfers ${removed.map(a=>a.unitName||a.type).join(', ')} to ${recip2.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
@@ -22062,6 +22086,13 @@ const BATTLE_ARMY_SPELLS={
           log('hire',`${c.name} picks up ${army.unitName?army.unitName+' ('+army.quality+' '+army.type+')':army.quality+' '+army.type} from the garrison in ${prov.name}.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
         }
         }
+        // Item 24 (2026-10-12): beasts taken up beyond the leader's Druid go back where they came from.
+        { const _new=(c.armies||[]).filter(a=>!_pickBefore.includes(a));
+          let _room=beastCommandRoom({...c,armies:_pickBefore},G.characters); const _keepN=[], _backB=[];
+          _new.forEach(a=>{ if(beastCommandCount(a)){ if(_room>0){ _room--; _keepN.push(a); } else _backB.push(a); } else _keepN.push(a); });
+          if(_backB.length){ c.armies=_pickBefore.concat(_keepN);
+            if(_pickSrc) _pickSrc.armies=(_pickSrc.armies||[]).concat(_backB); else prov.garrisonArmies=(prov.garrisonArmies||[]).concat(_backB);
+            log('hire',`🐾 ${beastCommandWords(c,G.characters)}: ${_backB.map(a=>a.unitName||a.type).join(', ')} ${_backB.length===1?'stays':'stay'} ${_pickSrc?`with ${_pickSrc.name}`:`in the garrison of ${prov.name}`}.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); } }
         // 2026-09-23c (Toby): at sea a character takes aboard only what his ships (and flyers) can
         // carry — units taken in order while they fit; the rest go back where they came from.
         if(isOpenSea(prov)&&seaLiftShortfall(c.armies||[],c)>0){
@@ -23404,11 +23435,13 @@ const BATTLE_ARMY_SPELLS={
         if(skillLevel(c,'druid')<9){log('system',`${c.name} lacks the Druid mastery (9) to sound a Wild Calling.`,{actor:c.player,targets:[c.player]});break;}
         const _wcIsBeast=(u)=>!!u&&!u._isSkeletal&&(CREATURE_ARMIES.has(u.type)||MONSTER_ARMIES.has(u.type)||!!PRIMAL_ARMY_DEFS_P[u.type]);
         const _wcWon=[]; const _wcHeard=[]; let _wcCalled=0;
+        const _wcRoom=beastCommandRoom(c,G.characters);   // item 24: no more answer than the caller's Druid has room for
         const _wcSift=(arr,label)=>{
           if(!Array.isArray(arr)) return;
           for(let i=arr.length-1;i>=0;i--){
             const u=arr[i]; if(!_wcIsBeast(u)) continue;
             _wcCalled++;
+            if(_wcWon.filter(beastCommandCount).length>=_wcRoom) continue;
             if(d100()<=50){ _wcWon.push(Object.assign({},arr.splice(i,1)[0],{_pacified:true})); if(label&&!_wcHeard.includes(label)) _wcHeard.push(label); }
           }
         };

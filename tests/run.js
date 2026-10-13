@@ -80,6 +80,7 @@ const SUITE=[
   ['battle-fronts-meet',   'tests/battle-fronts-meet.test.js'],
   ['beast-calls-gone',     'tests/beast-calls-gone.test.js'],
   ['terror-visible',       'tests/terror-visible.test.js'],
+  ['beast-command',        'tests/beast-command.test.js'],
   ['primal-abilities-words','tests/primal-abilities-words.test.js'],
   ['island-back',          'tests/island-back.test.js'],
   ['leaderboard-records',  'tests/leaderboard-records.test.js'],
