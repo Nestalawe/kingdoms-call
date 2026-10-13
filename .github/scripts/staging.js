@@ -95,6 +95,35 @@ async function upsert(root,token,number,body){
   else await api(`${root}/issues/${number}/comments`,token,{method:'POST',body:JSON.stringify({body})});
 }
 
+// ── Staging publishes only a commit CI has passed ──────────────────────────────────────────────
+// The staging job doesn't run the tests itself (CI's ci and db jobs already run them on the same commit, at the
+// same time); it waits for their verdict. ciVerdict reads the commit's check runs: 'wait' until both have
+// started and finished, 'go' when they passed (a skipped job counts as passed), 'fail' otherwise. The newest
+// run of each job decides, so a re-run counts.
+const CI_JOBS=['ci','db'];
+function ciVerdict(checkRuns){
+  const latest={};
+  for(const r of checkRuns||[]) if(r&&CI_JOBS.includes(r.name)&&(!latest[r.name]||r.id>latest[r.name].id)) latest[r.name]=r;
+  if(!latest.ci) return {state:'wait',why:'CI hasn\'t started on this commit yet'};
+  const pending=CI_JOBS.filter(n=>latest[n]&&latest[n].status!=='completed');
+  if(pending.length) return {state:'wait',why:`waiting for CI's ${pending.join(' and ')} job${pending.length>1?'s':''}`};
+  const bad=CI_JOBS.find(n=>latest[n]&&!['success','skipped','neutral'].includes(latest[n].conclusion));
+  if(bad) return {state:'fail',why:`CI's ${bad} job ended "${latest[bad].conclusion}" on this commit, so nothing goes on staging`};
+  return {state:'go',why:'CI passed on this commit'};
+}
+// Polls ciVerdict until CI has passed (returns), failed (throws), or the time limit runs out (throws).
+async function waitForCi({fetchRuns,sleep=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now,timeoutMs=20*60*1000,everyMs=15000,log=console.log}){
+  const t0=now(); let last=null;
+  for(;;){
+    const v=ciVerdict(await fetchRuns());
+    if(v.why!==last){ log(v.why); last=v.why; }
+    if(v.state==='go') return v;
+    if(v.state==='fail') throw new Error(v.why);
+    if(now()-t0>=timeoutMs) throw new Error(`CI hasn't finished on this commit in ${Math.round(timeoutMs/60000)} minutes, so nothing goes on staging; re-run the staging job once it has`);
+    await sleep(everyMs);
+  }
+}
+
 async function main(){
   const [cmd,prev]=process.argv.slice(2);
   if(cmd==='config'){
@@ -109,9 +138,16 @@ async function main(){
     if(prev&&String(prev)!==String(pr)) await upsert(root,token,prev,replacedBody({by:pr}));
     return;
   }
-  throw new Error('usage: staging.js config | comment <previous-pr>');
+  if(cmd==='wait-ci'){
+    const {GITHUB_TOKEN:token,GITHUB_REPOSITORY:repo,PR_SHA:sha}=process.env;
+    if(!/^[0-9a-f]{40}$/.test(String(sha||''))) throw new Error('wait-ci needs PR_SHA, the commit\'s full hash');
+    const root=`${process.env.GITHUB_API_URL||'https://api.github.com'}/repos/${repo}`;
+    await waitForCi({fetchRuns:async()=>(await api(`${root}/commits/${sha}/check-runs?per_page=100`,token)).check_runs});
+    return;
+  }
+  throw new Error('usage: staging.js config | comment <previous-pr> | wait-ci');
 }
 
 if(require.main===module) main().catch(e=>{ console.error(`::error title=staging::${e.message}`); process.exitCode=1; });
 
-module.exports={MARKER,SITE,LIVE_REF,TEST_ACCOUNTS,stagingRef,configFile,onStagingBody,replacedBody,signUpTestAccounts};
+module.exports={MARKER,SITE,LIVE_REF,TEST_ACCOUNTS,stagingRef,configFile,onStagingBody,replacedBody,signUpTestAccounts,ciVerdict,waitForCi};

@@ -125,3 +125,38 @@ test('the staging seed finds the test accounts it uses by their real addresses',
   assert.ok(used.length>0);
   for(const e of used) assert.ok(TEST_ACCOUNTS.some(a=>a.email===e),`${e} is in the seed but not a test account`);
 });
+
+// ── staging publishes only a commit CI has passed ───────────────────────────────────────────
+const {ciVerdict,waitForCi}=require('../.github/scripts/staging.js');
+const chk=(name,status,conclusion,id=1)=>({id,name,status,conclusion});
+
+test('staging waits until CI has started and finished on the commit',()=>{
+  assert.equal(ciVerdict([]).state,'wait');
+  assert.equal(ciVerdict([chk('Analyze (javascript-typescript)','completed','success')]).state,'wait','other checks don\'t count');
+  assert.equal(ciVerdict([chk('ci','in_progress',null),chk('db','completed','success')]).state,'wait');
+  assert.equal(ciVerdict([chk('ci','completed','success'),chk('db','queued',null)]).state,'wait');
+});
+test('staging goes once CI\'s ci and db jobs have both passed (a skipped db counts as passed)',()=>{
+  assert.equal(ciVerdict([chk('ci','completed','success'),chk('db','completed','success')]).state,'go');
+  assert.equal(ciVerdict([chk('ci','completed','success'),chk('db','completed','skipped')]).state,'go');
+  assert.equal(ciVerdict([chk('ci','completed','success')]).state,'go','a CI without a db job');
+});
+test('staging stops when CI failed, was cancelled or timed out, and says which job',()=>{
+  for(const c of ['failure','cancelled','timed_out','action_required']){
+    const v=ciVerdict([chk('ci','completed','success'),chk('db','completed',c)]);
+    assert.equal(v.state,'fail',c); assert.match(v.why,new RegExp('db.*'+c));
+  }
+});
+test('a re-run counts: the newest run of each job decides',()=>{
+  assert.equal(ciVerdict([chk('ci','completed','failure',1),chk('ci','completed','success',2)]).state,'go');
+  assert.equal(ciVerdict([chk('ci','completed','success',3),chk('ci','in_progress',null,4)]).state,'wait');
+});
+test('waiting polls until CI passes, and gives up with a clear message after the time limit',async()=>{
+  const seq=[[],[chk('ci','in_progress',null)],[chk('ci','completed','success'),chk('db','completed','success')]];
+  let t=0, calls=0; const log=[];
+  await waitForCi({fetchRuns:async()=>seq[Math.min(calls++,seq.length-1)],sleep:async ms=>{t+=ms;},now:()=>t,everyMs:15000,log:m=>log.push(m)});
+  assert.equal(calls,3); assert.ok(log.some(m=>/passed/i.test(m)));
+  await assert.rejects(waitForCi({fetchRuns:async()=>[chk('ci','completed','failure')],sleep:async()=>{},now:()=>0,log:()=>{}}),/ci.*failure/);
+  t=0;
+  await assert.rejects(waitForCi({fetchRuns:async()=>[],sleep:async ms=>{t+=ms;},now:()=>t,timeoutMs:60000,everyMs:15000,log:()=>{}}),/hasn't finished/);
+});
