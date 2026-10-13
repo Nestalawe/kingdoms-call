@@ -21152,7 +21152,7 @@ const BATTLE_ARMY_SPELLS={
           const m=f.monster; const grade=(m&&m.power)||f.tier||'Weak'; const price=_cost[grade]||1;
           if((player.gold||0)<price){ log('explore',`  ${c.name} cannot afford the ${price}g the ${f.name}'s rumours would cost (${player.gold||0}g in the treasury) — the rest of the hunt is abandoned.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
           player.gold-=price;
-          const gname=`${m.name}${monsterCatLabel(m)?` (${monsterCatLabel(m).toLowerCase()})`:''}`;
+          const gname=`${m.name}${monsterCatLabel(m)?` (${monsterCatLabel(m)})`:''}`; // the kind keeps its capital: "(elemental)" read as a magic school written in lower case
           const lines=[`  💰 ${price}g buys the talk of the ${f.name} — ${gname}, a ${String(grade).toLowerCase()} guardian.`];
           // 1) the weakness
           { if(m.weak){ const fresh=pcLearnWeakness(G,c.player,m.name); lines.push(`  ✓ Its weakness: ${m.weak.name} — ${m.weak.desc}.${fresh?' Your realm marks every '+m.name+' with it from now on.':''}`); }
