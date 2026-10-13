@@ -9355,7 +9355,10 @@ const BOT_PRACTICE_BASE=[0.25,0.20,0.15,0.10,0.05];   // the engine's solo chanc
 const BOT_HYG_CRAFT=new Set(['sage','explorer','spy','thief']);
 function botDrillUseful(c,S){ if(S!=='tactical'&&S!=='naval') return false; const sea=new Set((KC_UNIT_CLASS&&KC_UNIT_CLASS.sea)||[]);
   return (c.armies||[]).some(a=>a&&!a._isSkeletal&&!a._phantom&&(UNIT_DRILL_BASE[a.quality]||0)>0&&(S==='naval'?sea.has(a.type):!sea.has(a.type))); }
-function botCastLimit(G,c,school){ const l=effSkillOf(c,school,G.characters||[]);
+// `practised`: Practice orders on this school earlier in the turn. Like the player's order form
+// (item 16, 2026-10-13), the limit assumes each one succeeds (+1 a time, training stops at 5).
+function botCastLimit(G,c,school,practised){ const raw=skillLevel(c,school), pr=practised||0;
+  const l=effSkillOf(pr&&raw<5?{...c,skills:{...(c.skills||{}),[school]:Math.min(5,raw+pr)}}:c,school,G.characters||[]);
   const w=(G._minorHolders&&G._minorHolders.warlock&&G._minorHolders.warlock.charId===c.id&&_BEST_SCHOOL(c)===skillLevel(c,school))?1:0;
   return (l>=4?3:l>=3?2:1)+w; }
 function runBotOrderHygiene(G, botIdxSet){
@@ -9376,7 +9379,7 @@ function runBotOrderHygiene(G, botIdxSet){
     mine.forEach(c=>{ const o=G.turnOrders[c.id]; const used={}; let summoned=false;
       for(let p=0;p<5;p++){ const x=o[p]; if(!(x&&x.action==='cast_spell')) continue; const d=SPELL_DEFS_P[x.target]; if(!d||!d.school) continue;
         if(x.target==='Elemental Summon'){ if(summoned){ dead.push([c,p]); bump('summonTwice'); continue; } summoned=true; }
-        const lim=botCastLimit(G,c,d.school); used[d.school]=(used[d.school]||0);
+        const lim=botCastLimit(G,c,d.school,o.slice(0,p).filter(y=>y&&y.action==='practice'&&y.target===d.school).length); used[d.school]=(used[d.school]||0);
         if(used[d.school]>=lim){ dead.push([c,p]); bump('overLimit'); continue; }
         used[d.school]++; } });
     // ── 2. HIRES: one order per hero per realm, the hirer standing where the hero is, a wage the treasury can meet
@@ -22571,7 +22574,7 @@ const BATTLE_ARMY_SPELLS={
         // slot. Other realms' heroes: as normal.
         if(c._charmTempControl&&c._charmOriginalPlayer!=null&&CHARMED_NO_TURN_SPELLS.has(spellName)){
           const _lordChar=G.characters.find(ch=>ch.alive&&ch.id===(parseInt(extra)||-1));
-          if(_lordChar&&_lordChar.player===c._charmOriginalPlayer){ log('system',`${c.name} lets the ${spellName} die on their lips — the Charm bends their will, but not so far as to turn them on their own lord's people.`,{actor:c.player,targets:[c.player],provinceId:prov.id});break; }
+          if(_lordChar&&_lordChar.player===c._charmOriginalPlayer){ log('system',`${c.name} lets the ${spellName} die on their lips — the Charm bends their will, but not so far as to turn them on their own lord's people.`,{actor:c.player,targets:[c.player],provinceId:prov.id});o._castNotWorked=true;break; }
         }
 
         // Enforce action spell limits (AK rules): level 1-2 → 1/turn, level 3 → 2/turn, level 4-5 → 3/turn
@@ -22593,6 +22596,7 @@ const BATTLE_ARMY_SPELLS={
             return SPELL_DEFS_P[o.target]?.school===_school;
           }).length;
           if(_castsSoFar>=_limit&&_lvl>0&&!(spellName==='Bless Province'&&_divCath)){
+            o._castNotWorked=true; // 2026-10-13 (item 16): a blocked cast is never worked, so it spends no slot either
             log('system',`${c.name}: ${SKILL_LABELS[_school]||_school} level ${_lvl} casting limit (${_castsSoFar}/${_limit} per turn). ${spellName} blocked.`,{actor:c.player,targets:[c.player]});break;
           }
         }
@@ -22602,13 +22606,18 @@ const BATTLE_ARMY_SPELLS={
         const spellLevelEff=Math.min(spellLevel,5); // spell EFFECTS cap at caster level 5; cast chance keeps the full level
         if(spellLevel===0){
           // Check if they were trying to cast after a practice order this turn
-          // (the practice didn't raise the skill, so the cast fails gracefully)
+          // (the practice didn't raise the skill, so the cast fails gracefully). 2026-10-13 (Toby,
+          // item 16): the order form lets a hero queue casts on the assumption that every earlier
+          // practice succeeds, so a cast refused here spends no casting slot — a later practice that
+          // does succeed still opens the later casts the form promised.
+          o._castNotWorked=true;
           log('system',`${c.name} attempts to cast ${spellName} but lacks the required ${SKILL_LABELS[school]||school} skill — the practice order earlier this turn did not result in a skill gain. The spell fails.`,{actor:c.player,targets:[c.player]});
           break;
         }
         // L7/L9 mastery spells require the RAW school level (past-5 comes from experience only).
         if(_itemCast && spellDef.reqLevel){ log('system',`${c.name}: the ${_itemCast.item} can no longer work ${spellName} — such mastery must be earned, not carried. The item lies inert.`,{actor:c.player,targets:[c.player]});break; } // Item 6
         if(!_itemCast && spellDef.reqLevel && skillLevel(c,school) < spellDef.reqLevel){
+          o._castNotWorked=true; // never worked: no casting slot spent (item 16)
           log('system',`${c.name} cannot yet wield ${spellName} — it demands ${SKILL_LABELS[school]||school} level ${spellDef.reqLevel}, and they have reached only ${skillLevel(c,school)}.`,{actor:c.player,targets:[c.player]});
           break;
         }
@@ -22619,6 +22628,7 @@ const BATTLE_ARMY_SPELLS={
         if(spellDef.reqLevel){
           c._masterySpellUsed=c._masterySpellUsed||{};
           if(c._masterySpellUsed[spellName]===G.turn){
+            o._castNotWorked=true; // never worked: no casting slot spent (item 16)
             log('system',`${c.name} has already invoked ${spellName} this turn \u2014 such mastery may be worked but once per turn.`,{actor:c.player,targets:[c.player]});break;
           }
           c._masterySpellUsed[spellName]=G.turn;

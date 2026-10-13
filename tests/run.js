@@ -116,6 +116,7 @@ const SUITE=[
   ['encounter-seventy',    'tests/encounter-seventy.test.js'],
   ['crown-wild-near',      'tests/crown-wild-near.test.js',      FULL?['12']:['4']],
   ['neutral-best-mix',     'tests/neutral-best-mix.test.js'],
+  ['cast-practice-assumed','tests/cast-practice-assumed.test.js'],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
   ['battle-lines-report',  'tests/battle-lines-report.test.js'],

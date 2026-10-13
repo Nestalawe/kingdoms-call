@@ -5564,7 +5564,7 @@ function addEncounterTactic(charId, code){
             ?`<button disabled style="font-size:.75rem;padding:4px 9px;border:1px solid #ddd;background:#f5f5f5;color:#bbb;border-radius:2px;cursor:not-allowed">
                 ${spell} ${labelExtra}${blockedNote}
               </button>`
-            :`<button onclick="confirmEPSpell('${charId}','${spell}','${school}',${level})" 
+            :`<button onclick="confirmEPSpell('${charId}','${spell}','${school}',${level},${limit})" 
                 style="font-size:.75rem;padding:4px 9px;border:1px solid ${practising?'#c8922a':'var(--stone)'};background:${practising?'#fffbef':'#fdf8ee'};cursor:pointer;border-radius:2px">
                 ${spell} ${labelExtra}
               </button>`;
@@ -5599,7 +5599,7 @@ function addEncounterTactic(charId, code){
   refreshEncounterPlan(charId,current);
 }
 
-function confirmEPSpell(charId, spell, school, level){
+function confirmEPSpell(charId, spell, school, level, limitShown){
   const picker=document.getElementById(`ep-spell-picker-${charId}`);
   if(picker)picker.remove();
   const hidden=document.getElementById(`ep-tactics-${charId}`);
@@ -5614,8 +5614,10 @@ function confirmEPSpell(charId, spell, school, level){
 
   // Enforce: per-school combat spell limit (1 at level 1, 2 at level 2+). A school being PRACTISED
   // this turn (raw level 0) ends the turn at level 1, so it still gets a limit of 1 — the guard
-  // must fire at used>=limit for it too, hence no "level>0" escape hatch.
-  const limit=combatSpellLimit(level);
+  // must fire at used>=limit for it too, hence no "level>0" escape hatch. 2026-10-13 (item 16): the
+  // limit is the one the picker showed, which counts a practice of this school this turn as a
+  // success; the hero's current level alone refused a second spell the picker had offered.
+  const limit=(limitShown!=null&&isFinite(limitShown))?limitShown:combatSpellLimit(level);
   const used=current.filter(t=>t.startsWith('CA:')&&SPELL_TO_SCHOOL[t.slice(3)]===school).length;
   if(used>=limit){
     alert(`${SKILL_LABELS[school]||school}${level>0?` Lv${level}`:''}: you can cast at most ${limit} combat spell${limit!==1?'s':''} of this school per encounter. Remove one first.`);return;
