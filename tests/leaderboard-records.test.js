@@ -95,6 +95,9 @@ function mkGame(i){
     events.push({turn:t,player_index:pi,is_bot:rnd()<0.5,realm:'Realm '+pi,race:pick(RACES),alignment:pick(ALIGNS),
       post:maybe(mkSnapshot(1+Math.floor(rnd()*4)),0.07),outcomes:maybe(mkOutcomes(pi,n),0.07)});
   }
+  // now and then an empty row among the turns and results, as a failed or partial write could leave
+  if(rnd()<0.1) events.splice(Math.floor(rnd()*(events.length+1)),0,pick([null,undefined]));
+  if(rnd()<0.1) results.splice(Math.floor(rnd()*(results.length+1)),0,pick([null,undefined]));
   const players=[]; for(let pi=0;pi<n;pi++) players.push({player_index:pi,user_id:rnd()<0.5?'u'+pi:null,display_name:rnd()<0.8?'Player '+pi:null});
   const gameRow=rnd()<0.85?{id:'g'+i,name:'Game '+i,gm_user_id:'gm-1',created_at:new Date().toISOString(),max_turns:20}:null;
   const gs=rnd()<0.7?{players:new Array(n).fill(0).map(()=>({})),characters:[{id:1,name:'Aldric'},{id:2,name:'Bryn'}],
@@ -103,6 +106,8 @@ function mkGame(i){
 }
 
 let crashes=0, bad=0, rows=0, keySeen=new Set();
+// 100 games in the standard run (tests/run.js), 3000 in the full one: what the fuzz catches, it catches within the
+// first 50 (a mutation check, 2026-10-13); the full run keeps the long tail.
 const N=Number(process.env.N||3000);
 for(let i=0;i<N;i++){
   const g=mkGame(i);

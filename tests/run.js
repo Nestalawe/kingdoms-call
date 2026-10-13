@@ -5,8 +5,12 @@
 //   npm run test:quarantine       the quarantined harnesses (expected to fail; see tests/README.md)
 //   npm test -- --seed 123        a different fixed seed (default below); printed at the start
 //   npm test -- --only fuzz       only tests whose name contains "fuzz"
-const {spawnSync}=require('child_process');
-const fs=require('fs'), path=require('path');
+//   npm test -- --jobs 1          one test at a time (default: as many at once as the machine has cores)
+//
+// Tests run side by side, each in its own process with the same seed, so the results don't depend on the order or
+// on how many run at once; the output is printed in the suite's order.
+const {spawn}=require('child_process');
+const fs=require('fs'), path=require('path'), os=require('os');
 
 const args=process.argv.slice(2);
 const flag=f=>args.includes(f);
@@ -14,6 +18,7 @@ const opt=(f,d)=>{ const i=args.indexOf(f); return i>=0&&args[i+1]!=null?args[i+
 const FULL=flag('--full'), QUARANTINE=flag('--quarantine');
 const SEED=String(opt('--seed',process.env.KC_SEED||'20261001'));
 const ONLY=opt('--only',null);
+const JOBS=Math.max(1,Number(opt('--jobs',process.env.KC_JOBS||(os.availableParallelism?os.availableParallelism():os.cpus().length)))||1);
 const ROOT=path.resolve(__dirname,'..');
 const GM='kingdoms-call-gm-portal.html';
 
@@ -84,7 +89,8 @@ const SUITE=[
   ['beast-command',        'tests/beast-command.test.js'],
   ['primal-abilities-words','tests/primal-abilities-words.test.js'],
   ['island-back',          'tests/island-back.test.js'],
-  ['leaderboard-records',  'tests/leaderboard-records.test.js'],
+  ['leaderboard-records',  'tests/leaderboard-records.test.js', [], {N:FULL?'3000':'100'}],
+  ['leaderboard-golden',   'tests/leaderboard-golden.test.js'],
   ['leaderboard-render',   'tests/leaderboard-render.test.js'],
   ['leaderboard-events-paging','tests/leaderboard-events-paging.test.js'],
   ['leaderboard-realm-bests','tests/leaderboard-realm-bests.test.js'],
@@ -139,23 +145,40 @@ try{
   process.exit(1);
 }
 
-console.log(`Kingdoms Call tests · ${QUARANTINE?'quarantine':FULL?'full':'standard'} run · seed ${SEED} · Node ${process.versions.node}\n`);
-const results=[]; const t0=Date.now();
-for(const [name,file,argv=[],env={}] of list){
-  const t=Date.now();
-  const r=spawnSync(process.execPath,[file,...argv],{cwd:ROOT,encoding:'utf8',maxBuffer:64*1024*1024,
-    timeout:15*60*1000,env:{...process.env,KC_SEED:SEED,...env}});
-  const secs=((Date.now()-t)/1000).toFixed(1);
-  const ok=r.status===0;
-  results.push({name,ok,secs});
-  console.log(`${ok?'ok  ':'FAIL'} ${name.padEnd(24)} ${secs.padStart(6)}s`);
-  if(!ok){
-    const out=((r.stdout||'')+(r.stderr||'')).trimEnd().split('\n');
-    const why=r.error?`  (${r.error.code||r.error.message})`:r.signal?`  (killed: ${r.signal})`:`  (exit ${r.status})`;
-    console.log(why); out.slice(-40).forEach(l=>console.log('     | '+l.slice(0,300)));
-  }
+console.log(`Kingdoms Call tests · ${QUARANTINE?'quarantine':FULL?'full':'standard'} run · seed ${SEED} · Node ${process.versions.node} · ${JOBS} at a time\n`);
+
+// One test in its own process; resolves with its result and output (never rejects).
+function runOne([name,file,argv=[],env={}]){
+  return new Promise(resolve=>{
+    const t=Date.now(); let out='', settled=false;
+    const child=spawn(process.execPath,[file,...argv],{cwd:ROOT,env:{...process.env,KC_SEED:SEED,...env}});
+    child.stdout.on('data',d=>{ out+=d; }); child.stderr.on('data',d=>{ out+=d; });
+    const timer=setTimeout(()=>child.kill('SIGKILL'),15*60*1000);
+    const done=(status,signal,error)=>{ if(settled) return; settled=true; clearTimeout(timer);
+      resolve({name,ok:status===0,secs:((Date.now()-t)/1000).toFixed(1),status,signal,error,out}); };
+    child.on('error',e=>done(null,null,e));
+    child.on('close',(code,signal)=>done(code,signal,null));
+  });
 }
-const failed=results.filter(r=>!r.ok);
-console.log(`\n${results.length-failed.length} passed · ${failed.length} failed · ${((Date.now()-t0)/1000).toFixed(0)}s`);
-if(failed.length) console.log(`Failed: ${failed.map(r=>r.name).join(', ')}\nRe-run with the same seed:  npm test -- --seed ${SEED}${FULL?' --full':''}`);
-process.exit(failed.length?1:0);
+
+(async()=>{
+  const t0=Date.now(), results=new Array(list.length);
+  let next=0, printed=0;
+  // Print each result once it and every test before it in the suite have finished, so the order never changes.
+  const flush=()=>{
+    while(printed<list.length&&results[printed]){
+      const r=results[printed++];
+      console.log(`${r.ok?'ok  ':'FAIL'} ${r.name.padEnd(24)} ${r.secs.padStart(6)}s`);
+      if(!r.ok){
+        const why=r.error?`  (${r.error.code||r.error.message})`:r.signal?`  (killed: ${r.signal})`:`  (exit ${r.status})`;
+        console.log(why); r.out.trimEnd().split('\n').slice(-40).forEach(l=>console.log('     | '+l.slice(0,300)));
+      }
+    }
+  };
+  const worker=async()=>{ while(next<list.length){ const i=next++; results[i]=await runOne(list[i]); flush(); } };
+  await Promise.all(Array.from({length:Math.min(JOBS,list.length)},worker));
+  const failed=results.filter(r=>!r.ok);
+  console.log(`\n${results.length-failed.length} passed · ${failed.length} failed · ${((Date.now()-t0)/1000).toFixed(0)}s`);
+  if(failed.length) console.log(`Failed: ${failed.map(r=>r.name).join(', ')}\nRe-run with the same seed:  npm test -- --seed ${SEED}${FULL?' --full':''}`);
+  process.exit(failed.length?1:0);
+})();
