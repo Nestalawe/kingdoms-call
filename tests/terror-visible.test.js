@@ -49,7 +49,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const pw=dom.window; ok(errors.length===0,'the player portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   const note=pw.eval('typeof terrorNoteP==="function"?terrorNoteP:null'); ok(!!note,'terrorNoteP is declared at module level');
   if(note){
-    const t=String(note({terror:{pct:20,stacks:2,byYou:true}})).replace(/<[^>]+>/g,'');
+    // the note's words as a reader sees them: parsed by the page's own DOM (an inert <template>), not by a pattern
+    const box=pw.document.createElement('template'); box.innerHTML=String(note({terror:{pct:20,stacks:2,byYou:true}}));
+    const t=box.content.textContent;
     ok(/💀 Terror 20%/.test(t)&&/2 stacks/.test(t),`the note reads the Terror and its stacks: "${t}"`);
     ok(/your own/i.test(t),'…and says when it is the realm\'s own');
     ok(note({})===''&&note({terror:null})==='','no Terror, no note');
