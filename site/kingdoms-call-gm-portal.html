@@ -3061,8 +3061,20 @@ const GUARDIAN_BODY_CAP_PCT={Legendary:20};
 // One name for one lair, drawn from the guardian's own pool, never repeated in the world. `used` is
 // the live set of names already given out. Falls back to a place-suffixed form
 // ("Wolf Den of Karnholt") when a guardian's pools are exhausted, so uniqueness always holds.
-function pickLairNameP(monster, terrain, used, provName, rnd){
+// The connectives a place-qualified lair name uses ("Wolf Den beneath Karnholt").
+const LAIR_NAME_CONNECTIVES_P=['of','beneath','under','below','beyond','within','on the marches of','in the shadow of','at the roots of','hard by'];
+// A lair's BASE name: its name without the place qualifier or a number ("Wolf Den beneath Karnholt (2)"
+// → "Wolf Den"). 2026-10-13 (item 4, Toby): no province holds two lairs with the same base name.
+function lairBaseNameP(name, provName){
+  let b=String(name||'').replace(/ \(\d+\)$/,'');
+  if(provName){ for(const conn of LAIR_NAME_CONNECTIVES_P){ const suf=` ${conn} ${provName}`; if(b.endsWith(suf)){ b=b.slice(0,-suf.length); break; } } }
+  return b;
+}
+// `provBases` (optional): the base names the lairs already named in this province carry; none of
+// them is given again here.
+function pickLairNameP(monster, terrain, used, provName, rnd, provBases){
   const R=rnd||Math.random;
+  const here=provBases||new Set();
   const isSea=(terrain==='sea');
   const cat=(monster&&monster.cat)||'beast';
   const sig=(monster&&LAIR_POOLS_MONSTER_P[monster.name])||[];
@@ -3070,7 +3082,7 @@ function pickLairNameP(monster, terrain, used, provName, rnd){
   const generic=(isSea?(pools.sea||[]):(pools.land||[]));
   // Signature names first (a great power should read as one), then the category pool.
   const ordered=[...sig.filter(()=>true), ...generic];
-  const free=ordered.filter(n=>!used.has(n));
+  const free=ordered.filter(n=>!used.has(n)&&!here.has(n));
   if(free.length){ const pick=free[Math.floor(R()*free.length)]; used.add(pick); return pick; }
   // ── 2026-09-15: NO LAIR IS EVER A NUMBERED DUPLICATE ────
   // The old fallback went straight from "this guardian's own pools are exhausted" to `${base} of
@@ -3093,12 +3105,17 @@ function pickLairNameP(monster, terrain, used, provName, rnd){
     const pl=LAIR_POOLS_CAT_P[k]||{};
     (isSea?(pl.sea||[]):(pl.land||[])).forEach(n2=>{ if(elementAll.indexOf(n2)<0) elementAll.push(n2); });
   }
-  const freeAny=elementAll.filter(n2=>!used.has(n2));
+  const freeAny=elementAll.filter(n2=>!used.has(n2)&&!here.has(n2));
   if(freeAny.length){ const pick=freeAny[Math.floor(R()*freeAny.length)]; used.add(pick); return pick; }
 
   // Step 2/3: place-qualify, varying both the connective and the base.
-  const CONNECTIVES=['of','beneath','under','below','beyond','within','on the marches of','in the shadow of','at the roots of','hard by'];
-  const bases=(ordered.length?ordered:elementAll.length?elementAll:['Forgotten Lair']);
+  const CONNECTIVES=LAIR_NAME_CONNECTIVES_P;
+  const _allBases=(ordered.length?ordered:elementAll.length?elementAll:['Forgotten Lair']);
+  // a base this province already holds is never used again here; the wider element stock is
+  // borrowed before that rule would ever bend
+  let bases=_allBases.filter(b=>!here.has(b));
+  if(!bases.length) bases=elementAll.filter(b=>!here.has(b));
+  if(!bases.length) bases=_allBases;
   if(provName){
     for(const conn of CONNECTIVES){
       for(const b of bases){
@@ -3122,9 +3139,11 @@ function renameLairsThematicP(gs){
   (gs.world.provinces||[]).forEach(p=>{ (p&&p.features||[]).forEach(f=>{ if(f&&f.ritualSite&&f.name) used.add(f.name); }); });
   let n=0;
   (gs.world.provinces||[]).forEach(p=>{
+    const bases=new Set();   // 2026-10-13 (item 4): one lair per base name in a province
     (p&&p.features||[]).forEach(f=>{
       if(!f||f.ritualSite||!f.monster) return;
-      f.name=pickLairNameP(f.monster, p.terrain, used, p.name); n++;
+      f.name=pickLairNameP(f.monster, p.terrain, used, p.name, null, bases); n++;
+      bases.add(lairBaseNameP(f.name, p.name));
     });
   });
   gs._lairNamesV3=true; gs._lairNamesV2=true;
@@ -11569,11 +11588,17 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   });
 
   // Re-draw each guardian from the beasts of its lair's new standing.
+  // 2026-10-13 (item 4, Toby): never two of the same guardian in one province. A beast already
+  // keeping a lair in this province is left out of the draw; only if that would leave nothing at
+  // all does the ladder below reach another standing for one.
   const seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name));
   const landMons=MONSTERS_P.filter(m=>!SEA_GUARDIAN_NAMES.has(m.name));
+  const _guardsHere=new Map();   // province id → guardian names already drawn there
   lairs.forEach(L=>{
     const isSea=L.p.terrain==='sea';
-    const src=isSea?seaMons:landMons;
+    if(!_guardsHere.has(L.p.id)) _guardsHere.set(L.p.id,new Set());
+    const here=_guardsHere.get(L.p.id);
+    const src=(isSea?seaMons:landMons).filter(m=>!here.has(m.name));
     let cand=src.filter(m=>m.power===L.grade);
     if(!cand.length){
       // No beast of that standing in this element (the seas hold no legendary beast, for instance):
@@ -11586,6 +11611,7 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
     }
     if(!cand.length) cand=src.length?src:MONSTERS_P;
     L.f.monster={...cand[Math.floor(Math.random()*cand.length)]};
+    here.add(L.f.monster.name);
     L.f.tier=L.grade;                 // the grade shown to players is the lair's own, not the beast's
     L.f.monster.power=L.grade;        // and the guardian is treated as being of that standing
   });
