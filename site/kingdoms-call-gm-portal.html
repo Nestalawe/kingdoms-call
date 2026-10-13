@@ -402,7 +402,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.13-0301';
+const KC_DATA_MIN='2026.10.13-0401';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -420,7 +420,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.13-0310'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.13-0410'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3061,8 +3061,20 @@ const GUARDIAN_BODY_CAP_PCT={Legendary:20};
 // One name for one lair, drawn from the guardian's own pool, never repeated in the world. `used` is
 // the live set of names already given out. Falls back to a place-suffixed form
 // ("Wolf Den of Karnholt") when a guardian's pools are exhausted, so uniqueness always holds.
-function pickLairNameP(monster, terrain, used, provName, rnd){
+// The connectives a place-qualified lair name uses ("Wolf Den beneath Karnholt").
+const LAIR_NAME_CONNECTIVES_P=['of','beneath','under','below','beyond','within','on the marches of','in the shadow of','at the roots of','hard by'];
+// A lair's BASE name: its name without the place qualifier or a number ("Wolf Den beneath Karnholt (2)"
+// → "Wolf Den"). 2026-10-13 (item 4, Toby): no province holds two lairs with the same base name.
+function lairBaseNameP(name, provName){
+  let b=String(name||'').replace(/ \(\d+\)$/,'');
+  if(provName){ for(const conn of LAIR_NAME_CONNECTIVES_P){ const suf=` ${conn} ${provName}`; if(b.endsWith(suf)){ b=b.slice(0,-suf.length); break; } } }
+  return b;
+}
+// `provBases` (optional): the base names the lairs already named in this province carry; none of
+// them is given again here.
+function pickLairNameP(monster, terrain, used, provName, rnd, provBases){
   const R=rnd||Math.random;
+  const here=provBases||new Set();
   const isSea=(terrain==='sea');
   const cat=(monster&&monster.cat)||'beast';
   const sig=(monster&&LAIR_POOLS_MONSTER_P[monster.name])||[];
@@ -3070,7 +3082,7 @@ function pickLairNameP(monster, terrain, used, provName, rnd){
   const generic=(isSea?(pools.sea||[]):(pools.land||[]));
   // Signature names first (a great power should read as one), then the category pool.
   const ordered=[...sig.filter(()=>true), ...generic];
-  const free=ordered.filter(n=>!used.has(n));
+  const free=ordered.filter(n=>!used.has(n)&&!here.has(n));
   if(free.length){ const pick=free[Math.floor(R()*free.length)]; used.add(pick); return pick; }
   // ── 2026-09-15: NO LAIR IS EVER A NUMBERED DUPLICATE ────
   // The old fallback went straight from "this guardian's own pools are exhausted" to `${base} of
@@ -3093,12 +3105,17 @@ function pickLairNameP(monster, terrain, used, provName, rnd){
     const pl=LAIR_POOLS_CAT_P[k]||{};
     (isSea?(pl.sea||[]):(pl.land||[])).forEach(n2=>{ if(elementAll.indexOf(n2)<0) elementAll.push(n2); });
   }
-  const freeAny=elementAll.filter(n2=>!used.has(n2));
+  const freeAny=elementAll.filter(n2=>!used.has(n2)&&!here.has(n2));
   if(freeAny.length){ const pick=freeAny[Math.floor(R()*freeAny.length)]; used.add(pick); return pick; }
 
   // Step 2/3: place-qualify, varying both the connective and the base.
-  const CONNECTIVES=['of','beneath','under','below','beyond','within','on the marches of','in the shadow of','at the roots of','hard by'];
-  const bases=(ordered.length?ordered:elementAll.length?elementAll:['Forgotten Lair']);
+  const CONNECTIVES=LAIR_NAME_CONNECTIVES_P;
+  const _allBases=(ordered.length?ordered:elementAll.length?elementAll:['Forgotten Lair']);
+  // a base this province already holds is never used again here; the wider element stock is
+  // borrowed before that rule would ever bend
+  let bases=_allBases.filter(b=>!here.has(b));
+  if(!bases.length) bases=elementAll.filter(b=>!here.has(b));
+  if(!bases.length) bases=_allBases;
   if(provName){
     for(const conn of CONNECTIVES){
       for(const b of bases){
@@ -3122,9 +3139,11 @@ function renameLairsThematicP(gs){
   (gs.world.provinces||[]).forEach(p=>{ (p&&p.features||[]).forEach(f=>{ if(f&&f.ritualSite&&f.name) used.add(f.name); }); });
   let n=0;
   (gs.world.provinces||[]).forEach(p=>{
+    const bases=new Set();   // 2026-10-13 (item 4): one lair per base name in a province
     (p&&p.features||[]).forEach(f=>{
       if(!f||f.ritualSite||!f.monster) return;
-      f.name=pickLairNameP(f.monster, p.terrain, used, p.name); n++;
+      f.name=pickLairNameP(f.monster, p.terrain, used, p.name, null, bases); n++;
+      bases.add(lairBaseNameP(f.name, p.name));
     });
   });
   gs._lairNamesV3=true; gs._lairNamesV2=true;
@@ -3251,13 +3270,19 @@ function itemLoreLines(items){ return (items||[]).filter(Boolean).map(d=>`📜 T
 // tier-1 EFFECTS. Two lairs could hand out "Blade of Fury" and "Sword of Wrath" — different names,
 // the same Melee +2 — and a player reasonably reads that as the game repeating itself. The roll now
 // PREFERS an effect nothing else on the map carries, and only re-uses one when the tier has no
-// unused effect left. `itemEffectKey` is the signature: effect + slot + tier, so a Weak ring and a
-// Moderate ring granting the same stat stay distinct finds.
+// unused effect left. `itemEffectKey` is the signature: the effect alone. (It used to add the slot
+// and tier, so an amulet and a trinket both giving Mountain Guns +4 counted as two different finds;
+// 2026-10-13, item 5, Toby: to a player they are the same thing found twice.)
 function itemEffectKey(it){
   if(!it) return '?';
   if(!it.effect) return 'name:'+it.name;
-  return JSON.stringify(it.effect)+'|'+(it.slot||'-')+'|'+(it.tier||1);
+  return JSON.stringify(it.effect);
 }
+// 2026-10-13 (item 5, Toby): heroes were opening two lairs in one turn and finding the same effect in
+// both. Lairs within this many provinces of each other never hold the same effect while the treasury
+// has any other choice; the distance shrinks a step at a time (down to "not in the same province")
+// only when nothing else is left.
+const LAIR_EFFECT_SPREAD=3;
 // Rebuilds the set of effects already handed out from gs._awardedItems (names are what saves keep),
 // so an existing game adopts the rule without a migration field of its own.
 function awardedEffectSet(gs){
@@ -3509,7 +3534,7 @@ function ensureAllLairHoards(gs){
     if(!fresh) return;
     const T=LAIR_ITEM_ODDS[powOf(f)]||LAIR_ITEM_ODDS.Weak;
     let slots=0; if(Math.random()<T.itemChance) slots++; if(Math.random()<T.bonusItem) slots++; if(Math.random()<(T.thirdItem||0)) slots++;
-    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov),provId:prov.id});
+    work.push({f,slots,power:powOf(f),region:lairRegionOf(gs,prov),provId:prov.id,prov});
   });
   if(!work.length) return;
   const taken=new Set(gs._awardedItems);
@@ -3519,6 +3544,13 @@ function ensureAllLairHoards(gs){
   const takenEff=awardedEffectSet(gs);
   const provEff={};
   const provSet=(id)=>provEff[id]||(provEff[id]=new Set());
+  // Effects within `r` provinces of a lair (item 5): every province already holding a stocked item,
+  // its own effects included — a lair stocked in an older save counts too.
+  const _cols=(gs.world&&gs.world.cols)||0;
+  provs.forEach(p=>(p.features||[]).forEach(f=>{ if(f&&!f.ritualSite&&!f.cleared) (f.hoardItems||[]).forEach(it=>provSet(p.id).add(itemEffectKey(it))); }));
+  const effectsNear=(prov,r)=>{ const out=new Set(); if(r<0) return out;
+    for(const id in provEff){ const q=provs[id]; if(!q||!provEff[id].size) continue; if(hexDistP(prov,q,_cols)<=r) provEff[id].forEach(k=>out.add(k)); }
+    return out; };
   const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
   // counts are kept PER REGION (nearest home province), so each realm's own neighbourhood gets an
   // even spread rather than only the world as a whole. `_all` keeps the world-level tally for the
@@ -3550,21 +3582,67 @@ function ensureAllLairHoards(gs){
       if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c,t).length>0); }
       if(!cats.length){ atTier=false; cats=HOARD_CATEGORIES.filter(c=>untakenAny(c,null).length>0); } // last resort: the "never empty" ruling outranks rule 1 on a bare treasury
       if(!cats.length){ w.slots=0; break; }
+      const inCatOf=(cat)=>atTier?untakenT(cat,t):(untakenAny(cat,t).length?untakenAny(cat,t):untakenAny(cat,null));
+      // Item 5: an effect already in a lair within LAIR_EFFECT_SPREAD provinces is barred, and the
+      // kinds are narrowed to those that still have something else to give. The distance shrinks
+      // only when no kind does (0 = this province; -1 = no bar at all).
+      let nearOk=cats, barred=new Set();
+      for(let r=LAIR_EFFECT_SPREAD;r>=-1;r--){
+        barred=effectsNear(w.prov,r);
+        nearOk=cats.filter(c=>inCatOf(c).some(it=>!barred.has(itemEffectKey(it))));
+        if(nearOk.length) break;
+      }
+      if(!nearOk.length){ nearOk=cats; barred=new Set(); }
       // Lowest count IN THIS REGION first; the world tally breaks ties, so the map stays level too.
-      const low=Math.min(...cats.map(c=>rc[c]||0));
-      const tiedR=cats.filter(c=>(rc[c]||0)===low);
+      const low=Math.min(...nearOk.map(c=>rc[c]||0));
+      const tiedR=nearOk.filter(c=>(rc[c]||0)===low);
       const lowW=Math.min(...tiedR.map(c=>catCount[c]||0));
       const pool=shuffleP(tiedR.filter(c=>(catCount[c]||0)===lowW));
       const cat=pool[0];
-      const inCat=atTier?untakenT(cat,t):(untakenAny(cat,t).length?untakenAny(cat,t):untakenAny(cat,null));
-      // Effect filter: prefer a design nothing on the map carries yet, and never repeat one already
-      // in THIS province while any alternative exists.
-      const pe=provSet(w.provId);
-      let cand=preferFreshEffects(inCat, takenEff);
-      const notHere=cand.filter(it=>!pe.has(itemEffectKey(it)));
-      if(notHere.length) cand=notHere;
+      const inCat=inCatOf(cat);
+      // Effect filter: never an effect barred nearby while any alternative exists, then prefer a
+      // design nothing on the map carries yet.
+      let cand=inCat.filter(it=>!barred.has(itemEffectKey(it)));
+      if(!cand.length) cand=inCat;
+      cand=preferFreshEffects(cand, takenEff);
+      // …and of those, the effect with the most copies still in the treasury, so a design that
+      // exists under many names is spread over the whole map rather than left to pile up in the
+      // last lairs stocked (where the bar above would have nothing else to offer).
+      { const n={}; cand.forEach(it=>{ const k=itemEffectKey(it); n[k]=(n[k]||0)+1; });
+        const most=Math.max(...Object.values(n)); cand=cand.filter(it=>n[itemEffectKey(it)]===most); }
       const pick=cand[Math.floor(Math.random()*cand.length)];
       give(w.f,pick,w.region,w.provId); w.slots--;
+    }
+  }
+  // Item 5, repair: on the largest maps the last Weak lairs stocked can have nothing left but an
+  // effect already close by. Swap such a lair's item with another freshly stocked lair's item of the
+  // same kind and tier (so every count above is unchanged) whenever that moves the two repeats
+  // further apart. A swap is only made if the closer of the two pairs ends up further away.
+  const one=work.filter(w=>w.f.hoardItems.length===1&&!isLegendaryItem(w.f.hoardItems[0]));
+  const holders=new Map();   // effect → lairs holding it
+  const hk=(w)=>itemEffectKey(w.f.hoardItems[0]);
+  one.forEach(w=>{ const k=hk(w); if(!holders.has(k)) holders.set(k,[]); holders.get(k).push(w); });
+  const gap=(w,k,skip)=>{ let m=Infinity; for(const v of (holders.get(k)||[])){ if(v===w||v===skip) continue; const d=hexDistP(w.prov,v.prov,_cols); if(d<m) m=d; } return m; };
+  for(let pass=0;pass<2;pass++){
+    for(const w of one){
+      const ka=hk(w), gw=gap(w,ka);
+      if(!(gw<=LAIR_EFFECT_SPREAD)) continue;
+      const a=w.f.hoardItems[0];
+      let best=null, bestMin=gw;
+      for(const v of one){
+        if(v===w) continue;
+        const b=v.f.hoardItems[0], kb=itemEffectKey(b);
+        if(kb===ka||b.tier!==a.tier||itemHoardCategory(b)!==itemHoardCategory(a)) continue;
+        const before=Math.min(gw,gap(v,kb));
+        if(before>=bestMin&&best) continue;
+        const after=Math.min(gap(w,kb,v),gap(v,ka,w));
+        if(after>before&&after>bestMin){ best=v; bestMin=after; }
+      }
+      if(!best) continue;
+      const b=best.f.hoardItems[0], kb=itemEffectKey(b);
+      holders.set(ka,holders.get(ka).filter(x=>x!==w).concat([best]));
+      holders.set(kb,holders.get(kb).filter(x=>x!==best).concat([w]));
+      w.f.hoardItems[0]=b; best.f.hoardItems[0]=a;
     }
   }
 }
@@ -4057,7 +4135,10 @@ function migrateItemTiers(gs){
   const byName=new Map(); ALL_MAGIC_ITEMS_P.forEach(it=>byName.set(it.name,it));
   // An item the treasury no longer carries (dropped from a band in a later re-cut) keeps its own tier,
   // but never below its ROLE's floor - a healing draught in a pack is Moderate whatever it was rolled as.
-  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m){ if(it.tier!==m.tier) it.tier=m.tier; } else if(!isLegendaryItem(it)&&(it.tier||1)<itemTierFloor(it)) it.tier=itemTierFloor(it); };
+  const fix=(it)=>{ if(!it||!it.name) return; const m=byName.get(it.name)||byName.get(_ITEM_ALT_BASE[it.name]); if(m){ if(it.tier!==m.tier) it.tier=m.tier; } else if(!isLegendaryItem(it)&&(it.tier||1)<itemTierFloor(it)) it.tier=itemTierFloor(it);
+    // 2026-10-13 (item 7, Toby): an item rolled before the descriptions named their school with a
+    // capital ("casts Charm (Psychic Magic)") carries the old lower-case copy; mend it in place.
+    if(typeof it.desc==='string') it.desc=it.desc.replace(/\((white|psychic|illusory|elemental|necromancy)\)/g,(w,k)=>`(${SKILL_LABELS[k]||k})`); };
   (gs.characters||[]).forEach(c=>(c.items||[]).forEach(fix));
   ((gs.world&&gs.world.provinces)||[]).forEach(p=>(p.features||[]).forEach(f=>{ if(f) (f.hoardItems||[]).forEach(fix); }));
   (gs.players||[]).forEach(pl=>{ if(pl&&Array.isArray(pl.vault)) pl.vault.forEach(fix); });
@@ -11569,11 +11650,17 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
   });
 
   // Re-draw each guardian from the beasts of its lair's new standing.
+  // 2026-10-13 (item 4, Toby): never two of the same guardian in one province. A beast already
+  // keeping a lair in this province is left out of the draw; only if that would leave nothing at
+  // all does the ladder below reach another standing for one.
   const seaMons=MONSTERS_P.filter(m=>SEA_GUARDIAN_NAMES.has(m.name));
   const landMons=MONSTERS_P.filter(m=>!SEA_GUARDIAN_NAMES.has(m.name));
+  const _guardsHere=new Map();   // province id → guardian names already drawn there
   lairs.forEach(L=>{
     const isSea=L.p.terrain==='sea';
-    const src=isSea?seaMons:landMons;
+    if(!_guardsHere.has(L.p.id)) _guardsHere.set(L.p.id,new Set());
+    const here=_guardsHere.get(L.p.id);
+    const src=(isSea?seaMons:landMons).filter(m=>!here.has(m.name));
     let cand=src.filter(m=>m.power===L.grade);
     if(!cand.length){
       // No beast of that standing in this element (the seas hold no legendary beast, for instance):
@@ -11586,6 +11673,7 @@ function assignLairGrades(provinces, homeIds, cols, rows, relicCount){
     }
     if(!cand.length) cand=src.length?src:MONSTERS_P;
     L.f.monster={...cand[Math.floor(Math.random()*cand.length)]};
+    here.add(L.f.monster.name);
     L.f.tier=L.grade;                 // the grade shown to players is the lair's own, not the beast's
     L.f.monster.power=L.grade;        // and the guardian is treated as being of that standing
   });
@@ -13682,6 +13770,9 @@ async function runTurn(opts){
   // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
   // fights.
   let _combatSkillProv=null;
+  // 2026-10-13 (item 6, Toby): while a pre-battle duel is fought, each duellist's id → the foe's name,
+  // so a skill rise earned in it can say so (resolveDuel sets it; trySkillGain reads it).
+  let _duelFoes=null;
   let _battleSeq=0; // 2026-09-23d: numbers each emitted battle so the player portal can fold it (emitBattle)
   // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
   // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.
@@ -14188,13 +14279,33 @@ async function runTurn(opts){
   // earned on the march that carried them INTO the battle — so at the moment of death every
   // deferred line of theirs is written out at once, i.e. before the battle narrative is emitted,
   // exactly where the march sits in the sequence of events.
+  // Write out deferred skill lines. 2026-10-13 (item 6, Toby): a line earned in a battle
+  // (meta.afterBattleIn = that province) is placed straight after the last line of the most recent
+  // battle report there in the same phase, rather than after everything else the phase brought —
+  // the lines of one rise stay together and in order. With `inPlace` (a hero falling, whose battle
+  // is not yet written) every line is simply logged where it stands.
+  function writeDeferredSkillLines(list, inPlace){
+    const blocks=new Map();
+    (list||[]).forEach(([msg,meta])=>{
+      const m={...(meta||{})}; const p=m.afterBattleIn; delete m.afterBattleIn;
+      log('system',msg,m);
+      if(p==null||inPlace) return;
+      const k=p+'|'+m.phase; if(!blocks.has(k)) blocks.set(k,{p,ph:m.phase,ents:[]});
+      blocks.get(k).ents.push(turnLog.pop());
+    });
+    blocks.forEach(({p,ph,ents})=>{
+      let at=-1;
+      for(let i=turnLog.length-1;i>=0;i--){ const x=turnLog[i]; if(x&&x.battleId!=null&&x.provinceId===p&&x.phase===ph){ at=i; break; } }
+      if(at<0) turnLog.push(...ents); else turnLog.splice(at+1,0,...ents);
+    });
+  }
   function flushDeferredSkillLogsFor(charId){
     if(charId!=null){ const _pc=(G.characters||[]).find(r=>r&&r.id===charId); if(_pc&&_pc._sgPending) resolvePendingSkillGain(_pc); } // 2026-09-26b: a falling hero's phase rise is settled first
     if(charId==null||!_deferredSkillLogs.length) return;
     const mine=_deferredSkillLogs.filter(([,meta])=>meta&&meta.charId===charId);
     if(!mine.length) return;
     _deferredSkillLogs=_deferredSkillLogs.filter(([,meta])=>!(meta&&meta.charId===charId));
-    mine.forEach(([msg,meta])=>log('system',msg,meta));
+    writeDeferredSkillLines(mine, true);
   }
   // set while the Hunting Rumours odds simulation runs fights in the background — no sandbox fight
   // may ever train a real skill (see simulateLairOdds).
@@ -14268,7 +14379,8 @@ async function runTurn(opts){
       // longer raises the skill on the spot — it becomes a CANDIDATE for this phase. When the phase
       // ends (or the character falls, or the engine moves on to another phase) one candidate is
       // drawn at random and applied; the others are dropped silently, with no notice to anyone.
-      (real._sgPending.list).push({skill, prov:_combatSkillProv, phase:_sgPh});
+      (real._sgPending.list).push({skill, prov:_combatSkillProv, phase:_sgPh,
+        duelWith:(_duelFoes&&real.id!=null&&_duelFoes.get(real.id))||null});   // item 6: earned in a duel
     }
     // the acting object may be a SHALLOW battle copy whose keys syncLeaderCopy writes back —
     // mirror the (possibly replaced) bookkeeping objects so a write-back can never roll them back.
@@ -14306,13 +14418,20 @@ async function runTurn(opts){
       // A March/Naval rise increases pace immediately: recompute this character's move pool so the
       // extra reach is available for the rest of THIS turn (preserving points already spent).
       if((skill==='march'||skill==='naval') && typeof refreshMovePool==='function') refreshMovePool(real);
-      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${skillInPlayNote(real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
+      // 2026-10-13 (item 6, Toby): a rise earned in a battle says where, and one earned in a pre-battle
+      // duel says against whom — the duel itself is folded inside the battle's full report, so a
+      // player reading the short account would otherwise never learn why the skill went up.
+      const _riseProv=(e.prov!=null&&G.world&&G.world.provinces)?G.world.provinces[e.prov]:null;
+      const _why=e.duelWith?` in single combat with ${e.duelWith}${_riseProv?` before the Battle for ${_riseProv.name}`:''}`
+        :(_riseProv?` in the fighting at ${_riseProv.name}`:'');
+      const line=`📈 ${real.name}'s ${SKILL_LABELS[skill]||skill} rises to level ${lvl+1} through hard-won experience${_why}${skillInPlayNote(real,skill)}.${_hpRise>0?` (Max HP +${_hpRise} → ${real.maxHp}.)`:''}`;
       // Battle-driven gains pass the battle narrative: the line then appears at the point it is
       // pushed (end of the battle report), not before the battle even starts in the chronicle. the
       // deferred (non-battle) skill-rise carries the character's id and the phase it happened in,
       // so it is reported inside THAT character's Chronicle section at the end of the phase — not
       // adrift in Realm Events. (_logCtx holds the acting character + phase here.)
       const _skCharId=real.id, _skPhase=e.phase;
+      const _after=(e.prov!=null)?{afterBattleIn:e.prov}:{};   // item 6: reported straight after that battle
       // a skill rise is the OWNER'S news — the deferred log is private to this realm. (2026-09-26b:
       // battle-earned rises no longer go into the shared battle narrative; they are settled with the
       // phase's single draw and reported at the end of the phase in the character's own section.)
@@ -14321,7 +14440,7 @@ async function runTurn(opts){
       if(real.player==null){
         log('system',`📜 ${String(real.name||'').replace(/\s*\(wandering\)/i,'')} learns from the fighting — ${SKILL_LABELS[skill]||skill} rises to ${lvl+1}.`,{targets:[],provinceId:(e.prov!=null?e.prov:real.location),system:true});
       } else {
-      _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+      _deferredSkillLogs.push([line,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase,..._after}]);
       // crossing a mastery threshold (6/7/8/9) earns a congratulation that spells out the new
       // level's benefits — the passive that deepens, and any new mastery order or spell now
       // available. Fires exactly once per crossing (each gain is a single level).
@@ -14329,14 +14448,14 @@ async function runTurn(opts){
       if(_newLvl>=6){
         const _mu=(MASTERY_UNLOCKS[skill]||{})[_newLvl];
         const _mline=`🎉 ${real.name} attains mastery of ${SKILL_LABELS[skill]||skill} — level ${_newLvl}!${_mu?' '+_mu:''}`;
-        _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+        _deferredSkillLogs.push([_mline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase,..._after}]);
       }
       }
       // when the higher skill raises the hero's wage, say so in the player's report. (A neutral has
       // no realm to tell, and their wage is set by the hire itself, so this is player-led only.)
       if(real.player!=null&&_payAfter>_payBefore){
         const wline=`💰 ${real.name}'s growing renown raises their wage to ${_payAfter}g/turn (was ${_payBefore}g/turn).`;
-        _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase}]);
+        _deferredSkillLogs.push([wline,{actor:real.player,targets:[real.player],charId:_skCharId,phase:_skPhase,..._after}]);
       }
   }
   function resolveAllPendingSkillGains(){ (G.characters||[]).forEach(c=>{ if(c&&c._sgPending) resolvePendingSkillGain(c); }); }
@@ -15340,7 +15459,7 @@ const BATTLE_ARMY_SPELLS={
         const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(c)+discSum(c.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
         const castRoll=d100();
         telSpell(c,spellName,school,spellLvl,castChance,castRoll,'battle');
-        narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
+        narrative.push(`✨ **Pre-battle Magic: ${cName} casts ${spellName}** (${SKILL_LABELS[school]||school} ${spellLvl}) — cast chance ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
         if(castRoll<=castChance){
           // pre-battle magic no longer trains the school. Casting into a battle is not the same
           // test as casting in a duel, and it was the cheapest experience in the game — one order,
@@ -15408,7 +15527,7 @@ const BATTLE_ARMY_SPELLS={
       const armySpellChance=primalStrikeChance(druIdLvlMag, atkCmdrSlain?null:c, atk.type);
       const armySpellRoll=d100();
       if(armySpellRoll>armySpellChance&&_isPrimalStrikeA){
-        narrative.push(`〰 ${atk.unitName||atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag>0?`, Druid ${druIdLvlMag}`:', no commanding druid'}).`);
+        narrative.push(`〰 ${atk.unitName||atk.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${druIdLvlMag>0?`, Druid ${druIdLvlMag}`:', no commanding Druid'}).`);
       }
       if(armySpellRoll<=armySpellChance){
         narrative.push(`✨ ${atk.unitName||atk.type} — **${sp.name}**: "${sp.flavour}"`);
@@ -15525,7 +15644,7 @@ const BATTLE_ARMY_SPELLS={
           const castChance=Math.min(90,30+defSpellLvl*15);
           const castRoll=d100();
           telSpell(defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
-          narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
+          narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${SKILL_LABELS[school]||school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
           if(castRoll<=castChance){
             // no school gain from pre-battle magic — see the attacker's cast above.
             if(defSpellName==='Fireball'){
@@ -15631,7 +15750,7 @@ const BATTLE_ARMY_SPELLS={
         }
       } else if(_isPrimalStrike){
         // Primal strikes now announce a miss (standard units stay quiet to keep reports lean).
-        narrative.push(`〰 ${def.unitName||def.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${defDruIdLvl>0?`, Druid ${defDruIdLvl}`:', no commanding druid'}).`);
+        narrative.push(`〰 ${def.unitName||def.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${armySpellChance}% chance${defDruIdLvl>0?`, Druid ${defDruIdLvl}`:', no commanding Druid'}).`);
       }
     });
 
@@ -16214,7 +16333,8 @@ const BATTLE_ARMY_SPELLS={
   }
   // How a commander answers the call to single combat, set per character in the player portal.
   // 'challenge' — rides out and demands a duel 'accept' — will not initiate, but answers a
-  // challenge (default) 'refuse' — will not duel; costs their force 20% strength if challenged
+  // challenge 'refuse' — will not duel; costs their force 20% strength if challenged (a player's
+  // default since 2026-10-13, Toby: a hero with no stance set no longer answers a challenge)
   const DUEL_STANCES_P=['challenge','accept','refuse'];
   const NPC_DUEL_STANCE_BY_TEMPER={Berserk:'challenge',Brave:'challenge',Cautious:'accept',Cowardly:'refuse'};
   function duelStanceOf(ch){
@@ -16224,7 +16344,7 @@ const BATTLE_ARMY_SPELLS={
     // extremes. Berserk and Brave ride out and demand single combat; Cautious will answer a
     // challenge but won't issue one; only the Cowardly refuse outright and shame their own ranks.
     if(ch&&ch.player===null) return NPC_DUEL_STANCE_BY_TEMPER[effTemper(ch)]||'accept';
-    return 'accept';
+    return 'refuse';
   }
 
   // Give any un-ordered character (player === null) a plan the moment one is needed.
@@ -16760,11 +16880,11 @@ const BATTLE_ARMY_SPELLS={
     if(!school){ return false; }
     const lvl=caster.school[school]||0;
     const lvlEff=Math.min(lvl,5); // every EFFECT scales with caster level capped at 5 (cast chance still uses the full level)
-    if(lvl<1){ narrative.push(`  ${caster.name} cannot cast ${spellName} (no ${school} skill).`); return false; }
+    if(lvl<1){ narrative.push(`  ${caster.name} cannot cast ${spellName} (no ${SKILL_LABELS[school]||school} skill).`); return false; }
     // Per-combat spell limits: same spell once; per school 1 at Lv1, 2 at Lv2+.
     const limit=lvl>=2?2:1;
     if(caster.castSpells.includes(spellName)){ narrative.push(`  ${caster.name}: ${spellName} already cast this combat.`); return false; }
-    if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${school} spell limit reached this combat.`); return false; }
+    if((caster.castSchool[school]||0)>=limit){ narrative.push(`  ${caster.name}: ${SKILL_LABELS[school]||school} spell limit reached this combat.`); return false; }
     // ── WEAKNESS ── a guardian open to this school cannot shrug the weave off: the cast always
     // takes hold (95%), and `wx` doubles every NON-damaging effect below. Damage itself is doubled
     // once, in pcTakeHit — never here, or it would double twice.
@@ -18016,7 +18136,8 @@ const BATTLE_ARMY_SPELLS={
     if(_ia) narrative.push(_ia);
     if(_ib) narrative.push(_ib);
     const A=pcCharCombatant(atk), B=pcCharCombatant(def);
-    const res=resolvePersonalCombat(A, B, {maxRounds:20, heldFieldWins:true}); // a duel's field held is a win (preBattleDuel awards it)
+    _duelFoes=new Map([[atk.id,String(def.name||'').replace(/\s*\(wandering\)/i,'')],[def.id,String(atk.name||'').replace(/\s*\(wandering\)/i,'')]]); // item 6
+    let res; try{ res=resolvePersonalCombat(A, B, {maxRounds:20, heldFieldWins:true}); } finally{ _duelFoes=null; } // a duel's field held is a win (preBattleDuel awards it)
     narrative.push(...res.narrative);
     if(res.fledBy){
       const runner=res.fledBy.ref, stayer=(runner===atk?def:atk);
@@ -18252,7 +18373,7 @@ const BATTLE_ARMY_SPELLS={
       const castChance=Math.min(95,SPELL_CAST_BASE+spellLvl*10+magicL8CastBonus(caster)+discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='battle'))); // cast discoveries · 2026-09-11: base 30
       const castRoll=d100();
       telSpell(caster,spellName,school,spellLvl,castChance,castRoll,'battle');
-      narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
+      narr.push(`✨ **Pre-battle Magic: ${caster.name} casts ${spellName}** (${SKILL_LABELS[school]||school} ${spellLvl}) — ${castChance}% [roll ${castRoll}${castRoll<=castChance?' ✓':' ✗'}]`);
       if(castRoll>castChance){narr.push(`  Spell fizzles.`);return;}
       // no school gain from pre-battle magic — see resolveBattle's cast.
       if(spellName==='Fireball'){
@@ -18297,7 +18418,7 @@ const BATTLE_ARMY_SPELLS={
         const _pvpStrikeChance=primalStrikeChance(druLvl, heroChar._druidNegated?null:heroChar, a.type);
         const _pvpHit=Math.random()*100<_pvpStrikeChance;
         if(!_pvpHit&&_isPrimalP)
-          narr.push(`〰 ${a.unitName||a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl>0?`, Druid ${druLvl}`:', no commanding druid'}).`);
+          narr.push(`〰 ${a.unitName||a.type} gather for **${sp.name}**, but the moment passes — the strike never lands (${_pvpStrikeChance}% chance${druLvl>0?`, Druid ${druLvl}`:', no commanding Druid'}).`);
         if(_pvpHit){
           narr.push(`✨ ${a.unitName||a.type} — **${sp.name}**: "${sp.flavour}"`);
           if(sp.target==='all'){
@@ -21216,7 +21337,7 @@ const BATTLE_ARMY_SPELLS={
         const _aDist=alignDistP(kingdomAlign,h.alignment);
         // Both hire paths now say which it is.
         const _hActs=`They may act from ${SEASONS[ph+1]||'next turn'} onwards.`;
-        const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>k+' '+v).join(', ')||'none yet'}. ${_hActs}`;
+        const _hireLine=`${h.name} (${h.race}, ${h.alignment}) agrees to serve ${player.name} for ${h.pay}g/turn (${_aDist===0?'kindred spirits — base rate':_aDist<=1?'close in outlook — base rate':`${_aDist} steps across the alignment spectrum`}). Skills: ${Object.entries(h.skills||{}).filter(([,v])=>v>0).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'none yet'}. ${_hActs}`;
         log('hire',_hireLine,{actor:c.player,targets:[c.player],provinceId:prov.id});
         // also file the same line under the HIRED hero's own Chronicle section, at the hire phase,
         // so their section opens by explaining when and how they entered service.
@@ -21671,7 +21792,7 @@ const BATTLE_ARMY_SPELLS={
               const idx=tiers.indexOf(army.quality);
               if(idx>=0&&idx<4){
                 army.quality=tiers[idx+1];
-                log('hire',`${c.name}'s ${isNaval?'naval drills':'training drills'}: ${(army.unitName||army.type)} (${army.type}) advances to **${army.quality}**!`,{actor:c.player,targets:[c.player]});
+                log('hire',`${c.name}'s ${isNaval?'Naval drills':'training drills'}: ${(army.unitName||army.type)} (${army.type}) advances to **${army.quality}**!`,{actor:c.player,targets:[c.player]});
                 trainedAny=true;
               }
             }
@@ -21679,11 +21800,11 @@ const BATTLE_ARMY_SPELLS={
           if(trainedAny){
             // at least one promotion already logged above
           } else if(trainable.length>0){
-            log('system',`${c.name}'s ${isNaval?'naval drills were thorough but no crews':'training drills were thorough but no units'} achieved a breakthrough this season.`,{actor:c.player,targets:[c.player]});
+            log('system',`${c.name}'s ${isNaval?'Naval drills were thorough but no crews':'training drills were thorough but no units'} achieved a breakthrough this season.`,{actor:c.player,targets:[c.player]});
           } else {
             log('system',isNaval
-              ?`${c.name} drills naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
-              :`${c.name} practises tactical theory alone — leading land armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
+              ?`${c.name} drills Naval theory alone — commanding fleets or sea-beasts would yield greater benefit.`
+              :`${c.name} practises Tactical theory alone — leading land armies would yield greater benefit.`,{actor:c.player,targets:[c.player]});
           }
         }
         break;
@@ -26485,7 +26606,7 @@ const BATTLE_ARMY_SPELLS={
     // (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each reads as
     // a consequence of the action that caused it rather than interrupting it.
     resolveAllPendingSkillGains(); // 2026-09-26b: settle each character's one skill rise for the phase
-    if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
+    if(_deferredSkillLogs.length){ writeDeferredSkillLines(_deferredSkillLogs); _deferredSkillLogs=[]; }
 
     // A Move order in a later phase cancels a standing Defend (AK [3.15]).
     (G.characters||[]).forEach(c=>{
@@ -26974,7 +27095,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
   // Item 12 safety net: flush any incidental skill-rises that were earned after the last in-phase
   // flush (none expected today, but this guarantees no such line is ever silently dropped).
   resolveAllPendingSkillGains();
-  if(_deferredSkillLogs.length){ _deferredSkillLogs.forEach(([msg,meta])=>log('system',msg,meta)); _deferredSkillLogs=[]; }
+  if(_deferredSkillLogs.length){ writeDeferredSkillLines(_deferredSkillLogs); _deferredSkillLogs=[]; }
 
   // ── Fallen-commander backstop ── The per-phase sweep deliberately leaves a leaderless host in
   // place while its province is still contested. The turn is over now, so nothing is left to fight:
@@ -28357,7 +28478,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0310</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.13-0410</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

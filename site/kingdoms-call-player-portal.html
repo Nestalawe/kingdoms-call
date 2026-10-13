@@ -829,7 +829,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.13-0301';
+const KC_DATA_MIN_P='2026.10.13-0401';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -4187,6 +4187,7 @@ function rebuildTargetWrap(charId, ph){
   const saved={action:document.getElementById(`po-action-${charId}-${ph}`)?.value||'',
                target:getOrderTarget(charId,ph), extra:getOrderExtra(charId,ph)};
   try{ wrap.innerHTML=buildTargetField(c, ph, saved); }catch(e){ console.warn('target rebuild failed',e); }
+  if(saved.action==='Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
 }
 function orderChanceNote(c, action, ph){
   const oc=(c&&c.orderChance)||null; if(!oc) return '';
@@ -4219,7 +4220,8 @@ function orderChanceNote(c, action, ph){
       return chanceLine(`The blockade forms ${pct((oc.blockade||{}).chance||50)} of the time — wind and tide decide the rest.`);
     case 'Practice Skill':{
       const o=oc.practice||{}; const by=o.byLevel||[25,20,15,10,5];
-      const sel=document.getElementById(`po-target-${c.id}-${ph}`)?.value||'';
+      const _pick=KC_SKILLS.indexOf(document.getElementById(`po-target-${c.id}-${ph}`)?.value||'');
+      const sel=_pick>=0?KC_SKILLS[_pick]:'';   // only a skill the game knows is named in the note
       const lvl=sel?Math.min(4,((c.skills||{})[sel]||0)):null;
       const base=(lvl==null)?null:by[lvl]+(o.astro||0)+(o.discovery||0)+((o.bySkill&&sel)?(o.bySkill[sel]||0):0); // + skill-scoped practice discoveries
       const scale=`Chance falls as mastery grows: ${by.map((v,i)=>`${v}% at ${i}`).join(', ')}.`;
@@ -4259,6 +4261,48 @@ function effMagicLvl(charObj, school){
 
 // Action spell limit per school level: 1→1, 2→1, 3→2, 4→3, 5→3
 function actionSpellLimit(level){ return level>=4?3:level>=3?2:1; }
+
+// 2026-10-13 (item 2, Toby): the level each magic school may have reached by phase `ph`, assuming
+// every Practice Skill order on it in an earlier phase succeeds (+1 each). Practice trains a skill
+// only up to 5 (6–9 come from experience), so a school already at 5 or more gains nothing; item
+// bonuses are then added as effMagicLvl does. `practising` is the set of schools with such an order.
+function projectedMagicLevels(c, ph){
+  const practice={};
+  for(let prevPh=0;prevPh<ph;prevPh++){
+    const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
+    if(prevAction!=='Practice Skill') continue;
+    const t=getOrderTarget(c.id,prevPh);
+    if(t&&KC_MAGIC_SCHOOLS.includes(t)) practice[t]=(practice[t]||0)+1;
+  }
+  const projected={};
+  KC_MAGIC_SCHOOLS.forEach(school=>{
+    const raw=rawMagicLvl(c,school), n=practice[school]||0;
+    const rawProj=raw>=5?raw:Math.min(5,raw+n);
+    projected[school]=effMagicLvl({...c,skills:{...((c&&c.skills)||{}),[school]:rawProj}},school);
+  });
+  return {practising:new Set(Object.keys(practice)), projected, practice};
+}
+
+// After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
+// LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
+function refreshLaterCastSpells(charId, fromPh){
+  const c=((currentReport&&currentReport.characters)||[]).find(x=>String(x.id)===String(charId));
+  if(!c) return;
+  for(let later=fromPh+1;later<=4;later++){
+    if((document.getElementById(`po-action-${charId}-${later}`)?.value||'')!=='Cast Spell') continue;
+    const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`); if(!wrap) continue;
+    const before=getOrderTarget(charId,later);
+    // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
+    // back afterwards as the field's value, never as markup
+    const known=Object.keys(SPELL_TO_SCHOOL), at=known.indexOf(before);
+    const spell=at>=0?known[at]:'';
+    const savedExtra=getOrderExtra(charId,later);
+    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:spell,extra:''}); }catch(e){ console.warn('cast refresh failed',e); }
+    const ex=document.getElementById(`po-extra-${charId}-${later}`);
+    if(ex&&savedExtra&&getOrderTarget(charId,later)===spell&&(ex.tagName!=='SELECT'||[...ex.options].some(o=>o.value===savedExtra))) ex.value=savedExtra;
+    if(getOrderTarget(charId,later)!==before){ const l=later; setTimeout(()=>{ syncResurrectCard(charId,l); syncCharmCard(charId,l); },0); } // the spell itself changed
+  }
+}
 
 // Combat spell limit per school level: 1→1, 2+→2
 function combatSpellLimit(level){ return level>=2?2:1; }
@@ -5235,7 +5279,7 @@ function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum){
               🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle (not encounters)</span>
             </div>
             <select id="ep-duel-${c.id}" style="font-size:.8rem;width:100%">
-              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'accept')===d.code?' selected':''}>${d.label}</option>`).join('')}
+              ${DUEL_STANCES.map(d=>`<option value="${d.code}"${(savedEP.duelStance||'refuse')===d.code?' selected':''}>${d.label}</option>`).join('')}
             </select>
             <div style="font-size:.68rem;color:#2f281c;margin-top:2px">
               A refused challenge costs the refusing commander's force <strong>20% strength</strong>. So does losing the duel — whether by falling or by breaking off.
@@ -5684,6 +5728,7 @@ function onSpellChange(charId, ph, selectedSpell){
   // the Use Item form reuses this handler for spell items — rebuild under the live action.
   const liveAction=document.getElementById(`po-action-${charId}-${ph}`)?.value||'Cast Spell';
   wrap.innerHTML=buildTargetField(char, ph, {action:liveAction==='Use Item'?'Use Item':'Cast Spell', target:selectedSpell});
+  if(liveAction==='Cast Spell') refreshLaterCastSpells(charId, ph); // a spell from another school frees or spends a later slot
 }
 
 
@@ -5731,6 +5776,7 @@ function onActionChange(charId, ph, charIdx){
   const saved={action};
   wrap.innerHTML=buildTargetField(char, ph, saved);
   refreshOncePerTurnOptions(charId); // 2026-09-24: once-per-turn orders leave later phases' dropdowns
+  refreshLaterCastSpells(charId, ph); // 2026-10-13: a Practice or Cast here changes later casts' limits
   setTimeout(refreshExploreNotes,0); // earlier/later Explore projections depend on every order
   setTimeout(refreshAllMoveModeNotes,0); // …and so does every Move order's land/naval/flying notice
 
@@ -6073,7 +6119,7 @@ function injectResurrectOrders(charId, ph, heroId, casters){
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cdb8e0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#46275f;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6224,7 +6270,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #b8dde0">
       <div style="font-family:'Cinzel',serif;font-size:.68rem;color:#185562;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">\u{1F93A} Duel stance</div>
       <select id="ep-duel-${fakeId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
@@ -6379,7 +6425,7 @@ function injectHiredHeroOrders(charId, ph, charIdx){
         🤺 Duel stance <span style="font-weight:normal;font-family:serif;text-transform:none;letter-spacing:0;font-size:.72rem;color:#3a3224">— single combat at the start of an army battle</span>
       </div>
       <select id="ep-duel-${hiredCharId}" style="font-size:.8rem;width:100%">
-        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='accept'?' selected':''}>${d.label}</option>`).join('')}
+        ${DUEL_STANCES.map(d=>`<option value="${d.code}"${d.code==='refuse'?' selected':''}>${d.label}</option>`).join('')}
       </select>
     </div>
     <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">
@@ -6731,7 +6777,7 @@ async function doSaveOrders(){
       const tacts=(tacHidden.value||'ME').split(',').filter(Boolean);
       if(preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id]={tactics:tacts,notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined};
     }
   });
@@ -6817,7 +6863,7 @@ async function doSubmitOrders(){
       encounterPlans[c.id]={
         tactics:tacts,
         notes:notesEl?.value||'',
-        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${c.id}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${c.id}`)?.value||undefined,
       };
     }
@@ -6838,7 +6884,7 @@ async function doSubmitOrders(){
       if(hPre) hTacts.push(`CS:${hPre}`);
       encounterPlans[cid]={tactics:hTacts,
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept',
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'refuse',
         evilMode:document.getElementById(`ep-evilmode-${cid}`)?.value||undefined};
     }
   });
@@ -6856,7 +6902,7 @@ async function doSubmitOrders(){
     if(rTac){
       encounterPlans[rid]={tactics:(rTac.value||'ME').split(',').filter(Boolean),
         notes:document.getElementById(`ep-notes-${rid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${rid}`)?.value||'refuse'};
     }
   });
   // Charm pre-order cards — same shape as the resurrect collection above; the GM parses the
@@ -6874,7 +6920,7 @@ async function doSubmitOrders(){
     if(cTac){
       encounterPlans[cid]={tactics:(cTac.value||'ME').split(',').filter(Boolean),
         notes:document.getElementById(`ep-notes-${cid}`)?.value||'',
-        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'accept'};
+        duelStance:document.getElementById(`ep-duel-${cid}`)?.value||'refuse'};
     }
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
@@ -8149,15 +8195,11 @@ function buildTargetField(c, ph, saved){
       // Also include schools being practised in an earlier phase this turn. The practice may or may
       // not succeed, but the player should be able to pre-order a cast in case it does. If the
       // skill is still 0 when the phase resolves, the cast will simply fail with a clear message.
-      const practisingSchools=new Set();
-      const MAGIC_SCHOOLS=new Set(KC_MAGIC_SCHOOLS);
-      for(let prevPh=0;prevPh<ph;prevPh++){
-        const prevAction=document.getElementById(`po-action-${c.id}-${prevPh}`)?.value||'';
-        if(prevAction==='Practice Skill'){
-          const prevTarget=getOrderTarget(c.id,prevPh);
-          if(prevTarget&&MAGIC_SCHOOLS.has(prevTarget)) practisingSchools.add(prevTarget);
-        }
-      }
+      // 2026-10-13 (item 2, Toby): each earlier Practice order on a school is assumed to succeed, so
+      // the casting limit quoted (and enforced in the dropdown) is the one the hero may have reached
+      // by this phase. The engine counts the limit from the level at the moment of casting, so a
+      // practice that lands does raise it.
+      const {practising:practisingSchools, projected:_projLvl}=projectedMagicLevels(c,ph);
 
       // Count how many Cast Spell orders from each school already exist in earlier phases
       const schoolCastCount={};
@@ -8186,17 +8228,19 @@ function buildTargetField(c, ph, saved){
         .flatMap(([school,list])=>list.filter(s=>PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s]||rawMagicLvl(c,school)>=SPELL_REQ_LEVEL[s]))
           .map(s=>{
             const currentLvl=effMagicLvl(c,school);
+            const projLvl=_projLvl[school];
             const isPractising=practisingSchools.has(school)&&currentLvl===0;
-            const limit=actionSpellLimit(currentLvl);
+            const limit=actionSpellLimit(projLvl);
             const used=schoolCastCount[school]||0;
-            const atLimit=!isPractising&&used>=limit;
+            const atLimit=used>=limit;
+            const lvlTxt=projLvl>currentLvl?`Lv${currentLvl}→${projLvl} if practice succeeds`:`Lv${currentLvl}`;
             let label;
-            if(isPractising){
-              label=`${s} (${SKILL_LABELS[school]} — practising, may unlock)`;
+            if(isPractising&&!atLimit){
+              label=`${s} (${SKILL_LABELS[school]} — practising, may unlock: Lv${projLvl}, ${used}/${limit} used)`;
             } else if(atLimit){
-              label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — limit reached: ${used}/${limit} this turn)`;
+              label=`${s} (${SKILL_LABELS[school]} ${lvlTxt} — limit reached: ${used}/${limit} this turn)`;
             } else {
-              label=`${s} (${SKILL_LABELS[school]} Lv${currentLvl} — ${used}/${limit} used)`;
+              label=`${s} (${SKILL_LABELS[school]} ${lvlTxt} — ${used}/${limit} used)`;
             }
             return{spell:s,atLimit,label};
           }));
@@ -8212,11 +8256,7 @@ function buildTargetField(c, ph, saved){
       const knownOrPractisingSchools=Object.entries(SPELLS_BY_SCHOOL)
         .filter(([school])=>effMagicLvl(c,school)>=1 || practisingSchools.has(school));
       const allAtLimit=knownOrPractisingSchools.length>0&&knownOrPractisingSchools
-        .every(([school])=>{
-          const lvl=effMagicLvl(c,school);
-          if(lvl===0) return false; // practising but no skill yet — never at limit
-          return (schoolCastCount[school]||0)>=actionSpellLimit(lvl);
-        });
+        .every(([school])=>(schoolCastCount[school]||0)>=actionSpellLimit(_projLvl[school]));
 
       if(!spells) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;
       if(allAtLimit) return`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="All magic school casting limits reached for this turn" disabled>`;
