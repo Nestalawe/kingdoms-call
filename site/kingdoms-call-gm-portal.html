@@ -18229,19 +18229,26 @@ const BATTLE_ARMY_SPELLS={
         demoralise(loser, `their commander was driven from the field`);
         return{atkMorale,defMorale};
       }
-      narrative.push(`\u{1F480} ${loser.name} is slain in the duel!`);
-      demoralise(loser, `their commander fell in single combat`);
       // alive===true, so its "saved victim" guard bailed and a pre-battle duel kill never paid out.
       // It now runs after the death is confirmed, below.) keepArmies: the fallen commander's host
       // does NOT scatter before the battle — it fights on leaderless (demoralised, without the
       // commander's skills). The battle code disperses whatever survives afterwards.
       // Items/grave/death flags are handled here as normal.
-      const _duelDied=handleHeroDeath(realLoser, realWinner, {keepArmies:true});
+      // 2026-10-13 (Toby, item 19): the death is resolved FIRST and its lines go into this battle's
+      // own narrative, in order: "slain" only if the commander really died (then the surgeons'
+      // "too late", to his own realm); if Battlefield Surgery saves him, "at death's door, but not
+      // slain" and the surgery line. Before, "slain" was written regardless and the surgery line
+      // was logged at once, so it came before the whole battle report.
+      const _dOpts={keepArmies:true, lines:[]};
+      const _duelDied=handleHeroDeath(realLoser, realWinner, _dOpts);
+      const _saved=(_duelDied===false&&_dOpts.outcome==='surgery');
+      narrative.push(_saved?`\u{1FA79} ${loser.name} falls in the duel — at death's door, but not slain.`:`\u{1F480} ${loser.name} is slain in the duel!`);
+      _dOpts.lines.forEach(l=>narrative.push(l.priv!=null?{text:l.text,onlyPlayer:l.priv}:l.text));
+      demoralise(loser, `their commander fell in single combat`);
       if(_duelDied===false){
         // saved (Battlefield Surgery) — the REAL record lives; keep the copy in step with it so no
         // half-dead doppelganger fights on. Beaten, so the host is still shaken.
         if(loser!==realLoser){ loser.alive=true; loser.killedThisTurn=false; loser.hp=realLoser.hp; }
-        narrative.push(`\u{1FA79} ${loser.name} is borne from the field alive \u2014 barely.`);
         return{atkMorale,defMorale};
       }
       awardKillXP(realWinner, realLoser, narrative); // the kill is confirmed — experience roll + earned HP
@@ -19574,6 +19581,19 @@ const BATTLE_ARMY_SPELLS={
     return left.length;
   }
 
+  // 2026-10-13 (Toby, item 19): the one way a personal-combat death outside a battle is reported.
+  // It resolves the death FIRST, then writes the line: "slain" only when the hero really died; "at
+  // death's door, but not slain" when Battlefield Surgery saves them, with the surgery line
+  // straight after it; nothing of its own when they vanished or escaped (those write their own
+  // line). Returns what handleHeroDeath returns (false = they live).
+  function reportHeroFall(dead, killer, slainLine, meta, hopts){
+    const o={...(hopts||{}), lines:[]};
+    const res=handleHeroDeath(dead, killer, o);
+    if(o.outcome==='surgery') log('combat',`\u{1FA79} ${dead.name} is struck down — at death's door, but not slain.`,meta);
+    else if(o.outcome==='died'||o.outcome==null) log('combat',slainLine,meta);
+    o.lines.forEach(l=>log(l.type,l.text,l.meta));
+    return res;
+  }
   function handleHeroDeath(deadChar, killerChar, opts){
     if(!deadChar) return;
     // DOPPELGANGER GUARD. Battles are fought on shallow COPIES ({...char}); if any caller hands a
@@ -19594,12 +19614,14 @@ const BATTLE_ARMY_SPELLS={
     // Vanish: no killing blow lands on a man who is not there. Catches every death path — battle,
     // duel, assassination, execution — for the rest of the turn he vanished.
     if(isVanished(deadChar)){
+      if(opts) opts.outcome='vanished';
       if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
       deadChar.alive=true; deadChar.killedThisTurn=false;
       log('combat',`🌫 The blow meant for ${deadChar.name} passes through shadow — they vanished, and cannot be touched this season.`,{actor:(killerChar&&killerChar.player!=null)?killerChar.player:null,targets:(deadChar.player!=null?[deadChar.player]:[]),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
       return false;
     }
     if(_escapesTheEnd(deadChar)){
+      if(opts) opts.outcome='escaped';
       if(deadChar.hp!=null && deadChar.hp<=0) deadChar.hp=Math.max(1,deadChar.maxHp?Math.round(deadChar.maxHp/2):1);
       deadChar.alive=true; deadChar.killedThisTurn=false;
       log('combat',_garrethEscapeLine(deadChar),{actor:(killerChar&&killerChar.player!=null)?killerChar.player:null,targets:[],provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
@@ -19611,16 +19633,24 @@ const BATTLE_ARMY_SPELLS={
     // HERE, on the one real character record, so no copy can be left "dead" while
     // the real one lives: every caller that mirrors a death onto a battle copy checks the return
     // value (false = survived). Never fires for a corpse already dead this turn (no double saves).
+    // 2026-10-13 (Toby, item 19): a caller that writes its own "slain" line passes `opts.lines` (an
+    // array): the surgery lines are handed back there, as {type,text,meta,priv}, instead of being
+    // logged at once, so the caller can say "at death's door, but not slain" instead of "slain" and
+    // put the surgery line straight after it (reportHeroFall; preBattleDuel's battle narrative).
+    // `opts.outcome` tells the caller what happened: 'vanished', 'escaped', 'surgery' or 'died'.
+    const _surgLog=(text,meta,priv)=>{ if(Array.isArray(opts.lines)) opts.lines.push({type:'combat',text,meta,priv}); else log('combat',text,meta); };
     if(!opts.noSave && deadChar.player!=null && deadChar.alive!==false && hasDisc(deadChar.player,'sd36')){
       const _sRoll=d100(); const _bsPct=Math.round(discParam('sd36','pct',0.2)*100);
       if(_sRoll<=_bsPct){
         deadChar.hp=1; deadChar.alive=true; deadChar.killedThisTurn=false;
-        log('combat',`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
+        opts.outcome='surgery';
+        _surgLog(`\u{1FA79} Battlefield Surgery: ${deadChar.name} is dragged from the field at death's door \u2014 the realm's surgeons pull ${deadChar.isKing?'the king':'them'} back with 1 HP. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player,(killerChar&&killerChar.player!=null)?killerChar.player:null].filter(x=>x!=null),provinceId:(deadChar.location!=null?deadChar.location:undefined),public:true});
         return false;
       } else {
-        log('combat',`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)});
+        _surgLog(`\u{1FA79} Battlefield Surgery: the surgeons reach ${deadChar.name} too late. ${fmtRoll(_bsPct,_sRoll)}`,{actor:deadChar.player,charId:deadChar.id,charIds:[deadChar.id,(killerChar&&killerChar.id!=null)?killerChar.id:null].filter(x=>x!=null),phase:(_logCtx.phase!=null?_logCtx.phase:_currentPhase),targets:[deadChar.player],provinceId:(deadChar.location!=null?deadChar.location:undefined)},deadChar.player);
       }
     }
+    opts.outcome='died';
     if(killerChar&&killerChar.player!=null&&deadChar.player!=null&&deadChar.player!==killerChar.player){ const _tm=TM(killerChar); _tm.duelKills=(_tm.duelKills||0)+1; } // MINOR TITLE — The Widowmaker
     // VICTORY (#3): a fallen character loses 25% of accumulated Title merit — killing a rival's
     // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
@@ -19974,8 +20004,8 @@ const BATTLE_ARMY_SPELLS={
       enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:thief.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       thief.hp=Math.max(1,enc.atkHp);
       if(victim.player!==null) victim.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(thief,victim); awardKillXP(victim,thief); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(victim)){ if(victim.hp!=null&&victim.hp<=0) victim.hp=1; log('combat',_garrethEscapeLine(victim),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${victim.name} is slain by the cornered thief!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(victim,thief); awardKillXP(thief,victim); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(thief)){ if(thief.hp!=null&&thief.hp<=0) thief.hp=1; log('combat',_garrethEscapeLine(thief),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(thief,victim,`${thief.name} is cut down — a thief's end.`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(victim,thief); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(victim)){ if(victim.hp!=null&&victim.hp<=0) victim.hp=1; log('combat',_garrethEscapeLine(victim),{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(victim,thief,`${victim.name} is slain by the cornered thief!`,{actor:thief.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(thief,victim); } }
     };
     // Shared: lift a random magic item from a victim (null if none, or if the victim is a master
     // thief).
@@ -20026,8 +20056,8 @@ const BATTLE_ARMY_SPELLS={
       enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:caster.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       if(t.player!==null) t.hp=Math.max(1,enc.atkHp);
       caster.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(t)){ if(t.hp!=null&&t.hp<=0) t.hp=1; log('combat',_garrethEscapeLine(t),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${t.name} is cut down by the enchanter they turned on.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(t,caster); awardKillXP(caster,t); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(caster)){ if(caster.hp!=null&&caster.hp<=0) caster.hp=1; log('combat',_garrethEscapeLine(caster),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${caster.name} is slain — the failed Charm was their last spell.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(caster,t); awardKillXP(t,caster); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(t)){ if(t.hp!=null&&t.hp<=0) t.hp=1; log('combat',_garrethEscapeLine(t),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(t,caster,`${t.name} is cut down by the enchanter they turned on.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(caster,t); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(caster)){ if(caster.hp!=null&&caster.hp<=0) caster.hp=1; log('combat',_garrethEscapeLine(caster),{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(caster,t,`${caster.name} is slain — the failed Charm was their last spell.`,{actor:caster.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(t,caster); } }
     };
 
     switch(action){
@@ -21186,18 +21216,22 @@ const BATTLE_ARMY_SPELLS={
 
         // Hero killed by monster?
         if(encounter.heroKilled){
-          log('combat',`💀 ${c.name} has been slain by the ${f.monster?.name||'creature'}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true});
+          // 2026-10-13 (item 19): the death is resolved first (reportHeroFall), so a hero Battlefield
+          // Surgery saves reads "at death's door, but not slain" and keeps every item; only a hero who
+          // really dies leaves his possessions in the hoard.
           // a character who falls to a lair guardian leaves ALL their magic items among the bones —
           // they become extra treasure for whoever finally slays the guardian. (Mithril Armour is a
           // personal granted relic that re-issues each turn, so it is not left behind.) Clearing
           // c.items before handleHeroDeath stops the possessions passing to the king/heir instead.
           const _lairLeft=(c.items||[]).filter(it=>!(it.effect&&it.effect.stat==='mithrilArmour'));
+          const _lairHeld=(c.items||[]).slice();
+          if(_lairLeft.length>0) c.items=(c.items||[]).filter(it=>it.effect&&it.effect.stat==='mithrilArmour');
+          const _lairDied=reportHeroFall(c,null,`💀 ${c.name} has been slain by the ${f.monster?.name||'creature'}!`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true},{slainBy:`the ${f.monster?.name||'guardian'} of ${prov.name}`}); // the host is told what slew its commander (2026-10-12)
+          if(_lairDied===false){ c.items=_lairHeld; break; } // saved, or escaped: nothing is left among the bones
           if(_lairLeft.length>0){
             f.hoardItems=(f.hoardItems||[]).concat(_lairLeft); // joins the lair's hoard
-            c.items=(c.items||[]).filter(it=>it.effect&&it.effect.stat==='mithrilArmour');
             log('explore',`The ${f.monster?.name||'guardian'} drags ${c.name}'s possessions into its hoard — ${_lairLeft.map(it=>it.name).join(', ')} now lie among the bones, waiting for a stronger hand.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
           }
-          handleHeroDeath(c,null,{slainBy:`the ${f.monster?.name||'guardian'} of ${prov.name}`}); // the host is told what slew its commander (2026-10-12)
           break; // no further order processing for this hero
         }
         const stolenByThief=encounter.fled&&f.monster?._treasureStolen;
@@ -23622,8 +23656,7 @@ const BATTLE_ARMY_SPELLS={
         if(victim.player!=null&&victim.player!==c.player) log('spy',`🗡 An attempt is made on ${victim.name}'s life${victim.isKing?' — the royal guard close ranks':''}.`,{actor:victim.player,charIds:[victim.id].filter(v=>v!=null),targets:[victim.player],provinceId:prov.id});
         if(roll<=chance){
           if(_escapesTheEnd(victim)){ log('combat',_garrethEscapeLine(victim),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); }
-          else { log('combat',`🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-          handleHeroDeath(victim, c); awardKillXP(c, victim); c.merits=(c.merits||0)+2;
+          else { reportHeroFall(victim, c, `🗡 ${c.name}'s blade finds ${victim.name} in the dark — the hero is slain!`,{actor:c.player,targets:[c.player,victim.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(c, victim); c.merits=(c.merits||0)+2;
           TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster — only a blade that lands
           noteEspionage(G, c, prov.id, 'put a blade in one of your heroes'); }
         } else {
@@ -23655,7 +23688,7 @@ const BATTLE_ARMY_SPELLS={
         const dmg=8+Math.floor(Math.abs(aScore-bScore)/6);
         loser.hp=Math.max(0,(loser.hp||20)-dmg);
         log('combat',`⚔ ${c.name} calls ${foe.name} to single combat! ${winner.name} has the better of it — ${loser.name} takes ${dmg} wounds.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        if(loser.hp<=0){ if(_escapesTheEnd(loser)){ if(loser.hp<=0) loser.hp=1; log('combat',_garrethEscapeLine(loser),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { log('combat',`${loser.name} falls in the duel!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); handleHeroDeath(loser, winner); awardKillXP(winner, loser); } }
+        if(loser.hp<=0){ if(_escapesTheEnd(loser)){ if(loser.hp<=0) loser.hp=1; log('combat',_garrethEscapeLine(loser),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { reportHeroFall(loser,winner,`${loser.name} falls in the duel!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(winner, loser); } }
         if(win) c.merits=(c.merits||0)+2;
         trySkillGain(c,'melee',SKILLGAIN_STD);
         break;
@@ -23695,7 +23728,7 @@ const BATTLE_ARMY_SPELLS={
         const killChance=Math.min(40,10+skillLevel(c,'archery')*3)-(foe.isKing?15:0);
         const roll=d100();
         log('combat',`🎯 ${c.name} takes a Sniper's Mark on ${foe.name} — ${dmg} wounds${foe.hp<=0?'':` (${killChance}% to slay, roll ${roll})`}.`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true});
-        if(foe.hp<=0 || roll<=killChance){ if(_escapesTheEnd(foe)){ foe.hp=Math.max(1,foe.hp); log('combat',_garrethEscapeLine(foe),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { foe.hp=0; log('combat',`${foe.name} is felled by the shot!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); handleHeroDeath(foe, c); awardKillXP(c, foe); c.merits=(c.merits||0)+2; } }
+        if(foe.hp<=0 || roll<=killChance){ if(_escapesTheEnd(foe)){ foe.hp=Math.max(1,foe.hp); log('combat',_garrethEscapeLine(foe),{actor:c.player,targets:[c.player].filter(x=>x!=null),provinceId:prov.id,public:true}); } else { foe.hp=0; reportHeroFall(foe,c,`${foe.name} is felled by the shot!`,{actor:c.player,targets:[c.player,foe.player].filter(x=>x!=null),provinceId:prov.id,public:true}); awardKillXP(c, foe); c.merits=(c.merits||0)+2; } }
         trySkillGain(c,'archery',SKILLGAIN_STD);
         break;
       }
@@ -26062,8 +26095,8 @@ const BATTLE_ARMY_SPELLS={
       enc.narrative.forEach(line=>emitNarrLine('combat',line,{actor:c.player,targets:targetsPi,provinceId:prov.id,charIds:_duelChars}));
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${c.name} is cut down in the ambush they laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(c,quarry); awardKillXP(quarry,c); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${quarry.name} is struck down in the ambush!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(quarry,c); awardKillXP(c,quarry); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(c,quarry,`${c.name} is cut down in the ambush they laid!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(quarry,c); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(quarry,c,`${quarry.name} is struck down in the ambush!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(c,quarry); } }
       trySkillGain(c,'spy',SKILLGAIN_STD);                   // a sprung ambush hones the scout's craft
       c._encounteredThisPhase=quarry.id; quarry._encounteredThisPhase=c.id;
       c._defendReactedPhase=ph;
@@ -26361,8 +26394,8 @@ const BATTLE_ARMY_SPELLS={
       // checks catch every other felling.
       c.hp=Math.max(1,enc.atkHp);
       if(quarry.player!==null) quarry.hp=Math.max(1,enc.defHp);
-      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${c.name} has been slain at the end of the chase!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(c,quarry); awardKillXP(quarry,c); } }
-      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { log('combat',`${quarry.name} is run down and slain!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); handleHeroDeath(quarry,c); awardKillXP(c,quarry); } }
+      if(enc.atkKilled||enc.atkHp<=0){ if(_escapesTheEnd(c)){ if(c.hp!=null&&c.hp<=0) c.hp=1; log('combat',_garrethEscapeLine(c),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(c,quarry,`${c.name} has been slain at the end of the chase!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(quarry,c); } }
+      if(enc.defKilled||enc.defHp<=0){ if(_escapesTheEnd(quarry)){ if(quarry.hp!=null&&quarry.hp<=0) quarry.hp=1; log('combat',_garrethEscapeLine(quarry),{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); } else { reportHeroFall(quarry,c,`${quarry.name} is run down and slain!`,{actor:c.player,targets:targetsPi,provinceId:prov.id,public:true,charIds:_duelChars}); awardKillXP(c,quarry); } }
     }
     // Mark the pair so a mutual Encounter (each hunting the other) can't resolve a second time this
     // phase.
