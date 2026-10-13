@@ -47,6 +47,15 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   act(3,'Practice Skill'); target(3,'psychic'); act(4,'Cast Spell');
   ok(/Lv2→4 if practice succeeds — 2\/3 used/.test((opt(4,psy)||{}).textContent||''),`two practices project Lv4 and three spells (${(opt(4,psy)||{}).textContent})`);
 
+  // Winter's spell and the province it is aimed at survive a rebuild caused by an earlier order.
+  target(4,ele,'spell');
+  const ex4=()=>doc.getElementById('po-extra-h1-4');
+  const hasAsh=!!(ex4()&&ex4().options&&[...ex4().options].some(o=>o.value==='11'));
+  ok(hasAsh,'Earthquake in Winter offers Ashford as its target');
+  if(hasAsh) ex4().value='11';
+  act(3,'Rest'); act(3,'Practice Skill'); target(3,'psychic');
+  ok(doc.getElementById('po-target-h1-4').value===ele&&ex4()&&ex4().value==='11',`after an earlier order changes, Winter still casts Earthquake at Ashford (${doc.getElementById('po-target-h1-4').value} → ${ex4()&&ex4().value})`);
+
   // Spring's practice turned to Rest: Autumn's second Psychic spell closes again at once.
   act(0,'Rest');
   const o2b=opt(2,psy);

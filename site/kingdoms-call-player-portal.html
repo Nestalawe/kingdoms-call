@@ -4291,10 +4291,13 @@ function refreshLaterCastSpells(charId, fromPh){
     if((document.getElementById(`po-action-${charId}-${later}`)?.value||'')!=='Cast Spell') continue;
     const wrap=document.getElementById(`po-target-wrap-${charId}-${later}`); if(!wrap) continue;
     const before=getOrderTarget(charId,later);
-    // only a spell the table knows, and a plain id, go back into the rebuilt field
+    // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
+    // back afterwards as the field's value, never as markup
     const spell=Object.keys(SPELL_TO_SCHOOL).find(sp=>sp===before)||'';
-    const extra=String(getOrderExtra(charId,later)||'').replace(/[^\w-]/g,'');
-    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:spell,extra}); }catch(e){ console.warn('cast refresh failed',e); }
+    const savedExtra=getOrderExtra(charId,later);
+    try{ wrap.innerHTML=buildTargetField(c,later,{action:'Cast Spell',target:spell,extra:''}); }catch(e){ console.warn('cast refresh failed',e); }
+    const ex=document.getElementById(`po-extra-${charId}-${later}`);
+    if(ex&&savedExtra&&getOrderTarget(charId,later)===spell&&(ex.tagName!=='SELECT'||[...ex.options].some(o=>o.value===savedExtra))) ex.value=savedExtra;
     if(getOrderTarget(charId,later)!==before){ const l=later; setTimeout(()=>{ syncResurrectCard(charId,l); syncCharmCard(charId,l); },0); } // the spell itself changed
   }
 }
