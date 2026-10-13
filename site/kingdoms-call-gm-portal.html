@@ -1098,8 +1098,10 @@ function battleDeploy(rowsA, rowsD, o){
 }
 // The report's two lines: who scouted and what front it chose; how many times each line shifted.
 function battleScoutLine(d, atkName, defName, explAtk, explDef){
-  const atk=d.scout==='atk', s=atk?atkName:defName, mine=atk?explAtk:explDef, theirs=atk?explDef:explAtk;
-  const why=mine>theirs?`knows the ground better (explored ${Math.round(mine)}% against ${Math.round(theirs)}%)`:`knows the ground as well as the enemy (${Math.round(mine)}% explored by both), and the defender's claim stands`;
+  const atk=d.scout==='atk', s=atk?atkName:defName, o=atk?defName:atkName, mine=atk?explAtk:explDef, theirs=atk?explDef:explAtk;
+  // 2026-10-13 (Toby, item 17): say WHICH side has explored the province more, never the figures —
+  // a battle report must not tell a realm its rival's exploration of the province.
+  const why=mine>theirs?`knows the ground better (${s}'s side has explored more of it than ${o}'s)`:`knows the ground as well as the enemy (neither side has explored more of it), and the defender's claim stands`;
   const w=d.W===d.roll?`takes the front of ${d.W} the dice allow`:(d.W>d.roll?`widens the front from ${d.roll} to ${d.W}`:`narrows the front from ${d.roll} to ${d.W}`);
   return `📊 Scouting — ${s} ${why}: ${s} ${w} and lines up second${d.lineup?` (${d.lineup} ${d.lineup===1?'adjustment':'adjustments'})`:''}.`;
 }
