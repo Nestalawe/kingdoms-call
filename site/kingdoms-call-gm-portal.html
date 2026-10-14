@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.15-1117';
+const KC_DATA_MIN='2026.10.15-1151';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1147'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1151'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -21777,7 +21777,8 @@ const BATTLE_ARMY_SPELLS={
         if(_cList.length>=_cLimit){
           log('system',`${c.name}: your White faith can sustain only ${_cLimit} consecrated province${_cLimit!==1?'s':''} at once (${_cList.map(id=>G.world.provinces[id]?.name).filter(Boolean).join(', ')||'—'}). One must be lost or captured before you can hallow ${prov.name}. (Raise your White skill to consecrate more.)`,{actor:c.player,targets:[c.player]});break;}
         _cList.push(prov.id);
-        TM(c).holyCasts+=1; // TITLE MERIT: Hierophant
+        // 2026-10-15 (Toby, D8): no Hierophant merit — only a Divine king can consecrate, so it was a
+        // creed-only route to a title. Bless Province, Holy Symbol and Resurrect still count.
         log('explore',`✨ ${c.name} consecrates ${prov.name}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${_cList.length}/${_cLimit} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,env:true});
         break;
       }
@@ -28801,7 +28802,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1147</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1151</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

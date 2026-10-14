@@ -146,6 +146,7 @@ const SUITE=[
   ['spiritwrack-five',    'tests/spiritwrack-five.test.js'], // batch 2026-10-15
   ['mastery-hints-words', 'tests/mastery-hints-words.test.js'], // batch 2026-10-15
   ['guard-cast-chance',   'tests/guard-cast-chance.test.js'], // batch 2026-10-15
+  ['hierophant-no-consecrate','tests/hierophant-no-consecrate.test.js'], // batch 2026-10-15
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],

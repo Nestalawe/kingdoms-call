@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.15-1117
+// Data file v2026.10.15-1151
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.15-1117';
+const KC_DATA_STAMP='2026.10.15-1151';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1227,7 +1227,7 @@ const TITLE_DEFS=[
   {key:'monster', name:'The Monster-Bane',  prize:10, req:'Slay the greatest total HP of lair guardians (a pacified guardian counts half).', perk:'Each turn you are named the foremost monster-slayer of every rival realm, with their province and tally.'},
   {key:'lore',    name:'The Loremaster',    prize:10, req:'Hold the highest Sage skill, plus one point per Sage discovery made.', perk:'Each turn you are shown every discovery each rival realm holds \u2014 and copy one you lack, for free.'},
   {key:'arch',    name:'The Archmage',      prize:10, req:'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.', perk:'Each turn you are told the strongest mage of each magic school outside your own realm.'},
-  {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest White skill, plus Bless / Consecrate / Resurrection casts.', perk:'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.'},
+  {key:'hiero',   name:'The Hierophant',    prize:10, req:'Hold the highest White skill, plus Bless Province, Holy Symbol and Resurrect casts.', perk:'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.'},
   {key:'necro',   name:'The Deathpriest',   prize:10, req:'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).', perk:'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead \u2014 and files each one under Graveyards Known in your report.'},
   // ── 2026-09-17: FOUR NEW TITLES ────
   // Espionage, cartography and the two beast-leading traditions had no prize of their own; the Spy
