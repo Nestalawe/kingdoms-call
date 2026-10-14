@@ -38,6 +38,12 @@ CREATE POLICY "gm tidy game_messages" ON "public"."game_messages"
    FROM public.games g
   WHERE ((g.id = CASE WHEN pg_input_is_valid(game_messages.game_id, 'uuid'::text) THEN (game_messages.game_id)::uuid ELSE NULL::uuid END) AND (g.gm_user_id = auth.uid())))));
 
+-- The Overlord deletes any dispatch, as Master GM of every game (P0-32e, D-13).
+CREATE POLICY "the Overlord tidies game_messages" ON "public"."game_messages"
+  FOR DELETE
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin));
+
 -- Who reads a dispatch: the realms in it (any realm, for a public one); the game's GM the public channel and any
 -- dispatch reported to them (P0-24, D-01, D-13g); the Overlord every dispatch (D-13 follow-up 1). The Dispatches
 -- note and both rulebooks say so.

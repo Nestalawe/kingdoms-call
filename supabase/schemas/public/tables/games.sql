@@ -59,6 +59,34 @@ CREATE POLICY "only Game Masters create games" ON "public"."games"
   TO "authenticated"
   WITH CHECK (((gm_user_id = ( SELECT auth.uid() AS uid)) AND ( SELECT public.is_game_master() AS is_game_master) AND (NOT ( SELECT public.is_site_admin() AS is_site_admin))));
 
+-- The Overlord is Master GM of every game (P0-32e, D-13): reads, saves and deletes any game. Creates none (the rule
+-- above).
+CREATE POLICY "the Overlord reads every game" ON "public"."games"
+  FOR SELECT
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin));
+
+CREATE POLICY "the Overlord saves any game" ON "public"."games"
+  FOR UPDATE
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin))
+  WITH CHECK (( SELECT public.is_site_admin() AS is_site_admin));
+
+-- A save never changes who runs the game (P0-32e): a game is handed over only through reassign_game, which checks the
+-- new GM. game_gm reads the game as it was before the save. A GM's own rule already kept them as its GM; this stops
+-- the Overlord. Restrictive: it narrows every other rule that would allow a save.
+CREATE POLICY "a save keeps the game's GM" ON "public"."games"
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO "authenticated"
+  USING (true)
+  WITH CHECK ((NOT (gm_user_id IS DISTINCT FROM public.game_gm(id))));
+
+CREATE POLICY "the Overlord deletes any game" ON "public"."games"
+  FOR DELETE
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin));
+
 -- Deleting a game removes its Dispatches read markers (P0-23): game_message_reads has no foreign key, and the GM
 -- can't read them.
 CREATE TRIGGER "games_delete_message_reads" AFTER DELETE ON "public"."games"

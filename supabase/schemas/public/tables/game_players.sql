@@ -63,6 +63,29 @@ CREATE POLICY "gp6" ON "public"."game_players"
    FROM public.games
   WHERE (games.gm_user_id = auth.uid()))));
 
+-- The Overlord is Master GM of every game (P0-32e, D-13): reads, changes and removes any realm, and adds bot realms
+-- (no account) when starting a game, as its GM does.
+CREATE POLICY "the Overlord reads every realm" ON "public"."game_players"
+  FOR SELECT
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin));
+
+CREATE POLICY "the Overlord adds bot realms" ON "public"."game_players"
+  FOR INSERT
+  TO "authenticated"
+  WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) AND (user_id IS NULL)));
+
+CREATE POLICY "the Overlord changes any realm" ON "public"."game_players"
+  FOR UPDATE
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin))
+  WITH CHECK (( SELECT public.is_site_admin() AS is_site_admin));
+
+CREATE POLICY "the Overlord removes any realm" ON "public"."game_players"
+  FOR DELETE
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin));
+
 -- The Overlord never holds a realm (P0-32d, D-13): no slot is added or changed to be theirs. Rows for other
 -- accounts and bot rows (no account) are untouched. Restrictive: it narrows every other rule.
 CREATE POLICY "the Overlord holds no realm (insert)" ON "public"."game_players"
