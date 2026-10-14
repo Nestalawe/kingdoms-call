@@ -41,7 +41,8 @@ let ROWS={}; const WRITES=[];
 
   // A guardian with no cap of its own, struck by a hero.
   const MON=W.eval('MONSTERS_P');
-  const plain=MON.find(m=>m.power==='Moderate'&&!(m.passive&&m.passive.fx&&(m.passive.fx.ward||'').match(/cap|DR|spellPct|absorb|parry|dodge/))&&!(m.passive&&m.passive.fx&&(m.passive.fx.cap||m.passive.fx.meleeDR)));
+  const _perks=m=>Array.isArray(m.passives)?m.passives:(m.passive?[m.passive]:[]); // batch item 7: one perk per grade
+  const plain=MON.find(m=>m.power==='Moderate'&&!_perks(m).some(p=>p.fx&&(((p.fx.ward||'').match(/cap|DR|spellPct|absorb|parry|dodge|lowHp/))||p.fx.cap||p.fx.meleeDR)));
   ok(!!plain,'found a Moderate guardian with no ward of its own');
   const g=H.pcMonsterCombatant({...plain,_hpFull:plain.hp}); g.hp=g.maxHp=24;
   ok(hit(g,40,ch.name)===12,`a hero's blow takes at most half a guardian's health (${plain.name}: 12 of 24)`);

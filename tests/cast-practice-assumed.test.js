@@ -24,8 +24,9 @@ const ROLL="            const _prRoll=d100();\n";
     orders:(S,h)=>({[h.id]:plan(order('practice','white'),order('cast_spell','Bless Province',h.location),order('practice','white'),order('cast_spell','Bless Province',h.location),order('rest'))})});
   const t=r.text(hero.id);
   ok(/lacks the required White Magic skill/.test(t),'the Summer cast is refused: the Spring practice failed');
-  const H2=r.S2.characters.find(c=>c.id===hero.id);
-  ok(H2&&H2.skills.white===1,`the Autumn practice raises White to 1 (now ${H2&&H2.skills.white})`);
+  // Read from the practice line itself: since 2026-10-14 (batch item 11) the Winter cast, if it fizzles,
+  // is a small chance at White too, so the level at the end of the turn depends on that roll.
+  ok(/practises White Magic and improves to level 1!/.test(t),'the Autumn practice raises White to 1');
   ok(!/casting limit/.test(t),`the Winter cast is not blocked by a casting limit (${(t.match(/[^\n]*casting limit[^\n]*/)||[''])[0]})`);
   ok(/casts Bless Province \(White Magic 1\)/.test(t),'the Winter cast is worked (it is rolled at White Magic 1)');
   if(process.env.KC_DEBUG) console.log(t);

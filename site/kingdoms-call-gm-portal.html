@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.14-1000';
+const KC_DATA_MIN='2026.10.14-1600';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.14-1000'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.14-1600'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -4382,7 +4382,10 @@ function migrateMaxHpV2(gs){
 }
 // guardian HP rescaled. Uncleared lairs in older saves adopt the current table stats for their
 // creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=18; // 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+// A guardian's perks: `passives` (2026-10-14, batch item 7: one per grade, Weak 1 … Legendary 4) — or
+// the single `passive` an older save may still hold until migrateLairGuardiansV2 re-reads it.
+function guardianPassives(m){ if(!m) return []; if(Array.isArray(m.passives)) return m.passives.filter(p=>p&&p.fx); return (m.passive&&m.passive.fx)?[m.passive]:[]; }
+const GUARDIAN_TABLE_VER=20; // 20 (2026-10-14, batch item 7): every guardian has one perk per grade (`passives`: Weak 1, Moderate 2, Powerful 3, Legendary 4), each scaled to its grade, many of them wards against a school of magic. · 19 (2026-10-14, batch item 4): every guardian special's castChance ×1.5, rounded, capped at 95 (was 35–70%, now 53–95%). · 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -4392,7 +4395,8 @@ function migrateLairGuardiansV2(gs){
     const t=byName[f.monster.name]; if(!t) return;
     f.monster.hp=t.hp; f.monster.melee=t.melee; f.monster.archery=t.archery; delete f.monster._hpFull;
     if(t.spells) f.monster.spells=JSON.parse(JSON.stringify(t.spells)); else delete f.monster.spells; // v5: specials carry dmgW weights now
-    if(t.passive) f.monster.passive=JSON.parse(JSON.stringify(t.passive)); else delete f.monster.passive; // v6: passives
+    delete f.monster.passive; // v20 (batch item 7): one perk per grade, in `passives`
+    if(t.passives) f.monster.passives=JSON.parse(JSON.stringify(t.passives)); else delete f.monster.passives;
     if(t.weak) f.monster.weak=JSON.parse(JSON.stringify(t.weak)); else delete f.monster.weak; // v10: exploitable weaknesses
   }));
   gs._guardiansV2=true; gs._guardiansVer=GUARDIAN_TABLE_VER;
@@ -4543,6 +4547,10 @@ function pcArmourMerge(a, e, name){
     case 'spellBlock': a.spellBlock=Math.max(a.spellBlock||0,e.pct||0); break;
     case 'roundWard': a.roundWard=(a.roundWard||0)+(e.amt||0); break;
     case 'stunImmune': a.stunImmune=true; break;
+    // guardian perks (2026-10-14, batch item 7): graded wards
+    case 'stunWard': a.stunWard=Math.max(a.stunWard||0,e.pct||0); break;     // % of stuns turned as they land (100: never stunned)
+    case 'dotWard': a.dotWard=Math.max(a.dotWard||0,e.pct||0); break;       // % off every tick of lingering harm (100: immune)
+    case 'schoolWard': if(e.school){ a.schoolWard={...(a.schoolWard||{})}; a.schoolWard[e.school]=Math.max(a.schoolWard[e.school]||0,e.pct||0); } break; // −N to that school's cast chance
     default: return a;
   }
   if(name&&!a.names.includes(name)) a.names.push(name);
@@ -14521,7 +14529,7 @@ async function runTurn(opts){
       ? Math.max(0.05, 0.10 - 0.00625*lvl)  // frequent actions: 10% @ L0 → 5% @ L8
       : Math.max(0.10, 0.20 - 0.0125*lvl);  // standard experience: 20% @ L0 → 10% @ L8
     // a Human character of a Human realm learns 50% faster — every skill, and every chance-based
-    // path (practice, experience, moves…) flows through here, so all are covered.
+    // experience path (experience, moves…) flows through here; Practice applies the same ×1.5 itself.
     const _humanLearn=((real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1)
       *(1+discSum(real.player,'skillGain','pct',e=>!e.skills||e.skills.includes(skill))); // skillGain discoveries (all skills, or a listed few)
     // diminishing returns — every time this skill has ALREADY risen this turn, the next chance to
@@ -14544,6 +14552,15 @@ async function runTurn(opts){
   // Draw ONE of the character's pending skill-rise candidates for the phase at random and apply it.
   // Rise lines go to the deferred (end-of-phase) log, private to the owner, in that character's
   // Chronicle section. The losing candidates are discarded without a word.
+  // ── NAVAL FROM A VOYAGE (2026-10-14, batch item 9, Toby) ── a hero learns Naval at sea only when
+  // leading ships or sea beasts of their own; a passenger (carried in another's hulls, or riding out
+  // by sea with no fleet) learns nothing from the voyage. Every voyage path rolls through here — a sea
+  // move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea. (From 2026-09-21 until
+  // now a passenger rolled at the frequent-action rate.)
+  function rollNavalVoyage(c, base){
+    if(!c||!(c.armies||[]).some(a=>a&&!a._died&&SEA_TYPES.has(a.type))) return;
+    trySkillGain(c,'naval',base);
+  }
   function resolvePendingSkillGain(real){
     const P=real&&real._sgPending; if(!P) return;
     real._sgPending=null; if(P.done) return; P.done=true;
@@ -16341,6 +16358,9 @@ const BATTLE_ARMY_SPELLS={
     clearPhantomCopies(c, !won, realCharOf(c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
+    // 2026-10-14 (batch item 11, Toby): a general who LOSES a battle but lives to tell of it learns
+    // too — Tactical (Naval at sea) at the small frequent-action rate. A general slain in it learns nothing.
+    if(!won) trySkillGain(c,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative);
     if(_rollNavalGain) trySkillGain(c,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative,won?1:0.5); // Druid: fought beside or against primal armies (loser at half chance)
     // 2026-09-26 (Toby): the NEUTRAL commander takes the mirror of those rolls — a chieftain who
@@ -16350,6 +16370,7 @@ const BATTLE_ARMY_SPELLS={
     if(neutralGuardHero&&neutralGuardHero.alive!==false){
       if(!won&&prov.terrain!=='sea') trySkillGain(neutralGuardHero,'tactical',SKILLGAIN_STD,narrative);
       if(!won&&prov.terrain==='sea') trySkillGain(neutralGuardHero,'naval',SKILLGAIN_STD,narrative);
+      if(won) trySkillGain(neutralGuardHero,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative); // a beaten chieftain who lives (batch item 11)
       if(_rollDruidGain) trySkillGain(neutralGuardHero,'druid',SKILLGAIN_STD,narrative,!won?1:0.5);
     }
     // a one-line result that onlookers (a char present but not fighting) may see instead of the
@@ -16641,9 +16662,12 @@ const BATTLE_ARMY_SPELLS={
     if(fx.dmgBonus>0) cbt.dmgBonus=(cbt.dmgBonus||0)+fx.dmgBonus;
   }
   function pcApplyMonsterPassive(cbt, m){
-    const p=m&&m.passive; if(!p||!p.fx) return;
-    cbt.passiveName=p.name; cbt.passiveDesc=p.desc||'';
-    pcApplyFx(cbt,p.fx,p.name);
+    // 2026-10-14 (batch item 7): every perk of the guardian, not just one. `passiveName` stays the
+    // first (its signature perk); `_perkName` names the perk behind each effect for the narrative.
+    const ps=guardianPassives(m); if(!ps.length) return;
+    cbt.perks=ps.map(p=>({name:p.name,desc:p.desc||''})); cbt._perkName={};
+    cbt.passiveName=ps[0].name; cbt.passiveDesc=ps[0].desc||'';
+    ps.forEach(p=>{ const k=p.fx.ward||Object.keys(p.fx)[0]; if(k&&!cbt._perkName[k]) cbt._perkName[k]=p.name; pcApplyFx(cbt,p.fx,p.name); });
   }
   // Items a CHARACTER wears that carry a personal-combat rider (`effect.pc`) — one copy of each
   // name counts.
@@ -16678,7 +16702,9 @@ const BATTLE_ARMY_SPELLS={
     // pcArmourMerge can reconcile the two; the merge keeps the looser of the two caps, which is
     // correct here because the band figure is a floor on toughness, not a ceiling on it.
     { const _bandCap=GUARDIAN_BODY_CAP_PCT[m.power]||0;
-      if(_bandCap>0) cbt.arm=pcArmourMerge(cbt.arm,{ward:'cap',pct:_bandCap},'its sheer bulk'); }
+      const _ownCap=(cbt.arm&&cbt.arm.cap)||0;
+      if(_bandCap>0) cbt.arm=pcArmourMerge(cbt.arm,{ward:'cap',pct:_bandCap},'its sheer bulk');
+      if(_ownCap>0&&_ownCap<_bandCap) cbt.arm.cap=_ownCap; } // a perk's tighter cap (Elder Titan, Kraken: 15%) is never loosened by the grade's
     return cbt;
   }
 
@@ -16763,8 +16789,39 @@ const BATTLE_ARMY_SPELLS={
   // a guardian's ward comes from its PASSIVE, not worn armour — name it so ("the Stone Troll's
   // Troll Regeneration knits flesh…" rather than "…armour knits flesh…"). Characters keep the
   // armour/shield wording.
-  function pcWardWord(t, word){ return (t&&t.kind==='monster'&&t.passiveName)?`${t.name}'s ${t.passiveName}`:`${t.name}'s ${word}`; }
+  // `key` names the effect (regen, meleeDR, …) so a guardian with several perks names the right one.
+  function pcWardWord(t, word, key){
+    if(t&&t.kind==='monster'){
+      const nm=(key&&t._perkName&&t._perkName[key])||((t.perks||[]).length<=1?t.passiveName:null);
+      if(nm) return `${t.name}'s ${nm}`;
+      return `${t.name}'s ${word==='armour'?'hide':word}`;
+    }
+    return `${t.name}'s ${word}`;
+  }
+  function pcPerkWord(t, key, dflt){ return (t&&t._perkName&&t._perkName[key])||(t&&t.passiveName)||dflt; }
   function pcWardIcon(t){ return (t&&t.kind==='monster')?'🜏':'🛡'; }
+  // ── STUNS LAND THROUGH ONE DOOR (2026-10-14, batch item 3) ────
+  // "Cannot be stunned" used to be honoured only at the start of the NEXT round, so a stun cast by a
+  // fighter holding the initiative still cost the "unstunnable" one that round's action, and a stun
+  // riding on a blow (promoted after the round-start check) cost one more. Every stun now arrives
+  // through pcLandStun, which asks the target's ward first. pcStunWard is the chance (0–100) that a
+  // stun is shrugged off as it lands; 100 means it never takes hold.
+  function pcStunWard(t){ const a=t&&t.arm; if(!a) return 0; return a.stunImmune?100:Math.max(0,Math.min(100,a.stunWard||0)); }
+  // pcStunTurned rolls the ward once and says so when it turns the stun.
+  function pcStunTurned(target, narrative, what){
+    const w=pcStunWard(target);
+    if(!(w>=100||(w>0&&d100()<=w))) return false;
+    const _why=target.kind==='monster'?pcPerkWord(target,'stunWard','its nature'):((target.arm&&target.arm.names&&target.arm.names.join(', '))||'their armour');
+    if(narrative) narrative.push(`  ${pcWardIcon(target)} ${target.name} cannot be held (${_why}${w<100?`, ${w}%`:''}) — ${what||'the daze'} finds no hold.`);
+    return true;
+  }
+  // Returns true if the stun takes hold (and adds it), false if the ward turns it.
+  function pcLandStun(target, n, narrative, what){
+    if(!target||!target.status||!(n>0)) return false;
+    if(pcStunTurned(target,narrative,what)) return false;
+    target.status.stun=(target.status.stun||0)+n;
+    return true;
+  }
   // ── COURAGE ────
   // A terror ability ("hero must pass courage test or flee") is now a contest, not a coin flip.
   // NERVE comes from three places a player can actually build:
@@ -16916,7 +16973,7 @@ const BATTLE_ARMY_SPELLS={
       if(_chan==='spell'&&_arm.spellPct) d=Math.max(1,Math.round(d*(1-_arm.spellPct/100)));
       if(_arm.lowHp&&target.hp<(target.maxHp||20)*0.5) d=Math.max(1,Math.round(d*(1-_arm.lowHp/100)));
       if(_arm.openGuardHits&&(target._openGuardUsed||0)<_arm.openGuardHits){ target._openGuardUsed=(target._openGuardUsed||0)+1; d=Math.max(1,Math.round(d*(1-(_arm.openGuardPct||50)/100))); }
-      if(d<_b3) narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} turns aside ${_b3-d} of the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')}.${target.kind==='monster'?'':` (${_arm.names.join(', ')})`}`);
+      if(d<_b3) narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour',_chan==='melee'?'meleeDR':_chan==='archery'?'arrowDR':'spellPct')} turns aside ${_b3-d} of the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')}.${target.kind==='monster'?'':` (${_arm.names.join(', ')})`}`);
     }
     // ── DAMAGE FLOOR ── every reduction above is now collectively limited: a landed attack keeps
     // at least HALF of what it came in at. Outright negations (mirror image, first-hit cuirass,
@@ -16931,7 +16988,7 @@ const BATTLE_ARMY_SPELLS={
     }
     // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
     // rather than a reduction, so the floor is never allowed to lift a blow back over it.
-    if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} will not let any single hit bite deeper than ${_capAt}.`); } }
+    if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour','cap')} will not let any single hit bite deeper than ${_capAt}.`); } }
     // ── DAMAGE CEILING ────
     // 2026-10-08 (Toby item 4a): no single blow, arrow, special or spell in personal combat may take
     // more than HALF of the target's maximum HP, whoever strikes whom (PC_HIT_CAP_FRAC).
@@ -16954,7 +17011,7 @@ const BATTLE_ARMY_SPELLS={
       target._armSecondWindUsed=true;
       const _back=Math.max(1,Math.round((target.maxHp||20)*_arm.secondWind/100));
       target.hp=Math.min(target.maxHp||20,target.hp+_back);
-      narrative.push(`  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind==='monster'?(target.passiveName||'its nature'):"their armour's blessing"} restores ${_back} HP. (HP ${dispFloor(target.hp)})`);
+      narrative.push(`  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind==='monster'?pcPerkWord(target,'secondWind','its nature'):"their armour's blessing"} restores ${_back} HP. (HP ${dispFloor(target.hp)})`);
     }
     return d;
   }
@@ -16964,13 +17021,13 @@ const BATTLE_ARMY_SPELLS={
     cbt._roundNo=(cbt._roundNo||0)+1;
     if(cbt.arm){
       if(cbt.arm.roundWard>0) cbt._roundWardLeft=cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
-      if(cbt.arm.stunImmune&&cbt.status.stun>0){ cbt.status.stun=0; narrative.push(`  ${pcWardIcon(cbt)} ${cbt.kind==='monster'?`${cbt.name} cannot be held (${cbt.passiveName||'its nature'})`:`${cbt.name}'s shield arm never wavers`} — the daze is ignored.`); }
-      if(cbt.arm.dotImmune&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} sloughs off every burn, poison and bleeding.`); }
+      if(pcStunWard(cbt)>=100&&cbt.status.stun>0){ cbt.status.stun=0; narrative.push(`  ${pcWardIcon(cbt)} ${cbt.kind==='monster'?`${cbt.name} cannot be held (${pcPerkWord(cbt,'stunWard','its nature')})`:`${cbt.name}'s shield arm never wavers`} — the daze is ignored.`); }
+      if((cbt.arm.dotImmune||(cbt.arm.dotWard||0)>=100)&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour','dotWard')} sloughs off every burn, poison and bleeding.`); }
       // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
       // regeneration is untouched and returns a multiplier of 1.
       if(cbt.arm.regen>0&&cbt.hp>0&&cbt.hp<(cbt.maxHp||20)){
         const _sm=pcSustainMult(cbt), _rg=Math.round(cbt.arm.regen*_sm);
-        if(_rg>0){ const h=Math.min(_rg,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} knits flesh for ${h}${_sm<1?' — the flesh is slower to close now':''}. (HP ${dispFloor(cbt.hp)})`); }
+        if(_rg>0){ const h=Math.min(_rg,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour','regen')} knits flesh for ${h}${_sm<1?' — the flesh is slower to close now':''}. (HP ${dispFloor(cbt.hp)})`); }
         else if(cbt.kind==='monster'&&!cbt._sustainSpent){ cbt._sustainSpent=true; narrative.push(`  🜏 ${cbt.name} has nothing left to knit with — its wounds stay open.`); }
       }
       if(cbt.arm.resist){
@@ -16979,8 +17036,10 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     // Damage-over-time
+    // a guardian's lingering-harm ward (dotWard, batch item 7) takes its share off every tick
+    const _dw=Math.min(100,(cbt.arm&&cbt.arm.dotWard)||0);
     (cbt.status.dot||[]).forEach(d=>{
-      if(d.rounds>0){ cbt.hp-=d.dmg; d.rounds--; narrative.push(`  ${d.label||'Lingering harm'} afflicts ${cbt.name} for ${d.dmg} damage. (HP ${Math.max(0,Math.round(cbt.hp))})`); }
+      if(d.rounds>0){ const _t=_dw>0?Math.round(d.dmg*(1-_dw/100)):d.dmg; cbt.hp-=_t; d.rounds--; narrative.push(`  ${d.label||'Lingering harm'} afflicts ${cbt.name} for ${_t} damage${_dw>0?` (${pcWardWord(cbt,'hide','dotWard')} turns ${_dw}% of it)`:''}. (HP ${Math.max(0,Math.round(cbt.hp))})`); }
     });
     cbt.status.dot=(cbt.status.dot||[]).filter(d=>d.rounds>0);
     // Heal-over-time (Potion of Regeneration and kin)
@@ -17017,10 +17076,11 @@ const BATTLE_ARMY_SPELLS={
   // Storm and Invisibility were identical at school level 1 and level 5, so a dabbler got a
   // master's spell. Second, White had no way to convert an action into an advantage at all. Each
   // spell keeps what it does; the numbers below are what changed.
-  const SPELL_FIREBALL_BASE_PCT=3, SPELL_FIREBALL_PCT_PER_LVL=1;   // burn, % of target max HP a round
+  const SPELL_FIREBALL_BASE_PCT=10, SPELL_FIREBALL_PCT_PER_LVL=2;  // burn, % of target max HP a round (2026-10-14, batch item 6: was 3 + 1 a level)
   const SPELL_HOLY_PEN_PER_LVL=8;                                   // Holy Symbol to-hit penalty a level
   const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
-  const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (doubled vs undead and fiends)
+  const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (×1.5 vs undead and fiends)
+  const SPELL_HOLY_UNCLEAN_MULT=1.5;                                // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
   const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=4; // 1 + floor(level/2), max 4 (5 vs a White-weak guardian)
   // 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
   // of every round after the first in which it held — this chance a round.
@@ -17047,7 +17107,12 @@ const BATTLE_ARMY_SPELLS={
     // once, in pcTakeHit — never here, or it would double twice.
     const _wkSch=!!(target&&target.kind==='monster'&&target.weak&&target.weak.kind==='school'&&target.weak.key===school);
     const wx=_wkSch?PC_WEAK_MULT:1;
-    const castChance=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+    const _castBase=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+    // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
+    // points off the (already capped) cast chance; never below 5. A guardian is never warded against
+    // the school it is weak to.
+    const _sw=(!_wkSch&&target&&target.arm&&target.arm.schoolWard&&target.arm.schoolWard[school])||0;
+    const castChance=_sw>0?Math.max(5,_castBase-_sw):_castBase;
     // narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader sees the
     // character reach for the spell, then whether the weave holds or collapses.
     const _schoolWeave={white:'sacred',psychic:'psychic',illusory:'illusory',elemental:'elemental',necromancy:'necromantic'}[school]||school;
@@ -17056,7 +17121,7 @@ const BATTLE_ARMY_SPELLS={
     // the chance succeeds, matching every other percentage check in the engine.
     const _castRoll=d100();
     telSpell(caster.ref,spellName,school,lvl,castChance,_castRoll,'duel');
-    narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully) [roll ${_castRoll} ${_castRoll<=castChance?'✓':'✗'}].`);
+    narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully${_sw>0?`, −${_sw} for ${pcWardWord(target,'ward','schoolWard')}`:''}) [roll ${_castRoll} ${_castRoll<=castChance?'✓':'✗'}].`);
     if(_castRoll>castChance){ narrative.push(`  …but the spell guts and fizzles, coming to nothing.`); return false; }
     caster.castSpells.push(spellName); caster.castSchool[school]=(caster.castSchool[school]||0)+1;
     if(_wkSch){
@@ -17072,25 +17137,33 @@ const BATTLE_ARMY_SPELLS={
         // maximum health a round whoever threw it, which made Elemental the strongest school at
         // level 1 and no stronger at level 5. 3% + 1% a level: 4% a round at Elemental 1, 8% at
         // Elemental 5.
-        const _fbPct=(SPELL_FIREBALL_BASE_PCT+SPELL_FIREBALL_PCT_PER_LVL*lvlEff);
-        const _fbD=Math.max(1,Math.round(target.maxHp*_fbPct/100))*wx; const _fbE=pcPushDot(target,_fbD,3,'Fireball burns');
-        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${dispFloor(_fbPct*wx)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
+        // 2026-10-14 (batch item 6): 10% + 2% a level (12% at Elemental 1, 20% at 5). A spell ward
+        // (spellPct) cuts the burn as it cuts any spell's harm — the burn ticks outside pcTakeHit, so
+        // the ward is applied here.
+        const _fbWard=(target.arm&&target.arm.spellPct)||0;
+        const _fbPct=(SPELL_FIREBALL_BASE_PCT+SPELL_FIREBALL_PCT_PER_LVL*lvlEff)*wx*(1-_fbWard/100);
+        const _fbD=Math.max(1,Math.round(target.maxHp*_fbPct/100)); const _fbE=pcPushDot(target,_fbD,3,'Fireball burns');
+        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${dispFloor(_fbPct)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds${_fbWard?` (its ward turns ${_fbWard}% of the heat)`:''}.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ // 2026-09-15 rebalance: measured, a White adept was WORSE in a duel than carrying no
         // magic at all — both its spells cost an action and neither did any harm. The symbol keeps
         // its identity (a ward, not a weapon) but now sustains the one who raises it, and against
         // the unclean it burns as well as blinds. The to-hit penalty comes down from 10 to 8 a
         // level to pay for it.
-        const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||'');
-        const pen=lvlEff*SPELL_HOLY_PEN_PER_LVL*(holy?2:1)*wx; target.status.hitPenalty=(target.status.hitPenalty||0)+pen;
-        narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`);
+        // 2026-10-14 (batch item 5): the unclean are told by their KIND — every undead and every
+        // fiend — not by a name pattern (which doubled the Dust Devil, an elemental, and missed the
+        // Chaos Knight, a fiend), and the symbol bites them ×1.5 rather than ×2.
+        const holy=!!target.isUndead||pcFoeCat(target)==='fiend';
+        const _hm=holy?SPELL_HOLY_UNCLEAN_MULT:1;
+        const pen=Math.round(lvlEff*SPELL_HOLY_PEN_PER_LVL*_hm*wx); target.status.hitPenalty=(target.status.hitPenalty||0)+pen;
+        narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (×1.5 against the undead and fiends)':''}.`);
         const _hsHeal=Math.max(1,Math.round((caster.maxHp||20)*SPELL_HOLY_HEAL_PCT/100));
         if(caster.hp<(caster.maxHp||20)){ const _h=Math.min(_hsHeal,(caster.maxHp||20)-caster.hp); caster.hp+=_h;
           narrative.push(`  ✝ The light closes ${caster.name}'s hurts — ${_h} recovered. (HP ${dispFloor(caster.hp)})`); }
         // The light burns whatever stands between a hero and a barrow, and burns the unclean twice
         // as deep. Measured, a symbol that only blinded left White worse than carrying no magic at
         // all against anything that was neither undead nor a fiend.
-        { const _hsD=Math.max(1,Math.round(target.maxHp*SPELL_HOLY_BURN_PCT*(holy?2:1)/100));
+        { const _hsD=Math.max(1,Math.round(target.maxHp*SPELL_HOLY_BURN_PCT*_hm/100));
           const _dealt=pcTakeHit(target,_hsD,narrative,caster.name,'Holy Symbol');
           if(_dealt) narrative.push(`  ✝ ${holy?`The unclean flesh of ${target.name} chars at the sight of it`:`The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); }
         break; }
@@ -17107,7 +17180,7 @@ const BATTLE_ARMY_SPELLS={
       case 'Psychic Blast':{ // three rounds of total helplessness was the same at Psychic 1 as at
         // Psychic 5. Now 1 round + 1 per two levels (1 at Psychic 1, 3 at Psychic 5), Dreamstone
         // still +1.
-        const _stunN=(SPELL_BLAST_BASE_ROUNDS+Math.floor(lvlEff/2)+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0))*wx; target.status.stun=(target.status.stun||0)+_stunN; narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
+        const _stunN=(SPELL_BLAST_BASE_ROUNDS+Math.floor(lvlEff/2)+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0))*wx; if(pcLandStun(target,_stunN,narrative,'the blast')) narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
       case 'Telekinetic Storm':{ // a quarter of the target's health whoever threw it. Now 10% + 3% a
         // level — 27% at Psychic 5, half that from an apprentice. The recoil is unchanged.
         const d=Math.max(1,Math.round(target.maxHp*(SPELL_TKS_BASE_PCT+SPELL_TKS_PCT_PER_LVL*lvlEff)/100)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
@@ -17168,7 +17241,7 @@ const BATTLE_ARMY_SPELLS={
         } else narrative.push(`  ${caster.name}'s Curse finds no ability in ${target.name} worth withering.`);
         break;
       }
-      case 'Control Undead':{ if(target.isUndead){ const _cuR=Math.max(1,lvlEff); target.status.stun=(target.status.stun||0)+_cuR; // printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
+      case 'Control Undead':{ if(target.isUndead){ const _cuR=Math.max(1,lvlEff); if(!pcLandStun(target,_cuR,narrative,`${caster.name}'s grip`)) break; // printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
           narrative.push(`  ${caster.name} seizes the undead ${target.name} — helpless for ${_cuR} rounds.`); } else narrative.push(`  Control Undead has no hold over the living ${target.name}.`); break; }
       case 'Charm':{
         // a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
@@ -17244,7 +17317,10 @@ const BATTLE_ARMY_SPELLS={
     if(stun>0){
       // if the special ALSO struck a blow, the daze is a rider on that blow and grips from the next
       // round. A special that does nothing but daze still takes hold at once.
-      if(dealt>0&&pcDeferEffect(foe,()=>{ foe.status.stun=(foe.status.stun||0)+stun; }))
+      // the target's stun ward is asked as the daze LANDS — a deferred rider that a ward turns is
+      // never queued at all (batch item 3).
+      if(pcStunTurned(foe,narrative,`${sp.name}'s daze`)){ /* turned */ }
+      else if(dealt>0&&pcDeferEffect(foe,()=>{ foe.status.stun=(foe.status.stun||0)+stun; }))
         narrative.push(`  ${foe.name} reels from the blow — ${stun} action${stun!==1?'s':''} will be lost from the next round.`);
       else {
         foe.status.stun=(foe.status.stun||0)+stun;
@@ -17384,7 +17460,7 @@ const BATTLE_ARMY_SPELLS={
       // runs dry if the duel is drawn out.
       if(dealt && actor.drain>0 && actor.hp<(actor.maxHp||20)){
         const _sm=pcSustainMult(actor), _dr=Math.min(Math.round(dealt*actor.drain*_sm),(actor.maxHp||20)-actor.hp);
-        if(_dr>0){ actor.hp+=_dr; narrative.push(`  ${actor.name} drinks the wound — +${_dr} HP${_sm<1?' (the thirst is running dry)':''}. (${actor.passiveName||'Drain'}, HP ${dispFloor(actor.hp)})`); }
+        if(_dr>0){ actor.hp+=_dr; narrative.push(`  ${actor.name} drinks the wound — +${_dr} HP${_sm<1?' (the thirst is running dry)':''}. (${pcPerkWord(actor,'drain','Drain')}, HP ${dispFloor(actor.hp)})`); }
       }
       // Brimstone-style shields bite back at whoever lands a blow.
       if(dealt && foe.status.reflect>0){
@@ -17393,7 +17469,7 @@ const BATTLE_ARMY_SPELLS={
       }
       if(dealt && foe.arm && foe.arm.thorns>0){ // Thornwood Cuirass
         actor.hp-=foe.arm.thorns;
-        narrative.push(`  ${pcWardIcon(foe)} ${foe.kind==='monster'?pcWardWord(foe,'hide'):`${foe.name}'s thorned armour`} bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
+        narrative.push(`  ${pcWardIcon(foe)} ${foe.kind==='monster'?pcWardWord(foe,'hide','thorns'):`${foe.name}'s thorned armour`} bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
       }
     } else { narrative.push(`  ${actor.name}'s blow is turned aside.`); pcTryCounter(foe, actor, narrative, 'melee'); }
   }
@@ -17637,10 +17713,10 @@ const BATTLE_ARMY_SPELLS={
         // these ride on the damage the item just dealt, so they grip from the NEXT round. (A
         // pure-penalty or pure-stun item — case 'pen' / 'stun' below — still bites now.)
         if(e.hitPen&&foe.hp>0){ pcDeferEffect(foe,()=>{ fs.hitPenalty=(fs.hitPenalty||0)+e.hitPen; }); narrative.push(`  ${foe.name} is thrown off (−${e.hitPen}% to hit from the next round).`); }
-        if(e.stun&&foe.hp>0){ pcDeferEffect(foe,()=>{ fs.stun=(fs.stun||0)+e.stun; }); narrative.push(`  ${foe.name} reels — ${e.stun} action${e.stun!==1?'s':''} lost from the next round.`); }
+        if(e.stun&&foe.hp>0){ if(pcStunTurned(foe,narrative,`the ${nm}'s daze`)){ /* turned (batch item 3) */ } else { pcDeferEffect(foe,()=>{ fs.stun=(fs.stun||0)+e.stun; }); narrative.push(`  ${foe.name} reels — ${e.stun} action${e.stun!==1?'s':''} lost from the next round.`); } }
         break; }
       case 'drain':{ const d=rng(e.dmg[0],e.dmg[1]); const dealt=hurt(d); const h=Math.min(dealt,Math.max(0,(actor.maxHp||20)-actor.hp)); actor.hp+=h; if(h>0) narrative.push(`  ${who} drinks the stolen vigour — +${h} HP. (HP ${dispFloor(actor.hp)})`); break; }
-      case 'stun': case 'banestun':{ fs.stun=(fs.stun||0)+(e.stun||1); narrative.push(`  ${foe.name} is held fast — ${e.stun||1} action${(e.stun||1)!==1?'s':''} lost.`); break; }
+      case 'stun': case 'banestun':{ if(pcLandStun(foe,e.stun||1,narrative,`the ${nm}`)) narrative.push(`  ${foe.name} is held fast — ${e.stun||1} action${(e.stun||1)!==1?'s':''} lost.`); break; }
       case 'pen':{ // an item that says "for the rest of the fight" no longer fades 5% a round
         if(/rest of the fight/i.test(it.desc||'')){ fs.hitPenaltyFixed=(fs.hitPenaltyFixed||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit for the rest of the fight).`); }
         else { fs.hitPenalty=(fs.hitPenalty||0)+(e.hitPen||15); narrative.push(`  ${foe.name} can barely see to strike (−${e.hitPen||15}% to hit).`); }
@@ -17684,7 +17760,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'FI': case 'FIRE': case 'ARROW':{
-        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot shoot (bound by Spiritwrack).`); break; }
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot shoot (bound by Spiritwrack) — they close in instead.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         if(!pcHasRanged(actor)){
           narrative.push(`  ${actor.name} has no ranged attack — they press forward instead.`);
           pcAdvanceOrStrike(actor, foe, narrative, state);
@@ -17707,6 +17783,11 @@ const BATTLE_ARMY_SPELLS={
           narrative.push(`  ${actor.name} moves up to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
           if(roll>ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
           state.range='bow';
+        } else if(state.range==='melee'&&actor.kind==='monster'){
+          // 2026-10-14 (batch item 2): a GUARDIAN never tries to back out of a melee to shoot — at
+          // sword's length its Fire action is a blow (no break-away roll, so no round lost to one).
+          pcMeleeStrike(actor, foe, narrative);
+          break;
         } else if(state.range==='melee'){
           const ch=dispFloor(pcMoveCheck(actor,foe,'withdraw')), roll=d100();
           narrative.push(`  ${actor.name} tries to break away to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
@@ -17720,27 +17801,32 @@ const BATTLE_ARMY_SPELLS={
       case 'MS':{ // monster special ability — the creature's equivalent of Cast
         const sp=(actor.specials||[]).find(s=>s && s.name===arg);
         if(!sp){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
-        // a bound or fumbled special COSTS the round, exactly like a character's failed Cast.
-        // Previously both cases fell through to a melee strike, so a guardian could use a special
-        // AND strike in the same round (the double action players reported).
+        // 2026-10-14 (batch item 1): a bound or fumbled special no longer COSTS the round — the
+        // guardian makes an ordinary attack instead, exactly as a hero whose spell fails does (no
+        // side ever stands idle for a failed power; only a stun does that). It is still ONE action:
+        // the special did nothing, so the attack is all the guardian does this round.
         if(actor.status.silenceRounds>0){
-          narrative.push(`  ${actor.name}'s power is bound and will not answer — the round is lost.`);
+          narrative.push(`  ${actor.name}'s power is bound and will not answer — it falls on ${foe.name} with tooth and claw instead.`);
+          pcAdvanceOrStrike(actor, foe, narrative, state);
           break;
         }
         const cc=(sp.castChance!=null?sp.castChance:50);
         if(Math.random()*100>=cc){
-          narrative.push(`  ${actor.name} gathers itself for ${sp.name} but the moment slips away — the round is lost. [${cc}%]`);
+          narrative.push(`  ${actor.name} gathers itself for ${sp.name} but the moment slips away — it attacks instead. [${cc}%]`);
+          pcAdvanceOrStrike(actor, foe, narrative, state);
           break;
         }
         pcMonsterSpecial(actor, foe, sp, narrative, state);
         break;
       }
       case 'CA': case 'SPELL':{
-        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast.`); break; }
+        // 2026-10-14 (batch item 1): a spell that cannot be cast (silenced, no skill, already cast,
+        // the school's limit reached) or that fizzles becomes an ordinary attack — the round is not lost.
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast — they attack instead.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         // Choose the spell: explicit CA:Name, else best available combat spell.
         let name=arg;
         if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name=NPC_SCHOOL_SPELL[best]; } // tie-break ORDER — deliberately not KC_MAGIC_SCHOOLS
-        pcCastCombatSpell(actor, foe, name, narrative, state);
+        if(!pcCastCombatSpell(actor, foe, name, narrative, state)) pcAdvanceOrStrike(actor, foe, narrative, state);
         break;
       }
       case 'FL': case 'FLEE':{
@@ -17822,7 +17908,7 @@ const BATTLE_ARMY_SPELLS={
           const abilityClause=(spells.length
             ? ` It can call on ${spells.slice(0,4).map(s=>s.name).join(', ')}.`
             : ' It has no special powers — it fights with tooth, claw and steel alone.')
-            +((foe.ref&&foe.ref.passive)?` ${foe.ref.passive.name}: ${foe.ref.passive.desc}.`:''); // passives are scouted too
+            +guardianPassives(foe.ref).map(p=>` ${p.name}: ${p.desc}.`).join(''); // passives are scouted too
           // Weaknesses / resistances — read the guardian's damage-type vulnerabilities (0.4-1.8; >1
           // means it takes MORE from that type, <1 means it shrugs it off).
           const v=foe.vuln||{melee:1,archery:1,spell:1};
@@ -17892,7 +17978,8 @@ const BATTLE_ARMY_SPELLS={
     A.druidBeastWard=_wardOf(A,B); B.druidBeastWard=_wardOf(B,A);
     // ── Guardian passives ── announced once; an aura is a standing to-hit penalty on the foe.
     for(const [me,foe] of [[A,B],[B,A]]){
-      if(me.kind==='monster'&&me.passiveName) narrative.push(`  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
+      if(me.kind==='monster'&&(me.perks||[]).length) me.perks.forEach(p=>narrative.push(`  🜏 ${me.name} — ${p.name}: ${p.desc}.`));
+      else if(me.kind==='monster'&&me.passiveName) narrative.push(`  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
       if(me.aura>0){ foe.status.auraPenalty=(foe.status.auraPenalty||0)+me.aura; }
     }
     if(A.druidBeastWard) narrative.push(`  🍃 ${A.name} has hunted this kind before — the beast's blows will land at half force (Druid ${A.druidBeastWard}).`);
@@ -17950,7 +18037,7 @@ const BATTLE_ARMY_SPELLS={
       A._fleeAttempted=false; B._fleeAttempted=false;
       // Guardian burn aura: a foe standing at melee range is scorched / frozen each round (never
       // soaked).
-      if(state.range==='melee') for(const [me,foe] of [[A,B],[B,A]]){ if(me.burn>0&&me.hp>0&&foe.hp>0){ foe.hp-=me.burn; narrative.push(`  🜏 ${me.passiveName||'The aura'} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0,Math.round(foe.hp))})`); } }
+      if(state.range==='melee') for(const [me,foe] of [[A,B],[B,A]]){ if(me.burn>0&&me.hp>0&&foe.hp>0){ foe.hp-=me.burn; narrative.push(`  🜏 ${pcPerkWord(me,'burn','The aura')} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0,Math.round(foe.hp))})`); } }
       _stepCheck(_sm); _sm=_stepMark();
       if(A.hp<=0||B.hp<=0) break;
 
@@ -18149,6 +18236,17 @@ const BATTLE_ARMY_SPELLS={
     _noteLow();
     if(!_pcSimulating){
       const _winSide=winner||((opts.heldFieldWins&&state.fledBy)?(state.fledBy===A?B:A):null);
+      // 2026-10-14 (batch item 12, Toby): ANY HERO WHO WINS A FIGHT rolls for Melee experience at the
+      // standard rate, on top of the rolls for each blow, arrow or spell that landed (trySkillGain's
+      // own guards keep it to one rise of a skill a phase and a turn).
+      if(_winSide&&_winSide.kind==='character'&&_winSide.ref&&_winSide.hp>0) trySkillGain(_winSide.ref,'melee',SKILLGAIN_STD,narrative);
+      // 2026-10-14 (batch item 11, Toby): a hero who LOSES a fight and lives — beaten and spared, or
+      // fled — learns a little: Melee at the small frequent-action rate.
+      for(const X of [A,B]){
+        if(X.kind!=='character'||!X.ref||X.hp<=0||X===_winSide) continue;
+        const _lost=(winner&&winner!==X)||state.fledBy===X||(_winSide&&_winSide!==X);
+        if(_lost) trySkillGain(X.ref,'melee',SKILLGAIN_COMMON,narrative);
+      }
       for(const X of [A,B]){
         if(X===_winSide||X.kind!=='character'||!X.ref||X.hp<=0) continue;
         if(!(X._hpLow<=(X._hpStart-1))) continue;
@@ -19097,6 +19195,7 @@ const BATTLE_ARMY_SPELLS={
     completeDefendWatches(_fieldIds, narrative); // item 15: a watch that has fought is done, win or lose
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
+    trySkillGain(won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative); // batch item 11: the beaten general who lives learns a little
     if(_rollDruidGainPvP){ trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative); trySkillGain(won?def:atk,'druid',SKILLGAIN_STD,narrative,0.5); } // Druid: winner full, loser half
     // onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless
     // host.
@@ -19185,7 +19284,7 @@ const BATTLE_ARMY_SPELLS={
     // beasts at ×1.2 were paper). Narrowed to ×0.8 / ×1.1; the spell and arrow swings keep their
     // flavour.
     if(undead){ mods.spell+=0.5; mods.archery-=0.3; }      // magic-vulnerable, arrows pass through bone
-    if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×2)
+    if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×1.5)
     if(flyer){ mods.archery+=0.4; }                        // shot out of the sky
     if(armoured){ mods.melee-=0.2; mods.spell+=0.3; }      // blades turn aside; magic ignores armour
     if(beast&&!undead){ mods.melee+=0.1; }                 // soft-bodied, blades bite
@@ -19193,10 +19292,10 @@ const BATTLE_ARMY_SPELLS={
     // on its card wins. These hidden multipliers are never shown to a player, so where one pushes
     // against the creature's passive (its hide turns blows, it shrugs off arrows or spells) or
     // against its weakness (arrows, a school of magic), the hidden one is dropped.
-    { const fx=(m.passive&&m.passive.fx)||{}, w=m.weak||{};
-      if(fx.ward==='meleeDR'||fx.meleeDR) mods.melee=Math.min(1,mods.melee);
-      if(fx.ward==='arrowDR'||fx.arrowDR) mods.archery=Math.min(1,mods.archery);
-      if(fx.ward==='spellPct'||fx.spellPct) mods.spell=Math.min(1,mods.spell);
+    { const _fxs=guardianPassives(m).map(p=>p.fx), w=m.weak||{}, has=k=>_fxs.some(fx=>fx.ward===k||fx[k]);
+      if(has('meleeDR')) mods.melee=Math.min(1,mods.melee);
+      if(has('arrowDR')) mods.archery=Math.min(1,mods.archery);
+      if(has('spellPct')) mods.spell=Math.min(1,mods.spell);
       if(w.kind==='archery') mods.archery=Math.max(1,mods.archery);
       if(w.kind==='school') mods.spell=Math.max(1,mods.spell); }
     for(const k in mods) mods[k]=Math.max(0.4, Math.min(1.8, mods[k]));
@@ -20269,13 +20368,9 @@ const BATTLE_ARMY_SPELLS={
         // this turn (the illusion holds for the rest of the turn they arrive, then lifts).
         if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ toProv._illusoryTerrain._enteredByEnemy=true; }
         // Skill gains from movement: March (land move leading an army) / Naval (sea move with a
-        // fleet).
-        // 2026-09-21 (Toby): ANY sea voyage trains Naval — commanding a fleet at the standard rate,
-        // anyone else aboard (a passenger, an unled hero, a host carried in another's hulls) at the
-        // smaller frequent-action rate.
+        // fleet). 2026-10-14 (batch item 9): a passenger learns no Naval (rollNavalVoyage).
         if(toProv.terrain==='sea'){
-          if((c.armies||[]).some(a=>SEA_TYPES.has(a.type))) trySkillGain(c,'naval',SKILLGAIN_STD);
-          else trySkillGain(c,'naval',SKILLGAIN_COMMON);
+          rollNavalVoyage(c,SKILLGAIN_STD);
         } else if((c.armies||[]).length>0){ trySkillGain(c,'march',SKILLGAIN_COMMON); }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
@@ -21287,7 +21382,8 @@ const BATTLE_ARMY_SPELLS={
           const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.charRace||c.race===e.charRace)))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
-          if(goldFinal>0) trySkillGain(c,'thief',SKILLGAIN_STD); // 2026-09-21 (Toby): carrying off a lair's gold trains Thief
+          // 2026-10-14 (batch item 8, Toby): carrying off a cleared lair's hoard no longer trains Thief
+          // (it did from 2026-09-21). Stealing from a guardian mid-fight still does.
           // the tier-weighted fighting-skill experience roll for a lair clear is DROPPED; the only
           // permanent reward is the earned-HP gain. A pacified beast earns nothing.
           if(!encounter.pacified) awardWinHp(c, null, 'lair'); // clearing a lair by force hardens the hero (earned HP)
@@ -21585,6 +21681,7 @@ const BATTLE_ARMY_SPELLS={
             log('spy',`[Intelligence] 🔍 ${c.name}'s report on ${_tgt.name}${_tgt.player!=null?` of ${G.players[_tgt.player]?.name}`:''} (${_tgt.race||'?'}, ${_tgt.alignment||'?'}${_tgt.isKing?', king':''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,spy:true});
           } else {
             log('system',`${c.name} watches ${_tgt.name} closely in ${prov.name}, but learns nothing of use.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            trySkillGain(c,'spy',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           }
           // Caught?
           if(!charMinor(c,'shadow')){
@@ -21627,7 +21724,7 @@ const BATTLE_ARMY_SPELLS={
           TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster
           noteEspionage(G, c, prov.id, 'spied out the province');
           applySpySuccess(c, prov);
-        } else log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]});
+        } else { log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]}); trySkillGain(c,'spy',SKILLGAIN_COMMON); } // batch item 11: a failed attempt is a small chance to learn
         break;
       }
       // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
@@ -21919,7 +22016,10 @@ const BATTLE_ARMY_SPELLS={
         // and starts fresh each turn.
         const _streak=(c._practiceFailStreak&&c._practiceFailStreak.turn===G.turn)?c._practiceFailStreak.n:0;
         const _persevere=Math.pow(1.2,_streak);
-        const soloChance=(baseByLevel+astroBonus)*_persevere; // this character's normal (solo) chance to improve
+        // 2026-10-14 (batch item 10, Toby): QUICK LEARNERS on the Practice ground too — a Human of a
+        // Human realm practises at ×1.5, as they learn in the field (trySkillGain).
+        const _prHuman=(c.race==='Human'&&G.players[c.player]&&G.players[c.player].race==='Human')?1.5:1;
+        const soloChance=(baseByLevel+astroBonus)*_persevere*_prHuman; // this character's normal (solo) chance to improve
         // Mentor rule: if any co-trainer had a HIGHER level in this skill AT PHASE START, they
         // teach the character — the improvement is automatic (guaranteed). Levels are read from the
         // start-of-phase snapshot, so a peer who trained up earlier this phase is NOT a mentor.
@@ -21946,6 +22046,7 @@ const BATTLE_ARMY_SPELLS={
           bonusReason=` (base ${dispFloor(baseByLevel*100)}% at level ${current})`+(astroBonus>0?' +5% (Astronomical Tables)':'');
         }
         if(_streak>0&&successChance<1) bonusReason+=` ×${_persevere.toFixed(2)} for ${_streak} earlier failed practice${_streak!==1?'s':''} this turn`;
+        if(_prHuman>1&&successChance<1) bonusReason+=' ×1.5 (Human: Quick Learners)';
             // roll a d100 and show the success chance and the roll, like every other action.
             const _prPct=dispFloor(successChance*100);
             const _prRoll=d100();
@@ -22513,6 +22614,7 @@ const BATTLE_ARMY_SPELLS={
             log('combat',`${c.name} is caught by the garrison guards of ${prov.name} and beaten back — ${dmg} damage taken.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) was caught trying to rob the garrison paymaster of ${prov.name}.`,{actor:c.player,targets:[prov.owner],provinceId:prov.id});
           } else log('system',`${c.name}'s attempt on the paymaster of ${prov.name} fails, but the thief slips away unnoticed.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(roll>chance) trySkillGain(c,'thief',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           break;
         }
         const targetId=parseInt(target);
@@ -22552,6 +22654,7 @@ const BATTLE_ARMY_SPELLS={
           const caught=Math.random()*100>=escapeChance;
           if(caught) thiefCaughtScuffle(c,victim,`with a hand in their ${wantGold?'strongbox':'pack'}`);
           else log('system',`${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`,{actor:c.player,targets:[c.player]});
+          trySkillGain(c,'thief',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
         }
         break;
       }
@@ -22703,6 +22806,7 @@ const BATTLE_ARMY_SPELLS={
 
         if(castRoll>castChance){
           log('system',`${c.name}'s ${spellName} fizzles — the spell dissipates without effect.`,{actor:c.player,targets:[c.player]});
+          if(!_itemCast) trySkillGain(c,school,SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn (an item's cast teaches nothing when it fails)
           // a fizzled Charm may bring its intended victim down on the caster.
           if(spellDef.fn==='psychic_charm'){ const _ct=G.characters.find(ch=>ch.alive&&ch.id===(parseInt(extra)||-1)); if(_ct&&_ct.player!==c.player&&!_ct.isKing) charmBacklash(c,_ct,'the spell fizzled'); }
           break;
@@ -23524,6 +23628,7 @@ const BATTLE_ARMY_SPELLS={
           log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
           trySkillGain(c,'thief',SKILLGAIN_STD);
         } else {
+          trySkillGain(c,'thief',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           const caught=Math.random()*100>=Math.min(95,_hLvl*20);
           if(!caught){ log('system',`${c.name}'s Grand Heist in ${prov.name} comes to nothing, but the thief slips away undetected.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
           // A hero of the robbed realm gives chase; failing that, the guards do.
@@ -25816,7 +25921,7 @@ const BATTLE_ARMY_SPELLS={
       log('move',`🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length>1?'are':'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
         {actor:c.player,targets:[c.player],provinceId:P.id,public:true,charId:c.id,phase:ph}); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
       // Reacting is a march: the same skill gain a normal move would give (a sea crossing trains Naval).
-      trySkillGain(c,_bySea?'naval':'march',SKILLGAIN_COMMON);
+      if(_bySea) rollNavalVoyage(c,SKILLGAIN_COMMON); else trySkillGain(c,'march',SKILLGAIN_COMMON);
     });
   }
 
@@ -25896,7 +26001,7 @@ const BATTLE_ARMY_SPELLS={
       if(!prov.visitedBy.includes(d.player)) prov.visitedBy.push(d.player);
       log('move',`🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(raiser.player)} ${raiser._warFront?'is turning the host camped inside '+prov.name+' on the province':'is gathering a host inside '+prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
         {actor:d.player,targets:[d.player],provinceId:prov.id,public:true,charId:d.id,phase:ph});
-      trySkillGain(d,bySea?'naval':'march',bySea?SKILLGAIN_STD:SKILLGAIN_COMMON);
+      if(bySea) rollNavalVoyage(d,SKILLGAIN_STD); else trySkillGain(d,'march',SKILLGAIN_COMMON);
       riders.push(d);
     });
     return riders;
@@ -25959,7 +26064,7 @@ const BATTLE_ARMY_SPELLS={
         if(!prov.visitedBy) prov.visitedBy=[];
         if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
         log('move',`🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
-        trySkillGain(c,toSea?'naval':'march',SKILLGAIN_COMMON);
+        if(toSea) rollNavalVoyage(c,SKILLGAIN_COMMON); else trySkillGain(c,'march',SKILLGAIN_COMMON);
       } else {
         log('move',`🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
       }
@@ -26142,7 +26247,7 @@ const BATTLE_ARMY_SPELLS={
       it.c._attackedFrom=it.fromId;
       if(!P.visitedBy) P.visitedBy=[];
       if(!P.visitedBy.includes(it.player)) P.visitedBy.push(it.player);
-      if(!toSea) trySkillGain(it.c,'march',SKILLGAIN_COMMON); else trySkillGain(it.c,'naval',SKILLGAIN_STD);
+      if(!toSea) trySkillGain(it.c,'march',SKILLGAIN_COMMON); else rollNavalVoyage(it.c,SKILLGAIN_STD);
       it.cancelled=true; it.cancelReason='reinforced';
       log('move',`${it.c.name} force-marches into ${P.name} ahead of the enemy — their troops are in the line before the first banners appear over the ridge.`,
         {actor:it.player,targets:[it.player],provinceId:P.id});
@@ -26232,7 +26337,7 @@ const BATTLE_ARMY_SPELLS={
       if(!step.visitedBy) step.visitedBy=[];
       if(!step.visitedBy.includes(c.player)) step.visitedBy.push(c.player);
       if((c.armies||[]).length>0&&!toSea) trySkillGain(c,'march',SKILLGAIN_COMMON);
-      if(toSea) trySkillGain(c,'naval',SKILLGAIN_COMMON); // any sea voyage trains Naval (2026-09-21)
+      if(toSea) rollNavalVoyage(c,SKILLGAIN_COMMON); // a voyage trains Naval only for a hero leading ships (batch item 9)
       trySkillGain(c,'spy',SKILLGAIN_STD); // AK [3.19]: Spy/Trail/Pursue trains Spy
       if(c.location!==quarry.location){
         log('move',`${c.name} presses on into ${step.name}, hard on the trail of ${quarry.name}.`,{actor:c.player,targets:[c.player],provinceId:step.id});
@@ -28680,7 +28785,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1000</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1600</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
