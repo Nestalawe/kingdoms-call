@@ -3,8 +3,8 @@
 // retreat rule, the player portal's unit blurb and Human description, and Admiralty's text. In a game
 // already running, a province whose pool still offers Corsairs offers the Galleon Fleet instead
 // (retireCorsairPools, at the top of every turn); a Corsair company already raised keeps fighting as it
-// did. Letters of Marque, the Human discovery that only lifted Corsairs, is split out: Toby will give
-// it a new effect, so its text is not checked here.
+// did. Letters of Marque, the Human discovery that only lifted Corsairs, now lifts the Galleon Fleet the same
+// way (+30% when attacking) until a full review of the discoveries (Toby, 2026-10-15).
 // Level 0 (static) for the words; level 1 (unit) for the migration: retireCorsairPools is a module-level
 // function of the GM portal, called on a hand-made world, so nothing lower can run it.
 const fs=require('fs'), path=require('path');
@@ -20,6 +20,9 @@ for(const f of ['kingdoms-call-rules.html','kingdoms-call-rules-intro.html','kin
 const D=read('kingdoms-call-data.js');
 const descOf=id=>((new RegExp(`\\{"id":"${id}"[^\\n]*?"desc":"([^"]*)"`)).exec(D)||['',''])[1];
 ok(descOf('rh12').length>0&&!/Corsair/.test(descOf('rh12')),'Admiralty\'s text names the Galleons only');
+const rh18=(/\{"id":"rh18"[^\n]*/.exec(D)||[''])[0];
+ok(/"desc":"Galleon Fleets of your realm fight at \+30% strength when attacking\."/.test(rh18),`Letters of Marque's text names the Galleons: ${rh18.slice(0,160)}`);
+ok(/"effect":\{"kind":"unitStr","pct":0\.3,"types":\["Galleon Fleet"\],"side":"atk"\}/.test(rh18),'…and its effect lifts the Galleon Fleet, +30% when attacking');
 
 // ── The migration ──
 (async()=>{

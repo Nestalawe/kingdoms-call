@@ -9,5 +9,6 @@ The Human Corsair Fleet can no longer be raised. New worlds stopped offering it 
 already running, a province that still offered it offers the Galleon Fleet instead. A Corsair company
 already raised is kept and fights as before. No rulebook or page a player reads names the Corsairs any more.
 
-**Open:** Letters of Marque, the Human discovery that only strengthened Corsairs, gets a new effect. Toby
-chose to replace it rather than remove it; its new effect is still to be decided.
+Letters of Marque, the Human discovery that only strengthened Corsairs, now strengthens the Galleon Fleet the
+same way: +30% when attacking. Toby (2026-10-15): "for now make it affect Galleons instead of Corsairs. We will be
+doing a full discoveries review later."
