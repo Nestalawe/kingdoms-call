@@ -173,3 +173,4 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-111](R-111-what-spying-shows.md) | What spying shows | 2026-10-15 | Confirmed | [`spy-reveals`](../../tests/spy-reveals.test.js) |
 | [R-112](R-112-dreamstone-after-doubling.md) | The Dreamstone's round comes after Psychic Blast's doubling | 2026-10-15 | Confirmed | [`blast-dreamstone`](../../tests/blast-dreamstone.test.js) |
 | [R-113](R-113-spiritwrack-counted-to-five.md) | Spiritwrack counts White to 5 | 2026-10-15 | Confirmed | [`spiritwrack-five`](../../tests/spiritwrack-five.test.js) |
+| [R-114](R-114-hints-not-names.md) | The rulebooks may hint at mastery, never name it | 2026-10-15 | Confirmed | [`mastery-hints-words`](../../tests/mastery-hints-words.test.js) |
