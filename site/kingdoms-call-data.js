@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.15-1018
+// Data file v2026.10.15-1023
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.15-1018';
+const KC_DATA_STAMP='2026.10.15-1023';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1339,7 +1339,7 @@ const SAGE_DISCOVERIES_P=[
   {"id":"rh09","name":"Toll Roads","category":"Human Heritage","race":"Human","desc":"Human units of your realm of Speed 1–2 gain +1 move point per turn. Also: Human units of your realm are 35% less likely to be destroyed in battle.","effect":{"kind":"move","extra":1,"race":"Human"},"effect2":{"kind":"deathRed","pct":0.35,"race":"Human"}},
   {"id":"rh10","name":"Household Knights","category":"Human Heritage","race":"Human","desc":"Your cavalry led by your KING in person fight at +18% strength.","effect":{"kind":"unitStr","pct":0.18,"cls":"cavalry","king":true}},
   {"id":"rh11","name":"Longbow Butts","category":"Human Heritage","race":"Human","desc":"Yeoman Longbows of your realm fight at +30% strength when defending.","effect":{"kind":"unitStr","pct":0.3,"types":["Yeoman Longbows"],"side":"def"}},
-  {"id":"rh12","name":"Admiralty","category":"Human Heritage","race":"Human","desc":"Galleon Fleet and Corsair Fleet of your realm cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"types":["Galleon Fleet","Corsair Fleet"],"max":1}},
+  {"id":"rh12","name":"Admiralty","category":"Human Heritage","race":"Human","desc":"Galleon Fleets of your realm cost 1g less upkeep each turn (never below 1g a unit), saving at most 5% of your realm's base tax income a turn in all.","effect":{"kind":"upkeep","delta":-1,"types":["Galleon Fleet","Corsair Fleet"],"max":1}},
   {"id":"rh13","name":"Griffon Masters","category":"Human Heritage","race":"Human","desc":"Noble Griffons of your realm cost 3g less to recruit (minimum 1g).","effect":{"kind":"recruitCost","delta":-3,"types":["Noble Griffons"]}},
   {"id":"rh14","name":"Knightly Orders","category":"Human Heritage","race":"Human","desc":"Each Gilded Lances unit you recruit has a 20% chance to start at Veteran quality instead of Average.","effect":{"kind":"recruitQ","pct":0.2,"types":["Gilded Lances"]}},
   {"id":"rh15","name":"Shieldwall Drill","category":"Human Heritage","race":"Human","desc":"Shieldwall Levies of your realm are 60% less likely to be destroyed in battle.","effect":{"kind":"deathRed","pct":0.6,"types":["Shieldwall Levies"]}},

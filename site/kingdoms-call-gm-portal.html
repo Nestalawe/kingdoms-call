@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.15-1018';
+const KC_DATA_MIN='2026.10.15-1023';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1018'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1023'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -2343,6 +2343,18 @@ function backfillHomeRosters(gs){
   });
 }
 const HOME_FLEET_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'};
+// 2026-10-15 (Toby, D3): the Corsair Fleet is gone. New worlds stopped offering it on 2026-10-11; a
+// province of a game already running whose pool still offers it now offers the Galleon Fleet in its
+// place (or simply loses it, if the Galleon is already there). A Corsair company already raised is
+// kept and fights as before. Idempotent: runs at the top of every runTurn.
+function retireCorsairPools(gs){
+  ((gs&&gs.world&&gs.world.provinces)||[]).forEach(p=>{
+    if(!p||!Array.isArray(p.armyTypes)) return;
+    const i=p.armyTypes.indexOf('Corsair Fleet'); if(i<0) return;
+    if(p.armyTypes.includes('Galleon Fleet')) p.armyTypes=p.armyTypes.filter(t=>t!=='Corsair Fleet');
+    else { p.armyTypes[i]='Galleon Fleet'; p.armyTypes=p.armyTypes.filter(t=>t!=='Corsair Fleet'); }
+  });
+}
 
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
@@ -13460,6 +13472,7 @@ async function runTurn(opts){
     seedUsedArmyNames(G); seedUsedHeroNames(G);
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
+    retireCorsairPools(G); // 2026-10-15 (D3): no province offers the retired Corsair Fleet
     retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
     migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
     snapshotHeldItems(G);      // remember every pack as it stands NOW, so the report can mark what was gained this turn
@@ -28785,7 +28798,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1018</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1023</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

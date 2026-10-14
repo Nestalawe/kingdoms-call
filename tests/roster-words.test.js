@@ -22,6 +22,7 @@ const terrOf=cell=>{ const t=strip(cell.replace(/<span[\s\S]*?<\/span>/g,'')).tr
   t.split('·').forEach(part=>{ const mm=/^\s*([A-Za-z]+)\s*×\s*([\d.]+)\s*$/.exec(part); if(mm) out[mm[1].toLowerCase()]=parseFloat(mm[2]); else out['?'+part.trim()]=NaN; }); return out; };
 for(const u of Object.keys(ROSTER)){
   const d=ROSTER[u], r=rows[u];
+  if(d.retired){ ok(!r,`the rulebook's roster has no row for ${u} (retired)`); continue; }
   ok(!!r,`the rulebook's roster has a row for ${u}`); if(!r) continue;
   ok(r.race===d.race,`${u}: race ${d.race} (the row says ${r.race})`);
   const typeWord=d.garrison?'Infantry (garrison)':cap(d.type);

@@ -6,7 +6,8 @@
 // Flyers fight at ×1 on any ground or water except under the trees (×0.75 in forest and jungle: Toby, 2026-10-12,
 // item 19) and fleets at ×1 everywhere; a land unit at sea fights at ×0.75 (SEA_LAND_PENALTY), which is not a
 // terrain-table entry. `isNew` marks the four units this roster
-// added; `garrison` the militia that musters straight into the province.
+// added; `garrison` the militia that musters straight into the province; `retired` a unit no world offers
+// any more and no book names (the engine keeps its figures for companies already raised).
 const OPEN={plain:1.15,desert:1.15,forest:0.75,jungle:0.7,mountain:0.75};   // the human heavy horse
 const WOODS_FLYER={forest:0.75,jungle:0.75};   // every flyer, under the trees (item 19, 2026-10-12)
 const ROSTER={
@@ -18,7 +19,7 @@ const ROSTER={
   'Gilded Lances':      {race:'Human',  type:'cavalry', cost:4,str:7,speed:3,terr:OPEN},
   'Noble Griffons':     {race:'Human',  type:'flyer',   cost:4,str:6,speed:5,terr:WOODS_FLYER},
   'Galleon Fleet':      {race:'Human',  type:'naval',   cost:3,str:5,speed:3,terr:{}},
-  'Corsair Fleet':      {race:'Human',  type:'naval',   cost:3,str:4,speed:4,terr:{}},
+  'Corsair Fleet':      {race:'Human',  type:'naval',   cost:3,str:4,speed:4,terr:{},retired:true},   // 2026-10-15 (Toby, D3): gone from every book; the engine keeps its figures for companies already raised
   'Human Garrison':     {race:'Human',  type:'infantry',cost:1,str:2,speed:1,terr:{desert:0.9},garrison:true},
   // ── Elven ──
   'Forest Wardens':     {race:'Elven',  type:'infantry',cost:2,str:4,speed:3,terr:{desert:0.9,forest:1.1,jungle:1.1,mountain:0.85}},

@@ -338,7 +338,7 @@ in `kingdoms-call-data.js` changes new games only, unless a migration carries th
 games.
 
 - **Migrations run at the start of every turn**, on the world `runTurn` has just loaded:
-  `migrateMaxHpV2` (which calls `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireDiscoveries`
+  `migrateMaxHpV2` (which calls `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`
   and `migrateLegacyUnitNames`, then `migrateItemTiers` and `ensureAllLairHoards` before the phases
   resolve. `migrateHoardTally` runs wherever the find tally is read or written. A running game picks
   up a change at its next turn.
