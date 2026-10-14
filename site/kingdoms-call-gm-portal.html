@@ -18202,6 +18202,10 @@ const BATTLE_ARMY_SPELLS={
     _noteLow();
     if(!_pcSimulating){
       const _winSide=winner||((opts.heldFieldWins&&state.fledBy)?(state.fledBy===A?B:A):null);
+      // 2026-10-14 (batch item 12, Toby): ANY HERO WHO WINS A FIGHT rolls for Melee experience at the
+      // standard rate, on top of the rolls for each blow, arrow or spell that landed (trySkillGain's
+      // own guards keep it to one rise of a skill a phase and a turn).
+      if(_winSide&&_winSide.kind==='character'&&_winSide.ref&&_winSide.hp>0) trySkillGain(_winSide.ref,'melee',SKILLGAIN_STD,narrative);
       for(const X of [A,B]){
         if(X===_winSide||X.kind!=='character'||!X.ref||X.hp<=0) continue;
         if(!(X._hpLow<=(X._hpStart-1))) continue;
