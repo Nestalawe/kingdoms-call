@@ -185,22 +185,11 @@ session.
 
 ## Plain language (ISO 24495-1:2023)
 
-Everything written for people follows the plain language standard
-[ISO 24495-1:2023](https://www.iso.org/standard/78907.html). That covers messages to Toby, PR titles
-and descriptions, playtester notes, commit messages, rulings, docs, the rulebooks, and any text players
-see in the game. Its four principles:
-
-1. **Relevant:** readers get what they need. Know who will read it and why; leave out what they don't
-   need.
-2. **Findable:** readers can easily find what they need. Put the most important thing first; use clear
-   headings and short sections.
-3. **Understandable:** readers can easily understand it. Use common words, short sentences and the
-   active voice; explain any term they may not know; one idea per paragraph.
-4. **Usable:** readers can easily use it. Steps are numbered and in order; say what the reader should do
-   next.
-
-Code identifiers and engineering detail stay accurate; plain language means explaining them clearly,
-not leaving them out.
+Write everything people read (messages to Toby, PRs, commits, playtester notes, rulings, docs,
+rulebooks, in-game text) to [ISO 24495-1:2023](https://www.iso.org/standard/78907.html): **relevant**
+(what readers need, nothing more), **findable** (most important first, clear headings),
+**understandable** (common words, short sentences, active voice, terms explained) and **usable**
+(numbered steps, the next action clear). Keep engineering detail accurate: explain it, don't drop it.
 
 ## Talking to Toby
 
