@@ -174,3 +174,4 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-112](R-112-dreamstone-after-doubling.md) | The Dreamstone's round comes after Psychic Blast's doubling | 2026-10-15 | Confirmed | [`blast-dreamstone`](../../tests/blast-dreamstone.test.js) |
 | [R-113](R-113-spiritwrack-counted-to-five.md) | Spiritwrack counts White to 5 | 2026-10-15 | Confirmed | [`spiritwrack-five`](../../tests/spiritwrack-five.test.js) |
 | [R-114](R-114-hints-not-names.md) | The rulebooks may hint at mastery, never name it | 2026-10-15 | Confirmed | [`mastery-hints-words`](../../tests/mastery-hints-words.test.js) |
+| [R-115](R-115-one-cast-chance.md) | One cast chance for everyone, and what raises it | 2026-10-15 | Confirmed | [`guard-cast-chance`](../../tests/guard-cast-chance.test.js), [`rulebook-review-words`](../../tests/rulebook-review-words.test.js) |

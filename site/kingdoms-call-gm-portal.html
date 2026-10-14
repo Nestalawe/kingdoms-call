@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1117'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1147'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -11899,6 +11899,14 @@ function castChanceFor(c, school, player, opts){
   const disc=discSumOf(player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='action'));
   return {level:lvl,chance:Math.min(95,SPELL_CAST_BASE+lvl*10+arcane+l8+disc),arcane,l8,disc};
 }
+// 2026-10-15 (Toby, D7): a hero guarding a neutral province casts at the same odds as a player's hero —
+// 30% + 10% a level (the school as effSkillOf counts it: training to 5, items on top), the mastery bonus,
+// at most 95%. A guard holds no Sage discoveries. (Was 30% + 15% a level, at most 90%.)
+function guardCastChance(c, school, chars){
+  const lvl=effSkillOf(c,school,chars||[]);
+  if(lvl<=0) return 0;
+  return Math.min(95,SPELL_CAST_BASE+lvl*10+magicL8CastBonus(c));
+}
 function magicL8CastBonus(c){ return 10*MAGIC_L8_SCHOOLS.filter(sc=>skillLevel(c,sc)>=8).length; }
 function _legendaryNames(){ return new Set((ITEMS_BY_TIER[4]||[]).map(it=>it.name)); }
 // THE SEA LORD NO LONGER COUNTS THE WAVES. `SEA_LORD_PROVINCE_PTS` gave one merit point per sea
@@ -15824,7 +15832,7 @@ const BATTLE_ARMY_SPELLS={
         const school=sdef?.school||'elemental';
         const defSpellLvl=effStat(defHero,school);
         if(defSpellLvl>0){
-          const castChance=Math.min(90,30+defSpellLvl*15);
+          const castChance=guardCastChance(defHero,school,G.characters); // D7: the same odds as a player's hero
           const castRoll=d100();
           telSpell(defHero,defSpellName,school,defSpellLvl,castChance,castRoll,'battle');
           narrative.push(`✨ Defender Magic: ${defHero.name} casts ${defSpellName} (${SKILL_LABELS[school]||school} ${defSpellLvl}) — ${castChance}% chance [roll ${castRoll} ${castRoll<=castChance?'✓':'✗'}]`);
@@ -28793,7 +28801,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1117</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1147</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

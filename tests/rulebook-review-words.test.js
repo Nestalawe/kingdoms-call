@@ -16,10 +16,11 @@ const R=stripTags(RH).replace(/\s+/g,' '), I=stripTags(IH).replace(/\s+/g,' ');
 const num=re=>{ const m=re.exec(G); return m?+m[1]:NaN; };
 ok(R.length>100000&&I.length>20000,'both rulebooks were read');
 
-// Cast chance: 30% + 10% a level, at most 95%, so level 7 is already at the ceiling.
-const base=num(/const SPELL_CAST_BASE=(\d+)/), at7=Math.min(95,base+70);
-ok(at7===95,`the engine's cast chance at level 7 is 95% (got ${at7})`);
-ok(R.includes(`80% at 5, ${at7}% from 7`)&&!R.includes('80% at 5, 90% at 7'),'the rulebook gives 95% from level 7, not 90%');
+// Cast chance: 30% + 10% a level, at most 95%; training counts to 5 (80%), and only an item's levels carry it on.
+// (Toby, 2026-10-15: the books follow the game. guard-cast-chance holds the figures.)
+const base=num(/const SPELL_CAST_BASE=(\d+)/);
+ok(base===30,`the engine's cast base is 30% (got ${base})`);
+ok(R.includes('80% at 5. Trained levels past 5 do not raise it')&&!R.includes('80% at 5, 90% at 7')&&!R.includes('95% from 7'),'the rulebook stops trained cast chance at 80% (level 5), not 90% or 95% at 7');
 
 // A skill rises from experience once a turn (R-056); the ×0.8 follows Practice rises only.
 ok(!R.includes('each time a skill has already risen in a turn'),'the rulebook drops "each time a skill has already risen in a turn"');
