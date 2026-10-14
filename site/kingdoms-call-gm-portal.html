@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.14-1600';
+const KC_DATA_MIN='2026.10.15-1117';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.14-1600'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1117'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -2343,6 +2343,18 @@ function backfillHomeRosters(gs){
   });
 }
 const HOME_FLEET_BY_RACE={Human:'Galleon Fleet',Elven:'Elven Galleys',Dwarven:'Dwarf Ironclads',Orcish:'Orcish Longships'};
+// 2026-10-15 (Toby, D3): the Corsair Fleet is gone. New worlds stopped offering it on 2026-10-11; a
+// province of a game already running whose pool still offers it now offers the Galleon Fleet in its
+// place (or simply loses it, if the Galleon is already there). A Corsair company already raised is
+// kept and fights as before. Idempotent: runs at the top of every runTurn.
+function retireCorsairPools(gs){
+  ((gs&&gs.world&&gs.world.provinces)||[]).forEach(p=>{
+    if(!p||!Array.isArray(p.armyTypes)) return;
+    const i=p.armyTypes.indexOf('Corsair Fleet'); if(i<0) return;
+    if(p.armyTypes.includes('Galleon Fleet')) p.armyTypes=p.armyTypes.filter(t=>t!=='Corsair Fleet');
+    else { p.armyTypes[i]='Galleon Fleet'; p.armyTypes=p.armyTypes.filter(t=>t!=='Corsair Fleet'); }
+  });
+}
 
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
@@ -3851,8 +3863,19 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
 
 // ── Items 1 & 12: ONE visibility rule for non-own characters ────
 // (the map's Spy-contest vs the list's flat cloak). Every consumer now calls this.
-// ctx: {ownedProvIds:Set, ownCharLocs:Set, spiedThisTurn:Set} — all keyed by province id.
+// ctx: {ownedProvIds:Set, ownCharLocs:Set, spiedThisTurn:Set, nearSpied?:Set} — all keyed by province id.
 // Returns true when viewer `viewerPi` can see character `c` where it stands right now.
+// 2026-10-15 (Toby, D2): the provinces next to those spied this turn (not the spied ones themselves).
+function nearSpiedProvIds(gs, spiedIds){
+  const out=new Set(), W=gs.world, P=W.provinces||[];
+  spiedIds.forEach(id=>{ const p=P[id]; if(!p) return; getNeighborsP(p,W.cols,W.rows,P).forEach(n=>{ if(n&&!spiedIds.has(n.id)) out.add(n.id); }); });
+  return out;
+}
+// 2026-10-15 (Toby, D1): how big a force a hero you have not spied leads, as a glance across the field
+// gives it — never the exact count. One wording for the map, the hero sightings and the intrusion alerts.
+function armySizeBand(n){
+  return n<=0?'no armies':n<=2?'a small escort (a few units)':n<=5?'a modest band':n<=9?'a sizeable host':n<=15?'a large host':'a vast host';
+}
 function enemyCharVisibleTo(gs, viewerPi, c, ctx){
   if(!c||!c.alive) return false;
   if(c.player===viewerPi) return true;
@@ -3860,10 +3883,15 @@ function enemyCharVisibleTo(gs, viewerPi, c, ctx){
   // a character this realm watches with Clairvoyance is seen wherever they stand — as if spied on —
   // and, unlike a Spy, the mind-link pierces Invisibility and every stealth cloak.
   { const _vp=gs.players&&gs.players[viewerPi]; if(_vp&&_vp._clairCharThisTurn!=null&&_vp._clairCharThisTurn===c.id) return true; }
-  const coLoc=ctx.ownCharLocs.has(p.id), ownHere=ctx.ownedProvIds.has(p.id), spied=ctx.spiedThisTurn.has(p.id);
+  // 2026-10-15 (Toby, D2): a province next to one spied this turn is seen as if a hero of yours stood there.
+  const coLoc=ctx.ownCharLocs.has(p.id)||!!(ctx.nearSpied&&ctx.nearSpied.has(p.id)), ownHere=ctx.ownedProvIds.has(p.id), spied=ctx.spiedThisTurn.has(p.id);
   if(!coLoc&&!ownHere&&!spied) return false;                       // no line of sight at all
   if(c._invisTurn===gs.turn) return false;                          // Invisibility beats even a spy
   if(spied) return true;                                            // a deliberate Spy pierces stealth
+  // 2026-10-15 (Toby, D1): another realm's hero beside one of yours at the end of the turn is always
+  // seen; their Spy cannot slip them past your hero (only Invisibility, above, still can). Wandering
+  // heroes and local chieftains keep their small chance to slip by (the cloak below).
+  if(coLoc&&c.player!=null) return true;
   const isEnemy=c.player!=null&&relOfReport(gs,viewerPi,c.player)==='enemy';
   if(isEnemy&&ownHere&&!coLoc){
     // Lurking in land you own with none of your characters present: Spy contest (a column can't
@@ -6496,7 +6524,7 @@ function botIntel(G,pi){
   (G.world.provinces||[]).forEach(p=>{ if(p&&(p.visitedBy||[]).includes(pi)){ remembered.add(p.id); visited.add(p.id); } });
   const known=new Set([...sight,...border,...remembered]);
   const o={owned,occupied,spied,sight,border,remembered,visited,known,
-           ctx:{ownedProvIds:owned,ownCharLocs:occupied,spiedThisTurn:spied},
+           ctx:{ownedProvIds:owned,ownCharLocs:occupied,spiedThisTurn:spied,nearSpied:nearSpiedProvIds(G,spied)},
            mem:(pl._provMemory||{}), graves:(pl._graveIntel||{})};
   per.by[pi]=o; return o;
 }
@@ -12453,9 +12481,15 @@ function buildTurnReport(gameState, playerIndex){
 
   // Enemy/wandering characters visible to this player (in same province as one of our chars)
   const ownCharLocs=new Set(gameState.characters.filter(c=>c.alive&&c.player===playerIndex).map(c=>c.location));
-  const visibleChars=gameState.characters.filter(c=>c.alive&&c.player!==playerIndex&&ownCharLocs.has(c.location)).map(c=>({
+  // 2026-10-15 (Toby, D1): the one sight rule decides who is listed (Invisibility and the wanderers'
+  // cloak hide them here too), and another realm's hero gives away only name, realm and the rough size
+  // of their army (leadsArmies says whether there is one, for Charm and Telekinetic Storm). A wandering
+  // hero's race, alignment and the rest stay public, as the Hire list shows them.
+  const _vcCtx={ownedProvIds:new Set(player.provinces||[]),ownCharLocs,spiedThisTurn:new Set(player._spiedProvincesThisTurn||[])};
+  const visibleChars=gameState.characters.filter(c=>c.alive&&c.player!==playerIndex&&ownCharLocs.has(c.location)&&enemyCharVisibleTo(gameState,playerIndex,c,_vcCtx)).map(c=>({
     id:c.id,name:c.name,locationId:c.location,locationName:gameState.world.provinces[c.location]?.name||'?',
-    isKing:c.isKing,race:c.race,alignment:c.alignment,armies:(c.armies||[]).length,
+    isKing:c.isKing,...(c.player==null?{race:c.race,alignment:c.alignment}:{}),
+    leadsArmies:(c.armies||[]).length>0, armyBand:armySizeBand((c.armies||[]).length),
     player:c.player, isWandering:c.player===null,
     // Wandering heroes are unowned and public (like a hireable hero), so it is safe to surface
     // their full detail — the player portal needs it to build a Charm order card if this hero is
@@ -12469,7 +12503,7 @@ function buildTurnReport(gameState, playerIndex){
     charmImmune:(c._charmImmuneTurn===(gameState.turn||1)),
     // an ENEMY hero's skills are never sent — a charmer must not learn them. A wandering hero's are
     // public (the Hire list shows them), so they still travel.
-    ...((!c.isKing&&(c.armies||[]).length===0)?{...(c.player==null?{skills:{...(c.skills||{})}}:{}),temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
+    ...((c.player==null&&!c.isKing&&(c.armies||[]).length===0)?{skills:{...(c.skills||{})},temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
   }));
 
   // ── Persistent "ever seen" character intel (Clairvoyance targeting) ── AK: Clairvoyance may
@@ -12503,6 +12537,7 @@ function buildTurnReport(gameState, playerIndex){
   // (neutral guards / enemy forces) are only revealed for provinces they actually spied, making Spy
   // the sole way to learn enemy/neutral force composition.
   const spiedThisTurn=new Set(player._spiedProvincesThisTurn||[]);
+  const nearSpied=nearSpiedProvIds(gameState,spiedThisTurn); // D2: seen as if a hero stood there
 
   // enemy characters a hero may set out to Encounter. Visibility follows the intel rules — an enemy
   // is targetable if they stand in a province you OWN, a province where you have a character
@@ -12513,7 +12548,7 @@ function buildTurnReport(gameState, playerIndex){
   // the list is exactly the characters the MAP shows (one shared rule, enemyCharVisibleTo). A
   // visible character who still cannot be hunted (Cloak of Many Faces) is carried with
   // `untargetable` so the order form can show WHY instead of silently dropping them.
-  const _visCtx={ownedProvIds,ownCharLocs,spiedThisTurn};
+  const _visCtx={ownedProvIds,ownCharLocs,spiedThisTurn,nearSpied}; // D2: the map's rule, next-to-spied included
   const encounterTargets=gameState.characters
     .filter(c=>c.alive&&c.player!==null&&c.player!==playerIndex&&enemyCharVisibleTo(gameState,playerIndex,c,_visCtx))
     .map(c=>({id:c.id,name:c.name,isKing:!!c.isKing,locationId:c.location,
@@ -12650,11 +12685,11 @@ function buildTurnReport(gameState, playerIndex){
     .map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ');
   // a co-located enemy/neutral hero gives away only a ROUGH idea of how many armies they lead (a
   // glance across the field, not a muster roll). Spying still reveals exact units.
-  const _armyBand=(n)=>n<=0?'leads no armies':n<=2?'leads a small escort (a few units)':n<=5?'leads a modest band':n<=9?'leads a sizeable host':n<=15?'leads a large host':'leads a vast host';
+  const _armyBand=(n)=>'leads '+armySizeBand(n);
   gameState.characters.filter(c=>c.alive&&c.player!==playerIndex).forEach(c=>{
     const inOwned=ownedProvIds.has(c.location);
     // Items 1 & 12: same rule as the map and the Encounter list (enemyCharVisibleTo).
-    if(!enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs:playerCharLocations,spiedThisTurn})) return;
+    if(!enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs:playerCharLocations,spiedThisTurn,nearSpied})) return;
     const prov=gameState.world.provinces[c.location];
     if(!prov) return;
     const ts=topSkill(c);
@@ -12683,21 +12718,25 @@ function buildTurnReport(gameState, playerIndex){
         topSkill:ts,pay:_wWage,
         armyBand:_armyBand((c.armies||[]).length),
         spiedSkills:spiedSkills||null, spiedTurn:spyRec?spyRec.turn:null,
+        spiedItems:(spyRec&&spyRec.items)||null, spiedArmies:(spyRec&&spyRec.armies)||null,
         inOwnedProvince:inOwned,
         text:`Wandering hero ${c.name} (${c.race}, ${c.alignment}) is in ${prov.name}. ${skillSentence}.${_wHireTxt}`,
       });
     } else {
-      // Enemy hero
+      // Another realm's hero. 2026-10-15 (Toby, D1): without a Spy you learn only the name, the
+      // realm and the rough size of the army they lead, wherever they stand (your own land too): no
+      // race, alignment or renown. What a Spy has read (spiedSkills) is still shown.
       const enemyKingdom=gameState.players[c.player]?.name||'unknown realm';
+      const _band=_armyBand((c.armies||[]).length);
       heroSightings.push({
         type:'enemy',
-        name:c.name,race:c.race,alignment:c.alignment,kingdom:enemyKingdom,kingdomColor:gameState.players[c.player]?.color||null,
+        name:c.name,kingdom:enemyKingdom,kingdomColor:gameState.players[c.player]?.color||null,
         locationName:prov.name,locationId:c.location,
-        topSkill:ts,
-        armyBand:_armyBand((c.armies||[]).length),
+        armyBand:_band,
         spiedSkills:spiedSkills||null, spiedTurn:spyRec?spyRec.turn:null,
+        spiedItems:(spyRec&&spyRec.items)||null, spiedArmies:(spyRec&&spyRec.armies)||null,
         inOwnedProvince:inOwned,
-        text:`${c.name} of ${enemyKingdom} is in ${inOwned?'your province of':''} ${prov.name}. ${skillSentence}.`,
+        text:`${c.name} of ${enemyKingdom} is in ${inOwned?'your province of ':''}${prov.name}, and ${_band}.${spiedSkillStr?` Known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}.`:''}`,
       });
     }
   });
@@ -12769,7 +12808,7 @@ function buildTurnReport(gameState, playerIndex){
         // land). Items 1 & 12: the map, the hero lists and the Encounter target list all use the
         // ONE rule in enemyCharVisibleTo (line of sight, Invisibility, Spy pierce, Spy-contest in
         // owned land, flat unspotted cloak elsewhere).
-        if(!isOwn && !enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs,spiedThisTurn})) return null;
+        if(!isOwn && !enemyCharVisibleTo(gameState,playerIndex,c,{ownedProvIds,ownCharLocs,spiedThisTurn,nearSpied})) return null;
         void coLoc; void ownHere;
         return{id:c.id,name:c.name,isOwn,isKing:c.isKing,
           isWanderer:c.player===null,
@@ -12778,13 +12817,14 @@ function buildTurnReport(gameState, playerIndex){
           // label them correctly — they are otherwise indistinguishable client-side.
           isNeutralGuard:!!c._isNeutralGuard,
           ownerName:c.player!=null&&!isOwn?(gameState.players[c.player]?.name||null):null,
-          armyCount:(c.armies||[]).length,
+          // 2026-10-15 (Toby, D1): your own hero's exact count; anyone else's rough size only
+          ...(isOwn?{armyCount:(c.armies||[]).length}:{armyBand:armySizeBand((c.armies||[]).length)}),
           ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
       }).filter(Boolean);
       const _clairCharsHere=()=>(_clairChar&&p.id===_clairLoc)?[{id:_clairChar.id,name:_clairChar.name,isOwn:false,isKing:_clairChar.isKing,
         isWanderer:_clairChar.player===null,isNeutralGuard:!!_clairChar._isNeutralGuard,
         ownerName:_clairChar.player!=null?(gameState.players[_clairChar.player]?.name||null):null,
-        armyCount:(_clairChar.armies||[]).length,ownerColor:_clairChar.player!==null?gameState.players[_clairChar.player]?.color:null,clairvoyant:true}]:[];
+        armyBand:armySizeBand((_clairChar.armies||[]).length),ownerColor:_clairChar.player!==null?gameState.players[_clairChar.player]?.color:null,clairvoyant:true}]:[];
 
       if(isOwned){
         // Full live info — your own province.
@@ -12825,7 +12865,7 @@ function buildTurnReport(gameState, playerIndex){
           armyTypes:p.armyTypes,neighbors,explored,hadBattle:!!p._hadBattleThisTurn, hadCombat:(p._combatPlayersThisTurn||[]).includes(playerIndex), battleUnresolved:!!p._battleUnresolved, /* item 14 */
           features:(p.features||[]).filter(f=>featDiscovered(f,playerIndex)).map(f=>({name:f.name,cleared:!!f.cleared,ritualSite:!!f.ritualSite,power:((f.monster&&f.monster.power)||'')})),
           grandDesign:(p.grandDesign?{name:p.grandDesign.name,ownerName:(gameState.players[p.grandDesign.owner]||{}).name||null,active:gdActiveFor(gameState,p.grandDesign.owner)}:null), // a Wonder of the age is visible to anyone who can see the province
-          characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
+          characters:nearSpied.has(p.id)?liveChars():_clairCharsHere(), ownArmyHere:_ownArmyHere, // D2: next to a spied province
         };
       } else if(memo){
         // Remembered: frozen at the last phase one of your characters could see it. Core info and
@@ -12839,10 +12879,20 @@ function buildTurnReport(gameState, playerIndex){
           // orange (battle still raging) and purple (personal combat) — now share exactly one
           // visibility rule: owned, live or border.
           features:memo.features||[],
-          characters:_clairCharsHere(), ownArmyHere:_ownArmyHere,
+          characters:nearSpied.has(p.id)?liveChars():_clairCharsHere(), ownArmyHere:_ownArmyHere, // D2: next to a spied province
         };
       } else {
         // Unknown — just the grid position so we can draw an empty hex.
+        // 2026-10-15 (D2): next to a spied province, the characters there are seen as if a hero stood
+        // there, so the hex is drawn as the Clairvoyant's is, with the ground as it now stands.
+        const _nearChars=nearSpied.has(p.id)?liveChars():[];
+        if(_nearChars.length){
+          return{id:p.id,row:p.row,col:p.col,name:p.name,terrain:_apparentTerrain,tier:'remembered',race:p.race,
+            wealth:p.tax>=7?'Rich':p.tax>=4?'Prosperous':'Poor',owner:p.owner,ownerName:p.owner!==null?gameState.players[p.owner]?.name:null,
+            ownerColor:p.owner!==null?gameState.players[p.owner]?.color:null,armyTypes:p.armyTypes||[],neighbors,explored,seenTurn:gameState.turn,
+            isHomeCapitalOfOwner:(p.owner!=null&&homeProvinceIdFor(gameState,p.owner)===p.id),
+            features:[],characters:_nearChars,ownArmyHere:_ownArmyHere};
+        }
         if(_clairChar&&p.id===_clairLoc){
           // Never seen by this realm, but the Clairvoyant sees through the watched character's
           // eyes.
@@ -13460,6 +13510,7 @@ async function runTurn(opts){
     seedUsedArmyNames(G); seedUsedHeroNames(G);
     migrateMaxHpV2(G); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
     backfillHomeRosters(G); // home provinces recruit the king's full racial land roster
+    retireCorsairPools(G); // 2026-10-15 (D3): no province offers the retired Corsair Fleet
     retireDiscoveries(G);   // strip retired Sage discovery ids (sd34) from live saves
     migrateLegacyUnitNames(G); // pre-2026.09.06 unit-type strings → current names (idempotent)
     snapshotHeldItems(G);      // remember every pack as it stands NOW, so the report can mark what was gained this turn
@@ -14317,40 +14368,6 @@ async function runTurn(opts){
         log('message',`📨 You sent to ${rcptNames.join(', ')}: “${text}”`,{actor:senderPi,targets:[senderPi],phase:99,public:false});
       });
     });
-  }
-
-  // Build a rough army strength description for use in enemy intel Spy skill determines accuracy:
-  // 0-1 = vague, 2-3 = moderate, 4-5 = precise
-  function describeEnemyForce(armies, observerSpySkill){
-    if(!armies||armies.length===0) return 'no visible armies';
-    const totalStr=armies.reduce((s,a)=>s+(armStr(a)||4),0); // terrain not needed for intel estimates
-    if(observerSpySkill>=4){ // levels 4-5: exact detail
-      // Precise: exact count and types
-      const groups=armies.reduce((acc,a)=>{acc[a.type]=(acc[a.type]||0)+1;return acc;},{});
-      return Object.entries(groups).map(([t,n])=>`${n}× ${t}`).join(', ');
-    } else if(observerSpySkill>=2){
-      // Moderate: count and rough category
-      // 2026-09-27: three hand-typed lists, and the "everything else" list for infantry had drifted
-      // from the cavalry one — Noble Griffons, Wyvern Riders and Gyrocopters were counted as BOTH
-      // cavalry-type and infantry, so a Spy 2+ report overstated the force. One grouping now, from
-      // the shared unit classes: horse + the four racial flyers, fleets, and everything else.
-      const _spyCav=a=>KC_UNIT_CLASS.cavalry.includes(a.type)||KC_UNIT_CLASS.flying.includes(a.type);
-      const _spyNav=a=>KC_UNIT_CLASS.carrier.includes(a.type);
-      const cav=armies.filter(_spyCav).length;
-      const naval=armies.filter(_spyNav).length;
-      const inf=armies.filter(a=>!_spyCav(a)&&!_spyNav(a)).length;
-      const parts=[];
-      if(cav>0) parts.push(`${cav} cavalry-type`);
-      if(inf>0) parts.push(`${inf} infantry-type`);
-      if(naval>0) parts.push(`${naval} naval`);
-      return parts.join(', ')+` (${armies.length} total)`;
-    } else {
-      // Vague: just strength impression
-      if(totalStr>40) return 'a very powerful force (many armies)';
-      if(totalStr>20) return 'a moderate force';
-      if(totalStr>8)  return 'a small force';
-      return 'a weak force (few armies)';
-    }
   }
 
   function totalInit(c){
@@ -15336,15 +15353,9 @@ const BATTLE_ARMY_SPELLS={
     if(actingP){
       actingP._spiedProvincesThisTurn=actingP._spiedProvincesThisTurn||[];
       if(!actingP._spiedProvincesThisTurn.includes(sprov.id)) actingP._spiedProvincesThisTurn.push(sprov.id);
-      actingP._spiedHeroSkills=actingP._spiedHeroSkills||{};
-      (G.characters||[]).filter(x=>x.alive&&x.location===sprov.id&&x.player!==c.player).forEach(x=>{
-        actingP._spiedHeroSkills[x.id]={
-          name:x.name, isKing:!!x.isKing, alignment:x.alignment||null,
-          race:x.race||null,
-          kingdom:(x.player!=null)?(G.players[x.player]?.name||null):null,
-          skills:{...(x.skills||{})}, turn:G.turn,
-        };
-      });
+      // 2026-10-15 (Toby, D2): a province spy shows every character there and the army units each
+      // leads (the report's province intel), and the characters in the provinces around it — but no
+      // hero's skills. Those take a Spy on the hero.
     }
     const defs=(sprov.neutralDefenders||[]).map(d=>`${d.quality} ${d.type}`).join(', ')||'none';
     log('explore',`${c.name} spies on ${sprov.name}: controlled by ${sprov.owner!==null?G.players[sprov.owner].name:'no-one'}, tax ${sprov.tax}g, defenders: ${defs}.`,{actor:c.player,targets:[c.player],spy:true,provinceId:sprov.id});
@@ -17081,7 +17092,7 @@ const BATTLE_ARMY_SPELLS={
   const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
   const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (×1.5 vs undead and fiends)
   const SPELL_HOLY_UNCLEAN_MULT=1.5;                                // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
-  const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=4; // 1 + floor(level/2), max 4 (5 vs a White-weak guardian)
+  const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=3; // 1 + floor(level/2), level counted to 5: max 3 (4 vs a White-weak guardian)
   // 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
   // of every round after the first in which it held — this chance a round.
   const SPIRITWRACK_SHRUG_PCT={Powerful:25,Legendary:40};
@@ -17167,20 +17178,20 @@ const BATTLE_ARMY_SPELLS={
           const _dealt=pcTakeHit(target,_hsD,narrative,caster.name,'Holy Symbol');
           if(_dealt) narrative.push(`  ✝ ${holy?`The unclean flesh of ${target.name} chars at the sight of it`:`The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); }
         break; }
-      case 'Spiritwrack':{ // 2026-09-26 (Toby item 3): silenced for 1 + floor(level/2) rounds, at most 4.
-        // The level is the caster's full White level (items included), so levels 6+ reach the cap of 4.
+      case 'Spiritwrack':{ // 2026-09-26 (Toby item 3): silenced for 1 + floor(level/2) rounds.
+        // 2026-10-15 (Toby, D5): the level is counted to 5, like every other spell's effect, so at most 3.
         // Against a guardian WEAK to White Magic the cast already takes hold at 95% (above) and the
-        // binding runs one round longer — up to 5 — instead of doubling.
-        let _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS,SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(Math.max(1,lvl)/2));
+        // binding runs one round longer — up to 4 — instead of doubling.
+        let _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS,SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(Math.max(1,lvlEff)/2));
         if(_wkSch) _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS+1,_swR+1);
         target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR);
         const _shr=(target.kind==='monster')?(SPIRITWRACK_SHRUG_PCT[target.power]||0):0;
         target.status._swShrugPct=_shr;
         narrative.push(`  ${caster.name} binds ${target.name} with Spiritwrack — for ${_swR} round${_swR!==1?'s':''} it cannot cast, use its powers or use archery, and its melee is halved.${_shr?` (A ${String(target.power).toLowerCase()} guardian may shrug it off — ${_shr}% each round after the first.)`:''}`); break; }
       case 'Psychic Blast':{ // three rounds of total helplessness was the same at Psychic 1 as at
-        // Psychic 5. Now 1 round + 1 per two levels (1 at Psychic 1, 3 at Psychic 5), Dreamstone
-        // still +1.
-        const _stunN=(SPELL_BLAST_BASE_ROUNDS+Math.floor(lvlEff/2)+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0))*wx; if(pcLandStun(target,_stunN,narrative,'the blast')) narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
+        // Psychic 5. Now 1 round + 1 per two levels (1 at Psychic 1, 3 at Psychic 5), doubled against a
+        // guardian weak to Psychic; 2026-10-15 (Toby, D4): the Dreamstone's +1 comes after the doubling.
+        const _stunN=(SPELL_BLAST_BASE_ROUNDS+Math.floor(lvlEff/2))*wx+((caster.ref&&hasItemBase(caster.ref,'Dreamstone'))?1:0); if(pcLandStun(target,_stunN,narrative,'the blast')) narrative.push(`  🧠 Psychic Blast sears ${target.name}'s mind — for their next ${_stunN} rounds they can do nothing at all: no blow, no arrow, no spell, and no flight.`); break; }
       case 'Telekinetic Storm':{ // a quarter of the target's health whoever threw it. Now 10% + 3% a
         // level — 27% at Psychic 5, half that from an apprentice. The recoil is unchanged.
         const d=Math.max(1,Math.round(target.maxHp*(SPELL_TKS_BASE_PCT+SPELL_TKS_PCT_PER_LVL*lvlEff)/100)); const self=Math.max(0,Math.round(d*0.25)); const dealt=pcTakeHit(target,d,narrative,caster.name,'Telekinetic Storm'); caster.hp-=self; if(dealt)narrative.push(`  🌀 Telekinetic Storm rips ${target.name} for ${dealt} damage; the strain costs ${caster.name} ${self} damage. (Target HP ${Math.max(0,Math.round(target.hp))})`); break; }
@@ -21674,7 +21685,10 @@ const BATTLE_ARMY_SPELLS={
             noteEspionage(G, c, prov.id, 'read one of your heroes');
             trySkillGain(c,'spy',SKILLGAIN_STD);
             const _ap=G.players[c.player];
-            if(_ap){ _ap._spiedHeroSkills=_ap._spiedHeroSkills||{}; _ap._spiedHeroSkills[_tgt.id]={name:_tgt.name,isKing:!!_tgt.isKing,alignment:_tgt.alignment||null,race:_tgt.race||null,kingdom:(_tgt.player!=null)?(G.players[_tgt.player]?.name||null):null,skills:{...(_tgt.skills||{})},turn:G.turn}; }
+            // 2026-10-15 (Toby, D2/D9): every skill, the magic items carried and the army units led, kept for
+            // the report's hero sightings — for a wandering hero or a local chieftain as for a rival's hero.
+            if(_ap){ _ap._spiedHeroSkills=_ap._spiedHeroSkills||{}; _ap._spiedHeroSkills[_tgt.id]={name:_tgt.name,isKing:!!_tgt.isKing,alignment:_tgt.alignment||null,race:_tgt.race||null,kingdom:(_tgt.player!=null)?(G.players[_tgt.player]?.name||null):null,skills:{...(_tgt.skills||{})},
+              items:(_tgt.items||[]).map(it=>it&&it.name).filter(Boolean), armies:(_tgt.armies||[]).map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||''})), turn:G.turn}; }
             const _sk=Object.entries(_tgt.skills||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')||'no skills to speak of';
             const _it=(_tgt.items||[]).map(it=>it.name).join(', ')||'no magic items';
             const _ar=(_tgt.armies||[]).length?describeArmy(_tgt.armies):'no armies';
@@ -23289,7 +23303,7 @@ const BATTLE_ARMY_SPELLS={
           if(targetProv._partSea){ delete targetProv._partSea; }
           targetProv._flood={orig:targetProv.terrain, turn:G.turn};
           targetProv.terrain='sea';
-          log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets may pass.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
+          log('combat',`✨ ${c.name} calls up the deluge — ${targetProv.name} vanishes beneath the waves and acts as a sea province for the rest of the turn. Land armies are stranded; only fleets and flyers may pass.`,{actor:c.player,targets:(targetProv.owner!=null&&targetProv.owner!==c.player)?[targetProv.owner]:[],provinceId:targetProv.id,public:true,env:true});
           notifyProvinceOwner(targetProv, `🌊 An enemy Flood has swallowed ${targetProv.name} — it acts as sea for the rest of the turn, and any land army there is stranded.`, c.player, ph);
         }
         else if(fn==='elemental_summon'){
@@ -24469,11 +24483,8 @@ const BATTLE_ARMY_SPELLS={
           const inKnownProv=targetKnownProvs.has(ac.location);
           if(!inKnownProv) return; // target doesn't know about this province
 
-          // Determine what the target player's best spy skill is (for army intel quality)
-          const targetBestSpy=Math.max(0,...(G.characters||[])
-            .filter(c=>c.player===targetPi&&c.alive)
-            .map(c=>effStat(c,'spy')));
-          const forceDesc=describeEnemyForce(ac.armies||[], targetBestSpy);
+          // 2026-10-15 (Toby, D1): the same rough size the map gives, whatever the watcher's Spy
+          const forceDesc=armySizeBand((ac.armies||[]).length);
 
           // Accumulate the sighting; a single consolidated line per (target, hero, province) is
           // emitted after the turn resolves (see flushIntrusionNotifications). actor is left null
@@ -25818,7 +25829,7 @@ const BATTLE_ARMY_SPELLS={
     const real=(G.characters||[]).find(x=>x&&x.id===charId);
     if(!real||!real._defend||!real._defend.active) return;
     real._defend.active=false;
-    const msg=`${real.name}'s defensive watch is broken by this defeat — they will hold no further ground this year.`;
+    const msg=`${real.name}'s defensive watch is broken by this defeat — they will hold no further ground this turn.`;
     if(narrative) narrative.push(msg);
     else log('move',msg,{actor:real.player,targets:[real.player],charId:real.id,provinceId:real.location??null}); // file under the beaten general, not whoever's order was resolving
   }
@@ -28564,13 +28575,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       const hasPresence=ownCharLocsPi.has(p.id);
       if(!hasPresence && !spied) return; // no line of sight and not spied → no intel
       const here=(G.characters||[]).filter(c=>c.alive&&c.location===p.id);
-      const visible=here.filter(c=>{
-        if(c.player===pi) return true;
-        if(c._invisTurn===G.turn && c.player!=null && c.player!==pi) return false; // Invisibility beats even a spy
-        if(spied) return true;                              // a deliberate spy pierces stealth
-        if(hasPresence) return c._unspottedTurn!==G.turn;   // unspotted evade passive line-of-sight
-        return false;
-      });
+      // 2026-10-15 (D1): the one sight rule, as the map and the hero sightings use it (Invisibility,
+      // a Spy piercing stealth, another realm's hero always seen beside yours, the wanderers' cloak).
+      const _pciCtx={ownedProvIds:new Set(),ownCharLocs:ownCharLocsPi,spiedThisTurn:new Set(Object.keys(spyPhaseByProv).map(Number))};
+      const visible=here.filter(c=>c.player===pi||enemyCharVisibleTo(G,pi,c,_pciCtx));
       if(visible.length===0) return;
       // Only surface as an intel entry if there is a non-own character present, or the player spied
       // it.
@@ -28587,7 +28595,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           isNeutralGuard:!!c._isNeutralGuard,
           kingdom:(c.player!=null&&c.player!==pi)?(G.players[c.player]?.name||'an enemy realm'):null,
           color:c.player!=null?G.players[c.player]?.color:null,
-          armyCount:armies.length,
+          ...(c.player===pi?{armyCount:armies.length}:{armyBand:armySizeBand(armies.length)}), // D1: rough size for anyone not yours
           armies:showDetail?armies.map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||''})):null,
           spiedSkills:spyRec?spyRec.skills:null, spiedTurn:spyRec?spyRec.turn:null,
         };
@@ -28785,7 +28793,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1600</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1117</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

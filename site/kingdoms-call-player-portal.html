@@ -829,7 +829,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.14-1600';
+const KC_DATA_MIN_P='2026.10.15-1117';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -3372,7 +3372,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -3385,7 +3385,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#8a6a2a">
           🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -3398,7 +3398,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom}${(s.race||s.alignment)?` (${[s.race,s.alignment].filter(Boolean).join(', ')})`:''} — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -3444,7 +3444,7 @@ function renderReportView(report){
               : `<strong${ch.isNeutralGuard?` style="color:${CHIEFTAIN_MARKER_COLOR}"`:''}>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
             const force=(ch.armies&&ch.armies.length>0)
               ? ` — ${ch.armies.map(a=>armyLabel(a,{short:true})).join(', ')}`
-              : (ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:'');
+              : (ch.armyBand?(ch.armyBand==='no armies'?'':` — leads ${ch.armyBand}`):(ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:''));
             const sk=(ch.spiedSkills&&Object.keys(ch.spiedSkills).some(k=>ch.spiedSkills[k]>0))
               ? `<br><span style="font-size:.72rem;color:#1d5a1d">🔍 Skills:</span> ${Object.entries(ch.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
               : '';
@@ -4074,7 +4074,7 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // (The engine enforces all of this — this list simply matches it.)
           // A hero charmed last turn is closed to Charm for the whole of this one.
           const targets=(report.visibleChars||[]).filter(x=>
-            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 && !x.charmImmune &&
+            x.alive!==false && x.locationId===casterLoc && !x.isKing && !leadsArmiesP(x) && !x.charmImmune &&
             (x.player===null || x.player!==c.player));
           charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':` ⚔ (${realmNameP(x.player,report)}, no armies — yours for the turn)`} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune, and so is anyone charmed last turn)</option>';
@@ -4112,8 +4112,8 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
           // there is nothing to scatter around a hero marching alone.
           const targets=(report.visibleChars||[]).filter(x=>
-            x.player!==c.player && x.locationId===casterLoc && (x.armies||0)>0);
-          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
+            x.player!==c.player && x.locationId===casterLoc && leadsArmiesP(x));
+          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armyBand||(x.armies+' unit'+(x.armies!==1?'s':''))} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
         } else {
           // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
@@ -4313,11 +4313,11 @@ const SPELL_HINTS={
   'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Action: no target \u2014 cleanses the province you stand in of ALL its battlefield dead. Every grave there is laid to rest and can never be raised by a necromancer. Combat: enemy \u22128%/level to hit and seared for 6% of its health, both \u00d71.5 against undead and fiends; you recover 10% of your health. Battle: enemy undead units fight at 75% strength.',
-  'Spiritwrack':'Combat: silences the target for 1 round + 1 per two White levels (max 4) \u2014 it can\u2019t cast or use archery (it attacks instead) and its melee is halved. Against a guardian weak to White Magic it takes at 95% and lasts 1 round longer (max 5); Powerful and Legendary guardians may shrug it off each round after the first. Battle: all missile units fight at half strength.',
+  'Spiritwrack':'Combat: silences the target for 1 round + 1 per two White levels (max 3) \u2014 it can\u2019t cast or use archery (it attacks instead) and its melee is halved. Against a guardian weak to White Magic it takes at 95% and lasts 1 round longer (max 4); Powerful and Legendary guardians may shrug it off each round after the first. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord (and will not attack their own lord\'s heroes). On success you learn their skills and magic items. Kings and army-leaders are immune; each past Charm gives a hero +30% resistance (cumulative). A Charm that fails may provoke a personal encounter with the target — unless either leads their encounter plan with Flee. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
-  'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose TWO skill levels, each taken from a randomly chosen skill they hold (both picks can land on the same skill, dropping it by 2). Combat: they can do nothing at all for 1 round + 1 per two Psychic levels (3 at Psychic 5; Dreamstone +1), unless a stun ward turns it. Battle: negates the enemy commander\u2019s Druid.',
+  'Psychic Blast':'Target: an enemy/neutral hero in your province. They permanently lose TWO skill levels, each taken from a randomly chosen skill they hold (both picks can land on the same skill, dropping it by 2). Combat: they can do nothing at all for 1 round + 1 per two Psychic levels (3 at Psychic 5; doubled against a foe weak to Psychic; Dreamstone +1, after any doubling), unless a stun ward turns it. Battle: negates the enemy commander\u2019s Druid.',
   'Telekinetic Storm':'Target: an enemy hero leading armies in your province. A number of their units equal to your skill level are struck: Green units are destroyed and every other struck unit PERMANENTLY drops one experience level (skeletal units unaffected). Combat: 12% of the target\u2019s max HP, +3% per Psychic level (15% at 1, 27% at 5), as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
   'Illusory Terrain':'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
   'Phantasmal Armies':'Target: yourself or any friendly hero in your province. Spectral duplicates of their humanoid armies \u2014 10% of the host per caster level, counted to level 5, at least one \u2014 march and fight with the real host for the rest of the turn. The doubles never appear in the roster, need no berth aboard ship, and melt away if their originals fall or the force is beaten.',
@@ -6150,7 +6150,7 @@ function syncCharmCard(charId, ph){
   const tgt=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId));
   // A charm target is any non-king hero leading NO armies — wandering (joins you) or an enemy
   // (their command is seized for the rest of the turn). Either way you write their orders here.
-  const wanted=(action==='Cast Spell'&&spell==='Charm'&&heroId&&tgt&&!tgt.isKing&&(tgt.armies||0)===0);
+  const wanted=(action==='Cast Spell'&&spell==='Charm'&&heroId&&tgt&&!tgt.isKing&&!leadsArmiesP(tgt));
   if(!wanted){
     if(existing){
       const stale=existing.getAttribute('data-fakeid');
@@ -6168,7 +6168,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   // themselves a synthetic (hired/raised/charmed) hero this same turn can't anchor a charm
   // pre-order chain.
   if(!/^\d+$/.test(String(charId))||!/^\d+$/.test(String(heroId))) return;
-  const wanderer=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId)&&!x.isKing&&(x.armies||0)===0);
+  const wanderer=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId)&&!x.isKing&&!leadsArmiesP(x));
   if(!wanderer) return;
   const isEnemy=(wanderer.player!=null);   // enemy → command seized for the turn; else → joins you
 
@@ -6617,7 +6617,6 @@ const UNIT_ABILITIES={
   'Noble Griffons':'Dive on the Bowmen — the enemy’s strongest second-line archer fights ×0.75. Screech Dive — a diving pre-battle strike scatters one enemy unit (2–4), one chance in two whatever the commander’s Druid.',
   'Human Garrison':'Hold the Gate — defending, never hit from the side when the enemy line wraps its end. Town Watch — counts as Levies for Shieldwall and for anchoring the line.',
   'Galleon Fleet':'Broadside — fires in the pre-battle archery phase during sea battles.',
-  'Corsair Fleet':'Cut the Line — if at least half your winning force are Corsairs, the enemy cannot retreat by sea. Against neutral guards they instead keep your own line of escape to the ships open.',
   'Forest Wardens':'Woodland Skirmish — ×1.15 in forest and jungle, whatever they face. Ambush — in forest or jungle, the side facing them gets no archery phase at all (unless Eagle Riders fly with it). Works attacking or defending, and against province defenders as well as another realm.',
   'Elven Bowmen':'Volley at the Charge — ×1.25 shooting cavalry from the second line. Woodland Volley — double volley damage in forest and jungle.',
   'Shadow Archers':'Marksmen — ×1.25 shooting archers from the second line, and they pick the best target anywhere along the enemy front. Loosed From Cover — cannot be targeted by enemy volleys (unless Eagle Riders fly with the shooters).',
@@ -6698,7 +6697,7 @@ function updateRaceDesc(){
   // needs no Druid skill for them, and the two ancient feuds (Human↔Orc, Elf↔Dwarf) cost a
   // commander 20% when leading the rival kin's troops.
   const DESCS={
-    Human:'🛡 <strong>Human:</strong> The all-rounders — the widest choice of troops (Levies and sturdy Men-at-Arms, Longbows, the best horse in the game) and the strongest navy (Galleons and fast Corsairs). Their units also <strong>learn twice as fast</strong>, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
+    Human:'🛡 <strong>Human:</strong> The all-rounders — the widest choice of troops (Levies and sturdy Men-at-Arms, Longbows, the best horse in the game) and the strongest navy (the Galleons). Their units also <strong>learn twice as fast</strong>, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
     Elven:'🏹 <strong>Elven:</strong> Archers and woodsmen. Elven troops fight at <strong>×1.5 in forest and jungle</strong>, and an Elven unit that would be destroyed often slips away home instead of dying. Swift Eagle Riders scout and strike, and Stag Riders are the one cavalry at home among the trees. Weakest in the open. Feud with Dwarves.',
     Dwarven:'⛏ <strong>Dwarven:</strong> The anvil. Dwarven troops fight at <strong>×1.5 whenever they defend</strong>, and every Dwarven character of a Dwarven realm wears <strong>Mithril Armour</strong> — 2 less damage from every blow and arrow they take. Mountain Guns and armoured Ironclads hit very hard, and Ironhoof Rams are the one cavalry sure-footed in the mountains. Slow to march. Feud with Elves.',
     Orcish:'⚔ <strong>Orcish:</strong> The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes (two a turn), Black Arrows, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with <strong>18 HP instead of 15</strong> and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
@@ -9059,6 +9058,18 @@ function provinceGrandDesignHTML(p){
               :'Its powers serve only the realm that built it \u2014 while another crown holds this ground it is dormant stonework.'}</div>
     </div>`;
 }
+// 2026-10-15 (D1): does a hero your orders can target lead troops? A report now says so (leadsArmies)
+// rather than giving another realm's exact count; an older report still carries the count.
+function leadsArmiesP(x){ return x&&x.leadsArmies!=null?!!x.leadsArmies:((x&&x.armies)||0)>0; }
+// 2026-10-15 (Toby, D2/D9): what a Spy on the hero read besides their skills — the magic items they
+// carried and the army units they led, as of that spy. Empty for a hero never spied on.
+function spiedExtraP(s){
+  if(!s) return '';
+  let h='';
+  if(Array.isArray(s.spiedItems)) h+=`<br><span style="color:#1d5a1d">🔍 Items:</span> ${s.spiedItems.length?s.spiedItems.join(', '):'none'}`;
+  if(Array.isArray(s.spiedArmies)) h+=`<br><span style="color:#1d5a1d">🔍 Leads:</span> ${s.spiedArmies.length?s.spiedArmies.map(a=>armyLabel(a,{short:true})).join(', '):'no armies'}`;
+  return h;
+}
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
   // a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id, and drop from the
@@ -9068,7 +9079,8 @@ function popupKnownChars(pd, deadHeroes){
   const dead=(deadHeroes||[]).filter(d=>d.locationId===(pd&&pd.id)).filter(d=>{ if(_deadSeen.has(d.id)) return false; _deadSeen.add(d.id); return true; });
   const deadIds=new Set(dead.map(d=>d.id));
   if(!chars.length && !dead.length) return '';
-  const cnt=(c)=>c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'';
+  // 2026-10-15 (D1): your own heroes' exact count; anyone else's rough size (armyBand), never a number
+  const cnt=(c)=>c.armyBand?(c.armyBand==='no armies'?'':` <span style="opacity:.7">(${c.armyBand})</span>`):(c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'');
   const own=chars.filter(c=>c.isOwn && !deadIds.has(c.id));
   const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer && !deadIds.has(c.id));
   const wand=chars.filter(c=>c.isWanderer && !deadIds.has(c.id));
@@ -10539,7 +10551,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.14-0743</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1117</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

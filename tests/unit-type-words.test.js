@@ -27,7 +27,8 @@ let m; while((m=rowRe.exec(table))){ const cells=[...m[4].matchAll(/<td[^>]*>([^
 ok(Object.keys(rows).length>=30,`the roster table parses (${Object.keys(rows).length} rows)`);
 const badType=Object.entries(rows).filter(([,r])=>!TYPE_CELL.test(r.type)).map(([u,r])=>`${u}: "${r.type}"`);
 ok(badType.length===0,'every Type cell is one of the five words'+(badType.length?' — not: '+badType.join('; '):''));
-const want=Object.keys(S||{}).filter(u=>!/ Elemental$/.test(u)); const missingRow=want.filter(u=>!rows[u]);
+// R-109: the retired Corsairs keep their strength for companies already raised, but have no row.
+const want=Object.keys(S||{}).filter(u=>!/ Elemental$/.test(u)&&u!=='Corsair Fleet'); const missingRow=want.filter(u=>!rows[u]);
 ok(want.length>20&&missingRow.length===0,'the roster has a row for every recruitable unit'+(missingRow.length?' — missing: '+missingRow.join(', '):''));
 const garrisons=Object.keys(rows).filter(u=>/Garrison$/.test(u)); const gBad=garrisons.filter(u=>rows[u].type!=='Infantry (garrison)');
 ok(garrisons.length===4&&gBad.length===0,'the four garrisons are "Infantry (garrison)"'+(gBad.length?' — not: '+gBad.join(', '):''));

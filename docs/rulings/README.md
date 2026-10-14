@@ -112,7 +112,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-050](R-050-bonus-tax-gold-cap.md) | Bonus tax gold is capped at 5% of base tax | 2026-09-24 | Confirmed (open question) | no test yet |
 | [R-051](R-051-item-tiers-by-role.md) | What each lair grade holds | 2026-09-24 | Confirmed | no test yet |
 | [R-052](R-052-item-effects-spread.md) | Nearby lairs do not repeat an item's effect | 2026-09-26 | Confirmed | [`lair-effects-spread`](../../tests/lair-effects-spread.test.js) |
-| [R-053](R-053-spiritwrack.md) | Spiritwrack silences | 2026-09-26 | Confirmed | no test yet |
+| [R-053](R-053-spiritwrack.md) | Spiritwrack silences | 2026-09-26 | Superseded | no test yet |
 | [R-054](R-054-melee-damage.md) | A melee blow's damage | 2026-09-26 | Confirmed | no test yet |
 | [R-055](R-055-bot-opponents.md) | Bot opponents: one strength, Normal or Aggressive | 2026-09-26 | Confirmed | no test yet |
 | [R-056](R-056-skills-rise-from-experience.md) | How skills rise from experience | 2026-09-27 | Confirmed | no test yet |
@@ -168,3 +168,9 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-106](R-106-beast-abilities.md) | The beasts' battle-line abilities | 2026-10-13 | Confirmed | [`abilities-beasts`](../../tests/abilities-beasts.test.js), [`abilities-beasts-turn`](../../tests/abilities-beasts-turn.test.js), [`island-back`](../../tests/island-back.test.js), [`battle-tweaks`](../../tests/battle-tweaks.test.js), [`primal-abilities-words`](../../tests/primal-abilities-words.test.js) |
 | [R-107](R-107-duel-stance-refuse.md) | A player's hero refuses duels unless told otherwise | 2026-10-13 | Confirmed (open question) | [`duel-refuse-default`](../../tests/duel-refuse-default.test.js) |
 | [R-108](R-108-lairs-unique-per-province.md) | One lair per name and one of each guardian per province | 2026-10-13 | Confirmed | [`lair-province-unique`](../../tests/lair-province-unique.test.js) |
+| [R-109](R-109-corsairs-retired.md) | The Corsair fleet is gone | 2026-10-15 | Confirmed (open question) | [`corsairs-retired`](../../tests/corsairs-retired.test.js), [`roster-words`](../../tests/roster-words.test.js) |
+| [R-110](R-110-heroes-sharing-a-province.md) | Another realm's hero beside yours is always seen, and only roughly | 2026-10-15 | Confirmed | [`sight-shared-province`](../../tests/sight-shared-province.test.js) |
+| [R-111](R-111-what-spying-shows.md) | What spying shows | 2026-10-15 | Confirmed | [`spy-reveals`](../../tests/spy-reveals.test.js) |
+| [R-112](R-112-dreamstone-after-doubling.md) | The Dreamstone's round comes after Psychic Blast's doubling | 2026-10-15 | Confirmed | [`blast-dreamstone`](../../tests/blast-dreamstone.test.js) |
+| [R-113](R-113-spiritwrack-counted-to-five.md) | Spiritwrack counts White to 5 | 2026-10-15 | Confirmed | [`spiritwrack-five`](../../tests/spiritwrack-five.test.js) |
+| [R-114](R-114-hints-not-names.md) | The rulebooks may hint at mastery, never name it | 2026-10-15 | Confirmed | [`mastery-hints-words`](../../tests/mastery-hints-words.test.js) |

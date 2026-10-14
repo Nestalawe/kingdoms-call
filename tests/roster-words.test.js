@@ -22,6 +22,7 @@ const terrOf=cell=>{ const t=strip(cell.replace(/<span[\s\S]*?<\/span>/g,'')).tr
   t.split('·').forEach(part=>{ const mm=/^\s*([A-Za-z]+)\s*×\s*([\d.]+)\s*$/.exec(part); if(mm) out[mm[1].toLowerCase()]=parseFloat(mm[2]); else out['?'+part.trim()]=NaN; }); return out; };
 for(const u of Object.keys(ROSTER)){
   const d=ROSTER[u], r=rows[u];
+  if(d.retired){ ok(!r,`the rulebook's roster has no row for ${u} (retired)`); continue; }
   ok(!!r,`the rulebook's roster has a row for ${u}`); if(!r) continue;
   ok(r.race===d.race,`${u}: race ${d.race} (the row says ${r.race})`);
   const typeWord=d.garrison?'Infantry (garrison)':cap(d.type);
@@ -77,7 +78,7 @@ ok(!!march&&+march[1]===ROSTER['Shieldwall Levies'].speed,`the March example cal
 ok(!!march&&+march[2]===ROSTER['Shieldwall Levies'].speed+3,'…and the March-5 figure follows the ladder (+3 at March 5, one rate for every unit since 2026-10-13)');
 
 // ── Two a turn: garrisons, shipyard hulls and Goblin Hordes ──
-const raisePara=strip((/<h3>How many you may raise in a turn<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(rules)||['',''])[1]);
+const raisePara=strip((/<h3[^>]*>How many you may raise in a turn<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(rules)||['',''])[1]);
 ok(/Goblin Horde/.test(raisePara)&&/two/.test(raisePara),'the rulebook\'s "How many you may raise" paragraph names the Goblin Horde among the two-a-turn exceptions');
 ok(!/only two things/.test(rules),'the rulebook no longer says garrisons are "one of only two things" you can raise two of');
 const recruitRow=strip((/<tr><td><strong>Recruit Armies<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(intro)||['',''])[1]);
