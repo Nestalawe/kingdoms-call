@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.14-1500
+// Data file v2026.10.14-1600
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.14-1500';
+const KC_DATA_STAMP='2026.10.14-1600';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1580,7 +1580,7 @@ const SPELL_DEFS_P={
     desc:'Action: cleanses the province the caster stands in of all its battlefield dead — every grave there is laid to rest and can no longer be raised by any necromancer. Combat: the opponent suffers −8% per caster level to hit and is seared for 6% of its health (both ×1.5 against undead and fiends), and the caster recovers 10% of their own. Battle magic: all enemy undead units fight at 75% base strength.',
     fn:'white_holy_symbol'},
   'Spiritwrack':    {school:'white',target:'none',encounter:true,phase:false,
-    desc:'Combat: for the next three combat phases the target cannot cast spells or use archery, and its melee damage is halved. Battle magic: all missile units fight at half base strength.',
+    desc:'Combat: for 1 round, plus 1 per two White levels (at most 4), the target cannot cast spells, use its powers or use archery (reaching for one, it attacks instead), and its melee damage is halved. Battle magic: all missile units fight at half base strength.',
     fn:'white_spiritwrack'},
 
   // ══ PSYCHIC MAGIC ══
@@ -1594,10 +1594,10 @@ const SPELL_DEFS_P={
     desc:'Action: everything that happens to the target enemy character becomes known to you for the rest of the turn, reported in your Realm Events. Cannot be cast on a neutral or wandering hero. Only one Clairvoyance may be active at a time — a new casting replaces the old.',
     fn:'psychic_clairvoyance'},
   'Psychic Blast':  {school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Action: the target loses 2 skill levels, each drawn from a random owned skill (the two picks may be the same skill). Combat: stuns the opponent and grants the caster 3 free attack rounds. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
+    desc:'Action: the target loses 2 skill levels, each drawn from a random owned skill (the two picks may be the same skill). Combat: the opponent can do nothing at all for 1 round, plus 1 per two Psychic levels (3 at Psychic 5), unless a stun ward turns it. Battle magic: negates the enemy commander\'s Druid skill for the battle.',
     fn:'psychic_blast'},
   'Telekinetic Storm':{school:'psychic',target:'character',encounter:true,phase:true,
-    desc:'Action: a number of the target\'s units equal to your skill level are struck — Green units are destroyed outright, and every other struck unit PERMANENTLY drops one experience level; a skeletal unit struck by it shatters outright. Combat: deals a quarter of the target\'s max HP as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
+    desc:'Action: a number of the target\'s units equal to your skill level are struck — Green units are destroyed outright, and every other struck unit PERMANENTLY drops one experience level; a skeletal unit struck by it shatters outright. Combat: deals 12% of the target\'s max HP, plus 3% per Psychic level (15% at 1, 27% at 5), as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander\'s Tactical bonus.',
     fn:'psychic_storm'},
 
   // ══ ILLUSORY MAGIC ══
@@ -1611,7 +1611,7 @@ const SPELL_DEFS_P={
     desc:'Action: veil an entire province you are in or adjacent to — every lair within becomes invisible to all other players, who cannot discover any lair there (though any they already found remains theirs). 20% chance to fade each turn.',
     fn:'illusory_hide_feature'},
   'Invisibility':   {school:'illusory',target:'none',encounter:true,phase:true,
-    desc:'Combat: enemies suffer \u221225% to hit the caster (to a minimum of 40%) for the fight, and the caster gains +30% to Flee. Action: cast on yourself — 80% chance that no enemy player sees you (sightings, spies, encounter targeting, the map) for the rest of the turn.',
+    desc:'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit the caster for the fight, and the caster gains +30% to Flee. Action: cast on yourself — 80% chance that no enemy player sees you (sightings, spies, encounter targeting, the map) for the rest of the turn.',
     fn:'illusory_invisibility'},
   'Mirror Image':   {school:'illusory',target:'none',encounter:true,phase:false,
     desc:'Combat: conjures a phantom duplicate of your opponent that they must fight while you concentrate (taking no other actions). Each round they may disbelieve it (4% per total skill level); casting it again dissipates both images.',
@@ -1636,7 +1636,7 @@ const SPELL_DEFS_P={
 
   // ══ NECROMANCY ══
   'Control Undead': {school:'necromancy',target:'character',encounter:true,phase:true,
-    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province — or cast it on your own province to sense the battlefield dead lying there, unit by unit, and to learn which of the SURROUNDING provinces hold graves of their own (that they do, never how many or what). Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level. Battle magic: one random enemy undead unit defects to your side.',
+    desc:'Action: seize one random undead army unit from a neutral/enemy character in your province — or cast it on your own province to sense the battlefield dead lying there, unit by unit, and to learn which of the SURROUNDING provinces hold graves of their own (that they do, never how many or what). Combat: an undead foe cannot act for a number of rounds equal to your Necromancy level (counted to 5), unless a stun ward turns it. Battle magic: one random enemy undead unit defects to your side.',
     fn:'necromancy_control'},
   'Skeletal Armies':{school:'necromancy',target:'none',encounter:false,phase:true,
     desc:'Action: raise the most experienced dead army units lying in your province as skeletal versions under your command — 1 unit at Necromancy 1–2, 2 at Necromancy 3–4, 3 at Necromancy 5+.',
@@ -1645,7 +1645,7 @@ const SPELL_DEFS_P={
     desc:'Action: EVERY skill the target has is halved (rounded down) for the rest of the turn. Combat: the target\'s best combat ability is halved for the fight. Battle magic: the enemy commander\'s best combat-affecting skill (Tactical, Druid or Naval) is halved for the battle.',
     fn:'necromancy_curse'},
   'Hand of Death':  {school:'necromancy',target:'none',encounter:true,phase:false,
-    desc:'Combat: 10% per Necromancy level to deal damage equal to 50% of the enemy\'s maximum health.',
+    desc:'Combat: 10% per Necromancy level (at most 60%) to strike for 40% of the enemy\'s maximum health (×1.1 with Death\'s Finger Ring).',
     fn:'necromancy_hand'},
   'Plague':         {school:'necromancy',target:'province',encounter:false,phase:true,
     desc:'Action: in your province or an adjacent one, each humanoid army unit has a (10% + 5%/level) chance to drop an experience level; survivors are immunised (half chance thereafter). The plague then spreads to adjacent provinces (15% each per phase) until turn\'s end. Not cumulative.',
