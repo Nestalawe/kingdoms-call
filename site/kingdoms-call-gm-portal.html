@@ -14544,6 +14544,15 @@ async function runTurn(opts){
   // Draw ONE of the character's pending skill-rise candidates for the phase at random and apply it.
   // Rise lines go to the deferred (end-of-phase) log, private to the owner, in that character's
   // Chronicle section. The losing candidates are discarded without a word.
+  // ── NAVAL FROM A VOYAGE (2026-10-14, batch item 9, Toby) ── a hero learns Naval at sea only when
+  // leading ships or sea beasts of their own; a passenger (carried in another's hulls, or riding out
+  // by sea with no fleet) learns nothing from the voyage. Every voyage path rolls through here — a sea
+  // move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea. (From 2026-09-21 until
+  // now a passenger rolled at the frequent-action rate.)
+  function rollNavalVoyage(c, base){
+    if(!c||!(c.armies||[]).some(a=>a&&!a._died&&SEA_TYPES.has(a.type))) return;
+    trySkillGain(c,'naval',base);
+  }
   function resolvePendingSkillGain(real){
     const P=real&&real._sgPending; if(!P) return;
     real._sgPending=null; if(P.done) return; P.done=true;
@@ -20313,13 +20322,9 @@ const BATTLE_ARMY_SPELLS={
         // this turn (the illusion holds for the rest of the turn they arrive, then lifts).
         if(toProv._illusoryTerrain && c.player!==toProv._illusoryTerrain.caster){ toProv._illusoryTerrain._enteredByEnemy=true; }
         // Skill gains from movement: March (land move leading an army) / Naval (sea move with a
-        // fleet).
-        // 2026-09-21 (Toby): ANY sea voyage trains Naval — commanding a fleet at the standard rate,
-        // anyone else aboard (a passenger, an unled hero, a host carried in another's hulls) at the
-        // smaller frequent-action rate.
+        // fleet). 2026-10-14 (batch item 9): a passenger learns no Naval (rollNavalVoyage).
         if(toProv.terrain==='sea'){
-          if((c.armies||[]).some(a=>SEA_TYPES.has(a.type))) trySkillGain(c,'naval',SKILLGAIN_STD);
-          else trySkillGain(c,'naval',SKILLGAIN_COMMON);
+          rollNavalVoyage(c,SKILLGAIN_STD);
         } else if((c.armies||[]).length>0){ trySkillGain(c,'march',SKILLGAIN_COMMON); }
         if(!toProv.characters)toProv.characters=[];
         toProv.characters.push(c.id);
@@ -25861,7 +25866,7 @@ const BATTLE_ARMY_SPELLS={
       log('move',`🛡 ${c.name} is standing watch — word reaches them that ${target.names.join(' and ')} ${target.names.length>1?'are':'is'} crossing into ${P.name}. They break camp at once and march to meet the threat.`,
         {actor:c.player,targets:[c.player],provinceId:P.id,public:true,charId:c.id,phase:ph}); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
       // Reacting is a march: the same skill gain a normal move would give (a sea crossing trains Naval).
-      trySkillGain(c,_bySea?'naval':'march',SKILLGAIN_COMMON);
+      if(_bySea) rollNavalVoyage(c,SKILLGAIN_COMMON); else trySkillGain(c,'march',SKILLGAIN_COMMON);
     });
   }
 
@@ -25941,7 +25946,7 @@ const BATTLE_ARMY_SPELLS={
       if(!prov.visitedBy.includes(d.player)) prov.visitedBy.push(d.player);
       log('move',`🛡 ${d.name} is standing watch — word reaches them that ${raiser.name}${realmTag(raiser.player)} ${raiser._warFront?'is turning the host camped inside '+prov.name+' on the province':'is gathering a host inside '+prov.name}. They break camp at once and reach ${prov.name} before it can be seized, drawing up to defend it.`,
         {actor:d.player,targets:[d.player],provinceId:prov.id,public:true,charId:d.id,phase:ph});
-      trySkillGain(d,bySea?'naval':'march',bySea?SKILLGAIN_STD:SKILLGAIN_COMMON);
+      if(bySea) rollNavalVoyage(d,SKILLGAIN_STD); else trySkillGain(d,'march',SKILLGAIN_COMMON);
       riders.push(d);
     });
     return riders;
@@ -26004,7 +26009,7 @@ const BATTLE_ARMY_SPELLS={
         if(!prov.visitedBy) prov.visitedBy=[];
         if(!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
         log('move',`🛡 ${c.name} stands watch — word comes that an enemy host has risen in ${prov.name}. They break camp and march to meet it.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
-        trySkillGain(c,toSea?'naval':'march',SKILLGAIN_COMMON);
+        if(toSea) rollNavalVoyage(c,SKILLGAIN_COMMON); else trySkillGain(c,'march',SKILLGAIN_COMMON);
       } else {
         log('move',`🛡 ${c.name} stands watch as an enemy host takes shape in ${prov.name} — they form their line to give battle.`,{actor:c.player,targets:[c.player],provinceId:prov.id,public:true,charId:c.id,phase:ph});
       }
@@ -26187,7 +26192,7 @@ const BATTLE_ARMY_SPELLS={
       it.c._attackedFrom=it.fromId;
       if(!P.visitedBy) P.visitedBy=[];
       if(!P.visitedBy.includes(it.player)) P.visitedBy.push(it.player);
-      if(!toSea) trySkillGain(it.c,'march',SKILLGAIN_COMMON); else trySkillGain(it.c,'naval',SKILLGAIN_STD);
+      if(!toSea) trySkillGain(it.c,'march',SKILLGAIN_COMMON); else rollNavalVoyage(it.c,SKILLGAIN_STD);
       it.cancelled=true; it.cancelReason='reinforced';
       log('move',`${it.c.name} force-marches into ${P.name} ahead of the enemy — their troops are in the line before the first banners appear over the ridge.`,
         {actor:it.player,targets:[it.player],provinceId:P.id});
@@ -26277,7 +26282,7 @@ const BATTLE_ARMY_SPELLS={
       if(!step.visitedBy) step.visitedBy=[];
       if(!step.visitedBy.includes(c.player)) step.visitedBy.push(c.player);
       if((c.armies||[]).length>0&&!toSea) trySkillGain(c,'march',SKILLGAIN_COMMON);
-      if(toSea) trySkillGain(c,'naval',SKILLGAIN_COMMON); // any sea voyage trains Naval (2026-09-21)
+      if(toSea) rollNavalVoyage(c,SKILLGAIN_COMMON); // a voyage trains Naval only for a hero leading ships (batch item 9)
       trySkillGain(c,'spy',SKILLGAIN_STD); // AK [3.19]: Spy/Trail/Pursue trains Spy
       if(c.location!==quarry.location){
         log('move',`${c.name} presses on into ${step.name}, hard on the trail of ${quarry.name}.`,{actor:c.player,targets:[c.player],provinceId:step.id});
