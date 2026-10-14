@@ -4,7 +4,8 @@
 // the one who clears a lair reliably, and that Hunting Rumours' odds are the ones to trust. Level 0.
 const fs=require('fs'), path=require('path');
 const SITE=process.env.KC_SITE||path.join(__dirname,'..','site');
-const strip=f=>fs.readFileSync(path.join(SITE,f),'utf8').replace(/<[^>]*>/g,'');
+const stripTags=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } }; // until stable (as the other words tests do)
+const strip=f=>stripTags(fs.readFileSync(path.join(SITE,f),'utf8'));
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const R=strip('kingdoms-call-rules.html'), I=strip('kingdoms-call-rules-intro.html');
 ok(!/Send a hero of the grade's own measure and the hardest guardian of that grade falls to them about 19 fights in 20/.test(R),'the rulebook no longer promises 19 fights in 20 at every grade');

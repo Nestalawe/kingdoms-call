@@ -6,9 +6,10 @@
 // rulebook said field experience stops at level 5; it carries a skill to 9. Level 0: the words.
 const fs=require('fs'), path=require('path');
 const SITE=process.env.KC_SITE||path.join(__dirname,'..','site');
+const stripTags=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } }; // until stable (as the other words tests do)
 const read=f=>fs.readFileSync(path.join(SITE,f),'utf8');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
-const P=read('kingdoms-call-player-portal.html'), D=read('kingdoms-call-data.js'), R=read('kingdoms-call-rules.html').replace(/<[^>]*>/g,'');
+const P=read('kingdoms-call-player-portal.html'), D=read('kingdoms-call-data.js'), R=stripTags(read('kingdoms-call-rules.html'));
 const pp=n=>(P.match(new RegExp(`\\n  '${n}':'([^\\n]*)',?\\n`))||[])[1]||'';
 const dd=n=>{ const i=D.indexOf(`\n  '${n}':`); if(i<0) return ''; return (D.slice(i,i+1200).match(/desc:'((?:[^'\\]|\\.)*)'/)||[])[1]||''; };
 const both=(n,good,bad,what)=>{ [['player portal',pp(n)],['data file',dd(n)]].forEach(([w,t])=>{
