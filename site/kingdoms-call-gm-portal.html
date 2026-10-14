@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1202'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1218'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3830,7 +3830,7 @@ function detRoll(turn,viewerPi,charId,provId){
 // Chance = your exploration% of the province, −20%/enemy Spy level (cap L5), +10%/highest friendly
 // (own or allied) Spy level present (cap L5), clamped 5–95%. Replaces the flat _unspottedTurn cloak
 // for owned provinces. Kings roll exactly as heroes do. Returns true if spotted.
-function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
+function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar, turn){   // turn: the report's turn (default gs.turn)
   // 2026-09-21 — A PROVINCE YOU HOLD IS GROUND YOU KNOW.
   // This read `exploredBy[viewerPi]`, and NOTHING writes that on conquest — only marching in does,
   // at +10% (+5%/Explorer) a visit. So a province taken by the sword sat at 10–20% "explored" for
@@ -3858,7 +3858,7 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
   // twentieth, so a hunt can always eventually be brought to him. Shimmer still halves it.
   let chance=Math.max(25, Math.min(95, explored - 20*enemySpy + 10*friendlySpy + discSumOf(gs.players&&gs.players[viewerPi],'spotLurker','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.home||homeFounderOf(gs,prov.id)===viewerPi)&&(!e.coastal||discProvCoastal(gs,prov))))); // + spotLurker discoveries (sd60 Watch Houses)
   if(perkTier(enemyChar,'illusory')>=1) chance=Math.max(5, chance*0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
-  return detRoll(gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
+  return detRoll(turn!=null?turn:gs.turn, viewerPi, enemyChar.id, prov.id)*100 < chance;
 }
 
 // ── Items 1 & 12: ONE visibility rule for non-own characters ────
@@ -24490,6 +24490,11 @@ const BATTLE_ARMY_SPELLS={
           if(!acProv) return;
           if(ac._invisTurn===G.turn) return; // 2026-10-15 (Toby): a hero under Invisibility is not noticed
           const inOwnedProv=targetOwnedProvs.has(ac.location);
+          // 2026-10-15 (Toby): a lone enemy lurking in your land with none of your heroes there is
+          // reported only if your people spot them — the same roll the report makes for this hero,
+          // province and turn (the report is built after the turn counter advances, hence G.turn+1).
+          if(inOwnedProv&&!targetCharProvs.has(ac.location)&&!(ac.armies||[]).length&&relOfReport(G,targetPi,actingPi)==='enemy'
+             &&!spotEnemyInOwnedProvince(G,targetPi,acProv,ac,G.turn+1)) return;
           const inKnownProv=targetKnownProvs.has(ac.location);
           if(!inKnownProv) return; // target doesn't know about this province
 
@@ -28803,7 +28808,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1202</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1218</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
