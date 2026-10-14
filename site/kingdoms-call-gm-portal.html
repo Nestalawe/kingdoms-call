@@ -21331,7 +21331,8 @@ const BATTLE_ARMY_SPELLS={
           const goldFinal=Math.round(gold*(1+discSum(c.player,'lairGold','pct',e=>(!e.terrains||e.terrains.includes(prov.terrain))&&(!e.charRace||c.race===e.charRace)))); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
           player.gold=(player.gold||0)+goldFinal;c.merits=(c.merits||0)+goldFinal;
           setFeatureTreasure(f,0); // the hoard is lifted
-          if(goldFinal>0) trySkillGain(c,'thief',SKILLGAIN_STD); // 2026-09-21 (Toby): carrying off a lair's gold trains Thief
+          // 2026-10-14 (batch item 8, Toby): carrying off a cleared lair's hoard no longer trains Thief
+          // (it did from 2026-09-21). Stealing from a guardian mid-fight still does.
           // the tier-weighted fighting-skill experience roll for a lair clear is DROPPED; the only
           // permanent reward is the earned-HP gain. A pacified beast earns nothing.
           if(!encounter.pacified) awardWinHp(c, null, 'lair'); // clearing a lair by force hardens the hero (earned HP)
