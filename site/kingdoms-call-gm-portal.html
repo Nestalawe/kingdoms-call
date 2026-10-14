@@ -14521,7 +14521,7 @@ async function runTurn(opts){
       ? Math.max(0.05, 0.10 - 0.00625*lvl)  // frequent actions: 10% @ L0 → 5% @ L8
       : Math.max(0.10, 0.20 - 0.0125*lvl);  // standard experience: 20% @ L0 → 10% @ L8
     // a Human character of a Human realm learns 50% faster — every skill, and every chance-based
-    // path (practice, experience, moves…) flows through here, so all are covered.
+    // experience path (experience, moves…) flows through here; Practice applies the same ×1.5 itself.
     const _humanLearn=((real.race==='Human'&&G.players[real.player]&&G.players[real.player].race==='Human')?1.5:1)
       *(1+discSum(real.player,'skillGain','pct',e=>!e.skills||e.skills.includes(skill))); // skillGain discoveries (all skills, or a listed few)
     // diminishing returns — every time this skill has ALREADY risen this turn, the next chance to
@@ -21969,7 +21969,10 @@ const BATTLE_ARMY_SPELLS={
         // and starts fresh each turn.
         const _streak=(c._practiceFailStreak&&c._practiceFailStreak.turn===G.turn)?c._practiceFailStreak.n:0;
         const _persevere=Math.pow(1.2,_streak);
-        const soloChance=(baseByLevel+astroBonus)*_persevere; // this character's normal (solo) chance to improve
+        // 2026-10-14 (batch item 10, Toby): QUICK LEARNERS on the Practice ground too — a Human of a
+        // Human realm practises at ×1.5, as they learn in the field (trySkillGain).
+        const _prHuman=(c.race==='Human'&&G.players[c.player]&&G.players[c.player].race==='Human')?1.5:1;
+        const soloChance=(baseByLevel+astroBonus)*_persevere*_prHuman; // this character's normal (solo) chance to improve
         // Mentor rule: if any co-trainer had a HIGHER level in this skill AT PHASE START, they
         // teach the character — the improvement is automatic (guaranteed). Levels are read from the
         // start-of-phase snapshot, so a peer who trained up earlier this phase is NOT a mentor.
@@ -21996,6 +21999,7 @@ const BATTLE_ARMY_SPELLS={
           bonusReason=` (base ${dispFloor(baseByLevel*100)}% at level ${current})`+(astroBonus>0?' +5% (Astronomical Tables)':'');
         }
         if(_streak>0&&successChance<1) bonusReason+=` ×${_persevere.toFixed(2)} for ${_streak} earlier failed practice${_streak!==1?'s':''} this turn`;
+        if(_prHuman>1&&successChance<1) bonusReason+=' ×1.5 (Human: Quick Learners)';
             // roll a d100 and show the success chance and the roll, like every other action.
             const _prPct=dispFloor(successChance*100);
             const _prRoll=d100();
