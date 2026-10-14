@@ -131,6 +131,7 @@ const SUITE=[
   ['xp-naval-passenger',  'tests/xp-naval-passenger.test.js'], // batch 2026-10-14
   ['practice-human',      'tests/practice-human.test.js'], // batch 2026-10-14
   ['xp-fight-win',        'tests/xp-fight-win.test.js'], // batch 2026-10-14
+  ['xp-small-chances',    'tests/xp-small-chances.test.js'], // batch 2026-10-14
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],

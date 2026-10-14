@@ -16350,6 +16350,9 @@ const BATTLE_ARMY_SPELLS={
     clearPhantomCopies(c, !won, realCharOf(c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
     if(!won&&c) noteBattleLoss(c.id, narrative); // AK [3.15] — a beaten general stops Defending
     if(_rollTacticalGain) trySkillGain(c,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
+    // 2026-10-14 (batch item 11, Toby): a general who LOSES a battle but lives to tell of it learns
+    // too — Tactical (Naval at sea) at the small frequent-action rate. A general slain in it learns nothing.
+    if(!won) trySkillGain(c,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative);
     if(_rollNavalGain) trySkillGain(c,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
     if(_rollDruidGain) trySkillGain(c,'druid',SKILLGAIN_STD,narrative,won?1:0.5); // Druid: fought beside or against primal armies (loser at half chance)
     // 2026-09-26 (Toby): the NEUTRAL commander takes the mirror of those rolls — a chieftain who
@@ -16359,6 +16362,7 @@ const BATTLE_ARMY_SPELLS={
     if(neutralGuardHero&&neutralGuardHero.alive!==false){
       if(!won&&prov.terrain!=='sea') trySkillGain(neutralGuardHero,'tactical',SKILLGAIN_STD,narrative);
       if(!won&&prov.terrain==='sea') trySkillGain(neutralGuardHero,'naval',SKILLGAIN_STD,narrative);
+      if(won) trySkillGain(neutralGuardHero,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative); // a beaten chieftain who lives (batch item 11)
       if(_rollDruidGain) trySkillGain(neutralGuardHero,'druid',SKILLGAIN_STD,narrative,!won?1:0.5);
     }
     // a one-line result that onlookers (a char present but not fighting) may see instead of the
@@ -18206,6 +18210,13 @@ const BATTLE_ARMY_SPELLS={
       // standard rate, on top of the rolls for each blow, arrow or spell that landed (trySkillGain's
       // own guards keep it to one rise of a skill a phase and a turn).
       if(_winSide&&_winSide.kind==='character'&&_winSide.ref&&_winSide.hp>0) trySkillGain(_winSide.ref,'melee',SKILLGAIN_STD,narrative);
+      // 2026-10-14 (batch item 11, Toby): a hero who LOSES a fight and lives — beaten and spared, or
+      // fled — learns a little: Melee at the small frequent-action rate.
+      for(const X of [A,B]){
+        if(X.kind!=='character'||!X.ref||X.hp<=0||X===_winSide) continue;
+        const _lost=(winner&&winner!==X)||state.fledBy===X||(_winSide&&_winSide!==X);
+        if(_lost) trySkillGain(X.ref,'melee',SKILLGAIN_COMMON,narrative);
+      }
       for(const X of [A,B]){
         if(X===_winSide||X.kind!=='character'||!X.ref||X.hp<=0) continue;
         if(!(X._hpLow<=(X._hpStart-1))) continue;
@@ -19154,6 +19165,7 @@ const BATTLE_ARMY_SPELLS={
     completeDefendWatches(_fieldIds, narrative); // item 15: a watch that has fought is done, win or lose
     if(_rollTacticalGainPvP) trySkillGain(won?atk:def,'tactical',SKILLGAIN_STD,narrative); // Tactical: won a land battle
     if(_rollNavalGainPvP) trySkillGain(won?atk:def,'naval',SKILLGAIN_STD,narrative);       // Naval: won a sea battle
+    trySkillGain(won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative); // batch item 11: the beaten general who lives learns a little
     if(_rollDruidGainPvP){ trySkillGain(won?atk:def,'druid',SKILLGAIN_STD,narrative); trySkillGain(won?def:atk,'druid',SKILLGAIN_STD,narrative,0.5); } // Druid: winner full, loser half
     // onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless
     // host.
@@ -21639,6 +21651,7 @@ const BATTLE_ARMY_SPELLS={
             log('spy',`[Intelligence] 🔍 ${c.name}'s report on ${_tgt.name}${_tgt.player!=null?` of ${G.players[_tgt.player]?.name}`:''} (${_tgt.race||'?'}, ${_tgt.alignment||'?'}${_tgt.isKing?', king':''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`,{actor:c.player,targets:[c.player],provinceId:prov.id,spy:true});
           } else {
             log('system',`${c.name} watches ${_tgt.name} closely in ${prov.name}, but learns nothing of use.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+            trySkillGain(c,'spy',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           }
           // Caught?
           if(!charMinor(c,'shadow')){
@@ -21681,7 +21694,7 @@ const BATTLE_ARMY_SPELLS={
           TM(c).spyActions=(TM(c).spyActions||0)+1; // TITLE MERIT: Spymaster
           noteEspionage(G, c, prov.id, 'spied out the province');
           applySpySuccess(c, prov);
-        } else log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]});
+        } else { log('system',`${c.name}'s espionage in ${prov.name} yields little — the attempt went undetected but nothing useful was learned.`,{actor:c.player,targets:[c.player]}); trySkillGain(c,'spy',SKILLGAIN_COMMON); } // batch item 11: a failed attempt is a small chance to learn
         break;
       }
       // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
@@ -22571,6 +22584,7 @@ const BATTLE_ARMY_SPELLS={
             log('combat',`${c.name} is caught by the garrison guards of ${prov.name} and beaten back — ${dmg} damage taken.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
             log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) was caught trying to rob the garrison paymaster of ${prov.name}.`,{actor:c.player,targets:[prov.owner],provinceId:prov.id});
           } else log('system',`${c.name}'s attempt on the paymaster of ${prov.name} fails, but the thief slips away unnoticed.`,{actor:c.player,targets:[c.player],provinceId:prov.id});
+          if(roll>chance) trySkillGain(c,'thief',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           break;
         }
         const targetId=parseInt(target);
@@ -22610,6 +22624,7 @@ const BATTLE_ARMY_SPELLS={
           const caught=Math.random()*100>=escapeChance;
           if(caught) thiefCaughtScuffle(c,victim,`with a hand in their ${wantGold?'strongbox':'pack'}`);
           else log('system',`${c.name}'s theft attempt on ${victim.name} fails but the thief slips away undetected.`,{actor:c.player,targets:[c.player]});
+          trySkillGain(c,'thief',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
         }
         break;
       }
@@ -22761,6 +22776,7 @@ const BATTLE_ARMY_SPELLS={
 
         if(castRoll>castChance){
           log('system',`${c.name}'s ${spellName} fizzles — the spell dissipates without effect.`,{actor:c.player,targets:[c.player]});
+          if(!_itemCast) trySkillGain(c,school,SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn (an item's cast teaches nothing when it fails)
           // a fizzled Charm may bring its intended victim down on the caster.
           if(spellDef.fn==='psychic_charm'){ const _ct=G.characters.find(ch=>ch.alive&&ch.id===(parseInt(extra)||-1)); if(_ct&&_ct.player!==c.player&&!_ct.isKing) charmBacklash(c,_ct,'the spell fizzled'); }
           break;
@@ -23582,6 +23598,7 @@ const BATTLE_ARMY_SPELLS={
           log('system',`[Intelligence] ${c.name} (${G.players[c.player]?.name}) staged a Grand Heist in ${prov.name}${msg?`: ${msg}`:''}.`,{actor:c.player,targets:[vp],provinceId:prov.id});
           trySkillGain(c,'thief',SKILLGAIN_STD);
         } else {
+          trySkillGain(c,'thief',SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
           const caught=Math.random()*100>=Math.min(95,_hLvl*20);
           if(!caught){ log('system',`${c.name}'s Grand Heist in ${prov.name} comes to nothing, but the thief slips away undetected.`,{actor:c.player,targets:[c.player],provinceId:prov.id}); break; }
           // A hero of the robbed realm gives chase; failing that, the guards do.

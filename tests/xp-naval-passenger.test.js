@@ -3,8 +3,8 @@
 // nothing from the voyage. Level 1: every voyage roll (a sea move, a Defend ride-out by sea, a
 // reinforcement or a pursuit step at sea) goes through rollNavalVoyage, nested inside runTurn
 // (tests/lib/pc-hooks.js; every experience roll is recorded by a hook at the top of trySkillGain).
-// Level 0: no voyage path calls trySkillGain for Naval directly any more (only the battle wins and
-// the Naval 7/9 orders, which need a fleet, do).
+// Level 0: no voyage path calls trySkillGain for Naval directly any more (only battles, won or lost,
+// and the Naval 7/9 orders, which need a fleet, do).
 const fs=require('fs'), path=require('path');
 const {bootPersonalCombat}=require('./lib/pc-hooks');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -12,7 +12,7 @@ const TSG="  function trySkillGain(char, skill, base, narr, mult){\n";
 (async()=>{
   const src=fs.readFileSync(path.join(process.env.KC_SITE||path.join(__dirname,'..','site'),'kingdoms-call-gm-portal.html'),'utf8');
   const direct=src.split('\n').filter(l=>/trySkillGain\([^)]*['"]naval['"]/.test(l)||/trySkillGain\([^)]*\?\s*'naval'/.test(l));
-  const allowed=l=>/_rollNavalGain|neutralGuardHero|won\?atk:def/.test(l)||/^\s*trySkillGain\(c,'naval',(SKILLGAIN_STD|base)\);\s*$/.test(l);
+  const allowed=l=>/_rollNavalGain|neutralGuardHero|won\?atk:def|won\?def:atk|if\(!won\)/.test(l)||/^\s*trySkillGain\(c,'naval',(SKILLGAIN_STD|base)\);\s*$/.test(l);
   const stray=direct.filter(l=>!allowed(l));
   ok(!stray.length,`no voyage rolls Naval outside rollNavalVoyage (${stray.length}): ${stray.map(l=>l.trim().slice(0,90)).join(' | ')}`);
   let B;
