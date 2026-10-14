@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1023'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1102'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -3865,6 +3865,11 @@ function spotEnemyInOwnedProvince(gs, viewerPi, prov, enemyChar){
 // (the map's Spy-contest vs the list's flat cloak). Every consumer now calls this.
 // ctx: {ownedProvIds:Set, ownCharLocs:Set, spiedThisTurn:Set} — all keyed by province id.
 // Returns true when viewer `viewerPi` can see character `c` where it stands right now.
+// 2026-10-15 (Toby, D1): how big a force a hero you have not spied leads, as a glance across the field
+// gives it — never the exact count. One wording for the map, the hero sightings and the intrusion alerts.
+function armySizeBand(n){
+  return n<=0?'no armies':n<=2?'a small escort (a few units)':n<=5?'a modest band':n<=9?'a sizeable host':n<=15?'a large host':'a vast host';
+}
 function enemyCharVisibleTo(gs, viewerPi, c, ctx){
   if(!c||!c.alive) return false;
   if(c.player===viewerPi) return true;
@@ -3876,6 +3881,10 @@ function enemyCharVisibleTo(gs, viewerPi, c, ctx){
   if(!coLoc&&!ownHere&&!spied) return false;                       // no line of sight at all
   if(c._invisTurn===gs.turn) return false;                          // Invisibility beats even a spy
   if(spied) return true;                                            // a deliberate Spy pierces stealth
+  // 2026-10-15 (Toby, D1): another realm's hero beside one of yours at the end of the turn is always
+  // seen; their Spy cannot slip them past your hero (only Invisibility, above, still can). Wandering
+  // heroes and local chieftains keep their small chance to slip by (the cloak below).
+  if(coLoc&&c.player!=null) return true;
   const isEnemy=c.player!=null&&relOfReport(gs,viewerPi,c.player)==='enemy';
   if(isEnemy&&ownHere&&!coLoc){
     // Lurking in land you own with none of your characters present: Spy contest (a column can't
@@ -12662,7 +12671,7 @@ function buildTurnReport(gameState, playerIndex){
     .map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ');
   // a co-located enemy/neutral hero gives away only a ROUGH idea of how many armies they lead (a
   // glance across the field, not a muster roll). Spying still reveals exact units.
-  const _armyBand=(n)=>n<=0?'leads no armies':n<=2?'leads a small escort (a few units)':n<=5?'leads a modest band':n<=9?'leads a sizeable host':n<=15?'leads a large host':'leads a vast host';
+  const _armyBand=(n)=>'leads '+armySizeBand(n);
   gameState.characters.filter(c=>c.alive&&c.player!==playerIndex).forEach(c=>{
     const inOwned=ownedProvIds.has(c.location);
     // Items 1 & 12: same rule as the map and the Encounter list (enemyCharVisibleTo).
@@ -12699,17 +12708,19 @@ function buildTurnReport(gameState, playerIndex){
         text:`Wandering hero ${c.name} (${c.race}, ${c.alignment}) is in ${prov.name}. ${skillSentence}.${_wHireTxt}`,
       });
     } else {
-      // Enemy hero
+      // Another realm's hero. 2026-10-15 (Toby, D1): without a Spy you learn only the name, the
+      // realm and the rough size of the army they lead, wherever they stand (your own land too): no
+      // race, alignment or renown. What a Spy has read (spiedSkills) is still shown.
       const enemyKingdom=gameState.players[c.player]?.name||'unknown realm';
+      const _band=_armyBand((c.armies||[]).length);
       heroSightings.push({
         type:'enemy',
-        name:c.name,race:c.race,alignment:c.alignment,kingdom:enemyKingdom,kingdomColor:gameState.players[c.player]?.color||null,
+        name:c.name,kingdom:enemyKingdom,kingdomColor:gameState.players[c.player]?.color||null,
         locationName:prov.name,locationId:c.location,
-        topSkill:ts,
-        armyBand:_armyBand((c.armies||[]).length),
+        armyBand:_band,
         spiedSkills:spiedSkills||null, spiedTurn:spyRec?spyRec.turn:null,
         inOwnedProvince:inOwned,
-        text:`${c.name} of ${enemyKingdom} is in ${inOwned?'your province of':''} ${prov.name}. ${skillSentence}.`,
+        text:`${c.name} of ${enemyKingdom} is in ${inOwned?'your province of ':''}${prov.name}, and ${_band}.${spiedSkillStr?` Known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}.`:''}`,
       });
     }
   });
@@ -12790,13 +12801,14 @@ function buildTurnReport(gameState, playerIndex){
           // label them correctly — they are otherwise indistinguishable client-side.
           isNeutralGuard:!!c._isNeutralGuard,
           ownerName:c.player!=null&&!isOwn?(gameState.players[c.player]?.name||null):null,
-          armyCount:(c.armies||[]).length,
+          // 2026-10-15 (Toby, D1): your own hero's exact count; anyone else's rough size only
+          ...(isOwn?{armyCount:(c.armies||[]).length}:{armyBand:armySizeBand((c.armies||[]).length)}),
           ownerColor:c.player!==null?gameState.players[c.player]?.color:null};
       }).filter(Boolean);
       const _clairCharsHere=()=>(_clairChar&&p.id===_clairLoc)?[{id:_clairChar.id,name:_clairChar.name,isOwn:false,isKing:_clairChar.isKing,
         isWanderer:_clairChar.player===null,isNeutralGuard:!!_clairChar._isNeutralGuard,
         ownerName:_clairChar.player!=null?(gameState.players[_clairChar.player]?.name||null):null,
-        armyCount:(_clairChar.armies||[]).length,ownerColor:_clairChar.player!==null?gameState.players[_clairChar.player]?.color:null,clairvoyant:true}]:[];
+        armyBand:armySizeBand((_clairChar.armies||[]).length),ownerColor:_clairChar.player!==null?gameState.players[_clairChar.player]?.color:null,clairvoyant:true}]:[];
 
       if(isOwned){
         // Full live info — your own province.
@@ -14330,40 +14342,6 @@ async function runTurn(opts){
         log('message',`📨 You sent to ${rcptNames.join(', ')}: “${text}”`,{actor:senderPi,targets:[senderPi],phase:99,public:false});
       });
     });
-  }
-
-  // Build a rough army strength description for use in enemy intel Spy skill determines accuracy:
-  // 0-1 = vague, 2-3 = moderate, 4-5 = precise
-  function describeEnemyForce(armies, observerSpySkill){
-    if(!armies||armies.length===0) return 'no visible armies';
-    const totalStr=armies.reduce((s,a)=>s+(armStr(a)||4),0); // terrain not needed for intel estimates
-    if(observerSpySkill>=4){ // levels 4-5: exact detail
-      // Precise: exact count and types
-      const groups=armies.reduce((acc,a)=>{acc[a.type]=(acc[a.type]||0)+1;return acc;},{});
-      return Object.entries(groups).map(([t,n])=>`${n}× ${t}`).join(', ');
-    } else if(observerSpySkill>=2){
-      // Moderate: count and rough category
-      // 2026-09-27: three hand-typed lists, and the "everything else" list for infantry had drifted
-      // from the cavalry one — Noble Griffons, Wyvern Riders and Gyrocopters were counted as BOTH
-      // cavalry-type and infantry, so a Spy 2+ report overstated the force. One grouping now, from
-      // the shared unit classes: horse + the four racial flyers, fleets, and everything else.
-      const _spyCav=a=>KC_UNIT_CLASS.cavalry.includes(a.type)||KC_UNIT_CLASS.flying.includes(a.type);
-      const _spyNav=a=>KC_UNIT_CLASS.carrier.includes(a.type);
-      const cav=armies.filter(_spyCav).length;
-      const naval=armies.filter(_spyNav).length;
-      const inf=armies.filter(a=>!_spyCav(a)&&!_spyNav(a)).length;
-      const parts=[];
-      if(cav>0) parts.push(`${cav} cavalry-type`);
-      if(inf>0) parts.push(`${inf} infantry-type`);
-      if(naval>0) parts.push(`${naval} naval`);
-      return parts.join(', ')+` (${armies.length} total)`;
-    } else {
-      // Vague: just strength impression
-      if(totalStr>40) return 'a very powerful force (many armies)';
-      if(totalStr>20) return 'a moderate force';
-      if(totalStr>8)  return 'a small force';
-      return 'a weak force (few armies)';
-    }
   }
 
   function totalInit(c){
@@ -24482,11 +24460,8 @@ const BATTLE_ARMY_SPELLS={
           const inKnownProv=targetKnownProvs.has(ac.location);
           if(!inKnownProv) return; // target doesn't know about this province
 
-          // Determine what the target player's best spy skill is (for army intel quality)
-          const targetBestSpy=Math.max(0,...(G.characters||[])
-            .filter(c=>c.player===targetPi&&c.alive)
-            .map(c=>effStat(c,'spy')));
-          const forceDesc=describeEnemyForce(ac.armies||[], targetBestSpy);
+          // 2026-10-15 (Toby, D1): the same rough size the map gives, whatever the watcher's Spy
+          const forceDesc=armySizeBand((ac.armies||[]).length);
 
           // Accumulate the sighting; a single consolidated line per (target, hero, province) is
           // emitted after the turn resolves (see flushIntrusionNotifications). actor is left null
@@ -28577,13 +28552,10 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
       const hasPresence=ownCharLocsPi.has(p.id);
       if(!hasPresence && !spied) return; // no line of sight and not spied → no intel
       const here=(G.characters||[]).filter(c=>c.alive&&c.location===p.id);
-      const visible=here.filter(c=>{
-        if(c.player===pi) return true;
-        if(c._invisTurn===G.turn && c.player!=null && c.player!==pi) return false; // Invisibility beats even a spy
-        if(spied) return true;                              // a deliberate spy pierces stealth
-        if(hasPresence) return c._unspottedTurn!==G.turn;   // unspotted evade passive line-of-sight
-        return false;
-      });
+      // 2026-10-15 (D1): the one sight rule, as the map and the hero sightings use it (Invisibility,
+      // a Spy piercing stealth, another realm's hero always seen beside yours, the wanderers' cloak).
+      const _pciCtx={ownedProvIds:new Set(),ownCharLocs:ownCharLocsPi,spiedThisTurn:new Set(Object.keys(spyPhaseByProv).map(Number))};
+      const visible=here.filter(c=>c.player===pi||enemyCharVisibleTo(G,pi,c,_pciCtx));
       if(visible.length===0) return;
       // Only surface as an intel entry if there is a non-own character present, or the player spied
       // it.
@@ -28600,7 +28572,7 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
           isNeutralGuard:!!c._isNeutralGuard,
           kingdom:(c.player!=null&&c.player!==pi)?(G.players[c.player]?.name||'an enemy realm'):null,
           color:c.player!=null?G.players[c.player]?.color:null,
-          armyCount:armies.length,
+          ...(c.player===pi?{armyCount:armies.length}:{armyBand:armySizeBand(armies.length)}), // D1: rough size for anyone not yours
           armies:showDetail?armies.map(a=>({type:a.type,quality:a.quality,unitName:a.unitName||''})):null,
           spiedSkills:spyRec?spyRec.skills:null, spiedTurn:spyRec?spyRec.turn:null,
         };
@@ -28798,7 +28770,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1023</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1102</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

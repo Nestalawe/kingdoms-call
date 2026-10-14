@@ -3444,7 +3444,7 @@ function renderReportView(report){
               : `<strong${ch.isNeutralGuard?` style="color:${CHIEFTAIN_MARKER_COLOR}"`:''}>${ch.name}</strong>${ch.isNeutralGuard?' (local chieftain)':' (wandering)'}`;
             const force=(ch.armies&&ch.armies.length>0)
               ? ` — ${ch.armies.map(a=>armyLabel(a,{short:true})).join(', ')}`
-              : (ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:'');
+              : (ch.armyBand?(ch.armyBand==='no armies'?'':` — leads ${ch.armyBand}`):(ch.armyCount>0?` — leads ${ch.armyCount} unit${ch.armyCount!==1?'s':''}`:''));
             const sk=(ch.spiedSkills&&Object.keys(ch.spiedSkills).some(k=>ch.spiedSkills[k]>0))
               ? `<br><span style="font-size:.72rem;color:#1d5a1d">🔍 Skills:</span> ${Object.entries(ch.spiedSkills).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${SKILL_LABELS[k]||k} ${v}`).join(', ')}`
               : '';
@@ -9067,7 +9067,8 @@ function popupKnownChars(pd, deadHeroes){
   const dead=(deadHeroes||[]).filter(d=>d.locationId===(pd&&pd.id)).filter(d=>{ if(_deadSeen.has(d.id)) return false; _deadSeen.add(d.id); return true; });
   const deadIds=new Set(dead.map(d=>d.id));
   if(!chars.length && !dead.length) return '';
-  const cnt=(c)=>c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'';
+  // 2026-10-15 (D1): your own heroes' exact count; anyone else's rough size (armyBand), never a number
+  const cnt=(c)=>c.armyBand?(c.armyBand==='no armies'?'':` <span style="opacity:.7">(${c.armyBand})</span>`):(c.armyCount>0?` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount!==1?'s':''})</span>`:'');
   const own=chars.filter(c=>c.isOwn && !deadIds.has(c.id));
   const enemy=chars.filter(c=>!c.isOwn&&!c.isWanderer && !deadIds.has(c.id));
   const wand=chars.filter(c=>c.isWanderer && !deadIds.has(c.id));
@@ -10538,7 +10539,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1023</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1102</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
