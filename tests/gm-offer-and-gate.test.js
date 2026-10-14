@@ -111,13 +111,14 @@ const noErrors=(errs,who)=>check(!errs.length,`${who}: no page errors`+(errs.len
     W.close();
   }
 
-  // The Overlord runs no games of their own (P0-32d), so their list is empty until Master GM mode (P0-32g).
-  for(const [label,user,listed] of [['a Game Master','gm1',/Vale of gm1/],['the Overlord','ov1',/No games yet/]]){
+  // The Overlord runs no games of their own (P0-32d); in Master GM mode (P0-32g) they see every game (none here), and
+  // the turn watcher never runs for them.
+  for(const [label,user,listed,watcher] of [['a Game Master','gm1',/Vale of gm1/,true],['the Overlord','ov1',/No games yet/,false]]){
     const {doc,W,errs}=await boot(GM,user,S=>{ if(user==='gm1') S.DB.games.push(game(user)); });
     check(active(doc,'sec-games'),`${label}: the game list shows`);
     check(!active(doc,'sec-not-gm'),`${label}: no "not a Game Master" page`);
     check(listed.test(doc.getElementById('games-list').textContent),`${label}: the list is loaded (${listed.source})`);
-    check(W.eval('_autoWatcherTimer')!=null,`${label}: the turn watcher runs`);
+    check((W.eval('_autoWatcherTimer')!=null)===watcher,`${label}: the turn watcher ${watcher?'runs':'doesn\'t run'}`);
     noErrors(errs,label);
     W.close();
   }

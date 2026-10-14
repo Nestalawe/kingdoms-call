@@ -198,11 +198,11 @@ section{display:none;}.section-active{display:block;}
   <section id="sec-games">
     <div class="topbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
-        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Game Master</div>
+        <div id="gm-role-label" style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:.1em">Game Master</div>
         <div id="gm-email-display" style="font-size:.95rem;color:var(--parchment)"></div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-gold" onclick="showNewGame()">+ New Game</button>
+        <button class="btn btn-gold" id="new-game-btn" onclick="showNewGame()">+ New Game</button>
         <button class="btn btn-forest" onclick="openStats()">📈 Stats</button>
         <a href="kingdoms-call-leaderboard.html?gm=1" target="_blank" class="btn btn-gold" style="text-decoration:none;font-size:.7rem">🏆 Leaderboard</a>
         <a href="kingdoms-call-rules.html" target="_blank" class="btn btn-ghost" style="text-decoration:none;font-size:.7rem">📜 Rules</a>
@@ -215,6 +215,10 @@ section{display:none;}.section-active{display:block;}
     <div id="msg-leaderboard"></div>
     <div id="msg-messaging"></div>
     <div id="auto-turn-status" style="display:none;margin-bottom:10px;font-size:.78rem;color:var(--parchment);border:1px solid var(--gold);border-radius:4px;padding:8px 10px;background:#20160c"></div>
+    <!-- Master GM mode (P0-32g): the Overlord's filter over every game -->
+    <div id="overlord-filter-wrap" style="display:none;margin-bottom:10px">
+      <input type="search" id="overlord-filter" placeholder="Filter by game or GM" oninput="renderGameList()">
+    </div>
     <div id="games-list"></div>
   </section>
 
@@ -372,7 +376,8 @@ section{display:none;}.section-active{display:block;}
       <h3>Orders Status</h3>
       <div id="detail-orders-status"></div>
       <div id="detail-run-turn-wrap" style="margin-top:12px;display:none">
-        <button class="btn btn-crimson btn-full" onclick="runTurn()">⚡ Resolve Turn &amp; Generate New Reports</button>
+        <div id="detail-run-now-note" class="msg-info" style="display:none;margin-bottom:8px">Master GM: Run turn now resolves this turn whether or not every realm's orders are in. A realm without orders defends.</div>
+        <button class="btn btn-crimson btn-full" id="detail-run-turn-btn" onclick="runTurn()">⚡ Resolve Turn &amp; Generate New Reports</button>
       </div>
     </div>
 
@@ -406,8 +411,8 @@ section{display:none;}.section-active{display:block;}
 const KC_DATA_MIN='2026.10.15-1202';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
-// a database change").
-const KC_DB_MIN='20261012190236';
+// a database change"). Now P0-32e's: Master GM mode (P0-32g) needs the Overlord's rights on every game.
+const KC_DB_MIN='20261014044929';
 // Every shared rule table this build reads from the data file (the player portal checks the same list).
 const KC_SHARED_TABLE_NAMES=['KC_UNIT_CLASS','KC_UNIT_TYPE','KC_DRUID_LEVELS','KC_UNIT_BASE_STR','KC_UNIT_Q_MULT','KC_QUALITY_TIERS','KC_QUALITY_UP','KC_QUALITY_DOWN','KC_SKILLS','KC_MAGIC_SCHOOLS','KC_SKILL_LABELS','KC_ITEM_UNCAPPED_SKILLS','KC_ITEM_SLOT_CAP','KC_ITEM_RACE_ALIAS','KC_RUMOUR_COST_BY_POWER','KC_CARRIER_BERTHS','KC_BASIC_EXPLORE','KC_TERRAIN_COLORS','KC_PHASE_NAMES','KC_PHASE_COLORS','KC_SEASONS','KC_ALIGNMENTS','KC_TEMPERS','KC_HUMANOID_RACES','KC_RIVAL_RACE','KC_HEX_DIRS','KC_GRAND_DESIGNS'];
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
@@ -421,7 +426,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1218'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1800'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -1588,7 +1593,7 @@ async function doSignIn(){
 
 async function doSignOut(){
   await sb.auth.signOut();
-  currentUser=null;
+  currentUser=null; _kcOverlord=false;
   show('sec-auth');
 }
 
@@ -1633,21 +1638,35 @@ async function submitChangePassword(){
 async function onSignedIn(){
   document.getElementById('gm-email-display').textContent=currentUser.email;
   if(!(await gmPortalAllowed())) return;   // P0-32c: Game Masters and the Overlord only; nothing else loads
+  // Master GM mode (P0-32g, R-097): the Overlord sees every game and runs any of them by hand, but creates none.
+  document.getElementById('gm-role-label').textContent=_kcOverlord?'Overlord · Master GM':'Game Master';
+  document.getElementById('new-game-btn').style.display=_kcOverlord?'none':'';
+  document.getElementById('overlord-filter-wrap').style.display=_kcOverlord?'block':'none';
   show('sec-games');
   await probeGameMeta();      // Disk-IO fix (2026-09-25): is the light `games.meta` column there?
   probeTelemetry().then(ok=>{ if(ok) backfillGameResults(); }); // telemetry tables (2026-09-25) — never blocks sign-in
   probeLeaderboard();                                                 // Hall-of-Fame table (2026-09-27); records are built on game-over or by button, never at sign-in
   probeMessaging();                                                   // player-messaging tables (2026-09-27); the GM portal only reports whether they exist
-  loadGames();
-  startAutoTurnWatcher(); // automatic turn modes only fire while a signed-in GM tab is open
+  await loadGames();
+  // Automatic turn modes only fire while a signed-in GM tab is open. Never for the Overlord (P0-32g): one tab
+  // resolving every game would be heavy and a single point of failure. Each game's own GM tab runs its turns.
+  if(!_kcOverlord) startAutoTurnWatcher();
+  // The sign-in backfills read only the signed-in account's own games, so they do nothing for the Overlord.
   backfillGameMeta();     // one-off: stamp meta on any game that predates the column (no-op after)
+  // The Overlord page links each game here as ?game=<id> (P0-32f): open it straight away.
+  const _openId=_kcOverlord&&new URLSearchParams(location.search).get('game');
+  if(_openId) openGame(_openId);
 }
 
 // P0-32c: the GM portal is for Game Masters (an accepted offer, P0-32b) and the Overlord. Anyone else, or a
 // check that fails, gets the "not a Game Master" page and nothing else: no game list, no watcher, no probes.
+// Master GM mode (P0-32g): true while the Overlord is signed in. The database lets the Overlord do every GM action on
+// any game (P0-32e); this switches the list to every game, hides New Game and keeps the watcher off.
+let _kcOverlord=false;
 async function gmPortalAllowed(){
   const [gm,ov]=await Promise.all([sb.rpc('is_game_master'),sb.rpc('is_site_admin')]);
   const err=gm.error||ov.error;
+  _kcOverlord=!err&&ov.data===true;
   if(!err&&(gm.data===true||ov.data===true)) return true;
   const msg=document.getElementById('not-gm-msg');
   msg.className=err?'msg-error':'msg-info';
@@ -1698,15 +1717,41 @@ async function deleteReportedDispatch(id){
 }
 
 // ── GAME LIST ────
+let _listGames=[];        // the last list read: the GM's own games, or every game for the Overlord
+let _gmNames={};          // Master GM mode: account id -> name, for grouping by GM
 async function loadGames(){
   const el=document.getElementById('games-list');
   el.innerHTML='<div class="msg-info">Loading…</div>';
   // Disk-IO (2026-09-25): the list needs name / turn / status / meta and the slots' submitted flags —
   // never the world or the reports. See gamesListCols.
-  const {data,error}=await sb.from('games').select(gamesListCols()).eq('gm_user_id',currentUser.id).order('created_at',{ascending:false});
-  if(error){el.innerHTML=`<div class="msg-error">${error.message}</div>`;return;}
+  const {data,error}=_kcOverlord?await loadEveryGame()
+    :await sb.from('games').select(gamesListCols()).eq('gm_user_id',currentUser.id).order('created_at',{ascending:false});
+  if(error){el.innerHTML=`<div class="msg-error">${_rdEsc(error.message)}</div>`;return;}
+  _listGames=data||[];
+  if(_kcOverlord){
+    const ids=[...new Set(_listGames.map(g=>g.gm_user_id).filter(Boolean))];
+    const {data:prof}=ids.length?await sb.from('profiles').select('id,name').in('id',ids):{data:[]};
+    _gmNames={}; (prof||[]).forEach(p=>{ _gmNames[p.id]=p.name||''; });
+  }
+  renderGameList();
+}
+// Master GM mode: every game, newest first, light columns, in pages of 200.
+async function loadEveryGame(){
+  const rows=[];
+  for(let from=0;;from+=200){
+    const {data,error}=await sb.from('games').select(gamesListCols()).order('created_at',{ascending:false}).range(from,from+199);
+    if(error) return {data:null,error};
+    rows.push(...(data||[]));
+    if(!data||data.length<200) break;
+  }
+  return {data:rows,error:null};
+}
+function renderGameList(){
+  const el=document.getElementById('games-list');
+  const data=_listGames;
   if(!data||data.length===0){
-    el.innerHTML='<div class="msg-info">No games yet. Click "+ New Game" to create your first game.</div>';return;
+    el.innerHTML=_kcOverlord?'<div class="msg-info">No games yet.</div>'
+      :'<div class="msg-info">No games yet. Click "+ New Game" to create your first game.</div>';return;
   }
   // ARCHIVE (2026-09-27 item 1): the main list shows live games; the Archived list shows the rest.
   // Nothing is deleted either way — the switch only changes which half is on screen.
@@ -1721,55 +1766,69 @@ async function loadGames(){
     ? `<div class="msg-info" style="margin-bottom:10px">🗄 <strong>Archived games.</strong> Everything is kept — the world, the players, every turn report, the dispatches, the statistics and the Hall-of-Fame record. Archived games are simply out of the way, and the auto-turn watcher leaves them alone. Open one and press <strong>Restore</strong> to bring it back.</div>`
     : '';
   if(_rows.length===0){
-    el.innerHTML=_switch+_banner+`<div class="msg-info">${_showArchived?'No archived games.':'No active games. Click "+ New Game" to start one.'}</div>`;return;
+    el.innerHTML=_switch+_banner+`<div class="msg-info">${_showArchived?'No archived games.':_kcOverlord?'No active games.':'No active games. Click "+ New Game" to start one.'}</div>`;return;
   }
-  el.innerHTML=_switch+_banner+_rows.map(g=>{
-    const total=g.game_players?.length||0;
-    const joined=g.game_players?.filter(p=>p.user_id).length||0;
-    const submitted=g.game_players?.filter(p=>p.orders_submitted).length||0;
-    const maxP=g.max_players||4;
-    const {botCount:_bc, allBot:_ab}=botConfigFor(g);
-    const _plannedBots=_ab?maxP:_bc;
-    const _humanCap=_ab?0:(maxP-_plannedBots);
-    const _botTag=_plannedBots?` +${_plannedBots}🤖`:'';
-    let pill='';
-    if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
-    else if(g.status==='active'){
-      // Green once every joined human has submitted (submitted>=joined, including the all-bot
-      // joined===0 case, where there are no human orders to wait on) — signals the turn is ready to
-      // run. Conceded / extinguished realms are exempt (they are never waited on), so count only
-      // the rest.
-      const _need=(g.game_players||[]).filter(p=>p.user_id&&!isBotRow(p)&&!realmExemptIn(g,p.player_index));
-      const _in=_need.filter(p=>p.orders_submitted).length;
-      const _allIn=_in>=_need.length;
-      const _tm=turnModeOf(g);
-      pill=`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${_in}/${_need.length} orders in${_allIn?' ✓':''}${_botTag}</span>${_tm.mode!=='manual'?` <span class="pill pill-amber">${turnModeSummary(_tm)}</span>`:''}`;
-    }
-    else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
-    // Visibility lives in the setup-phase game_state; active/complete games no longer carry it.
-    const _vis=gameVisibility(g);
-    const _visTag=(g.status==='setup')
-      ? (_vis.private?` <span class="pill pill-amber" title="Only invited players can see this game">🔒 Private · ${_vis.invited.length} invited</span>`:` <span class="pill pill-blue">🌍 Public</span>`)
-      : '';
-    // Last turn run: G.turnMode.turnRanAt is stamped at world-gen (Turn 0) and again on every turn
-    // resolution, so no schema change is needed. Setup-phase games have not run a turn yet; games
-    // created before turn-modes existed carry no stamp, so both fall back gracefully.
-    const _ranAt=fmtLastRun(turnModeOf(g).turnRanAt);   // '' when missing or unparseable
-    const _ranAgo=fmtAgo(turnModeOf(g).turnRanAt);      // '' when missing, unparseable, or in the future
-    const _lastRunTag=(g.status==='setup')
-      ? ''
-      : (_ranAt
-          ? ` · Last turn run ${_ranAt}${_ranAgo?` <span style="opacity:.75">(${_ranAgo})</span>`:''}`
-          : ` · Last turn run <span style="opacity:.75">not recorded</span>`);
-    const _archTag=gameArchived(g)?` <span class="pill pill-amber" title="Archived — all data kept">🗄 Archived${(()=>{const a=gameArchivedAt(g);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:'';
-    return`<div class="game-card" onclick="openGame('${g.id}')"${gameArchived(g)?' style="opacity:.82"':''}>
-      <div>
-        <div class="gc-name">${g.name}${pill}${_visTag}${_archTag}</div>
-        <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
-      </div>
-      <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
-    </div>`;
-  }).join('');
+  if(_kcOverlord){
+    // Master GM mode: grouped by GM (by name), narrowed by the filter (game or GM name).
+    const q=(document.getElementById('overlord-filter').value||'').trim().toLowerCase();
+    const gmName=g=>_gmNames[g.gm_user_id]||(g.gm_user_id?'(unknown GM)':'(no GM)');
+    const groups={};
+    _rows.filter(g=>!q||String(g.name||'').toLowerCase().includes(q)||gmName(g).toLowerCase().includes(q))
+      .forEach(g=>{ (groups[gmName(g)]=groups[gmName(g)]||[]).push(g); });
+    const names=Object.keys(groups).sort((a,b)=>a.localeCompare(b));
+    el.innerHTML=_switch+_banner+(names.length?names.map(n=>`<div class="gm-group" data-gm="${_rdEsc(n)}">
+      <h3 style="color:var(--gold);margin:14px 0 8px">${_rdEsc(n)} <span style="font-size:.75rem;color:var(--parchment)">· ${groups[n].length} game${groups[n].length>1?'s':''}</span></h3>
+      ${groups[n].map(gameCardHtml).join('')}</div>`).join(''):'<div class="msg-info">No game matches.</div>');
+    return;
+  }
+  el.innerHTML=_switch+_banner+_rows.map(gameCardHtml).join('');
+}
+function gameCardHtml(g){
+  const total=g.game_players?.length||0;
+  const joined=g.game_players?.filter(p=>p.user_id).length||0;
+  const submitted=g.game_players?.filter(p=>p.orders_submitted).length||0;
+  const maxP=g.max_players||4;
+  const {botCount:_bc, allBot:_ab}=botConfigFor(g);
+  const _plannedBots=_ab?maxP:_bc;
+  const _humanCap=_ab?0:(maxP-_plannedBots);
+  const _botTag=_plannedBots?` +${_plannedBots}🤖`:'';
+  let pill='';
+  if(g.status==='setup') pill=`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
+  else if(g.status==='active'){
+    // Green once every joined human has submitted (submitted>=joined, including the all-bot
+    // joined===0 case, where there are no human orders to wait on) — signals the turn is ready to
+    // run. Conceded / extinguished realms are exempt (they are never waited on), so count only
+    // the rest.
+    const _need=(g.game_players||[]).filter(p=>p.user_id&&!isBotRow(p)&&!realmExemptIn(g,p.player_index));
+    const _in=_need.filter(p=>p.orders_submitted).length;
+    const _allIn=_in>=_need.length;
+    const _tm=turnModeOf(g);
+    pill=`<span class="pill ${_allIn?'pill-green':'pill-blue'}">Turn ${g.turn} — ${_in}/${_need.length} orders in${_allIn?' ✓':''}${_botTag}</span>${_tm.mode!=='manual'?` <span class="pill pill-amber">${turnModeSummary(_tm)}</span>`:''}`;
+  }
+  else if(g.status==='complete') pill=`<span class="pill pill-green">Complete</span>`;
+  // Visibility lives in the setup-phase game_state; active/complete games no longer carry it.
+  const _vis=gameVisibility(g);
+  const _visTag=(g.status==='setup')
+    ? (_vis.private?` <span class="pill pill-amber" title="Only invited players can see this game">🔒 Private · ${_vis.invited.length} invited</span>`:` <span class="pill pill-blue">🌍 Public</span>`)
+    : '';
+  // Last turn run: G.turnMode.turnRanAt is stamped at world-gen (Turn 0) and again on every turn
+  // resolution, so no schema change is needed. Setup-phase games have not run a turn yet; games
+  // created before turn-modes existed carry no stamp, so both fall back gracefully.
+  const _ranAt=fmtLastRun(turnModeOf(g).turnRanAt);   // '' when missing or unparseable
+  const _ranAgo=fmtAgo(turnModeOf(g).turnRanAt);      // '' when missing, unparseable, or in the future
+  const _lastRunTag=(g.status==='setup')
+    ? ''
+    : (_ranAt
+        ? ` · Last turn run ${_ranAt}${_ranAgo?` <span style="opacity:.75">(${_ranAgo})</span>`:''}`
+        : ` · Last turn run <span style="opacity:.75">not recorded</span>`);
+  const _archTag=gameArchived(g)?` <span class="pill pill-amber" title="Archived — all data kept">🗄 Archived${(()=>{const a=gameArchivedAt(g);return a?` ${fmtLastRun(a)}`:'';})()}</span>`:'';
+  return`<div class="game-card" data-game="${_rdEsc(g.id)}" onclick="openGame('${_rdEsc(g.id)}')"${gameArchived(g)?' style="opacity:.82"':''}>
+    <div>
+      <div class="gc-name">${_rdEsc(g.name)}${pill}${_visTag}${_archTag}</div>
+      <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
+    </div>
+    <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
+  </div>`;
 }
 
 // ── NEW GAME ────
@@ -2242,7 +2301,11 @@ function renderOrdersStatus(game){
       </div>`).join('')}
     </div>`;
 
-  if(allIn){
+  // Master GM mode (P0-32g): the Overlord may run any game's turn now, in any turn mode, orders in or not (to rescue
+  // a game whose GM is away). If the game's own GM tab resolves the same turn, the conditional save lets only one win.
+  document.getElementById('detail-run-turn-btn').innerHTML=_kcOverlord?'⚡ Run turn now':'⚡ Resolve Turn &amp; Generate New Reports';
+  document.getElementById('detail-run-now-note').style.display=_kcOverlord?'block':'none';
+  if(allIn||_kcOverlord){
     document.getElementById('detail-run-turn-wrap').style.display='block';
   }
 }
@@ -5244,7 +5307,9 @@ async function openStats(force){
     try{
       const rows=[]; for(let from=0;;from+=1000){ const {data,error}=await sb.from('turn_events').select('game_id,turn,player_index,is_bot,bot_difficulty,realm,race,alignment,orders,pre,post,outcomes').order('game_id').order('turn').order('player_index').range(from,from+999); if(error) throw error; rows.push(...(data||[])); if(!data||data.length<1000) break; }
       const res=[]; for(let from=0;;from+=1000){ const {data,error}=await sb.from('game_results').select('*').range(from,from+999); if(error) throw error; res.push(...(data||[])); if(!data||data.length<1000) break; }
-      const {data:games}=await sb.from('games').select('id,name,status,turn').eq('gm_user_id',currentUser.id);
+      let _gq=sb.from('games').select('id,name,status,turn');
+      if(!_kcOverlord) _gq=_gq.eq('gm_user_id',currentUser.id);   // Master GM mode: every game's name (P0-32g, D-09)
+      const {data:games}=await _gq;
       _stats.rows=rows.map(r=>({...r, orders:_statsJ(r.orders), pre:_statsJ(r.pre), post:_statsJ(r.post), outcomes:_statsJ(r.outcomes)}));
       _stats.results=res.map(r=>({...r, setup:_statsJ(r.setup), final:_statsJ(r.final)}));
       _stats.games=games||[]; _stats.loadedAt=Date.now();
@@ -28808,7 +28873,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1218</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1800</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
