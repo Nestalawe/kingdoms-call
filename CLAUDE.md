@@ -18,8 +18,8 @@ published.
 5. Only then the code you need. **The portals are huge (the GM portal is ~27,600 lines): search, don't
    read them whole.** Read line ranges and edit with unique anchors.
 
-Rulings (`docs/rulings/`) and session history (`docs/history/`) arrive with plan step P0-12. Until
-then, a rule's background is in the code comments near it.
+**Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
+changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
 
 ## File map
 
@@ -32,7 +32,7 @@ then, a rule's background is in the code comments near it.
 | `.github/workflows/` | `ci.yml` (`npm test` and the access-rule tests on every PR; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then publish `site/` to Pages), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js` | The dangerous-paths list and the warning's logic (see below) |
 | `.github/pull_request_template.md` | The PR template. Fill in every section |
-| `docs/` | Architecture, traps, how to try a change on staging (`staging.md`) and, later, rulings and history |
+| `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
 
 ## Commands
 
@@ -99,8 +99,9 @@ games and test accounts. A site PR that needs a database PR is stacked on its br
 - **One concern per PR.** Never mix a refactor with a behaviour change. A bug found while refactoring
   becomes its own PR (or its own item in a batch).
 - **Design forks go to Toby:** numbered options, a recommendation, and a short example from inside the
-  game. Don't invent rules. When he rules, record the ruling in the PR (and, from P0-12, as
-  `docs/rulings/R-NNN-name.md`) and name the test that enforces it.
+  game. Don't invent rules. When he rules, add the ruling in the same PR as
+  `docs/rulings/R-NNN-name.md` plus its index row ([how](docs/rulings/README.md#adding-a-ruling)), and
+  name the test that enforces it. Rulings go there and nowhere else.
 - **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections,
   rulebooks, blurbs): [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice).
 - **Data file changes bump the stamps:** [traps.md](docs/traps.md#the-data-file-stamp-guard).

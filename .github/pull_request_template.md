@@ -16,7 +16,7 @@ For a batch: one commit per item, message "Item N: <short title>", in the same o
 ## Rulings
 
 <!-- Needed: the question, numbered options with a recommendation, and a short in-game example.
-Recorded: the ruling in Toby's words, and the test that enforces it (from P0-12: docs/rulings/R-NNN-name.md). -->
+Recorded: the new docs/rulings/R-NNN-name.md file(s) in this PR, the ruling in Toby's words, and the test that enforces it. -->
 
 None.
 
