@@ -17684,7 +17684,7 @@ const BATTLE_ARMY_SPELLS={
         break;
       }
       case 'FI': case 'FIRE': case 'ARROW':{
-        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot shoot (bound by Spiritwrack).`); break; }
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} cannot shoot (bound by Spiritwrack) — they close in instead.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         if(!pcHasRanged(actor)){
           narrative.push(`  ${actor.name} has no ranged attack — they press forward instead.`);
           pcAdvanceOrStrike(actor, foe, narrative, state);
@@ -17720,27 +17720,32 @@ const BATTLE_ARMY_SPELLS={
       case 'MS':{ // monster special ability — the creature's equivalent of Cast
         const sp=(actor.specials||[]).find(s=>s && s.name===arg);
         if(!sp){ pcAdvanceOrStrike(actor, foe, narrative, state); break; }
-        // a bound or fumbled special COSTS the round, exactly like a character's failed Cast.
-        // Previously both cases fell through to a melee strike, so a guardian could use a special
-        // AND strike in the same round (the double action players reported).
+        // 2026-10-14 (batch item 1): a bound or fumbled special no longer COSTS the round — the
+        // guardian makes an ordinary attack instead, exactly as a hero whose spell fails does (no
+        // side ever stands idle for a failed power; only a stun does that). It is still ONE action:
+        // the special did nothing, so the attack is all the guardian does this round.
         if(actor.status.silenceRounds>0){
-          narrative.push(`  ${actor.name}'s power is bound and will not answer — the round is lost.`);
+          narrative.push(`  ${actor.name}'s power is bound and will not answer — it falls on ${foe.name} with tooth and claw instead.`);
+          pcAdvanceOrStrike(actor, foe, narrative, state);
           break;
         }
         const cc=(sp.castChance!=null?sp.castChance:50);
         if(Math.random()*100>=cc){
-          narrative.push(`  ${actor.name} gathers itself for ${sp.name} but the moment slips away — the round is lost. [${cc}%]`);
+          narrative.push(`  ${actor.name} gathers itself for ${sp.name} but the moment slips away — it attacks instead. [${cc}%]`);
+          pcAdvanceOrStrike(actor, foe, narrative, state);
           break;
         }
         pcMonsterSpecial(actor, foe, sp, narrative, state);
         break;
       }
       case 'CA': case 'SPELL':{
-        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast.`); break; }
+        // 2026-10-14 (batch item 1): a spell that cannot be cast (silenced, no skill, already cast,
+        // the school's limit reached) or that fizzles becomes an ordinary attack — the round is not lost.
+        if(actor.status.silenceRounds>0){ narrative.push(`  ${actor.name} is silenced and cannot cast — they attack instead.`); pcAdvanceOrStrike(actor, foe, narrative, state); break; }
         // Choose the spell: explicit CA:Name, else best available combat spell.
         let name=arg;
         if(!name){ const best=['elemental','necromancy','white','psychic','illusory'].reduce((b,s)=>(actor.school[s]||0)>(actor.school[b]||0)?s:b,'elemental'); name=NPC_SCHOOL_SPELL[best]; } // tie-break ORDER — deliberately not KC_MAGIC_SCHOOLS
-        pcCastCombatSpell(actor, foe, name, narrative, state);
+        if(!pcCastCombatSpell(actor, foe, name, narrative, state)) pcAdvanceOrStrike(actor, foe, narrative, state);
         break;
       }
       case 'FL': case 'FLEE':{
