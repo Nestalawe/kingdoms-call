@@ -171,3 +171,4 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-109](R-109-corsairs-retired.md) | The Corsair fleet is gone | 2026-10-15 | Confirmed (open question) | [`corsairs-retired`](../../tests/corsairs-retired.test.js), [`roster-words`](../../tests/roster-words.test.js) |
 | [R-110](R-110-heroes-sharing-a-province.md) | Another realm's hero beside yours is always seen, and only roughly | 2026-10-15 | Confirmed | [`sight-shared-province`](../../tests/sight-shared-province.test.js) |
 | [R-111](R-111-what-spying-shows.md) | What spying shows | 2026-10-15 | Confirmed | [`spy-reveals`](../../tests/spy-reveals.test.js) |
+| [R-112](R-112-dreamstone-after-doubling.md) | The Dreamstone's round comes after Psychic Blast's doubling | 2026-10-15 | Confirmed | [`blast-dreamstone`](../../tests/blast-dreamstone.test.js) |
