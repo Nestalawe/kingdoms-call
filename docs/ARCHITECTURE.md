@@ -21,6 +21,7 @@ submit orders and read what they're given.
 | `kingdoms-call-player-portal.html` | ~10,300 lines, ~760 KB | Sign-in, My Games, order entry, the turn report and Chronicle, the map, Dispatches (player messaging). Holds client-side projections that mirror engine rules (see [traps.md](traps.md#a-rule-written-twice-must-change-twice)) |
 | `kingdoms-call-data.js` | ~410 KB | Content tables (items, monsters, lairs, discoveries, hero names, …) and the **shared rule tables** both portals read |
 | `kingdoms-call-leaderboard.html` | ~780 lines | Hall of Fame: leaderboard and achievement records over finished games |
+| `kingdoms-call-overlord.html` | ~390 lines | The Overlord page (P0-32f): accounts (offer, withdraw and revoke GM), handing games to another GM, every game, every game's reported dispatches. For the Overlord only; not linked from any page. Its sign-in is kept apart from the portals' (its own `storageKey`). No data file |
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose) |
 | `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
 
@@ -63,7 +64,7 @@ Order inside each portal's `<head>` and body, and why it matters:
 3. **`kc-config.js`**: `KC_CONFIG`, which database this copy of the site talks to (address and public
    key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
 4. **`kingdoms-call-data.js`** (both portals; not the leaderboard).
-5. **`kc-db-guard.js`** (both portals and the leaderboard), straight after `kc-config.js`: `kcDbGuard`, the
+5. **`kc-db-guard.js`** (both portals, the leaderboard and the Overlord page), straight after `kc-config.js`: `kcDbGuard`, the
    database version guard ([traps.md](traps.md#a-site-change-that-needs-a-database-change)).
 6. **The main script.** It checks the data file before anything else (below), creates the Supabase
    client, then `kcDbGuard(sb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call
@@ -180,7 +181,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | `game_results` | One row per realm when a game ends |
 | `game_records` | Hall of Fame: one precomputed row per finished game |
 | `site_admins` | The Overlord (P0-32a): at most one account, above all others. No API role can read or change it; rules ask `is_site_admin()`. Set only by `kc_set_overlord()`, through `.github/workflows/overlord.yml` (live) or the staging seed. The GM portal asks `is_site_admin()` after sign-in (P0-32c) |
-| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c) |
+| `game_masters` | Game Masters by offer (P0-32b): one row per account the Overlord has offered GM to, open (`accepted_at` null) or accepted. Written only by the `gm_*` functions; an account reads its own row, the Overlord reads all. Rules ask `is_game_master()`. The player portal reads the account's own row for the offer banner (Accept / No thanks call `gm_accept_offer` / `gm_decline_offer`); the GM portal lets in only a Game Master or the Overlord (P0-32c). The Overlord offers, withdraws and revokes GM on the Overlord page (P0-32f) |
 | `game_messages`, `game_message_reads`, `message_reports` | Dispatches between players, each realm's read markers, and the dispatches players have reported (P0-24) |
 
 ### Where a rule is enforced: access rules or database functions

@@ -1,4 +1,4 @@
-// Database version guard (P0-34): each page that uses the database (both portals and the Hall of Fame) asks
+// Database version guard (P0-34): each page that uses the database (both portals, the Hall of Fame and the Overlord page) asks
 // the database its version, rpc('kc_db_version'), before anything else, and starts only if it's at least the
 // page's KC_DB_MIN. Each page is booted in jsdom against a stand-in database answering:
 //   - up to date (the newest migration in the repo): it boots;
@@ -9,7 +9,7 @@
 // Reads site/ (or $KC_SITE).
 const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 
-const PAGES=['kingdoms-call-gm-portal.html','kingdoms-call-player-portal.html','kingdoms-call-leaderboard.html'];
+const PAGES=['kingdoms-call-gm-portal.html','kingdoms-call-player-portal.html','kingdoms-call-leaderboard.html','kingdoms-call-overlord.html'];
 const OLDER='20261010000000';   // older than any KC_DB_MIN (the first is P0-34's own migration)
 
 let fails=0;
