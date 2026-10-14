@@ -1,7 +1,7 @@
 // 2026-10-08 (item 4) — no guardian may resist and be weak to the same kind of attack.
-//   * On its card: a passive that turns blows (meleeDR), arrows (arrowDR), spells (spellPct) or
-//     lingering harm (dotImmune) must not sit beside a weakness to that same thing (arrows; a school
-//     of magic; Elemental magic, whose fire lingers, for dotImmune).
+//   * On its card: a perk that turns blows (meleeDR), arrows (arrowDR), spells (spellPct), one school
+//     (schoolWard) or lingering harm (dotImmune / dotWard) must not sit beside a weakness to that same
+//     thing (arrows; a school of magic; Elemental magic, whose fire lingers, for lingering harm).
 //   * Behind the card: the hidden category multipliers (monsterTraits: undead, fiend, flyer, armoured,
 //     beast) must never push the other way from a trait on the card — the card wins.
 // monsterTraits is nested inside runTurn, so a real turn is run first and the hook at
@@ -25,12 +25,15 @@ let ROWS={}; const WRITES=[];
   const MON=W.eval('MONSTERS_P'); ok(MON.length>50,`the guardian table was read (${MON.length})`);
 
   // ── on the card ──
-  const resists=m=>{ const fx=(m.passive&&m.passive.fx)||{}; const r=new Set();
+  // every perk on the card (2026-10-14, batch item 7: `passives`, one per grade; an older table had one `passive`)
+  const perks=m=>Array.isArray(m.passives)?m.passives:(m.passive?[m.passive]:[]);
+  const resists=m=>{ const r=new Set(); perks(m).forEach(p=>{ const fx=p.fx||{};
     if(fx.ward==='meleeDR'||fx.meleeDR) r.add('melee'); if(fx.ward==='arrowDR'||fx.arrowDR) r.add('archery');
-    if(fx.ward==='spellPct'||fx.spellPct) r.add('spell'); if(fx.ward==='dotImmune'||fx.dotImmune) r.add('dot'); return r; };
+    if(fx.ward==='spellPct'||fx.spellPct) r.add('spell'); if(fx.ward==='dotImmune'||fx.dotImmune||fx.ward==='dotWard') r.add('dot');
+    if(fx.ward==='schoolWard') r.add('school:'+fx.school); }); return r; };
   const weakTo=m=>{ const w=m.weak||{}; const r=new Set();
-    if(w.kind==='archery') r.add('archery'); if(w.kind==='school'){ r.add('spell'); if(w.key==='elemental') r.add('dot'); } return r; };
-  const cardClash=MON.filter(m=>[...resists(m)].some(k=>weakTo(m).has(k))).map(m=>`${m.name} (${m.passive.name} vs ${m.weak.name})`);
+    if(w.kind==='archery') r.add('archery'); if(w.kind==='school'){ r.add('spell'); r.add('school:'+w.key); if(w.key==='elemental') r.add('dot'); } return r; };
+  const cardClash=MON.filter(m=>[...resists(m)].some(k=>weakTo(m).has(k))).map(m=>`${m.name} (${[...resists(m)].join('/')} vs ${m.weak.name})`);
   ok(!cardClash.length,`no guardian's card resists and is weak to the same thing (${cardClash.length}): ${cardClash.join('; ')}`);
 
   // ── behind the card ──

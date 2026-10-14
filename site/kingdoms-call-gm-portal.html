@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.14-1400';
+const KC_DATA_MIN='2026.10.14-1500';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.14-1400'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.14-1500'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -4382,7 +4382,10 @@ function migrateMaxHpV2(gs){
 }
 // guardian HP rescaled. Uncleared lairs in older saves adopt the current table stats for their
 // creature (matched by name) — once only.
-const GUARDIAN_TABLE_VER=19; // 19 (2026-10-14, batch item 4): every guardian special's castChance ×1.5, rounded, capped at 95 (was 35–70%, now 53–95%). · 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
+// A guardian's perks: `passives` (2026-10-14, batch item 7: one per grade, Weak 1 … Legendary 4) — or
+// the single `passive` an older save may still hold until migrateLairGuardiansV2 re-reads it.
+function guardianPassives(m){ if(!m) return []; if(Array.isArray(m.passives)) return m.passives.filter(p=>p&&p.fx); return (m.passive&&m.passive.fx)?[m.passive]:[]; }
+const GUARDIAN_TABLE_VER=20; // 20 (2026-10-14, batch item 7): every guardian has one perk per grade (`passives`: Weak 1, Moderate 2, Powerful 3, Legendary 4), each scaled to its grade, many of them wards against a school of magic. · 19 (2026-10-14, batch item 4): every guardian special's castChance ×1.5, rounded, capped at 95 (was 35–70%, now 53–95%). · 18 (2026-10-08, Toby item 4): no guardian resists and is weak to the same thing — Rust-Mite Swarm now Elementally Frail, Sphinx Open to Arrows, Lich Acolyte keeps Hallowed Bane (every undead is open to White) and trades its spell ward for Hollow Bones (arrows deal 3 less), Dire Rat Old Enemy: Dwarven. · 17 (2026-09-29, Toby): HP BANDS NARROWED and the top three cut to ~75% — Weak 11–17, Moderate 19–25, Powerful 32–42, Legendary 53–65 (each guardian keeps its rank within its tier). 16: 16: HP BANDS WIDENED — Weak 10–18, Moderate 22–38, Powerful 41–59, Legendary 65–95. Same band midpoints as 15 but a wider internal spread (so HP still separates guardians inside a band) and smaller gaps between bands (4 / 3 / 6). Remapped from the v13 spread, not from 15, so no resolution was lost to the intermediate rounding. Supersedes 15 and 14. · 14: EVERY GUARDIAN'S HP +50% (all 110, rounded half up; nothing else touched — melee, archery, specials, passives, weaknesses and gold all unchanged). Percentage caps (GUARDIAN_HIT_CAP_FRAC, GUARDIAN_BODY_CAP_PCT) scale with it automatically. · 13: THE LADDER RE-TUNE — every band re-cut to a fixed benchmark hero at a 95% kill rate (Weak: 15 HP, no items, Melee 3/Archery 2 or Melee 4/Archery 1 + a school at 1 · Moderate: 30 HP, 5 tier-1 items, Melee 6 + school 3 · Powerful: 45 HP, tier-2 kit, Melee 7 + school 5 · Legendary: 60 HP, tier-3 kit, Melee 9 + school 7), each band keeping its internal order, hardest ~95% and softest ~99%; hp / melee / castChance / dmgBonus moved, nothing else (see claude/KC-guardian-ladder.md) · 12: no guardian routs a hero any more — Banshee, Elder Dragon and Archdemon trade their courage tests for a stagger, a pinning gaze and a sin-weighing that halves current HP · 11: band re-balance — the six hardest Powerful guardians drop meleeDR 3→2, the six softest rise to melee 6, flat melee damage reduction now ladders 1 / 2 / 2 / 4 by band (no Moderate keeps a 3), and every Legendary gains body, +5 damage a blow (Kraken +7) and castChance +10 · 10: every guardian gained a `weak` (exploitable weakness) · 9: every special castChance +20 (50–75%) · 8: Weak HP 15–20, five Weak passives stripped · 7: Weak-tier meleeDR passives capped at 1 · 6: skills on the 1–9 ladder, every guardian has an active + a passive · 5: dmgW weights // bump whenever MONSTERS_P stats change so live worlds adopt the new figures
 function migrateLairGuardiansV2(gs){
   if(!gs||!gs.world) return;
   if((gs._guardiansVer||0)>=GUARDIAN_TABLE_VER) return;
@@ -4392,7 +4395,8 @@ function migrateLairGuardiansV2(gs){
     const t=byName[f.monster.name]; if(!t) return;
     f.monster.hp=t.hp; f.monster.melee=t.melee; f.monster.archery=t.archery; delete f.monster._hpFull;
     if(t.spells) f.monster.spells=JSON.parse(JSON.stringify(t.spells)); else delete f.monster.spells; // v5: specials carry dmgW weights now
-    if(t.passive) f.monster.passive=JSON.parse(JSON.stringify(t.passive)); else delete f.monster.passive; // v6: passives
+    delete f.monster.passive; // v20 (batch item 7): one perk per grade, in `passives`
+    if(t.passives) f.monster.passives=JSON.parse(JSON.stringify(t.passives)); else delete f.monster.passives;
     if(t.weak) f.monster.weak=JSON.parse(JSON.stringify(t.weak)); else delete f.monster.weak; // v10: exploitable weaknesses
   }));
   gs._guardiansV2=true; gs._guardiansVer=GUARDIAN_TABLE_VER;
@@ -4543,6 +4547,10 @@ function pcArmourMerge(a, e, name){
     case 'spellBlock': a.spellBlock=Math.max(a.spellBlock||0,e.pct||0); break;
     case 'roundWard': a.roundWard=(a.roundWard||0)+(e.amt||0); break;
     case 'stunImmune': a.stunImmune=true; break;
+    // guardian perks (2026-10-14, batch item 7): graded wards
+    case 'stunWard': a.stunWard=Math.max(a.stunWard||0,e.pct||0); break;     // % of stuns turned as they land (100: never stunned)
+    case 'dotWard': a.dotWard=Math.max(a.dotWard||0,e.pct||0); break;       // % off every tick of lingering harm (100: immune)
+    case 'schoolWard': if(e.school){ a.schoolWard={...(a.schoolWard||{})}; a.schoolWard[e.school]=Math.max(a.schoolWard[e.school]||0,e.pct||0); } break; // −N to that school's cast chance
     default: return a;
   }
   if(name&&!a.names.includes(name)) a.names.push(name);
@@ -16654,9 +16662,12 @@ const BATTLE_ARMY_SPELLS={
     if(fx.dmgBonus>0) cbt.dmgBonus=(cbt.dmgBonus||0)+fx.dmgBonus;
   }
   function pcApplyMonsterPassive(cbt, m){
-    const p=m&&m.passive; if(!p||!p.fx) return;
-    cbt.passiveName=p.name; cbt.passiveDesc=p.desc||'';
-    pcApplyFx(cbt,p.fx,p.name);
+    // 2026-10-14 (batch item 7): every perk of the guardian, not just one. `passiveName` stays the
+    // first (its signature perk); `_perkName` names the perk behind each effect for the narrative.
+    const ps=guardianPassives(m); if(!ps.length) return;
+    cbt.perks=ps.map(p=>({name:p.name,desc:p.desc||''})); cbt._perkName={};
+    cbt.passiveName=ps[0].name; cbt.passiveDesc=ps[0].desc||'';
+    ps.forEach(p=>{ const k=p.fx.ward||Object.keys(p.fx)[0]; if(k&&!cbt._perkName[k]) cbt._perkName[k]=p.name; pcApplyFx(cbt,p.fx,p.name); });
   }
   // Items a CHARACTER wears that carry a personal-combat rider (`effect.pc`) — one copy of each
   // name counts.
@@ -16691,7 +16702,9 @@ const BATTLE_ARMY_SPELLS={
     // pcArmourMerge can reconcile the two; the merge keeps the looser of the two caps, which is
     // correct here because the band figure is a floor on toughness, not a ceiling on it.
     { const _bandCap=GUARDIAN_BODY_CAP_PCT[m.power]||0;
-      if(_bandCap>0) cbt.arm=pcArmourMerge(cbt.arm,{ward:'cap',pct:_bandCap},'its sheer bulk'); }
+      const _ownCap=(cbt.arm&&cbt.arm.cap)||0;
+      if(_bandCap>0) cbt.arm=pcArmourMerge(cbt.arm,{ward:'cap',pct:_bandCap},'its sheer bulk');
+      if(_ownCap>0&&_ownCap<_bandCap) cbt.arm.cap=_ownCap; } // a perk's tighter cap (Elder Titan, Kraken: 15%) is never loosened by the grade's
     return cbt;
   }
 
@@ -16776,7 +16789,16 @@ const BATTLE_ARMY_SPELLS={
   // a guardian's ward comes from its PASSIVE, not worn armour — name it so ("the Stone Troll's
   // Troll Regeneration knits flesh…" rather than "…armour knits flesh…"). Characters keep the
   // armour/shield wording.
-  function pcWardWord(t, word){ return (t&&t.kind==='monster'&&t.passiveName)?`${t.name}'s ${t.passiveName}`:`${t.name}'s ${word}`; }
+  // `key` names the effect (regen, meleeDR, …) so a guardian with several perks names the right one.
+  function pcWardWord(t, word, key){
+    if(t&&t.kind==='monster'){
+      const nm=(key&&t._perkName&&t._perkName[key])||((t.perks||[]).length<=1?t.passiveName:null);
+      if(nm) return `${t.name}'s ${nm}`;
+      return `${t.name}'s ${word==='armour'?'hide':word}`;
+    }
+    return `${t.name}'s ${word}`;
+  }
+  function pcPerkWord(t, key, dflt){ return (t&&t._perkName&&t._perkName[key])||(t&&t.passiveName)||dflt; }
   function pcWardIcon(t){ return (t&&t.kind==='monster')?'🜏':'🛡'; }
   // ── STUNS LAND THROUGH ONE DOOR (2026-10-14, batch item 3) ────
   // "Cannot be stunned" used to be honoured only at the start of the NEXT round, so a stun cast by a
@@ -16789,7 +16811,7 @@ const BATTLE_ARMY_SPELLS={
   function pcStunTurned(target, narrative, what){
     const w=pcStunWard(target);
     if(!(w>=100||(w>0&&d100()<=w))) return false;
-    const _why=target.kind==='monster'?(target.passiveName||'its nature'):((target.arm&&target.arm.names&&target.arm.names.join(', '))||'their armour');
+    const _why=target.kind==='monster'?pcPerkWord(target,'stunWard','its nature'):((target.arm&&target.arm.names&&target.arm.names.join(', '))||'their armour');
     if(narrative) narrative.push(`  ${pcWardIcon(target)} ${target.name} cannot be held (${_why}${w<100?`, ${w}%`:''}) — ${what||'the daze'} finds no hold.`);
     return true;
   }
@@ -16951,7 +16973,7 @@ const BATTLE_ARMY_SPELLS={
       if(_chan==='spell'&&_arm.spellPct) d=Math.max(1,Math.round(d*(1-_arm.spellPct/100)));
       if(_arm.lowHp&&target.hp<(target.maxHp||20)*0.5) d=Math.max(1,Math.round(d*(1-_arm.lowHp/100)));
       if(_arm.openGuardHits&&(target._openGuardUsed||0)<_arm.openGuardHits){ target._openGuardUsed=(target._openGuardUsed||0)+1; d=Math.max(1,Math.round(d*(1-(_arm.openGuardPct||50)/100))); }
-      if(d<_b3) narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} turns aside ${_b3-d} of the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')}.${target.kind==='monster'?'':` (${_arm.names.join(', ')})`}`);
+      if(d<_b3) narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour',_chan==='melee'?'meleeDR':_chan==='archery'?'arrowDR':'spellPct')} turns aside ${_b3-d} of the ${_chan==='spell'?'harm':(_chan==='archery'?'arrow':'blow')}.${target.kind==='monster'?'':` (${_arm.names.join(', ')})`}`);
     }
     // ── DAMAGE FLOOR ── every reduction above is now collectively limited: a landed attack keeps
     // at least HALF of what it came in at. Outright negations (mirror image, first-hit cuirass,
@@ -16966,7 +16988,7 @@ const BATTLE_ARMY_SPELLS={
     }
     // The hard CAP ward (Abyssal Bulk and kin) is the last word — it is a ceiling on any single hit
     // rather than a reduction, so the floor is never allowed to lift a blow back over it.
-    if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour')} will not let any single hit bite deeper than ${_capAt}.`); } }
+    if(_arm&&_arm.cap&&d>0){ const _capAt=Math.max(1,Math.round((target.maxHp||20)*_arm.cap/100)); if(d>_capAt){ d=_capAt; narrative.push(`  ${pcWardIcon(target)} ${pcWardWord(target,'armour','cap')} will not let any single hit bite deeper than ${_capAt}.`); } }
     // ── DAMAGE CEILING ────
     // 2026-10-08 (Toby item 4a): no single blow, arrow, special or spell in personal combat may take
     // more than HALF of the target's maximum HP, whoever strikes whom (PC_HIT_CAP_FRAC).
@@ -16989,7 +17011,7 @@ const BATTLE_ARMY_SPELLS={
       target._armSecondWindUsed=true;
       const _back=Math.max(1,Math.round((target.maxHp||20)*_arm.secondWind/100));
       target.hp=Math.min(target.maxHp||20,target.hp+_back);
-      narrative.push(`  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind==='monster'?(target.passiveName||'its nature'):"their armour's blessing"} restores ${_back} HP. (HP ${dispFloor(target.hp)})`);
+      narrative.push(`  ${pcWardIcon(target)} ${target.name} will not go down — ${target.kind==='monster'?pcPerkWord(target,'secondWind','its nature'):"their armour's blessing"} restores ${_back} HP. (HP ${dispFloor(target.hp)})`);
     }
     return d;
   }
@@ -16999,13 +17021,13 @@ const BATTLE_ARMY_SPELLS={
     cbt._roundNo=(cbt._roundNo||0)+1;
     if(cbt.arm){
       if(cbt.arm.roundWard>0) cbt._roundWardLeft=cbt.arm.roundWard; // Shield of the Ward-Saints: a fresh ward each round
-      if(cbt.arm.stunImmune&&cbt.status.stun>0){ cbt.status.stun=0; narrative.push(`  ${pcWardIcon(cbt)} ${cbt.kind==='monster'?`${cbt.name} cannot be held (${cbt.passiveName||'its nature'})`:`${cbt.name}'s shield arm never wavers`} — the daze is ignored.`); }
-      if(cbt.arm.dotImmune&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} sloughs off every burn, poison and bleeding.`); }
+      if(pcStunWard(cbt)>=100&&cbt.status.stun>0){ cbt.status.stun=0; narrative.push(`  ${pcWardIcon(cbt)} ${cbt.kind==='monster'?`${cbt.name} cannot be held (${pcPerkWord(cbt,'stunWard','its nature')})`:`${cbt.name}'s shield arm never wavers`} — the daze is ignored.`); }
+      if((cbt.arm.dotImmune||(cbt.arm.dotWard||0)>=100)&&(cbt.status.dot||[]).length){ cbt.status.dot=[]; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour','dotWard')} sloughs off every burn, poison and bleeding.`); }
       // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
       // regeneration is untouched and returns a multiplier of 1.
       if(cbt.arm.regen>0&&cbt.hp>0&&cbt.hp<(cbt.maxHp||20)){
         const _sm=pcSustainMult(cbt), _rg=Math.round(cbt.arm.regen*_sm);
-        if(_rg>0){ const h=Math.min(_rg,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour')} knits flesh for ${h}${_sm<1?' — the flesh is slower to close now':''}. (HP ${dispFloor(cbt.hp)})`); }
+        if(_rg>0){ const h=Math.min(_rg,(cbt.maxHp||20)-cbt.hp); cbt.hp+=h; narrative.push(`  ${pcWardIcon(cbt)} ${pcWardWord(cbt,'armour','regen')} knits flesh for ${h}${_sm<1?' — the flesh is slower to close now':''}. (HP ${dispFloor(cbt.hp)})`); }
         else if(cbt.kind==='monster'&&!cbt._sustainSpent){ cbt._sustainSpent=true; narrative.push(`  🜏 ${cbt.name} has nothing left to knit with — its wounds stay open.`); }
       }
       if(cbt.arm.resist){
@@ -17014,8 +17036,10 @@ const BATTLE_ARMY_SPELLS={
       }
     }
     // Damage-over-time
+    // a guardian's lingering-harm ward (dotWard, batch item 7) takes its share off every tick
+    const _dw=Math.min(100,(cbt.arm&&cbt.arm.dotWard)||0);
     (cbt.status.dot||[]).forEach(d=>{
-      if(d.rounds>0){ cbt.hp-=d.dmg; d.rounds--; narrative.push(`  ${d.label||'Lingering harm'} afflicts ${cbt.name} for ${d.dmg} damage. (HP ${Math.max(0,Math.round(cbt.hp))})`); }
+      if(d.rounds>0){ const _t=_dw>0?Math.round(d.dmg*(1-_dw/100)):d.dmg; cbt.hp-=_t; d.rounds--; narrative.push(`  ${d.label||'Lingering harm'} afflicts ${cbt.name} for ${_t} damage${_dw>0?` (${pcWardWord(cbt,'hide','dotWard')} turns ${_dw}% of it)`:''}. (HP ${Math.max(0,Math.round(cbt.hp))})`); }
     });
     cbt.status.dot=(cbt.status.dot||[]).filter(d=>d.rounds>0);
     // Heal-over-time (Potion of Regeneration and kin)
@@ -17083,7 +17107,12 @@ const BATTLE_ARMY_SPELLS={
     // once, in pcTakeHit — never here, or it would double twice.
     const _wkSch=!!(target&&target.kind==='monster'&&target.weak&&target.weak.kind==='school'&&target.weak.key===school);
     const wx=_wkSch?PC_WEAK_MULT:1;
-    const castChance=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+    const _castBase=_wkSch?95:Math.min(95,PC_CAST_BASE+lvl*10+magicL8CastBonus(caster.ref)+(caster.player!=null?discSum(caster.player,'cast','pct',e=>(!e.school||e.school===school)&&(!e.ctx||e.ctx==='duel')):0)); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+    // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
+    // points off the (already capped) cast chance; never below 5. A guardian is never warded against
+    // the school it is weak to.
+    const _sw=(!_wkSch&&target&&target.arm&&target.arm.schoolWard&&target.arm.schoolWard[school])||0;
+    const castChance=_sw>0?Math.max(5,_castBase-_sw):_castBase;
     // narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader sees the
     // character reach for the spell, then whether the weave holds or collapses.
     const _schoolWeave={white:'sacred',psychic:'psychic',illusory:'illusory',elemental:'elemental',necromancy:'necromantic'}[school]||school;
@@ -17092,7 +17121,7 @@ const BATTLE_ARMY_SPELLS={
     // the chance succeeds, matching every other percentage check in the engine.
     const _castRoll=d100();
     telSpell(caster.ref,spellName,school,lvl,castChance,_castRoll,'duel');
-    narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully) [roll ${_castRoll} ${_castRoll<=castChance?'✓':'✗'}].`);
+    narrative.push(`  ${caster.name} calls on the ${_schoolWeave} arts, weaving ${spellName} (${castChance}% to cast successfully${_sw>0?`, −${_sw} for ${pcWardWord(target,'ward','schoolWard')}`:''}) [roll ${_castRoll} ${_castRoll<=castChance?'✓':'✗'}].`);
     if(_castRoll>castChance){ narrative.push(`  …but the spell guts and fizzles, coming to nothing.`); return false; }
     caster.castSpells.push(spellName); caster.castSchool[school]=(caster.castSchool[school]||0)+1;
     if(_wkSch){
@@ -17431,7 +17460,7 @@ const BATTLE_ARMY_SPELLS={
       // runs dry if the duel is drawn out.
       if(dealt && actor.drain>0 && actor.hp<(actor.maxHp||20)){
         const _sm=pcSustainMult(actor), _dr=Math.min(Math.round(dealt*actor.drain*_sm),(actor.maxHp||20)-actor.hp);
-        if(_dr>0){ actor.hp+=_dr; narrative.push(`  ${actor.name} drinks the wound — +${_dr} HP${_sm<1?' (the thirst is running dry)':''}. (${actor.passiveName||'Drain'}, HP ${dispFloor(actor.hp)})`); }
+        if(_dr>0){ actor.hp+=_dr; narrative.push(`  ${actor.name} drinks the wound — +${_dr} HP${_sm<1?' (the thirst is running dry)':''}. (${pcPerkWord(actor,'drain','Drain')}, HP ${dispFloor(actor.hp)})`); }
       }
       // Brimstone-style shields bite back at whoever lands a blow.
       if(dealt && foe.status.reflect>0){
@@ -17440,7 +17469,7 @@ const BATTLE_ARMY_SPELLS={
       }
       if(dealt && foe.arm && foe.arm.thorns>0){ // Thornwood Cuirass
         actor.hp-=foe.arm.thorns;
-        narrative.push(`  ${pcWardIcon(foe)} ${foe.kind==='monster'?pcWardWord(foe,'hide'):`${foe.name}'s thorned armour`} bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
+        narrative.push(`  ${pcWardIcon(foe)} ${foe.kind==='monster'?pcWardWord(foe,'hide','thorns'):`${foe.name}'s thorned armour`} bites ${actor.name} for ${foe.arm.thorns}. (${actor.name} HP ${Math.max(0,Math.round(actor.hp))})`);
       }
     } else { narrative.push(`  ${actor.name}'s blow is turned aside.`); pcTryCounter(foe, actor, narrative, 'melee'); }
   }
@@ -17879,7 +17908,7 @@ const BATTLE_ARMY_SPELLS={
           const abilityClause=(spells.length
             ? ` It can call on ${spells.slice(0,4).map(s=>s.name).join(', ')}.`
             : ' It has no special powers — it fights with tooth, claw and steel alone.')
-            +((foe.ref&&foe.ref.passive)?` ${foe.ref.passive.name}: ${foe.ref.passive.desc}.`:''); // passives are scouted too
+            +guardianPassives(foe.ref).map(p=>` ${p.name}: ${p.desc}.`).join(''); // passives are scouted too
           // Weaknesses / resistances — read the guardian's damage-type vulnerabilities (0.4-1.8; >1
           // means it takes MORE from that type, <1 means it shrugs it off).
           const v=foe.vuln||{melee:1,archery:1,spell:1};
@@ -17949,7 +17978,8 @@ const BATTLE_ARMY_SPELLS={
     A.druidBeastWard=_wardOf(A,B); B.druidBeastWard=_wardOf(B,A);
     // ── Guardian passives ── announced once; an aura is a standing to-hit penalty on the foe.
     for(const [me,foe] of [[A,B],[B,A]]){
-      if(me.kind==='monster'&&me.passiveName) narrative.push(`  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
+      if(me.kind==='monster'&&(me.perks||[]).length) me.perks.forEach(p=>narrative.push(`  🜏 ${me.name} — ${p.name}: ${p.desc}.`));
+      else if(me.kind==='monster'&&me.passiveName) narrative.push(`  🜏 ${me.name} — ${me.passiveName}: ${me.passiveDesc}.`);
       if(me.aura>0){ foe.status.auraPenalty=(foe.status.auraPenalty||0)+me.aura; }
     }
     if(A.druidBeastWard) narrative.push(`  🍃 ${A.name} has hunted this kind before — the beast's blows will land at half force (Druid ${A.druidBeastWard}).`);
@@ -18007,7 +18037,7 @@ const BATTLE_ARMY_SPELLS={
       A._fleeAttempted=false; B._fleeAttempted=false;
       // Guardian burn aura: a foe standing at melee range is scorched / frozen each round (never
       // soaked).
-      if(state.range==='melee') for(const [me,foe] of [[A,B],[B,A]]){ if(me.burn>0&&me.hp>0&&foe.hp>0){ foe.hp-=me.burn; narrative.push(`  🜏 ${me.passiveName||'The aura'} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0,Math.round(foe.hp))})`); } }
+      if(state.range==='melee') for(const [me,foe] of [[A,B],[B,A]]){ if(me.burn>0&&me.hp>0&&foe.hp>0){ foe.hp-=me.burn; narrative.push(`  🜏 ${pcPerkWord(me,'burn','The aura')} sears ${foe.name} for ${me.burn}. (HP ${Math.max(0,Math.round(foe.hp))})`); } }
       _stepCheck(_sm); _sm=_stepMark();
       if(A.hp<=0||B.hp<=0) break;
 
@@ -19262,10 +19292,10 @@ const BATTLE_ARMY_SPELLS={
     // on its card wins. These hidden multipliers are never shown to a player, so where one pushes
     // against the creature's passive (its hide turns blows, it shrugs off arrows or spells) or
     // against its weakness (arrows, a school of magic), the hidden one is dropped.
-    { const fx=(m.passive&&m.passive.fx)||{}, w=m.weak||{};
-      if(fx.ward==='meleeDR'||fx.meleeDR) mods.melee=Math.min(1,mods.melee);
-      if(fx.ward==='arrowDR'||fx.arrowDR) mods.archery=Math.min(1,mods.archery);
-      if(fx.ward==='spellPct'||fx.spellPct) mods.spell=Math.min(1,mods.spell);
+    { const _fxs=guardianPassives(m).map(p=>p.fx), w=m.weak||{}, has=k=>_fxs.some(fx=>fx.ward===k||fx[k]);
+      if(has('meleeDR')) mods.melee=Math.min(1,mods.melee);
+      if(has('arrowDR')) mods.archery=Math.min(1,mods.archery);
+      if(has('spellPct')) mods.spell=Math.min(1,mods.spell);
       if(w.kind==='archery') mods.archery=Math.max(1,mods.archery);
       if(w.kind==='school') mods.spell=Math.max(1,mods.spell); }
     for(const k in mods) mods[k]=Math.max(0.4, Math.min(1.8, mods[k]));
@@ -28755,7 +28785,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1400</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1500</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
