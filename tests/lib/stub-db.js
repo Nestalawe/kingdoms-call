@@ -8,7 +8,8 @@
 //                         P0-17) hides single columns, "table.column", the way the real database
 //                         answers before a migration has run: for site code that must cope without it.
 //                         It mirrors the Game Master functions (P0-32b) over DB.game_masters and
-//                         DB.site_admins; its default account, gm1, is a Game Master. It mirrors
+//                         DB.site_admins, and the Overlord's (overlord_accounts, gm_offer, gm_withdraw_offer,
+//                         gm_revoke, reassign_game: P0-32b, P0-32e); its default account, gm1, is a Game Master. It mirrors
 //                         get_game_slots (P0-20) and the one-realm-per-number and one-per-account
 //                         rules on game_players. RULES.ownSlotsOnly applies P0-21's read rule (your own
 //                         slot, or every slot of a game you run) and records 'game_players.select:other'
@@ -206,7 +207,38 @@ function makeStub(){
       if(r.accepted_at==null) r.accepted_at=new Date().toISOString(); return null; },
     gm_decline_offer:()=>{ const r=ownOffer(); if(!r||r.accepted_at!=null) throw new Error('You have no offer to decline.');
       DB.game_masters.splice(DB.game_masters.indexOf(r),1); return null; },
+    // The Overlord's functions (P0-32b, P0-32e), as their files in supabase/schemas/public/functions/. Accounts are
+    // DB.profiles (name) plus DB.accounts[id] = {email, joined, last_sign_in} where a test needs them.
+    overlord_accounts:()=>{ overlordOnly('Only the Overlord can list the accounts.');
+      return DB.profiles.map(p=>{ const gm=DB.game_masters.find(r=>r.user_id===p.id), a=(DB.accounts||{})[p.id]||{};
+        return {user_id:p.id, name:p.name, email:a.email||null, joined:a.joined||null, last_sign_in:a.last_sign_in||null,
+          gm_status:gm&&gm.accepted_at!=null?'game_master':gm?'offered':'none',
+          games_run:DB.games.filter(g=>g.gm_user_id===p.id).length,
+          games_played:new Set(DB.game_players.filter(s=>s.user_id===p.id).map(s=>String(s.game_id))).size}; }); },
+    gm_offer:(a)=>{ overlordOnly('Only the Overlord can offer Game Master.');
+      if(DB.site_admins.some(r=>r.user_id===a.p_user)) throw new Error('The Overlord can\'t be a Game Master.');
+      if(!DB.profiles.some(p=>p.id===a.p_user)) throw new Error('No such account.');
+      const r=DB.game_masters.find(x=>x.user_id===a.p_user);
+      if(r&&r.accepted_at!=null) throw new Error('That account is already a Game Master.');
+      if(!r) DB.game_masters.push({user_id:a.p_user,offered_at:new Date().toISOString(),offered_by:me(),accepted_at:null}); return null; },
+    gm_withdraw_offer:(a)=>{ overlordOnly('Only the Overlord can withdraw an offer.');
+      const r=DB.game_masters.find(x=>x.user_id===a.p_user);
+      if(r&&r.accepted_at!=null) throw new Error('That offer has been accepted: revoke the Game Master instead.');
+      if(!r) throw new Error('That account has no offer to withdraw.');
+      DB.game_masters.splice(DB.game_masters.indexOf(r),1); return null; },
+    gm_revoke:(a)=>{ overlordOnly('Only the Overlord can revoke a Game Master.');
+      const r=DB.game_masters.find(x=>x.user_id===a.p_user&&x.accepted_at!=null);
+      if(!r) throw new Error('That account isn\'t a Game Master.');
+      if(DB.games.some(g=>g.gm_user_id===a.p_user&&g.status!=='complete')) throw new Error('That Game Master runs an unfinished game: hand it over first.');
+      DB.game_masters.splice(DB.game_masters.indexOf(r),1); return null; },
+    reassign_game:(a)=>{ overlordOnly('Only the Overlord can hand a game over.');
+      if(DB.site_admins.some(r=>r.user_id===a.p_new_gm)) throw new Error('The Overlord doesn\'t run games.');
+      if(!DB.game_masters.some(r=>r.user_id===a.p_new_gm&&r.accepted_at!=null)) throw new Error('That account isn\'t a Game Master.');
+      const g=DB.games.find(x=>String(x.id)===String(a.p_game));
+      if(!g) throw new Error('No such game.');
+      g.gm_user_id=a.p_new_gm; return null; },
   };
+  function overlordOnly(m){ if(!DB.site_admins.some(r=>r.user_id===me())) throw new Error(m); }
   function rpc(fn,args){
     CALLS.push('rpc.'+fn);
     if(RPC_ERRORS.has(fn)) return Promise.resolve({data:null,error:{message:'TypeError: Failed to fetch'}});
