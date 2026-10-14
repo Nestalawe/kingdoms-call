@@ -26,6 +26,7 @@ const GM='kingdoms-call-gm-portal.html';
 const SUITE=[
   ['syntax',               'tests/syntax.test.js'],
   ['docs',                 'tests/docs.test.js'],
+  ['rulings',              'tests/rulings.test.js'],
   ['stamps',               'tests/stamps.test.js'],
   ['config',               'tests/config.test.js'],
   ['vendor-supabase',      'tests/vendor-supabase.test.js'],
