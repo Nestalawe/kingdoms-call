@@ -829,7 +829,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.15-1023';
+const KC_DATA_MIN_P='2026.10.15-1117';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -4313,7 +4313,7 @@ const SPELL_HINTS={
   'Part Sea':'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
   'Bless Province':'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
   'Holy Symbol':'Action: no target \u2014 cleanses the province you stand in of ALL its battlefield dead. Every grave there is laid to rest and can never be raised by a necromancer. Combat: enemy \u22128%/level to hit and seared for 6% of its health, both \u00d71.5 against undead and fiends; you recover 10% of your health. Battle: enemy undead units fight at 75% strength.',
-  'Spiritwrack':'Combat: silences the target for 1 round + 1 per two White levels (max 4) \u2014 it can\u2019t cast or use archery (it attacks instead) and its melee is halved. Against a guardian weak to White Magic it takes at 95% and lasts 1 round longer (max 5); Powerful and Legendary guardians may shrug it off each round after the first. Battle: all missile units fight at half strength.',
+  'Spiritwrack':'Combat: silences the target for 1 round + 1 per two White levels (max 3) \u2014 it can\u2019t cast or use archery (it attacks instead) and its melee is halved. Against a guardian weak to White Magic it takes at 95% and lasts 1 round longer (max 4); Powerful and Legendary guardians may shrug it off each round after the first. Battle: all missile units fight at half strength.',
   'Charm':'Target: a lone hero (wandering or enemy) leading NO armies, in your province. Wandering joins you free (you still pay upkeep); enemy comes under your command until end of turn, then returns to their lord (and will not attack their own lord\'s heroes). On success you learn their skills and magic items. Kings and army-leaders are immune; each past Charm gives a hero +30% resistance (cumulative). A Charm that fails may provoke a personal encounter with the target — unless either leads their encounter plan with Flee. Combat: doubles a later Flee attempt.',
   'Oratory':'Target: yourself or an ally in your province. Every army travelling with them fights one quality tier higher for the rest of the turn. Not cumulative.',
   'Clairvoyance':'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
@@ -10551,7 +10551,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1113</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1117</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

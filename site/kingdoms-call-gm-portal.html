@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.15-1023';
+const KC_DATA_MIN='2026.10.15-1117';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1113'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1117'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -17092,7 +17092,7 @@ const BATTLE_ARMY_SPELLS={
   const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
   const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (×1.5 vs undead and fiends)
   const SPELL_HOLY_UNCLEAN_MULT=1.5;                                // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
-  const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=4; // 1 + floor(level/2), max 4 (5 vs a White-weak guardian)
+  const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=3; // 1 + floor(level/2), level counted to 5: max 3 (4 vs a White-weak guardian)
   // 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
   // of every round after the first in which it held — this chance a round.
   const SPIRITWRACK_SHRUG_PCT={Powerful:25,Legendary:40};
@@ -17178,11 +17178,11 @@ const BATTLE_ARMY_SPELLS={
           const _dealt=pcTakeHit(target,_hsD,narrative,caster.name,'Holy Symbol');
           if(_dealt) narrative.push(`  ✝ ${holy?`The unclean flesh of ${target.name} chars at the sight of it`:`The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); }
         break; }
-      case 'Spiritwrack':{ // 2026-09-26 (Toby item 3): silenced for 1 + floor(level/2) rounds, at most 4.
-        // The level is the caster's full White level (items included), so levels 6+ reach the cap of 4.
+      case 'Spiritwrack':{ // 2026-09-26 (Toby item 3): silenced for 1 + floor(level/2) rounds.
+        // 2026-10-15 (Toby, D5): the level is counted to 5, like every other spell's effect, so at most 3.
         // Against a guardian WEAK to White Magic the cast already takes hold at 95% (above) and the
-        // binding runs one round longer — up to 5 — instead of doubling.
-        let _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS,SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(Math.max(1,lvl)/2));
+        // binding runs one round longer — up to 4 — instead of doubling.
+        let _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS,SPELL_SPIRITWRACK_BASE_ROUNDS+Math.floor(Math.max(1,lvlEff)/2));
         if(_wkSch) _swR=Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS+1,_swR+1);
         target.status.silenceRounds=Math.max(target.status.silenceRounds,_swR); target.status.meleeHalvedRounds=Math.max(target.status.meleeHalvedRounds,_swR);
         const _shr=(target.kind==='monster')?(SPIRITWRACK_SHRUG_PCT[target.power]||0):0;
@@ -28793,7 +28793,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1113</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1117</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
