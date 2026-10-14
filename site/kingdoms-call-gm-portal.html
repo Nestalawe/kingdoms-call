@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.14-1200';
+const KC_DATA_MIN='2026.10.14-1300';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.14-1200'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.14-1300'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -17042,7 +17042,8 @@ const BATTLE_ARMY_SPELLS={
   const SPELL_FIREBALL_BASE_PCT=3, SPELL_FIREBALL_PCT_PER_LVL=1;   // burn, % of target max HP a round
   const SPELL_HOLY_PEN_PER_LVL=8;                                   // Holy Symbol to-hit penalty a level
   const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
-  const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (doubled vs undead and fiends)
+  const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (×1.5 vs undead and fiends)
+  const SPELL_HOLY_UNCLEAN_MULT=1.5;                                // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
   const SPELL_SPIRITWRACK_BASE_ROUNDS=1, SPELL_SPIRITWRACK_MAX_ROUNDS=4; // 1 + floor(level/2), max 4 (5 vs a White-weak guardian)
   // 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
   // of every round after the first in which it held — this chance a round.
@@ -17103,16 +17104,20 @@ const BATTLE_ARMY_SPELLS={
         // its identity (a ward, not a weapon) but now sustains the one who raises it, and against
         // the unclean it burns as well as blinds. The to-hit penalty comes down from 10 to 8 a
         // level to pay for it.
-        const holy=target.isUndead||/Demon|Devil|Imp|Fiend|Hell/i.test(target.name||'');
-        const pen=lvlEff*SPELL_HOLY_PEN_PER_LVL*(holy?2:1)*wx; target.status.hitPenalty=(target.status.hitPenalty||0)+pen;
-        narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (doubled vs undead/demons)':''}.`);
+        // 2026-10-14 (batch item 5): the unclean are told by their KIND — every undead and every
+        // fiend — not by a name pattern (which doubled the Dust Devil, an elemental, and missed the
+        // Chaos Knight, a fiend), and the symbol bites them ×1.5 rather than ×2.
+        const holy=!!target.isUndead||pcFoeCat(target)==='fiend';
+        const _hm=holy?SPELL_HOLY_UNCLEAN_MULT:1;
+        const pen=Math.round(lvlEff*SPELL_HOLY_PEN_PER_LVL*_hm*wx); target.status.hitPenalty=(target.status.hitPenalty||0)+pen;
+        narrative.push(`  ✝ ${caster.name} raises a Holy Symbol — ${target.name} suffers −${pen}% to hit${holy?' (×1.5 against the undead and fiends)':''}.`);
         const _hsHeal=Math.max(1,Math.round((caster.maxHp||20)*SPELL_HOLY_HEAL_PCT/100));
         if(caster.hp<(caster.maxHp||20)){ const _h=Math.min(_hsHeal,(caster.maxHp||20)-caster.hp); caster.hp+=_h;
           narrative.push(`  ✝ The light closes ${caster.name}'s hurts — ${_h} recovered. (HP ${dispFloor(caster.hp)})`); }
         // The light burns whatever stands between a hero and a barrow, and burns the unclean twice
         // as deep. Measured, a symbol that only blinded left White worse than carrying no magic at
         // all against anything that was neither undead nor a fiend.
-        { const _hsD=Math.max(1,Math.round(target.maxHp*SPELL_HOLY_BURN_PCT*(holy?2:1)/100));
+        { const _hsD=Math.max(1,Math.round(target.maxHp*SPELL_HOLY_BURN_PCT*_hm/100));
           const _dealt=pcTakeHit(target,_hsD,narrative,caster.name,'Holy Symbol');
           if(_dealt) narrative.push(`  ✝ ${holy?`The unclean flesh of ${target.name} chars at the sight of it`:`The light sears ${target.name}`} — ${_dealt} damage. (HP ${Math.max(0,Math.round(target.hp))})`); }
         break; }
@@ -19220,7 +19225,7 @@ const BATTLE_ARMY_SPELLS={
     // beasts at ×1.2 were paper). Narrowed to ×0.8 / ×1.1; the spell and arrow swings keep their
     // flavour.
     if(undead){ mods.spell+=0.5; mods.archery-=0.3; }      // magic-vulnerable, arrows pass through bone
-    if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×2)
+    if(demon){ mods.spell+=0.3; }                          // holy/magic bites deeper (Holy Symbol also ×1.5)
     if(flyer){ mods.archery+=0.4; }                        // shot out of the sky
     if(armoured){ mods.melee-=0.2; mods.spell+=0.3; }      // blades turn aside; magic ignores armour
     if(beast&&!undead){ mods.melee+=0.1; }                 // soft-bodied, blades bite
@@ -28715,7 +28720,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1200</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1300</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.14-1200
+// Data file v2026.10.14-1300
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.14-1200';
+const KC_DATA_STAMP='2026.10.14-1300';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1573,7 +1573,7 @@ const SPELL_DEFS_P={
     desc:'Action: a province you are in or adjacent to gains +60% tax base this turn (+80% for Divine realms; +100% when the Divine KING casts it in person). The blessed ground is also WARDED: a 50% + 5% per White level chance (counted to level 5, so 50–75%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast there this turn. Only one Bless can affect a province at a time (does not stack).',
     fn:'white_bless_province'},
   'Holy Symbol':    {school:'white',target:'none',encounter:true,phase:true,
-    desc:'Action: cleanses the province the caster stands in of all its battlefield dead — every grave there is laid to rest and can no longer be raised by any necromancer. Combat: the opponent suffers −8% per caster level to hit (doubled vs undead/demons). Battle magic: all enemy undead units fight at 75% base strength.',
+    desc:'Action: cleanses the province the caster stands in of all its battlefield dead — every grave there is laid to rest and can no longer be raised by any necromancer. Combat: the opponent suffers −8% per caster level to hit and is seared for 6% of its health (both ×1.5 against undead and fiends), and the caster recovers 10% of their own. Battle magic: all enemy undead units fight at 75% base strength.',
     fn:'white_holy_symbol'},
   'Spiritwrack':    {school:'white',target:'none',encounter:true,phase:false,
     desc:'Combat: for the next three combat phases the target cannot cast spells or use archery, and its melee damage is halved. Battle magic: all missile units fight at half base strength.',

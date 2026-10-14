@@ -125,6 +125,7 @@ const SUITE=[
   ['guardian-holds-melee','tests/guardian-holds-melee.test.js'], // batch 2026-10-14
   ['stun-ward-lands',     'tests/stun-ward-lands.test.js'], // batch 2026-10-14
   ['guardian-special-odds','tests/guardian-special-odds.test.js'], // batch 2026-10-14
+  ['holy-symbol-unclean', 'tests/holy-symbol-unclean.test.js'], // batch 2026-10-14
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
