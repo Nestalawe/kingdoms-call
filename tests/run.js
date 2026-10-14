@@ -137,6 +137,7 @@ const SUITE=[
   ['guardian-perks',      'tests/guardian-perks.test.js'], // batch 2026-10-14
   ['spell-words',         'tests/spell-words.test.js'], // batch 2026-10-14
   ['lair-readiness-words','tests/lair-readiness-words.test.js'], // batch 2026-10-14
+  ['rulebook-review-words','tests/rulebook-review-words.test.js'], // batch 2026-10-15
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],

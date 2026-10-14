@@ -77,7 +77,7 @@ ok(!!march&&+march[1]===ROSTER['Shieldwall Levies'].speed,`the March example cal
 ok(!!march&&+march[2]===ROSTER['Shieldwall Levies'].speed+3,'…and the March-5 figure follows the ladder (+3 at March 5, one rate for every unit since 2026-10-13)');
 
 // ── Two a turn: garrisons, shipyard hulls and Goblin Hordes ──
-const raisePara=strip((/<h3>How many you may raise in a turn<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(rules)||['',''])[1]);
+const raisePara=strip((/<h3[^>]*>How many you may raise in a turn<\/h3>\s*<p>([\s\S]*?)<\/p>/.exec(rules)||['',''])[1]);
 ok(/Goblin Horde/.test(raisePara)&&/two/.test(raisePara),'the rulebook\'s "How many you may raise" paragraph names the Goblin Horde among the two-a-turn exceptions');
 ok(!/only two things/.test(rules),'the rulebook no longer says garrisons are "one of only two things" you can raise two of');
 const recruitRow=strip((/<tr><td><strong>Recruit Armies<\/strong><\/td><td>([\s\S]*?)<\/td><\/tr>/.exec(intro)||['',''])[1]);
