@@ -50,9 +50,25 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     ok(!new RegExp(`${theirs.race}|renowned|legendary|heroic`,'i').test(sight.text),`…in the text too: "${sight.text}"`);
   }
 
+  // ── The heroes your orders can target (Spy, Charm, Encounter, spells) follow the same rule ──
+  const vc=(rep.visibleChars||[]).find(x=>x.id===theirs.id);
+  ok(!!vc,'another realm\'s hero beside yours is in the list your orders can target');
+  if(vc){
+    ok(vc.armyBand==='a modest band'&&vc.leadsArmies===true,`…with the rough size and whether they lead troops (got ${vc.armyBand} / ${vc.leadsArmies})`);
+    const leak=['race','alignment','armies','skills','temper','hp','maxHp','pay'].filter(k=>k in vc);
+    ok(leak.length===0,`…and nothing more (sent: ${leak.join(', ')||'nothing'})`);
+  }
+  ok(!(rep.visibleChars||[]).some(x=>x.id===wander.id),'a wandering hero who rolled to slip by is not in the target list');
+  // a lone hero of another realm (no troops): still nothing but name and realm
+  theirs.armies=[]; rep=W.buildTurnReport(S,0);
+  const lone=(rep.visibleChars||[]).find(x=>x.id===theirs.id);
+  ok(lone&&lone.leadsArmies===false&&!('hp' in lone)&&!('temper' in lone),`a lone hero of another realm is listed as leading no troops, with no hit points or temper (got ${JSON.stringify(lone)})`);
+  theirs.armies=army(4);
+
   // ── Invisibility still hides them ──
   theirs._invisTurn=T; rep=W.buildTurnReport(S,0);
   ok(!chars(wild.id).some(c=>c.id===theirs.id)&&!(rep.heroSightings||[]).some(s=>s.name===theirs.name),'a hero under Invisibility is not seen, even beside your hero');
+  ok(!(rep.visibleChars||[]).some(x=>x.id===theirs.id),'…nor in the target list');
   delete theirs._invisTurn;
 
   // ── In your own land, with none of your heroes there: the same limit ──
@@ -96,6 +112,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(/Invisibility is the one exception to both/.test(R),'…Invisibility still hides');
   ok(/5% chance per Spy level \(up to 25%\)/.test(R)&&!/older concealment rule/.test(R),'…wanderers keep a stated chance to slip by');
   ok(!/Accuracy of what you learn scales separately/.test(R),'…and no Spy-level accuracy ladder remains');
+  const ppSrc=fs.readFileSync(sitePath('kingdoms-call-player-portal.html'),'utf8');
+  ok(!/\(x\.armies\|\|0\)/.test(ppSrc)&&!/\(tgt\.armies\|\|0\)/.test(ppSrc),'the player portal reads whether a target leads troops, not their count');
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);
 })().catch(e=>{ console.error(e); process.exit(2); });

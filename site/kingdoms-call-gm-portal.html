@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.15-1102'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.15-1106'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -12474,9 +12474,15 @@ function buildTurnReport(gameState, playerIndex){
 
   // Enemy/wandering characters visible to this player (in same province as one of our chars)
   const ownCharLocs=new Set(gameState.characters.filter(c=>c.alive&&c.player===playerIndex).map(c=>c.location));
-  const visibleChars=gameState.characters.filter(c=>c.alive&&c.player!==playerIndex&&ownCharLocs.has(c.location)).map(c=>({
+  // 2026-10-15 (Toby, D1): the one sight rule decides who is listed (Invisibility and the wanderers'
+  // cloak hide them here too), and another realm's hero gives away only name, realm and the rough size
+  // of their army (leadsArmies says whether there is one, for Charm and Telekinetic Storm). A wandering
+  // hero's race, alignment and the rest stay public, as the Hire list shows them.
+  const _vcCtx={ownedProvIds:new Set(player.provinces||[]),ownCharLocs,spiedThisTurn:new Set(player._spiedProvincesThisTurn||[])};
+  const visibleChars=gameState.characters.filter(c=>c.alive&&c.player!==playerIndex&&ownCharLocs.has(c.location)&&enemyCharVisibleTo(gameState,playerIndex,c,_vcCtx)).map(c=>({
     id:c.id,name:c.name,locationId:c.location,locationName:gameState.world.provinces[c.location]?.name||'?',
-    isKing:c.isKing,race:c.race,alignment:c.alignment,armies:(c.armies||[]).length,
+    isKing:c.isKing,...(c.player==null?{race:c.race,alignment:c.alignment}:{}),
+    leadsArmies:(c.armies||[]).length>0, armyBand:armySizeBand((c.armies||[]).length),
     player:c.player, isWandering:c.player===null,
     // Wandering heroes are unowned and public (like a hireable hero), so it is safe to surface
     // their full detail — the player portal needs it to build a Charm order card if this hero is
@@ -12490,7 +12496,7 @@ function buildTurnReport(gameState, playerIndex){
     charmImmune:(c._charmImmuneTurn===(gameState.turn||1)),
     // an ENEMY hero's skills are never sent — a charmer must not learn them. A wandering hero's are
     // public (the Hire list shows them), so they still travel.
-    ...((!c.isKing&&(c.armies||[]).length===0)?{...(c.player==null?{skills:{...(c.skills||{})}}:{}),temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
+    ...((c.player==null&&!c.isKing&&(c.armies||[]).length===0)?{skills:{...(c.skills||{})},temper:c.temper||null,hp:c.hp,maxHp:c.maxHp,pay:c.pay}:{}),
   }));
 
   // ── Persistent "ever seen" character intel (Clairvoyance targeting) ── AK: Clairvoyance may
@@ -28770,7 +28776,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1102</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.15-1106</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

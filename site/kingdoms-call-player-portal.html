@@ -4074,7 +4074,7 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // (The engine enforces all of this — this list simply matches it.)
           // A hero charmed last turn is closed to Charm for the whole of this one.
           const targets=(report.visibleChars||[]).filter(x=>
-            x.alive!==false && x.locationId===casterLoc && !x.isKing && (x.armies||0)===0 && !x.charmImmune &&
+            x.alive!==false && x.locationId===casterLoc && !x.isKing && !leadsArmiesP(x) && !x.charmImmune &&
             (x.player===null || x.player!==c.player));
           charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering — joins you free)':` ⚔ (${realmNameP(x.player,report)}, no armies — yours for the turn)`} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No valid target — needs a lone hero (wandering or enemy, leading no armies) in this province (kings are immune, and so is anyone charmed last turn)</option>';
@@ -4112,8 +4112,8 @@ function spellSecondaryHtml(report, c, ph, selSpell, extra, target){
           // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
           // there is nothing to scatter around a hero marching alone.
           const targets=(report.visibleChars||[]).filter(x=>
-            x.player!==c.player && x.locationId===casterLoc && (x.armies||0)>0);
-          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armies} unit${x.armies!==1?'s':''} — ${x.locationName||'?'}</option>`).join('');
+            x.player!==c.player && x.locationId===casterLoc && leadsArmiesP(x));
+          charOpts=targets.map(x=>`<option value="${x.id}"${realmOptStyleP(x.player,report)} ${extra==x.id?'selected':''}>${x.name}${x.player===null?' (wandering)':` ⚔ (${realmNameP(x.player,report)})`} — ${x.armyBand||(x.armies+' unit'+(x.armies!==1?'s':''))} — ${x.locationName||'?'}</option>`).join('');
           if(!charOpts) charOpts='<option value="" disabled>No enemy/neutral hero leading armies in this province</option>';
         } else {
           // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
@@ -6150,7 +6150,7 @@ function syncCharmCard(charId, ph){
   const tgt=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId));
   // A charm target is any non-king hero leading NO armies — wandering (joins you) or an enemy
   // (their command is seized for the rest of the turn). Either way you write their orders here.
-  const wanted=(action==='Cast Spell'&&spell==='Charm'&&heroId&&tgt&&!tgt.isKing&&(tgt.armies||0)===0);
+  const wanted=(action==='Cast Spell'&&spell==='Charm'&&heroId&&tgt&&!tgt.isKing&&!leadsArmiesP(tgt));
   if(!wanted){
     if(existing){
       const stale=existing.getAttribute('data-fakeid');
@@ -6168,7 +6168,7 @@ function injectCharmOrders(charId, ph, heroId, containerId){
   // themselves a synthetic (hired/raised/charmed) hero this same turn can't anchor a charm
   // pre-order chain.
   if(!/^\d+$/.test(String(charId))||!/^\d+$/.test(String(heroId))) return;
-  const wanderer=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId)&&!x.isKing&&(x.armies||0)===0);
+  const wanderer=(report.visibleChars||[]).find(x=>String(x.id)===String(heroId)&&!x.isKing&&!leadsArmiesP(x));
   if(!wanderer) return;
   const isEnemy=(wanderer.player!=null);   // enemy → command seized for the turn; else → joins you
 
@@ -9058,6 +9058,9 @@ function provinceGrandDesignHTML(p){
               :'Its powers serve only the realm that built it \u2014 while another crown holds this ground it is dormant stonework.'}</div>
     </div>`;
 }
+// 2026-10-15 (D1): does a hero your orders can target lead troops? A report now says so (leadsArmies)
+// rather than giving another realm's exact count; an older report still carries the count.
+function leadsArmiesP(x){ return x&&x.leadsArmies!=null?!!x.leadsArmies:((x&&x.armies)||0)>0; }
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
   // a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id, and drop from the
@@ -10539,7 +10542,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1102</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1106</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

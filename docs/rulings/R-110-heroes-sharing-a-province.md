@@ -13,7 +13,8 @@ at most 25%.
 Without a Spy, all a player learns of another realm's hero is their name, the realm they serve and the
 rough size of the army they lead (a small escort, a modest band, a sizeable host, …), never the exact
 count. That holds everywhere, a player's own land included: no race, alignment or skill renown. It is shown
-on the map and in the turn report, and the alerts about heroes in a player's land give the same rough size.
+on the map and in the turn report, and the alerts about heroes in a player's land give the same rough size. The list of heroes
+an order can target (Spy, Charm, Encounter, spells) follows the same rule and carries no more than this.
 
 In Toby's words: "A player should always see other players heroes that are sharing the same province as
 their own heroes at the end of the turn. They do not see any information about the hero, other than who
