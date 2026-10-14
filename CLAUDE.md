@@ -108,6 +108,7 @@ games and test accounts. A site PR that needs a database PR is stacked on its br
 - Don't silence errors, lint or types to get green.
 - Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, and this file
   when the workflow changes.
+- Write in plain language: [ISO 24495-1:2023](#plain-language-iso-24495-12023).
 
 **Never**
 1. **Never merge.** Toby merges. Never push to `main`, never force-push a shared branch, never run
@@ -181,6 +182,14 @@ description with a `## For playtesters` section: one short, friendly paragraph p
 players (what's new or fixed and how it affects their game, with no code, numbers only where they help)
 and ready for Toby to paste. Once the change is merged and deployed, give Toby the same notes in the
 session.
+
+## Plain language (ISO 24495-1:2023)
+
+Write everything people read (messages to Toby, PRs, commits, playtester notes, rulings, docs,
+rulebooks, in-game text) to [ISO 24495-1:2023](https://www.iso.org/standard/78907.html): **relevant**
+(what readers need, nothing more), **findable** (most important first, clear headings),
+**understandable** (common words, short sentences, active voice, terms explained) and **usable**
+(numbered steps, the next action clear). Keep engineering detail accurate: explain it, don't drop it.
 
 ## Talking to Toby
 
