@@ -3372,7 +3372,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#c8922a">
           ⚔ <strong>${s.name}</strong> (${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''} · ${s.pay!=null?`Hire for <strong>${s.pay}g/turn</strong>`:'<span style="color:#a33">Will not serve your crown (alignment gulf)</span>'}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -3385,7 +3385,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#8a6a2a">
           🛡 <strong style="color:${CHIEFTAIN_MARKER_COLOR}">${s.name}</strong> (local chieftain — ${s.race}, ${s.alignment}) — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#8fbc5a">In your province</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -3398,7 +3398,7 @@ function renderReportView(report){
           : (s.topSkill?`${skillFameLabel(s.topSkill.level)} ${topStr}`:'No known skills');
         return`<div class="intel-entry" style="border-left-color:#7a1c1c">
           👁 <strong>${s.name}</strong> of ${s.kingdom}${(s.race||s.alignment)?` (${[s.race,s.alignment].filter(Boolean).join(', ')})`:''} — ${s.locationName}<br>
-          <span style="font-size:.78rem">${skillLine}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
+          <span style="font-size:.78rem">${skillLine}${spiedExtraP(s)}${s.armyBand?` · <span style="color:#2f281c">${s.armyBand}</span>`:''}${s.inOwnedProvince?' · <span style="color:#e05050">In your territory</span>':''}</span>
         </div>`;
       }).join('');
     }
@@ -9061,6 +9061,15 @@ function provinceGrandDesignHTML(p){
 // 2026-10-15 (D1): does a hero your orders can target lead troops? A report now says so (leadsArmies)
 // rather than giving another realm's exact count; an older report still carries the count.
 function leadsArmiesP(x){ return x&&x.leadsArmies!=null?!!x.leadsArmies:((x&&x.armies)||0)>0; }
+// 2026-10-15 (Toby, D2/D9): what a Spy on the hero read besides their skills — the magic items they
+// carried and the army units they led, as of that spy. Empty for a hero never spied on.
+function spiedExtraP(s){
+  if(!s) return '';
+  let h='';
+  if(Array.isArray(s.spiedItems)) h+=`<br><span style="color:#1d5a1d">🔍 Items:</span> ${s.spiedItems.length?s.spiedItems.join(', '):'none'}`;
+  if(Array.isArray(s.spiedArmies)) h+=`<br><span style="color:#1d5a1d">🔍 Leads:</span> ${s.spiedArmies.length?s.spiedArmies.map(a=>armyLabel(a,{short:true})).join(', '):'no armies'}`;
+  return h;
+}
 function popupKnownChars(pd, deadHeroes){
   const chars=pd&&pd.characters||[];
   // a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id, and drop from the
@@ -10542,7 +10551,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init().catch(err=>{
   document.getElementById('spinner').textContent='Error loading — please refresh. ('+err.message+')';
 }));
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1106</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Player Portal v2026.10.15-1111</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

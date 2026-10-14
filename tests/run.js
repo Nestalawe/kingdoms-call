@@ -141,6 +141,7 @@ const SUITE=[
   ['game-text-review-words','tests/game-text-review-words.test.js'], // batch 2026-10-15
   ['corsairs-retired',    'tests/corsairs-retired.test.js'], // batch 2026-10-15
   ['sight-shared-province','tests/sight-shared-province.test.js'], // batch 2026-10-15
+  ['spy-reveals',         'tests/spy-reveals.test.js'], // batch 2026-10-15
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],
