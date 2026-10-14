@@ -1,8 +1,9 @@
 -- Every realm slot of the given games, as the player portal needs to see other realms (P0-20): the slot's
 -- number, whether it's a bot, whether its orders are in, and its alignment while the game is in setup (the
 -- join form's Divine/Undead check). Never orders, reports, names or accounts. Games the caller may not see are
--- left out: a member or the game's GM sees their game; any signed-in account sees a public game in setup, and
--- an invited account a private one (as the games read rule). Signed-in accounts only.
+-- left out: a member or the game's GM sees their game, and the Overlord every game (P0-32e); any signed-in account
+-- sees a public game in setup, and an invited account a private one (as the games read rule). Signed-in accounts
+-- only.
 CREATE OR REPLACE FUNCTION public.get_game_slots(p_games uuid[])
   RETURNS TABLE(game_id uuid, player_index integer, is_bot boolean, orders_submitted boolean, alignment text)
   LANGUAGE sql
@@ -26,6 +27,7 @@ CREATE OR REPLACE FUNCTION public.get_game_slots(p_games uuid[])
                                else s.turn_report end as v) rpt
   where g.id = any (p_games)
     and (g.gm_user_id = auth.uid()
+         or public.is_site_admin()
          or exists (select 1 from public.game_players m where m.game_id = g.id and m.user_id = auth.uid())
          or (g.status = 'setup'
              and (coalesce(cfg.v ->> 'visibility', 'public') <> 'private'

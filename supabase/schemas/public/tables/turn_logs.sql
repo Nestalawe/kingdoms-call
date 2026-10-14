@@ -24,6 +24,13 @@ CREATE POLICY "tl2" ON "public"."turn_logs"
   TO PUBLIC
   USING (true);
 
+-- The Overlord writes any game's turn log, as its GM does (P0-32e, D-13).
+CREATE POLICY "the Overlord writes any turn log" ON "public"."turn_logs"
+  FOR ALL
+  TO "authenticated"
+  USING (( SELECT public.is_site_admin() AS is_site_admin))
+  WITH CHECK (( SELECT public.is_site_admin() AS is_site_admin));
+
 REVOKE ALL ON TABLE "public"."turn_logs" FROM "anon";
 
 REVOKE ALL ON TABLE "public"."turn_logs" FROM "authenticated";
