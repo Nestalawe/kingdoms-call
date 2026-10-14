@@ -403,7 +403,7 @@ section{display:none;}.section-active{display:block;}
 // somewhere in the 20,000 lines below — the spinner hung with no message. Every table is checked
 // now, and the file's own stamp (KC_DATA_STAMP, added the same day) must be at least the one this
 // build was cut against: older → the same loud failure, naming what is wrong.
-const KC_DATA_MIN='2026.10.14-1300';
+const KC_DATA_MIN='2026.10.14-1400';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -421,7 +421,7 @@ function safeStartLocked(gs,turn){ return !!(gs&&gs.safeStart) && (Number(turn)|
 // SAFE_START_TURN−1) this turns false, so the defenders and the capital garrison are raised in time
 // for the first turn on which war may be declared.
 function botSafeWindow(G){ return safeStartLocked(G,((G&&G.turn)||0)+1); }
-const KC_BUILD_STAMP='2026.10.14-1300'; // this build (the footer shows the same; telemetry rows carry it)
+const KC_BUILD_STAMP='2026.10.14-1400'; // this build (the footer shows the same; telemetry rows carry it)
 (function(){
   const need=['ALL_MAGIC_ITEMS_P','ARMY_UNIT_NAMES','HERO_EPITHET_OVERFLOW','HERO_NAME_PARTS','LAIR_POOLS_CAT_P','LAIR_POOLS_MONSTER_P','LEGENDARY_ITEMS_P','MASTERY_UNLOCKS','MONSTERS_P','PRIMAL_ARMY_DEFS_P','PRIMAL_UNIT_NAMES','PROVINCE_ARMIES_P','SAGE_DISCOVERIES_P','SPELL_DEFS_P','TEMPER_TRAITS','TITLE_DEFS','_ITEM_NAME_ALTS','_VARIANT_BANK',
     // 2026-09-27: the SHARED RULE TABLES both portals now read (one source — see the data file)
@@ -17039,7 +17039,7 @@ const BATTLE_ARMY_SPELLS={
   // Storm and Invisibility were identical at school level 1 and level 5, so a dabbler got a
   // master's spell. Second, White had no way to convert an action into an advantage at all. Each
   // spell keeps what it does; the numbers below are what changed.
-  const SPELL_FIREBALL_BASE_PCT=3, SPELL_FIREBALL_PCT_PER_LVL=1;   // burn, % of target max HP a round
+  const SPELL_FIREBALL_BASE_PCT=10, SPELL_FIREBALL_PCT_PER_LVL=2;  // burn, % of target max HP a round (2026-10-14, batch item 6: was 3 + 1 a level)
   const SPELL_HOLY_PEN_PER_LVL=8;                                   // Holy Symbol to-hit penalty a level
   const SPELL_HOLY_HEAL_PCT=10;                                     // …and the light closes the caster's hurts
   const SPELL_HOLY_BURN_PCT=6;                                      // …and sears the foe (×1.5 vs undead and fiends)
@@ -17095,9 +17095,13 @@ const BATTLE_ARMY_SPELLS={
         // maximum health a round whoever threw it, which made Elemental the strongest school at
         // level 1 and no stronger at level 5. 3% + 1% a level: 4% a round at Elemental 1, 8% at
         // Elemental 5.
-        const _fbPct=(SPELL_FIREBALL_BASE_PCT+SPELL_FIREBALL_PCT_PER_LVL*lvlEff);
-        const _fbD=Math.max(1,Math.round(target.maxHp*_fbPct/100))*wx; const _fbE=pcPushDot(target,_fbD,3,'Fireball burns');
-        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${dispFloor(_fbPct*wx)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds.`); break; }
+        // 2026-10-14 (batch item 6): 10% + 2% a level (12% at Elemental 1, 20% at 5). A spell ward
+        // (spellPct) cuts the burn as it cuts any spell's harm — the burn ticks outside pcTakeHit, so
+        // the ward is applied here.
+        const _fbWard=(target.arm&&target.arm.spellPct)||0;
+        const _fbPct=(SPELL_FIREBALL_BASE_PCT+SPELL_FIREBALL_PCT_PER_LVL*lvlEff)*wx*(1-_fbWard/100);
+        const _fbD=Math.max(1,Math.round(target.maxHp*_fbPct/100)); const _fbE=pcPushDot(target,_fbD,3,'Fireball burns');
+        narrative.push(`  🔥 Fireball engulfs ${target.name} — it will burn for ${dispFloor(_fbPct)}% of its health each round for ${_fbE?_fbE.rounds:3} rounds${_fbWard?` (its ward turns ${_fbWard}% of the heat)`:''}.`); break; }
       // ── WHITE (CSV) ──
       case 'Holy Symbol':{ // 2026-09-15 rebalance: measured, a White adept was WORSE in a duel than carrying no
         // magic at all — both its spells cost an action and neither did any harm. The symbol keeps
@@ -28720,7 +28724,7 @@ kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 
 
 </script>
-  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1300</div>
+  <div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95" id="kc-build-stamp">Kingdoms Call — GM Portal v2026.10.14-1400</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>

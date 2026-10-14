@@ -126,6 +126,7 @@ const SUITE=[
   ['stun-ward-lands',     'tests/stun-ward-lands.test.js'], // batch 2026-10-14
   ['guardian-special-odds','tests/guardian-special-odds.test.js'], // batch 2026-10-14
   ['holy-symbol-unclean', 'tests/holy-symbol-unclean.test.js'], // batch 2026-10-14
+  ['fireball-burn',       'tests/fireball-burn.test.js'], // batch 2026-10-14
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],

@@ -5,10 +5,10 @@
 // Order matters only in that ALL_MAGIC_ITEMS_P must precede ITEMS_BY_TIER/rollMagicItem (which stay
 // in the portal), which this arrangement guarantees.
 // Tables: PRIMAL_ARMY_DEFS_P, MASTERY_UNLOCKS, PROVINCE_ARMIES_P, TEMPER_TRAITS, HERO_NAME_PARTS, HERO_EPITHET_OVERFLOW, MONSTERS_P, LAIR_POOLS_CAT_P, LAIR_POOLS_MONSTER_P, ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS, LEGENDARY_ITEMS_P, _VARIANT_BANK, PRIMAL_UNIT_NAMES, ARMY_UNIT_NAMES, TITLE_DEFS, SAGE_DISCOVERIES_P, SPELL_DEFS_P
-// Data file v2026.10.14-1300
+// Data file v2026.10.14-1400
 // KC_DATA_STAMP: the portal's data-file guard refuses to start on a file older than the build it was
 // cut against (KC_DATA_MIN in the portal) — keep this and the "Data file v" line above in step.
-const KC_DATA_STAMP='2026.10.14-1300';
+const KC_DATA_STAMP='2026.10.14-1400';
 
 // ════
 // ARMY-TYPE CLASSIFICATION TABLES — moved to module top level (2026.07.22). Previously declared
@@ -1618,7 +1618,7 @@ const SPELL_DEFS_P={
     desc:'Combat: deals 1–3 damage per caster level (counted to level 5) to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
     fn:'elemental_lightning'},
   'Fireball':       {school:'elemental',target:'none',encounter:true,phase:false,
-    desc:'Combat: burns the target for 10% of its health each phase for the next three phases. Battle magic: a random enemy army unit has its base strength halved for the battle.',
+    desc:'Combat: burns the target for 10% of its health each round, plus 2% per Elemental level (12% at 1, 20% at 5), for three rounds. Battle magic: the strongest enemy army unit has its base strength halved for the battle.',
     fn:'elemental_fireball'},
   'Earthquake':     {school:'elemental',target:'province',encounter:false,phase:true,
     desc:'Action: a province you are in or adjacent to yields no tax revenue at the end of this turn.',

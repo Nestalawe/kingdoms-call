@@ -829,7 +829,7 @@ section{display:none;}.section-active{display:block;}
 // file the GM portal loads, served from the same folder — instead of keeping its own copies, several
 // of which had drifted from the engine. Missing, or older than this build expects → a full-page
 // message instead of a blank page. Keep KC_DATA_MIN_P in step with the GM portal's KC_DATA_MIN.
-const KC_DATA_MIN_P='2026.10.14-1300';
+const KC_DATA_MIN_P='2026.10.14-1400';
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -4324,7 +4324,7 @@ const SPELL_HINTS={
   'Hide Lairs':'Target: a province you\u2019re in or adjacent to. Hides every lair there from all other players \u2014 they cannot discover any lair in it while the glamour holds (one already found stays theirs). 20% chance to fade each turn.',
   'Invisibility':'Combat: enemies suffer \u221225% to hit you (melee and arrows) for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn.',
   'Lightning Bolt':'Combat: 1\u20133 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
-  'Fireball':'Combat: burns the target for 10% of its health each round for 3 rounds. Battle: a random enemy unit\u2019s strength is halved.',
+  'Fireball':'Combat: burns the target for 10% of its health each round, +2% per Elemental level (12% at 1, 20% at 5), for 3 rounds. Battle: the strongest enemy unit\u2019s strength is halved.',
   'Earthquake':'Target: a province you\u2019re in or adjacent to. It yields no tax at the end of this turn.',
   'Flood':'Target: a land province you\u2019re in or adjacent to. It acts as a sea province for the rest of the turn (land armies stranded). Cancels Part Sea.',
   'Elemental Summon':'Summons a random elemental (Air/Fire/Earth/Water/Darkness, Veteran) to fight under you for the rest of the turn, then it dissolves. One per turn.',
