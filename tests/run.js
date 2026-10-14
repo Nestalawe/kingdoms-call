@@ -122,6 +122,7 @@ const SUITE=[
   ['bolt-damage',          'tests/bolt-damage.test.js'],
   ['arrow-damage',         'tests/arrow-damage.test.js'],
   ['every-round-acts',    'tests/every-round-acts.test.js'], // batch 2026-10-14
+  ['guardian-holds-melee','tests/guardian-holds-melee.test.js'], // batch 2026-10-14
   ['province-pools',       'tests/province-pools.test.js',       FULL?['10']:['4']],
   ['pursuit-one-battle',   'tests/pursuit-one-battle.test.js'],
   ['warg-run-down',        'tests/warg-run-down.test.js'],

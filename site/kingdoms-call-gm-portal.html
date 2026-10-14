@@ -17707,6 +17707,11 @@ const BATTLE_ARMY_SPELLS={
           narrative.push(`  ${actor.name} moves up to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
           if(roll>ch){ narrative.push(`  ${actor.name} cannot close the distance in time — no shot.`); break; }
           state.range='bow';
+        } else if(state.range==='melee'&&actor.kind==='monster'){
+          // 2026-10-14 (batch item 2): a GUARDIAN never tries to back out of a melee to shoot — at
+          // sword's length its Fire action is a blow (no break-away roll, so no round lost to one).
+          pcMeleeStrike(actor, foe, narrative);
+          break;
         } else if(state.range==='melee'){
           const ch=dispFloor(pcMoveCheck(actor,foe,'withdraw')), roll=d100();
           narrative.push(`  ${actor.name} tries to break away to firing range (${ch}% [roll ${roll}]${roll<=ch?' ✓':' ✗'})`);
