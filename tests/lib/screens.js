@@ -294,17 +294,20 @@ const gmPortal={
 };
 
 // ── The player portal ────────────────────────────────────────────────────────────────────────────────────────────
-// The lobby (P0-19 PR 3; the report, orders, map and Dispatches add their screens in later PRs). The player p1 is in
-// G1 (active: a deadline, a rival's orders in, an unread dispatch), G2 (in setup, waiting), G3 (archived) and a game
-// whose row it can't read (G9). Open to join: G4 (public, another GM's, Divine taken) and G5 (private, p1 invited); G6
-// is private to others and never listed. p1 has an open offer to become a Game Master. Every string a player or a GM
-// can store comes from N, and so does the turn number the cards show; every database error a screen shows does too
-// (stub ERRORS). A player, a signed-out visitor and a page that can't start each see their screens.
+// The lobby (P0-19 PR 3) and the turn report and Chronicle (PR 4); the orders, map and Dispatches add their screens in
+// later PRs. The player p1 is in G1 (active: a deadline, a rival's orders in, an unread dispatch, and its turn report),
+// G2 (in setup, waiting), G3 (archived) and a game whose row it can't read (G9). Open to join: G4 (public, another
+// GM's, Divine taken) and G5 (private, p1 invited); G6 is private to others and never listed. p1 has an open offer to
+// become a Game Master. Every string a player or a GM can store comes from N, and so does the turn number the cards
+// show; every database error a screen shows does too (stub ERRORS). A player, a signed-out visitor and a page that
+// can't start each see their screens; the reader (p1 again) opens G1's report, its past turns and its title and
+// diplomacy states.
 const playerPortal={
   page:'kingdoms-call-player-portal.html',
   bootWait:900,
   modes:{
     player:{url:'',user:'p1'},
+    reader:{url:'',user:'p1',report:true},
     signedOut:{url:'',user:null},
     bootFails:{url:'',bootError:true},
   },
@@ -317,7 +320,113 @@ const playerPortal={
     const slot=(id,game_id,player_index,user_id,display_name,extra)=>({id,game_id,player_index,user_id,display_name,orders_submitted:false,
       orders:null,turn_report:null,...(extra||{})});
     const joined=a=>json({playerSetup:{kingName:N('king',9),kingdomName:N('kingdom',9),alignment:a},status:'joined',waitingForTurn0:true});
+    // G1's turn report for p1 (realm 0), staged as the saved row: every section the report and Chronicle draw. The names
+    // a player or a GM chose (heroes, realms, units, titles' holders, dispatches, battle cries and parting words) come
+    // from N, and so do the engine's own strings that reach the screen (provinces, lairs, items, events, perks).
+    const C={king:N('hero',0),hero:N('hero',1),enemy:N('hero',5),wander:N('hero',6),chief:N('hero',7),dead:N('hero',8)};
+    const R={own:N('realm',0),rival:N('realm',1),third:N('realm',2)};
+    const P={home:N('province',0),field:N('province',1),far:N('province',2)};
+    const T={unit:N('unit',0),cry:N('cry',0),parting:N('parting',0),dispatch:N('dispatch',1),verb:N('verb',0),old:N('hero',9),gmLog:N('hero',13)};
+    const force=(name,color,verb,armies,extra)=>'⚑FORCE⚑'+json({name,color,verb,armies,...(extra||{})});
+    const battle=(tier,text,extra)=>({type:'combat',charId:'c0',phase:1,battleId:'b1',bTier:tier,text,...(extra||{})});
+    const lastTurnLog=[
+      {type:'move',charId:'c0',phase:0,text:`**${C.king}** marches from ${P.home} to ${P.field}, crying "${T.cry}"`},
+      {type:'event',charId:'c0',phase:0,pinNotice:true,text:`${C.king} is still locked in the battle at ${P.field}`},
+      battle('k',`⚔ **Battle for ${P.field}** — ${R.own} against ${R.rival}`),
+      battle('d',force(`${C.king} (${R.own})`,'#a33',`${T.verb}, leading`,[{type:'Free Lances',quality:'Veteran',unitName:T.unit},{type:'Noble Griffons',quality:'Elite',phantom:true}])),
+      battle('d',force(C.enemy,'#36c','defends — 2 defending units',[],{neutral:false})),
+      battle('d',force(C.chief,null,'stands guard',[{type:'Shieldwall Levies',quality:'Green'}],{guard:true})),
+      battle('d',`   ${C.enemy} strikes **${C.king}** for 3 — "${T.parting}"`),
+      battle('d',`📊 Battle lines │ ${R.own} │ 12.75 │ 7`),
+      battle('t',`⚰ Losses: ${T.unit} falls`),
+      battle('s',`${R.rival} hears of the battle at ${P.field}`),
+      {type:'combat',charId:'c1',phase:2,battleId:'b2',bTier:'s',text:`⚔ ${C.hero} watches the battle at ${P.field}`},
+      {type:'event',charIds:['c1'],phase:2,text:`⚠ **${C.hero}** hears "${T.parting}"`},
+      {type:'event',charId:'c1',phase:99,text:`${C.hero} sends a courier to ${P.home}`},
+      {type:'event',charId:'c1',env:true,phase:3,text:`🌋 ${C.hero} shakes ${P.far}`},
+      {type:'event',env:true,phase:3,text:`🌋 The earth shakes in ${P.far}`},
+      {type:'message',text:`${R.rival} writes: ${T.dispatch}`},
+      {type:'system',phase:3,text:`${R.own} conquers ${P.far} from **${R.third}**`},
+      {type:'system',text:`💰 ${R.own} collects 12g in taxes`},
+      {type:'system',phase:1,text:`[Intelligence] ${N('intel',0)} near ${P.field}`},
+      {type:'system',text:`[Intelligence] ${N('intel',1)}`},
+      {type:'system',text:`[The Throne] ${R.rival} holds 12g; ${C.enemy} leads them`},
+      {type:'system',text:`[The Throne] and ${R.third} trails`},
+    ];
+    const king={id:'c0',name:C.king,isKing:true,alive:true,hp:20,maxHp:30,race:'Human',alignment:'Evil',temper:'Brave',temperEff:'Berserk',
+      locationId:1,locationName:P.home,pay:0,skills:{melee:3,druid:1},
+      skillEff:{melee:{base:3,bonus:2,sources:[{label:N('item',2),delta:2,kind:'item'}]},druid:{base:1,bonus:0}},
+      skillExtra:{archery:[{label:N('title',0),delta:1,kind:'title',scope:'combat'}]},
+      items:[{name:'Blade of Fury',tier:3,desc:N('item',1),acquiredThisTurn:true},{name:'Elven Longbow',tier:2,race:'Elven'},{name:'Ring of Wealth',tier:4,equipped:false}],
+      titlesHeld:[{name:N('title',1),perk:N('perk',1)}],minorHeld:[{name:N('title',2),perk:N('perk',2)}],
+      armies:[{type:'Free Lances',quality:'Veteran',unitName:T.unit,race:'Human',speed:3,cost:2,moveRate:2,moveKind:'land'},
+        {type:'Forest Ents',quality:'Average',speed:2},{type:'Cave Trolls',quality:'Green',wildHunt:true,wildHuntUntil:3},
+        {type:'Galleon Fleet',quality:'Average',speed:3}],
+      effectiveSpeed:2,effectiveSeaSpeed:2,effectiveAirSpeed:0};
+    const hero={id:'c1',name:C.hero,isKing:false,alive:true,hp:10,maxHp:10,race:'Elven',alignment:'Good',temper:'Cautious',
+      locationId:2,locationName:P.field,pay:3,skills:{archery:6,sage:2},armies:[]};
+    const titles={public:true,myShare:.3,threshold:.5,myOwnShare:.3,callerMin:.25,soloThreshold:.45,allyStep:.05,blocSize:1,reckoningMinTurn:10,
+      callBlockedReason:'tooEarly',kingAlive:true,
+      gains:[{scope:'major',name:N('title',3),charName:C.king,kingdomName:R.own,req:N('req',0),perk:N('perk',3),initial:true}],
+      losses:[{scope:'minor',name:N('title',4),newCharName:C.enemy,newHolderName:R.rival},{scope:'major',name:N('title',5),vacant:true}],
+      standings:[{index:0,name:R.own,color:'#a33',score:30,titleNames:[N('title',3)],relics:1},{index:1,name:R.rival,color:'#36c',score:20},
+        {index:2,name:N('realm',3),unmet:true,score:5}],
+      holders:{throne:{holderName:R.own,charName:C.king,kingdomLevel:true,mine:true,req:N('req',1),perk:N('perk',4),race:{mine:true,charName:C.king,leadPct:3}},
+        vault:{holderName:R.rival,charName:C.enemy,req:N('req',2),perk:N('perk',5),race:{pct:40,charName:C.hero}},
+        marshal:{holderName:N('realm',3),unmet:true,charName:N('hero',11)},sea:{race:{vacant:true}},monster:{}},
+      minor:{mine:[{name:N('title',2),holderName:C.king,req:N('req',3),perk:N('perk',2)}]}};
+    const report={playerIndex:0,engineStamp:N('stamp',0),lastTurnLog,characters:[king,hero],
+      kingdom:{name:R.own,color:'#a33',alignment:'Evil',race:'Human',gold:12,taxIncome:20,armyWages:5,heroWages:3,rawTaxBase:15,consecG:2,sageDiscG:1,
+        taxBonusCutG:1,taxBonusCapG:2,earthquakeReduction:1,enslaveReduction:1,hostLeaderG:1,orcSpoilsG:1,nextArmyWages:6,heroWageDisc:1,nextHeroWages:4},
+      ownedProvinces:[{id:1,name:P.home,terrain:'forest',tax:5,race:'Human',explored:40,
+        features:[{name:N('lair',0),discovered:true,monsterPower:'Powerful'},{name:N('lair',1),discovered:true,cleared:true}],
+        armyTypes:['Free Lances','Forest Ents'],garrisonArmies:[{type:'Shieldwall Levies',quality:'Green',unitName:N('unit',1)}],
+        neutralDefenders:[{type:'Free Lances',quality:'Average'}],grandDesign:{name:N('design',0),active:true,ownerName:R.own},terror:{pct:10,stacks:1,byYou:true}}],
+      visibleDeadHeroes:[{name:C.dead,race:'Orcish',alignment:'Evil',player:1,locationName:P.far,killedOnTurn:2,topSkill:{skill:'melee',level:5},servedOther:true},
+        {name:N('hero',10),player:null,locationName:P.far,killedOnTurn:1,inVisibleProv:true}],
+      graveIntel:[{name:P.far,turn:2,detail:[{n:2,k:'Elite Free Lances'}],detailPartial:true,detailTurn:1}],
+      mercIntel:[{unitName:N('unit',2),type:'Free Lances',quality:'Veteran',location:P.field}],
+      heroSightings:[{type:'wandering',name:C.wander,race:'Human',alignment:'Neutral',locationName:P.field,topSkill:{skill:'melee',level:4},
+          spiedSkills:{melee:4},spiedTurn:2,spiedItems:[N('item',3)],spiedArmies:[{type:'Free Lances',quality:'Green',unitName:N('unit',3)}],armyBand:N('band',0),pay:3,inOwnedProvince:true},
+        {type:'neutral_guard',name:C.chief,race:'Dwarven',alignment:'Good',locationName:P.far,topSkill:{skill:'melee',level:7},armyBand:N('band',1)},
+        {type:'enemy',name:C.enemy,kingdom:R.rival,kingdomColor:'#36c',race:'Elven',alignment:'Divine',locationName:P.field,topSkill:{skill:'archery',level:2},inOwnedProvince:true}],
+      provinceEvents:[{provName:P.home,phase:1,text:N('event',0)},{provName:P.far,text:N('event',1)}],
+      provinceCharIntel:[{spied:true,provName:P.field,characters:[{category:'enemy',name:C.enemy,color:'#36c',isKing:true,kingdom:R.rival,
+          armies:[{type:'Free Lances',quality:'Average',unitName:N('unit',4)}],spiedSkills:{melee:2}},
+        {category:'wandering',name:C.wander,armyBand:'no armies'},{category:'neutral',name:C.chief,isNeutralGuard:true,armyCount:2}]},
+        {spied:true,provName:P.far,characters:[]}],
+      spyActivity:[{provName:P.field,sincePhase:1,lines:[{phase:2,text:N('spy',0)},{text:N('spy',1)}]}],
+      knownFeatures:[{name:N('lair',0),province:P.home,monster:N('monster',0),monsterPower:'Powerful',monsterCat:'Monster',isOwned:true,
+          rumour:{turn:2,gold:7,items:[N('item',4)],wields:[N('item',5)]}},
+        {name:N('lair',2),province:P.field,ritualSite:true},{name:N('lair',1),province:P.home,cleared:true},
+        {name:N('lair',3),province:P.far,monster:N('monster',1),monsterPower:'Weak',rumour:{turn:1,gold:0,items:[],stolen:[N('item',6)]}}],
+      knownGuardianWeaknesses:{[N('monster',0)]:{name:N('weakness',0),desc:N('weakness',1)}},
+      discoveries:[{name:N('discovery',0),category:'Military',turnDiscovered:2,desc:N('discovery',1)}],
+      diplomacy:{known:[{index:1,name:R.rival,color:'#36c',alignment:'Divine',relation:'neutral',offeredUs:'alliance'},
+        {index:2,name:R.third,color:'#3a3',alignment:'Evil',relation:'enemy',conceded:true,concededTurn:2},
+        {index:3,name:N('realm',3),color:'#999',relation:'allied'}],alliancesAllowed:true,safeStartUntil:0},
+      titles,
+      allKingdoms:[{name:R.own,color:'#a33'},{name:R.rival,color:'#36c'},{name:R.third,color:'#3a3'}],
+      nameColors:[{name:N('hero',12),color:'#999'}],
+      worldMeta:{cols:3,rows:1,provinces:[{id:1,col:0,row:0,name:P.home,terrain:'forest',owner:0,ownerColor:'#a33',characters:[{name:C.king,isOwn:true}]},
+        {id:2,col:1,row:0,name:P.field,terrain:'plain',characters:[{name:C.enemy,ownerColor:'#36c'},{name:C.wander,isWanderer:true}]},
+        {id:3,col:2,row:0,name:P.far,terrain:'mountain',characters:[{name:C.chief,isNeutralGuard:true}]}]}};
+    // An older saved snapshot (turn 1, before battle folding, game-end flags and unit names): plain battle lines, a
+    // force with no unit names, no rawTaxBase, skills without their sources.
+    const oldReport={playerIndex:0,characters:[{id:'c0',name:C.king,isKing:true,alive:true,hp:30,maxHp:30,race:'Human',skills:{melee:2},armies:[]}],
+      kingdom:{name:R.own,color:'#a33',alignment:'Neutral',gold:5,taxIncome:6},ownedProvinces:[{id:1,name:P.home,terrain:'forest',tax:5}],
+      titles:{public:false,publicFromTurn:5},allKingdoms:[{name:R.own,color:'#a33'}],
+      lastTurnLog:[{type:'move',charId:'c0',phase:0,text:`**${C.king}** rides to ${P.home}`},
+        {type:'combat',charId:'c0',phase:1,text:`⚔ **Battle for ${P.home}** against ${T.old}`},
+        {type:'combat',charId:'c0',phase:1,text:force(C.king,'#a33','attacks',[{type:'Free Lances',quality:'Green'}])},
+        {type:'event',charId:'c0',phase:2,text:`${C.king} is wounded — "${T.parting}"`},
+        {type:'system',text:`[Intelligence] ${N('intel',2)}`}]};
+    // The game decided: the engine's end-of-game lines, flagged and (older reports) matched by shape.
+    const gameEndLog=[{type:'system',gameEnd:true,text:`🏆 THE GAME IS DECIDED — ${R.own} is judged supreme`},
+      {type:'system',gameEnd:true,text:`   1. ${R.own} — 30 Legacy`},
+      {type:'system',text:`👑 THE RECKONING IS CALLED — by ${R.rival}`},{type:'system',text:`   2. ${R.rival} — 20 Legacy`}];
     return {
+      hostile:!!N.hostile, report, C, R, P, T, gameEndLog,
       error:N('error',0), password:'kc-test-password', newName:N('player',7), king:N('king',0), kingdom:N('kingdom',0),
       signUp:{name:N('player',8),email:'new@example.test'},
       db:{
@@ -336,7 +445,7 @@ const playerPortal={
           game('G6',N('game',6),'gm1','setup',0,{mapSize:'p3',visibility:'private',invited:['p2']}),
         ],
         game_players:[
-          slot('s10','G1',0,'p1',N('realm',0)), slot('s11','G1',1,'p2',N('realm',1),{orders_submitted:true}),
+          slot('s10','G1',0,'p1',N('realm',0),{turn_report:json(report)}), slot('s11','G1',1,'p2',N('realm',1),{orders_submitted:true}),
           slot('s12','G1',2,null,N('realm',2),{turn_report:json({isBot:true})}),
           slot('s20','G2',0,'p1',N('realm',20),{turn_report:joined('Neutral')}),
           slot('s30','G3',0,'p1',N('realm',30)),
@@ -344,7 +453,11 @@ const playerPortal={
           slot('s40','G4',0,'p2',N('realm',40),{turn_report:joined('Divine')}),
         ],
         game_messages:[{id:7,game_id:'G1',turn:2,from_index:1,to_indexes:[0],scope:'private',body:N('dispatch',0),created_at:at}],
-        game_message_reads:[], message_reports:[], turn_logs:[], turn_events:[], game_results:[], game_records:[],
+        game_message_reads:[], message_reports:[], turn_events:[], game_results:[], game_records:[],
+        // turn 1: p1's own saved snapshot (older shape); turn 0: none, so the page falls back to the GM's log
+        turn_logs:[{id:'tl1',game_id:'G1',turn:1,player_index:0,entries:oldReport},
+          {id:'tl0',game_id:'G1',turn:0,player_index:-1,entries:[{type:'event',actor:0,charId:'c0',phase:0,text:`**${C.king}** founds ${R.own}`},
+            {type:'event',targets:[0],text:`${T.gmLog} is sighted near ${P.home}`},{type:'event',actor:1,text:'Another realm\'s line'}]}],
       },
     };
   },
@@ -379,6 +492,37 @@ const playerPortal={
       ['registering refused',"setAuthTab('signup');"+`sb.auth.signUp=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('su-name',W.signUp.name)+val('su-email',W.signUp.email)+val('su-password',W.password)+val('su-password2',W.password)+'doSignUp()'],
     ];
+    if(m.report){
+      // With hostile names, the parts later pull requests convert (the orders form with its Submit button, the map,
+      // Dispatches) are held back: they don't escape names yet. With ordinary names (same-dom.js) everything renders,
+      // so the helpers this pull request converted are compared there too.
+      const held=W.hostile?'buildOrdersForm=function(){};restoreSubmitWrap=function(){};renderPlayerMap=function(){};initMessaging=async function(){};':'';
+      // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: it draws
+      // at once instead
+      const now="scheduleOrderLedgerP=function(){ renderOrderLedgerP(); };";
+      // the Call the Reckoning control lives in the orders form; without it, a stand-in holds its place
+      const wrap="if(!document.getElementById('reckoning-wrap')){ const d=document.createElement('div'); d.id='reckoning-wrap'; document.getElementById('report-titles').after(d); }";
+      const titles=o=>`Object.assign(currentReport.titles,${lit(o)});renderTitles(currentReport);${wrap}renderReckoningOrders();`;
+      const dip=`_renderDiplomacyInto(document.getElementById('report-diplomacy'),currentReport,true);`;
+      return [
+        ['the turn report and Chronicle',fixed+now+held+"openReport('s10')"],
+        ['the Chronicle, every battle in full',"document.querySelectorAll('.bf-toggle').forEach(b=>b.click())"],
+        ['diplomacy with its controls',"diploChoices={};"+dip],
+        ['diplomacy, a declaration pending',"diploChoices={1:'enemy'};"+dip+"renderDiplomacy(currentReport)"],
+        ['a past turn, an older saved report','loadPastReport(\'G1\',0,1)'],
+        ['a past turn with no saved report of its own','loadPastReport(\'G1\',0,0)'],
+        ['back to the current turn','diploChoices={};returnToCurrentReport()'],
+        ['the Reckoning can be called',titles({canCallReckoning:true,callBlockedReason:null,myShare:.6})],
+        ['the Reckoning, to be called with these orders','setReckoningCall(true)'],
+        ['the Reckoning, your own realm too small',"setReckoningCall(false);"+titles({canCallReckoning:false,callBlockedReason:'callerShort',myOwnShare:.1,blocSize:2})],
+        ['the Reckoning, the bloc short of the bar',titles({callBlockedReason:null,myShare:.3,blocSize:3})],
+        ['the Reckoning called by a rival',titles({reckoning:{byName:W.R.rival,resolveAtTurn:12,mine:false}})+'renderReportView(currentReport)'],
+        ['the game decided',`currentReport.titles.gameOver={winnerName:${lit(W.R.own)},winner:0,standings:currentReport.titles.standings};`
+          +titles({reckoning:null})+`currentReport.lastTurnLog=currentReport.lastTurnLog.concat(${lit(W.gameEndLog)});renderReportView(currentReport)`],
+        ['the report, its game unreadable',fail('games.select')+"openReport('s10')"],
+        ['the report, its slot unreadable',ok+fail('game_players.select')+"openReport('s10')"],
+      ];
+    }
     const card="document.querySelector('#open-games-list .game-card').click()";
     const join=val('join-king-name',W.king)+val('join-kingdom-name',W.kingdom);
     return [
@@ -412,7 +556,11 @@ const playerPortal={
   shown:W=>{
     const D=W.db;
     return [W.error,W.newName,D.profiles[0].name,D.profiles[3].name,D.profiles[2].name,...D.games.slice(0,5).map(g=>g.name),D.games[0].turn,
-      D.game_players[0].display_name,D.game_players[3].display_name,D.game_players[4].display_name].filter(s=>typeof s==='string');
+      D.game_players[0].display_name,D.game_players[3].display_name,D.game_players[4].display_name,
+      // the report and Chronicle: names, narrative, and the engine's strings, in the current and past turns
+      ...Object.values(W.C),...Object.values(W.R),...Object.values(W.P),...Object.values(W.T),
+      W.report.knownFeatures[0].name,W.report.knownFeatures[0].monster,W.report.discoveries[0].name,W.report.titles.gains[0].name,
+      W.report.provinceEvents[0].text,W.report.spyActivity[0].lines[0].text,W.report.characters[0].items[0].desc].filter(s=>typeof s==='string');
   },
 };
 
