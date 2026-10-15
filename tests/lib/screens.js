@@ -619,7 +619,7 @@ const playerPortal={
         ['the orders, a saved draft with hire, raise and charm cards',fixed+timers+held+step(stage(O.draft)+"await openReport('s10')")],
         ...Array.from({length:7},(_,k)=>[`every order on the hire, raise and charm cards, part ${k+1} of 7`,step(every(k,'/^(hired|resurrect|charm)_/'))]),
         ...Array.from({length:10},(_,k)=>[`every order, part ${k+1} of 10`,step(every(k,'/^\\d+$/'))]),
-        ...Object.entries(own).map(([al,a])=>[`a ${al} realm's own order`,
+        ...Object.entries(own).map(([al,a])=>[`${/^[AEIOU]/.test(al)?'an':'a'} ${al} realm's own order`,
           step(`currentReport.kingdom.alignment=${lit(al)};${rebuild}${act(10,0,a)}`
             +(a==='Broker'?`${val('po-target-10-0','hire:40')}syncHiredHeroCard('10',0);`:''))]),
         ['spells and their targets, one',step(`currentReport.kingdom.alignment='Evil';${rebuild}`+spells(['Bless Province','Oratory','Phantasmal Armies','Clairvoyance','Control Undead']))],
