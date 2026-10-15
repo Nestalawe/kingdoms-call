@@ -64,7 +64,7 @@ td select{width:auto;max-width:190px;padding:3px 5px;font-size:.82rem;}
 #spinner{text-align:center;padding:48px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.1em;}
 .pill{display:inline-block;font-size:.62rem;padding:2px 7px;border-radius:8px;font-family:'Cinzel',serif;font-weight:600;}
 .pill-green{background:#d4edda;color:#155724;}.pill-amber{background:#fff3cd;color:#856404;}
-.pill-blue{background:#cce5ff;color:#004085;}.pill-grey{background:#e2ddd2;color:#3a3224;}
+.pill-blue{background:#cce5ff;color:#004085;}.pill-grey{background:#e2ddd2;color:#3a3224;}.pill-red{background:#f8d7da;color:#721c24;}
 table.kc{width:100%;border-collapse:collapse;font-size:.83rem;}
 table.kc th{font-family:'Cinzel',serif;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--stone);text-align:left;padding:5px 7px;border-bottom:1px solid var(--stone);white-space:nowrap;}
 table.kc td{padding:5px 7px;border-bottom:1px solid var(--parchment-dark);vertical-align:top;}
@@ -121,6 +121,7 @@ section.on{display:block;}
     <div class="card">
       <h2>Accounts</h2>
       <input type="search" id="acct-q" placeholder="Search by name or email" oninput="renderAccounts()" style="margin-bottom:10px">
+      <p class="muted" style="margin-bottom:8px">A suspended account can't sign in. If they're signed in when you suspend them, that session lasts until it expires, up to an hour.</p>
       <div id="accounts"></div>
     </div>
 
@@ -144,8 +145,8 @@ section.on{display:block;}
 // KINGDOMS CALL — THE OVERLORD PAGE (plan step P0-32f, ruling R-097)
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // For the Overlord only: every account (overlord_accounts), offering, withdrawing and revoking Game Master, handing a
-// game to another Game Master (reassign_game, which revoking needs first), every game, and the reported dispatches of
-// every game. Every action is a database function or rule that checks the Overlord itself (P0-32b, P0-32e), so this
+// game to another Game Master (reassign_game, which revoking needs first), suspending, lifting a suspension and deleting
+// an account (P0-32h), every game, and the reported dispatches of every game. Every action is a database function or rule that checks the Overlord itself (P0-32b, P0-32e), so this
 // page grants nothing: anyone else is told "This page is for the Overlord" and nothing is read.
 // Not linked from any public page; the Overlord bookmarks it.
 // Everything shown that an account or a player wrote (names, emails, game names, dispatches, reasons) goes in as text
@@ -154,9 +155,9 @@ section.on{display:block;}
 // the same browser is running turns with.
 if(typeof KC_CONFIG==='undefined') throw new Error('kc-config.js did not load: reload the page.');
 const sb=supabase.createClient(KC_CONFIG.supabaseUrl,KC_CONFIG.supabaseKey,{auth:{storageKey:'kc-overlord-auth'}});
-// The oldest database this page works with (P0-34): P0-32e's, which added reassign_game and the Overlord's rights on
-// every game. The page can't work without it.
-const KC_DB_MIN='20261014044929';
+// The oldest database this page works with (P0-34): P0-32h's, which added suspending and deleting accounts (and
+// suspended_until) on top of P0-32e's reassign_game and the Overlord's rights on every game. The page can't work without it.
+const KC_DB_MIN='20261015051826';
 
 let ME=null;          // the signed-in account
 let ACCOUNTS=[];      // overlord_accounts(); null if it failed (ACCOUNTS_ERROR says why)
@@ -166,6 +167,7 @@ let GAMES_ERROR='';
 let REPORTS=[];       // gm_reported_messages(null)
 let REALMS={};        // game id -> {player_index: realm name}, for the reported games
 let REVOKING=null;    // the account whose Revoke panel is open
+let DELETING=null;    // the account whose Delete panel is open (one panel at a time)
 
 const $=id=>document.getElementById(id);
 // One element, its attributes and its children. Children are nodes or text: text is never read as markup.
@@ -204,7 +206,7 @@ async function doSignIn(){
 }
 async function doSignOut(){
   await sb.auth.signOut();
-  ME=null; ACCOUNTS=[]; GAMES=[]; REPORTS=[]; REALMS={}; REVOKING=null;
+  ME=null; ACCOUNTS=[]; GAMES=[]; REPORTS=[]; REALMS={}; REVOKING=null; DELETING=null;
   section('sec-auth');
 }
 async function onSignedIn(){
@@ -281,15 +283,19 @@ function renderAccounts(){
       :a.gm_status==='game_master'?el('span',{class:'pill pill-green'},'Game Master')
       :a.gm_status==='offered'?el('span',{class:'pill pill-amber'},'Offered')
       :el('span',{class:'pill pill-grey'},'Player');
-    const actions=self?null
-      :a.gm_status==='game_master'?el('button',{class:'btn btn-crimson btn-sm','data-act':'revoke',onclick:()=>{ REVOKING=REVOKING===a.user_id?null:a.user_id; renderAccounts(); }},'Revoke GM…')
+    const gmAction=self?null
+      :a.gm_status==='game_master'?el('button',{class:'btn btn-crimson btn-sm','data-act':'revoke',onclick:()=>{ REVOKING=REVOKING===a.user_id?null:a.user_id; DELETING=null; renderAccounts(); }},'Revoke GM…')
       :a.gm_status==='offered'?el('button',{class:'btn btn-ghost btn-sm','data-act':'withdraw',onclick:()=>withdrawOffer(a)},'Withdraw offer')
       :el('button',{class:'btn btn-forest btn-sm','data-act':'offer',onclick:()=>offerGm(a)},'Offer GM');
     const tr=el('tr',{'data-user':a.user_id},
       el('td',null,a.name||'(no name)'), el('td',null,a.email||''), el('td',null,day(a.joined)), el('td',null,day(a.last_sign_in)),
-      el('td',null,status), el('td',{class:'num'},a.games_run||0), el('td',{class:'num'},a.games_played||0),
-      el('td',null,el('div',{class:'actions'},actions)));
-    return REVOKING===a.user_id&&!self?[tr,el('tr',null,el('td',{colspan:8},revokePanel(a)))]:[tr];
+      el('td',null,status,a.suspended_until?[' ',el('span',{class:'pill pill-red','data-suspended':''},suspendedText(a))]:null),
+      el('td',{class:'num'},a.games_run||0), el('td',{class:'num'},a.games_played||0),
+      el('td',null,el('div',{class:'actions'},gmAction,self?null:accountActions(a))));
+    if(self) return [tr];
+    if(REVOKING===a.user_id) return [tr,el('tr',null,el('td',{colspan:8},revokePanel(a)))];
+    if(DELETING===a.user_id) return [tr,el('tr',null,el('td',{colspan:8},deletePanel(a)))];
+    return [tr];
   });
   fill('accounts',el('table',{class:'kc'},
     el('thead',null,el('tr',null,['Name','Email','Joined','Last sign-in','Status'].map(h=>el('th',null,h)),
@@ -309,6 +315,54 @@ function revokePanel(a){
     el('div',{class:'actions',style:'margin-top:8px'},
       el('button',{class:'btn btn-crimson btn-sm',id:'revoke-confirm',disabled:left.length>0,onclick:()=>revokeGm(a)},'Revoke GM'),
       el('button',{class:'btn btn-ghost btn-sm',onclick:()=>{ REVOKING=null; renderAccounts(); }},'Cancel')));
+}
+// ── SUSPEND AND DELETE (P0-32h, R-097) ───────────────────────────────────────────────────────
+// A suspension "until lifted" is stored a hundred years ahead (account_suspend), so anything past fifty reads as that.
+const label=a=>a.name||a.email||'(no name)';
+function suspendedText(a){
+  const t=new Date(a.suspended_until);
+  return t.getTime()-Date.now()>50*365*864e5?'Suspended until lifted':'Suspended until '+t.toISOString().slice(0,16).replace('T',' ')+' UTC';
+}
+const SUSPEND_FOR={day:['for a day',864e5],week:['for a week',7*864e5],lifted:['until you lift it',null]};
+function accountActions(a){
+  const suspension=a.suspended_until
+    ?el('button',{class:'btn btn-ghost btn-sm','data-act':'unsuspend',onclick:()=>unsuspend(a)},'Lift suspension')
+    :(()=>{ const pick=el('select',{'data-act':'suspend-for'},
+        el('option',{value:'day'},'For a day'),el('option',{value:'week'},'For a week'),el('option',{value:'lifted'},'Until lifted'));
+      return [pick,el('button',{class:'btn btn-ghost btn-sm','data-act':'suspend',onclick:()=>suspend(a,pick.value)},'Suspend')]; })();
+  return [suspension,el('button',{class:'btn btn-crimson btn-sm','data-act':'delete',
+    onclick:()=>{ DELETING=DELETING===a.user_id?null:a.user_id; REVOKING=null; renderAccounts(); }},'Delete…')];
+}
+async function suspend(a,how){
+  const [words,ms]=SUSPEND_FOR[how]||SUSPEND_FOR.day;
+  if(!confirm(`Suspend ${label(a)} ${words}? They can't sign in until then. If they're signed in now, that session lasts until it expires, up to an hour. They keep their realms and games.`)) return;
+  await act(sb.rpc('account_suspend',{p_user:a.user_id,p_until:ms==null?null:new Date(Date.now()+ms).toISOString()}),
+    `${label(a)} is suspended ${words}.`);
+}
+async function unsuspend(a){
+  await act(sb.rpc('account_unsuspend',{p_user:a.user_id}),`${label(a)} can sign in again.`);
+}
+// Deleting: says what goes and what stays, and needs the account's email (or name) typed in. The database refuses while
+// the account runs or plays in an unfinished game, and says which.
+function deletePanel(a){
+  const word=a.email||a.name||'';
+  const runs=unfinished(a.user_id);
+  const typed=el('input',{type:'text',id:'delete-typed',autocomplete:'off',placeholder:word,style:'max-width:320px'});
+  const go=el('button',{class:'btn btn-crimson btn-sm',id:'delete-confirm',disabled:true,onclick:()=>deleteAccount(a)},'Delete this account');
+  typed.addEventListener('input',()=>{ go.disabled=typed.value.trim().toLowerCase()!==word.toLowerCase(); });
+  return el('div',{class:'revoke',id:'delete-panel'},
+    el('div',{style:'margin-bottom:6px'},'Delete ',el('strong',null,label(a)),'. This can\'t be undone.'),
+    el('div',{class:'muted'},'Goes: their sign-in, their profile, any Game Master role or offer, and their unread-dispatch markers.'),
+    el('div',{class:'muted',style:'margin-bottom:6px'},'Stays: their finished games, with their realms in them (no longer linked to an account), any game they ran (with no GM), their dispatches and their Hall of Fame records.'),
+    runs.length?el('div',{class:'msg-info'},`They run ${runs.length} unfinished game${runs.length>1?'s':''}: hand ${runs.length>1?'them':'it'} over first (Revoke GM… lists them).`):null,
+    el('div',{class:'muted',style:'margin-bottom:6px'},'An account playing in an unfinished game can\'t be deleted either: suspend it until the game ends.'),
+    el('label',{for:'delete-typed'},`Type ${a.email?'their email':'their name'} to confirm`),typed,
+    el('div',{class:'actions',style:'margin-top:8px'},go,
+      el('button',{class:'btn btn-ghost btn-sm',onclick:()=>{ DELETING=null; renderAccounts(); }},'Cancel')));
+}
+async function deleteAccount(a){
+  DELETING=null;
+  await act(sb.rpc('account_delete',{p_user:a.user_id}),`${label(a)}'s account is deleted.`);
 }
 async function offerGm(a){
   await act(sb.rpc('gm_offer',{p_user:a.user_id}),`Offered Game Master to ${a.name||a.email}. They'll see it at the top of their player portal.`);
@@ -388,7 +442,7 @@ async function act(call,done){
 
 kcDbGuard(sb,KC_DB_MIN).then(()=>init());
 </script>
-<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Overlord v2026.10.14-1809</div>
+<div style="position:fixed;bottom:8px;right:12px;font-size:.68rem;color:#c0ab88;font-family:monospace;opacity:.95">Kingdoms Call — Overlord v2026.10.15-1834</div>
 <script src="kc-staging-footer.js"></script>
 </body>
 </html>
