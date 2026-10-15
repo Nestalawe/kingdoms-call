@@ -31,7 +31,7 @@ Working on the code, or an agent starting a session? Read [CLAUDE.md](CLAUDE.md)
 
 ## Running the tests
 
-You need Node 24 (see `.nvmrc`).
+You need exactly the Node version in `.nvmrc` (Node 24); `npm ci` and `npm test` refuse any other.
 
 ```sh
 npm ci                              # install the test tools (exact versions, from package-lock.json)
@@ -40,9 +40,9 @@ npm test                            # the standard run, about a minute
 npm run test:full                   # bigger fuzz runs
 ```
 
-`npm test` checks that every script in every page parses, that every page starts without errors,
-plays a few short all-bot games with a fixed seed, and runs every kept test. It prints the seed; a
-failing run can be repeated with `npm test -- --seed <seed>`.
+`npm test` (Vitest) checks that every script in every page parses, that every page starts without errors,
+plays a few short all-bot games with a fixed seed, and runs every kept test. It prints the seed, and for
+each failed test the command that repeats it.
 
 The tests use made-up games and an in-memory stand-in for the database. They never connect to the
 live game.

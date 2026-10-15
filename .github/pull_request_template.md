@@ -40,7 +40,7 @@ change (on main, or against a copy via KC_SITE). Or say "refactor-only": new tes
 |---|---|---|---|
 | | | | |
 
-`npm test`: <!-- paste the summary line, e.g. "16 passed · 0 failed · 95s", and the seed -->
+`npm test`: <!-- paste the summary lines, e.g. "Tests  158 passed (158)" and "Seed 20261001 · Node v24.22.0" -->
 
 ## Database
 

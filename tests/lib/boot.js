@@ -10,9 +10,10 @@
 //                               stand-in database reports through rpc('kc_db_version') (P0-34), unless a test
 //                               says otherwise (bootJsdom's opts.dbVersion)
 //
-// Fixed seed: when KC_SEED is set (tests/run.js sets it), Math.random is replaced by a seeded sfc32
+// Fixed seed: when KC_SEED is set (npm test sets it), Math.random is replaced by a seeded sfc32
 // generator, both in this Node process (for a harness's own random orders) and in every page booted
-// with bootJsdom. Same seed, same random sequence. Date is not pinned yet (P1-01).
+// with bootJsdom. Same seed, same random sequence. bootJsdom's opts.seed and opts.now pin one page
+// completely: its own random sequence and its clock (P1-01a).
 const fs=require('fs'), path=require('path'), http=require('http');
 
 // KC_SITE points the tests at another copy of the site (e.g. a deliberately broken one).
@@ -76,6 +77,22 @@ function withDbVersion(supabase,answers=DB_VERSION,calls){
   }};
 }
 
+// A Date that starts at `now` and moves on 1 ms at every reading (new Date(), Date.now(), Date()), so a page's
+// clock is the same on every run and two readings never tie. Dates built from a value are ordinary. P1-07 gives
+// the engine the same clock.
+function pinnedDate(RealDate,now){
+  let t=typeof now==='number'?now:RealDate.parse(now);
+  if(!Number.isFinite(t)) throw new Error('bootJsdom: opts.now is not a time: '+now);
+  const tick=()=>t++;
+  function PinnedDate(...args){
+    if(!new.target) return new RealDate(tick()).toString();
+    return args.length?new RealDate(...args):new RealDate(tick());
+  }
+  PinnedDate.prototype=RealDate.prototype;
+  PinnedDate.now=tick; PinnedDate.parse=RealDate.parse; PinnedDate.UTC=RealDate.UTC;
+  return PinnedDate;
+}
+
 const SEED=process.env.KC_SEED;
 let bootCount=0;
 if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
@@ -85,6 +102,9 @@ if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
 // opts.url, opts.pretendToBeVisual   jsdom options; defaults match the original harnesses
 // opts.dbVersion, opts.dbCalls         what rpc('kc_db_version') answers, and a list recording the page's
 //                                      database calls (withDbVersion above); by default an up-to-date database
+// opts.seed       the page's own Math.random seed (by default each page booted gets its own stream from KC_SEED)
+// opts.now        pins the page's clock: Date and Date.now start at this time (ms since 1970, or a date
+//                 string) and move on 1 ms each time the page reads it (pinnedDate below)
 function bootJsdom(html,opts={}){
   const {JSDOM}=require('jsdom');
   const n=bootCount++;
@@ -92,7 +112,9 @@ function bootJsdom(html,opts={}){
     pretendToBeVisual:opts.pretendToBeVisual!==undefined?opts.pretendToBeVisual:true,
     url:opts.url||'https://example.org/',
     beforeParse(w){
-      if(SEED!=null&&SEED!=='') w.Math.random=seededRandom((Number(SEED)>>>0)+0x10000*(n+1));
+      if(opts.seed!=null) w.Math.random=seededRandom(opts.seed);
+      else if(SEED!=null&&SEED!=='') w.Math.random=seededRandom((Number(SEED)>>>0)+0x10000*(n+1));
+      if(opts.now!=null) w.Date=pinnedDate(w.Date,opts.now);
       if(opts.supabase) w.supabase=opts.supabase;
       w.confirm=()=>true; w.alert=()=>{};
       if(opts.setup) opts.setup(w);
@@ -125,4 +147,4 @@ async function routeExternal(target,stubBody){
   await target.route('**fonts.gstatic.com/**',r=>r.fulfill({status:200,body:''}));
 }
 
-module.exports={SITE,sitePath,readPage,bootJsdom,seededRandom,serve,routeExternal,withDbVersion,DB_VERSION};
+module.exports={SITE,sitePath,readPage,bootJsdom,seededRandom,pinnedDate,serve,routeExternal,withDbVersion,DB_VERSION};

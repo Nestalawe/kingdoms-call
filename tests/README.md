@@ -1,20 +1,35 @@
 # Tests
 
 ```sh
-npm test                    # standard run (about a minute)
+npm test                    # every test, by level (about a minute)
 npm run test:full           # bigger fuzz runs
 npm run test:quarantine     # the quarantined harnesses below (expected to fail)
-npm test -- --only fuzz     # only tests whose name contains "fuzz"
-npm test -- --jobs 1        # one test at a time (default: as many at once as the machine has cores)
-npm test -- --seed 123      # another fixed seed (the default is printed at the start)
-npm test -- --only concede --seed 123   # reproduce one failure exactly (same seed and sizes)
-node tests/<name>.test.js   # one test on its own (unseeded, its own default sizes)
+npm test -- -t fuzz         # only tests whose name matches "fuzz" (a regular expression)
+npm test -- --project unit  # one level: static, unit, scenario, simulation or page
+KC_JOBS=1 npm test          # one test at a time (default: up to one per core in each of two levels at once)
+KC_SEED=123 npm test        # another seed (the default, 20261001, is set in vitest.config.mts)
+KC_SEED=123 npm test -- -t "^concede$"   # repeat one failure exactly (same seed and sizes): the footer prints this
+node tests/<name>.test.js   # one test script on its own (unseeded, its own default sizes)
 ```
 
-`tests/run.js` runs each test as its own Node process; a test passes when it exits 0. Tests run side by side, as
-many at once as the machine has cores (`--jobs N` or `KC_JOBS` to change it): each process has the same seed, so
-results don't depend on order, and the output is printed in the suite's order. On a failure it prints the end of
-that test's output and the seed to repeat it with.
+`npm test` is [Vitest](https://vitest.dev) (`vitest.config.mts`, P1-01a). It has one project per level: `static`,
+`unit`, `scenario`, `simulation` and `page` (the levels are [below](#the-tests)).
+
+- **New tests** are TypeScript Vitest tests in `tests/<level>/`, e.g. `tests/page/deterministic-boot.test.ts`.
+  Types for the parts of `lib/` they use are in `lib/*.d.ts`.
+- **The test scripts** (`*.test.js`, written before Vitest) are listed in `suite.ts`, each with its level; a script
+  that checks at more than one level sits at its highest. `legacy.test.ts` runs each one as a Vitest test in its own
+  Node process, with the same arguments and environment as before; it passes when the script exits 0, and a failure
+  shows the end of its output. They become real Vitest tests over P1-14. To add or quarantine a script, edit
+  `suite.ts`.
+- **The same answer every time.** The run stops at once on any Node but `.nvmrc`'s (`setup/global.ts`). The time
+  zone is UTC and the locale `en_US`, there are no retries, and a `.only` fails the run. A test that logs with
+  `console.error` or leaves a rejected promise unhandled fails, unless it says it expects that with
+  `vi.spyOn(console, 'error')` (`setup/each.ts`).
+- **Failures say how to repeat them.** Under Vitest's report, a footer (`setup/reporter.ts`) prints the seed and,
+  for each failed test, the command that repeats it.
+- **Levels run side by side**, two at a time, slowest first; within a level, up to one test script per core. More
+  at once only overloads the machine.
 
 ## How the tests reach the site
 
@@ -55,9 +70,11 @@ that test's output and the seed to repeat it with.
   trigger would, and `ERRORS["table.op"]` (or `ERRORS["rpc.name"]`) answers every such call with a given error, so a
   test chooses the message a screen shows. It also has `message_reports` and mirrors `gm_reported_messages` (P0-24), and the Overlord's functions (`overlord_accounts`, `gm_offer`, `gm_withdraw_offer`, `gm_revoke`, `reassign_game`, `account_suspend`, `account_unsuspend`, `account_delete`; account emails, dates and suspensions from `DB.accounts`). The harnesses were written with five different stubs; each is kept exactly as it
   behaved, so moving a harness onto the shared file didn't change what it sees.
-- **Fixed seed.** `run.js` sets `KC_SEED`. `boot.js` then replaces `Math.random` with a seeded
+- **Fixed seed.** `npm test` sets `KC_SEED`. `boot.js` then replaces `Math.random` with a seeded
   generator (sfc32), both in the test process and in every jsdom page. So a run's random choices
-  repeat with the same seed. Time (`Date`) is not pinned yet, so runs are repeatable in practice but
+  repeat with the same seed. A page's clock (`Date`) is pinned only when a test asks: `bootJsdom(html, {seed,
+  now})` gives the page its own seed and a clock that starts at `now` and moves on 1 ms at each reading, so a turn
+  run that way is byte-identical every time (`deterministic-boot`). Otherwise runs are repeatable in practice but
   not guaranteed byte-identical. The Chromium tests are not seeded.
 - **`KC_SITE=<folder>`** points every test at another copy of the site, e.g. a deliberately broken
   one to prove a check fails.
@@ -67,7 +84,7 @@ that test's output and the seed to repeat it with.
 Level is from the testing strategy: 0 static, 1 unit, 1d database unit (pgTAP, from P0-16), 2 scenario,
 3 simulation, 4 page.
 
-The level-1d tests aren't in this folder or in `run.js`: they're in `supabase/tests/`, one file per
+The level-1d tests aren't in this folder or in `suite.ts`: they're in `supabase/tests/`, one file per
 table, and run in CI's `db` job ([supabase/README.md](../supabase/README.md#the-access-rule-tests)).
 
 The original files are the harnesses kept in the claude.ai Project on 27 Sept 2026. When they moved
@@ -238,6 +255,7 @@ None of their checks changed. Every one gave the same pass or fail before and af
 | `map-fits-panel` | new | 4 | ✅ pass | In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row |
 | `dispatches-badge` | new | 4 | ✅ pass | In real Chromium, the unread count on the left panel's ✉ Dispatches tab appears as soon as the player switches view (Map → Report) or comes back to the browser tab, and clears once Dispatches is opened |
 | `gm-messaging-boot` | `claude_msg_gm_boot_0927.js` | 4 | ✅ pass | GM portal boots; while the dispatches tables are missing, a plain error message (no SQL to paste, since P0-17) appears, and it goes once they exist; deleting a game clears its dispatches first |
+| `deterministic-boot` | new | 4 | ✅ pass | The GM portal booted twice with the same seed and clock (`bootJsdom`'s `seed` and `now`) plays one all-bot turn the same, byte for byte: the saved world, every realm's report, the turn's log and events; a third run with another seed plays it differently (P1-01a). Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in `page/` |
 | `quarantine/dispatches-e2e` | `claude_msg_e2e_0927.js` | 4 | ⏸ quarantined | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
 | `quarantine/one-source` | `claude_onesource_0927.js` (+ `claude_onesource_manifest_0927.json`) | 4 | ⏸ quarantined | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
 | `quarantine/one-source-chromium` | `claude_chromium_onesource_0927.js` | 4 | ⏸ quarantined | The "good" and "missing data file" cases pass; the "stale data file" case needs the same pre-refactor build |

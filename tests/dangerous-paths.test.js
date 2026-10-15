@@ -11,7 +11,7 @@ const GLOBS=['supabase/**','.github/**','site/vendor/**'];
 const file=(filename,previous_filename)=>previous_filename?{filename,previous_filename,status:'renamed'}:{filename};
 
 test('a site-only change matches nothing',()=>{
-  assert.deepEqual(match([file('site/index.html'),file('tests/run.js')],GLOBS),[]);
+  assert.deepEqual(match([file('site/index.html'),file('tests/suite.ts')],GLOBS),[]);
 });
 
 test('supabase/, .github/ and site/vendor/ all match',()=>{
@@ -52,11 +52,13 @@ test('paths file: one glob per line; comments and blank lines are skipped',()=>{
   assert.deepEqual(parsePaths('# heading\n\nsupabase/**\n  .github/**  \n# package.json\n'),['supabase/**','.github/**']);
 });
 
-test('the real paths file covers supabase/, .github/ and site/vendor/, and not the rest of site/',()=>{
+test('the real paths file covers supabase/, .github/, site/vendor/ and the package files, and not the rest of site/',()=>{
   const globs=parsePaths(fs.readFileSync(path.join(__dirname,'..','.github','dangerous-paths'),'utf8'));
   for(const g of GLOBS) assert.ok(globs.includes(g),g);
+  assert.equal(isDangerous('package.json',globs),true);
+  assert.equal(isDangerous('package-lock.json',globs),true);
   assert.equal(isDangerous('site/index.html',globs),false);
-  assert.equal(isDangerous('tests/run.js',globs),false);
+  assert.equal(isDangerous('tests/suite.ts',globs),false);
 });
 
 test('the warning names the files, says to talk it through with Theo, and carries the marker',()=>{
