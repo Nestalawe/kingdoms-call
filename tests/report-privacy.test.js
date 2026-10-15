@@ -37,7 +37,7 @@ const WATCHED=[
   let turns=0, reportsSeen=0, linesSeen=0;
   for(let g=0;g<GAMES;g++){
     const setup=W.generateBotSetups([],BOTS,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    let S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:35+5*g}); S.botDifficulty='hard'; S.botDiplomacy='normal';
+    let S=await W.generateNewGame(setup,{cols:12,rows:7},{seaPct:35+5*g}); S.botDifficulty='hard'; S.botDiplomacy='normal';
     const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
     const byGp={}; players.forEach(p=>byGp[p.id]=p.player_index);
     for(let t=1;t<=TURNS;t++){

@@ -23,7 +23,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const sizes=[[2,8,5,3],[4,12,8,3],[6,16,10,1],[10,20,12,1],[10,20,12,1]];
   for(const [realms,cols,rows,spread] of sizes){
     const setup=W.generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct:25});
+    const S=await W.generateNewGame(setup,{cols,rows},{seaPct:25});
     const lairs=[]; let wrongTier=0, notOne=0;
     S.world.provinces.forEach(p=>(p.features||[]).forEach(f=>{ if(!f||f.ritualSite||!f.monster) return;
       const items=f.hoardItems||[]; if(items.length!==1){ notOne++; return; }

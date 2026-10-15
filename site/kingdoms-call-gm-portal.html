@@ -2063,7 +2063,6 @@ async function createGame(){
   const mapSize=document.getElementById('new-game-mapsize').value;
   const cap=MAP_MAX_PLAYERS[mapSize]||10;
   const maxP=Math.min(Math.max(2,parseInt(document.getElementById('new-game-maxplayers').value)||2),cap);
-  const maxTurns=0; // no turn limit — the game ends only at the Reckoning or by elimination (0 = unlimited)
   // ── Bot realms (Phase 1) ──
   const allBot=!!document.getElementById('new-game-allbot')?.checked;
   let botCount=allBot?maxP:Math.max(0,Math.min(parseInt(document.getElementById('new-game-botcount')?.value)||0,maxP));
@@ -2082,7 +2081,7 @@ async function createGame(){
     if(!confirm('This private game has no invited players — nobody will be able to join it. Create it anyway (you can add invites from the game screen)?')) return;
   }
   msg.innerHTML='<div class="msg-info">Creating game…</div>';
-  const _cfg={mapSize,maxTurns,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
+  const _cfg={mapSize,maxPlayers:maxP,botCount:(botCount>=maxP?maxP:botCount),allBot:(allBot||botCount>=maxP)};
   _cfg.seaPct=normSeaPct(document.getElementById('new-game-seapct')?.value); // 20–80% of the world is water (world gen makes it exact)
   _cfg.botDiplomacy=(document.getElementById('new-game-botdiplomacy')?.value==='hostile')?'hostile':'normal'; // 2026-09-26b (Toby item 10)
   _cfg.safeStart=!!document.getElementById('new-game-safestart')?.checked; // 2026-09-29 (Toby): Safe Start
@@ -2092,7 +2091,7 @@ async function createGame(){
   const {data:game,error}=await sb.from('games').insert({
     name, gm_user_id:currentUser.id,
     status:'setup', turn:0,
-    max_players:maxP, max_turns:maxTurns,
+    max_players:maxP,
     game_state:JSON.stringify(_cfg),
     ...metaPatch(_cfg)
   }).select().single();
@@ -2624,7 +2623,6 @@ async function runTurn0(){
   let cfg={};
   try{ cfg=typeof currentGame.game_state==='string'?JSON.parse(currentGame.game_state):currentGame.game_state||{}; }catch(e){}
   const mapSize=cfg.mapSize||'p5';
-  const maxTurns=cfg.maxTurns||12;
   // ── MAP LADDER ────
   // Every rung is the SMALLEST grid on which generateNewGame's own Phase-1 placement reliably meets
   // its KING_MIN_SPACING=4 floor (>=3 neutral hexes between every pair of capitals) — measured, not
@@ -2681,7 +2679,7 @@ async function runTurn0(){
     _mapUse='p'+Math.min(10,totalKingdoms); _szUse=sizemap[_mapUse]||sz;
     console.warn(`Turn 0: ${totalKingdoms} realms on a ${mapSize} map — using the ${_mapUse} map (${_szUse.cols}x${_szUse.rows}) so capitals stay 3+ provinces apart.`);
   }
-  _pendingTurn0={humanSetups, botSetups, sz:_szUse, maxTurns, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null, botDiplomacy:(cfg.botDiplomacy==='hostile'?'hostile':'normal'), safeStart:!!cfg.safeStart};
+  _pendingTurn0={humanSetups, botSetups, sz:_szUse, mapSize:_mapUse, seaPct:normSeaPct(cfg.seaPct), botDifficulty:cfg.botDifficulty||null, botDiplomacy:(cfg.botDiplomacy==='hostile'?'hostile':'normal'), safeStart:!!cfg.safeStart};
 
   if(botSetups.length>0){
     renderTurn0Preview();      // GM confirms the generated roster before we commit anything
@@ -2722,7 +2720,7 @@ function renderTurn0Preview(){
 async function commitTurn0(){
   const msg=document.getElementById('detail-msg');
   if(!_pendingTurn0){ msg.innerHTML='<div class="msg-error">No pending setup — press Run Turn 0 again.</div>'; return; }
-  const {humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty, botDiplomacy, safeStart}=_pendingTurn0;
+  const {humanSetups, botSetups, sz, seaPct, botDifficulty, botDiplomacy, safeStart}=_pendingTurn0;
   msg.innerHTML='<div class="msg-info">⏳ Generating world map and starting positions…</div>';
 
   try{
@@ -2756,7 +2754,7 @@ async function commitTurn0(){
     })).sort((a,b)=>a.id-b.id);
 
     // 3. Generate the world.
-    const gameState=await generateNewGame(setupPlayers,sz,maxTurns,{seaPct});
+    const gameState=await generateNewGame(setupPlayers,sz,{seaPct});
     if(safeStart) gameState.safeStart=true; // 2026-09-29 (Toby): Safe Start — no diplomacy before Turn SAFE_START_TURN
     gameState.botDiplomacy=(botDiplomacy==='hostile')?'hostile':'normal'; // 2026-09-26b (Toby item 10): 'hostile' = bots always at war with humans, never allied
     gameState.botDifficulty='hard'; // 2026-09-26 (Toby item 9): every bot game plays at the one strength (Easy / Normal retired); the saved cfg value is ignored
@@ -4963,7 +4961,7 @@ function buildGameMeta(gs){
 function metaPatch(gs){ return _kcHasMeta?{meta:buildGameMeta(gs)}:{}; }
 // Column lists for the two list-style reads. With the column in place they carry no world and no
 // report; without it the old heavy shape is used so nothing is lost.
-const GAME_LITE_COLS='id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta';
+const GAME_LITE_COLS='id,name,gm_user_id,status,turn,max_players,created_at,meta';
 const PLAYER_LITE_COLS='id,game_id,user_id,player_index,display_name,orders_submitted';
 function gamesListCols(){ return _kcHasMeta?`${GAME_LITE_COLS}, game_players(${PLAYER_LITE_COLS})`:'*, game_players(*)'; }
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -5641,7 +5639,6 @@ function buildGameRecords(gameId, gameRow, players, results, events, gs, profNam
     cols:setupIn.cols||(gs&&gs.world&&gs.world.cols)||null,
     rows:setupIn.rows||(gs&&gs.world&&gs.world.rows)||null,
     seaPct:setupIn.seaPct!=null?setupIn.seaPct:((meta&&meta.seaPct!=null)?meta.seaPct:null),
-    maxTurns:(gameRow&&gameRow.max_turns)||(gs&&gs.maxTurns)||null,
   };
   const turns=any.turns||Math.max(0,...events.map(e=>e.turn||0));
 
@@ -5877,7 +5874,7 @@ async function writeGameRecord(gameId, opts){
     }
     let gameRow=opts.gameRow||null, players=opts.players||null, gs=opts.gs||null;
     if(!gameRow||!players||!gs){
-      const {data:full}=await sb.from('games').select('id,name,gm_user_id,created_at,max_turns,meta,game_state,game_players(id,player_index,user_id,display_name)').eq('id',gid).maybeSingle();
+      const {data:full}=await sb.from('games').select('id,name,gm_user_id,created_at,meta,game_state,game_players(id,player_index,user_id,display_name)').eq('id',gid).maybeSingle();
       if(full){ gameRow=gameRow||full; players=players||full.game_players||[]; if(!gs){ const p=parseGameState(full); if(p&&p.players) gs=p; } }
     }
     const row=buildGameRecords(gid, gameRow, players||[], results, events, gs, await lbProfileNames(players));
@@ -5926,7 +5923,7 @@ async function backfillGameRecords(force){
   const btn=document.getElementById('lb-build-btn');
   const say=t=>{ const el=document.getElementById('lb-build-msg'); if(el) el.textContent=t; };
   try{
-    const {data:games}=await sb.from('games').select('id,name,gm_user_id,created_at,max_turns,meta').eq('gm_user_id',currentUser.id).eq('status','complete');
+    const {data:games}=await sb.from('games').select('id,name,gm_user_id,created_at,meta').eq('gm_user_id',currentUser.id).eq('status','complete');
     // paged (2026-10-09): one row per realm per game passes the database's 1000-row answer limit
     // after a hundred or so games, and the games past it were never offered for a record
     const res=[];
@@ -10279,7 +10276,7 @@ function runBotPhaseOne(G, botIdxSet, stage){
 // naval king) holds at any share.
 const SEA_PCT_MIN=20, SEA_PCT_MAX=80, SEA_PCT_DEFAULT=35;
 function normSeaPct(v){ v=parseInt(v); if(!Number.isFinite(v)) v=SEA_PCT_DEFAULT; return Math.max(SEA_PCT_MIN,Math.min(SEA_PCT_MAX,v)); }
-function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
+function generateNewGame(setupPlayers, sz, genOpts){
   const {cols,rows}=sz;
   const provinces=[];
   const seaPct=normSeaPct(genOpts&&genOpts.seaPct);
@@ -11389,7 +11386,7 @@ function generateNewGame(setupPlayers, sz, maxTurns, genOpts){
     // Neutral to one another; relations only change at end of turn via mutual Treat / a war
     // declaration.
     relations:{},
-    heroGraveyard:[],turn:1,phase:0,maxTurns,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
+    heroGraveyard:[],turn:1,phase:0,log:[],turnOrders,nextItemId:0,_awardedItems:[]};
   grantMithrilToDwarves(_newGameState); // dwarf characters of a dwarf realm start suited in mithril
   // re-grade every lair before the hoards are stocked - always 22 legendary lairs, spread across
   // the world, with the weak country gathered around the homes.
@@ -28498,8 +28495,9 @@ const ARMY_COST=ARMY_COST_MASTER; // alias → master table at top of script
     ...metaPatch(G),
     turn:G.turn,
     // Victory (#7): no turn limit. The game is complete only when decided by the Reckoning or by
-    // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
-    status:(G.gameOver || (G.maxTurns&&G.maxTurns>0&&G.turn>G.maxTurns&&G.maxTurnsHardStop))?'complete':'active'
+    // elimination (G.gameOver). The dead turn-limit backstop went on 2026-10-15 (batch item 3); the games
+    // table's old turn-limit column is left unread until a database PR drops it.
+    status:G.gameOver?'complete':'active'
   }).eq('id',gameRow.id).eq('turn',expectedTurnToRun).select('id').maybeSingle();
   if(saveErr){msg.innerHTML=`<div class="msg-error">Error saving: ${saveErr.message}</div>`;return;}
   if(!_savedRow){ _saveConflict=true; throw new Error(`Turn ${expectedTurnToRun} was already run elsewhere (another GM tab or device) — this run was discarded.`); }

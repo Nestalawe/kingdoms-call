@@ -23,7 +23,7 @@ const N=+(process.argv[2]||4);
   let n=0, three=0, roomy=0; const off=[], badCount=[], noGarrison=[], badFleet=[];
   for(const [realms,cols,rows] of sizes) for(let k=0;k<N;k++){
     const setup=W.generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct:25});
+    const S=await W.generateNewGame(setup,{cols,rows},{seaPct:25});
     const P=S.world.provinces;
     P.forEach(p=>{
       if(!p||p.terrain==='sea'||!HUM.has(p.race)||p.owner!=null) return;

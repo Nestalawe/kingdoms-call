@@ -103,7 +103,7 @@ const noErrors=(errs,who)=>check(!errs.length,`${who}: no page errors`+(errs.len
     // a real two-bot world, run by gm2
     const {S,W,doc,errs}=await boot('ov1');
     const setup=W.generateBotSetups([],2,0).map(b=>({...b,gamePlayerId:'gr'+b.id,name:b.kingdomName}));
-    const state=await W.generateNewGame(setup,{cols:10,rows:6},999,{seaPct:35}); state.botDifficulty='hard';
+    const state=await W.generateNewGame(setup,{cols:10,rows:6},{seaPct:35}); state.botDifficulty='hard';
     S.DB.games.push(game('G7','Rescue Fen','gm2','active',1,{game_state:JSON.stringify(state)}));
     setup.forEach(sp=>S.DB.game_players.push({id:sp.gamePlayerId,game_id:'G7',user_id:null,player_index:sp.id,display_name:sp.name,
       orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));

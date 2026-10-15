@@ -21,7 +21,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   let lairs=0, qualified=0, nameDup=[], guardDup=[];
   for(const [realms,cols,rows] of sizes){
     const setup=W.generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct:25});
+    const S=await W.generateNewGame(setup,{cols,rows},{seaPct:25});
     S.world.provinces.forEach(p=>{
       const L=(p.features||[]).filter(f=>f&&!f.ritualSite&&f.monster);
       lairs+=L.length;

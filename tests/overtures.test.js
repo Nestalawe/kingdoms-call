@@ -27,7 +27,7 @@ function boot(file,extra){
   // Realms 0 and 1 are human; realm 0 proposes an alliance (or peace) to realm 1.
   async function play(n,relation){
     const setup=W.generateBotSetups([],n,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols:16,rows:9},999,{seaPct:30});
+    const S=await W.generateNewGame(setup,{cols:16,rows:9},{seaPct:30});
     S.safeStart=false;
     S.players[0]._encountered=[1]; S.players[1]._encountered=[];   // realm 1 has never met realm 0
     S.relations=S.relations||{}; if(relation!=='neutral') S.relations['0-1']=relation;

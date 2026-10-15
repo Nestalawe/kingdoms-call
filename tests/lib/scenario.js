@@ -35,7 +35,7 @@ async function bootScenario(opts={}){
     const setup=W.generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
     const builds=W.eval('(typeof BOT_SKILL_BUILD!=="undefined")?BOT_SKILL_BUILD:{}');
     setup.forEach((s,i)=>{ if(alignments[i]){ s.alignment=alignments[i]; if(builds[s.alignment]) s.skills={...builds[s.alignment]}; } if(races[i]) s.race=races[i]; });   // a crown's own skill build, as a bot of that alignment would be dealt
-    const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct});
+    const S=await W.generateNewGame(setup,{cols,rows},{seaPct});
     S.safeStart=false;
     return {S,setup};
   }

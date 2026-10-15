@@ -55,7 +55,7 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
       temper:'Brave',skills:{melee:1,tactical:1,march:1,white:1,naval:(i%3===0?1:0),sage:1,explorer:1}}));
     W.__opt={seaPct}; W.__sz={cols:M.cols,rows:M.rows};
     try{
-      W.eval(`(function(){ const g=generateNewGame(__sp,__sz,0,__opt);
+      W.eval(`(function(){ const g=generateNewGame(__sp,__sz,__opt);
         g.turnMode={mode:'auto',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
         g.botDifficulty='hard'; g.botDiplomacy=${gi%2?"'hostile'":"'normal'"}; window.__G=g; })()`);
     }catch(e){ crashes.push('worldgen: '+e.message); continue; }

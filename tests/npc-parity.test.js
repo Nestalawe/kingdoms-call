@@ -190,7 +190,7 @@ function caseB2(W,runs){
 
   // One real turn, purely to initialise runTurn's inner scope and hand back combatVsNPC.
   const setup=W.generateBotSetups([],3,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-  const S=await W.generateNewGame(setup,{cols:10,rows:6},999,{seaPct:35});
+  const S=await W.generateNewGame(setup,{cols:10,rows:6},{seaPct:35});
   const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,
     orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
   ROWS={games_one:{id:'g0',name:'T',turn:1,status:'active',game_state:JSON.stringify(S),max_turns:999},

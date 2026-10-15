@@ -20,7 +20,7 @@ const ok=(cond,msg)=>{ if(cond) pass++; else { fail++; console.log('  ✗ '+msg)
   if(typeof W.runTurn!=='function'){ console.log('engine did not boot'); errors.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
   // Build a real world, then drive ONE turn far enough to expose the runTurn-scope helpers.
   const setup=W.generateBotSetups([],3,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-  const S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:45});
+  const S=await W.generateNewGame(setup,{cols:12,rows:7},{seaPct:45});
   // reach the helpers: runTurn exports them on window when it reaches phase resolution, but we can
   // avoid a full turn by evaluating the hook directly — the portal parks __NR the moment runTurn
   // gets to the phase loop, so run one turn against the stub and keep the handles.

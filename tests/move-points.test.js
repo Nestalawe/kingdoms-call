@@ -26,7 +26,7 @@ let ROWS={}; const WRITES=[];
   // A two-realm world; realm 0's king (with his army) stands at home, beside a land province N.
   async function stage(prepare){
     const setup=W.generateBotSetups([],2,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols:10,rows:6},999,{seaPct:20});
+    const S=await W.generateNewGame(setup,{cols:10,rows:6},{seaPct:20});
     S.safeStart=false;
     const king=S.characters.find(c=>c.alive&&c.player===0&&c.isKing);
     const home=S.world.provinces[king.location];

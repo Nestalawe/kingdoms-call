@@ -31,7 +31,7 @@ const N=+(process.argv[2]||4);   // worlds per size
   let crowns=0, missing=[], capBroken=[], pairBroken=[];
   for(const [realms,cols,rows] of sizes) for(let k=0;k<N;k++){
     const setup=W.generateBotSetups([],realms,0).map((b,i)=>({...b,alignment:(i+k)%2?'Evil':'Druidic',gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct:25});
+    const S=await W.generateNewGame(setup,{cols,rows},{seaPct:25});
     const P=S.world.provinces;
     const nb=p=>W.getNeighborsP(p,cols,rows,P).filter(Boolean);
     const wild=p=>p&&p.terrain!=='sea'&&String(p.race||'').startsWith('Primal');

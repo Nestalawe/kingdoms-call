@@ -29,7 +29,7 @@ const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log
   W.__sp=Array.from({length:3},(_,i)=>({id:i,gamePlayerId:'gp'+i,isBot:true,name:'Realm'+i,kingName:'King'+i,
     kingdomName:'Realm'+i,race:['Human','Elven','Dwarven'][i],alignment:['Good','Neutral','Druidic'][i],temper:'Brave',
     skills:{melee:1,tactical:1,march:1,white:1,naval:0,sage:1,explorer:1}}));
-  W.eval(`(function(){ const g=generateNewGame(__sp,{cols:8,rows:7},0,{seaPct:20});
+  W.eval(`(function(){ const g=generateNewGame(__sp,{cols:8,rows:7},{seaPct:20});
     g.turnMode={mode:'auto',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
     window.__G=g; })()`);
   S.DB.games.push({id:'G1',name:'Missing meta',gm_user_id:'gm1',status:'active',turn:1,max_players:3,max_turns:0,

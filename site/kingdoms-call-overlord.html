@@ -241,7 +241,7 @@ async function loadAccounts(){
 async function loadGames(){
   const rows=[];
   for(let from=0;;from+=200){
-    const {data,error}=await sb.from('games').select('id,name,gm_user_id,status,turn,max_turns,created_at,meta')
+    const {data,error}=await sb.from('games').select('id,name,gm_user_id,status,turn,created_at,meta')
       .order('created_at',{ascending:false}).range(from,from+199);
     if(error){ GAMES=null; GAMES_ERROR=error.message; return; }
     rows.push(...(data||[]));

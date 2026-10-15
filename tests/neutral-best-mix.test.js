@@ -27,7 +27,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   let checked=0, mixed=0; const weak=[], band=[], foreign=[], guard=[];
   for(const [realms,cols,rows] of sizes){
     const setup=W.generateBotSetups([],realms,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct:25});
+    const S=await W.generateNewGame(setup,{cols,rows},{seaPct:25});
     S.world.provinces.forEach(p=>{
       if(!p||p.owner!=null||p.terrain==='sea'||String(p.race||'').startsWith('Primal')) return;
       const defs=p.neutralDefenders||[]; const types=landTypes(p);

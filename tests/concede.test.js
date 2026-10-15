@@ -22,7 +22,7 @@ function boot(file,extra){
   await new Promise(r=>setTimeout(r,500)); const W=gd.window;
   if(typeof W.runTurn!=='function'){ console.log('GM portal did not boot'); gerr.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
   const setup=W.generateBotSetups([],4,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-  let S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:35}); S.botDifficulty='hard';
+  let S=await W.generateNewGame(setup,{cols:12,rows:7},{seaPct:35}); S.botDifficulty='hard';
   const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
   const runOne=async(state,turn)=>{
     ROWS={games_one:{id:'gc',name:'T',turn,status:'active',game_state:JSON.stringify(state),max_turns:999,game_players:players},game_players_list:players,turn_logs_list:[]};

@@ -15,7 +15,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   await new Promise(r=>setTimeout(r,500)); const W=d.window;
   if(typeof W.buildTurnReport!=='function'){ console.log('GM portal did not boot'); errs.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
   const setup=W.generateBotSetups([],3,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-  const S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:30});
+  const S=await W.generateNewGame(setup,{cols:12,rows:7},{seaPct:30});
 
   // Realm 0's king fell at home; realm 0 still holds a second, RICHER province; realm 1 then took the home.
   const home=W.homeProvinceIdFor(S,0);

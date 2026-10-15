@@ -22,7 +22,7 @@ const quiet=(errs)=>(w)=>{
   await new Promise(r=>setTimeout(r,500)); const W=d.window;
   if(typeof W.runTurn!=='function'){ console.log('GM portal did not boot'); errs.slice(0,3).forEach(e=>console.log(e)); process.exit(1); }
   const setup=W.generateBotSetups([],2,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-  const S=await W.generateNewGame(setup,{cols:10,rows:6},999,{seaPct:20});
+  const S=await W.generateNewGame(setup,{cols:10,rows:6},{seaPct:20});
   const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
   ROWS={games_one:{id:'gd',name:'T',turn:1,status:'active',game_state:JSON.stringify(S),max_turns:999,game_players:players},game_players_list:players,turn_logs_list:[]};
   W.eval(`currentGame={id:'gd',turn:1,status:'active',name:'T'};`);

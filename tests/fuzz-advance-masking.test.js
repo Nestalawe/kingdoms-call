@@ -21,7 +21,7 @@ const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
   let turns=0,crashes=0,leakChecks=0,leaks=0,unmetSeen=0,masked=0,badLine=0;
   for(let g=0;g<GAMES;g++){
     const setup=W.generateBotSetups([],BOTS,0).map(b=>({...b,gamePlayerId:'gp'+b.id,name:b.kingdomName}));
-    let S=await W.generateNewGame(setup,{cols:12,rows:7},999,{seaPct:35+10*g}); S.botDifficulty='hard'; S.botDiplomacy=(g%2?'hostile':'normal');
+    let S=await W.generateNewGame(setup,{cols:12,rows:7},{seaPct:35+10*g}); S.botDifficulty='hard'; S.botDiplomacy=(g%2?'hostile':'normal');
     const players=setup.map(sp=>({id:sp.gamePlayerId,user_id:null,player_index:sp.id,display_name:sp.name,orders:null,orders_submitted:false,turn_report:JSON.stringify({isBot:true})}));
     for(let t=1;t<=TURNS;t++){
       ROWS={games_one:{id:'g'+g,name:'T',turn:t,status:'active',game_state:JSON.stringify(S),max_turns:999},game_players_list:players,turn_logs_list:[]};
