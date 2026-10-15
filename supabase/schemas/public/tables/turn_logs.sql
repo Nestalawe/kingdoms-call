@@ -31,6 +31,27 @@ CREATE POLICY "the Overlord writes any turn log" ON "public"."turn_logs"
   USING (( SELECT public.is_site_admin() AS is_site_admin))
   WITH CHECK (( SELECT public.is_site_admin() AS is_site_admin));
 
+-- Revoked GMs keep nothing (P0-32i, R-097): a GM's writes need them still to be a Game Master, or the Overlord. A
+-- revoked GM's unfinished games were handed over first (gm_revoke insists), so this stops them changing their finished
+-- ones. Restrictive: it narrows every other rule. Reads are untouched.
+CREATE POLICY "GM writes need a Game Master (insert)" ON "public"."turn_logs"
+  AS RESTRICTIVE
+  FOR INSERT
+  TO "authenticated"
+  WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
+CREATE POLICY "GM writes need a Game Master (update)" ON "public"."turn_logs"
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
+CREATE POLICY "GM writes need a Game Master (delete)" ON "public"."turn_logs"
+  AS RESTRICTIVE
+  FOR DELETE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
 REVOKE ALL ON TABLE "public"."turn_logs" FROM "anon";
 
 REVOKE ALL ON TABLE "public"."turn_logs" FROM "authenticated";

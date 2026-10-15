@@ -56,6 +56,27 @@ CREATE POLICY "remove game_records: its GM or the Overlord" ON "public"."game_re
    FROM public.games g
   WHERE ((g.id)::text = game_records.game_id)))))));
 
+-- Revoked GMs keep nothing (P0-32i, R-097): a GM's writes need them still to be a Game Master, or the Overlord. A
+-- revoked GM's unfinished games were handed over first (gm_revoke insists), so this stops them changing their finished
+-- ones. Restrictive: it narrows every other rule. Reads (public) are untouched.
+CREATE POLICY "GM writes need a Game Master (insert)" ON "public"."game_records"
+  AS RESTRICTIVE
+  FOR INSERT
+  TO "authenticated"
+  WITH CHECK ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
+CREATE POLICY "GM writes need a Game Master (update)" ON "public"."game_records"
+  AS RESTRICTIVE
+  FOR UPDATE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
+CREATE POLICY "GM writes need a Game Master (delete)" ON "public"."game_records"
+  AS RESTRICTIVE
+  FOR DELETE
+  TO "authenticated"
+  USING ((( SELECT public.is_site_admin() AS is_site_admin) OR ( SELECT public.is_game_master() AS is_game_master)));
+
 CREATE POLICY "read game_records" ON "public"."game_records"
   FOR SELECT
   TO "anon", "authenticated"
