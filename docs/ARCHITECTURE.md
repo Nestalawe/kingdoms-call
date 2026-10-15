@@ -102,13 +102,15 @@ Every name and message on screen was typed by someone, so a page treats every va
 - **`kcRaw(s)`**: markup passed through unchanged. Only for markup no player can have written; each use says why.
 
 Engine narrative is escaped where it's shown, not where it's written: the report stores `**bold**`, and the page
-turns it into `<strong>` after escaping. A page whose content is mostly fixed builds elements instead (the Overlord
-page's `el()`), which is just as safe.
+turns it into `<strong>` after escaping. The player portal's Chronicle also tints each name it knows: it splits the
+line's text at every bold run and every name, and wraps only those pieces in `kcHtml`, so the rest stays text. A
+list of `kcHtml` pieces with a separator between them goes in through the player portal's `kcJoinP(list, sep)`. A
+page whose content is mostly fixed builds elements instead (the Overlord page's `el()`), which is just as safe.
 
 `npm test`'s `html-lint` refuses HTML built any other way, and each converted page has a hostile-name test. The
 player portal is converted one pull request at a time. Its lobby (signing in, the account, My Games, open games and the
-join form) is done; until the rest is (the report and Chronicle, the orders, the map and Dispatches), `html-lint` holds it
-to its current count, and `_msgEsc` is another name for `kcEsc`. Mistakes to avoid:
+join form) and its turn report and Chronicle are done; until the rest is (the orders, the map and Dispatches),
+`html-lint` holds it to its current count, and `_msgEsc` is another name for `kcEsc`. Mistakes to avoid:
 [traps.md](traps.md#html-is-built-only-through-kchtml).
 
 ## `kingdoms-call-data.js`: the one source for shared rules
