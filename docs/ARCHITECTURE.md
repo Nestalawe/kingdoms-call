@@ -177,7 +177,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 | Table | Holds |
 |---|---|
 | `profiles` | One row per account: display name |
-| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below). Created only by a Game Master, in their own name; never by the Overlord (P0-32d). The Overlord reads, saves and deletes any game, as Master GM (P0-32e); no save changes a game's GM: only `reassign_game` (Overlord only, to a Game Master) hands a game over |
+| `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below), `block_eliminated_msgs` (the GM's switch "Block eliminated realms from sending dispatches", P0-25; off by default). Created only by a Game Master, in their own name; never by the Overlord (P0-32d). The Overlord reads, saves and deletes any game, as Master GM (P0-32e); no save changes a game's GM: only `reassign_game` (Overlord only, to a Game Master) hands a game over |
 | `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's (P0-32d), but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM (P0-32e); one realm per slot number in a game (P0-20). Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B) |
 | `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log). Written by the game's GM or the Overlord (P0-32e) |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |

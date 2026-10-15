@@ -134,7 +134,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-072](R-072-guardian-strength.md) | Guardian hit points by grade | 2026-09-29 | Confirmed | no test yet |
 | [R-073](R-073-private-dispatches.md) | Private dispatches are private; players report | 2026-09-29 | Confirmed | [`report-dispatch`](../../tests/report-dispatch.test.js), [`17_message_reports.test.sql`](../../supabase/tests/database/17_message_reports.test.sql), [`18_private_dispatches.test.sql`](../../supabase/tests/database/18_private_dispatches.test.sql) |
 | [R-074](R-074-dispatch-limits.md) | Dispatch limits | 2026-09-29 | Confirmed | [`dispatch-limits`](../../tests/dispatch-limits.test.js), [`16_dispatch_limits.test.sql`](../../supabase/tests/database/16_dispatch_limits.test.sql) |
-| [R-075](R-075-eliminated-realms-dispatches.md) | Eliminated realms and dispatches | 2026-09-29 | Confirmed (open question) | no test yet |
+| [R-075](R-075-eliminated-realms-dispatches.md) | Eliminated realms and dispatches | 2026-09-29 | Confirmed (open question) | [`22_block_eliminated_msgs.test.sql`](../../supabase/tests/database/22_block_eliminated_msgs.test.sql) |
 | [R-076](R-076-monarch-grave.md) | A fallen king's body stays where it was laid | 2026-10-08 | Confirmed | [`monarch-grave`](../../tests/monarch-grave.test.js) |
 | [R-077](R-077-guardian-melee.md) | Guardian melee grows by grade | 2026-10-08 | Confirmed | [`guardian-melee`](../../tests/guardian-melee.test.js) |
 | [R-078](R-078-overtures-count-as-meeting.md) | An overture introduces the sender | 2026-10-08 | Confirmed | [`overtures`](../../tests/overtures.test.js) |
