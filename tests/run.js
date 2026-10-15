@@ -54,6 +54,8 @@ const SUITE=[
   ['other-realms-slots',   'tests/other-realms-slots.test.js'],
   ['dispatch-limits',      'tests/dispatch-limits.test.js'],
   ['report-dispatch',      'tests/report-dispatch.test.js'],
+  ['eliminated-dispatches','tests/eliminated-dispatches.test.js'],
+  ['eliminated-report',    'tests/eliminated-report.test.js'],
   ['overlord-page',        'tests/overlord-page.test.js'],
   ['overlord-suspend-delete','tests/overlord-suspend-delete.test.js'],
   ['master-gm-mode',       'tests/master-gm-mode.test.js'],
